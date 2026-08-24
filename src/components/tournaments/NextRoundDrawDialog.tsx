@@ -41,6 +41,8 @@ interface Props {
   multiSection?: boolean;
   selfScheduled?: boolean;
   divisionLabel?: string | null;
+  /** Metadata just captured in the "set up the next round" popup. */
+  setup?: { label: string; playBy: string | null; roundId: string | null } | null;
   onConfirmed?: (count: number) => void;
 }
 
@@ -68,6 +70,7 @@ export function NextRoundDrawDialog({
   multiSection,
   selfScheduled,
   divisionLabel,
+  setup,
   onConfirmed,
 }: Props) {
   const rows = (state.currentRoundMatches || []) as any[];
@@ -133,7 +136,7 @@ export function NextRoundDrawDialog({
   if (!suggested) return null;
   if (redraw && !safety.canRedraw) return null;
 
-  const stageLabel = redraw
+  const stageLabel = setup?.label ? setup.label : redraw
     ? state.plan.find((r) => r.round_number === state.currentRound)?.label || `Round ${state.currentRound}`
     : state.nextRound?.label || `Round ${round}`;
 
@@ -150,8 +153,8 @@ export function NextRoundDrawDialog({
       entrants={entrants}
       multiSection={multiSection}
       divisionLabel={label}
-      roundId={redraw ? null : state.nextRound?.id ?? null}
-      playBy={selfScheduled ? state.nextRound?.play_by ?? null : null}
+      roundId={redraw ? null : setup?.roundId ?? state.nextRound?.id ?? null}
+      playBy={setup?.playBy ?? (selfScheduled ? state.nextRound?.play_by ?? null : null)}
       replaceIds={redraw ? safety.replaceIds : undefined}
       onConfirmed={onConfirmed}
       title={redraw ? `${stageLabel} — redraw this round` : prepareDrawTitle(stageLabel, round)}

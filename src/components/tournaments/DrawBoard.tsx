@@ -25,6 +25,7 @@ import {
   type DrawEntrant,
   type DrawSlotRef,
 } from "@/lib/tournaments/draw-board";
+import { boardProgress, drawLayout, matchesInScope, sectionsOf } from "@/lib/tournaments/next-round-setup";
 
 interface Props {
   board: DrawBoardModel;
@@ -140,10 +141,23 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
   const bench = useMemo(() => benchedEntrants(board, entrants), [board, entrants]);
   const validation = useMemo(() => validateDrawBoard(board, entrants), [board, entrants]);
   const sections = useMemo(
-    () => Array.from(new Set(board.matches.map((m) => m.section))).sort((a, b) => a - b),
+    () => sectionsOf(board),
     [board],
   );
   const multi = sections.length > 1;
+  const progress = useMemo(() => boardProgress(board), [board]);
+  /**
+   * Adaptive layout: a small round keeps the bracket cards, a large round
+   * (many pairings) switches to a compact editable list. Filtering to one
+   * pool at a time also means a drag can never cross into another scope.
+   */
+  const layout = drawLayout(board.matches.length);
+  const [scope, setScope] = useState<number | "all">("all");
+  const visibleSections = useMemo(
+    () => (scope === "all" ? sections : sections.filter((s) => s === scope)),
+    [scope, sections],
+  );
+
 
   /** Top half of the seeding list reads green, the rest blue, benched players red. */
   const seedCut = useMemo(() => {
@@ -189,6 +203,8 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
             {validation.playable} match{validation.playable === 1 ? "" : "es"} · {validation.byes} bye
             {validation.byes === 1 ? "" : "s"}
           </Badge>
+          <Badge variant="outline" className="text-[10px]">{progress.summary}</Badge>
+
           <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-seed-top" /> Higher seed</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-seed-lower" /> Lower seed</span>
@@ -206,21 +222,90 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
           </div>
         </div>
 
+        {multi && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[10px] text-muted-foreground">Working on:</span>
+            <Badge
+              variant={scope === "all" ? "default" : "outline"}
+              className="cursor-pointer text-[10px]"
+              onClick={() => setScope("all")}
+            >
+              All pools
+            </Badge>
+            {sections.map((s) => (
+              <Badge
+                key={s}
+                variant={scope === s ? "default" : "outline"}
+                className="cursor-pointer text-[10px]"
+                onClick={() => setScope(s)}
+              >
+                {sectionLabelOf(s)}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+
+
         <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
           <div className="space-y-3">
-            {sections.map((section) => (
+            {visibleSections.map((section) => {
+              const rows = matchesInScope(board, section);
+              return (
               <div key={section} className="rounded-md border p-2">
                 {multi && (
-                  <div className="mb-2 text-xs font-medium">{sectionLabelOf(section)}</div>
+                  <div className="mb-2 text-xs font-medium">
+                    {sectionLabelOf(section)}{" "}
+                    <span className="text-muted-foreground">· {rows.length} match{rows.length === 1 ? "" : "es"}</span>
+                  </div>
                 )}
-                <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
-                  {board.matches
-                    .filter((m) => m.section === section)
-                    .sort((a, b) => a.position - b.position)
-                    .map((m) => {
+                <div className={cn("grid gap-1.5", layout === "list" ? "grid-cols-1" : "sm:grid-cols-2 xl:grid-cols-3")}>
+                  {rows.map((m) => {
                       const a = m.a ? byId.get(m.a) ?? null : null;
                       const b = m.b ? byId.get(m.b) ?? null : null;
                       const incomplete = (!a || !b) && (a || b);
+                      const slotA = (
+                        <Slot
+                          refSlot={{ section: m.section, round: m.round, position: m.position, side: "a" }}
+                          entrant={a}
+                          tone={toneOf(a)}
+                          readOnly={readOnly}
+                          onClear={() =>
+                            onChange(clearSlot(board, { section: m.section, round: m.round, position: m.position, side: "a" }))
+                          }
+                        />
+                      );
+                      const slotB = (
+                        <Slot
+                          refSlot={{ section: m.section, round: m.round, position: m.position, side: "b" }}
+                          entrant={b}
+                          tone={toneOf(b)}
+                          readOnly={readOnly}
+                          onClear={() =>
+                            onChange(clearSlot(board, { section: m.section, round: m.round, position: m.position, side: "b" }))
+                          }
+                        />
+                      );
+
+                      // Large rounds: one compact editable row per matchup so
+                      // 50 pairings stay scannable and scrollable.
+                      if (layout === "list") {
+                        return (
+                          <div
+                            key={`${m.section}-${m.position}`}
+                            className="flex items-center gap-1.5 rounded border bg-muted/20 px-1.5 py-1"
+                          >
+                            <span className="w-10 shrink-0 text-[10px] text-muted-foreground">#{m.position}</span>
+                            <div className="min-w-0 flex-1">{slotA}</div>
+                            <span className="shrink-0 text-[9px] uppercase text-muted-foreground">v</span>
+                            <div className="min-w-0 flex-1">{slotB}</div>
+                            {incomplete ? (
+                              <Badge variant="outline" className="shrink-0 text-[9px]">Bye</Badge>
+                            ) : null}
+                          </div>
+                        );
+                      }
+
                       return (
                         <div key={`${m.section}-${m.position}`} className="rounded border bg-muted/20 p-1">
                           <div className="mb-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -230,33 +315,19 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
                             ) : null}
                           </div>
                           <div className="space-y-0.5">
-                            <Slot
-                              refSlot={{ section: m.section, round: m.round, position: m.position, side: "a" }}
-                              entrant={a}
-                              tone={toneOf(a)}
-                              readOnly={readOnly}
-                              onClear={() =>
-                                onChange(clearSlot(board, { section: m.section, round: m.round, position: m.position, side: "a" }))
-                              }
-                            />
+                            {slotA}
                             <div className="text-center text-[9px] uppercase text-muted-foreground">v</div>
-                            <Slot
-                              refSlot={{ section: m.section, round: m.round, position: m.position, side: "b" }}
-                              entrant={b}
-                              tone={toneOf(b)}
-                              readOnly={readOnly}
-                              onClear={() =>
-                                onChange(clearSlot(board, { section: m.section, round: m.round, position: m.position, side: "b" }))
-                              }
-                            />
+                            {slotB}
                           </div>
                         </div>
                       );
                     })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
+
 
           <div
             ref={benchRef}

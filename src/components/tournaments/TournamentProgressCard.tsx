@@ -21,6 +21,7 @@ import { sectionProgression, type SectionProgression } from "@/lib/tournaments/k
 import { divisionControls, groupStageControl, type ChampionScope, type SectionControl } from "@/lib/tournaments/round-control";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
+import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { sectionLetter } from "@/lib/tournaments/knockout";
 
 
@@ -77,8 +78,11 @@ export function TournamentProgressCard({
   const states = useMemo(() => sectionProgression(koMatches, rounds as any), [koMatches, rounds]);
   const generate = useGenerateNextRound({ champId, states, selfScheduled });
   const [draw, setDraw] = useState<{ key: string; mode: NextRoundDrawMode } | null>(null);
+  const [setupKey, setSetupKey] = useState<string | null>(null);
+  const [setup, setSetup] = useState<NextRoundReady | null>(null);
   const keyOf = (s: { groupNumber: number; section: number }) => `${s.groupNumber}-${s.section}`;
   const drawState = draw ? states.find((s) => keyOf(s) === draw.key) ?? null : null;
+  const setupState = setupKey ? states.find((s) => keyOf(s) === setupKey) ?? null : null;
 
 
   const divisions = useMemo(
@@ -157,7 +161,7 @@ export function TournamentProgressCard({
             disabled={generate.isPending}
             onClick={() =>
               viaBoard
-                ? setDraw({ key: keyOf(s), mode: "prepare" })
+                ? setSetupKey(keyOf(s))
                 : generate.mutate({ groupNumber: s.groupNumber, section: s.section })
             }
           >
@@ -212,6 +216,23 @@ export function TournamentProgressCard({
         </p>
       )}
 
+      {setupState && setupKey && (
+        <NextRoundSetupDialog
+          open
+          onOpenChange={(o) => !o && setSetupKey(null)}
+          champId={champId}
+          state={setupState}
+          qualifiers={setupState.activeCount}
+          selfScheduled={selfScheduled}
+          divisionLabel={label(setupState.groupNumber)}
+          onReady={(v) => {
+            setSetup(v);
+            setSetupKey(null);
+            setDraw({ key: keyOf(setupState), mode: "prepare" });
+          }}
+        />
+      )}
+
       {drawState && draw && (
         <NextRoundDrawDialog
           open
@@ -222,7 +243,12 @@ export function TournamentProgressCard({
           multiSection={states.filter((s) => s.groupNumber === drawState.groupNumber && s.section > 0).length > 1}
           selfScheduled={selfScheduled}
           divisionLabel={label(drawState.groupNumber)}
-          onConfirmed={() => setDraw(null)}
+          setup={draw.mode === "prepare" ? setup : null}
+          onConfirmed={() => {
+            setDraw(null);
+            setSetup(null);
+            onSchedule?.(drawState.groupNumber);
+          }}
         />
       )}
     </div>

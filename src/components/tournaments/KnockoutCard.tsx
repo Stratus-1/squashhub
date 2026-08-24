@@ -15,6 +15,7 @@ import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
+import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 
 
 interface KnockoutCardProps {
@@ -89,6 +90,10 @@ export function KnockoutCard({
   const [draw, setDraw] = useState<{ key: string; mode: NextRoundDrawMode } | null>(null);
   const keyOf = (s: { groupNumber: number; section: number }) => `${s.groupNumber}-${s.section}`;
   const drawState = draw ? states.find((s) => keyOf(s) === draw.key) ?? null : null;
+  const [setupKey, setSetupKey] = useState<string | null>(null);
+  const [setup, setSetup] = useState<NextRoundReady | null>(null);
+  const setupState = setupKey ? states.find((s) => keyOf(s) === setupKey) ?? null : null;
+
 
 
   if (koMatches.length === 0) return null;
@@ -160,7 +165,7 @@ export function KnockoutCard({
                         size="sm"
                         variant="outline"
                         disabled={generate.isPending}
-                        onClick={() => setDraw({ key: keyOf(s), mode: "prepare" })}
+                        onClick={() => setSetupKey(keyOf(s))}
                       >
                         {prepareActionLabel(s.nextRound?.label, (s.currentRound || 0) + 1)}
                       </Button>
@@ -202,6 +207,23 @@ export function KnockoutCard({
           </p>
         )}
 
+        {setupState && setupKey && (
+          <NextRoundSetupDialog
+            open
+            onOpenChange={(o) => !o && setSetupKey(null)}
+            champId={champId}
+            state={setupState}
+            qualifiers={setupState.activeCount}
+            selfScheduled={selfScheduled}
+            divisionLabel={groupLabel(setupState.groupNumber)}
+            onReady={(v) => {
+              setSetup(v);
+              setSetupKey(null);
+              setDraw({ key: keyOf(setupState), mode: "prepare" });
+            }}
+          />
+        )}
+
         {drawState && draw && (
           <NextRoundDrawDialog
             open
@@ -214,7 +236,11 @@ export function KnockoutCard({
             }
             selfScheduled={selfScheduled}
             divisionLabel={groupLabel(drawState.groupNumber)}
-            onConfirmed={() => setDraw(null)}
+            setup={draw.mode === "prepare" ? setup : null}
+            onConfirmed={() => {
+              setDraw(null);
+              setSetup(null);
+            }}
           />
         )}
       </CardContent>

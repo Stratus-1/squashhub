@@ -57,7 +57,7 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { applyDivisionOrder, isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
-import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter, reorderVisual } from "@/lib/tournaments/pools";
+import { distributeIntoPools, flattenPools, moveVisual, poolBlocks, poolCounts, poolLetter, reorderVisual } from "@/lib/tournaments/pools";
 import {
   collectProtectedSchedules,
   orphanedScheduleMessage,
@@ -920,6 +920,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const key = String(gn);
     const pools = Math.max(1, Math.floor(Number(next) || 1));
     setSwissPools((m) => ({ ...m, [key]: pools }));
+    // A new pool count invalidates any hand-dragged headcounts for this division.
+    setPoolSizeOverrides((m) => (m[key] === undefined ? m : { ...m, [key]: undefined as any }));
     // Keep the legacy section map aligned so nothing reads a stale value.
     setLeagueSections((m) => (m[key] === undefined ? m : { ...m, [key]: pools }));
     const n = Number(expectedPlayers[key]) || 0;
@@ -2078,6 +2080,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       match_duration_minutes: matchDuration,
       scoring_mode: scoringMode,
       swiss_pools: swissPools,
+      pool_sizes: poolSizeOverrides,
       swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
       expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
       league_formats: usePerLeagueFormats ? leagueFormats : null,
@@ -4159,6 +4162,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
             swiss_pools: swissPools,
+            pool_sizes: poolSizeOverrides,
+      pool_sizes: poolSizeOverrides,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats ? leagueFormats : null,
@@ -4235,6 +4240,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
             swiss_pools: swissPools,
+            pool_sizes: poolSizeOverrides,
+      pool_sizes: poolSizeOverrides,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats ? leagueFormats : null,
@@ -5611,6 +5618,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPlayoffDate("");
     setScoringMode("");
     setSwissPools({});
+    setPoolSizeOverrides({});
     setSwissRounds({});
     setExpectedPlayers({});
     setLeagueFormats({});
@@ -5704,6 +5712,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       Number(champ.num_groups) || 0,
     ));
     setSwissRounds(((champ as any).swiss_rounds as Record<string, number>) || {});
+    setPoolSizeOverrides(((champ as any).pool_sizes as Record<string, number[]>) || {});
     setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
     setPlayAllGames(!!(champ as any).play_all_games);

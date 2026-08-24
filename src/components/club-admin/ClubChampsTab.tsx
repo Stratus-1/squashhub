@@ -6057,6 +6057,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
     }
 
+    // The organiser's saved seeding order wins over the order the entry rows
+    // happened to come back in — new entrants are appended at the end.
+    const savedOrder = (champ as any).seed_order as string[] | null;
+    if (Array.isArray(savedOrder) && savedOrder.length > 0) {
+      setPlayerOrder((prev) => [
+        ...savedOrder.filter((id) => prev.includes(id)),
+        ...prev.filter((id) => !savedOrder.includes(id)),
+      ]);
+    }
+
+
+
 
     const savedCourtIds = (champ as any).court_ids as number[] | null;
     // Drop any court ids that no longer exist (e.g. external courts that were

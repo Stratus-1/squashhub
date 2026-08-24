@@ -167,7 +167,7 @@ export function AllNextRoundDrawsDialog({
       if (!draft.label.trim()) out.push(`${label}: give this round a name.`);
       if (selfScheduled && !draft.playBy) out.push(`${label}: set the play-by date.`);
       const v = validateDrawBoard(draft.board, entrants);
-      if (!v.ok) out.push(`${label}: ${v.problems?.[0] || "this draw is not valid yet"}`);
+      if (!v.ok) out.push(`${label}: ${v.errors?.[0] || "this draw is not valid yet"}`);
     }
     return out;
   }, [scopes, drafts, entrantsByScope, selfScheduled, scopeLabel]);

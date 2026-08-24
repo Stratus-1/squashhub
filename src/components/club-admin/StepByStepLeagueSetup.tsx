@@ -181,12 +181,17 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   });
   const activeAffiliatedSet = useMemo(() => new Set<string>(activeAffiliatedIds), [activeAffiliatedIds]);
 
-  /* ── Step 1 inheritance ────────────────────────────────────────────────
-   * Discipline, competition category, rubber composition and pairing policy
-   * are defined ONCE when the league is created. This wizard inherits them
-   * and never re-asks those questions.                                     */
+  /* ── Authoritative league format ───────────────────────────────────────
+   * Discipline, competition category, pairing policy and the rubber counts
+   * live ONCE on the league (association) record. This wizard reads that one
+   * record — never a per-team copy — and never writes a UI default over it. */
   const associationRow = associations.find((a: any) => a.id === associationId) as any;
-  const { data: leagueRules } = useAssociationRules(associationId || undefined);
+  const {
+    rules: leagueRules,
+    composition: storedComposition,
+    isFetched: formatFetched,
+  } = useLeagueComposition(associationId || undefined);
+  const saveComposition = useSaveLeagueComposition();
   const inherited = useMemo(
     () => inheritLeagueConfig(associationRow, leagueRules as any),
     [associationRow, leagueRules],
@@ -203,13 +208,14 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     setGender(c === "mens" ? "men" : c === "ladies" ? "ladies" : c === "mixed" ? "mixed" : "open");
   }, [inherited.category]);
 
-  /* Step 2 owns match composition. Seed the editable fields from whatever the
-   * league last saved, then let the admin change them here (the single
-   * authoritative place). */
+  /* Seed the editable fields from the authoritative record once it has loaded.
+   * Until then nothing is seeded, so a default can never be shown — and never
+   * saved back — while the real configuration is still in flight. */
   useEffect(() => {
+    if (!formatFetched || compositionDirty) return;
     setSinglesRubbers(inherited.singlesRubbers);
     setDoublesRubbers(inherited.doublesRubbers);
-  }, [inherited.singlesRubbers, inherited.doublesRubbers]);
+  }, [formatFetched, compositionDirty, inherited.singlesRubbers, inherited.doublesRubbers]);
 
   const effectiveSinglesRubbers = questions.askSinglesRubbers
     ? singlesRubbers
@@ -219,6 +225,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         ? 0
         : inherited.singlesRubbers;
   const effectiveDoublesRubbers = questions.askDoublesRubbers ? doublesRubbers : 0;
+
   const singlesPerTeam = effectiveSinglesRubbers;
   const effectivePairsPerTeam = effectiveDoublesRubbers;
 

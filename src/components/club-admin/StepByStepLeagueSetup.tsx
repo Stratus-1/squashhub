@@ -116,6 +116,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const [distribution, setDistribution] = useState<Distribution>("snake");
   const [singlesRubbers, setSinglesRubbers] = useState<number>(0);
   const [doublesRubbers, setDoublesRubbers] = useState<number>(0);
+  // True once the admin edits the rubber counts in this session. Without an
+  // edit the authoritative record is left exactly as stored.
+  const [compositionDirty, setCompositionDirty] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   // Track member IDs allocated to a saved league this session (so they're excluded from later rounds)
   const [allocatedIds, setAllocatedIds] = useState<Set<string>>(new Set());

@@ -9971,17 +9971,35 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   open
                   onOpenChange={(o) => !o && setDrawEditor(null)}
                   champId={editingChampId || "draft"}
-                  suggested={manualDraws[String(gn)] ?? suggested}
+                  suggested={
+                    manualDraws[String(gn)]
+                      ? reconcileBoardWithEntrants(manualDraws[String(gn)], ids).board
+                      : suggested
+                  }
                   entrants={entrants}
                   multiSection={sectionIds.length > 1}
                   divisionLabel={groupLabels[String(gn)]?.trim() || `League ${gn}`}
                   title={`${groupLabels[String(gn)]?.trim() || `League ${gn}`} — first round draw`}
                   description="The engine has seeded the bracket. Drag players between slots to set the pairings you want, or empty a slot to give a bye. Fixtures are created when you save the tournament."
-                  onConfirm={(board) => {
-                    setManualDraws((prev) => ({ ...prev, [String(gn)]: board }));
+                  onConfirm={async (board) => {
+                    const next = { ...manualDraws, [String(gn)]: board };
+                    setManualDraws(next);
                     setDrawEditor(null);
-                    toast.success("Draw saved — it will be used when the schedule is built");
+                    // Persist straight away — a confirmed draw must survive a
+                    // reopen even if the wizard is closed before saving.
+                    if (editingChampId) {
+                      const { error } = await fromExt("tournaments")
+                        .update({ manual_draws: next } as any)
+                        .eq("id", editingChampId);
+                      if (error) {
+                        toast.error("Draw saved locally but could not be stored — save the tournament to keep it");
+                        return;
+                      }
+                      qc.invalidateQueries({ queryKey: ["club-champs"] });
+                    }
+                    toast.success("Draw saved — these exact pairings will be used");
                   }}
+
                 />
               );
             })()}

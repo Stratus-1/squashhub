@@ -81,6 +81,7 @@ import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
 import { TournamentProgressCard } from "@/components/tournaments/TournamentProgressCard";
+import { DEFAULT_CHAMPION_SCOPE, type ChampionScope } from "@/lib/tournaments/round-control";
 import { TournamentNextActionBar } from "@/components/tournaments/TournamentNextActionBar";
 import { TournamentEntryCounts } from "@/components/tournaments/TournamentEntryCounts";
 import { countAllocatedEntries } from "@/lib/tournaments/entry-counts";
@@ -863,6 +864,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // 'club'  — the club books courts and publishes a fixed schedule.
   // 'self'  — players arrange their own games and must play by a deadline.
   const [schedulingMode, setSchedulingMode] = useState<"club" | "self">("club");
+  /**
+   * Where the ultimate winner is decided when a league runs more than one pool:
+   *  - "division": the pool winners meet in a league final — ONE champion per league.
+   *  - "pool":     every pool keeps its own winner, no cross-pool decider.
+   */
+  const [championScope, setChampionScope] = useState<ChampionScope>(DEFAULT_CHAMPION_SCOPE);
   const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
 
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
@@ -2054,6 +2061,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       match_type: matchType,
       num_groups: numGroups,
       enable_playoffs: enablePlayoffs,
+      champion_scope: championScope,
       // Drafts may have no dates yet — persist null rather than "".
       start_date: startDate || null,
       end_date: endDate || null,
@@ -2530,7 +2538,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }, 600);
     return () => clearTimeout(t);
   }, [
-    showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs,
+    showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs, championScope,
     startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode, pointsPerGame, bestOf,
     groupDurations, courtRotationMinutes, avoidBackToBack, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
@@ -4053,7 +4061,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the
@@ -4135,6 +4143,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             match_type: matchType,
             num_groups: numGroups,
             enable_playoffs: enablePlayoffs,
+            champion_scope: championScope,
             start_date: startDate,
             end_date: endDate,
             play_days: Array.from(playDays),
@@ -4210,6 +4219,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             match_type: matchType,
             num_groups: numGroups,
             enable_playoffs: enablePlayoffs,
+            champion_scope: championScope,
             start_date: startDate,
             end_date: endDate,
             play_days: Array.from(playDays),
@@ -5583,6 +5593,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setEndDate("");
     setPlayDays(new Set());
     setSchedulingMode("club");
+    setChampionScope(DEFAULT_CHAMPION_SCOPE);
     setRoundDeadlines([]);
 
     setStartTime("18:00");
@@ -5698,6 +5709,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setAvoidBackToBack((champ as any).avoid_back_to_back !== false);
     setScheduleMode(((champ as any).schedule_mode as "spread" | "fill") || "spread");
     setSchedulingMode(((champ as any).scheduling_mode as any) === "self" ? "self" : "club");
+    setChampionScope(((champ as any).champion_scope as any) === "pool" ? "pool" : "division");
     setRoundDeadlines(parseRoundDeadlines((champ as any).round_play_by));
 
     setPlayoffBreakMinutes(Number((champ as any).playoff_break_minutes) || 0);
@@ -6650,6 +6662,43 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   </span>
                 </label>
               </div>
+            </div>
+
+            {/* Where does the draw stop: one champion per league, or one per pool? */}
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm font-medium">Who is the final winner?</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Only matters where a league is split into more than one pool.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${championScope === "division" ? "border-primary bg-primary/5" : ""}`}>
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    checked={championScope === "division"}
+                    onChange={() => setChampionScope("division")}
+                  />
+                  <span>
+                    <span className="text-sm font-medium block">One champion per league</span>
+                    <span className="text-[11px] text-muted-foreground">Pool winners meet in league semi-finals / final — one club champion per league.</span>
+                  </span>
+                </label>
+                <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${championScope === "pool" ? "border-primary bg-primary/5" : ""}`}>
+                  <input
+                    type="radio"
+                    className="mt-1"
+                    checked={championScope === "pool"}
+                    onChange={() => setChampionScope("pool")}
+                  />
+                  <span>
+                    <span className="text-sm font-medium block">One winner per pool</span>
+                    <span className="text-[11px] text-muted-foreground">Each pool plays out to its own winner — the draw stops there.</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-3 space-y-2">
               {simplifiedKnockoutSchedule && (
                 <div className="pt-1">
                   <SelfScheduledRounds
@@ -10011,6 +10060,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <p><strong>Courts:</strong> {Array.from(selectedCourtIds).map((id) => getCourtName(id)).join(", ")}</p>
               <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : roundFormat === "cross_league" ? "League vs League (cross-league only)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>
               <p><strong>Playoffs:</strong> {enablePlayoffs ? "Yes — position-based knockout after group stage" : "No"}</p>
+              <p><strong>Final winner:</strong> {championScope === "pool" ? "One winner per pool" : "One champion per league — pool winners meet in the league final"}</p>
             </div>
 
             <Separator />

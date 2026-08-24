@@ -457,23 +457,34 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
 
 
 
-      // Persist the "players per match" rule for every league row in this batch
-      // (regular teams + reserves). Upsert by league_id so re-running setup updates.
+      /* Persist the playing structure ONCE, on the authoritative league record,
+       * then mirror the derived numbers onto the team rows (compatibility only).
+       * Creating extra teams must never change the configured rubber counts, so
+       * a wizard default is written only when the admin actually edited it. */
       const allLeagueIdsForRules = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];
-      if (allLeagueIdsForRules.length > 0) {
-        const rulesRows = allLeagueIdsForRules.map((lid) => ({
-          league_id: lid,
-          club_id: clubId,
-          association_id: associationId,
-          team_size: slotsPerTeam,
-          team_size_mode: "fixed" as const,
-          singles_rubbers: effectiveSinglesRubbers,
-          doubles_rubbers: effectiveDoublesRubbers,
-          reserves_per_team: reserves,
-        }));
-        const { error: rulesError } = await fromExt("league_rules").upsert(rulesRows, { onConflict: "league_id" });
-        if (rulesError) throw rulesError;
+      const toPersist = compositionToPersist({
+        stored: storedComposition,
+        draft: { singlesRubbers: effectiveSinglesRubbers, doublesRubbers: effectiveDoublesRubbers },
+        loaded: formatFetched,
+        dirty: compositionDirty,
+      });
+      const persistedSingles = toPersist.singlesRubbers;
+      const persistedDoubles = toPersist.doublesRubbers;
+      const persistedTeamSize = toPersist.write
+        ? slotsPerTeam
+        : (storedComposition.teamSize ?? slotsPerTeam);
+      if (associationId) {
+        await saveComposition.mutateAsync({
+          associationId,
+          clubId,
+          singlesRubbers: persistedSingles,
+          doublesRubbers: persistedDoubles,
+          teamSize: persistedTeamSize,
+          reservesPerTeam: reserves,
+          teamLeagueIds: allLeagueIdsForRules,
+        });
       }
+
 
       // Wipe any existing registrations on these league rows, then insert fresh
       const allLeagueIds = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];

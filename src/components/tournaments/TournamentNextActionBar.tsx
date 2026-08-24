@@ -199,35 +199,49 @@ export function TournamentNextActionBar({
       <Dialog open={scopeOpen} onOpenChange={setScopeOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Choose a division and pool</DialogTitle>
+            <DialogTitle>
+              {preparedKeys.length > 0 ? "Continue — the next draw" : "Choose a division and pool"}
+            </DialogTitle>
             <DialogDescription>
-              {readyScopes.reduce((total, scope) => total + scope.qualifiers, 0)} qualifiers are ready across {readyScopes.length} draws. Each draw is confirmed separately so no pool is hidden or mixed.
+              {outstandingDrawsHeadline(outstanding.length)}{" "}
+              {outstanding.reduce((total, scope) => total + scope.qualifiers, 0)} qualifiers are waiting. Each draw is
+              confirmed separately so no pool is hidden or mixed.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
-            {readyScopes.map((scope) => (
+            {outstanding.map((scope, i) => (
               <Button
                 key={scope.key}
-                variant="outline"
+                variant={i === 0 ? "default" : "outline"}
                 className="h-auto w-full justify-between px-3 py-2 text-left"
-                onClick={() => {
-                  setReviewKey(scope.key);
-                  setScopeOpen(false);
-                  setSetupOpen(true);
-                }}
+                onClick={() => openScope(scope.key)}
               >
                 <span className="min-w-0">
                   <span className="block truncate text-xs font-medium">{scopeLabel(scope.groupNumber, scope.section)}</span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {scope.stageLabel} · {scope.qualifiers} qualifiers / {scope.matchups} matches
+                  <span className="block text-[11px] opacity-80">
+                    {i + 1} of {outstanding.length} · {scope.stageLabel} · {scope.qualifiers} qualifiers / {scope.matchups} matches
                   </span>
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0" />
               </Button>
             ))}
           </div>
+          {preparedKeys.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setScopeOpen(false);
+                if (mode === "card") goToDetail("fixtures");
+                else if (onFocusFixtures) onFocusFixtures();
+              }}
+            >
+              Stop here — go to Dates & Courts
+            </Button>
+          )}
         </DialogContent>
       </Dialog>
+
 
       {reviewState && setupOpen && (
         <NextRoundSetupDialog

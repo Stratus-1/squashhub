@@ -850,6 +850,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
   // Swiss-only config: per-league pools & rounds (keyed by group_number string).
   const [swissPools, setSwissPools] = useState<Record<string, number>>({});
+  // Organiser-owned pool headcounts per division (group_number -> [n per pool]).
+  // Written whenever an admin drags an entrant across a pool boundary, so the
+  // uneven split they chose survives a reload instead of snapping back.
+  const [poolSizeOverrides, setPoolSizeOverrides] = useState<Record<string, number[]>>({});
+
   const [collapsedLeagues, setCollapsedLeagues] = useState<Record<string, boolean>>({});
   const [swissRounds, setSwissRounds] = useState<Record<string, number>>({});
   

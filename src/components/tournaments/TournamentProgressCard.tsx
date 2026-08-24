@@ -23,6 +23,8 @@ import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-dr
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { sectionLetter } from "@/lib/tournaments/knockout";
+import { outstandingDrawsHeadline, readyNextRoundScopes } from "@/lib/tournaments/next-round-setup";
+
 
 
 interface Props {

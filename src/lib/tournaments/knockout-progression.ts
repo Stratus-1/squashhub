@@ -16,6 +16,9 @@
  */
 import type { KnockoutMatchLike } from "./knockout";
 import { winnerOf } from "./knockout";
+import { isResolved, labelForActive, typeForActive } from "./active-draw";
+
+export { isResolved };
 
 export type RoundType = "knockout" | "semi_final" | "final" | "third_place";
 
@@ -34,14 +37,6 @@ export type ChampRound = {
   status?: "pending" | "active" | "complete" | null;
 };
 
-const DONE = new Set(["completed", "complete", "walkover", "forfeit"]);
-
-/** Has this match produced a decision we can progress from? */
-export function isResolved(m: KnockoutMatchLike): boolean {
-  if (m.is_bye) return true;
-  if (!DONE.has(String(m.status || "").toLowerCase())) return false;
-  return !!winnerOf(m);
-}
 
 /** Human name for a round with `playersInRound` competitors starting it. */
 export function labelForPlayers(playersInRound: number): string {
@@ -157,9 +152,12 @@ export type SectionProgression = {
   /** Section decided (final played out). */
   complete: boolean;
   winner: string | null;
+  /** Entrants still in this section's draw (winners of the current round). */
+  activeCount: number;
   /** Every entrant that ever appeared in this section, with their state. */
   entrants: EntrantState[];
 };
+
 
 function sidesOf(m: KnockoutMatchLike): string[] {
   return [m.player_a_member_id, m.player_b_member_id].filter(Boolean) as string[];
@@ -235,22 +233,36 @@ export function sectionProgression(
     const unresolved = currentRoundMatches.filter((m) => !isResolved(m));
     const currentRoundComplete = currentRoundMatches.length > 0 && unresolved.length === 0;
 
+    const states = entrantStates(rows);
+    const winners = currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[];
+    // How many entrants will contest the NEXT round. Once the round is played
+    // out this is exact; while it is running each match still yields one
+    // survivor, so the match count is the honest projection.
+    const activeCount = currentRoundComplete
+      ? new Set(winners).size
+      : currentRoundMatches.length || states.filter((s) => !s.eliminated).length;
+
     const nextRoundNumber = currentRound + 1;
     const planned = plan.find((r) => r.round_number === nextRoundNumber) || null;
-    // No stored plan? Fall back to bracket maths so legacy tournaments still work.
+    // The stage name always comes from how many entrants are still alive —
+    // never from the number of match rows — so a 3-player round becomes a
+    // semi-final (with a bye) instead of a bogus "Round of 3".
+    const activeLabel = labelForActive(activeCount);
+    const activeType = typeForActive(activeCount);
     const derivedNext: ChampRound | null =
-      planned ||
-      (currentRoundMatches.length > 1
-        ? {
-            group_number: groupNumber,
-            section_number: section,
-            round_number: nextRoundNumber,
-            round_type: typeForPlayers(currentRoundMatches.length),
-            label: labelForPlayers(currentRoundMatches.length),
-            play_by: null,
-            status: "pending" as const,
-          }
-        : null);
+      activeCount > 1
+        ? planned
+          ? { ...planned, label: activeLabel, round_type: activeType }
+          : {
+              group_number: groupNumber,
+              section_number: section,
+              round_number: nextRoundNumber,
+              round_type: activeType,
+              label: activeLabel,
+              play_by: null,
+              status: "pending" as const,
+            }
+        : null;
 
     const nextRoundGenerated = rows.some((m) => (Number(m.round_number) || 0) === nextRoundNumber);
     const complete = currentRoundComplete && currentRoundMatches.length === 1;
@@ -280,7 +292,8 @@ export function sectionProgression(
       blockedReason,
       complete,
       winner,
-      entrants: entrantStates(rows),
+      activeCount,
+      entrants: states,
     });
   }
   return out.sort((a, b) => a.groupNumber - b.groupNumber || a.section - b.section);
@@ -292,19 +305,29 @@ export function advancingMembers(section: SectionProgression): string[] {
   return section.currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[];
 }
 
-/** Action label for the organiser's single context-aware button. */
+/**
+ * Action label for the organiser's single context-aware button. Only ever
+ * says "Semi-finals"/"Final" when that is genuinely the next stage; anything
+ * else is the neutral "Generate Next Round".
+ */
 export function generateActionLabel(section: SectionProgression): string {
-  const label = section.nextRound?.label || labelForPlayers(Math.max(2, section.currentRoundMatches.length));
+  const label = section.nextRound?.label || labelForActive(Math.max(2, section.activeCount));
   if (/^final$/i.test(label)) return "Generate Final";
   if (/^semi/i.test(label)) return "Generate Semi-finals";
-  return `Generate ${label}`;
+  return "Generate Next Round";
 }
+
 
 /** Status line: "Semi-final · 2/4 complete · Next: Final". */
 export function progressSummary(section: SectionProgression): string {
+  const contestants = new Set<string>();
+  for (const m of section.currentRoundMatches) {
+    for (const id of [m.player_a_member_id, m.player_b_member_id]) if (id) contestants.add(id);
+  }
   const current =
     section.plan.find((r) => r.round_number === section.currentRound)?.label ||
-    labelForPlayers(Math.max(2, section.currentRoundMatches.length * 2));
+    labelForActive(Math.max(2, contestants.size));
+
   const parts = [`${current} · ${section.completed}/${section.total} complete`];
   if (section.complete) parts.push("Section decided");
   else if (section.nextRound?.label) parts.push(`Next: ${section.nextRound.label}`);

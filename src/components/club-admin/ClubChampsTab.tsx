@@ -2353,6 +2353,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           .in("club_member_id", uniqueIds)
           .in("status", ["pending_payment", "pending_eft", "invited"]);
       }
+
+      // Keep division_choices in step with the saved allocation so the change
+      // sticks after a reload (and players who were moved out of a division
+      // stop reappearing in it).
+      if (divisionChoicesToSync) {
+        for (const [memberId, divisions] of divisionChoicesToSync) {
+          const { error } = await fromExt("club_champs_registrations")
+            .update({ division_choices: divisions })
+            .eq("champ_id", champIdToUse)
+            .eq("club_member_id", memberId);
+          if (error) console.warn("division_choices sync failed", memberId, error);
+        }
+      }
+
     } catch (e) {
       console.warn("Tournament entries draft save failed:", e);
       throw e;

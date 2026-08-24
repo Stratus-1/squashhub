@@ -9570,7 +9570,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <span className="text-muted-foreground text-xs">({g.length} players)</span>
                             {isSwissPools && pools > 1 && (
                               <Badge variant="outline" className="text-[10px]">
-                                {pools} pools · {manualSeedGroups.has(gi) ? "manual arrangement" : "seed-balanced (serpentine)"}
+                                {pools} pools · {manualSeedGroups.has(gi) ? "manual arrangement" : poolAllocation === "banded" ? "strength bands (A strongest)" : "seed-balanced (serpentine)"}
                               </Badge>
                             )}
                             {manualSeedGroups.has(gi) ? (

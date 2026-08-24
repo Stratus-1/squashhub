@@ -289,9 +289,10 @@ describe("single pool selector", () => {
   });
 
   it("always includes the current value in the options", () => {
-    expect(poolOptions(1)).toEqual([1, 2, 4, 8]);
-    expect(poolOptions(3)).toEqual([1, 2, 3, 4, 8]);
-    expect(poolOptions(0)).toEqual([1, 2, 4, 8]);
+    expect(poolOptions(1)).toEqual([1, 2, 3, 4, 5, 6, 8]);
+    expect(poolOptions(3)).toEqual([1, 2, 3, 4, 5, 6, 8]);
+    expect(poolOptions(7)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(poolOptions(0)).toEqual([1, 2, 3, 4, 5, 6, 8]);
   });
 
   it("header summary and selector read the same value (no drift)", () => {

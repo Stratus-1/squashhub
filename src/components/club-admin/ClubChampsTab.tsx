@@ -56,7 +56,7 @@ import {
   type DivisionSource,
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
-import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
+import { applyDivisionOrder, isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
 import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter, reorderVisual } from "@/lib/tournaments/pools";
 import {
   collectProtectedSchedules,
@@ -2852,21 +2852,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     );
     if (reorderedGroupIds === visualIds) return;
 
-    // Rebuild full order: keep existing order for everyone else, swap in this group's new order
-    const current = playerOrder.length > 0 ? playerOrder : selectedPlayers.map((p) => p.id);
-    const groupSet = new Set(groupIds);
-    const next: string[] = [];
-    let gi = 0;
-    for (const id of current) {
-      if (groupSet.has(id)) {
-        next.push(reorderedGroupIds[gi++]);
-      } else {
-        next.push(id);
-      }
-    }
-    // Add any IDs not in current (new selections)
-    for (const p of selectedPlayers) if (!next.includes(p.id)) next.push(p.id);
+    // Rebuild the full order: everyone else stays put, this division's slots
+    // take the new visual order. `applyDivisionOrder` normalises the global
+    // list first so no dragged entrant can fall off the end.
+    const next = applyDivisionOrder(
+      playerOrder,
+      selectedPlayers.map((p: any) => p.id),
+      reorderedGroupIds,
+    );
     setPlayerOrder(next);
+
     // Only a deliberate drag inside this division switches it off ladder order.
     setManualSeedGroups((prev) => (prev.has(groupIndex) ? prev : new Set(prev).add(groupIndex)));
   };
@@ -2886,16 +2881,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     );
     if (reorderedGroupIds === visualIds) return;
 
-    const current = pairOrder.length > 0 ? pairOrder : doublesPairs.map((p) => p.id);
-    const groupSet = new Set(groupIds);
-    const next: string[] = [];
-    let gi = 0;
-    for (const id of current) {
-      if (groupSet.has(id)) next.push(reorderedGroupIds[gi++]);
-      else next.push(id);
-    }
-    for (const p of doublesPairs) if (!next.includes(p.id)) next.push(p.id);
+    const next = applyDivisionOrder(
+      pairOrder,
+      doublesPairs.map((p) => p.id),
+      reorderedGroupIds,
+    );
     setPairOrder(next);
+
     setManualSeedGroups((prev) => (prev.has(groupIndex) ? prev : new Set(prev).add(groupIndex)));
   };
 

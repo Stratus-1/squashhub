@@ -76,3 +76,42 @@ export function seedPreview<T extends SeedableEntrant>(ordered: T[]) {
     unranked: isUnranked(e),
   }));
 }
+
+/**
+ * Write one division's new drag order back into the global entrant order.
+ *
+ * The global order is a flat id list shared by every division. A division's
+ * reordered ids are written into the slots its members already occupy, which
+ * only works when EVERY member of that division is present in the global list
+ * exactly once — otherwise there are fewer slots than ids and the last dragged
+ * entrant is silently dropped (the "player disappeared after dragging across
+ * pools" bug). So the list is normalised first: unknown ids appended, stale
+ * ids and duplicates removed.
+ *
+ * @param current    the existing global order (may be empty/stale)
+ * @param allIds     every entrant currently in the wizard, in fallback order
+ * @param reordered  this division's ids in their new visual order
+ */
+export function applyDivisionOrder(
+  current: string[],
+  allIds: string[],
+  reordered: string[],
+): string[] {
+  const valid = new Set(allIds);
+  const base: string[] = [];
+  const seen = new Set<string>();
+  for (const id of current) {
+    if (!valid.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    base.push(id);
+  }
+  for (const id of allIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    base.push(id);
+  }
+  const group = reordered.filter((id) => valid.has(id));
+  const groupSet = new Set(group);
+  let i = 0;
+  return base.map((id) => (groupSet.has(id) ? group[i++] ?? id : id));
+}

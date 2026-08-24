@@ -517,9 +517,76 @@ export default function ClubChampsView() {
     );
   };
 
+  // Knockout pools (sections) for a division, derived from the draw itself —
+  // entries carry no section, the match rows do.
+  const koPoolsFor = (gn: number) => divisionPools(matches as any[], gn);
+
+  /**
+   * Standings answer "who is still active?". A player knocked out of THIS
+   * division drops off its table (their matches stay in Results and the draw);
+   * the same player stays untouched in every other division they entered.
+   */
+  const renderKnockoutStandings = (gn: number) => {
+    const pools = koPoolsFor(gn);
+    if (pools.length === 0) return null;
+    const all = getGroupStandings(gn);
+    const multi = pools.filter((p) => p.section > 0).length > 1;
+
+    return (
+      <div className="space-y-4">
+        {pools.map((pool) => {
+          const inPool = (r: any) =>
+            pool.entrantIds.includes(r.club_member_id) ||
+            (r.partner_member_id && pool.entrantIds.includes(r.partner_member_id));
+          const active = all.filter(
+            (r: any) =>
+              inPool(r) &&
+              pool.activeIds.includes(r.club_member_id),
+          );
+          const out = pool.eliminated.length;
+          const title = pool.section === 0 ? "Finals" : multi ? `Pool ${pool.letter}` : "Draw";
+          return (
+            <div key={pool.section} className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="text-xs font-semibold">{title}</Badge>
+                <span className="text-xs text-muted-foreground">
+                  {active.length} still in · {pool.matchesDone}/{pool.matchesTotal} matches played
+                </span>
+                {pool.complete && (
+                  <Badge className="text-[10px]">
+                    {pool.qualifierIds.length === 1 ? "Pool decided" : "Pool complete"}
+                  </Badge>
+                )}
+                {pool.complete && pool.qualifierIds.length > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {pool.qualifierIds.length === 1 ? "Winner" : "Qualified"}:{" "}
+                    {pool.qualifierIds
+                      .map((id) => all.find((r: any) => r.club_member_id === id)?.name || "—")
+                      .join(", ")}
+                  </Badge>
+                )}
+              </div>
+              {active.length > 0 ? renderStandingsTable(active) : (
+                <p className="text-xs text-muted-foreground italic">No active players left in this pool.</p>
+              )}
+              {out > 0 && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  {out} eliminated — results kept in the draw and Results.
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Renders either a single standings table for a league, or one table per pool
-  // (Swiss with multiple pools). Pool headers appear as "Pool A", "Pool B" etc.
+  // (Swiss with multiple pools, or knockout sections). Pool headers appear as
+  // "Pool A", "Pool B" etc.
   const renderGroupStandings = (gn: number) => {
+    const ko = renderKnockoutStandings(gn);
+    if (ko) return ko;
     const pc = poolCountFor(gn);
     if (pc <= 1 || isCrossLeague) {
       return renderStandingsTable(getGroupStandings(gn));
@@ -546,6 +613,7 @@ export default function ClubChampsView() {
       </div>
     );
   };
+
 
 
 

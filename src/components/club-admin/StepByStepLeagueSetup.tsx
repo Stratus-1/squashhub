@@ -741,20 +741,20 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
               {questions.askPlayersPerMatch && (
                 <div>
                   <Label className="text-xs">Players per match (league rule)?</Label>
-                  <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => setPerTeam(parseInt(e.target.value) || 1)} />
+                  <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => { setCompositionDirty(true); setPerTeam(parseInt(e.target.value) || 1); }} />
                   <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
                 </div>
               )}
               {questions.askSinglesRubbers && (
                 <div>
                   <Label className="text-xs">Singles rubbers per fixture</Label>
-                  <Input type="number" min={0} max={20} value={singlesRubbers || 0} onChange={(e) => setSinglesRubbers(Math.max(0, parseInt(e.target.value) || 0))} />
+                  <Input type="number" min={0} max={20} value={singlesRubbers || 0} onChange={(e) => { setCompositionDirty(true); setSinglesRubbers(Math.max(0, parseInt(e.target.value) || 0)); }} />
                 </div>
               )}
               {questions.askDoublesRubbers && (
                 <div>
                   <Label className="text-xs">Doubles rubbers per fixture</Label>
-                  <Input type="number" min={0} max={20} value={doublesRubbers || 0} onChange={(e) => setDoublesRubbers(Math.max(0, parseInt(e.target.value) || 0))} />
+                  <Input type="number" min={0} max={20} value={doublesRubbers || 0} onChange={(e) => { setCompositionDirty(true); setDoublesRubbers(Math.max(0, parseInt(e.target.value) || 0)); }} />
                   <p className="text-[10px] text-muted-foreground mt-1">
                     Each doubles rubber is one pair — two real players.
                     {inherited.pairingPolicy === "fixed"

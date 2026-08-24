@@ -2587,8 +2587,11 @@ export default function ClubChampsView() {
             isAdmin={canManage}
           />
         )}
-        {fixtureCards}
-        {combinedFixtures}
+        <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
+          {fixtureCards}
+          {combinedFixtures}
+        </div>
+
         <KnockoutCard
           champId={champId!}
           matches={matches as any[]}

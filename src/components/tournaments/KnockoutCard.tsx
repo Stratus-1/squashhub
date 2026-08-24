@@ -1,26 +1,19 @@
 import { useMemo, type ReactNode } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fromExt } from "@/lib/supabase-ext";
-import {
-  buildLeagueFinals,
-  buildNextRound,
-  sectionLetter,
-  
-  type KnockoutMatchLike,
-} from "@/lib/tournaments/knockout";
+import { sectionLetter, type KnockoutMatchLike } from "@/lib/tournaments/knockout";
 import {
   generateActionLabel,
   progressSummary,
   sectionProgression,
   type ChampRound,
 } from "@/lib/tournaments/knockout-progression";
+import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
+
 
 interface KnockoutCardProps {
   champId: string;

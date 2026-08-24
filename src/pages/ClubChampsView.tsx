@@ -2558,7 +2558,18 @@ export default function ClubChampsView() {
     return (
       <>
         {summary}
+        <TournamentNextActionBar
+          champId={champId!}
+          canManage={canManage}
+          status={(champ as any)?.status}
+          selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
+          mode="detail"
+          onFocusFixtures={() =>
+            document.getElementById("tournament-fixtures")?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
+        />
         <TournamentProgressCard
+
           champId={champId!}
           canManage={canManage}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}

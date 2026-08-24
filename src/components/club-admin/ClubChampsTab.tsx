@@ -9324,7 +9324,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       {step === "groups" && (
         <Card>
           <CardHeader>
-            <CardTitle>Allocate players</CardTitle>
+            <div className="flex items-start justify-between gap-3">
+              <CardTitle>Allocate players</CardTitle>
+              {/* Ladder positions change while a tournament is being set up.
+                  This re-pulls the roster so the seed order on screen matches
+                  the club ladder right now — without losing manual placements. */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs shrink-0"
+                disabled={refreshingRanking}
+                onClick={refreshRanking}
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${refreshingRanking ? "animate-spin" : ""}`} />
+                {refreshingRanking ? "Refreshing…" : "Refresh ranking"}
+              </Button>
+            </div>
             {(() => {
               const counts = countAllocatedEntries(
                 (groups as ClubMember[][]).map((g) => g.map((p) => p.id)),
@@ -9346,6 +9362,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             })()}
 
           </CardHeader>
+
           <CardContent className="space-y-4">
             {/* Read-only echo of the structure decision — Structure is the single
                 authority for how many leagues exist and what they are called. */}

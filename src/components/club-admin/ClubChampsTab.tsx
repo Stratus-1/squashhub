@@ -10007,16 +10007,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <div key={gi}>
                       <h4 className="font-medium mb-2">League {gi + 1}</h4>
                       <div className="text-xs space-y-1">
-                        {groupMatches.map((m, mi) => (
-                          <div key={mi} className="flex items-center gap-2 p-1.5 rounded bg-muted/50">
-                            <span className="text-muted-foreground w-20">{m.date ? format(new Date(m.date), "EEE dd MMM") : "TBD"}</span>
-                            <span className="text-muted-foreground w-12">{m.time || "TBD"}</span>
-                            <span className="font-medium">{getEntityLabel(m.entityA)}</span>
-                            <span className="text-muted-foreground">vs</span>
-                            <span className="font-medium">{getEntityLabel(m.entityB)}</span>
-                            {m.courtId && <Badge variant="outline" className="ml-auto text-[10px]">{getCourtName(m.courtId)}</Badge>}
-                          </div>
-                        ))}
+                        {groupMatches.map((m, mi) => {
+                          const bye = isByeEntity(m.entityA) || isByeEntity(m.entityB);
+                          const player = isByeEntity(m.entityA) ? m.entityB : m.entityA;
+                          return (
+                            <div key={mi} className="flex items-center gap-2 p-1.5 rounded bg-muted/50">
+                              <span className="text-muted-foreground w-20">{m.date ? format(new Date(m.date), "EEE dd MMM") : "TBD"}</span>
+                              <span className="text-muted-foreground w-12">{m.time || "TBD"}</span>
+                              {bye ? (
+                                <>
+                                  <span className="font-medium">{getEntityLabel(player)}</span>
+                                  <Badge variant="secondary" className="text-[10px]">Bye — no match this round</Badge>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="font-medium">{getEntityLabel(m.entityA)}</span>
+                                  <span className="text-muted-foreground">vs</span>
+                                  <span className="font-medium">{getEntityLabel(m.entityB)}</span>
+                                </>
+                              )}
+                              {m.courtId && !bye && <Badge variant="outline" className="ml-auto text-[10px]">{getCourtName(m.courtId)}</Badge>}
+                            </div>
+                          );
+                        })}
+
                       </div>
                     </div>
                   );

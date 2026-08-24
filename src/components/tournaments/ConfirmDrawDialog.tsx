@@ -102,9 +102,21 @@ export function ConfirmDrawDialog({
           roundId,
         });
         if (rows.length === 0) throw new Error("This draw has nothing to generate");
+        // Idempotency: never create the same round twice if another tab (or a
+        // double click) already generated it.
+        const { data: existing, error: exErr } = await fromExt("club_champs_matches")
+          .select("id")
+          .eq("champ_id", champId)
+          .eq("group_number", board.groupNumber)
+          .eq("round_number", board.round)
+          .in("section_number", Array.from(new Set(rows.map((r) => r.section_number))))
+          .limit(1);
+        if (exErr) throw exErr;
+        if (existing && existing.length > 0) throw new Error("This round already exists");
         const { error } = await fromExt("club_champs_matches").insert(rows as any);
         if (error) throw error;
         onConfirmed?.(rows.length);
+
       }
 
       // Audit: what was confirmed and who was moved.

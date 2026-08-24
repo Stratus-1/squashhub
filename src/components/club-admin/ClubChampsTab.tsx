@@ -2869,14 +2869,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // the pool blocks first means the order we store back reproduces exactly
     // the pools the organiser was looking at — nothing silently rebalances.
     const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), poolOptsFor(groupIndex));
-    const reorderedGroupIds = reorderVisual(
+    // Admins may move an entrant FREELY, including into another pool: the pool
+    // sizes follow the drop (source loses a slot, target gains one) instead of
+    // a counter-swap, and the new sizes are persisted for this division.
+    const moved = moveVisual(
       visualIds,
       String(active.id),
       String(over.id),
       poolsForDivision(groupIndex + 1),
       poolOptsFor(groupIndex),
     );
-    if (reorderedGroupIds === visualIds) return;
+    if (!moved) return;
+    const reorderedGroupIds = moved.ids;
+    setPoolSizeOverrides((m) => ({ ...m, [String(groupIndex + 1)]: moved.sizes }));
 
     // Rebuild the full order: everyone else stays put, this division's slots
     // take the new visual order. `applyDivisionOrder` normalises the global
@@ -2898,14 +2903,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const groupIds = (groups as DoublePair[][])[groupIndex].map((p) => p.id);
     // Same pool-block visual order as singles — see handlePlayerDragEnd.
     const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), poolOptsFor(groupIndex));
-    const reorderedGroupIds = reorderVisual(
+    const moved = moveVisual(
       visualIds,
       String(active.id),
       String(over.id),
       poolsForDivision(groupIndex + 1),
       poolOptsFor(groupIndex),
     );
-    if (reorderedGroupIds === visualIds) return;
+    if (!moved) return;
+    const reorderedGroupIds = moved.ids;
+    setPoolSizeOverrides((m) => ({ ...m, [String(groupIndex + 1)]: moved.sizes }));
 
     const next = applyDivisionOrder(
       pairOrder,

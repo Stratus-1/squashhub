@@ -6223,7 +6223,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           const completedChamps = existingChamps.filter((c: any) => c.status === "completed");
           const renderCard = (c: any, isCompleted: boolean) => (
             <Card key={c.id} className={isCompleted ? "opacity-75" : ""}>
-              <CardContent className="flex items-center justify-between py-4">
+              <CardContent className="flex flex-col gap-3 py-4">
+              <div className="flex items-center justify-between gap-3">
+
                 <div>
                   <p className="font-medium flex items-center gap-2">
                     {c.name}

@@ -2881,16 +2881,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     );
     if (reorderedGroupIds === visualIds) return;
 
-    const current = pairOrder.length > 0 ? pairOrder : doublesPairs.map((p) => p.id);
-    const groupSet = new Set(groupIds);
-    const next: string[] = [];
-    let gi = 0;
-    for (const id of current) {
-      if (groupSet.has(id)) next.push(reorderedGroupIds[gi++]);
-      else next.push(id);
-    }
-    for (const p of doublesPairs) if (!next.includes(p.id)) next.push(p.id);
+    const next = applyDivisionOrder(
+      pairOrder,
+      doublesPairs.map((p) => p.id),
+      reorderedGroupIds,
+    );
     setPairOrder(next);
+
     setManualSeedGroups((prev) => (prev.has(groupIndex) ? prev : new Set(prev).add(groupIndex)));
   };
 

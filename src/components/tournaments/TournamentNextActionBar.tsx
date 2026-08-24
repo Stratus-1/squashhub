@@ -23,6 +23,7 @@ import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { sectionProgression } from "@/lib/tournaments/knockout-progression";
 import { tournamentNextAction, type ChampionScope } from "@/lib/tournaments/round-control";
 import { NextRoundDrawDialog } from "./NextRoundDrawDialog";
+import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { prepareActionLabel } from "@/lib/tournaments/round-draw";
 import { sectionLabelOf } from "@/lib/tournaments/draw-board";
 
@@ -87,6 +88,8 @@ export function TournamentNextActionBar({
           : ClipboardList;
 
   // ── Visual draw review for the round that is about to be generated ────────
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setup, setSetup] = useState<NextRoundReady | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const reviewState = useMemo(
     () =>
@@ -102,21 +105,22 @@ export function TournamentNextActionBar({
       if (onSetup) return onSetup();
       return goToDetail("setup");
     }
-    if (mode === "card") return goToDetail(na.action === "generate" ? "progress" : "fixtures");
     if (na.action === "generate" && na.groupNumber !== null && na.section !== null) {
-      // Section draws go through the visual draw board first — the organiser
-      // reviews / re-pairs and only then are fixtures created. The league final
-      // between section winners has a single possible pairing set, so it is
-      // generated directly.
-      if (na.section > 0) return setReviewOpen(true);
+      // Never navigate away first: the organiser defines the round here (name +
+      // play-by date), then the visual draw for exactly that round opens, then
+      // Dates & Courts. The league final between section winners has a single
+      // possible pairing set, so it is generated directly.
+      if (na.section > 0 && reviewState) return setSetupOpen(true);
+      if (mode === "card") return goToDetail("progress");
       return generate.mutate({ groupNumber: na.groupNumber, section: na.section });
     }
+    if (mode === "card") return goToDetail("fixtures");
     if (onFocusFixtures) return onFocusFixtures();
     return goToDetail("fixtures");
   };
 
 
-  const opensDrawBoard = mode === "detail" && na.action === "generate" && (na.section ?? 0) > 0;
+  const opensDrawBoard = na.action === "generate" && (na.section ?? 0) > 0 && !!reviewState;
   const ctaLabel = opensDrawBoard
     ? prepareActionLabel(reviewState?.nextRound?.label, (reviewState?.currentRound ?? 0) + 1)
     : na.ctaLabel;
@@ -157,6 +161,22 @@ export function TournamentNextActionBar({
         )}
       </div>
 
+      {reviewState && setupOpen && (
+        <NextRoundSetupDialog
+          open
+          onOpenChange={setSetupOpen}
+          champId={champId}
+          state={reviewState}
+          qualifiers={reviewState.activeCount}
+          selfScheduled={selfScheduled}
+          divisionLabel={`Division ${reviewState.groupNumber} · ${sectionLabelOf(reviewState.section)}`}
+          onReady={(v) => {
+            setSetup(v);
+            setReviewOpen(true);
+          }}
+        />
+      )}
+
       {reviewState && reviewOpen && (
         <NextRoundDrawDialog
           open
@@ -167,7 +187,14 @@ export function TournamentNextActionBar({
           multiSection={states.filter((s) => s.groupNumber === reviewState.groupNumber && s.section > 0).length > 1}
           selfScheduled={selfScheduled}
           divisionLabel={`Division ${reviewState.groupNumber} · ${sectionLabelOf(reviewState.section)}`}
-          onConfirmed={() => setReviewOpen(false)}
+          setup={setup}
+          onConfirmed={() => {
+            setReviewOpen(false);
+            setSetup(null);
+            // Guided flow continues at Dates & Courts for these fixtures.
+            if (mode === "card") goToDetail("fixtures");
+            else if (onFocusFixtures) onFocusFixtures();
+          }}
         />
       )}
     </>

@@ -253,13 +253,27 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
               const rows = matchesInScope(board, section);
               return (
               <div key={section} className="rounded-md border p-2">
-                {multi && (
-                  <div className="mb-2 text-xs font-medium">
-                    {sectionLabelOf(section)}{" "}
-                    <span className="text-muted-foreground">· {rows.length} match{rows.length === 1 ? "" : "es"}</span>
-                  </div>
-                )}
+                <div className="mb-2 flex items-center gap-2">
+                  {multi && (
+                    <div className="text-xs font-medium">
+                      {sectionLabelOf(section)}{" "}
+                      <span className="text-muted-foreground">· {rows.length} match{rows.length === 1 ? "" : "es"}</span>
+                    </div>
+                  )}
+                  {!readOnly && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-auto h-6 px-2 text-[10px]"
+                      title="Add an empty matchup — drag a player in and the other side becomes a bye"
+                      onClick={() => onChange(addMatchup(board, section))}
+                    >
+                      <Plus className="mr-1 h-3 w-3" /> Add match / bye slot
+                    </Button>
+                  )}
+                </div>
                 <div className={cn("grid gap-1.5", layout === "list" ? "grid-cols-1" : "sm:grid-cols-2 xl:grid-cols-3")}>
+
                   {rows.map((m) => {
                       const a = m.a ? byId.get(m.a) ?? null : null;
                       const b = m.b ? byId.get(m.b) ?? null : null;

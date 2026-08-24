@@ -116,11 +116,34 @@ export function ScheduleMatchDialog({
       qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule"] });
       return;
     }
-    toast.success("Match scheduled — both players have been notified.");
+    toast.success(
+      alreadyScheduled
+        ? "Match rescheduled — the court booking was moved."
+        : "Match scheduled — both players have been notified.",
+    );
+    invalidateAll();
+    onOpenChange(false);
+  };
+
+  const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
     qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
+    qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule"] });
     qc.invalidateQueries({ queryKey: ["bookings"] });
     qc.invalidateQueries({ queryKey: ["my-bookings"] });
+  };
+
+  const clearSlot = async () => {
+    if (!match) return;
+    setSaving(true);
+    const { error } = await rpcExt("unschedule_champ_match", { p_match_id: match.id });
+    setSaving(false);
+    if (error) {
+      toast.error(error.message || "Could not clear this match's court and time.");
+      return;
+    }
+    toast.success("Court and time cleared — the fixture and any result are unchanged.");
+    invalidateAll();
     onOpenChange(false);
   };
 
@@ -129,14 +152,16 @@ export function ScheduleMatchDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <CalendarClock className="w-4 h-4" /> Arrange your match
+            <CalendarClock className="w-4 h-4" />{" "}
+            {alreadyScheduled ? "Reschedule this match" : canManage ? "Set court & time" : "Arrange your match"}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {opponentName ? <>vs {opponentName}. </> : null}
-            Pick a court and time — the court is booked immediately and your opponent is notified.
+            Pick a court and time — the court is booked immediately and both players are notified.
             {match?.play_by && <> Play by {match.play_by}.</>}
           </DialogDescription>
         </DialogHeader>
+
 
         <div className="space-y-3">
           <div className="space-y-1">

@@ -110,11 +110,16 @@ export function useUpdateAssociationRules() {
       delete patch.created_at;
       delete patch.updated_at;
 
-      const { data: existing } = await supabase
+      const { data: existingRows } = await supabase
         .from("league_rules")
         .select("id")
         .eq("association_id", associationId)
-        .maybeSingle();
+        .is("league_id", null)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      const existing = existingRows?.[0] ?? null;
+
+
 
       if (existing) {
         const { data: updated, error } = await supabase

@@ -188,6 +188,39 @@ export function benchEntrant(board: DrawBoard, entrantId: string): DrawBoard {
   return ref ? clearSlot(board, ref) : cloneBoard(board);
 }
 
+/**
+ * Append an empty matchup to a section. Used when the organiser wants more
+ * first-round byes than the suggested bracket hands out: add a slot, drag a
+ * benched player into it, and the other side stays empty (a bye).
+ */
+export function addMatchup(board: DrawBoard, section: number): DrawBoard {
+  const next = cloneBoard(board);
+  const positions = next.matches.filter((m) => m.section === section).map((m) => m.position);
+  const position = positions.length ? Math.max(...positions) + 1 : 1;
+  next.matches.push({ section, round: next.round, position, a: null, b: null });
+  return next;
+}
+
+/** True when a matchup holds nobody and may be removed. */
+export function matchupIsEmpty(board: DrawBoard, section: number, position: number): boolean {
+  const m = board.matches.find((x) => x.section === section && x.position === position);
+  return !!m && !m.a && !m.b;
+}
+
+/** Remove an empty matchup and renumber the remaining positions in that section. */
+export function removeMatchup(board: DrawBoard, section: number, position: number): DrawBoard {
+  if (!matchupIsEmpty(board, section, position)) return cloneBoard(board);
+  const next = cloneBoard(board);
+  next.matches = next.matches.filter((m) => !(m.section === section && m.position === position));
+  next.matches
+    .filter((m) => m.section === section)
+    .sort((a, b) => a.position - b.position)
+    .forEach((m, i) => { m.position = i + 1; });
+  return next;
+}
+
+
+
 export interface DrawValidation {
   ok: boolean;
   errors: string[];

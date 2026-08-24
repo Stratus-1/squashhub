@@ -174,3 +174,35 @@ export function poolBlocks<T>(ordered: T[], pools: number, opts?: PoolAssignOpti
   ordered.forEach((item, i) => out[idx[i]].rows.push({ item, seed: i + 1 }));
   return out;
 }
+
+/**
+ * Reorder the VISUAL (pool-block) list after a drag.
+ *
+ * Pool membership is positional: pool sizes are fixed by `poolSizes`, so a
+ * plain array-move across a pool boundary silently pushes a different entrant
+ * out of the target pool ("someone disappeared"). Crossing pools therefore
+ * SWAPS the dragged row with the row it was dropped on — both pools keep their
+ * size and the displacement is exactly what the organiser can see.
+ * Dragging inside one pool keeps the normal insert-and-shift behaviour.
+ */
+export function reorderVisual(
+  visualIds: string[],
+  activeId: string,
+  overId: string,
+  pools: number,
+  opts?: PoolAssignOptions,
+): string[] {
+  const from = visualIds.indexOf(activeId);
+  const to = visualIds.indexOf(overId);
+  if (from < 0 || to < 0 || from === to) return visualIds;
+  const idx = poolIndexes(visualIds.length, Math.max(1, Math.floor(pools) || 1), { ...opts, manual: true });
+  const next = [...visualIds];
+  if (idx[from] !== idx[to]) {
+    next[from] = visualIds[to];
+    next[to] = visualIds[from];
+    return next;
+  }
+  next.splice(from, 1);
+  next.splice(to, 0, visualIds[from]);
+  return next;
+}

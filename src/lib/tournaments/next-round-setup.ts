@@ -136,6 +136,49 @@ export function outstandingDrawsHeadline(remaining: number): string | null {
   return `${remaining} draws still need preparation.`;
 }
 
+/* ------------------------------------------------------------------ *
+ * One page vs step by step
+ * ------------------------------------------------------------------ */
+
+/** Most matchups that can sensibly be drawn together on a single page. */
+export const SINGLE_PAGE_MATCH_LIMIT = 16;
+/** Most independent draws (division/pool boards) shown on a single page. */
+export const SINGLE_PAGE_SCOPE_LIMIT = 6;
+
+export type SinglePageFit = {
+  /** Draw every outstanding scope on one page instead of one-by-one. */
+  fits: boolean;
+  scopes: number;
+  totalQualifiers: number;
+  totalMatchups: number;
+  /** Why it has to be step by step (null when it fits). */
+  reason: string | null;
+};
+
+/**
+ * Can every outstanding draw be arranged on one board page?
+ *
+ * Small tournaments (and every late stage — quarters, semis, finals) fit, so
+ * the organiser sees the whole board at once and can move players across
+ * divisions/pools where the format allows it. Anything bigger stays a guided
+ * step-by-step queue so no pool gets lost in the scroll.
+ */
+export function allDrawsFitOnePage(
+  scopes: Pick<NextRoundScope, "qualifiers" | "matchups">[],
+  opts: { matchLimit?: number; scopeLimit?: number } = {},
+): SinglePageFit {
+  const matchLimit = opts.matchLimit ?? SINGLE_PAGE_MATCH_LIMIT;
+  const scopeLimit = opts.scopeLimit ?? SINGLE_PAGE_SCOPE_LIMIT;
+  const totalQualifiers = scopes.reduce((t, s) => t + s.qualifiers, 0);
+  const totalMatchups = scopes.reduce((t, s) => t + s.matchups, 0);
+  let reason: string | null = null;
+  if (scopes.length === 0) reason = "There is nothing to draw.";
+  else if (scopes.length > scopeLimit) reason = `${scopes.length} separate draws is too many for one page.`;
+  else if (totalMatchups > matchLimit) reason = `${totalMatchups} matchups is too many for one page.`;
+  return { fits: reason === null, scopes: scopes.length, totalQualifiers, totalMatchups, reason };
+}
+
+
 
 /** Default play-by suggestion: `days` from today, as yyyy-mm-dd. */
 export function defaultPlayBy(from: Date = new Date(), days = 7): string {

@@ -709,7 +709,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         qc.invalidateQueries({ queryKey: ["champ-registrations"] }),
         qc.invalidateQueries({ queryKey: ["club-champs-entries"] }),
       ]);
-      toast({ title: "Ranking refreshed", description: "Seed order now reflects the current club ladder." });
+      toast.success("Ranking refreshed", { description: "Seed order now reflects the current club ladder." });
     } finally {
       setRefreshingRanking(false);
     }

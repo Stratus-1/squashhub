@@ -3177,18 +3177,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // Build the universal slot list from sessions (used by non-Bells scheduling).
     type Slot = { date: string; time: string; courtId: number; sessionKey: string };
     const allSlots: Slot[] = [];
-    for (const sm of sessionMetas) {
-      const n = Math.floor((sm.endMin - sm.startMin) / matchDuration);
-      for (let i = 0; i < n; i++) {
-        const mins = sm.startMin + i * matchDuration;
-        const h = Math.floor(mins / 60);
-        const mm = mins % 60;
-        const ts = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-        for (const cid of sm.courtIds) {
-          allSlots.push({ date: sm.date, time: ts, courtId: cid, sessionKey: sm.key });
+    // Self-scheduled tournaments legitimately store matchDuration = 0. Dividing
+    // by it yields Infinity and freezes the browser, so only build slots when
+    // the duration is a usable positive number.
+    const slotDuration = Number.isFinite(matchDuration) && matchDuration > 0 ? matchDuration : 0;
+    if (slotDuration > 0) {
+      for (const sm of sessionMetas) {
+        const n = Math.floor((sm.endMin - sm.startMin) / slotDuration);
+        for (let i = 0; i < n; i++) {
+          const mins = sm.startMin + i * slotDuration;
+          const h = Math.floor(mins / 60);
+          const mm = mins % 60;
+          const ts = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+          for (const cid of sm.courtIds) {
+            allSlots.push({ date: sm.date, time: ts, courtId: cid, sessionKey: sm.key });
+          }
         }
       }
     }
+
 
     const totalSlots = allSlots.length;
     const timeSlots = Array.from(new Set(allSlots.map((s) => s.time))).sort();

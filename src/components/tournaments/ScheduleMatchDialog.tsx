@@ -95,10 +95,13 @@ export function ScheduleMatchDialog({
     [slotMinutes, club?.booking_open_time, club?.booking_last_slot_time],
   );
 
+  const alreadyScheduled = !!match && fixtureScheduleState(match) === "scheduled";
+
   const freeSlots = useMemo(() => {
     if (!courtId) return [];
     return freeSlotsForCourt(slots, duration, courtId, bookings, match?.booking_id ?? null);
   }, [slots, duration, courtId, bookings, match?.booking_id]);
+
 
   const confirm = async (time: string) => {
     if (!match || !courtId) return;

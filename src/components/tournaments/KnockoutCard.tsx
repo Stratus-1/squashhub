@@ -90,6 +90,10 @@ export function KnockoutCard({
   const [draw, setDraw] = useState<{ key: string; mode: NextRoundDrawMode } | null>(null);
   const keyOf = (s: { groupNumber: number; section: number }) => `${s.groupNumber}-${s.section}`;
   const drawState = draw ? states.find((s) => keyOf(s) === draw.key) ?? null : null;
+  const [setupKey, setSetupKey] = useState<string | null>(null);
+  const [setup, setSetup] = useState<NextRoundReady | null>(null);
+  const setupState = setupKey ? states.find((s) => keyOf(s) === setupKey) ?? null : null;
+
 
 
   if (koMatches.length === 0) return null;

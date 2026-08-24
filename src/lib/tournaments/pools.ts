@@ -42,12 +42,20 @@ export function snakePoolIndex(i: number, pools: number): number {
  * An odd pool simply means the top-ranked seed of that pool sits out the
  * opening knockout round (a bye) — see `buildSectionFirstRound`.
  */
-export function poolSizes(total: number, pools: number, _opts?: PoolAssignOptions): number[] {
+export function poolSizes(total: number, pools: number, opts?: PoolAssignOptions): number[] {
   const n = Math.max(1, Math.floor(pools) || 1);
+  // An organiser who dragged an entrant across a pool boundary owns the pool
+  // sizes from then on (5/4 may deliberately become 4/5, or 6/3).
+  const custom = opts?.sizes;
+  if (custom && custom.length === n && custom.every((s) => Number.isFinite(s) && s >= 0)) {
+    const sum = custom.reduce((a, b) => a + b, 0);
+    if (sum === total) return [...custom];
+  }
   const sizes = new Array(n).fill(0);
   for (let i = 0; i < total; i++) sizes[snakePoolIndex(i, n)] += 1;
   return sizes;
 }
+
 
 
 /**

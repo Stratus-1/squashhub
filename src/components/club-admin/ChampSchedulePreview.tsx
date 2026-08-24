@@ -95,7 +95,11 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
   }, [matches, entries, swissCfg, isDoubles]);
 
   const poolLetter = (p: number | null | undefined) => (p == null ? null : String.fromCharCode(64 + p));
-  const poolOf = (m: any): number | null => m.pool_number ?? poolByMatchId.get(m.id) ?? null;
+  // Authoritative order: the pool stored on the fixture, then the knockout
+  // section it was drawn into (sections mirror pools), and only then the
+  // recomputed snake fallback for legacy fixtures that carry neither.
+  const poolOf = (m: any): number | null =>
+    m.pool_number ?? m.section_number ?? poolByMatchId.get(m.id) ?? null;
   const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
   // All playoff stages collapse into a single "Play-offs" bucket so the
   // filter dropdown stays short — one entry instead of one per final.

@@ -376,6 +376,10 @@ export default function ClubChampsView() {
 
     const rows = groupEntries.map((e: any) => {
       const stats = computeFor(e.club_member_id);
+      // Club ladder position is the single source of truth for club rank.
+      // For doubles, a pair takes the stronger (lowest) of its two ladder spots.
+      const ladders = [e.club_members?.ladder_position, isDoubles ? e.partner?.ladder_position : null]
+        .filter((n: any) => typeof n === "number" && n > 0) as number[];
       return {
         ...e,
         ...buildRow(stats),
@@ -383,6 +387,7 @@ export default function ClubChampsView() {
           ? getTeamName(e.club_members, e.partner)
           : getPlayerName(e.club_members),
         leaguePlayerRank: playerRankByMember.get(e.club_member_id) ?? null,
+        clubLadderRank: ladders.length ? Math.min(...ladders) : null,
       };
     });
 

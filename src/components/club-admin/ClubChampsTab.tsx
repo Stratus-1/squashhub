@@ -3337,7 +3337,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         section: si + 1,
         seeds: sIds.map((id, i) => ({ memberId: id, seed: i + 1 })),
       }));
-      const rows = buildLeagueFirstRound({ champId: "preview", groupNumber: gn, assignments });
+      // A confirmed manual draw wins over the automatic bracket — but only
+      // while it still covers exactly this league's entrants.
+      const manual = manualDraws[String(gn)];
+      const manualIds = manual
+        ? manual.matches.flatMap((m) => [m.a, m.b]).filter(Boolean) as string[]
+        : [];
+      const manualUsable =
+        !!manual &&
+        manualIds.length === uniqueIds.length &&
+        manualIds.every((id) => uniqueIds.includes(id));
+      const rows = manualUsable
+        ? drawToMatchRows({
+            champId: "preview",
+            board: manual!,
+            entrants: uniqueIds.map((id, i) => ({ id, name: id, seed: i + 1 })),
+            multiSection: sectionIds.length > 1,
+          })
+        : buildLeagueFirstRound({ champId: "preview", groupNumber: gn, assignments });
+
       for (const r of rows) {
         allMatches.push({
           groupNum: gn,

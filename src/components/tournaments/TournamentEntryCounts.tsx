@@ -19,7 +19,7 @@ export function TournamentEntryCounts({ champId, className }: Props) {
     enabled: !!champId,
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("club_member_id, partner_member_id, status, division_choices")
+        .select("club_member_id, partner_member_id, status, division_choices, confirmed_at, paid_at, fee_paid_cents")
         .eq("champ_id", champId);
       if (error) throw error;
       return countEntries((data || []) as any[]);

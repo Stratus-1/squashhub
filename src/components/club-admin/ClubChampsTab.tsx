@@ -2837,10 +2837,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // the pool blocks first means the order we store back reproduces exactly
     // the pools the organiser was looking at — nothing silently rebalances.
     const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), poolOptsFor(groupIndex));
-    const oldIdx = visualIds.indexOf(String(active.id));
-    const newIdx = visualIds.indexOf(String(over.id));
-    if (oldIdx < 0 || newIdx < 0) return;
-    const reorderedGroupIds = arrayMove(visualIds, oldIdx, newIdx);
+    const reorderedGroupIds = reorderVisual(
+      visualIds,
+      String(active.id),
+      String(over.id),
+      poolsForDivision(groupIndex + 1),
+      poolOptsFor(groupIndex),
+    );
+    if (reorderedGroupIds === visualIds) return;
+
     // Rebuild full order: keep existing order for everyone else, swap in this group's new order
     const current = playerOrder.length > 0 ? playerOrder : selectedPlayers.map((p) => p.id);
     const groupSet = new Set(groupIds);

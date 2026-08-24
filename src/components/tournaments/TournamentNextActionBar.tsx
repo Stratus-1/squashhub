@@ -91,6 +91,55 @@ export function TournamentNextActionBar({
         : na.action === "schedule" ? CalendarClock
           : ClipboardList;
 
+  // ── Visual draw review for the round that is about to be generated ────────
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const reviewState = useMemo(
+    () =>
+      na.action === "generate" && na.groupNumber !== null && na.section
+        ? states.find((s) => s.groupNumber === na.groupNumber && s.section === na.section) ?? null
+        : null,
+    [states, na],
+  );
+  const winnerIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (reviewState?.currentRoundMatches || [])
+            .map((m: any) => m.winner_member_id || m.bye_member_id)
+            .filter(Boolean) as string[],
+        ),
+      ),
+    [reviewState],
+  );
+  const { data: nameMap = {} } = useQuery({
+    queryKey: ["draw-entrant-names", champId, winnerIds.join(",")],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members").select("id, name, ladder_position").in("id", winnerIds);
+      if (error) throw error;
+      const out: Record<string, { name: string; ladder: number | null }> = {};
+      for (const r of (data || []) as any[]) out[r.id] = { name: r.name, ladder: r.ladder_position ?? null };
+      return out;
+    },
+    enabled: reviewOpen && winnerIds.length > 0,
+  });
+
+  const reviewEntrants: DrawEntrant[] = useMemo(() => {
+    if (!reviewState) return [];
+    return winnersAsEntrants(reviewState.currentRoundMatches as any[], (id) => nameMap[id]?.name || "Player").map(
+      (e) => ({ ...e, rankLabel: nameMap[e.id]?.ladder ? `Ladder ${nameMap[e.id]!.ladder}` : null }),
+    );
+  }, [reviewState, nameMap]);
+
+  const suggestedBoard: DrawBoardModel | null = useMemo(() => {
+    if (!reviewState || !reviewState.nextRound) return null;
+    return suggestNextRoundBoard({
+      groupNumber: reviewState.groupNumber,
+      section: reviewState.section,
+      round: reviewState.nextRound.round_number,
+      winners: reviewEntrants,
+    });
+  }, [reviewState, reviewEntrants]);
+
   const goToDetail = (focus: string) => navigate(`/club-champs/${champId}?focus=${focus}`);
 
   const onClick = () => {
@@ -100,11 +149,17 @@ export function TournamentNextActionBar({
     }
     if (mode === "card") return goToDetail(na.action === "generate" ? "progress" : "fixtures");
     if (na.action === "generate" && na.groupNumber !== null && na.section !== null) {
+      // Section draws go through the visual draw board first — the organiser
+      // reviews / re-pairs and only then are fixtures created. The league final
+      // between section winners has a single possible pairing set, so it is
+      // generated directly.
+      if (na.section > 0) return setReviewOpen(true);
       return generate.mutate({ groupNumber: na.groupNumber, section: na.section });
     }
     if (onFocusFixtures) return onFocusFixtures();
     return goToDetail("fixtures");
   };
+
 
   return (
     <div

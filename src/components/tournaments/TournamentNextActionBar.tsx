@@ -27,7 +27,13 @@ import { NextRoundDrawDialog } from "./NextRoundDrawDialog";
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { prepareActionLabel } from "@/lib/tournaments/round-draw";
 import { sectionLabelOf } from "@/lib/tournaments/draw-board";
-import { readyNextRoundScopes } from "@/lib/tournaments/next-round-setup";
+import {
+  nextOutstandingScope,
+  outstandingDrawsHeadline,
+  readyNextRoundScopes,
+  remainingNextRoundScopes,
+} from "@/lib/tournaments/next-round-setup";
+
 
 
 interface Props {
@@ -98,7 +104,14 @@ export function TournamentNextActionBar({
   const [reviewKey, setReviewKey] = useState<string | null>(null);
   const [setup, setSetup] = useState<NextRoundReady | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  // Scopes confirmed in this session — the match rows can lag a refetch, so the
+  // guided queue never re-offers a draw the organiser has just confirmed.
+  const [preparedKeys, setPreparedKeys] = useState<string[]>([]);
   const readyScopes = useMemo(() => readyNextRoundScopes(states), [states]);
+  const outstanding = useMemo(
+    () => remainingNextRoundScopes(readyScopes, preparedKeys),
+    [readyScopes, preparedKeys],
+  );
   const defaultReviewKey =
     na.action === "generate" && na.groupNumber !== null && na.section
       ? `${na.groupNumber}-${na.section}`
@@ -111,6 +124,12 @@ export function TournamentNextActionBar({
     `${groupLabel?.(groupNumber) || `Division ${groupNumber}`} · ${sectionLabelOf(section)}`;
   const goToDetail = (focus: string) => navigate(`/club-champs/${champId}?focus=${focus}`);
 
+  const openScope = (key: string) => {
+    setReviewKey(key);
+    setScopeOpen(false);
+    setSetupOpen(true);
+  };
+
   const onClick = () => {
     if (na.action === "setup") {
       if (onSetup) return onSetup();
@@ -121,7 +140,8 @@ export function TournamentNextActionBar({
       // play-by date), then the visual draw for exactly that round opens, then
       // Dates & Courts. The league final between section winners has a single
       // possible pairing set, so it is generated directly.
-      if (na.section > 0 && readyScopes.length > 1) return setScopeOpen(true);
+      if (na.section > 0 && outstanding.length > 1) return setScopeOpen(true);
+      if (na.section > 0 && outstanding.length === 1) return openScope(outstanding[0].key);
       if (na.section > 0 && reviewState) {
         setReviewKey(`${reviewState.groupNumber}-${reviewState.section}`);
         return setSetupOpen(true);
@@ -136,11 +156,13 @@ export function TournamentNextActionBar({
 
 
   const opensDrawBoard = na.action === "generate" && (na.section ?? 0) > 0 && !!reviewState;
-  const ctaLabel = opensDrawBoard && readyScopes.length > 1
-    ? `Prepare next rounds (${readyScopes.length})`
+  const queueNote = opensDrawBoard ? outstandingDrawsHeadline(outstanding.length) : null;
+  const ctaLabel = opensDrawBoard && outstanding.length > 1
+    ? `Prepare next rounds (${outstanding.length})`
     : opensDrawBoard
     ? prepareActionLabel(reviewState?.nextRound?.label, (reviewState?.currentRound ?? 0) + 1)
     : na.ctaLabel;
+
 
   return (
     <>
@@ -158,9 +180,11 @@ export function TournamentNextActionBar({
             </Badge>
           </div>
           <p className="text-xs text-foreground">{na.headline}</p>
+          {queueNote && <p className="text-[11px] font-medium text-foreground">{queueNote}</p>}
           {na.disabled && na.blockedReason && (
             <p className="text-[11px] text-muted-foreground">Outstanding: {na.blockedReason}</p>
           )}
+
         </div>
 
         {canManage && na.ctaLabel && (
@@ -181,35 +205,49 @@ export function TournamentNextActionBar({
       <Dialog open={scopeOpen} onOpenChange={setScopeOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Choose a division and pool</DialogTitle>
+            <DialogTitle>
+              {preparedKeys.length > 0 ? "Continue — the next draw" : "Choose a division and pool"}
+            </DialogTitle>
             <DialogDescription>
-              {readyScopes.reduce((total, scope) => total + scope.qualifiers, 0)} qualifiers are ready across {readyScopes.length} draws. Each draw is confirmed separately so no pool is hidden or mixed.
+              {outstandingDrawsHeadline(outstanding.length)}{" "}
+              {outstanding.reduce((total, scope) => total + scope.qualifiers, 0)} qualifiers are waiting. Each draw is
+              confirmed separately so no pool is hidden or mixed.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
-            {readyScopes.map((scope) => (
+            {outstanding.map((scope, i) => (
               <Button
                 key={scope.key}
-                variant="outline"
+                variant={i === 0 ? "default" : "outline"}
                 className="h-auto w-full justify-between px-3 py-2 text-left"
-                onClick={() => {
-                  setReviewKey(scope.key);
-                  setScopeOpen(false);
-                  setSetupOpen(true);
-                }}
+                onClick={() => openScope(scope.key)}
               >
                 <span className="min-w-0">
                   <span className="block truncate text-xs font-medium">{scopeLabel(scope.groupNumber, scope.section)}</span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {scope.stageLabel} · {scope.qualifiers} qualifiers / {scope.matchups} matches
+                  <span className="block text-[11px] opacity-80">
+                    {i + 1} of {outstanding.length} · {scope.stageLabel} · {scope.qualifiers} qualifiers / {scope.matchups} matches
                   </span>
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0" />
               </Button>
             ))}
           </div>
+          {preparedKeys.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setScopeOpen(false);
+                if (mode === "card") goToDetail("fixtures");
+                else if (onFocusFixtures) onFocusFixtures();
+              }}
+            >
+              Stop here — go to Dates & Courts
+            </Button>
+          )}
         </DialogContent>
       </Dialog>
+
 
       {reviewState && setupOpen && (
         <NextRoundSetupDialog
@@ -239,13 +277,19 @@ export function TournamentNextActionBar({
           divisionLabel={scopeLabel(reviewState.groupNumber, reviewState.section)}
           setup={setup}
           onConfirmed={() => {
+            const doneKey = `${reviewState.groupNumber}-${reviewState.section}`;
+            const nextPrepared = Array.from(new Set([...preparedKeys, doneKey]));
+            setPreparedKeys(nextPrepared);
             setReviewOpen(false);
             setSetup(null);
             setReviewKey(null);
-            // Guided flow continues at Dates & Courts for these fixtures.
+            // Guided queue: go straight on to the next outstanding draw so no
+            // pool can be overlooked; only then hand over to Dates & Courts.
+            if (nextOutstandingScope(readyScopes, nextPrepared)) return setScopeOpen(true);
             if (mode === "card") goToDetail("fixtures");
             else if (onFocusFixtures) onFocusFixtures();
           }}
+
         />
       )}
     </>

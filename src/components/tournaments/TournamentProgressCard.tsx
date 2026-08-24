@@ -23,6 +23,8 @@ import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-dr
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { sectionLetter } from "@/lib/tournaments/knockout";
+import { outstandingDrawsHeadline, readyNextRoundScopes } from "@/lib/tournaments/next-round-setup";
+
 
 
 interface Props {
@@ -83,6 +85,11 @@ export function TournamentProgressCard({
   const keyOf = (s: { groupNumber: number; section: number }) => `${s.groupNumber}-${s.section}`;
   const drawState = draw ? states.find((s) => keyOf(s) === draw.key) ?? null : null;
   const setupState = setupKey ? states.find((s) => keyOf(s) === setupKey) ?? null : null;
+  // Every draw across the whole tournament that is ready to be prepared — shown
+  // as one shared queue so an individual pool's button can't be overlooked.
+  const readyScopes = useMemo(() => readyNextRoundScopes(states), [states]);
+  const queuePosition = (key: string) => readyScopes.findIndex((s) => s.key === key);
+
 
 
   const divisions = useMemo(
@@ -138,7 +145,13 @@ export function TournamentProgressCard({
             <Badge variant="secondary" className="text-[10px]">Pool {sectionLetter(s.section)}</Badge>
           )}
           {s.section === 0 && <Badge variant="secondary" className="text-[10px]">Finals</Badge>}
+          {readyScopes.length > 1 && queuePosition(keyOf(s)) >= 0 && (
+            <Badge variant="outline" className="text-[10px]">
+              Draw {queuePosition(keyOf(s)) + 1} of {readyScopes.length}
+            </Badge>
+          )}
           {s.decided && <Badge className="text-[10px]"><Trophy className="mr-1 h-3 w-3" />Decided</Badge>}
+
         </div>
         <p className="text-xs text-foreground">{s.headline}</p>
         {!s.decided && s.action === "await_results" && s.blockedReason && (
@@ -186,6 +199,12 @@ export function TournamentProgressCard({
 
   const body = (
     <div className="space-y-2">
+      {canManage && readyScopes.length > 1 && (
+        <p className="rounded-md border border-dashed px-3 py-1.5 text-[11px] font-medium text-foreground">
+          {outstandingDrawsHeadline(readyScopes.length)} Prepare each one below — they are all part of the same queue.
+        </p>
+      )}
+
       {shown.map((d) => {
         const multi = d.sections.filter((s) => s.section > 0).length > 1;
         return d.sections.map((s) => renderSection(s, multi));

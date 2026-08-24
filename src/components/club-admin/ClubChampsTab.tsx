@@ -6008,13 +6008,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const getPairLabel = (pair: DoublePair) =>
     `${getMemberName(pair.player1Id)} & ${getMemberName(pair.player2Id)}`;
 
+  /** True when a fixture slot holds no opponent (odd pool → top seed sits out). */
+  const isByeEntity = (entityId?: string | null) =>
+    !entityId || entityId === "BYE" || entityId === "bye";
+
   const getEntityLabel = (entityId: string) => {
+    if (isByeEntity(entityId)) return "Bye";
     if (isDoubles) {
       const pair = doublesPairs.find((p) => p.id === entityId);
       return pair ? getPairLabel(pair) : "Unknown pair";
     }
     return getMemberName(entityId);
   };
+
 
   // Detects whether the currently-selected players / pairs differ from what
   // was on the tournament when it was opened for edit. When true, the review

@@ -2219,13 +2219,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     };
 
     const saveExtras = async (id: string) => {
-      const { error } = await fromExt("tournaments").update(sanitizeExtrasPayload(extras)).eq("id", id);
+      // Hand-arranged draws are precious: a wizard save must never wipe a
+      // division the current editor session simply doesn't have in memory
+      // (stale tab, draw confirmed elsewhere). Merge per division instead of
+      // replacing the whole object, and never write null over stored draws.
+      const nextExtras: Record<string, any> = { ...extras };
+      const { data: current } = await fromExt("tournaments")
+        .select("manual_draws, manual_seed_divisions")
+        .eq("id", id)
+        .maybeSingle();
+      const storedDraws = ((current as any)?.manual_draws as Record<string, any> | null) || {};
+      const mergedDraws = { ...storedDraws, ...manualDraws };
+      nextExtras.manual_draws = Object.keys(mergedDraws).length > 0 ? mergedDraws : null;
+      if (manualSeedGroups.size === 0) {
+        const storedSeedDivs = ((current as any)?.manual_seed_divisions as number[] | null) || [];
+        if (storedSeedDivs.length > 0) nextExtras.manual_seed_divisions = storedSeedDivs;
+      }
+      const { error } = await fromExt("tournaments").update(sanitizeExtrasPayload(nextExtras)).eq("id", id);
       if (error) console.warn("Tournament extras save failed:", error.message);
       // "Who may enter" is a governance field — keep the single copy in sync.
       const { error: govErr } = await fromExt("tournament_governance")
         .upsert(sanitizeDraftPayload({ tournament_id: id, eligibility_scope: eligibilityScope }), { onConflict: "tournament_id" } as any);
       if (govErr) console.warn("Eligibility save failed:", govErr.message);
     };
+
     try {
       if (editingChampId) {
         const { error } = await fromExt("club_champs").update(payload).eq("id", editingChampId);

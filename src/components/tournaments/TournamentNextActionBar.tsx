@@ -98,7 +98,14 @@ export function TournamentNextActionBar({
   const [reviewKey, setReviewKey] = useState<string | null>(null);
   const [setup, setSetup] = useState<NextRoundReady | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  // Scopes confirmed in this session — the match rows can lag a refetch, so the
+  // guided queue never re-offers a draw the organiser has just confirmed.
+  const [preparedKeys, setPreparedKeys] = useState<string[]>([]);
   const readyScopes = useMemo(() => readyNextRoundScopes(states), [states]);
+  const outstanding = useMemo(
+    () => remainingNextRoundScopes(readyScopes, preparedKeys),
+    [readyScopes, preparedKeys],
+  );
   const defaultReviewKey =
     na.action === "generate" && na.groupNumber !== null && na.section
       ? `${na.groupNumber}-${na.section}`
@@ -111,6 +118,12 @@ export function TournamentNextActionBar({
     `${groupLabel?.(groupNumber) || `Division ${groupNumber}`} · ${sectionLabelOf(section)}`;
   const goToDetail = (focus: string) => navigate(`/club-champs/${champId}?focus=${focus}`);
 
+  const openScope = (key: string) => {
+    setReviewKey(key);
+    setScopeOpen(false);
+    setSetupOpen(true);
+  };
+
   const onClick = () => {
     if (na.action === "setup") {
       if (onSetup) return onSetup();
@@ -121,7 +134,8 @@ export function TournamentNextActionBar({
       // play-by date), then the visual draw for exactly that round opens, then
       // Dates & Courts. The league final between section winners has a single
       // possible pairing set, so it is generated directly.
-      if (na.section > 0 && readyScopes.length > 1) return setScopeOpen(true);
+      if (na.section > 0 && outstanding.length > 1) return setScopeOpen(true);
+      if (na.section > 0 && outstanding.length === 1) return openScope(outstanding[0].key);
       if (na.section > 0 && reviewState) {
         setReviewKey(`${reviewState.groupNumber}-${reviewState.section}`);
         return setSetupOpen(true);
@@ -136,11 +150,13 @@ export function TournamentNextActionBar({
 
 
   const opensDrawBoard = na.action === "generate" && (na.section ?? 0) > 0 && !!reviewState;
-  const ctaLabel = opensDrawBoard && readyScopes.length > 1
-    ? `Prepare next rounds (${readyScopes.length})`
+  const queueNote = opensDrawBoard ? outstandingDrawsHeadline(outstanding.length) : null;
+  const ctaLabel = opensDrawBoard && outstanding.length > 1
+    ? `Prepare next rounds (${outstanding.length})`
     : opensDrawBoard
     ? prepareActionLabel(reviewState?.nextRound?.label, (reviewState?.currentRound ?? 0) + 1)
     : na.ctaLabel;
+
 
   return (
     <>

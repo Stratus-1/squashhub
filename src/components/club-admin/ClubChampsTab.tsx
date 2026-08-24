@@ -3104,8 +3104,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         courtIds,
       }));
     }
-    if (matchDuration <= 0) return null;
-    if (sessions.length === 0) return null;
+    // Player-arranged tournaments legitimately have no sessions/courts/slots —
+    // the draw is still built and simply comes out unscheduled. Only the
+    // club-scheduled modes need a usable session grid.
+    if (schedulingMode !== "self") {
+      if (matchDuration <= 0) return null;
+      if (sessions.length === 0) return null;
+    }
+
 
     // Distinct dates (for the summary card)
     const allDates = Array.from(new Set(sessions.map((s) => s.date))).map((d) => parseISO(d));

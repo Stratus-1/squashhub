@@ -6313,6 +6313,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 canManage
                 status={c.status}
                 selfScheduled={String(c.scheduling_mode || "") === "self"}
+                championScope={(c as any).champion_scope || undefined}
                 mode="card"
                 onSetup={() => loadChampForEdit(c)}
               />
@@ -10031,6 +10032,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 champId={editingChampId}
                 canManage
                 selfScheduled={schedulingMode === "self"}
+                championScope={championScope}
                 groupLabel={(gn) => groupLabels[String(gn)] || `League ${gn}`}
               />
             )}

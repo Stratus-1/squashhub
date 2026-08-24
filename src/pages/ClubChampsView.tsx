@@ -2565,6 +2565,7 @@ export default function ClubChampsView() {
           canManage={canManage}
           status={(champ as any)?.status}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
+          championScope={(champ as any)?.champion_scope || undefined}
           mode="detail"
           onFocusFixtures={() =>
             document.getElementById("tournament-fixtures")?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -2575,6 +2576,7 @@ export default function ClubChampsView() {
           champId={champId!}
           canManage={canManage}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
+          championScope={(champ as any)?.champion_scope || undefined}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
         />

@@ -27,6 +27,8 @@ import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
 import { TournamentProgressCard } from "@/components/tournaments/TournamentProgressCard";
+import { TournamentNextActionBar } from "@/components/tournaments/TournamentNextActionBar";
+
 
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";

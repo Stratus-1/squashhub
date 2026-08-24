@@ -9466,7 +9466,69 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 Applies to every league that runs more than one pool. Players you drag by hand keep their spot.
               </p>
             </div>
+
+            {/* Category mismatches — e.g. female players sitting in a league
+                set to Men's. Offer a one-click move into a matching league
+                instead of changing each player's dropdown by hand. */}
+            {!isDoubles && (() => {
+              const leagueLabel = (gn: number) => {
+                const raw = groupLabels[String(gn)]?.trim();
+                if (!raw) return `League ${gn}`;
+                return /league|div|pool|grp|group/i.test(raw) ? raw : `League ${raw}`;
+              };
+              const mismatched = (groups as ClubMember[][])
+                .flat()
+                .filter((p: any) => !memberFitsLeague(p, (groupAssignments.get(p.id) ?? 0) + 1));
+              if (mismatched.length === 0) return null;
+              // Leagues that would accept every mismatched player.
+              const targets = Array.from({ length: numGroups }, (_, i) => i + 1).filter((gn) =>
+                mismatched.every((p: any) => memberFitsLeague(p, gn)),
+              );
+              return (
+                <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-2 space-y-2">
+                  <div className="text-xs font-medium text-destructive">
+                    {mismatched.length} {mismatched.length === 1 ? "player does" : "players do"} not match the category of the league they are in
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {mismatched.slice(0, 8).map((p: any) => p.name || p.profiles?.name).join(", ")}
+                    {mismatched.length > 8 ? ` +${mismatched.length - 8} more` : ""}
+                  </p>
+                  {targets.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {targets.map((gn) => (
+                        <Button
+                          key={gn}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            setGroupAssignments((prev) => {
+                              const next = new Map(prev);
+                              mismatched.forEach((p: any) => next.set(p.id, gn - 1));
+                              return next;
+                            });
+                            setEligibilityOverrides((prev) => {
+                              const next = new Set(prev);
+                              mismatched.forEach((p: any) => next.add(p.id));
+                              return next;
+                            });
+                          }}
+                        >
+                          Move {mismatched.length} to {leagueLabel(gn)} ({GENDER_LABELS[genderForLeague(gn)]})
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      No league in this tournament matches them. Add a Ladies league in Structure (or set one league's category to Ladies), then come back here.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </CardHeader>
+
 
           <CardContent className="space-y-4">
             {/* Read-only echo of the structure decision — Structure is the single

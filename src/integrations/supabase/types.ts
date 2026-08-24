@@ -10023,6 +10023,7 @@ export type Database = {
           avoid_back_to_back: boolean | null
           best_of: number | null
           bye_handling: string | null
+          champion_scope: string | null
           club_id: string | null
           competition_level: string | null
           court_ids: number[] | null

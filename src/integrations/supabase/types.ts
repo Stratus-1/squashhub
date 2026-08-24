@@ -9349,6 +9349,7 @@ export type Database = {
       tournaments: {
         Row: {
           avoid_back_to_back: boolean
+          champion_scope: string
           club_id: string
           court_ids: number[]
           court_rotation_minutes: number | null
@@ -9426,6 +9427,7 @@ export type Database = {
         }
         Insert: {
           avoid_back_to_back?: boolean
+          champion_scope?: string
           club_id: string
           court_ids?: number[]
           court_rotation_minutes?: number | null
@@ -9503,6 +9505,7 @@ export type Database = {
         }
         Update: {
           avoid_back_to_back?: boolean
+          champion_scope?: string
           club_id?: string
           court_ids?: number[]
           court_rotation_minutes?: number | null

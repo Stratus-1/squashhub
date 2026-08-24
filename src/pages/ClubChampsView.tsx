@@ -2049,12 +2049,13 @@ export default function ClubChampsView() {
                   {canUnscheduleFixture(m, myMemberId, { canManage }).allowed && (
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
-                      onClick={() => setScheduleMatch(m)}
+                      onClick={() => void clearFixtureSchedule(m)}
                     >
                       <XCircle className="h-3.5 w-3.5 mr-2" />
                       Clear court &amp; time
                     </DropdownMenuItem>
                   )}
+
                 </DropdownMenuContent>
               </DropdownMenu>
             </>

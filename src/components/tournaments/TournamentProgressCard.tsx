@@ -224,7 +224,7 @@ export function TournamentProgressCard({
           state={setupState}
           qualifiers={setupState.activeCount}
           selfScheduled={selfScheduled}
-          divisionLabel={label(setupState.groupNumber)}
+          divisionLabel={`${label(setupState.groupNumber)} · ${setupState.section > 0 ? `Pool ${sectionLetter(setupState.section)}` : "Finals"}`}
           onReady={(v) => {
             setSetup(v);
             setSetupKey(null);
@@ -242,7 +242,7 @@ export function TournamentProgressCard({
           mode={draw.mode}
           multiSection={states.filter((s) => s.groupNumber === drawState.groupNumber && s.section > 0).length > 1}
           selfScheduled={selfScheduled}
-          divisionLabel={label(drawState.groupNumber)}
+          divisionLabel={`${label(drawState.groupNumber)} · ${drawState.section > 0 ? `Pool ${sectionLetter(drawState.section)}` : "Finals"}`}
           setup={draw.mode === "prepare" ? setup : null}
           onConfirmed={() => {
             setDraw(null);

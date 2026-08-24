@@ -343,7 +343,7 @@ export type TournamentNextAction = {
 export function tournamentNextAction(
   matches: KnockoutMatchLike[],
   rounds: ChampRound[] = [],
-  opts: { selfScheduled?: boolean; status?: string | null } = {},
+  opts: { selfScheduled?: boolean; status?: string | null; championScope?: ChampionScope } = {},
 ): TournamentNextAction {
   const ko = (matches as any[]).filter((m) => (m.stage || "") === "ko") as KnockoutMatchLike[];
   const divisions = divisionControls(ko, rounds, opts);

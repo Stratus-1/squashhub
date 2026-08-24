@@ -25,6 +25,7 @@ import {
   type DrawEntrant,
   type DrawSlotRef,
 } from "@/lib/tournaments/draw-board";
+import { boardProgress, drawLayout, matchesInScope, sectionsOf } from "@/lib/tournaments/next-round-setup";
 
 interface Props {
   board: DrawBoardModel;

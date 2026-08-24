@@ -2259,6 +2259,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
       let allocatedMemberIds: string[] = [];
+      /** member_id → 1-based division numbers the organiser allocated them to. */
+      let divisionChoicesToSync: Map<string, number[]> | null = null;
+
       // Collect every visitor-* ID that will hit the DB so we can promote them
       // to real club_members rows in one batch and build a lookup map.
       const visitorRawIds: string[] = isDoubles
@@ -2294,7 +2297,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
         if (insertErr) throw insertErr;
         allocatedMemberIds = rows.map((r: any) => r.club_member_id).filter(Boolean);
+        // The organiser's allocation is authoritative for WHICH divisions a
+        // player takes part in. Mirror it onto division_choices, otherwise the
+        // player's original sign-up choices are re-applied on the next load and
+        // the admin's change silently reverts.
+        divisionChoicesToSync = new Map<string, number[]>();
+        for (const r of rows as any[]) {
+          const list = divisionChoicesToSync.get(r.club_member_id) || [];
+          if (!list.includes(r.group_number)) list.push(r.group_number);
+          divisionChoicesToSync.set(r.club_member_id, list);
+        }
+        divisionChoicesToSync.forEach((list) => list.sort((a, b) => a - b));
       }
+
 
       // Auto-register every allocated player. Once admin places a member into a
       // pair / group they are considered confirmed for the tournament — no
@@ -2338,6 +2353,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           .in("club_member_id", uniqueIds)
           .in("status", ["pending_payment", "pending_eft", "invited"]);
       }
+
+      // Keep division_choices in step with the saved allocation so the change
+      // sticks after a reload (and players who were moved out of a division
+      // stop reappearing in it).
+      if (divisionChoicesToSync) {
+        for (const [memberId, divisions] of divisionChoicesToSync) {
+          const { error } = await fromExt("club_champs_registrations")
+            .update({ division_choices: divisions })
+            .eq("champ_id", champIdToUse)
+            .eq("club_member_id", memberId);
+          if (error) console.warn("division_choices sync failed", memberId, error);
+        }
+      }
+
     } catch (e) {
       console.warn("Tournament entries draft save failed:", e);
       throw e;
@@ -5856,20 +5885,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             extras.set(e.club_member_id, set);
           }
         });
-        // The player's own acceptance wins: every division they ticked is kept.
+        // A saved allocation is the organiser's decision and wins. Sign-up
+        // choices are only used for entrants who have no entry row yet —
+        // otherwise removing/moving someone would be undone on every load.
         choicesByMember.forEach((chosen, id) => {
-          const primary = assignments.get(id);
-          if (primary === undefined) {
-            assignments.set(id, chosen[0]);
-            if (chosen.length > 1) extras.set(id, new Set(chosen.slice(1)));
-            return;
-          }
-          const set = extras.get(id) || new Set<number>();
-          chosen.forEach((gi) => {
-            if (gi !== primary) set.add(gi);
-          });
-          if (set.size > 0) extras.set(id, set);
+          if (assignments.has(id)) return;
+          assignments.set(id, chosen[0]);
+          if (chosen.length > 1) extras.set(id, new Set(chosen.slice(1)));
         });
+
         setGroupAssignments(assignments);
         setExtraDivisions(extras);
       }

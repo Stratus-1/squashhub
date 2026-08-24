@@ -42,12 +42,20 @@ export function snakePoolIndex(i: number, pools: number): number {
  * An odd pool simply means the top-ranked seed of that pool sits out the
  * opening knockout round (a bye) — see `buildSectionFirstRound`.
  */
-export function poolSizes(total: number, pools: number, _opts?: PoolAssignOptions): number[] {
+export function poolSizes(total: number, pools: number, opts?: PoolAssignOptions): number[] {
   const n = Math.max(1, Math.floor(pools) || 1);
+  // An organiser who dragged an entrant across a pool boundary owns the pool
+  // sizes from then on (5/4 may deliberately become 4/5, or 6/3).
+  const custom = opts?.sizes;
+  if (custom && custom.length === n && custom.every((s) => Number.isFinite(s) && s >= 0)) {
+    const sum = custom.reduce((a, b) => a + b, 0);
+    if (sum === total) return [...custom];
+  }
   const sizes = new Array(n).fill(0);
   for (let i = 0; i < total; i++) sizes[snakePoolIndex(i, n)] += 1;
   return sizes;
 }
+
 
 
 /**
@@ -74,14 +82,30 @@ export interface PoolAssignOptions {
    * 14 -> 8 + 6) instead of equal headcount. Ignored by every other format.
    */
   knockout?: boolean;
+  /**
+   * Organiser-owned pool sizes (one entry per pool, summing to the entrant
+   * count). Set once an admin drags an entrant across a pool boundary, which
+   * legitimately makes pools uneven (5/4 -> 4/5, or 6/3). Ignored when the
+   * numbers don't line up with the current entrant count.
+   */
+  sizes?: number[];
+}
+
+/** True when `opts.sizes` is a usable override for this entrant count. */
+export function hasCustomSizes(total: number, pools: number, opts?: PoolAssignOptions): boolean {
+  const n = Math.max(1, Math.floor(pools) || 1);
+  const s = opts?.sizes;
+  return !!s && s.length === n && s.every((v) => Number.isFinite(v) && v >= 0) &&
+    s.reduce((a, b) => a + b, 0) === total;
 }
 
 /** Pool index per row, aligned with the given (already ordered) list. */
 export function poolIndexes(total: number, pools: number, opts?: PoolAssignOptions): number[] {
   const n = Math.max(1, Math.floor(pools) || 1);
-  if (opts?.manual) {
+  if (opts?.manual || hasCustomSizes(total, n, opts)) {
     return Array.from({ length: total }, (_, i) => blockPoolIndex(i, n, total, opts));
   }
+
   if (n <= 1) return new Array(total).fill(0);
   // Serpentine deal, but never beyond a pool's target capacity: for knockout
   // those capacities are the bracket-optimised sizes, for everything else they
@@ -202,4 +226,71 @@ export function reorderVisual(
   next.splice(from, 1);
   next.splice(to, 0, visualIds[from]);
   return next;
+}
+
+/**
+ * Admin free-move: drag an entrant to ANY position, including into another
+ * pool, without a counter-swap.
+ *
+ * Unlike `reorderVisual` (which swaps across pools to keep sizes fixed), this
+ * is a plain insert-and-shift in the visual list and the pool sizes follow the
+ * drop: the source pool loses a slot, the target pool gains one. The caller
+ * persists the returned `sizes` as the division's organiser-owned pool sizes.
+ */
+export function moveVisual(
+  visualIds: string[],
+  activeId: string,
+  overId: string,
+  pools: number,
+  opts?: PoolAssignOptions,
+): { ids: string[]; sizes: number[] } | null {
+  const n = Math.max(1, Math.floor(pools) || 1);
+  const current = poolSizes(visualIds.length, n, opts);
+  const from = visualIds.indexOf(activeId);
+  const to = visualIds.indexOf(overId);
+  if (from < 0 || to < 0 || from === to) return null;
+  const idx = poolIndexes(visualIds.length, n, { ...opts, manual: true });
+  const sourcePool = idx[from];
+  const targetPool = idx[to];
+  const ids = [...visualIds];
+  ids.splice(from, 1);
+  ids.splice(to, 0, visualIds[from]);
+  const sizes = [...current];
+  if (sourcePool !== targetPool) {
+    sizes[sourcePool] = Math.max(0, sizes[sourcePool] - 1);
+    sizes[targetPool] = sizes[targetPool] + 1;
+  }
+  return { ids, sizes };
+}
+
+/**
+ * Move an entrant into a specific pool (used by the "move to pool" action and
+ * by drops onto an empty pool container). The entrant is appended to the end
+ * of the target pool's block.
+ */
+export function moveToPool(
+  visualIds: string[],
+  activeId: string,
+  targetPool: number,
+  pools: number,
+  opts?: PoolAssignOptions,
+): { ids: string[]; sizes: number[] } | null {
+  const n = Math.max(1, Math.floor(pools) || 1);
+  const from = visualIds.indexOf(activeId);
+  if (from < 0 || targetPool < 0 || targetPool >= n) return null;
+  const current = poolSizes(visualIds.length, n, opts);
+  const idx = poolIndexes(visualIds.length, n, { ...opts, manual: true });
+  const sourcePool = idx[from];
+  if (sourcePool === targetPool) return null;
+  // End of the target pool block in the CURRENT layout.
+  let end = 0;
+  for (let p = 0; p <= targetPool; p++) end += current[p];
+  const ids = [...visualIds];
+  ids.splice(from, 1);
+  const insertAt = from < end ? end - 1 : end;
+  ids.splice(insertAt, 0, visualIds[from]);
+  const sizes = [...current];
+  sizes[sourcePool] = Math.max(0, sizes[sourcePool] - 1);
+  sizes[targetPool] = sizes[targetPool] + 1;
+  return { ids, sizes };
 }

@@ -54,10 +54,11 @@ describe("knockout section sizing", () => {
 describe("pool distribution respects knockout capacities", () => {
   const seeds = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
-  it("uses bracket sizes only when knockout is set", () => {
-    expect(poolSizes(14, 2, { knockout: true })).toEqual([8, 6]);
+  it("splits knockout divisions equally, just like every other format", () => {
+    expect(poolSizes(14, 2, { knockout: true })).toEqual([7, 7]);
     expect(poolSizes(14, 2)).toEqual([7, 7]);
-    expect(poolCounts(22, 3, { knockout: true })).toEqual([8, 8, 6]);
+    expect(poolSizes(11, 2, { knockout: true })).toEqual([5, 6]);
+    expect(poolCounts(22, 3, { knockout: true })).toEqual([7, 7, 8]);
   });
 
   it("leaves every non-knockout format untouched", () => {
@@ -71,7 +72,7 @@ describe("pool distribution respects knockout capacities", () => {
 
   it("keeps top seeds apart and fills to the target capacity", () => {
     const pools = distributeIntoPools(seeds(14), 2, { knockout: true });
-    expect(pools.map((p) => p.length)).toEqual([8, 6]);
+    expect(pools.map((p) => p.length)).toEqual([7, 7]);
     expect(pools[0][0]).toBe(1);
     expect(pools[1][0]).toBe(2);
     expect([...pools[0], ...pools[1]].sort((a, b) => a - b)).toEqual(seeds(14));
@@ -79,12 +80,12 @@ describe("pool distribution respects knockout capacities", () => {
 
   it("shows the chosen sizes as separate blocks", () => {
     const blocks = poolBlocks(seeds(14), 2, { knockout: true });
-    expect(blocks.map((b) => `${b.letter} (${b.rows.length})`)).toEqual(["A (8)", "B (6)"]);
+    expect(blocks.map((b) => `${b.letter} (${b.rows.length})`)).toEqual(["A (7)", "B (7)"]);
   });
 
   it("preserves a manual arrangement with the same target sizes", () => {
     const blocks = poolBlocks(seeds(14), 2, { knockout: true, manual: true });
-    expect(blocks[0].rows.map((r) => r.item)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(blocks[1].rows.map((r) => r.item)).toEqual([9, 10, 11, 12, 13, 14]);
+    expect(blocks[0].rows.map((r) => r.item)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(blocks[1].rows.map((r) => r.item)).toEqual([8, 9, 10, 11, 12, 13, 14]);
   });
 });

@@ -24,8 +24,6 @@
  * serpentine allocation only returns via an explicit rebalance action.
  */
 
-import { MIN_SECTION, knockoutSectionSizes } from "./knockout-sections";
-
 /** Pool index (0-based) for the i-th seed in a serpentine deal. */
 export function snakePoolIndex(i: number, pools: number): number {
   if (pools <= 1) return 0;
@@ -39,19 +37,18 @@ export function snakePoolIndex(i: number, pools: number): number {
  * serpentine deal produces, so a seeded layout can be "materialised" into a
  * plain ordered list (pool A's rows, then pool B's rows, …) without the pool
  * sizes changing. Differs by at most one entrant between pools.
+ *
+ * Knockout divisions use the SAME equal split (14 -> 7 + 7, 11 -> 6 + 5).
+ * An odd pool simply means the top-ranked seed of that pool sits out the
+ * opening knockout round (a bye) — see `buildSectionFirstRound`.
  */
-export function poolSizes(total: number, pools: number, opts?: PoolAssignOptions): number[] {
+export function poolSizes(total: number, pools: number, _opts?: PoolAssignOptions): number[] {
   const n = Math.max(1, Math.floor(pools) || 1);
-  // Knockout divisions optimise for the BRACKET (8 + 6), not equal headcount
-  // (7 + 7) — see ./knockout-sections. Every other format keeps the balanced
-  // serpentine sizes.
-  if (opts?.knockout && n > 1 && total >= n * MIN_SECTION) {
-    return knockoutSectionSizes(total, n);
-  }
   const sizes = new Array(n).fill(0);
   for (let i = 0; i < total; i++) sizes[snakePoolIndex(i, n)] += 1;
   return sizes;
 }
+
 
 /**
  * Pool index for the i-th row of a contiguous/block split (manual mode).

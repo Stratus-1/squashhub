@@ -9414,6 +9414,7 @@ export type Database = {
           play_days: number[]
           playoff_break_minutes: number
           playoff_date: string | null
+          pool_allocation: string
           pool_sizes: Json
           round_play_by: Json
           schedule_mode: string
@@ -9493,6 +9494,7 @@ export type Database = {
           play_days?: number[]
           playoff_break_minutes?: number
           playoff_date?: string | null
+          pool_allocation?: string
           pool_sizes?: Json
           round_play_by?: Json
           schedule_mode?: string
@@ -9572,6 +9574,7 @@ export type Database = {
           play_days?: number[]
           playoff_break_minutes?: number
           playoff_date?: string | null
+          pool_allocation?: string
           pool_sizes?: Json
           round_play_by?: Json
           schedule_mode?: string
@@ -10090,6 +10093,7 @@ export type Database = {
           playoff_break_minutes: number | null
           playoff_date: string | null
           points_per_game: number | null
+          pool_allocation: string | null
           pool_sizes: Json | null
           refund_cutoff_date: string | null
           refund_policy: string | null

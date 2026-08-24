@@ -28,11 +28,13 @@ import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialo
 import { prepareActionLabel } from "@/lib/tournaments/round-draw";
 import { sectionLabelOf } from "@/lib/tournaments/draw-board";
 import {
+  allDrawsFitOnePage,
   nextOutstandingScope,
   outstandingDrawsHeadline,
   readyNextRoundScopes,
   remainingNextRoundScopes,
 } from "@/lib/tournaments/next-round-setup";
+import { AllNextRoundDrawsDialog } from "./AllNextRoundDrawsDialog";
 
 
 
@@ -101,6 +103,7 @@ export function TournamentNextActionBar({
   // ── Visual draw review for the round that is about to be generated ────────
   const [setupOpen, setSetupOpen] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [allOpen, setAllOpen] = useState(false);
   const [reviewKey, setReviewKey] = useState<string | null>(null);
   const [setup, setSetup] = useState<NextRoundReady | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -112,6 +115,9 @@ export function TournamentNextActionBar({
     () => remainingNextRoundScopes(readyScopes, preparedKeys),
     [readyScopes, preparedKeys],
   );
+  // Small sets of ready draws are arranged together on one page; bigger ones
+  // stay a guided one-by-one queue.
+  const onePage = useMemo(() => allDrawsFitOnePage(outstanding), [outstanding]);
   const defaultReviewKey =
     na.action === "generate" && na.groupNumber !== null && na.section
       ? `${na.groupNumber}-${na.section}`
@@ -140,6 +146,7 @@ export function TournamentNextActionBar({
       // play-by date), then the visual draw for exactly that round opens, then
       // Dates & Courts. The league final between section winners has a single
       // possible pairing set, so it is generated directly.
+      if (na.section > 0 && outstanding.length > 1 && onePage.fits) return setAllOpen(true);
       if (na.section > 0 && outstanding.length > 1) return setScopeOpen(true);
       if (na.section > 0 && outstanding.length === 1) return openScope(outstanding[0].key);
       if (na.section > 0 && reviewState) {
@@ -157,7 +164,9 @@ export function TournamentNextActionBar({
 
   const opensDrawBoard = na.action === "generate" && (na.section ?? 0) > 0 && !!reviewState;
   const queueNote = opensDrawBoard ? outstandingDrawsHeadline(outstanding.length) : null;
-  const ctaLabel = opensDrawBoard && outstanding.length > 1
+  const ctaLabel = opensDrawBoard && outstanding.length > 1 && onePage.fits
+    ? `Draw all next rounds (${outstanding.length})`
+    : opensDrawBoard && outstanding.length > 1
     ? `Prepare next rounds (${outstanding.length})`
     : opensDrawBoard
     ? prepareActionLabel(reviewState?.nextRound?.label, (reviewState?.currentRound ?? 0) + 1)
@@ -232,6 +241,18 @@ export function TournamentNextActionBar({
               </Button>
             ))}
           </div>
+          {onePage.fits && outstanding.length > 1 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setScopeOpen(false);
+                setAllOpen(true);
+              }}
+            >
+              Draw all {outstanding.length} on one page
+            </Button>
+          )}
           {preparedKeys.length > 0 && (
             <Button
               variant="ghost"
@@ -248,6 +269,25 @@ export function TournamentNextActionBar({
         </DialogContent>
       </Dialog>
 
+
+      {allOpen && outstanding.length > 0 && (
+        <AllNextRoundDrawsDialog
+          open
+          onOpenChange={setAllOpen}
+          champId={champId}
+          scopes={outstanding}
+          states={states}
+          selfScheduled={selfScheduled}
+          scopeLabel={scopeLabel}
+          onConfirmed={(keys) => {
+            const nextPrepared = Array.from(new Set([...preparedKeys, ...keys]));
+            setPreparedKeys(nextPrepared);
+            if (nextOutstandingScope(readyScopes, nextPrepared)) return setScopeOpen(true);
+            if (mode === "card") goToDetail("fixtures");
+            else if (onFocusFixtures) onFocusFixtures();
+          }}
+        />
+      )}
 
       {reviewState && setupOpen && (
         <NextRoundSetupDialog

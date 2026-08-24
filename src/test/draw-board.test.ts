@@ -235,3 +235,34 @@ describe("integrity gates", () => {
     expect(rows.every((r) => !(r as any).court_id && !(r as any).scheduled_at)).toBe(true);
   });
 });
+
+describe("confirmed draws stay put", () => {
+  it("keeps the admin's pairings when the field is unchanged", async () => {
+    const { reconcileBoardWithEntrants } = await import("@/lib/tournaments/draw-board");
+    const list = entrants(8);
+    const board = moveEntrant(suggestFromEntrants(1, list), "m2", findSlot(suggestFromEntrants(1, list), "m8")!);
+    const rec = reconcileBoardWithEntrants(board, list.map((e) => e.id));
+    expect(rec.usable).toBe(true);
+    expect(rec.board.matches).toEqual(board.matches);
+  });
+
+  it("lifts a withdrawn player off without discarding the draw", async () => {
+    const { reconcileBoardWithEntrants } = await import("@/lib/tournaments/draw-board");
+    const list = entrants(8);
+    const board = suggestFromEntrants(1, list);
+    const rec = reconcileBoardWithEntrants(board, list.filter((e) => e.id !== "m8").map((e) => e.id));
+    expect(rec.usable).toBe(true);
+    expect(rec.dropped).toEqual(["m8"]);
+    expect(findSlot(rec.board, "m8")).toBeNull();
+    expect(findSlot(rec.board, "m1")).toEqual(findSlot(board, "m1"));
+  });
+
+  it("flags a brand-new entrant instead of silently reseeding", async () => {
+    const { reconcileBoardWithEntrants } = await import("@/lib/tournaments/draw-board");
+    const list = entrants(8);
+    const board = suggestFromEntrants(1, list);
+    const rec = reconcileBoardWithEntrants(board, [...list.map((e) => e.id), "m9"]);
+    expect(rec.usable).toBe(false);
+    expect(rec.missing).toEqual(["m9"]);
+  });
+});

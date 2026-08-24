@@ -6,8 +6,13 @@
  *   • unique players — distinct humans in the tournament (doubles partners count too)
  *   • total entries  — one per player per division they entered
  */
+import {
+  isParticipatingEntrant,
+  type EntrantContext,
+  type EntrantRowLike,
+} from "./entrant-status";
 
-export interface EntryCountRowLike {
+export interface EntryCountRowLike extends EntrantRowLike {
   club_member_id?: string | null;
   partner_member_id?: string | null;
   status?: string | null;
@@ -19,7 +24,7 @@ export interface EntryCounts {
   totalEntries: number;
 }
 
-const EXCLUDED = new Set(["cancelled", "declined", "withdrawn"]);
+
 
 function divisionCount(row: EntryCountRowLike): number {
   const raw = row.division_choices;
@@ -29,11 +34,16 @@ function divisionCount(row: EntryCountRowLike): number {
 }
 
 /** Counts derived from registration rows (admin card / dialog surfaces). */
-export function countEntries(rows: EntryCountRowLike[] | null | undefined): EntryCounts {
+export function countEntries(
+  rows: EntryCountRowLike[] | null | undefined,
+  ctx: EntrantContext = {},
+): EntryCounts {
   const players = new Set<string>();
   let totalEntries = 0;
   for (const row of rows || []) {
-    if (EXCLUDED.has(String(row.status || "").trim().toLowerCase())) continue;
+    // Only entrants who are actually in the tournament count. Invitations that
+    // were never accepted, and cancellations, are not entries.
+    if (!isParticipatingEntrant(row, ctx)) continue;
     const divisions = divisionCount(row);
     const ids = [row.club_member_id, row.partner_member_id].filter(Boolean) as string[];
     if (ids.length === 0) continue;

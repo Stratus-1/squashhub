@@ -239,7 +239,7 @@ export function divisionControl(
   matches: KnockoutMatchLike[],
   groupNumber: number,
   rounds: ChampRound[] = [],
-  opts: { selfScheduled?: boolean } = {},
+  opts: { selfScheduled?: boolean; championScope?: ChampionScope } = {},
 ): DivisionControl | null {
   return (
     divisionControls(matches, rounds, opts).find((d) => d.groupNumber === Number(groupNumber)) ||

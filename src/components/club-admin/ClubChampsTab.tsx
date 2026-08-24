@@ -9971,7 +9971,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   open
                   onOpenChange={(o) => !o && setDrawEditor(null)}
                   champId={editingChampId || "draft"}
-                  suggested={manualDraws[String(gn)] ?? suggested}
+                  suggested={
+                    manualDraws[String(gn)]
+                      ? reconcileBoardWithEntrants(manualDraws[String(gn)], ids).board
+                      : suggested
+                  }
                   entrants={entrants}
                   multiSection={sectionIds.length > 1}
                   divisionLabel={groupLabels[String(gn)]?.trim() || `League ${gn}`}

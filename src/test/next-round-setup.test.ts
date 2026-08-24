@@ -6,6 +6,9 @@ import {
   LARGE_ROUND_THRESHOLD,
   matchesInScope,
   readyNextRoundScopes,
+  remainingNextRoundScopes,
+  nextOutstandingScope,
+  outstandingDrawsHeadline,
   sectionsOf,
   stageNameForQualifiers,
   stageNameOptions,
@@ -153,5 +156,32 @@ describe("multi-division next-round scope inventory", () => {
     const [scope] = readyNextRoundScopes(sectionProgression(rows as any));
     expect(scope.qualifiers).toBe(3);
     expect(new Set(scope.qualifierIds).size).toBe(scope.qualifiers);
+  });
+});
+
+describe("guided draw queue", () => {
+  const scopes = [
+    { key: "1-1", groupNumber: 1, section: 1, roundNumber: 2, qualifierIds: [], qualifiers: 8, matchups: 4, stageLabel: "Quarter-final" },
+    { key: "1-2", groupNumber: 1, section: 2, roundNumber: 2, qualifierIds: [], qualifiers: 8, matchups: 4, stageLabel: "Quarter-final" },
+    { key: "2-1", groupNumber: 2, section: 1, roundNumber: 2, qualifierIds: [], qualifiers: 4, matchups: 2, stageLabel: "Semi-final" },
+  ];
+
+  it("walks the ready scopes one after the other", () => {
+    expect(nextOutstandingScope(scopes)!.key).toBe("1-1");
+    expect(nextOutstandingScope(scopes, ["1-1"])!.key).toBe("1-2");
+    expect(nextOutstandingScope(scopes, ["1-1", "1-2"])!.key).toBe("2-1");
+    expect(nextOutstandingScope(scopes, ["1-1", "1-2", "2-1"])).toBeNull();
+  });
+
+  it("never re-offers a draw confirmed in this session", () => {
+    const left = remainingNextRoundScopes(scopes, ["1-2"]);
+    expect(left.map((s) => s.key)).toEqual(["1-1", "2-1"]);
+    expect(remainingNextRoundScopes(scopes, ["1-1", "1-1"]).length).toBe(2);
+  });
+
+  it("states the outstanding count in plain English", () => {
+    expect(outstandingDrawsHeadline(3)).toBe("3 draws still need preparation.");
+    expect(outstandingDrawsHeadline(1)).toBe("1 draw still needs preparation.");
+    expect(outstandingDrawsHeadline(0)).toBeNull();
   });
 });

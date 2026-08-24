@@ -6346,7 +6346,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           }
           if (selectedCourtIds.size === 0) m.push("At least one court");
         }
-        if (!matchDuration) m.push("Match duration");
+          // Duration only matters when the organiser lays out slots; players
+          // arranging their own games agree their own times.
+          if (!matchDuration) m.push("Match duration");
+        }
         if (!awaitingPlayerPairs && schedulePreview && schedulePreview.totalSlots < schedulePreview.totalMatches) {
           m.push("Schedule has fewer slots than matches — add more days, courts, or hours");
         }

@@ -56,7 +56,7 @@ import {
   type DivisionSource,
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
-import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
+import { applyDivisionOrder, isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
 import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter, reorderVisual } from "@/lib/tournaments/pools";
 import {
   collectProtectedSchedules,

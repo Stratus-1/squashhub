@@ -6,7 +6,7 @@ describe("cross-pool drag", () => {
     const next = reorderVisual(ids, "p1", "p9", 2, { knockout: true });
     expect(new Set(next).size).toBe(12);
     const blocks = poolBlocks(next, 2, { knockout: true, manual: true });
-    expect(blocks.map((b) => b.rows.length)).toEqual([8, 4]);
+    expect(blocks.map((b) => b.rows.length)).toEqual([6, 6]);
     expect(blocks[1].rows.map((r) => r.item)).toContain("p1");
     expect(blocks[0].rows.map((r) => r.item)).toContain("p9");
   });

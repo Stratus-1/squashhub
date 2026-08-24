@@ -16,6 +16,9 @@
  */
 import type { KnockoutMatchLike } from "./knockout";
 import { winnerOf } from "./knockout";
+import { isResolved, labelForActive, typeForActive } from "./active-draw";
+
+export { isResolved };
 
 export type RoundType = "knockout" | "semi_final" | "final" | "third_place";
 
@@ -34,14 +37,6 @@ export type ChampRound = {
   status?: "pending" | "active" | "complete" | null;
 };
 
-const DONE = new Set(["completed", "complete", "walkover", "forfeit"]);
-
-/** Has this match produced a decision we can progress from? */
-export function isResolved(m: KnockoutMatchLike): boolean {
-  if (m.is_bye) return true;
-  if (!DONE.has(String(m.status || "").toLowerCase())) return false;
-  return !!winnerOf(m);
-}
 
 /** Human name for a round with `playersInRound` competitors starting it. */
 export function labelForPlayers(playersInRound: number): string {

@@ -85,6 +85,11 @@ export function TournamentProgressCard({
   const keyOf = (s: { groupNumber: number; section: number }) => `${s.groupNumber}-${s.section}`;
   const drawState = draw ? states.find((s) => keyOf(s) === draw.key) ?? null : null;
   const setupState = setupKey ? states.find((s) => keyOf(s) === setupKey) ?? null : null;
+  // Every draw across the whole tournament that is ready to be prepared — shown
+  // as one shared queue so an individual pool's button can't be overlooked.
+  const readyScopes = useMemo(() => readyNextRoundScopes(states), [states]);
+  const queuePosition = (key: string) => readyScopes.findIndex((s) => s.key === key);
+
 
 
   const divisions = useMemo(

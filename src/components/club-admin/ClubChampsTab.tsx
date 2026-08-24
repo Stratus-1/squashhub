@@ -57,7 +57,7 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
-import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter } from "@/lib/tournaments/pools";
+import { distributeIntoPools, flattenPools, poolBlocks, poolCounts, poolLetter, reorderVisual } from "@/lib/tournaments/pools";
 import {
   collectProtectedSchedules,
   orphanedScheduleMessage,

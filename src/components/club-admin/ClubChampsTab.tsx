@@ -34,6 +34,7 @@ import { buildLeagueFirstRound, suggestSectionCount } from "@/lib/tournaments/kn
 import { ConfirmDrawDialog } from "@/components/tournaments/ConfirmDrawDialog";
 import {
   drawToMatchRows,
+  reconcileBoardWithEntrants,
   suggestDrawBoard,
   type DrawBoard as DrawBoardModel,
   type DrawEntrant,
@@ -3368,24 +3369,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         section: si + 1,
         seeds: sIds.map((id, i) => ({ memberId: id, seed: i + 1 })),
       }));
-      // A confirmed manual draw wins over the automatic bracket — but only
-      // while it still covers exactly this league's entrants.
+      // A confirmed manual draw is authoritative: it is only set aside when a
+      // NEW entrant has no slot on it. Withdrawn players are lifted off the
+      // board so the organiser's pairings survive untouched.
       const manual = manualDraws[String(gn)];
-      const manualIds = manual
-        ? manual.matches.flatMap((m) => [m.a, m.b]).filter(Boolean) as string[]
-        : [];
-      const manualUsable =
-        !!manual &&
-        manualIds.length === uniqueIds.length &&
-        manualIds.every((id) => uniqueIds.includes(id));
+      const reconciled = manual ? reconcileBoardWithEntrants(manual, uniqueIds) : null;
+      const manualUsable = !!reconciled?.usable;
       const rows = manualUsable
         ? drawToMatchRows({
             champId: "preview",
-            board: manual!,
+            board: reconciled!.board,
             entrants: uniqueIds.map((id, i) => ({ id, name: id, seed: i + 1 })),
-            multiSection: sectionIds.length > 1,
+            multiSection:
+              new Set(reconciled!.board.matches.map((m) => m.section)).size > 1 || sectionIds.length > 1,
           })
         : buildLeagueFirstRound({ champId: "preview", groupNumber: gn, assignments });
+
 
       for (const r of rows) {
         allMatches.push({
@@ -9749,9 +9748,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 >
                                   <Shuffle className="w-3 h-3 mr-1" /> Review &amp; edit draw
                                 </Button>
-                                {manualDraws[String(gi + 1)] && (
-                                  <Badge variant="outline" className="text-[10px]">Manual draw set</Badge>
-                                )}
+                                {manualDraws[String(gi + 1)] && (() => {
+                                  const rec = reconcileBoardWithEntrants(
+                                    manualDraws[String(gi + 1)],
+                                    Array.from(new Set(g.map((p: any) => p.id).filter(Boolean))),
+                                  );
+                                  return rec.usable ? (
+                                    <Badge variant="outline" className="text-[10px]">Manual draw locked in</Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="text-[10px]">
+                                      {rec.missing.length} new entrant(s) not on your draw — open it to place them
+                                    </Badge>
+                                  );
+                                })()}
                               </>
                             )}
 

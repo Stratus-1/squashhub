@@ -102,6 +102,41 @@ export function readyNextRoundScopes(states: SectionProgression[]): NextRoundSco
     .sort((a, b) => a.groupNumber - b.groupNumber || a.section - b.section);
 }
 
+/* ------------------------------------------------------------------ *
+ * Guided queue: prepare every ready draw, one after the other
+ * ------------------------------------------------------------------ */
+
+/**
+ * The ready draws that still have no confirmed round, in order.
+ *
+ * `preparedKeys` are the scopes confirmed during this session — the live match
+ * rows can lag a refetch by a moment, so the queue never re-offers a draw the
+ * organiser has just confirmed.
+ */
+export function remainingNextRoundScopes(
+  scopes: NextRoundScope[],
+  preparedKeys: Iterable<string> = [],
+): NextRoundScope[] {
+  const done = new Set(preparedKeys);
+  return scopes.filter((scope) => !done.has(scope.key));
+}
+
+/** The draw the organiser should be taken to next, or null when the queue is empty. */
+export function nextOutstandingScope(
+  scopes: NextRoundScope[],
+  preparedKeys: Iterable<string> = [],
+): NextRoundScope | null {
+  return remainingNextRoundScopes(scopes, preparedKeys)[0] ?? null;
+}
+
+/** Plain-English state of the queue, e.g. "3 draws still need preparation". */
+export function outstandingDrawsHeadline(remaining: number): string | null {
+  if (remaining <= 0) return null;
+  if (remaining === 1) return "1 draw still needs preparation.";
+  return `${remaining} draws still need preparation.`;
+}
+
+
 /** Default play-by suggestion: `days` from today, as yyyy-mm-dd. */
 export function defaultPlayBy(from: Date = new Date(), days = 7): string {
   const d = new Date(from.getTime());

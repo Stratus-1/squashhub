@@ -129,6 +129,7 @@ import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentG
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
 import { getTournamentFormat } from "@/lib/tournament-formats";
+import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck";
 import {

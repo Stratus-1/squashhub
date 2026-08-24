@@ -5885,20 +5885,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             extras.set(e.club_member_id, set);
           }
         });
-        // The player's own acceptance wins: every division they ticked is kept.
+        // A saved allocation is the organiser's decision and wins. Sign-up
+        // choices are only used for entrants who have no entry row yet —
+        // otherwise removing/moving someone would be undone on every load.
         choicesByMember.forEach((chosen, id) => {
-          const primary = assignments.get(id);
-          if (primary === undefined) {
-            assignments.set(id, chosen[0]);
-            if (chosen.length > 1) extras.set(id, new Set(chosen.slice(1)));
-            return;
-          }
-          const set = extras.get(id) || new Set<number>();
-          chosen.forEach((gi) => {
-            if (gi !== primary) set.add(gi);
-          });
-          if (set.size > 0) extras.set(id, set);
+          if (assignments.has(id)) return;
+          assignments.set(id, chosen[0]);
+          if (chosen.length > 1) extras.set(id, new Set(chosen.slice(1)));
         });
+
         setGroupAssignments(assignments);
         setExtraDivisions(extras);
       }

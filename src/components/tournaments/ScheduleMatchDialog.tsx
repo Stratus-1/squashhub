@@ -14,6 +14,8 @@ import {
   freeSlotsForCourt,
   type SelfScheduleMatchLike,
 } from "@/lib/tournaments/self-schedule";
+import { fixtureScheduleState } from "@/lib/tournaments/fixture-scheduling";
+
 
 interface Props {
   open: boolean;

@@ -478,7 +478,7 @@ export function poolSelectorLabel(format: string | null | undefined): string {
 }
 
 /** Choices for the single pool selector, always including the current value. */
-export function poolOptions(current: number, base: number[] = [1, 2, 4, 8]): number[] {
+export function poolOptions(current: number, base: number[] = [1, 2, 3, 4, 5, 6, 8]): number[] {
   const n = Math.max(1, Math.floor(current) || 1);
   const set = new Set<number>([...base, n]);
   return Array.from(set).sort((a, b) => a - b);

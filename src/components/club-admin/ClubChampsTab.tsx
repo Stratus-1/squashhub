@@ -57,7 +57,7 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { applyDivisionOrder, isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
-import { distributeIntoPools, flattenPools, moveVisual, poolBlocks, poolCounts, poolLetter } from "@/lib/tournaments/pools";
+import { distributeIntoPools, flattenPools, moveVisual, normalisePoolAllocation, poolBlocks, poolCounts, poolLetter, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import {
   collectProtectedSchedules,
   orphanedScheduleMessage,
@@ -2106,6 +2106,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       scoring_mode: scoringMode,
       swiss_pools: swissPools,
       pool_sizes: poolSizeOverrides,
+      pool_allocation: poolAllocation,
       swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
       expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
       league_formats: usePerLeagueFormats ? leagueFormats : null,
@@ -2573,7 +2574,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }, 600);
     return () => clearTimeout(t);
   }, [
-    showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs, championScope,
+    showWizard, clubId, champName, gender, matchType, numGroups, enablePlayoffs, championScope, poolAllocation,
     startDate, endDate, playDays, startTime, endTime, matchDuration, scoringMode, pointsPerGame, bestOf,
     groupDurations, courtRotationMinutes, avoidBackToBack, roundFormat, byeHandling, sourceLeagueIds, registrationMode,
     partnerMode, registrationOpensAt, registrationClosesAt, entryFeeRand,
@@ -3205,7 +3206,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // division keeps its contiguous blocks.
     const splitIntoPools = (ids: string[], pools: number, manual = false, knockout = false): string[][] => {
       if (pools <= 1) return [ids];
-      return distributeIntoPools(ids, pools, { manual, knockout }).filter((g) => g.length > 0);
+      return distributeIntoPools(ids, pools, { manual, knockout, mode: poolAllocation }).filter((g) => g.length > 0);
     };
     const ingestRounds = (gi: number, ids: string[]) => {
       // Round robin inside each pool of the league (1 pool = classic RR).
@@ -3282,7 +3283,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const buildSwissLeague = (gi: number, ids: string[]) => {
       const pools = poolsForLeague(gi + 1);
       const rounds = Math.max(1, Number(swissRounds[String(gi + 1)]) || 1);
-      const poolGroups = distributeIntoPools(ids, pools, { manual: manualSeedGroups.has(gi) });
+      const poolGroups = distributeIntoPools(ids, pools, { manual: manualSeedGroups.has(gi), mode: poolAllocation });
       for (let p = 0; p < pools; p++) {
         const poolIds = poolGroups[p] || [];
         if (poolIds.length < 2) continue;
@@ -3319,6 +3320,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const sectionIds = distributeIntoPools(uniqueIds, sections, {
         manual: manualSeedGroups.has(gi),
         knockout: true,
+        mode: poolAllocation,
       }).filter((s) => s.length > 0);
       const assignments = sectionIds.map((sIds, si) => ({
         section: si + 1,
@@ -4103,7 +4105,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the
@@ -4195,6 +4197,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             scoring_mode: scoringMode,
             swiss_pools: swissPools,
             pool_sizes: poolSizeOverrides,
+            pool_allocation: poolAllocation,
+      pool_allocation: poolAllocation,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats ? leagueFormats : null,
@@ -4272,6 +4276,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             scoring_mode: scoringMode,
             swiss_pools: swissPools,
             pool_sizes: poolSizeOverrides,
+            pool_allocation: poolAllocation,
+      pool_allocation: poolAllocation,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
             expected_players: Object.keys(expectedPlayers).length > 0 ? expectedPlayers : null,
             league_formats: usePerLeagueFormats ? leagueFormats : null,
@@ -5638,6 +5644,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPlayDays(new Set());
     setSchedulingMode("club");
     setChampionScope(DEFAULT_CHAMPION_SCOPE);
+    setPoolAllocation("snake");
     setRoundDeadlines([]);
 
     setStartTime("18:00");
@@ -5756,6 +5763,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setScheduleMode(((champ as any).schedule_mode as "spread" | "fill") || "spread");
     setSchedulingMode(((champ as any).scheduling_mode as any) === "self" ? "self" : "club");
     setChampionScope(((champ as any).champion_scope as any) === "pool" ? "pool" : "division");
+    setPoolAllocation(normalisePoolAllocation((champ as any).pool_allocation));
     setRoundDeadlines(parseRoundDeadlines((champ as any).round_play_by));
 
     setPlayoffBreakMinutes(Number((champ as any).playoff_break_minutes) || 0);

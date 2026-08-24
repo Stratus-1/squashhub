@@ -9254,9 +9254,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         <Card>
           <CardHeader>
             <CardTitle>Allocate players</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Move {entityCount} {isDoubles ? "pairs" : "players"} between the leagues you defined in Structure.
-            </p>
+            {(() => {
+              const counts = countAllocatedEntries(
+                (groups as ClubMember[][]).map((g) => g.map((p) => p.id)),
+                isDoubles ? [] : unassignedEntrantIds,
+              );
+              return (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Move {entityCount} {isDoubles ? "pairs" : "players"} between the leagues you defined in Structure.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong className="text-foreground">{counts.uniquePlayers}</strong> unique{" "}
+                    {isDoubles ? (counts.uniquePlayers === 1 ? "pair" : "pairs") : counts.uniquePlayers === 1 ? "player" : "players"} entered ·{" "}
+                    <strong className="text-foreground">{counts.totalEntries}</strong>{" "}
+                    {counts.totalEntries === 1 ? "entry" : "entries"} in total across all leagues
+                  </p>
+                </>
+              );
+            })()}
+
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Read-only echo of the structure decision — Structure is the single

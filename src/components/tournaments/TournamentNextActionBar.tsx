@@ -174,9 +174,11 @@ export function TournamentNextActionBar({
             </Badge>
           </div>
           <p className="text-xs text-foreground">{na.headline}</p>
+          {queueNote && <p className="text-[11px] font-medium text-foreground">{queueNote}</p>}
           {na.disabled && na.blockedReason && (
             <p className="text-[11px] text-muted-foreground">Outstanding: {na.blockedReason}</p>
           )}
+
         </div>
 
         {canManage && na.ctaLabel && (

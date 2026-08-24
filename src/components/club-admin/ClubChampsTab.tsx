@@ -129,6 +129,7 @@ import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentG
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
 import { getTournamentFormat } from "@/lib/tournament-formats";
+import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
 import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck";
 import {
@@ -10417,7 +10418,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   const groupMatches = schedulePreview.allMatches.filter((m) => m.groupNum === gi + 1);
                   return (
                     <div key={gi}>
-                      <h4 className="font-medium mb-2">League {gi + 1}</h4>
+                      <h4 className="font-medium mb-2">{getGroupLabel({ group_labels: groupLabels }, gi + 1)}</h4>
                       <div className="text-xs space-y-1">
                         {groupMatches.map((m, mi) => {
                           const bye = isByeEntity(m.entityA) || isByeEntity(m.entityB);

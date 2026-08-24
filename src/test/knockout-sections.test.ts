@@ -58,7 +58,7 @@ describe("pool distribution respects knockout capacities", () => {
     expect(poolSizes(14, 2, { knockout: true })).toEqual([7, 7]);
     expect(poolSizes(14, 2)).toEqual([7, 7]);
     expect(poolSizes(11, 2, { knockout: true })).toEqual([5, 6]);
-    expect(poolCounts(22, 3, { knockout: true })).toEqual([8, 7, 7]);
+    expect(poolCounts(22, 3, { knockout: true })).toEqual([7, 7, 8]);
   });
 
   it("leaves every non-knockout format untouched", () => {

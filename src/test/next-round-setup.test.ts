@@ -185,3 +185,29 @@ describe("guided draw queue", () => {
     expect(outstandingDrawsHeadline(0)).toBeNull();
   });
 });
+
+describe("allDrawsFitOnePage", () => {
+  const scope = (qualifiers: number) => ({ qualifiers, matchups: Math.ceil(qualifiers / 2) });
+
+  it("fits a small set of ready draws on one page", () => {
+    const fit = allDrawsFitOnePage([scope(4), scope(4), scope(6)]);
+    expect(fit.fits).toBe(true);
+    expect(fit.totalMatchups).toBe(7);
+    expect(fit.reason).toBeNull();
+  });
+
+  it("falls back to step by step when there are too many matchups", () => {
+    const fit = allDrawsFitOnePage([scope(20), scope(20)]);
+    expect(fit.fits).toBe(false);
+    expect(fit.reason).toMatch(/too many/);
+  });
+
+  it("falls back to step by step when there are too many separate draws", () => {
+    const fit = allDrawsFitOnePage(Array.from({ length: 8 }, () => scope(2)));
+    expect(fit.fits).toBe(false);
+  });
+
+  it("never fits an empty queue", () => {
+    expect(allDrawsFitOnePage([]).fits).toBe(false);
+  });
+});

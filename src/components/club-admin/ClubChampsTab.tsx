@@ -2871,10 +2871,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const groupIds = (groups as DoublePair[][])[groupIndex].map((p) => p.id);
     // Same pool-block visual order as singles — see handlePlayerDragEnd.
     const visualIds = flattenPools(groupIds, poolsForDivision(groupIndex + 1), poolOptsFor(groupIndex));
-    const oldIdx = visualIds.indexOf(String(active.id));
-    const newIdx = visualIds.indexOf(String(over.id));
-    if (oldIdx < 0 || newIdx < 0) return;
-    const reorderedGroupIds = arrayMove(visualIds, oldIdx, newIdx);
+    const reorderedGroupIds = reorderVisual(
+      visualIds,
+      String(active.id),
+      String(over.id),
+      poolsForDivision(groupIndex + 1),
+      poolOptsFor(groupIndex),
+    );
+    if (reorderedGroupIds === visualIds) return;
+
     const current = pairOrder.length > 0 ? pairOrder : doublesPairs.map((p) => p.id);
     const groupSet = new Set(groupIds);
     const next: string[] = [];

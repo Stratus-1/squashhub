@@ -929,6 +929,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const poolOptsFor = (gi: number) => ({
     manual: manualSeedGroups.has(gi),
     knockout: isKnockoutDivision(gi + 1),
+    mode: poolAllocation,
     sizes: poolSizeOverrides[String(gi + 1)],
   });
 

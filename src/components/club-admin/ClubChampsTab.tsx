@@ -907,7 +907,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const poolOptsFor = (gi: number) => ({
     manual: manualSeedGroups.has(gi),
     knockout: isKnockoutDivision(gi + 1),
+    sizes: poolSizeOverrides[String(gi + 1)],
   });
+
   /** The only writer of the pool count. */
   const setPoolsForDivision = (gn: number, next: number) => {
     const key = String(gn);

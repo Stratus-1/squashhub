@@ -130,3 +130,66 @@ describe("scorecard rows follow the authoritative format", () => {
     expect(startingPositions(cfg)).toBe(4);
   });
 });
+
+describe("acceptance: 5 doubles rubbers survive the full team lifecycle", () => {
+  // One authoritative record per League + Season. Teams are mirrors only.
+  let league = { doubles_rubbers: 5, singles_rubbers: 0, team_size: 10, pairing_policy: "fixed" } as any;
+  let teams: any[] = [];
+
+  const reopenWizard = () =>
+    resolveAuthoritativeComposition({ associationRules: league, teamRules: teams });
+
+  const saveWizard = (draft: { singlesRubbers: number; doublesRubbers: number }, dirty: boolean) => {
+    const out = compositionToPersist({ stored: reopenWizard(), draft, loaded: true, dirty });
+    if (out.write) {
+      league = { ...league, singles_rubbers: out.singlesRubbers, doubles_rubbers: out.doublesRubbers };
+    }
+    teams = teams.map((t) => ({ ...t, doubles_rubbers: league.doubles_rubbers }));
+    return out;
+  };
+
+  const rows = () =>
+    rubberSlots(resolveFormat(DOUBLES_LEAGUE, authoritativeRules(league, teams) as any));
+
+  it("stays 5 through create / reopen / save / add / remove", () => {
+    // create 4 teams
+    teams = Array.from({ length: 4 }, () => ({ doubles_rubbers: 5, team_size: 10 }));
+    expect(reopenWizard().doublesRubbers).toBe(5);
+
+    // close + reopen wizard, save without touching composition (UI default is 3)
+    saveWizard({ singlesRubbers: 0, doublesRubbers: 3 }, false);
+    expect(reopenWizard().doublesRubbers).toBe(5);
+    expect(rows()).toHaveLength(5);
+
+    // add a 5th team
+    teams = [...teams, { doubles_rubbers: 5, team_size: 10 }];
+    saveWizard({ singlesRubbers: 0, doublesRubbers: 4 }, false);
+    expect(reopenWizard().doublesRubbers).toBe(5);
+
+    // remove a team
+    teams = teams.slice(0, 3);
+    saveWizard({ singlesRubbers: 0, doublesRubbers: 3 }, false);
+    expect(reopenWizard().doublesRubbers).toBe(5);
+
+    // fixture / scorecard generation
+    expect(rows().filter((s) => s.type === "doubles")).toHaveLength(5);
+    expect(startingPositions(resolveFormat(DOUBLES_LEAGUE, authoritativeRules(league, teams) as any))).toBe(10);
+  });
+
+  it("pool size and roster size never rewrite the rubber count", () => {
+    const stored = resolveAuthoritativeComposition({
+      associationRules: { doubles_rubbers: 5, team_size: 10 },
+      teamRules: [{ doubles_rubbers: 5, team_size: 14 }], // roster incl. reserves
+    });
+    expect(stored.doublesRubbers).toBe(5);
+    // an eligible pool of 40 players changes nothing
+    const out = compositionToPersist({
+      stored,
+      draft: { singlesRubbers: 0, doublesRubbers: 40 },
+      loaded: true,
+      dirty: false,
+    });
+    expect(out.write).toBe(false);
+    expect(out.doublesRubbers).toBe(5);
+  });
+});

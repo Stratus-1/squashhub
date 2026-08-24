@@ -3138,7 +3138,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     for (const s of sessions) {
       const span = s.endMin - s.startMin;
       const pieces: Array<{ startMin: number; endMin: number; label: string }> = [];
-      if (span > MAX_SESSION_MIN) {
+      if (span > MAX_SESSION_MIN && Number.isFinite(matchDuration) && matchDuration > 0) {
         // Split into AM/PM at the midpoint, aligned to matchDuration.
         const rawMid = s.startMin + Math.floor(span / 2);
         const midSteps = Math.max(1, Math.floor((rawMid - s.startMin) / matchDuration));

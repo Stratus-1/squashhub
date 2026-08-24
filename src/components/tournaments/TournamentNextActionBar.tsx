@@ -10,7 +10,7 @@
  * round-generation hook every other surface uses, so clicking twice can never
  * create a duplicate round.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,15 @@ import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { sectionProgression } from "@/lib/tournaments/knockout-progression";
 import { tournamentNextAction, type ChampionScope } from "@/lib/tournaments/round-control";
+import { ConfirmDrawDialog } from "./ConfirmDrawDialog";
+import {
+  sectionLabelOf,
+  suggestNextRoundBoard,
+  winnersAsEntrants,
+  type DrawBoard as DrawBoardModel,
+  type DrawEntrant,
+} from "@/lib/tournaments/draw-board";
+
 
 interface Props {
   champId: string;

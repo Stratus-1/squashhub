@@ -103,7 +103,7 @@ export default function ClubChampsView() {
     queryKey: ["club-champ-entries", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_entries")
-        .select("*, club_members:club_member_id(id, name, user_id, ladder_position, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, profiles:user_id(name))")
+        .select("*, club_members:club_member_id(id, name, user_id, ladder_position, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, ladder_position, profiles:user_id(name))")
         .eq("champ_id", champId!);
       if (error) throw error;
       return data || [];
@@ -376,6 +376,10 @@ export default function ClubChampsView() {
 
     const rows = groupEntries.map((e: any) => {
       const stats = computeFor(e.club_member_id);
+      // Club ladder position is the single source of truth for club rank.
+      // For doubles, a pair takes the stronger (lowest) of its two ladder spots.
+      const ladders = [e.club_members?.ladder_position, isDoubles ? e.partner?.ladder_position : null]
+        .filter((n: any) => typeof n === "number" && n > 0) as number[];
       return {
         ...e,
         ...buildRow(stats),
@@ -383,6 +387,7 @@ export default function ClubChampsView() {
           ? getTeamName(e.club_members, e.partner)
           : getPlayerName(e.club_members),
         leaguePlayerRank: playerRankByMember.get(e.club_member_id) ?? null,
+        clubLadderRank: ladders.length ? Math.min(...ladders) : null,
       };
     });
 
@@ -437,13 +442,17 @@ export default function ClubChampsView() {
 
     // Strategy-driven ranking. When stats are equal (e.g. before any games are
     // played), fall back to the player's actual league rank so the standings
-    // mirror the league log (e.g. Terence = #1 in 7th League), then entry order.
+    // mirror the league log (e.g. Terence = #1 in 7th League), then the club
+    // ladder position (the club-wide source of truth for rank), then entry order.
     return rows.sort((a: any, b: any) => {
       const primary = tournamentFormat.rankStandings(a, b);
       if (primary !== 0) return primary;
       const ra = a.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;
       const rb = b.leaguePlayerRank ?? Number.MAX_SAFE_INTEGER;
       if (ra !== rb) return ra - rb;
+      const la = a.clubLadderRank ?? Number.MAX_SAFE_INTEGER;
+      const lb = b.clubLadderRank ?? Number.MAX_SAFE_INTEGER;
+      if (la !== lb) return la - lb;
       return (a.order_index ?? 0) - (b.order_index ?? 0);
     });
   };

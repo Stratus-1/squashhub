@@ -189,6 +189,11 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
             {validation.playable} match{validation.playable === 1 ? "" : "es"} · {validation.byes} bye
             {validation.byes === 1 ? "" : "s"}
           </Badge>
+          <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-seed-top" /> Higher seed</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-seed-lower" /> Lower seed</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-seed-out" /> Not in draw</span>
+          </span>
           <div className="ml-auto flex gap-1">
             {onUndo && (
               <Button size="sm" variant="ghost" disabled={!canUndo || readOnly} onClick={onUndo}>

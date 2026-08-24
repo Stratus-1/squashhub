@@ -2294,7 +2294,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         const { error: insertErr } = await fromExt("club_champs_entries").insert(rows);
         if (insertErr) throw insertErr;
         allocatedMemberIds = rows.map((r: any) => r.club_member_id).filter(Boolean);
+        // The organiser's allocation is authoritative for WHICH divisions a
+        // player takes part in. Mirror it onto division_choices, otherwise the
+        // player's original sign-up choices are re-applied on the next load and
+        // the admin's change silently reverts.
+        divisionChoicesToSync = new Map<string, number[]>();
+        for (const r of rows as any[]) {
+          const list = divisionChoicesToSync.get(r.club_member_id) || [];
+          if (!list.includes(r.group_number)) list.push(r.group_number);
+          divisionChoicesToSync.set(r.club_member_id, list);
+        }
+        divisionChoicesToSync.forEach((list) => list.sort((a, b) => a - b));
       }
+
 
       // Auto-register every allocated player. Once admin places a member into a
       // pair / group they are considered confirmed for the tournament — no

@@ -9824,7 +9824,56 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 )}
               </div>
             </DndContext>
+
+            {/* Visual draw / manual seeding for a knockout league. Nothing is
+                written to the database here — the confirmed board is held in
+                the wizard and used when the schedule is built. */}
+            {drawEditor !== null && (() => {
+              const gi = drawEditor;
+              const gn = gi + 1;
+              const raw = ((groups as any[])[gi] || []).map((p: any) => p.id) as string[];
+              const ids = Array.from(
+                new Set((isDoubles ? raw : eligibleIdsForDivision(gn, raw)).filter(Boolean)),
+              );
+              const sections = Math.min(sectionsForLeague(gn), Math.max(1, ids.length));
+              const sectionIds = distributeIntoPools(ids, sections, {
+                manual: manualSeedGroups.has(gi),
+                knockout: true,
+                mode: poolAllocation,
+              }).filter((s) => s.length > 0);
+              const suggested = suggestDrawBoard({
+                groupNumber: gn,
+                assignments: sectionIds.map((sIds, si) => ({
+                  section: si + 1,
+                  seeds: sIds.map((id, i) => ({ memberId: id, seed: i + 1 })),
+                })),
+              });
+              const entrants: DrawEntrant[] = ids.map((id, i) => ({
+                id,
+                name: getEntityLabel(id),
+                seed: i + 1,
+              }));
+              return (
+                <ConfirmDrawDialog
+                  open
+                  onOpenChange={(o) => !o && setDrawEditor(null)}
+                  champId={editingChampId || "draft"}
+                  suggested={manualDraws[String(gn)] ?? suggested}
+                  entrants={entrants}
+                  multiSection={sectionIds.length > 1}
+                  divisionLabel={groupLabels[String(gn)]?.trim() || `League ${gn}`}
+                  title={`${groupLabels[String(gn)]?.trim() || `League ${gn}`} — first round draw`}
+                  description="The engine has seeded the bracket. Drag players between slots to set the pairings you want, or empty a slot to give a bye. Fixtures are created when you save the tournament."
+                  onConfirm={(board) => {
+                    setManualDraws((prev) => ({ ...prev, [String(gn)]: board }));
+                    setDrawEditor(null);
+                    toast.success("Draw saved — it will be used when the schedule is built");
+                  }}
+                />
+              );
+            })()}
           </CardContent>
+
         </Card>
       )}
 

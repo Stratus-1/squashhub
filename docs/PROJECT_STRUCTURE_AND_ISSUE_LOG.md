@@ -1181,3 +1181,10 @@ Tests: `src/test/booking-label.test.ts`.
 - **Finding:** The picker silently filtered teams against an association-level season value that is not authoritative for a team. A newly created Doubles League with no teams also opened the same blank-looking controls, with no route back to team setup.
 - **Fix:** The picker now loads every active team owned by the selected club and league, uses each team's own `season_id`, prioritises current-season teams without hiding others, and provides a direct **Create teams** action when none exist. Team and member request failures now render explicitly.
 - **Guard:** A stale team selection from a previously opened league is ignored, player selections reset when teams change, and both registration and member-query errors are checked.
+
+## 2026-08-24 — Tournament champion scope schema-cache save failure
+
+- **Symptom:** Opening or saving **Edit tournament** failed with `Could not find the 'champion_scope' column of 'club_champs' in the schema cache`.
+- **Finding:** `champion_scope` existed on the authoritative `tournaments` table, but the editable compatibility view `club_champs` did not project it. Its insert/update compatibility triggers also did not forward the field.
+- **Fix:** the view now exposes `tournaments.champion_scope`; compatibility inserts default it safely to `division`, and edits persist the selected `division` or `pool` value to the authoritative tournament row.
+- **Guard:** existing tournament rows retain the non-null `division` default, the view remains `security_invoker`, and no historical draw or match data is rewritten.

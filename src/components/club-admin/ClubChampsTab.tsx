@@ -2076,8 +2076,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       source_league_ids: Array.from(sourceLeagueIds),
       registration_mode: effectiveRegistrationMode,
       partner_mode: isDoubles ? (partnerMode || "admin") : "admin",
-      registration_opens_at: registrationRequired && registrationOpensAt ? new Date(registrationOpensAt).toISOString() : null,
-      registration_closes_at: registrationRequired && registrationClosesAt ? new Date(registrationClosesAt).toISOString() : null,
+      registration_opens_at: registrationRequired ? fromLocalInputValue(registrationOpensAt) : null,
+      registration_closes_at: registrationRequired ? fromLocalInputValue(registrationClosesAt) : null,
       entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
       payment_methods: Array.from(paymentMethods),
       payment_required: paymentRequired,
@@ -4155,8 +4155,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             source_league_ids: Array.from(sourceLeagueIds),
             registration_mode: effectiveRegistrationMode,
             partner_mode: isDoubles ? (partnerMode || "admin") : "admin",
-            registration_opens_at: registrationRequired && registrationOpensAt ? new Date(registrationOpensAt).toISOString() : null,
-            registration_closes_at: registrationRequired && registrationClosesAt ? new Date(registrationClosesAt).toISOString() : null,
+            registration_opens_at: registrationRequired ? fromLocalInputValue(registrationOpensAt) : null,
+            registration_closes_at: registrationRequired ? fromLocalInputValue(registrationClosesAt) : null,
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
@@ -4230,8 +4230,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             source_league_ids: Array.from(sourceLeagueIds),
             registration_mode: effectiveRegistrationMode,
             partner_mode: isDoubles ? (partnerMode || "admin") : "admin",
-            registration_opens_at: registrationRequired && registrationOpensAt ? new Date(registrationOpensAt).toISOString() : null,
-            registration_closes_at: registrationRequired && registrationClosesAt ? new Date(registrationClosesAt).toISOString() : null,
+            registration_opens_at: registrationRequired ? fromLocalInputValue(registrationOpensAt) : null,
+            registration_closes_at: registrationRequired ? fromLocalInputValue(registrationClosesAt) : null,
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
@@ -5708,8 +5708,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setSourceLeagueIds(new Set(initialLeagueIds));
     setRegistrationMode((champ.registration_mode as any) || "");
     setPartnerMode((champ.partner_mode as any) || "");
-    setRegistrationOpensAt(champ.registration_opens_at ? new Date(champ.registration_opens_at).toISOString().slice(0,16) : "");
-    setRegistrationClosesAt(champ.registration_closes_at ? new Date(champ.registration_closes_at).toISOString().slice(0,16) : "");
+    setRegistrationOpensAt(toLocalInputValue(champ.registration_opens_at));
+    setRegistrationClosesAt(toLocalInputValue(champ.registration_closes_at));
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft"|"cash")[])));
     setPaymentRequired((champ as any).payment_required !== false);

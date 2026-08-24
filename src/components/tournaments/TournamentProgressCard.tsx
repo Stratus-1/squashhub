@@ -18,7 +18,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { sectionProgression } from "@/lib/tournaments/knockout-progression";
-import { divisionControls, groupStageControl, type SectionControl } from "@/lib/tournaments/round-control";
+import { divisionControls, groupStageControl, type ChampionScope, type SectionControl } from "@/lib/tournaments/round-control";
 import { sectionLetter } from "@/lib/tournaments/knockout";
 
 interface Props {
@@ -26,6 +26,8 @@ interface Props {
   canManage: boolean;
   /** Players arrange their own court/date/time. */
   selfScheduled?: boolean;
+  /** Where the ultimate winner is decided (per league or per pool). */
+  championScope?: ChampionScope;
   /** Division label resolver. */
   groupLabel?: (gn: number) => string;
   /** Limit the card to one division (used at the top of that division's standings). */
@@ -43,6 +45,7 @@ export function TournamentProgressCard({
   champId,
   canManage,
   selfScheduled = false,
+  championScope,
   groupLabel,
   onlyGroup,
   onSchedule,
@@ -72,8 +75,8 @@ export function TournamentProgressCard({
   const generate = useGenerateNextRound({ champId, states, selfScheduled });
 
   const divisions = useMemo(
-    () => divisionControls(koMatches, rounds as any, { selfScheduled }),
-    [koMatches, rounds, selfScheduled],
+    () => divisionControls(koMatches, rounds as any, { selfScheduled, championScope }),
+    [koMatches, rounds, selfScheduled, championScope],
   );
 
   const shown = onlyGroup !== undefined ? divisions.filter((d) => d.groupNumber === Number(onlyGroup)) : divisions;

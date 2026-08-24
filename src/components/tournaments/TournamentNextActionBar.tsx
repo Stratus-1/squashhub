@@ -21,7 +21,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { sectionProgression } from "@/lib/tournaments/knockout-progression";
-import { tournamentNextAction } from "@/lib/tournaments/round-control";
+import { tournamentNextAction, type ChampionScope } from "@/lib/tournaments/round-control";
 
 interface Props {
   champId: string;
@@ -29,6 +29,8 @@ interface Props {
   /** Tournament status — a closed tournament never shows progression. */
   status?: string | null;
   selfScheduled?: boolean;
+  /** Where the ultimate winner is decided (per league or per pool). */
+  championScope?: ChampionScope;
   /** "card" deep-links to the tournament page, "detail" acts in place. */
   mode?: "card" | "detail";
   /** Open the setup wizard (initial draw / rebuild). */
@@ -43,6 +45,7 @@ export function TournamentNextActionBar({
   canManage,
   status,
   selfScheduled = false,
+  championScope,
   mode = "card",
   onSetup,
   onFocusFixtures,
@@ -69,8 +72,8 @@ export function TournamentNextActionBar({
   const generate = useGenerateNextRound({ champId, states, selfScheduled });
 
   const na = useMemo(
-    () => tournamentNextAction(matches as any[], rounds as any, { selfScheduled, status }),
-    [matches, rounds, selfScheduled, status],
+    () => tournamentNextAction(matches as any[], rounds as any, { selfScheduled, status, championScope }),
+    [matches, rounds, selfScheduled, status, championScope],
   );
 
   const Icon =

@@ -219,6 +219,45 @@ export function removeMatchup(board: DrawBoard, section: number, position: numbe
   return next;
 }
 
+export interface BoardReconciliation {
+  /** The board to use, with withdrawn entrants removed from their slots. */
+  board: DrawBoard;
+  /** Entrants that were on the board but are no longer in the division. */
+  dropped: string[];
+  /** Current entrants the board does not place anywhere. */
+  missing: string[];
+  /** Safe to use as-is: every current entrant is placed exactly once. */
+  usable: boolean;
+}
+
+/**
+ * Keep a confirmed manual draw authoritative. Entrants that withdrew are lifted
+ * off the board instead of throwing the whole draw away; only genuinely new
+ * (unplaced) entrants make the board unusable, and the caller is told why.
+ */
+export function reconcileBoardWithEntrants(board: DrawBoard, entrantIds: string[]): BoardReconciliation {
+  const current = new Set(entrantIds.filter(Boolean));
+  const next = cloneBoard(board);
+  const dropped: string[] = [];
+  const seen = new Set<string>();
+  for (const m of next.matches) {
+    for (const side of ["a", "b"] as const) {
+      const id = m[side];
+      if (!id) continue;
+      if (!current.has(id) || seen.has(id)) {
+        if (!current.has(id)) dropped.push(id);
+        m[side] = null;
+        continue;
+      }
+      seen.add(id);
+    }
+  }
+  const missing = [...current].filter((id) => !seen.has(id));
+  return { board: next, dropped, missing, usable: missing.length === 0 };
+}
+
+
+
 
 
 export interface DrawValidation {

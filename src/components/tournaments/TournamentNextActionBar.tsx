@@ -271,13 +271,19 @@ export function TournamentNextActionBar({
           divisionLabel={scopeLabel(reviewState.groupNumber, reviewState.section)}
           setup={setup}
           onConfirmed={() => {
+            const doneKey = `${reviewState.groupNumber}-${reviewState.section}`;
+            const nextPrepared = Array.from(new Set([...preparedKeys, doneKey]));
+            setPreparedKeys(nextPrepared);
             setReviewOpen(false);
             setSetup(null);
             setReviewKey(null);
-            // Guided flow continues at Dates & Courts for these fixtures.
+            // Guided queue: go straight on to the next outstanding draw so no
+            // pool can be overlooked; only then hand over to Dates & Courts.
+            if (nextOutstandingScope(readyScopes, nextPrepared)) return setScopeOpen(true);
             if (mode === "card") goToDetail("fixtures");
             else if (onFocusFixtures) onFocusFixtures();
           }}
+
         />
       )}
     </>

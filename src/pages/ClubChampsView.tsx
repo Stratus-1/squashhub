@@ -262,6 +262,7 @@ export default function ClubChampsView() {
   // null when pools don't apply.
   const resolvePoolNumber = (m: any, groupNum: number): number | null => {
     if (m?.pool_number != null) return m.pool_number as number;
+    if (m?.section_number != null) return m.section_number as number;
     const pc = poolCountFor(groupNum);
     if (pc <= 1) return null;
     const memberIds: string[] = [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id].filter(Boolean);
@@ -1208,7 +1209,9 @@ export default function ClubChampsView() {
                 .map((e) => e.club_member_id as string),
             );
             const poolMatches = (matches as any[]).filter(
-              (m) => m.group_number === groupNumber && (m.pool_number ?? null) === poolNumber,
+              (m) =>
+                m.group_number === groupNumber &&
+                (m.pool_number ?? m.section_number ?? null) === poolNumber,
             );
             const roundsDone = new Set(poolMatches.map((m: any) => m.round_number).filter(Boolean));
             const anyIncomplete = poolMatches.some((m: any) => m.status !== "completed" && !m.is_bye);

@@ -5797,6 +5797,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     ));
     setSwissRounds(((champ as any).swiss_rounds as Record<string, number>) || {});
     setPoolSizeOverrides(((champ as any).pool_sizes as Record<string, number[]>) || {});
+    // A confirmed manual draw and the hand-arranged divisions are part of the
+    // saved tournament — never re-seed them automatically on reopen.
+    setManualDraws(((champ as any).manual_draws as Record<string, DrawBoardModel>) || {});
+    setManualSeedGroups(new Set(((champ as any).manual_seed_divisions as number[]) || []));
+
     setPointsPerGame((Number((champ as any).points_per_game) === 15 ? 15 : Number((champ as any).points_per_game) === 11 ? 11 : 0));
     setBestOf((Number((champ as any).best_of) === 3 ? 3 : Number((champ as any).best_of) === 5 ? 5 : 0));
     setPlayAllGames(!!(champ as any).play_all_games);

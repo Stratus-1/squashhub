@@ -34,6 +34,7 @@ import { buildLeagueFirstRound, suggestSectionCount } from "@/lib/tournaments/kn
 import { ConfirmDrawDialog } from "@/components/tournaments/ConfirmDrawDialog";
 import {
   drawToMatchRows,
+  reconcileBoardWithEntrants,
   suggestDrawBoard,
   type DrawBoard as DrawBoardModel,
   type DrawEntrant,

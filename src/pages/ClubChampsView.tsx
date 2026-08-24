@@ -2000,6 +2000,53 @@ export default function ClubChampsView() {
 
 
         {canManage && !completed && m.scheduled_date && m.scheduled_time && (
+        {(() => {
+          // Court/date/time for THIS fixture — generated next rounds, semis and
+          // finals included. Organisers can always override; players may
+          // arrange their own match.
+          const perm = canScheduleFixture(m, myMemberId, { canManage });
+          if (!perm.allowed) return null;
+          const scheduled = fixtureScheduleState(m) === "scheduled";
+          return (
+            <>
+              <Button
+                type="button"
+                variant={scheduled ? "ghost" : "default"}
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                onClick={() => setScheduleMatch(m)}
+                title={scheduled ? "Move this fixture to another court or time" : "Allocate a court, date and time to this fixture"}
+              >
+                <CalendarClock className="h-3 w-3 mr-1" />
+                {scheduleActionShortLabel(m)}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" title="More actions">
+                    <MoreVertical className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="text-xs">
+                  <DropdownMenuItem onClick={() => setScheduleMatch(m)}>
+                    <CalendarClock className="h-3.5 w-3.5 mr-2" />
+                    {scheduleActionLabel(m)}
+                  </DropdownMenuItem>
+                  {canUnscheduleFixture(m, myMemberId, { canManage }).allowed && (
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => setScheduleMatch(m)}
+                    >
+                      <XCircle className="h-3.5 w-3.5 mr-2" />
+                      Clear court &amp; time
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          );
+        })()}
+
+        {canManage && !completed && m.scheduled_date && m.scheduled_time && (
           <SwapFixtureButton
             match={m}
             allMatches={matches}
@@ -2010,6 +2057,7 @@ export default function ClubChampsView() {
         )}
 
         {canManage && !completed && (
+
           <Button
             type="button"
             variant="ghost"

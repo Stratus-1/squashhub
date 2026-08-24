@@ -320,9 +320,14 @@ export function generateActionLabel(section: SectionProgression): string {
 
 /** Status line: "Semi-final · 2/4 complete · Next: Final". */
 export function progressSummary(section: SectionProgression): string {
+  const contestants = new Set<string>();
+  for (const m of section.currentRoundMatches) {
+    for (const id of [m.player_a_member_id, m.player_b_member_id]) if (id) contestants.add(id);
+  }
   const current =
     section.plan.find((r) => r.round_number === section.currentRound)?.label ||
-    labelForPlayers(Math.max(2, section.currentRoundMatches.length * 2));
+    labelForActive(Math.max(2, contestants.size));
+
   const parts = [`${current} · ${section.completed}/${section.total} complete`];
   if (section.complete) parts.push("Section decided");
   else if (section.nextRound?.label) parts.push(`Next: ${section.nextRound.label}`);

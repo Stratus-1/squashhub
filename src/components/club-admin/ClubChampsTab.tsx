@@ -9748,9 +9748,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 >
                                   <Shuffle className="w-3 h-3 mr-1" /> Review &amp; edit draw
                                 </Button>
-                                {manualDraws[String(gi + 1)] && (
-                                  <Badge variant="outline" className="text-[10px]">Manual draw set</Badge>
-                                )}
+                                {manualDraws[String(gi + 1)] && (() => {
+                                  const rec = reconcileBoardWithEntrants(
+                                    manualDraws[String(gi + 1)],
+                                    Array.from(new Set(g.map((p: any) => p.id).filter(Boolean))),
+                                  );
+                                  return rec.usable ? (
+                                    <Badge variant="outline" className="text-[10px]">Manual draw locked in</Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="text-[10px]">
+                                      {rec.missing.length} new entrant(s) not on your draw — open it to place them
+                                    </Badge>
+                                  );
+                                })()}
                               </>
                             )}
 

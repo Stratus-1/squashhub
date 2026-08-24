@@ -10,14 +10,16 @@ import { DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, use
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, GripVertical, RotateCcw, Undo2, X } from "lucide-react";
+import { AlertTriangle, GripVertical, Plus, RotateCcw, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  addMatchup,
   benchedEntrants,
   clearSlot,
   drawSlots,
   moveEntrant,
   parseSlotKey,
+  removeMatchup,
   sectionLabelOf,
   slotKey,
   validateDrawBoard,

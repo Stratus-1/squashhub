@@ -460,9 +460,15 @@ export default function ClubChampsView() {
 
 
   // Renders a standings <table>. Reused across My-Fixtures and All-Leagues views.
-  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean }) => {
+  const renderStandingsTable = (standings: any[], opts?: { highlightMe?: boolean; poolLabels?: Map<string, string> }) => {
     const maxGames = Math.max(0, ...standings.map((s: any) => s.gamePoints?.length || 0));
     const highlightMe = opts?.highlightMe !== false;
+    const poolLabels = opts?.poolLabels;
+    const poolFor = (s: any): string | null =>
+      poolLabels
+        ? poolLabels.get(s.club_member_id) || (s.partner_member_id ? poolLabels.get(s.partner_member_id) : null) || null
+        : null;
+    const showPool = !!poolLabels && standings.some((s) => !!poolFor(s));
     // Everyone who played is a competitor.
     const competitors = standings;
     const allPlayed = competitors.length > 1 && competitors.every((s: any) => (s.played || 0) > 0);
@@ -474,6 +480,8 @@ export default function ClubChampsView() {
             <tr className="border-b text-left">
               <th className="pb-2 font-medium">#</th>
               <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
+              {showPool && <th className="pb-2 font-medium text-center" title="Pool / section">Pool</th>}
+
               {isBells ? (
                 <>
                   <th className="pb-2 font-medium text-center" title="Games played">GP</th>

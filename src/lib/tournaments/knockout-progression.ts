@@ -152,9 +152,12 @@ export type SectionProgression = {
   /** Section decided (final played out). */
   complete: boolean;
   winner: string | null;
+  /** Entrants still in this section's draw (winners of the current round). */
+  activeCount: number;
   /** Every entrant that ever appeared in this section, with their state. */
   entrants: EntrantState[];
 };
+
 
 function sidesOf(m: KnockoutMatchLike): string[] {
   return [m.player_a_member_id, m.player_b_member_id].filter(Boolean) as string[];

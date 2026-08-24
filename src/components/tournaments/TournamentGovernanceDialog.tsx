@@ -183,7 +183,15 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
       return;
     }
     try {
-      await save.mutateAsync(form);
+      // Entry open/close dates are owned by the tournament setup screen.
+      // Governance only READS them — never write them back, so re-saving
+      // governance can never shift or revert the entry window.
+      const {
+        registration_opens_at: _opensReadOnly,
+        registration_closes_at: _closesReadOnly,
+        ...governancePatch
+      } = form as any;
+      await save.mutateAsync(governancePatch);
       toast.success("Governance settings saved");
     } catch (e: any) {
       toast.error(e.message || "Could not save governance settings");

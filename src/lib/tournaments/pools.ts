@@ -227,3 +227,70 @@ export function reorderVisual(
   next.splice(to, 0, visualIds[from]);
   return next;
 }
+
+/**
+ * Admin free-move: drag an entrant to ANY position, including into another
+ * pool, without a counter-swap.
+ *
+ * Unlike `reorderVisual` (which swaps across pools to keep sizes fixed), this
+ * is a plain insert-and-shift in the visual list and the pool sizes follow the
+ * drop: the source pool loses a slot, the target pool gains one. The caller
+ * persists the returned `sizes` as the division's organiser-owned pool sizes.
+ */
+export function moveVisual(
+  visualIds: string[],
+  activeId: string,
+  overId: string,
+  pools: number,
+  opts?: PoolAssignOptions,
+): { ids: string[]; sizes: number[] } | null {
+  const n = Math.max(1, Math.floor(pools) || 1);
+  const current = poolSizes(visualIds.length, n, opts);
+  const from = visualIds.indexOf(activeId);
+  const to = visualIds.indexOf(overId);
+  if (from < 0 || to < 0 || from === to) return null;
+  const idx = poolIndexes(visualIds.length, n, { ...opts, manual: true });
+  const sourcePool = idx[from];
+  const targetPool = idx[to];
+  const ids = [...visualIds];
+  ids.splice(from, 1);
+  ids.splice(to, 0, visualIds[from]);
+  const sizes = [...current];
+  if (sourcePool !== targetPool) {
+    sizes[sourcePool] = Math.max(0, sizes[sourcePool] - 1);
+    sizes[targetPool] = sizes[targetPool] + 1;
+  }
+  return { ids, sizes };
+}
+
+/**
+ * Move an entrant into a specific pool (used by the "move to pool" action and
+ * by drops onto an empty pool container). The entrant is appended to the end
+ * of the target pool's block.
+ */
+export function moveToPool(
+  visualIds: string[],
+  activeId: string,
+  targetPool: number,
+  pools: number,
+  opts?: PoolAssignOptions,
+): { ids: string[]; sizes: number[] } | null {
+  const n = Math.max(1, Math.floor(pools) || 1);
+  const from = visualIds.indexOf(activeId);
+  if (from < 0 || targetPool < 0 || targetPool >= n) return null;
+  const current = poolSizes(visualIds.length, n, opts);
+  const idx = poolIndexes(visualIds.length, n, { ...opts, manual: true });
+  const sourcePool = idx[from];
+  if (sourcePool === targetPool) return null;
+  // End of the target pool block in the CURRENT layout.
+  let end = 0;
+  for (let p = 0; p <= targetPool; p++) end += current[p];
+  const ids = [...visualIds];
+  ids.splice(from, 1);
+  const insertAt = from < end ? end - 1 : end;
+  ids.splice(insertAt, 0, visualIds[from]);
+  const sizes = [...current];
+  sizes[sourcePool] = Math.max(0, sizes[sourcePool] - 1);
+  sizes[targetPool] = sizes[targetPool] + 1;
+  return { ids, sizes };
+}

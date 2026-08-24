@@ -631,9 +631,23 @@ export default function ClubChampsView() {
     const ko = renderKnockoutStandings(gn);
     if (ko) return ko;
     const pc = poolCountFor(gn);
+    // Pool / section badge per player, derived from the matches they appear in,
+    // so a single stacked table still shows who sits in which pool.
+    const poolLabels = new Map<string, string>();
+    (matches as any[]).forEach((m: any) => {
+      if (!isCrossLeague && m.group_number !== gn) return;
+      const p = resolvePoolNumber(m, gn);
+      if (p == null) return;
+      [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id]
+        .filter(Boolean)
+        .forEach((mid: string) => {
+          if (!poolLabels.has(mid)) poolLabels.set(mid, poolLabel(p));
+        });
+    });
     if (pc <= 1 || isCrossLeague) {
-      return renderStandingsTable(getGroupStandings(gn));
+      return renderStandingsTable(getGroupStandings(gn), { poolLabels });
     }
+
     return (
       <div className="space-y-4">
         {Array.from({ length: pc }).map((_, i) => {

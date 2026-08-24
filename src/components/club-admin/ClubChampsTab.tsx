@@ -117,7 +117,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
-import { Users as UsersIcon, ShieldCheck, ScrollText } from "lucide-react";
+import { Users as UsersIcon, ShieldCheck, ScrollText, RefreshCw } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
@@ -697,6 +697,23 @@ async function edgeErrorMessage(error: any, data: any, fallback: string): Promis
 export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  // Pull the latest club-ladder positions (and entrant list) on demand — the
+  // seed order shown in Allocate is only as fresh as the cached roster.
+  const [refreshingRanking, setRefreshingRanking] = useState(false);
+  const refreshRanking = async () => {
+    setRefreshingRanking(true);
+    try {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["club-members"] }),
+        qc.invalidateQueries({ queryKey: ["tournament-member-pool"] }),
+        qc.invalidateQueries({ queryKey: ["champ-registrations"] }),
+        qc.invalidateQueries({ queryKey: ["club-champs-entries"] }),
+      ]);
+      toast({ title: "Ranking refreshed", description: "Seed order now reflects the current club ladder." });
+    } finally {
+      setRefreshingRanking(false);
+    }
+  };
   // Clubs whose courts are available to this tournament. At club level this is
   // just the club itself, so behaviour is identical to before.
   const venueClubIds = useMemo(() => {

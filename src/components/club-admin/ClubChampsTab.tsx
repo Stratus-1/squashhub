@@ -6243,6 +6243,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <p className="text-xs text-muted-foreground">
                     {c.start_date && c.end_date ? `${c.start_date} to ${c.end_date}` : "Dates not set yet"}
                   </p>
+                  <TournamentEntryCounts champId={c.id} className="mt-0.5" />
+
                 </div>
                 <div className="flex gap-1">
                   <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>

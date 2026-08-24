@@ -484,7 +484,7 @@ export function tournamentNextAction(
 
   // Waiting on results. If the next round exists in the plan, say why it can't
   // be generated yet instead of hiding the button.
-  const blocked = focus.progression.nextRound && !focus.canGenerate;
+  const blocked = !!focus.progression?.nextRound && !focus.canGenerate;
   return {
     stage: "round_in_progress",
     status: `${stageName} in progress`,

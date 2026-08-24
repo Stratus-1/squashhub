@@ -19,6 +19,7 @@ import { isVoidResult } from "@/lib/tournaments/forfeit";
 import { classifyEntrant, type EntrantCategory } from "@/lib/tournaments/entrant-status";
 import { cn } from "@/lib/utils";
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
+import { divisionPools } from "@/lib/tournaments/active-draw";
 
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";

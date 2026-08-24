@@ -95,7 +95,11 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
   }, [matches, entries, swissCfg, isDoubles]);
 
   const poolLetter = (p: number | null | undefined) => (p == null ? null : String.fromCharCode(64 + p));
-  const poolOf = (m: any): number | null => m.pool_number ?? poolByMatchId.get(m.id) ?? null;
+  // Authoritative order: the pool stored on the fixture, then the knockout
+  // section it was drawn into (sections mirror pools), and only then the
+  // recomputed snake fallback for legacy fixtures that carry neither.
+  const poolOf = (m: any): number | null =>
+    m.pool_number ?? m.section_number ?? poolByMatchId.get(m.id) ?? null;
   const isPlayoff = (m: any) => typeof m?.stage === "string" && m.stage.startsWith("playoff");
   // All playoff stages collapse into a single "Play-offs" bucket so the
   // filter dropdown stays short — one entry instead of one per final.
@@ -251,12 +255,12 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
   const renderRow = (m: any) => {
     // Placeholder-aware side label — reserved playoff/finals slots have no
     // player yet but carry a human-readable placeholder ("Winner Pool A").
-    const teamA = !m.player_a && m.placeholder_a
-      ? m.placeholder_a
-      : (isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a));
-    const teamB = !m.player_b && m.placeholder_b
-      ? m.placeholder_b
-      : (isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b));
+    const sideLabel = (player: any, partner: any, placeholder: string | null, isBye: boolean) => {
+      if (!player) return placeholder || (isBye ? "Bye" : "TBC");
+      return isDoubles ? getTeam(player, partner) : getName(player);
+    };
+    const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, !!m.is_bye);
+    const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, !!m.is_bye);
 
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const bKey = bucketKeyOf(m);

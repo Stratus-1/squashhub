@@ -229,7 +229,23 @@ export function ScheduleMatchDialog({
             )}
           </div>
 
-          <Badge variant="outline" className="text-[10px]">{duration} min match</Badge>
+          <div className="flex items-center justify-between gap-2">
+            <Badge variant="outline" className="text-[10px]">{duration} min match</Badge>
+            {alreadyScheduled && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={saving}
+                className="h-7 text-xs text-destructive hover:text-destructive"
+                onClick={clearSlot}
+                title="Remove the court and time — the fixture and any result are kept"
+              >
+                Clear court & time
+              </Button>
+            )}
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>

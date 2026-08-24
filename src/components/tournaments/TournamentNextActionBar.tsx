@@ -10,7 +10,7 @@
  * round-generation hook every other surface uses, so clicking twice can never
  * create a duplicate round.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,15 @@ import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { sectionProgression } from "@/lib/tournaments/knockout-progression";
 import { tournamentNextAction, type ChampionScope } from "@/lib/tournaments/round-control";
+import { ConfirmDrawDialog } from "./ConfirmDrawDialog";
+import {
+  sectionLabelOf,
+  suggestNextRoundBoard,
+  winnersAsEntrants,
+  type DrawBoard as DrawBoardModel,
+  type DrawEntrant,
+} from "@/lib/tournaments/draw-board";
+
 
 interface Props {
   champId: string;
@@ -82,6 +91,55 @@ export function TournamentNextActionBar({
         : na.action === "schedule" ? CalendarClock
           : ClipboardList;
 
+  // ── Visual draw review for the round that is about to be generated ────────
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const reviewState = useMemo(
+    () =>
+      na.action === "generate" && na.groupNumber !== null && na.section
+        ? states.find((s) => s.groupNumber === na.groupNumber && s.section === na.section) ?? null
+        : null,
+    [states, na],
+  );
+  const winnerIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (reviewState?.currentRoundMatches || [])
+            .map((m: any) => m.winner_member_id || m.bye_member_id)
+            .filter(Boolean) as string[],
+        ),
+      ),
+    [reviewState],
+  );
+  const { data: nameMap = {} } = useQuery({
+    queryKey: ["draw-entrant-names", champId, winnerIds.join(",")],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members").select("id, name, ladder_position").in("id", winnerIds);
+      if (error) throw error;
+      const out: Record<string, { name: string; ladder: number | null }> = {};
+      for (const r of (data || []) as any[]) out[r.id] = { name: r.name, ladder: r.ladder_position ?? null };
+      return out;
+    },
+    enabled: reviewOpen && winnerIds.length > 0,
+  });
+
+  const reviewEntrants: DrawEntrant[] = useMemo(() => {
+    if (!reviewState) return [];
+    return winnersAsEntrants(reviewState.currentRoundMatches as any[], (id) => nameMap[id]?.name || "Player").map(
+      (e) => ({ ...e, rankLabel: nameMap[e.id]?.ladder ? `Ladder ${nameMap[e.id]!.ladder}` : null }),
+    );
+  }, [reviewState, nameMap]);
+
+  const suggestedBoard: DrawBoardModel | null = useMemo(() => {
+    if (!reviewState || !reviewState.nextRound) return null;
+    return suggestNextRoundBoard({
+      groupNumber: reviewState.groupNumber,
+      section: reviewState.section,
+      round: reviewState.nextRound.round_number,
+      winners: reviewEntrants,
+    });
+  }, [reviewState, reviewEntrants]);
+
   const goToDetail = (focus: string) => navigate(`/club-champs/${champId}?focus=${focus}`);
 
   const onClick = () => {
@@ -91,45 +149,73 @@ export function TournamentNextActionBar({
     }
     if (mode === "card") return goToDetail(na.action === "generate" ? "progress" : "fixtures");
     if (na.action === "generate" && na.groupNumber !== null && na.section !== null) {
+      // Section draws go through the visual draw board first — the organiser
+      // reviews / re-pairs and only then are fixtures created. The league final
+      // between section winners has a single possible pairing set, so it is
+      // generated directly.
+      if (na.section > 0) return setReviewOpen(true);
       return generate.mutate({ groupNumber: na.groupNumber, section: na.section });
     }
     if (onFocusFixtures) return onFocusFixtures();
     return goToDetail("fixtures");
   };
 
+
+  const opensDrawBoard = mode === "detail" && na.action === "generate" && (na.section ?? 0) > 0;
+  const ctaLabel = opensDrawBoard ? `Review draw — ${na.ctaLabel}` : na.ctaLabel;
+
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 rounded-md border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
-        className,
-      )}
-    >
-      <div className="min-w-0 space-y-0.5">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant={na.complete ? "default" : "secondary"} className="text-[10px]">
-            <Icon className="mr-1 h-3 w-3" />
-            {na.status}
-          </Badge>
+    <>
+      <div
+        className={cn(
+          "flex flex-col gap-2 rounded-md border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
+          className,
+        )}
+      >
+        <div className="min-w-0 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant={na.complete ? "default" : "secondary"} className="text-[10px]">
+              <Icon className="mr-1 h-3 w-3" />
+              {na.status}
+            </Badge>
+          </div>
+          <p className="text-xs text-foreground">{na.headline}</p>
+          {na.disabled && na.blockedReason && (
+            <p className="text-[11px] text-muted-foreground">Outstanding: {na.blockedReason}</p>
+          )}
         </div>
-        <p className="text-xs text-foreground">{na.headline}</p>
-        {na.disabled && na.blockedReason && (
-          <p className="text-[11px] text-muted-foreground">Outstanding: {na.blockedReason}</p>
+
+        {canManage && na.ctaLabel && (
+          <Button
+            size="sm"
+            variant={na.action === "generate" && !na.disabled ? "default" : "secondary"}
+            disabled={na.disabled || generate.isPending}
+            title={na.disabled ? na.blockedReason || undefined : undefined}
+            onClick={onClick}
+            className="shrink-0"
+          >
+            {generate.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Icon className="mr-1 h-4 w-4" />}
+            {ctaLabel}
+          </Button>
         )}
       </div>
 
-      {canManage && na.ctaLabel && (
-        <Button
-          size="sm"
-          variant={na.action === "generate" && !na.disabled ? "default" : "secondary"}
-          disabled={na.disabled || generate.isPending}
-          title={na.disabled ? na.blockedReason || undefined : undefined}
-          onClick={onClick}
-          className="shrink-0"
-        >
-          {generate.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Icon className="mr-1 h-4 w-4" />}
-          {na.ctaLabel}
-        </Button>
+      {suggestedBoard && reviewState && (
+        <ConfirmDrawDialog
+          open={reviewOpen}
+          onOpenChange={setReviewOpen}
+          champId={champId}
+          suggested={suggestedBoard}
+          entrants={reviewEntrants}
+          multiSection={states.filter((s) => s.groupNumber === reviewState.groupNumber && s.section > 0).length > 1}
+          divisionLabel={`Division ${reviewState.groupNumber} · ${sectionLabelOf(reviewState.section)}`}
+          roundId={reviewState.nextRound?.id ?? null}
+          playBy={selfScheduled ? reviewState.nextRound?.play_by ?? null : null}
+          title={`${reviewState.nextRound?.label || "Next round"} — confirm the draw`}
+          description="Winners are placed automatically. Drag anyone into a different matchup, or empty a slot to give a bye. Played matches are never changed."
+        />
       )}
-    </div>
+    </>
   );
 }
+

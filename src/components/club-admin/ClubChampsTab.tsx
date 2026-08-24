@@ -31,6 +31,13 @@ import {
   type ForfeitRuleMap,
 } from "@/lib/tournaments/forfeit";
 import { buildLeagueFirstRound, suggestSectionCount } from "@/lib/tournaments/knockout";
+import { ConfirmDrawDialog } from "@/components/tournaments/ConfirmDrawDialog";
+import {
+  drawToMatchRows,
+  suggestDrawBoard,
+  type DrawBoard as DrawBoardModel,
+  type DrawEntrant,
+} from "@/lib/tournaments/draw-board";
 import {
   DEFAULT_DIVISION_SOURCE,
   allocateEntrantsToDivisions,
@@ -117,7 +124,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
-import { Users as UsersIcon, ShieldCheck, ScrollText, RefreshCw } from "lucide-react";
+import { Users as UsersIcon, ShieldCheck, ScrollText, RefreshCw, Shuffle } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
@@ -1355,6 +1362,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    * becomes the seed order.
    */
   const [manualSeedGroups, setManualSeedGroups] = useState<Set<number>>(new Set());
+
+  /**
+   * Hand-arranged first-round draws, keyed by league (division) number.
+   * When present the visual draw board — not the automatic bracket — decides
+   * the round-1 pairings for that league. Cleared whenever the entrant set of
+   * that league changes, so a stale draw can never produce a ghost fixture.
+   */
+  const [manualDraws, setManualDraws] = useState<Record<string, DrawBoardModel>>({});
+  const [drawEditor, setDrawEditor] = useState<number | null>(null);
+
+
 
   // Doubles-specific state
   const [doublesPairs, setDoublesPairs] = useState<DoublePair[]>([]);
@@ -3326,7 +3344,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         section: si + 1,
         seeds: sIds.map((id, i) => ({ memberId: id, seed: i + 1 })),
       }));
-      const rows = buildLeagueFirstRound({ champId: "preview", groupNumber: gn, assignments });
+      // A confirmed manual draw wins over the automatic bracket — but only
+      // while it still covers exactly this league's entrants.
+      const manual = manualDraws[String(gn)];
+      const manualIds = manual
+        ? manual.matches.flatMap((m) => [m.a, m.b]).filter(Boolean) as string[]
+        : [];
+      const manualUsable =
+        !!manual &&
+        manualIds.length === uniqueIds.length &&
+        manualIds.every((id) => uniqueIds.includes(id));
+      const rows = manualUsable
+        ? drawToMatchRows({
+            champId: "preview",
+            board: manual!,
+            entrants: uniqueIds.map((id, i) => ({ id, name: id, seed: i + 1 })),
+            multiSection: sectionIds.length > 1,
+          })
+        : buildLeagueFirstRound({ champId: "preview", groupNumber: gn, assignments });
+
       for (const r of rows) {
         allMatches.push({
           groupNum: gn,
@@ -4105,7 +4141,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation]);
+  }, [groups, isDoubles, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the
@@ -9599,6 +9635,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 {g.filter((p) => isUnranked(p as any)).length} unranked
                               </Badge>
                             )}
+                            {isKnockoutDivision(gi + 1) && g.length > 1 && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-[10px]"
+                                  onClick={() => setDrawEditor(gi)}
+                                >
+                                  <Shuffle className="w-3 h-3 mr-1" /> Review &amp; edit draw
+                                </Button>
+                                {manualDraws[String(gi + 1)] && (
+                                  <Badge variant="outline" className="text-[10px]">Manual draw set</Badge>
+                                )}
+                              </>
+                            )}
+
                           </div>
                           {isSwissPools && pools > 1 && g.length > 0 && (
                             <p className="text-[10px] text-muted-foreground mb-1 leading-snug">
@@ -9772,7 +9824,56 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 )}
               </div>
             </DndContext>
+
+            {/* Visual draw / manual seeding for a knockout league. Nothing is
+                written to the database here — the confirmed board is held in
+                the wizard and used when the schedule is built. */}
+            {drawEditor !== null && (() => {
+              const gi = drawEditor;
+              const gn = gi + 1;
+              const raw = ((groups as any[])[gi] || []).map((p: any) => p.id) as string[];
+              const ids = Array.from(
+                new Set((isDoubles ? raw : eligibleIdsForDivision(gn, raw)).filter(Boolean)),
+              );
+              const sections = Math.min(sectionsForLeague(gn), Math.max(1, ids.length));
+              const sectionIds = distributeIntoPools(ids, sections, {
+                manual: manualSeedGroups.has(gi),
+                knockout: true,
+                mode: poolAllocation,
+              }).filter((s) => s.length > 0);
+              const suggested = suggestDrawBoard({
+                groupNumber: gn,
+                assignments: sectionIds.map((sIds, si) => ({
+                  section: si + 1,
+                  seeds: sIds.map((id, i) => ({ memberId: id, seed: i + 1 })),
+                })),
+              });
+              const entrants: DrawEntrant[] = ids.map((id, i) => ({
+                id,
+                name: getEntityLabel(id),
+                seed: i + 1,
+              }));
+              return (
+                <ConfirmDrawDialog
+                  open
+                  onOpenChange={(o) => !o && setDrawEditor(null)}
+                  champId={editingChampId || "draft"}
+                  suggested={manualDraws[String(gn)] ?? suggested}
+                  entrants={entrants}
+                  multiSection={sectionIds.length > 1}
+                  divisionLabel={groupLabels[String(gn)]?.trim() || `League ${gn}`}
+                  title={`${groupLabels[String(gn)]?.trim() || `League ${gn}`} — first round draw`}
+                  description="The engine has seeded the bracket. Drag players between slots to set the pairings you want, or empty a slot to give a bye. Fixtures are created when you save the tournament."
+                  onConfirm={(board) => {
+                    setManualDraws((prev) => ({ ...prev, [String(gn)]: board }));
+                    setDrawEditor(null);
+                    toast.success("Draw saved — it will be used when the schedule is built");
+                  }}
+                />
+              );
+            })()}
           </CardContent>
+
         </Card>
       )}
 

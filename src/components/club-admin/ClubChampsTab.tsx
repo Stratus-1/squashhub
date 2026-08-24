@@ -9635,6 +9635,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 {g.filter((p) => isUnranked(p as any)).length} unranked
                               </Badge>
                             )}
+                            {isKnockoutDivision(gi + 1) && g.length > 1 && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-[10px]"
+                                  onClick={() => setDrawEditor(gi)}
+                                >
+                                  <Shuffle className="w-3 h-3 mr-1" /> Review &amp; edit draw
+                                </Button>
+                                {manualDraws[String(gi + 1)] && (
+                                  <Badge variant="outline" className="text-[10px]">Manual draw set</Badge>
+                                )}
+                              </>
+                            )}
+
                           </div>
                           {isSwissPools && pools > 1 && g.length > 0 && (
                             <p className="text-[10px] text-muted-foreground mb-1 leading-snug">

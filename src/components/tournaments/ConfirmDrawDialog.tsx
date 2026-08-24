@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { DrawBoard } from "./DrawBoard";
+import { roundRedrawState } from "@/lib/tournaments/round-draw";
 import {
   drawAuditSnapshot,
   drawToMatchRows,
@@ -39,10 +40,16 @@ interface Props {
   multiSection?: boolean;
   playBy?: string | null;
   roundId?: string | null;
+  /**
+   * Redraw of an already-generated but entirely unplayed round: these fixture
+   * ids are replaced transactionally after a fresh safety re-check.
+   */
+  replaceIds?: string[];
   /** Persist the fixtures yourself (wizard preview) instead of inserting here. */
   onConfirm?: (board: DrawBoardModel) => void | Promise<void>;
   onConfirmed?: (count: number) => void;
 }
+
 
 export function ConfirmDrawDialog({
   open,
@@ -56,6 +63,8 @@ export function ConfirmDrawDialog({
   multiSection,
   playBy,
   roundId,
+  replaceIds,
+
   onConfirm,
   onConfirmed,
 }: Props) {
@@ -102,20 +111,37 @@ export function ConfirmDrawDialog({
           roundId,
         });
         if (rows.length === 0) throw new Error("This draw has nothing to generate");
-        // Idempotency: never create the same round twice if another tab (or a
-        // double click) already generated it.
-        const { data: existing, error: exErr } = await fromExt("club_champs_matches")
-          .select("id")
-          .eq("champ_id", champId)
-          .eq("group_number", board.groupNumber)
-          .eq("round_number", board.round)
-          .in("section_number", Array.from(new Set(rows.map((r) => r.section_number))))
-          .limit(1);
-        if (exErr) throw exErr;
-        if (existing && existing.length > 0) throw new Error("This round already exists");
+        if (rows.length === 0) throw new Error("This draw has nothing to generate");
+
+        if (replaceIds && replaceIds.length > 0) {
+          // Redraw of an unplayed round: re-check the live rows first, so a
+          // result entered while this dialog was open always wins.
+          const { data: fresh, error: freshErr } = await fromExt("club_champs_matches")
+            .select("*")
+            .in("id", replaceIds);
+          if (freshErr) throw freshErr;
+          const safety = roundRedrawState((fresh || []) as any[]);
+          if (!safety.canRedraw) throw new Error(safety.reason || "This round can no longer be redrawn");
+          const { error: delErr } = await fromExt("club_champs_matches").delete().in("id", replaceIds);
+          if (delErr) throw delErr;
+        } else {
+          // Idempotency: never create the same round twice if another tab (or a
+          // double click) already generated it.
+          const { data: existing, error: exErr } = await fromExt("club_champs_matches")
+            .select("id")
+            .eq("champ_id", champId)
+            .eq("group_number", board.groupNumber)
+            .eq("round_number", board.round)
+            .in("section_number", Array.from(new Set(rows.map((r) => r.section_number))))
+            .limit(1);
+          if (exErr) throw exErr;
+          if (existing && existing.length > 0) throw new Error("This round already exists");
+        }
         const { error } = await fromExt("club_champs_matches").insert(rows as any);
         if (error) throw error;
         onConfirmed?.(rows.length);
+
+
 
       }
 
@@ -133,7 +159,10 @@ export function ConfirmDrawDialog({
             tournament_id: champId,
             version,
             created_by: auth?.user?.id ?? null,
-            note: `Confirmed draw — ${divisionLabel || `division ${board.groupNumber}`}, round ${board.round}`,
+            note: `${replaceIds?.length ? "Redrawn" : "Confirmed"} draw — ${
+              divisionLabel || `division ${board.groupNumber}`
+            }, round ${board.round}`,
+
             match_count: validation.playable + validation.byes,
             snapshot: drawAuditSnapshot({ board, suggested, entrants, divisionLabel }) as any,
           });
@@ -145,7 +174,12 @@ export function ConfirmDrawDialog({
         qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
         qc.invalidateQueries({ queryKey: ["club-champ-rounds", champId] });
         qc.invalidateQueries({ queryKey: ["champ-draw-versions", champId] });
-        toast.success("Draw confirmed — fixtures created");
+        toast.success(
+          replaceIds?.length
+            ? "Round redrawn — fixtures replaced. Next: set dates & courts."
+            : "Draw confirmed — fixtures created. Next: set dates & courts.",
+        );
+
       }
 
       onOpenChange(false);

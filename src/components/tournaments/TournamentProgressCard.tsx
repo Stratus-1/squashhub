@@ -7,19 +7,22 @@
  * the same underlying round-generation hook the knockout card uses, so no
  * surface can disagree with another.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarClock, Loader2, Sparkles, Trophy } from "lucide-react";
+import { CalendarClock, Loader2, Shuffle, Sparkles, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
-import { sectionProgression } from "@/lib/tournaments/knockout-progression";
+import { sectionProgression, type SectionProgression } from "@/lib/tournaments/knockout-progression";
 import { divisionControls, groupStageControl, type ChampionScope, type SectionControl } from "@/lib/tournaments/round-control";
+import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
+import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
 import { sectionLetter } from "@/lib/tournaments/knockout";
+
 
 interface Props {
   champId: string;
@@ -73,6 +76,10 @@ export function TournamentProgressCard({
   );
   const states = useMemo(() => sectionProgression(koMatches, rounds as any), [koMatches, rounds]);
   const generate = useGenerateNextRound({ champId, states, selfScheduled });
+  const [draw, setDraw] = useState<{ key: string; mode: NextRoundDrawMode } | null>(null);
+  const keyOf = (s: { groupNumber: number; section: number }) => `${s.groupNumber}-${s.section}`;
+  const drawState = draw ? states.find((s) => keyOf(s) === draw.key) ?? null : null;
+
 
   const divisions = useMemo(
     () => divisionControls(koMatches, rounds as any, { selfScheduled, championScope }),
@@ -102,7 +109,18 @@ export function TournamentProgressCard({
 
   const label = (gn: number) => groupLabel?.(gn) || `Division ${gn}`;
 
-  const renderSection = (s: SectionControl, multi: boolean) => (
+  const stateFor = (s: SectionControl): SectionProgression | null =>
+    states.find((x) => x.groupNumber === s.groupNumber && x.section === s.section) ?? null;
+
+  const renderSection = (s: SectionControl, multi: boolean) => {
+    const st = stateFor(s);
+    // Section draws go through the visual board; the cross-pool league final
+    // (section 0) has only one possible pairing set, so it is generated direct.
+    const viaBoard = !!st && s.section > 0;
+    const safety = st ? roundRedrawState(st.currentRoundMatches as any[]) : null;
+    const canRedraw = !!st && s.section > 0 && s.action !== "generate" && !s.decided && !!safety?.canRedraw;
+
+    return (
     <div
       key={`${s.groupNumber}-${s.section}`}
       className="flex flex-col gap-2 rounded-md border bg-muted/30 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
@@ -122,29 +140,45 @@ export function TournamentProgressCard({
         {!s.decided && s.action === "await_results" && s.blockedReason && (
           <p className="text-[11px] text-muted-foreground">{s.blockedReason}</p>
         )}
+        {canManage && safety && !safety.canRedraw && safety.played > 0 && !s.decided && s.section > 0 && (
+          <p className="text-[11px] text-muted-foreground">{safety.reason}</p>
+        )}
       </div>
 
-      {canManage && s.action === "generate" && (
-        <Button
-          size="sm"
-          disabled={generate.isPending}
-          onClick={() => generate.mutate({ groupNumber: s.groupNumber, section: s.section })}
-        >
-          {generate.isPending ? (
-            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="mr-1 h-4 w-4" />
-          )}
-          {s.actionLabel}
-        </Button>
-      )}
-      {canManage && s.action === "schedule" && onSchedule && (
-        <Button size="sm" variant="secondary" onClick={() => onSchedule(s.groupNumber)}>
-          <CalendarClock className="mr-1 h-4 w-4" /> {s.actionLabel}
-        </Button>
-      )}
+      <div className="flex shrink-0 flex-wrap gap-1">
+        {canManage && canRedraw && (
+          <Button size="sm" variant="ghost" onClick={() => setDraw({ key: keyOf(s), mode: "redraw" })}>
+            <Shuffle className="mr-1 h-4 w-4" /> Review / redraw round
+          </Button>
+        )}
+        {canManage && s.action === "generate" && (
+          <Button
+            size="sm"
+            disabled={generate.isPending}
+            onClick={() =>
+              viaBoard
+                ? setDraw({ key: keyOf(s), mode: "prepare" })
+                : generate.mutate({ groupNumber: s.groupNumber, section: s.section })
+            }
+          >
+            {generate.isPending ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1 h-4 w-4" />
+            )}
+            {viaBoard ? prepareActionLabel(s.nextStageLabel, (st?.currentRound ?? 0) + 1) : s.actionLabel}
+          </Button>
+        )}
+        {canManage && s.action === "schedule" && onSchedule && (
+          <Button size="sm" variant="secondary" onClick={() => onSchedule(s.groupNumber)}>
+            <CalendarClock className="mr-1 h-4 w-4" /> {s.actionLabel}
+          </Button>
+        )}
+      </div>
     </div>
-  );
+    );
+  };
+
 
   const body = (
     <div className="space-y-2">
@@ -177,8 +211,23 @@ export function TournamentProgressCard({
           Later rounds are advanced here — the setup wizard's rebuild only recreates the first fixture list.
         </p>
       )}
+
+      {drawState && draw && (
+        <NextRoundDrawDialog
+          open
+          onOpenChange={(o) => !o && setDraw(null)}
+          champId={champId}
+          state={drawState}
+          mode={draw.mode}
+          multiSection={states.filter((s) => s.groupNumber === drawState.groupNumber && s.section > 0).length > 1}
+          selfScheduled={selfScheduled}
+          divisionLabel={label(drawState.groupNumber)}
+          onConfirmed={() => setDraw(null)}
+        />
+      )}
     </div>
   );
+
 
   if (compact) return <div className={cn("space-y-2", className)}>{body}</div>;
 

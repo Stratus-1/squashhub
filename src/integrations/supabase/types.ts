@@ -9402,6 +9402,8 @@ export type Database = {
           league_source_modes: Json
           league_sources: Json
           league_win_conditions: Json
+          manual_draws: Json | null
+          manual_seed_divisions: Json | null
           match_duration_minutes: number
           match_type: string
           max_entrants: number | null
@@ -9419,6 +9421,7 @@ export type Database = {
           round_play_by: Json
           schedule_mode: string
           scheduling_mode: string
+          seed_order: Json | null
           seeding_source: string
           source_league_id: string | null
           source_league_ids: string[]
@@ -9482,6 +9485,8 @@ export type Database = {
           league_source_modes?: Json
           league_sources?: Json
           league_win_conditions?: Json
+          manual_draws?: Json | null
+          manual_seed_divisions?: Json | null
           match_duration_minutes?: number
           match_type?: string
           max_entrants?: number | null
@@ -9499,6 +9504,7 @@ export type Database = {
           round_play_by?: Json
           schedule_mode?: string
           scheduling_mode?: string
+          seed_order?: Json | null
           seeding_source?: string
           source_league_id?: string | null
           source_league_ids?: string[]
@@ -9562,6 +9568,8 @@ export type Database = {
           league_source_modes?: Json
           league_sources?: Json
           league_win_conditions?: Json
+          manual_draws?: Json | null
+          manual_seed_divisions?: Json | null
           match_duration_minutes?: number
           match_type?: string
           max_entrants?: number | null
@@ -9579,6 +9587,7 @@ export type Database = {
           round_play_by?: Json
           schedule_mode?: string
           scheduling_mode?: string
+          seed_order?: Json | null
           seeding_source?: string
           source_league_id?: string | null
           source_league_ids?: string[]

@@ -1781,6 +1781,17 @@ export default function ClubChampsView() {
         pointsTarget={(champ as any)?.points_per_game ?? null}
         onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
       />
+
+      <ScheduleMatchDialog
+        open={!!scheduleMatch}
+        onOpenChange={(o) => { if (!o) setScheduleMatch(null); }}
+        clubId={(champ as any)?.club_id}
+        match={scheduleMatch}
+        canManage={canManage}
+        opponentName={scheduleMatch ? `${getMatchTeamA(scheduleMatch)} vs ${getMatchTeamB(scheduleMatch)}` : undefined}
+        durationMinutes={(champ as any)?.match_duration_minutes ?? undefined}
+      />
+
     </div>
   );
 

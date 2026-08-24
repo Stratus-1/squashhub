@@ -45,7 +45,9 @@ export type SectionControl = {
   blockedReason: string | null;
   decided: boolean;
   winner: string | null;
-  progression: SectionProgression;
+  /** Null for the synthetic "league final still to be created" row. */
+  progression: SectionProgression | null;
+
 };
 
 /** A match is "scheduled" once it has a date (court/time may follow). */

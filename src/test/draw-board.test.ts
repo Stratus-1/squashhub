@@ -183,3 +183,55 @@ describe("later rounds", () => {
     expect(rows.every((r) => r.round_number === 2)).toBe(true);
   });
 });
+
+describe("integrity gates", () => {
+  it("never produces a self-match, even from a hand-arranged board", () => {
+    const list = entrants(4);
+    const board = {
+      groupNumber: 1,
+      round: 1,
+      matches: [{ section: 1, round: 1, position: 1, a: "m1", b: "m1" }],
+    } as any;
+    expect(() => drawToMatchRows({ champId: "c1", board, entrants: list })).toThrow();
+  });
+
+  it("labels multi-section rows and keeps sections apart", () => {
+    const list = entrants(8);
+    const board = {
+      groupNumber: 2,
+      round: 1,
+      matches: [
+        { section: 1, round: 1, position: 1, a: "m1", b: "m2" },
+        { section: 2, round: 1, position: 1, a: "m3", b: "m4" },
+      ],
+    } as any;
+    const rows = drawToMatchRows({ champId: "c1", board, entrants: list, multiSection: true });
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.section_number)).toEqual([1, 2]);
+    expect(rows.every((r) => r.group_number === 2)).toBe(true);
+    expect(rows[0].stage_label).toContain("Section A");
+    expect(rows[1].stage_label).toContain("Section B");
+  });
+
+  it("creates the next round at the next round number without touching the played one", () => {
+    const played = [
+      { bracket_position: 1, player_a_member_id: "m1", player_b_member_id: "m2", winner_member_id: "m1", status: "completed" },
+      { bracket_position: 2, player_a_member_id: "m3", player_b_member_id: "m4", winner_member_id: "m4", status: "completed" },
+    ] as any[];
+    const winners = winnersAsEntrants(played, (id) => id);
+    const board = suggestNextRoundBoard({ groupNumber: 1, section: 1, round: 2, winners });
+    const rows = drawToMatchRows({ champId: "c1", board, entrants: winners });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].round_number).toBe(2);
+    expect(rows[0].status).toBe("scheduled");
+    expect([rows[0].player_a_member_id, rows[0].player_b_member_id].sort()).toEqual(["m1", "m4"]);
+    // the completed feeder rows are untouched
+    expect(played.every((m) => m.status === "completed")).toBe(true);
+  });
+
+  it("generated rounds start unscheduled so the admin must allocate court and time", () => {
+    const list = entrants(4);
+    const rows = drawToMatchRows({ champId: "c1", board: suggestFromEntrants(1, list), entrants: list });
+    expect(rows.every((r) => !(r as any).court_id && !(r as any).scheduled_at)).toBe(true);
+  });
+});

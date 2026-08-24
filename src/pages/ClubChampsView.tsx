@@ -34,7 +34,22 @@ import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSugg
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
-import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
+import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import {
+  canScheduleFixture,
+  canUnscheduleFixture,
+  fixtureScheduleState,
+  scheduleActionLabel,
+  scheduleActionShortLabel,
+} from "@/lib/tournaments/fixture-scheduling";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical } from "lucide-react";
+
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 import { buildPlayoffMatches, type StandingEntity } from "@/lib/tournament-playoffs";
 
@@ -696,6 +711,8 @@ export default function ClubChampsView() {
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
   const [resultMatch, setResultMatch] = useState<any | null>(null);
+  const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
+
 
   const unassignedCount = matches.filter(
     (m: any) => !m.is_bye && m.status === "scheduled" && (!m.scheduled_date || !m.scheduled_time || !m.court_id),
@@ -1781,6 +1798,17 @@ export default function ClubChampsView() {
         pointsTarget={(champ as any)?.points_per_game ?? null}
         onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
       />
+
+      <ScheduleMatchDialog
+        open={!!scheduleMatch}
+        onOpenChange={(o) => { if (!o) setScheduleMatch(null); }}
+        clubId={(champ as any)?.club_id}
+        match={scheduleMatch}
+        canManage={canManage}
+        opponentName={scheduleMatch ? `${getMatchTeamA(scheduleMatch)} vs ${getMatchTeamB(scheduleMatch)}` : undefined}
+        durationMinutes={(champ as any)?.match_duration_minutes ?? undefined}
+      />
+
     </div>
   );
 
@@ -1879,7 +1907,20 @@ export default function ClubChampsView() {
     );
   }
 
+  /** Detach the court booking from a fixture — the fixture and any result stay. */
+  async function clearFixtureSchedule(m: any) {
+    const { error } = await rpcExt("unschedule_champ_match", { p_match_id: m.id });
+    if (error) {
+      toast.error(error.message || "Could not clear this match's court and time.");
+      return;
+    }
+    toast.success("Court and time cleared — the fixture is kept and can be rescheduled.");
+    qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+    qc.invalidateQueries({ queryKey: ["bookings"] });
+  }
+
   function renderMatchRow(m: any) {
+
     const mine = isMyMatch(m);
     const completed = m.status === "completed";
     const isBye = !!m.is_bye;
@@ -1986,6 +2027,54 @@ export default function ClubChampsView() {
         })()}
 
 
+        {(() => {
+
+          // Court/date/time for THIS fixture — generated next rounds, semis and
+          // finals included. Organisers can always override; players may
+          // arrange their own match.
+          const perm = canScheduleFixture(m, myMemberId, { canManage });
+          if (!perm.allowed) return null;
+          const scheduled = fixtureScheduleState(m) === "scheduled";
+          return (
+            <>
+              <Button
+                type="button"
+                variant={scheduled ? "ghost" : "default"}
+                size="sm"
+                className="h-6 px-2 text-[10px]"
+                onClick={() => setScheduleMatch(m)}
+                title={scheduled ? "Move this fixture to another court or time" : "Allocate a court, date and time to this fixture"}
+              >
+                <CalendarClock className="h-3 w-3 mr-1" />
+                {scheduleActionShortLabel(m)}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" title="More actions">
+                    <MoreVertical className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="text-xs">
+                  <DropdownMenuItem onClick={() => setScheduleMatch(m)}>
+                    <CalendarClock className="h-3.5 w-3.5 mr-2" />
+                    {scheduleActionLabel(m)}
+                  </DropdownMenuItem>
+                  {canUnscheduleFixture(m, myMemberId, { canManage }).allowed && (
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => void clearFixtureSchedule(m)}
+                    >
+                      <XCircle className="h-3.5 w-3.5 mr-2" />
+                      Clear court &amp; time
+                    </DropdownMenuItem>
+                  )}
+
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          );
+        })()}
+
         {canManage && !completed && m.scheduled_date && m.scheduled_time && (
           <SwapFixtureButton
             match={m}
@@ -1997,6 +2086,7 @@ export default function ClubChampsView() {
         )}
 
         {canManage && !completed && (
+
           <Button
             type="button"
             variant="ghost"

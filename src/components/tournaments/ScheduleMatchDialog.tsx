@@ -14,6 +14,8 @@ import {
   freeSlotsForCourt,
   type SelfScheduleMatchLike,
 } from "@/lib/tournaments/self-schedule";
+import { fixtureScheduleState } from "@/lib/tournaments/fixture-scheduling";
+
 
 interface Props {
   open: boolean;
@@ -23,14 +25,19 @@ interface Props {
   opponentName?: string;
   /** Match length in minutes; falls back to the club's slot size. */
   durationMinutes?: number;
+  /** Organiser/admin override — also allows clearing the court & time. */
+  canManage?: boolean;
 }
 
 /**
- * Player-facing court picker for a self-scheduled tournament match.
+ * Court picker for a single tournament fixture.
  *
- * Uses the club's real courts and live bookings — no free-text court names.
- * The final availability re-check happens server-side in
- * `self_schedule_champ_match`, so a stale slot is rejected cleanly.
+ * Used by players (self-scheduling) and by organisers (authoritative override
+ * on any generated fixture — first round, semi-final or final). Saving links
+ * the booking to the existing fixture id via `self_schedule_champ_match`, so a
+ * reschedule moves the same booking and never creates a duplicate fixture.
+ * The final availability re-check happens server-side, so a stale slot is
+ * rejected cleanly.
  */
 export function ScheduleMatchDialog({
   open,
@@ -39,6 +46,7 @@ export function ScheduleMatchDialog({
   match,
   opponentName,
   durationMinutes,
+  canManage,
 }: Props) {
   const qc = useQueryClient();
   const [date, setDate] = useState<string>(
@@ -46,6 +54,7 @@ export function ScheduleMatchDialog({
   );
   const [courtId, setCourtId] = useState<number | null>(match?.court_id ?? null);
   const [saving, setSaving] = useState(false);
+
 
   const { data: club } = useQuery({
     queryKey: ["club-booking-window", clubId],
@@ -88,10 +97,13 @@ export function ScheduleMatchDialog({
     [slotMinutes, club?.booking_open_time, club?.booking_last_slot_time],
   );
 
+  const alreadyScheduled = !!match && fixtureScheduleState(match) === "scheduled";
+
   const freeSlots = useMemo(() => {
     if (!courtId) return [];
     return freeSlotsForCourt(slots, duration, courtId, bookings, match?.booking_id ?? null);
   }, [slots, duration, courtId, bookings, match?.booking_id]);
+
 
   const confirm = async (time: string) => {
     if (!match || !courtId) return;
@@ -109,11 +121,34 @@ export function ScheduleMatchDialog({
       qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule"] });
       return;
     }
-    toast.success("Match scheduled — both players have been notified.");
+    toast.success(
+      alreadyScheduled
+        ? "Match rescheduled — the court booking was moved."
+        : "Match scheduled — both players have been notified.",
+    );
+    invalidateAll();
+    onOpenChange(false);
+  };
+
+  const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
     qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
+    qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule"] });
     qc.invalidateQueries({ queryKey: ["bookings"] });
     qc.invalidateQueries({ queryKey: ["my-bookings"] });
+  };
+
+  const clearSlot = async () => {
+    if (!match) return;
+    setSaving(true);
+    const { error } = await rpcExt("unschedule_champ_match", { p_match_id: match.id });
+    setSaving(false);
+    if (error) {
+      toast.error(error.message || "Could not clear this match's court and time.");
+      return;
+    }
+    toast.success("Court and time cleared — the fixture and any result are unchanged.");
+    invalidateAll();
     onOpenChange(false);
   };
 
@@ -122,14 +157,16 @@ export function ScheduleMatchDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <CalendarClock className="w-4 h-4" /> Arrange your match
+            <CalendarClock className="w-4 h-4" />{" "}
+            {alreadyScheduled ? "Reschedule this match" : canManage ? "Set court & time" : "Arrange your match"}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {opponentName ? <>vs {opponentName}. </> : null}
-            Pick a court and time — the court is booked immediately and your opponent is notified.
+            Pick a court and time — the court is booked immediately and both players are notified.
             {match?.play_by && <> Play by {match.play_by}.</>}
           </DialogDescription>
         </DialogHeader>
+
 
         <div className="space-y-3">
           <div className="space-y-1">
@@ -194,7 +231,23 @@ export function ScheduleMatchDialog({
             )}
           </div>
 
-          <Badge variant="outline" className="text-[10px]">{duration} min match</Badge>
+          <div className="flex items-center justify-between gap-2">
+            <Badge variant="outline" className="text-[10px]">{duration} min match</Badge>
+            {alreadyScheduled && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={saving}
+                className="h-7 text-xs text-destructive hover:text-destructive"
+                onClick={clearSlot}
+                title="Remove the court and time — the fixture and any result are kept"
+              >
+                Clear court & time
+              </Button>
+            )}
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>

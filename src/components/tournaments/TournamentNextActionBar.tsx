@@ -27,7 +27,13 @@ import { NextRoundDrawDialog } from "./NextRoundDrawDialog";
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { prepareActionLabel } from "@/lib/tournaments/round-draw";
 import { sectionLabelOf } from "@/lib/tournaments/draw-board";
-import { readyNextRoundScopes } from "@/lib/tournaments/next-round-setup";
+import {
+  nextOutstandingScope,
+  outstandingDrawsHeadline,
+  readyNextRoundScopes,
+  remainingNextRoundScopes,
+} from "@/lib/tournaments/next-round-setup";
+
 
 
 interface Props {

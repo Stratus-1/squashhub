@@ -255,12 +255,12 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
   const renderRow = (m: any) => {
     // Placeholder-aware side label — reserved playoff/finals slots have no
     // player yet but carry a human-readable placeholder ("Winner Pool A").
-    const teamA = !m.player_a && m.placeholder_a
-      ? m.placeholder_a
-      : (isDoubles ? getTeam(m.player_a, m.partner_a) : getName(m.player_a));
-    const teamB = !m.player_b && m.placeholder_b
-      ? m.placeholder_b
-      : (isDoubles ? getTeam(m.player_b, m.partner_b) : getName(m.player_b));
+    const sideLabel = (player: any, partner: any, placeholder: string | null, isBye: boolean) => {
+      if (!player) return placeholder || (isBye ? "Bye" : "TBC");
+      return isDoubles ? getTeam(player, partner) : getName(player);
+    };
+    const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, !!m.is_bye);
+    const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, !!m.is_bye);
 
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const bKey = bucketKeyOf(m);

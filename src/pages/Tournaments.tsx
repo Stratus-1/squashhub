@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Trophy, ChevronRight, Loader2, Calendar, User, BarChart3, Gavel, Settings2, Printer, BellRing, GripVertical, MoreVertical, Plus, Trash2, Eraser, PauseCircle } from "lucide-react";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, CalendarClock } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AddSlotDialog } from "@/components/tournaments/AddSlotDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,6 +35,8 @@ import { MarkerTakeoverDialog } from "@/components/tournaments/MarkerTakeoverDia
 import { splitTournamentsByLifecycle, todayISO, isCancelledTournament } from "@/lib/tournaments/lifecycle";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
+import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
 import { useHasPermission } from "@/hooks/use-club-permissions";
@@ -54,6 +56,7 @@ export default function Tournaments() {
   // everyone else only their own matches.
   const canManageChamps = useHasPermission("champs");
   const [resultMatch, setResultMatch] = useState<any | null>(null);
+  const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
   const { user } = useAuth();
   const [takeover, setTakeover] = useState<
     { matchId: string; markRoute: string; label: string; markerName: string } | null
@@ -845,6 +848,26 @@ export default function Tournaments() {
         )}
 
         {(() => {
+          // Set / move the court & time. Available to the two players in this
+          // match and to club / tournament admins — same rule as the standings
+          // page, so a player can arrange their own game from the games list.
+          if (isPlaceholder) return null;
+          const perm = canScheduleFixture(m, memberId, { canManage: canManageChamps || isClubAdmin });
+          if (!perm.allowed) return null;
+          return (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto"
+              title="Set or change the court, date and time for this match"
+              onClick={(e) => { e.stopPropagation(); setScheduleMatch(m); }}
+            >
+              <CalendarClock className="w-3 h-3" /> {scheduleActionShortLabel(m)}
+            </Button>
+          );
+        })()}
+
+        {(() => {
           // Capture a score for a game already played away from the marker.
           // Allowed for the two players in THIS match, club/tournament admins
           // and super admins — never for an uninvolved player.
@@ -1472,6 +1495,16 @@ export default function Tournaments() {
         markerName={takeover?.markerName}
         requesterName={activeMember?.name || user?.email || "A marker"}
         isAdmin={isClubAdmin}
+      />
+
+      <ScheduleMatchDialog
+        open={!!scheduleMatch}
+        onOpenChange={(o) => { if (!o) setScheduleMatch(null); }}
+        clubId={clubId}
+        match={scheduleMatch}
+        canManage={canManageChamps || isClubAdmin}
+        opponentName={scheduleMatch ? `${sideLabel(scheduleMatch.player_a, scheduleMatch.partner_a, scheduleMatch.placeholder_a, allChamps.find((c: any) => c.id === scheduleMatch.champ_id)?.match_type === "doubles")} vs ${sideLabel(scheduleMatch.player_b, scheduleMatch.partner_b, scheduleMatch.placeholder_b, allChamps.find((c: any) => c.id === scheduleMatch.champ_id)?.match_type === "doubles")}` : undefined}
+        durationMinutes={allChamps.find((c: any) => c.id === scheduleMatch?.champ_id)?.match_duration_minutes ?? undefined}
       />
 
       <EnterResultDialog

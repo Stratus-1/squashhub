@@ -615,6 +615,21 @@ export default function LeagueGameDetail() {
         isDoubles = (assocs || []).some((a: any) => a.discipline === "doubles" || a.discipline === "hybrid");
       }
 
+      // The playing structure is owned by the league (association) record.
+      // Per-team rows are legacy mirrors and are only used as a fallback.
+      let authoritativeDoubles: number | null = null;
+      if (assocIds.length) {
+        const { data: assocRules } = await (supabase as any)
+          .from("league_rules")
+          .select("association_id, doubles_rubbers")
+          .in("association_id", assocIds)
+          .is("league_id", null);
+        const vals = (assocRules || [])
+          .map((r: any) => Number(r.doubles_rubbers) || 0)
+          .filter((n: number) => n > 0);
+        if (vals.length) authoritativeDoubles = Math.max(...vals);
+      }
+
       const { data: rules } = await (supabase as any)
         .from("league_rules")
         .select("league_id, doubles_rubbers")
@@ -622,10 +637,11 @@ export default function LeagueGameDetail() {
       const rubberCounts = (rules || [])
         .map((r: any) => Number(r.doubles_rubbers) || 0)
         .filter((n: number) => n > 0);
-      if (!isDoubles && rubberCounts.length === 0) {
+      if (!isDoubles && authoritativeDoubles === null && rubberCounts.length === 0) {
         return { isDoubles: false, rubbers: 0, pairsByCode: {} as Record<string, Array<{ code: string; name: string }>> };
       }
-      const rubbers = Math.max(1, ...rubberCounts);
+      const rubbers = authoritativeDoubles ?? Math.max(1, ...rubberCounts);
+
 
 
       const { data: pairs } = await (supabase as any)

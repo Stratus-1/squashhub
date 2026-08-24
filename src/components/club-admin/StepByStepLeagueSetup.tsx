@@ -12,8 +12,10 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useLeagueAssociations, useLeagues, useClubMembers, type ClubMember } from "@/hooks/use-club";
-import { useAssociationRules } from "@/hooks/use-association-rules";
+import { useLeagueComposition, useSaveLeagueComposition } from "@/hooks/use-association-rules";
+import { compositionToPersist } from "@/lib/leagues/authoritative-format";
 import { inheritLeagueConfig, teamSetupQuestions, buildTeamAllocation, computeTeamRequirements } from "@/lib/leagues/team-setup";
+
 import { CATEGORY_LABELS, DISCIPLINE_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 
 type Gender = "men" | "ladies" | "mixed" | "open";
@@ -114,6 +116,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   const [distribution, setDistribution] = useState<Distribution>("snake");
   const [singlesRubbers, setSinglesRubbers] = useState<number>(0);
   const [doublesRubbers, setDoublesRubbers] = useState<number>(0);
+  // True once the admin edits the rubber counts in this session. Without an
+  // edit the authoritative record is left exactly as stored.
+  const [compositionDirty, setCompositionDirty] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   // Track member IDs allocated to a saved league this session (so they're excluded from later rounds)
   const [allocatedIds, setAllocatedIds] = useState<Set<string>>(new Set());
@@ -128,6 +134,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   // Reset state when dialog re-opens
   useEffect(() => {
     if (open) {
+      setCompositionDirty(false);
       if (editContext) {
         // Edit mode: jump straight to step 4 with values pre-filled.
         setStep(4);
@@ -179,12 +186,17 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
   });
   const activeAffiliatedSet = useMemo(() => new Set<string>(activeAffiliatedIds), [activeAffiliatedIds]);
 
-  /* ── Step 1 inheritance ────────────────────────────────────────────────
-   * Discipline, competition category, rubber composition and pairing policy
-   * are defined ONCE when the league is created. This wizard inherits them
-   * and never re-asks those questions.                                     */
+  /* ── Authoritative league format ───────────────────────────────────────
+   * Discipline, competition category, pairing policy and the rubber counts
+   * live ONCE on the league (association) record. This wizard reads that one
+   * record — never a per-team copy — and never writes a UI default over it. */
   const associationRow = associations.find((a: any) => a.id === associationId) as any;
-  const { data: leagueRules } = useAssociationRules(associationId || undefined);
+  const {
+    rules: leagueRules,
+    composition: storedComposition,
+    isFetched: formatFetched,
+  } = useLeagueComposition(associationId || undefined);
+  const saveComposition = useSaveLeagueComposition();
   const inherited = useMemo(
     () => inheritLeagueConfig(associationRow, leagueRules as any),
     [associationRow, leagueRules],
@@ -201,13 +213,14 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     setGender(c === "mens" ? "men" : c === "ladies" ? "ladies" : c === "mixed" ? "mixed" : "open");
   }, [inherited.category]);
 
-  /* Step 2 owns match composition. Seed the editable fields from whatever the
-   * league last saved, then let the admin change them here (the single
-   * authoritative place). */
+  /* Seed the editable fields from the authoritative record once it has loaded.
+   * Until then nothing is seeded, so a default can never be shown — and never
+   * saved back — while the real configuration is still in flight. */
   useEffect(() => {
+    if (!formatFetched || compositionDirty) return;
     setSinglesRubbers(inherited.singlesRubbers);
     setDoublesRubbers(inherited.doublesRubbers);
-  }, [inherited.singlesRubbers, inherited.doublesRubbers]);
+  }, [formatFetched, compositionDirty, inherited.singlesRubbers, inherited.doublesRubbers]);
 
   const effectiveSinglesRubbers = questions.askSinglesRubbers
     ? singlesRubbers
@@ -217,6 +230,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
         ? 0
         : inherited.singlesRubbers;
   const effectiveDoublesRubbers = questions.askDoublesRubbers ? doublesRubbers : 0;
+
   const singlesPerTeam = effectiveSinglesRubbers;
   const effectivePairsPerTeam = effectiveDoublesRubbers;
 
@@ -443,23 +457,34 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
 
 
 
-      // Persist the "players per match" rule for every league row in this batch
-      // (regular teams + reserves). Upsert by league_id so re-running setup updates.
+      /* Persist the playing structure ONCE, on the authoritative league record,
+       * then mirror the derived numbers onto the team rows (compatibility only).
+       * Creating extra teams must never change the configured rubber counts, so
+       * a wizard default is written only when the admin actually edited it. */
       const allLeagueIdsForRules = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];
-      if (allLeagueIdsForRules.length > 0) {
-        const rulesRows = allLeagueIdsForRules.map((lid) => ({
-          league_id: lid,
-          club_id: clubId,
-          association_id: associationId,
-          team_size: slotsPerTeam,
-          team_size_mode: "fixed" as const,
-          singles_rubbers: effectiveSinglesRubbers,
-          doubles_rubbers: effectiveDoublesRubbers,
-          reserves_per_team: reserves,
-        }));
-        const { error: rulesError } = await fromExt("league_rules").upsert(rulesRows, { onConflict: "league_id" });
-        if (rulesError) throw rulesError;
+      const toPersist = compositionToPersist({
+        stored: storedComposition,
+        draft: { singlesRubbers: effectiveSinglesRubbers, doublesRubbers: effectiveDoublesRubbers },
+        loaded: formatFetched,
+        dirty: compositionDirty,
+      });
+      const persistedSingles = toPersist.singlesRubbers;
+      const persistedDoubles = toPersist.doublesRubbers;
+      const persistedTeamSize = toPersist.write
+        ? slotsPerTeam
+        : (storedComposition.teamSize ?? slotsPerTeam);
+      if (associationId) {
+        await saveComposition.mutateAsync({
+          associationId,
+          clubId,
+          singlesRubbers: persistedSingles,
+          doublesRubbers: persistedDoubles,
+          teamSize: persistedTeamSize,
+          reservesPerTeam: reserves,
+          teamLeagueIds: allLeagueIdsForRules,
+        });
       }
+
 
       // Wipe any existing registrations on these league rows, then insert fresh
       const allLeagueIds = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];
@@ -557,6 +582,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     
     setNumTeams(1);
     setPerTeam(4);
+    setCompositionDirty(false);
     setReserves(0);
     setDistribution("snake");
     setTeamNames({});
@@ -728,20 +754,20 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
               {questions.askPlayersPerMatch && (
                 <div>
                   <Label className="text-xs">Players per match (league rule)?</Label>
-                  <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => setPerTeam(parseInt(e.target.value) || 1)} />
+                  <Input type="number" min={1} max={8} value={perTeam || ""} onChange={(e) => { setCompositionDirty(true); setPerTeam(parseInt(e.target.value) || 1); }} />
                   <p className="text-[10px] text-muted-foreground mt-1">Saved as the league rule. Marker scorecard will use this number of rows for every team in this league.</p>
                 </div>
               )}
               {questions.askSinglesRubbers && (
                 <div>
                   <Label className="text-xs">Singles rubbers per fixture</Label>
-                  <Input type="number" min={0} max={20} value={singlesRubbers || 0} onChange={(e) => setSinglesRubbers(Math.max(0, parseInt(e.target.value) || 0))} />
+                  <Input type="number" min={0} max={20} value={singlesRubbers || 0} onChange={(e) => { setCompositionDirty(true); setSinglesRubbers(Math.max(0, parseInt(e.target.value) || 0)); }} />
                 </div>
               )}
               {questions.askDoublesRubbers && (
                 <div>
                   <Label className="text-xs">Doubles rubbers per fixture</Label>
-                  <Input type="number" min={0} max={20} value={doublesRubbers || 0} onChange={(e) => setDoublesRubbers(Math.max(0, parseInt(e.target.value) || 0))} />
+                  <Input type="number" min={0} max={20} value={doublesRubbers || 0} onChange={(e) => { setCompositionDirty(true); setDoublesRubbers(Math.max(0, parseInt(e.target.value) || 0)); }} />
                   <p className="text-[10px] text-muted-foreground mt-1">
                     Each doubles rubber is one pair — two real players.
                     {inherited.pairingPolicy === "fixed"

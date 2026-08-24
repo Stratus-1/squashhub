@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  authoritativeRules,
+  resolveAuthoritativeComposition,
+  type StoredComposition,
+} from "@/lib/leagues/authoritative-format";
+
 
 export interface LeagueRules {
   id: string;
@@ -62,13 +68,17 @@ export function useAssociationRules(associationId: string | null | undefined) {
       // Try tenant association first, then fall back to its platform_association_id.
       // Rules are typically authored once in Super Admin against the platform
       // association; tenant rows inherit unless they override.
+      // NOTE: never `maybeSingle()` here — a stray duplicate row would make the
+      // whole query throw and silently drop the league's configured format.
       const { data: direct, error: directErr } = await supabase
         .from("league_rules")
         .select("*")
         .eq("association_id", associationId!)
-        .maybeSingle();
+        .is("league_id", null)
+        .order("created_at", { ascending: true })
+        .limit(1);
       if (directErr) throw directErr;
-      if (direct) return direct as LeagueRules;
+      if (direct && direct.length) return direct[0] as LeagueRules;
 
       const { data: assoc, error: assocErr } = await supabase
         .from("league_associations")
@@ -83,12 +93,15 @@ export function useAssociationRules(associationId: string | null | undefined) {
         .from("league_rules")
         .select("*")
         .eq("association_id", platformId)
-        .maybeSingle();
+        .is("league_id", null)
+        .order("created_at", { ascending: true })
+        .limit(1);
       if (inheritedErr) throw inheritedErr;
-      return (inherited as LeagueRules | null) ?? null;
+      return ((inherited && inherited[0]) as LeagueRules | null) ?? null;
     },
   });
 }
+
 
 export function useUpdateAssociationRules() {
   const qc = useQueryClient();
@@ -103,11 +116,16 @@ export function useUpdateAssociationRules() {
       delete patch.created_at;
       delete patch.updated_at;
 
-      const { data: existing } = await supabase
+      const { data: existingRows } = await supabase
         .from("league_rules")
         .select("id")
         .eq("association_id", associationId)
-        .maybeSingle();
+        .is("league_id", null)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      const existing = existingRows?.[0] ?? null;
+
+
 
       if (existing) {
         const { data: updated, error } = await supabase
@@ -133,6 +151,116 @@ export function useUpdateAssociationRules() {
     onError: (e: any) => toast.error(e.message ?? "Failed to save rules"),
   });
 }
+
+/* ── Authoritative league playing structure ───────────────────────────────
+ * The association-scoped league_rules row (league_id IS NULL) is the ONE
+ * record that owns rubber counts for a Club League + season. Per-team rows are
+ * derived mirrors kept for legacy readers only.                              */
+
+export function useLeagueComposition(associationId: string | null | undefined) {
+  const assoc = useAssociationRules(associationId);
+
+  const teamRules = useQuery({
+    queryKey: ["league-team-rules", associationId],
+    enabled: !!associationId,
+    queryFn: async () => {
+      const { data: leagueRows, error: leagueErr } = await supabase
+        .from("leagues")
+        .select("id")
+        .eq("association_id", associationId!);
+      if (leagueErr) throw leagueErr;
+      const ids = (leagueRows ?? []).map((l: any) => l.id);
+      if (!ids.length) return [] as StoredComposition[];
+      const { data, error } = await supabase
+        .from("league_rules")
+        .select("league_id, singles_rubbers, doubles_rubbers, team_size, reserves_per_team")
+        .in("league_id", ids);
+      if (error) throw error;
+      return (data ?? []) as StoredComposition[];
+    },
+  });
+
+  const composition = resolveAuthoritativeComposition({
+    associationRules: (assoc.data as StoredComposition | null) ?? null,
+    teamRules: teamRules.data ?? [],
+  });
+
+  return {
+    associationRules: (assoc.data as LeagueRules | null) ?? null,
+    /** association row merged with the authoritative composition numbers. */
+    rules: authoritativeRules(assoc.data as any, teamRules.data ?? []),
+    composition,
+    isLoading: assoc.isLoading || teamRules.isLoading,
+    isFetched: assoc.isFetched && teamRules.isFetched,
+  };
+}
+
+/**
+ * Write the playing structure ONCE, to the authoritative association row, then
+ * mirror the derived numbers onto existing per-team rows (compatibility only).
+ * Team rows never carry association_id — the scope CHECK forbids it.
+ */
+export function useSaveLeagueComposition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      associationId: string;
+      clubId?: string | null;
+      singlesRubbers: number;
+      doublesRubbers: number;
+      teamSize: number;
+      reservesPerTeam?: number | null;
+      /** Team league ids to mirror onto (derived copies). */
+      teamLeagueIds?: string[];
+    }) => {
+      const patch = {
+        singles_rubbers: input.singlesRubbers,
+        doubles_rubbers: input.doublesRubbers,
+        team_size: input.teamSize,
+        team_size_mode: "fixed" as const,
+        reserves_per_team: input.reservesPerTeam ?? null,
+      };
+
+      const { data: existingRows, error: readErr } = await supabase
+        .from("league_rules")
+        .select("id")
+        .eq("association_id", input.associationId)
+        .is("league_id", null)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      if (readErr) throw readErr;
+
+      if (existingRows?.length) {
+        const { error } = await supabase.from("league_rules").update(patch).eq("id", existingRows[0].id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("league_rules")
+          .insert({ association_id: input.associationId, ...patch });
+        if (error) throw error;
+      }
+
+      const ids = input.teamLeagueIds ?? [];
+      if (ids.length) {
+        const { error } = await supabase.from("league_rules").upsert(
+          ids.map((league_id) => ({
+            league_id,
+            club_id: input.clubId ?? null,
+            ...patch,
+          })),
+          { onConflict: "league_id" },
+        );
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["association-rules", "direct", vars.associationId] });
+      qc.invalidateQueries({ queryKey: ["league-team-rules", vars.associationId] });
+    },
+  });
+}
+
+
 
 export function useAssociationPenalties(associationId: string | null | undefined) {
   return useQuery({

@@ -606,7 +606,3 @@ export function allocateEntrantsToDivisions(args: {
 
   return { assignments, unassigned };
 }
-
-
-  return { assignments, unassigned };
-}

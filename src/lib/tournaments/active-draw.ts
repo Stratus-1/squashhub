@@ -16,7 +16,15 @@
  */
 import type { KnockoutMatchLike } from "./knockout";
 import { winnerOf } from "./knockout";
-import { isResolved } from "./knockout-progression";
+
+const DONE = new Set(["completed", "complete", "walkover", "forfeit"]);
+
+/** Has this match produced a decision we can progress from? */
+export function isResolved(m: KnockoutMatchLike): boolean {
+  if (m.is_bye) return true;
+  if (!DONE.has(String(m.status || "").toLowerCase())) return false;
+  return !!winnerOf(m);
+}
 
 /** Bracket size (next power of two) for `n` active entrants. */
 export function bracketSizeForActive(n: number): number {

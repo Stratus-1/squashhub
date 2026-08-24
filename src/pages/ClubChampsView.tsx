@@ -1999,8 +1999,8 @@ export default function ClubChampsView() {
         })()}
 
 
-        {canManage && !completed && m.scheduled_date && m.scheduled_time && (
         {(() => {
+
           // Court/date/time for THIS fixture — generated next rounds, semis and
           // finals included. Organisers can always override; players may
           // arrange their own match.

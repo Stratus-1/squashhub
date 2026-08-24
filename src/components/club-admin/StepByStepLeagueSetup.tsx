@@ -12,8 +12,10 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useLeagueAssociations, useLeagues, useClubMembers, type ClubMember } from "@/hooks/use-club";
-import { useAssociationRules } from "@/hooks/use-association-rules";
+import { useLeagueComposition, useSaveLeagueComposition } from "@/hooks/use-association-rules";
+import { compositionToPersist } from "@/lib/leagues/authoritative-format";
 import { inheritLeagueConfig, teamSetupQuestions, buildTeamAllocation, computeTeamRequirements } from "@/lib/leagues/team-setup";
+
 import { CATEGORY_LABELS, DISCIPLINE_LABELS, type CompetitionCategory } from "@/lib/leagues/category";
 
 type Gender = "men" | "ladies" | "mixed" | "open";

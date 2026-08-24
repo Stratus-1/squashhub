@@ -892,6 +892,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    *  - "pool":     every pool keeps its own winner, no cross-pool decider.
    */
   const [championScope, setChampionScope] = useState<ChampionScope>(DEFAULT_CHAMPION_SCOPE);
+  /**
+   * How entrants are spread across a division's pools:
+   *  - "snake":  serpentine deal — every pool is of even overall strength.
+   *  - "banded": strength bands — Pool A the strongest players, Pool B the
+   *              next band, Pool C the weakest.
+   */
+  const [poolAllocation, setPoolAllocation] = useState<PoolAllocationMode>("snake");
   const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
 
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);

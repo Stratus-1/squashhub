@@ -82,6 +82,9 @@ import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
 import { TournamentProgressCard } from "@/components/tournaments/TournamentProgressCard";
 import { TournamentNextActionBar } from "@/components/tournaments/TournamentNextActionBar";
+import { TournamentEntryCounts } from "@/components/tournaments/TournamentEntryCounts";
+import { countAllocatedEntries } from "@/lib/tournaments/entry-counts";
+
 
 
 import { useClubMembers, useIsSuperAdmin, useMyClubMember, type ClubMember } from "@/hooks/use-club";

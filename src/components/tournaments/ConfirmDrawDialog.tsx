@@ -119,30 +119,35 @@ export function ConfirmDrawDialog({
 
       }
 
-      // Audit: what was confirmed and who was moved.
-      try {
-        const { data: auth } = await supabase.auth.getUser();
-        const { data: champ } = await fromExt("tournaments")
-          .select("draw_version")
-          .eq("id", champId)
-          .maybeSingle();
-        const version = (champ?.draw_version ?? 0) + 1;
-        await fromExt("tournament_draw_versions").insert({
-          tournament_id: champId,
-          version,
-          created_by: auth?.user?.id ?? null,
-          note: `Confirmed draw — ${divisionLabel || `division ${board.groupNumber}`}, round ${board.round}`,
-          match_count: validation.playable + validation.byes,
-          snapshot: drawAuditSnapshot({ board, suggested, entrants, divisionLabel }) as any,
-        });
-        await fromExt("tournaments").update({ draw_version: version }).eq("id", champId);
-      } catch {
-        // The audit row must never block a valid draw.
+      // Audit: what was confirmed and who was moved. Only once real fixtures
+      // exist — a wizard draft is audited when the tournament is saved.
+      if (!onConfirm) {
+        try {
+          const { data: auth } = await supabase.auth.getUser();
+          const { data: champ } = await fromExt("tournaments")
+            .select("draw_version")
+            .eq("id", champId)
+            .maybeSingle();
+          const version = (champ?.draw_version ?? 0) + 1;
+          await fromExt("tournament_draw_versions").insert({
+            tournament_id: champId,
+            version,
+            created_by: auth?.user?.id ?? null,
+            note: `Confirmed draw — ${divisionLabel || `division ${board.groupNumber}`}, round ${board.round}`,
+            match_count: validation.playable + validation.byes,
+            snapshot: drawAuditSnapshot({ board, suggested, entrants, divisionLabel }) as any,
+          });
+          await fromExt("tournaments").update({ draw_version: version }).eq("id", champId);
+        } catch {
+          // The audit row must never block a valid draw.
+        }
+
+        qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+        qc.invalidateQueries({ queryKey: ["club-champ-rounds", champId] });
+        qc.invalidateQueries({ queryKey: ["champ-draw-versions", champId] });
+        toast.success("Draw confirmed — fixtures created");
       }
 
-      qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
-      qc.invalidateQueries({ queryKey: ["champ-draw-versions", champId] });
-      toast.success("Draw confirmed — fixtures created");
       onOpenChange(false);
     } catch (e: any) {
       toast.error(e?.message || "Could not confirm this draw");

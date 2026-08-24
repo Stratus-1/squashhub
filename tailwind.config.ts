@@ -55,6 +55,9 @@ export default {
         court: "hsl(var(--court))",
         "court-line": "hsl(var(--court-line))",
         win: "hsl(var(--win))",
+        "seed-top": "hsl(var(--seed-top))",
+        "seed-lower": "hsl(var(--seed-lower))",
+        "seed-out": "hsl(var(--seed-out))",
         loss: "hsl(var(--loss))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

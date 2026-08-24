@@ -2799,7 +2799,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registrationsByLeague,
       existing: groupAssignments,
       overrides: eligibilityOverrides,
+      // Anyone with a recorded decision (primary division or any additional
+      // division) is locked in: the auto-seeder must never move them again.
+      locked: new Set<string>([...groupAssignments.keys(), ...extraDivisions.keys()]),
     });
+
 
     setUnassignedEntrantIds((prev) =>
       prev.length === unassigned.length && prev.every((id, i) => id === unassigned[i]) ? prev : unassigned,

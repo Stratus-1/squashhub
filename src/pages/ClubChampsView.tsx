@@ -34,7 +34,22 @@ import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSugg
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
-import { UserX, Trophy, Shuffle, RotateCcw } from "lucide-react";
+import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import {
+  canScheduleFixture,
+  canUnscheduleFixture,
+  fixtureScheduleState,
+  scheduleActionLabel,
+  scheduleActionShortLabel,
+} from "@/lib/tournaments/fixture-scheduling";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical } from "lucide-react";
+
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 import { buildPlayoffMatches, type StandingEntity } from "@/lib/tournament-playoffs";
 

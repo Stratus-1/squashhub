@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  authoritativeRules,
+  resolveAuthoritativeComposition,
+  type StoredComposition,
+} from "@/lib/leagues/authoritative-format";
+
 
 export interface LeagueRules {
   id: string;

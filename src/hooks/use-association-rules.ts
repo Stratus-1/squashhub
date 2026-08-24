@@ -62,13 +62,17 @@ export function useAssociationRules(associationId: string | null | undefined) {
       // Try tenant association first, then fall back to its platform_association_id.
       // Rules are typically authored once in Super Admin against the platform
       // association; tenant rows inherit unless they override.
+      // NOTE: never `maybeSingle()` here — a stray duplicate row would make the
+      // whole query throw and silently drop the league's configured format.
       const { data: direct, error: directErr } = await supabase
         .from("league_rules")
         .select("*")
         .eq("association_id", associationId!)
-        .maybeSingle();
+        .is("league_id", null)
+        .order("created_at", { ascending: true })
+        .limit(1);
       if (directErr) throw directErr;
-      if (direct) return direct as LeagueRules;
+      if (direct && direct.length) return direct[0] as LeagueRules;
 
       const { data: assoc, error: assocErr } = await supabase
         .from("league_associations")
@@ -83,12 +87,15 @@ export function useAssociationRules(associationId: string | null | undefined) {
         .from("league_rules")
         .select("*")
         .eq("association_id", platformId)
-        .maybeSingle();
+        .is("league_id", null)
+        .order("created_at", { ascending: true })
+        .limit(1);
       if (inheritedErr) throw inheritedErr;
-      return (inherited as LeagueRules | null) ?? null;
+      return ((inherited && inherited[0]) as LeagueRules | null) ?? null;
     },
   });
 }
+
 
 export function useUpdateAssociationRules() {
   const qc = useQueryClient();

@@ -23,14 +23,19 @@ interface Props {
   opponentName?: string;
   /** Match length in minutes; falls back to the club's slot size. */
   durationMinutes?: number;
+  /** Organiser/admin override — also allows clearing the court & time. */
+  canManage?: boolean;
 }
 
 /**
- * Player-facing court picker for a self-scheduled tournament match.
+ * Court picker for a single tournament fixture.
  *
- * Uses the club's real courts and live bookings — no free-text court names.
- * The final availability re-check happens server-side in
- * `self_schedule_champ_match`, so a stale slot is rejected cleanly.
+ * Used by players (self-scheduling) and by organisers (authoritative override
+ * on any generated fixture — first round, semi-final or final). Saving links
+ * the booking to the existing fixture id via `self_schedule_champ_match`, so a
+ * reschedule moves the same booking and never creates a duplicate fixture.
+ * The final availability re-check happens server-side, so a stale slot is
+ * rejected cleanly.
  */
 export function ScheduleMatchDialog({
   open,
@@ -39,6 +44,7 @@ export function ScheduleMatchDialog({
   match,
   opponentName,
   durationMinutes,
+  canManage,
 }: Props) {
   const qc = useQueryClient();
   const [date, setDate] = useState<string>(
@@ -46,6 +52,7 @@ export function ScheduleMatchDialog({
   );
   const [courtId, setCourtId] = useState<number | null>(match?.court_id ?? null);
   const [saving, setSaving] = useState(false);
+
 
   const { data: club } = useQuery({
     queryKey: ["club-booking-window", clubId],

@@ -74,9 +74,23 @@ export function blockPoolIndex(i: number, pools: number, total: number, opts?: P
   return sizes.length - 1;
 }
 
+/**
+ * How seeds are spread across pools.
+ * - `snake`  — serpentine deal, pools of even overall strength (default).
+ * - `banded` — strength bands: Pool A gets the strongest players, Pool B the
+ *   next band, Pool C the weakest, each ranked 1..n inside its own pool.
+ */
+export type PoolAllocationMode = "snake" | "banded";
+
+export function normalisePoolAllocation(v: unknown): PoolAllocationMode {
+  return v === "banded" ? "banded" : "snake";
+}
+
 export interface PoolAssignOptions {
   /** The organiser hand-arranged this division — keep their order, block-split. */
   manual?: boolean;
+  /** Allocation method for the automatic split (defaults to `snake`). */
+  mode?: PoolAllocationMode;
   /**
    * Knockout draw: size the pools for the bracket (powers of two first, e.g.
    * 14 -> 8 + 6) instead of equal headcount. Ignored by every other format.
@@ -102,7 +116,9 @@ export function hasCustomSizes(total: number, pools: number, opts?: PoolAssignOp
 /** Pool index per row, aligned with the given (already ordered) list. */
 export function poolIndexes(total: number, pools: number, opts?: PoolAssignOptions): number[] {
   const n = Math.max(1, Math.floor(pools) || 1);
-  if (opts?.manual || hasCustomSizes(total, n, opts)) {
+  // Banded: contiguous strength blocks — Pool A = seeds 1..k (strongest),
+  // Pool B the next band, and so on. Same sizes as the snake deal.
+  if (opts?.manual || opts?.mode === "banded" || hasCustomSizes(total, n, opts)) {
     return Array.from({ length: total }, (_, i) => blockPoolIndex(i, n, total, opts));
   }
 

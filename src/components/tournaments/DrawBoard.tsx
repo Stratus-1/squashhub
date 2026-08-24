@@ -327,7 +327,19 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
                             {incomplete ? (
                               <Badge variant="outline" className="text-[10px]">Bye</Badge>
                             ) : null}
+                            {!readOnly && !a && !b ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="ml-auto h-5 w-5"
+                                title="Remove this empty matchup"
+                                onClick={() => onChange(removeMatchup(board, m.section, m.position))}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            ) : null}
                           </div>
+
                           <div className="space-y-0.5">
                             {slotA}
                             <div className="text-center text-[9px] uppercase text-muted-foreground">v</div>

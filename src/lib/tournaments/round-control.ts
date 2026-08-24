@@ -45,7 +45,9 @@ export type SectionControl = {
   blockedReason: string | null;
   decided: boolean;
   winner: string | null;
-  progression: SectionProgression;
+  /** Null for the synthetic "league final still to be created" row. */
+  progression: SectionProgression | null;
+
 };
 
 /** A match is "scheduled" once it has a date (court/time may follow). */
@@ -138,6 +140,22 @@ export type DivisionControl = {
   decided: boolean;
 };
 
+/**
+ * Where the ultimate winner of a knockout is decided.
+ *  - "division": pool winners meet in a league final — ONE champion per league.
+ *  - "pool":     every pool keeps its own winner, no cross-pool final.
+ */
+export type ChampionScope = "division" | "pool";
+
+export const DEFAULT_CHAMPION_SCOPE: ChampionScope = "division";
+
+/** Stage name for a cross-pool decider contested by `winners` pool winners. */
+export function leagueFinalStageLabel(winners: number): string {
+  if (winners <= 2) return "League final";
+  if (winners <= 4) return "League semi-finals";
+  return `League round of ${winners}`;
+}
+
 const PRIORITY: Record<RoundAction, number> = {
   generate: 0,
   schedule: 1,
@@ -152,8 +170,9 @@ const PRIORITY: Record<RoundAction, number> = {
 export function divisionControls(
   matches: KnockoutMatchLike[],
   rounds: ChampRound[] = [],
-  opts: { selfScheduled?: boolean } = {},
+  opts: { selfScheduled?: boolean; championScope?: ChampionScope } = {},
 ): DivisionControl[] {
+  const scope: ChampionScope = opts.championScope ?? DEFAULT_CHAMPION_SCOPE;
   const states = sectionProgression(matches, rounds);
   const byGroup = new Map<number, SectionControl[]>();
   for (const s of states) {
@@ -163,7 +182,43 @@ export function divisionControls(
   }
   return Array.from(byGroup.entries())
     .map(([groupNumber, sections]) => {
-      const sorted = [...sections].sort((a, b) => a.section - b.section);
+      let sorted = [...sections].sort((a, b) => a.section - b.section);
+      const pools = sorted.filter((s) => s.section > 0);
+      const hasFinalsBracket = sorted.some((s) => s.section === 0);
+
+      // One champion per league: the pool winners still have to meet.
+      if (scope === "division" && pools.length > 1 && !hasFinalsBracket) {
+        const decided = pools.filter((s) => s.decided).length;
+        const label = leagueFinalStageLabel(pools.length);
+        const ready = decided === pools.length;
+        sorted = sorted.map((s) =>
+          s.section > 0 && s.decided
+            ? { ...s, headline: `${s.headline} The winner goes through to the ${label.toLowerCase()}.` }
+            : s,
+        );
+        sorted.push({
+          groupNumber,
+          section: 0,
+          stageLabel: label,
+          nextStageLabel: null,
+          activeCount: decided,
+          completed: 0,
+          total: 0,
+          unscheduled: 0,
+          headline: ready
+            ? `All ${pools.length} pool winners are decided — ready for the ${label.toLowerCase()}.`
+            : `${label} pending — ${decided} of ${pools.length} pool winners decided.`,
+          action: ready ? "generate" : "await_results",
+          actionLabel: ready ? `Generate ${label.toLowerCase()}` : null,
+          canGenerate: ready,
+          blockedReason: ready ? null : "Every pool must be decided first.",
+          decided: false,
+          winner: null,
+          progression: null,
+        });
+        sorted.sort((a, b) => a.section - b.section);
+      }
+
       const focus =
         [...sorted].sort(
           (a, b) => PRIORITY[a.action] - PRIORITY[b.action] || a.section - b.section,
@@ -173,6 +228,7 @@ export function divisionControls(
         sections: sorted,
         focus: focus ?? null,
         decided: sorted.length > 0 && sorted.every((s) => s.decided),
+
       };
     })
     .sort((a, b) => a.groupNumber - b.groupNumber);
@@ -183,7 +239,7 @@ export function divisionControl(
   matches: KnockoutMatchLike[],
   groupNumber: number,
   rounds: ChampRound[] = [],
-  opts: { selfScheduled?: boolean } = {},
+  opts: { selfScheduled?: boolean; championScope?: ChampionScope } = {},
 ): DivisionControl | null {
   return (
     divisionControls(matches, rounds, opts).find((d) => d.groupNumber === Number(groupNumber)) ||
@@ -287,7 +343,7 @@ export type TournamentNextAction = {
 export function tournamentNextAction(
   matches: KnockoutMatchLike[],
   rounds: ChampRound[] = [],
-  opts: { selfScheduled?: boolean; status?: string | null } = {},
+  opts: { selfScheduled?: boolean; status?: string | null; championScope?: ChampionScope } = {},
 ): TournamentNextAction {
   const ko = (matches as any[]).filter((m) => (m.stage || "") === "ko") as KnockoutMatchLike[];
   const divisions = divisionControls(ko, rounds, opts);
@@ -428,7 +484,7 @@ export function tournamentNextAction(
 
   // Waiting on results. If the next round exists in the plan, say why it can't
   // be generated yet instead of hiding the button.
-  const blocked = focus.progression.nextRound && !focus.canGenerate;
+  const blocked = !!focus.progression?.nextRound && !focus.canGenerate;
   return {
     stage: "round_in_progress",
     status: `${stageName} in progress`,

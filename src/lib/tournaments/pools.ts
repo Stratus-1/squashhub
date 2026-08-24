@@ -116,7 +116,9 @@ export function hasCustomSizes(total: number, pools: number, opts?: PoolAssignOp
 /** Pool index per row, aligned with the given (already ordered) list. */
 export function poolIndexes(total: number, pools: number, opts?: PoolAssignOptions): number[] {
   const n = Math.max(1, Math.floor(pools) || 1);
-  if (opts?.manual || hasCustomSizes(total, n, opts)) {
+  // Banded: contiguous strength blocks — Pool A = seeds 1..k (strongest),
+  // Pool B the next band, and so on. Same sizes as the snake deal.
+  if (opts?.manual || opts?.mode === "banded" || hasCustomSizes(total, n, opts)) {
     return Array.from({ length: total }, (_, i) => blockPoolIndex(i, n, total, opts));
   }
 

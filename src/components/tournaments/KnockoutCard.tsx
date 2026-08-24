@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,13 +6,15 @@ import { Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sectionLetter, type KnockoutMatchLike } from "@/lib/tournaments/knockout";
 import {
-  generateActionLabel,
+
   progressSummary,
   sectionProgression,
   type ChampRound,
 } from "@/lib/tournaments/knockout-progression";
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
+import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
+import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
 
 
 interface KnockoutCardProps {
@@ -84,6 +86,9 @@ export function KnockoutCard({
   }, [states]);
 
   const generate = useGenerateNextRound({ champId, states, selfScheduled, playByForRound });
+  const [draw, setDraw] = useState<{ key: string; mode: NextRoundDrawMode } | null>(null);
+  const keyOf = (s: { groupNumber: number; section: number }) => `${s.groupNumber}-${s.section}`;
+  const drawState = draw ? states.find((s) => keyOf(s) === draw.key) ?? null : null;
 
 
   if (koMatches.length === 0) return null;
@@ -155,9 +160,14 @@ export function KnockoutCard({
                         size="sm"
                         variant="outline"
                         disabled={generate.isPending}
-                        onClick={() => generate.mutate({ groupNumber: gn, section: s.section })}
+                        onClick={() => setDraw({ key: keyOf(s), mode: "prepare" })}
                       >
-                        {generateActionLabel(s)}
+                        {prepareActionLabel(s.nextRound?.label, (s.currentRound || 0) + 1)}
+                      </Button>
+                    )}
+                    {canManage && !s.canGenerateNext && !s.complete && roundRedrawState(s.currentRoundMatches).canRedraw && (
+                      <Button size="sm" variant="ghost" onClick={() => setDraw({ key: keyOf(s), mode: "redraw" })}>
+                        Review / redraw round
                       </Button>
                     )}
                     {canManage && !s.canGenerateNext && s.blockedReason && !s.complete && (
@@ -190,6 +200,22 @@ export function KnockoutCard({
             Rounds are created one at a time, following the round plan for this tournament — new matches start
             unscheduled.
           </p>
+        )}
+
+        {drawState && draw && (
+          <NextRoundDrawDialog
+            open
+            onOpenChange={(o) => !o && setDraw(null)}
+            champId={champId}
+            state={drawState}
+            mode={draw.mode}
+            multiSection={
+              states.filter((s) => s.groupNumber === drawState.groupNumber && s.section > 0).length > 1
+            }
+            selfScheduled={selfScheduled}
+            divisionLabel={groupLabel(drawState.groupNumber)}
+            onConfirmed={() => setDraw(null)}
+          />
         )}
       </CardContent>
     </Card>

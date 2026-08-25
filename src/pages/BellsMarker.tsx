@@ -74,7 +74,9 @@ export default function BellsMarker() {
   });
 
   const { data: allMatches = [] } = useQuery({
-    queryKey: ["club-champ-matches", match?.champ_id],
+    // Own cache slot: this partial select must not clobber the tournament page's
+    // fully joined match rows. Prefix invalidations still refresh it.
+    queryKey: ["club-champ-matches", match?.champ_id, "bells-marker"],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_matches")
         .select("id, status, is_bye, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name)")

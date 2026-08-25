@@ -9,7 +9,7 @@
  * Completed matches are never read-modified here: for a later round the dialog
  * only reads the winners of the finished round and creates the NEXT round.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
@@ -73,11 +73,16 @@ export function ConfirmDrawDialog({
   const [board, setBoard] = useState<DrawBoardModel>(suggested);
   const [saving, setSaving] = useState(false);
 
+  // Seed the board ONLY when the dialog transitions closed -> open. The parent
+  // recomputes `suggested` on every render, so depending on it here would wipe
+  // an organiser's in-progress drags on any re-render/refetch.
+  const wasOpen = useRef(false);
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpen.current) {
       setBoard(suggested);
       setHistory([]);
     }
+    wasOpen.current = open;
   }, [open, suggested]);
 
   const validation = useMemo(() => validateDrawBoard(board, entrants), [board, entrants]);

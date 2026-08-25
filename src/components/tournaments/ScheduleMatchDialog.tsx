@@ -27,7 +27,13 @@ interface Props {
   durationMinutes?: number;
   /** Organiser/admin override — also allows clearing the court & time. */
   canManage?: boolean;
+  /**
+   * Courts explicitly chosen in tournament setup. When provided (non-empty)
+   * only those courts are offered; otherwise external courts are excluded.
+   */
+  courtIds?: number[] | null;
 }
+
 
 /**
  * Court picker for a single tournament fixture.

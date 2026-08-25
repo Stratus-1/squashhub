@@ -88,6 +88,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-25 · Recurring debit webhooks rejected by stale club signing secret
+- **Symptom:** Stitch recurring debit notifications returned 401 with `No matching signature found`, so successful collections were not posted and failed collections were not counted or retried.
+- **Finding:** The collection handler preferred a club-level webhook secret and did not read the shared endpoint secret already configured for the public Stitch webhook. It also incorrectly treated the API client secret as a possible webhook signing secret.
+- **Fix:** Verify recurring events against the dedicated collection secret, then the shared endpoint secret, then the club-specific secret for rotation compatibility. Removed the client-secret fallback and reject unsigned or unverifiable requests.
+- **Guard:** Webhook signatures may be checked against explicit endpoint signing secrets only; never substitute an API client secret, and keep verification fail-closed.
+
 ### 2026-08-23 · Doubles pair allocation could be duplicated or lose season scope
 - **Symptom:** An admin could add the same two players repeatedly, while some saved pairs had no season and could appear inconsistently after reopening team management.
 - **Finding:** The pair dialog trusted the association season prop rather than the selected team's season, the setup editor identified teams by mutable display names, and the database allowed reversed or repeated copies of the same pair.

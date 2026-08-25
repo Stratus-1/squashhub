@@ -690,9 +690,23 @@ export default function ClubChampsView() {
       ? (isDoubles ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b))
       : (m.placeholder_b || "TBD")) + hcLabel(m.handicap_b);
 
+  /**
+   * The player/pair that actually receives a bye. Byes can be stored on either
+   * side of the row, so never assume side A — otherwise the fixture renders as
+   * "TBD" and looks like a missing match.
+   */
+  const getByeTeam = (m: any) => {
+    const onA = m.player_a_member_id && (!m.bye_member_id || m.bye_member_id === m.player_a_member_id);
+    if (onA) return getMatchTeamA(m);
+    if (m.player_b_member_id) return getMatchTeamB(m);
+    return m.player_a_member_id ? getMatchTeamA(m) : "TBD";
+  };
+
   const isMyMatch = (m: any) =>
     myMemberId && (m.player_a_member_id === myMemberId || m.player_b_member_id === myMemberId ||
-      m.partner_a_member_id === myMemberId || m.partner_b_member_id === myMemberId);
+      m.partner_a_member_id === myMemberId || m.partner_b_member_id === myMemberId ||
+      m.bye_member_id === myMemberId);
+
 
   const myMatches = matches.filter(isMyMatch);
   const myGroupNumbers = [...new Set(entries.filter((e: any) => e.club_member_id === myMemberId || e.partner_member_id === myMemberId).map((e: any) => e.group_number as number))];

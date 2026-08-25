@@ -123,25 +123,59 @@ Deno.serve(async (req) => {
     const { data: secrets } = await admin.from("club_secrets")
       .select("payment_gateway_credentials").eq("club_id", col.club_id).maybeSingle();
     const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
-    const signingSecret = (creds.webhook_secret || Deno.env.get("STITCH_COLLECTION_WEBHOOK_SIGNING_SECRET") || creds.client_secret || "").trim();
+    // Recurring events arrive through the shared Stitch webhook endpoint, so
+    // its environment secret is authoritative. Retain the club-specific secret
+    // as a rotation/legacy fallback, but never treat the API client secret as a
+    // webhook signing secret.
+    const signingSecrets = [
+      Deno.env.get("STITCH_COLLECTION_WEBHOOK_SIGNING_SECRET"),
+      Deno.env.get("STITCH_WEBHOOK_SIGNING_SECRET"),
+      creds.webhook_secret,
+    ].map((value) => value?.trim()).filter((value): value is string => !!value);
+    const uniqueSigningSecrets = [...new Set(signingSecrets)];
 
-    if (signingSecret && svixId && svixTs && svixSig) {
-      try {
-        new Webhook(signingSecret).verify(rawBody, {
-          "svix-id": svixId, "svix-timestamp": svixTs, "svix-signature": svixSig,
+    if (svixId && svixTs && svixSig) {
+      let verified = false;
+      for (const signingSecret of uniqueSigningSecrets) {
+        try {
+          new Webhook(signingSecret).verify(rawBody, {
+            "svix-id": svixId, "svix-timestamp": svixTs, "svix-signature": svixSig,
+          });
+          verified = true;
+          break;
+        } catch {
+          // Try the next configured secret to support endpoint-secret rotation.
+        }
+      }
+      if (!verified) {
+        console.error("stitch-collection-webhook: Svix verify failed", {
+          collectionId: col.id,
+          configuredSecretCount: uniqueSigningSecrets.length,
         });
-      } catch (err) {
-        console.error("stitch-collection-webhook: Svix verify failed", (err as Error).message);
         return json({ error: "invalid signature" }, 401);
       }
-    } else if (signingSecret && signature) {
-      const valid = await verifyStitchSignature(rawBody, signature, signingSecret);
+    } else if (uniqueSigningSecrets.length > 0 && signature) {
+      let valid = false;
+      for (const signingSecret of uniqueSigningSecrets) {
+        if (await verifyStitchSignature(rawBody, signature, signingSecret)) {
+          valid = true;
+          break;
+        }
+      }
       if (!valid) {
         console.error("stitch-collection-webhook: invalid signature for collection", col.id);
         return json({ error: "invalid signature" }, 401);
       }
     } else if (signature || svixSig) {
-      console.warn("stitch-collection-webhook: signature present but no signing secret for club", col.club_id);
+      console.error("stitch-collection-webhook: signature cannot be verified", {
+        collectionId: col.id,
+        configuredSecretCount: uniqueSigningSecrets.length,
+        hasCompleteSvixHeaders: !!(svixId && svixTs && svixSig),
+      });
+      return json({ error: "invalid signature" }, 401);
+    } else {
+      console.error("stitch-collection-webhook: unsigned request rejected", col.id);
+      return json({ error: "missing signature" }, 401);
     }
 
     const isPaid = /complete|paid|settled|success/i.test(eventType);

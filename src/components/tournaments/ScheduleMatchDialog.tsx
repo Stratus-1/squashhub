@@ -53,6 +53,7 @@ export function ScheduleMatchDialog({
   opponentName,
   durationMinutes,
   canManage,
+  courtIds: allowedCourtIds,
 }: Props) {
   const qc = useQueryClient();
   const [date, setDate] = useState<string>(
@@ -74,11 +75,19 @@ export function ScheduleMatchDialog({
     enabled: !!clubId && open,
   });
 
+  const allowedKey = (allowedCourtIds || []).join(",");
+
   const { data: courts = [] } = useQuery({
-    queryKey: ["club-courts-self-schedule", clubId],
+    queryKey: ["club-courts-self-schedule", clubId, allowedKey],
     queryFn: async () => {
-      const { data } = await fromExt("courts").select("id, name").eq("club_id", clubId!).order("name");
-      return (data || []) as Array<{ id: number; name: string }>;
+      const ids = (allowedCourtIds || []).filter((n) => Number.isFinite(n));
+      let q = fromExt("courts").select("id, name, is_external").eq("club_id", clubId!);
+      // Tournament setup wins: only the chosen courts (which may include an
+      // external venue). Otherwise never offer external courts.
+      if (ids.length > 0) q = q.in("id", ids);
+      else q = q.eq("is_external", false);
+      const { data } = await q.order("name");
+      return (data || []) as Array<{ id: number; name: string; is_external?: boolean }>;
     },
     enabled: !!clubId && open,
   });
@@ -92,6 +101,7 @@ export function ScheduleMatchDialog({
       return true;
     });
   }, [courts]);
+
 
   useEffect(() => {
     if (courtOptions.length === 0) return;

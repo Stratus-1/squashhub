@@ -1789,7 +1789,7 @@ export default function ClubChampsView() {
                           {/* Bottom row: opponent + score */}
                           <div className="mt-1 flex items-center gap-2">
                             <span className="font-medium flex-1 min-w-0 break-words">
-                              {isBye ? "BYE (rest round)" : `vs ${opponent}`}
+                              {isBye ? "Bye — you advance to the next round" : `vs ${opponent}`}
                             </span>
                             {!isBye && m.score && <Badge variant="secondary" className="text-xs shrink-0">{m.score}</Badge>}
                           </div>
@@ -1993,22 +1993,10 @@ export default function ClubChampsView() {
       } catch { /* ignore */ }
     }
 
-    if (isBye) {
-      return (
-        <div key={m.id} className={cn(
-          "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm p-2 rounded border border-amber-500/20 bg-amber-500/10",
-          mine && "ring-1 ring-primary/30",
-        )}>
-          <span className="text-muted-foreground w-24 shrink-0 text-xs">Round {m.round_number}</span>
-          <span className="text-muted-foreground w-12 shrink-0 text-xs">—</span>
-          <span className="font-medium">{getMatchTeamA(m)}</span>
-          <span className="text-amber-600 dark:text-amber-400 text-xs font-medium">— BYE (rest round)</span>
-          <Badge variant="outline" className="ml-auto text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">
-            {byeHandling === "walkover_win" ? "Walkover" : byeHandling === "neutral" ? "Neutral" : "Bye"}
-          </Badge>
-        </div>
-      );
-    }
+    // Byes are personal information, not a fixture: they only appear in the
+    // player's own "My Schedule" list, never in the shared fixtures/results.
+    if (isBye) return null;
+
 
     const bellActive = !!m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now();
     const paused = typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0;

@@ -1789,7 +1789,7 @@ export default function ClubChampsView() {
                           {/* Bottom row: opponent + score */}
                           <div className="mt-1 flex items-center gap-2">
                             <span className="font-medium flex-1 min-w-0 break-words">
-                              {isBye ? "BYE (rest round)" : `vs ${opponent}`}
+                              {isBye ? "Bye — you advance to the next round" : `vs ${opponent}`}
                             </span>
                             {!isBye && m.score && <Badge variant="secondary" className="text-xs shrink-0">{m.score}</Badge>}
                           </div>

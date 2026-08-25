@@ -61,7 +61,9 @@ export function TournamentProgressCard({
 }: Props) {
   const { data: rounds = [] } = useChampRounds(champId);
   const { data: matches = [] } = useQuery({
-    queryKey: ["club-champ-matches", champId],
+    // Distinct cache slot: this join-less select must never overwrite the page's
+    // joined match rows (player/court names). Prefix invalidations still hit it.
+    queryKey: ["club-champ-matches", champId, "progress-lite"],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_matches")
         .select("*")

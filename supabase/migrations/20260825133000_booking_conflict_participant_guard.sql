@@ -77,6 +77,7 @@ DECLARE
   _end time;
   _conflicts int;
   _booking_id uuid;
+  _booking_external_id text;
   _is_participant boolean;
   _can_manage boolean;
   _booker_member uuid;
@@ -160,23 +161,29 @@ BEGIN
 
   _booker_member := _m.player_a_member_id;
   SELECT cm.user_id INTO _booker_user FROM public.club_members cm WHERE cm.id = _booker_member;
+  _booking_external_id := 'champ:' || _m.champ_id || ':match:' || _m.id;
 
-  IF _m.booking_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.bookings WHERE id = _m.booking_id) THEN
-    UPDATE public.bookings
-       SET court_id = p_court_id, date = p_date, start_time = _start, end_time = _end, status = 'active'
-     WHERE id = _m.booking_id;
-    _booking_id := _m.booking_id;
-  ELSE
-    INSERT INTO public.bookings (
-      club_id, court_id, user_id, club_member_id, opponent_member_id,
-      date, start_time, end_time, status, is_friendly, source, external_id, booking_type
-    ) VALUES (
-      _club_id, p_court_id, _booker_user, _booker_member, _m.player_b_member_id,
-      p_date, _start, _end, 'active', false, 'club_event',
-      'champ:' || _m.champ_id || ':match:' || _m.id, 'match'
-    )
-    RETURNING id INTO _booking_id;
-  END IF;
+  INSERT INTO public.bookings (
+    club_id, court_id, user_id, club_member_id, opponent_member_id,
+    date, start_time, end_time, status, is_friendly, source, external_id, booking_type
+  ) VALUES (
+    _club_id, p_court_id, _booker_user, _booker_member, _m.player_b_member_id,
+    p_date, _start, _end, 'active', false, 'club_event',
+    _booking_external_id, 'match'
+  )
+  ON CONFLICT (club_id, source, external_id) DO UPDATE
+    SET court_id = EXCLUDED.court_id,
+        user_id = EXCLUDED.user_id,
+        club_member_id = EXCLUDED.club_member_id,
+        opponent_member_id = EXCLUDED.opponent_member_id,
+        date = EXCLUDED.date,
+        start_time = EXCLUDED.start_time,
+        end_time = EXCLUDED.end_time,
+        status = EXCLUDED.status,
+        is_friendly = EXCLUDED.is_friendly,
+        booking_type = EXCLUDED.booking_type,
+        guest_name = COALESCE(EXCLUDED.guest_name, public.bookings.guest_name)
+  RETURNING id INTO _booking_id;
 
   PERFORM set_config('app.self_schedule', '1', true);
   UPDATE public.club_champs_matches

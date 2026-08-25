@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -76,6 +76,36 @@ export function ScheduleMatchDialog({
     },
     enabled: !!clubId && open,
   });
+
+  const courtOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return courts.filter((court) => {
+      const key = String(court.name || "").trim().toLowerCase() || `__court_${court.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [courts]);
+
+  useEffect(() => {
+    if (courtOptions.length === 0) return;
+    if (courtId != null && courtOptions.some((c) => c.id === courtId)) return;
+
+    if (courtId != null) {
+      const current = courts.find((c) => c.id === courtId);
+      if (current) {
+        const replacement = courtOptions.find(
+          (c) => String(c.name || "").trim().toLowerCase() === String(current.name || "").trim().toLowerCase(),
+        );
+        if (replacement) {
+          setCourtId(replacement.id);
+          return;
+        }
+      }
+    }
+
+    setCourtId(courtOptions[0].id);
+  }, [courtOptions, courtId, courts]);
 
   const { data: bookings = [], isFetching } = useQuery({
     queryKey: ["court-bookings-self-schedule", clubId, date],
@@ -188,7 +218,7 @@ export function ScheduleMatchDialog({
           <div className="space-y-1">
             <Label className="text-xs">Court</Label>
             <div className="flex flex-wrap gap-1.5">
-              {courts.map((c) => (
+              {courtOptions.map((c) => (
                 <Button
                   key={c.id}
                   type="button"
@@ -200,7 +230,7 @@ export function ScheduleMatchDialog({
                   {c.name}
                 </Button>
               ))}
-              {courts.length === 0 && (
+              {courtOptions.length === 0 && (
                 <span className="text-xs text-muted-foreground">No courts configured for this club.</span>
               )}
             </div>

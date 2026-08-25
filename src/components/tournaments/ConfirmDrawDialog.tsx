@@ -9,7 +9,7 @@
  * Completed matches are never read-modified here: for a later round the dialog
  * only reads the winners of the finished round and creates the NEXT round.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";

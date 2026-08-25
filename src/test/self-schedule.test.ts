@@ -6,6 +6,7 @@ import {
   isParticipant,
   buildSlots,
   isSlotFree,
+  isSlotFreeForMatch,
   freeSlotsForCourt,
   unscheduledMatchLabel,
   canMarkChampMatch,
@@ -103,6 +104,25 @@ describe("court availability", () => {
     const free = freeSlotsForCourt(slots, 60, 1, bookings);
     expect(free).not.toContain("07:00");
     expect(free).toContain("08:00");
+  });
+
+  it("blocks a slot when one of the match players is already booked elsewhere", () => {
+    const match = drawMatch();
+    const bookings = [
+      { id: "b1", court_id: 2, start_time: "18:00", end_time: "19:00", status: "active", club_member_id: A },
+      { id: "b2", court_id: 2, start_time: "19:00", end_time: "20:00", status: "active", club_member_id: A },
+    ];
+    expect(isSlotFreeForMatch("18:00", 60, 1, match, bookings)).toBe(false);
+    expect(isSlotFreeForMatch("20:00", 60, 1, match, bookings)).toBe(true);
+  });
+
+  it("ignores the match's own booking when rescheduling", () => {
+    const match = drawMatch({ booking_id: "mine" } as any);
+    const bookings = [
+      { id: "mine", court_id: 1, start_time: "19:00", end_time: "20:00", status: "active", club_member_id: A },
+      { id: "b1", court_id: 2, start_time: "18:00", end_time: "19:00", status: "active", club_member_id: B },
+    ];
+    expect(isSlotFreeForMatch("19:00", 60, 1, match, bookings, "mine")).toBe(true);
   });
 });
 

@@ -101,6 +101,38 @@ export interface BookingLike {
   start_time?: string | null;
   end_time?: string | null;
   status?: string | null;
+  user_id?: string | null;
+  opponent_id?: string | null;
+  club_member_id?: string | null;
+  opponent_member_id?: string | null;
+}
+
+export function matchParticipantIds(m: SelfScheduleMatchLike): string[] {
+  return [...new Set(
+    [
+      m.player_a_member_id,
+      m.player_b_member_id,
+      m.partner_a_member_id,
+      m.partner_b_member_id,
+    ].filter(Boolean) as string[],
+  )];
+}
+
+export function bookingParticipantIds(b: BookingLike): string[] {
+  return [...new Set(
+    [
+      b.user_id,
+      b.opponent_id,
+      b.club_member_id,
+      b.opponent_member_id,
+    ].filter(Boolean) as string[],
+  )];
+}
+
+export function bookingConflictsWithParticipants(b: BookingLike, participantIds: string[]): boolean {
+  if (participantIds.length === 0) return false;
+  const bookingIds = bookingParticipantIds(b);
+  return bookingIds.some((id) => participantIds.includes(id));
 }
 
 /**
@@ -124,6 +156,37 @@ export function isSlotFree(
     const be = timeToMinutes(String(b.end_time || "00:00"));
     return bs < end && be > start;
   });
+}
+
+/**
+ * True when the slot is open on the court and none of the match participants
+ * are already booked elsewhere at the same time.
+ */
+export function isSlotFreeForMatch(
+  slot: string,
+  durationMinutes: number,
+  courtId: number,
+  match: SelfScheduleMatchLike,
+  bookings: BookingLike[],
+  ignoreBookingId?: string | null,
+): boolean {
+  const start = timeToMinutes(slot);
+  const end = start + Math.max(15, durationMinutes);
+  const participantIds = matchParticipantIds(match);
+  const courtFree = isSlotFree(slot, durationMinutes, courtId, bookings, ignoreBookingId);
+
+  const participantBusy = bookings.some((b) => {
+    if ((b.status || "active") !== "active") return false;
+    if (ignoreBookingId && b.id === ignoreBookingId) return false;
+
+    const bs = timeToMinutes(String(b.start_time || "00:00"));
+    const be = timeToMinutes(String(b.end_time || "00:00"));
+    if (!(bs < end && be > start)) return false;
+
+    return bookingConflictsWithParticipants(b, participantIds);
+  });
+
+  return courtFree && !participantBusy;
 }
 
 export function freeSlotsForCourt(

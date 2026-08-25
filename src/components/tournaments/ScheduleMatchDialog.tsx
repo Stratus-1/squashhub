@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarClock, Loader2 } from "lucide-react";
 import {
   buildSlots,
-  freeSlotsForCourt,
+  isSlotFreeForMatch,
   type SelfScheduleMatchLike,
 } from "@/lib/tournaments/self-schedule";
 import { fixtureScheduleState } from "@/lib/tournaments/fixture-scheduling";
@@ -81,7 +81,7 @@ export function ScheduleMatchDialog({
     queryKey: ["court-bookings-self-schedule", clubId, date],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
-        .select("id, court_id, start_time, end_time, status")
+        .select("id, court_id, start_time, end_time, status, user_id, opponent_id, club_member_id, opponent_member_id")
         .eq("club_id", clubId!)
         .eq("date", date)
         .eq("status", "active");
@@ -101,8 +101,12 @@ export function ScheduleMatchDialog({
 
   const freeSlots = useMemo(() => {
     if (!courtId) return [];
-    return freeSlotsForCourt(slots, duration, courtId, bookings, match?.booking_id ?? null);
-  }, [slots, duration, courtId, bookings, match?.booking_id]);
+    return slots.filter((slot) =>
+      match
+        ? isSlotFreeForMatch(slot, duration, courtId, match, bookings, match?.booking_id ?? null)
+        : false
+    );
+  }, [slots, duration, courtId, bookings, match]);
 
 
   const confirm = async (time: string) => {

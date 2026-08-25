@@ -13,7 +13,7 @@ import {
   isMatchTerminal,
   isParticipant,
   isUnscheduled,
-  isSlotFree,
+  isSlotFreeForMatch,
   type BookingLike,
   type SelfScheduleMatchLike,
 } from "./self-schedule";
@@ -131,9 +131,9 @@ export function fixtureSlotConflict(
   durationMinutes: number,
   bookings: BookingLike[],
 ): string | null {
-  return isSlotFree(slot, durationMinutes, courtId, bookings, m.booking_id ?? null)
+  return isSlotFreeForMatch(slot, durationMinutes, courtId, m, bookings, m.booking_id ?? null)
     ? null
-    : "That court is already booked at this time — please pick another slot";
+    : "That slot is already booked — please pick another slot";
 }
 
 /** Fixtures an organiser still has to place (excludes byes and decided matches). */

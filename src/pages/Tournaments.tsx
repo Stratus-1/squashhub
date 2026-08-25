@@ -1509,6 +1509,7 @@ export default function Tournaments() {
         canManage={canManageChamps || isClubAdmin}
         opponentName={scheduleMatch ? `${sideLabel(scheduleMatch.player_a, scheduleMatch.partner_a, scheduleMatch.placeholder_a, allChamps.find((c: any) => c.id === scheduleMatch.champ_id)?.match_type === "doubles")} vs ${sideLabel(scheduleMatch.player_b, scheduleMatch.partner_b, scheduleMatch.placeholder_b, allChamps.find((c: any) => c.id === scheduleMatch.champ_id)?.match_type === "doubles")}` : undefined}
         durationMinutes={allChamps.find((c: any) => c.id === scheduleMatch?.champ_id)?.match_duration_minutes ?? undefined}
+        courtIds={(allChamps.find((c: any) => c.id === scheduleMatch?.champ_id)?.court_ids as number[] | null) ?? null}
       />
 
       <EnterResultDialog

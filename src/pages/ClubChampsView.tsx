@@ -1862,6 +1862,7 @@ export default function ClubChampsView() {
         canManage={canManage}
         opponentName={scheduleMatch ? `${getMatchTeamA(scheduleMatch)} vs ${getMatchTeamB(scheduleMatch)}` : undefined}
         durationMinutes={(champ as any)?.match_duration_minutes ?? undefined}
+        courtIds={((champ as any)?.court_ids as number[] | null) ?? null}
       />
 
     </div>

@@ -36,7 +36,7 @@ export function MyChampionships() {
     queryKey: ["club-champs-active", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs")
-        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode, scheduling_mode, scoring_mode, round_play_by, best_of, points_per_game")
+        .select("id, name, gender, match_type, status, start_date, end_date, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, payment_methods, payment_required, entries_locked, partner_mode, scheduling_mode, scoring_mode, round_play_by, best_of, points_per_game, court_ids, match_duration_minutes")
         .eq("club_id", clubId!)
         .order("start_date");
       if (error) throw error;
@@ -411,6 +411,8 @@ export function MyChampionships() {
         clubId={clubId}
         match={scheduling?.match || null}
         opponentName={scheduling?.opponent}
+        durationMinutes={(allChamps.find((c: any) => c.id === scheduling?.match?.champ_id) as any)?.match_duration_minutes ?? undefined}
+        courtIds={((allChamps.find((c: any) => c.id === scheduling?.match?.champ_id) as any)?.court_ids as number[] | null) ?? null}
       />
 
       <EnterResultDialog

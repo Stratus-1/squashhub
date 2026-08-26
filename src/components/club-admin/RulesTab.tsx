@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -101,7 +102,9 @@ export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
     }
   };
 
-  const previewLandingUrl = club?.subdomain ? `/c/${club.subdomain}` : null;
+  // ?preview=1 lets a signed-in admin view the public page (ClubLanding
+  // otherwise redirects signed-in users to their dashboard).
+  const previewLandingUrl = club?.subdomain ? `/c/${club.subdomain}?preview=1` : null;
 
   if (isLoading) {
     return (

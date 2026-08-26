@@ -555,8 +555,16 @@ Deno.serve(async (req) => {
       const total = consolidated.total
       const displayTotal = +((subtotal + vatAmount) / (fxRate || 1)).toFixed(2)
 
-      const dueDate = new Date(invoiceDate)
-      dueDate.setDate(dueDate.getDate() + 14)
+      // Fixed due date: the 7th of the month. Invoices are SENT on the fixed
+      // issue day (25th) and fall due on the 7th of the following month —
+      // but never earlier than the invoice's own date (mid-month renewals).
+      const dueDate = (() => {
+        let d = new Date(Date.UTC(scheduledSend.getUTCFullYear(), scheduledSend.getUTCMonth() + 1, 7))
+        while (d < invoiceDate) {
+          d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 7))
+        }
+        return d
+      })()
 
       // Idempotency: one invoice per club per billing month. An existing issued
       // or paid invoice is left alone; a failed one is retried in place.

@@ -1564,10 +1564,10 @@ export default function LeagueGameDetail() {
         .update({ winner: null } as any)
         .eq("fixture_id", fixtureId)
         .eq("position", posIdx + 1);
+      const playerFields = await playerFieldsForScoreWrite(posIdx, updatedPos);
       await supabase.from("league_match_results" as any).upsert({
         fixture_id: fixtureId, position: posIdx + 1,
-        home_player_code: updatedPos.homeCode.toUpperCase(), away_player_code: updatedPos.awayCode.toUpperCase(),
-        home_player_name: updatedPos.homeName, away_player_name: updatedPos.awayName,
+        ...playerFields,
         game_scores: updatedPos.scores, home_games_won: hw, away_games_won: aw,
         winner: updatedPos.isForfeit
           ? (updatedPos.forfeitSide === "home" ? "away" : "home")

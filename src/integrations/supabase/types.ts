@@ -4985,6 +4985,56 @@ export type Database = {
           },
         ]
       }
+      league_participant_corrections: {
+        Row: {
+          corrected_by: string | null
+          created_at: string
+          fixture_id: string
+          id: string
+          new_player_code: string | null
+          new_player_name: string | null
+          old_player_code: string | null
+          old_player_name: string | null
+          position: number
+          reason: string | null
+          side: string
+        }
+        Insert: {
+          corrected_by?: string | null
+          created_at?: string
+          fixture_id: string
+          id?: string
+          new_player_code?: string | null
+          new_player_name?: string | null
+          old_player_code?: string | null
+          old_player_name?: string | null
+          position: number
+          reason?: string | null
+          side: string
+        }
+        Update: {
+          corrected_by?: string | null
+          created_at?: string
+          fixture_id?: string
+          id?: string
+          new_player_code?: string | null
+          new_player_name?: string | null
+          old_player_code?: string | null
+          old_player_name?: string | null
+          position?: number
+          reason?: string | null
+          side?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_participant_corrections_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "platform_league_fixtures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_rounds: {
         Row: {
           association_id: string
@@ -10239,6 +10289,17 @@ export type Database = {
           _fee_label: string
           _fee_type?: string
           _income_account: string
+        }
+        Returns: Json
+      }
+      admin_correct_rubber_participant: {
+        Args: {
+          p_fixture_id: string
+          p_player_code: string
+          p_player_name: string
+          p_position: number
+          p_reason?: string
+          p_side: string
         }
         Returns: Json
       }

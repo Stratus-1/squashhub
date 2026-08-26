@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   applyPrefillSlot,
   lineupDiffers,
+  rubberHasPlay,
+  rubberEditRights,
   resolveLineupPositions,
   rowHasPlay,
   rowHasSavedPlayers,
@@ -150,5 +152,41 @@ describe("stale-write detection", () => {
         { position: 1, home_player_code: "h1", home_player_name: "Home One", away_player_code: "A1", away_player_name: "Away One" },
       ]),
     ).toBe(false);
+  });
+});
+
+describe("per-rubber edit rights", () => {
+  const played = { completed: true, scores: [{ home: 11, away: 5 }], isForfeit: false, currentGame: null };
+  const unplayed = { completed: false, scores: [], isForfeit: false, currentGame: null };
+
+  it("detects play state", () => {
+    expect(rubberHasPlay(played as any)).toBe(true);
+    expect(rubberHasPlay(unplayed as any)).toBe(false);
+    expect(rubberHasPlay({ ...unplayed, isForfeit: true } as any)).toBe(true);
+    expect(rubberHasPlay({ ...unplayed, currentGame: { home: 3, away: 1 } } as any)).toBe(true);
+  });
+
+  it("lets a captain replace players until the rubber starts", () => {
+    const r = rubberEditRights({ hasPlay: false, isClubAdmin: false, isCaptain: true, isViewMode: false });
+    expect(r.canCaptainEdit).toBe(true);
+    expect(r.canAdminCorrect).toBe(false);
+  });
+
+  it("locks a captain out once the rubber has play", () => {
+    const r = rubberEditRights({ hasPlay: true, isClubAdmin: false, isCaptain: true, isViewMode: false });
+    expect(r.canCaptainEdit).toBe(false);
+    expect(r.canAdminCorrect).toBe(false);
+  });
+
+  it("gives a club admin the audited correction path after play", () => {
+    const r = rubberEditRights({ hasPlay: true, isClubAdmin: true, isCaptain: false, isViewMode: false });
+    expect(r.canCaptainEdit).toBe(false);
+    expect(r.canAdminCorrect).toBe(true);
+  });
+
+  it("grants nothing to a plain member", () => {
+    const r = rubberEditRights({ hasPlay: false, isClubAdmin: false, isCaptain: false, isViewMode: false });
+    expect(r.canCaptainEdit).toBe(false);
+    expect(r.canAdminCorrect).toBe(false);
   });
 });

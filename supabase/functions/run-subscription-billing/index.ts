@@ -490,11 +490,13 @@ Deno.serve(async (req) => {
       const subDueForRun = iso(periodStart) <= iso(coverageEnd)
       const subDue = dryRun ? true : subDueForRun
       // The send run that will actually create/email this invoice: the fixed
-      // issue day on or before the renewal date, never in the past.
+      // issue day on or before the renewal date. If that day has already passed
+      // (overdue), it goes out with the very next run.
       const scheduledSend = (() => {
         const candidate = issueDayOnOrBefore(periodStart)
-        return candidate < nextIssueDate ? nextIssueDate : candidate
+        return candidate < today ? today : candidate
       })()
+
 
       // Every subscription invoice is DATED on the club's renewal date.
       // WhatsApp-only invoices stay on the run's billing date.

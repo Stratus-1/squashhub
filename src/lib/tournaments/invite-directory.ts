@@ -26,6 +26,7 @@ export const SAFE_DIRECTORY_FIELDS = [
   "ranking_points",
   "is_own_club",
   "invite_status",
+  "is_user",
 ] as const;
 
 /**
@@ -71,6 +72,8 @@ export interface DirectoryPlayer {
   is_own_club: boolean;
   /** Existing registration status for this tournament, if any. */
   invite_status: string | null;
+  /** True when the member record is linked to an auth account (has a login). */
+  is_user: boolean;
 }
 
 const SAFE = new Set<string>(SAFE_DIRECTORY_FIELDS as readonly string[]);
@@ -100,6 +103,7 @@ export function sanitizeDirectoryRow(row: Record<string, unknown>): DirectoryPla
     ranking_points: (out.ranking_points as number) ?? null,
     is_own_club: out.is_own_club === true,
     invite_status: (out.invite_status as string) ?? null,
+    is_user: out.is_user === true,
   };
 }
 

@@ -15,6 +15,8 @@ export type BillingRunResult = {
   period_end?: string;
   next_renewal?: string;
   issue_date?: string;
+  scheduled_send?: string;
+  in_this_run?: boolean;
   due_date?: string;
   subscription_due?: boolean;
   member_count?: number;
@@ -35,8 +37,10 @@ export type BillingRunSummary = {
   run_date?: string;
   issue_date?: string;
   billing_month?: string;
-  advance_days?: number;
-  in_advance_window?: boolean;
+  issue_day_of_month?: number;
+  is_issue_day?: boolean;
+  next_issue_date?: string;
+  coverage_end?: string;
   processed?: number;
   issued?: number;
   skipped?: number;
@@ -44,6 +48,7 @@ export type BillingRunSummary = {
   results?: BillingRunResult[];
   clubLabel?: string;
 };
+
 
 const CYCLE_LABEL: Record<string, string> = {
   monthly: "Monthly",

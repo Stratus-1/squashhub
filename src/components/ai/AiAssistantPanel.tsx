@@ -22,7 +22,14 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useDictation } from "@/hooks/use-dictation";
 import { dictationLabel } from "@/lib/help/dictation";
-import { useAiAssistant, useAskAssistant, useAiFeedback } from "@/hooks/use-ai-assistant";
+import {
+  useAiAssistant,
+  useAskAssistant,
+  useAiFeedback,
+  useConfirmAiBooking,
+  type BookingProposal,
+} from "@/hooks/use-ai-assistant";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { actionCatalogue, resolveAiAction } from "@/lib/ai/registry";
 import { availableWorkflows, WORKFLOW_MAP, matchWorkflow, type WorkflowDef } from "@/lib/ai/workflows";
 import { speak, stopSpeaking } from "@/lib/ai/voice";

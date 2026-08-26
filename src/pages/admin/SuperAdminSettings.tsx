@@ -325,6 +325,9 @@ export default function SuperAdminSettings() {
           </p>
         </div>
       </Card>
+
+      <ReleaseRolloutCard />
     </div>
+
   );
 }

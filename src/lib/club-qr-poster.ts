@@ -124,6 +124,16 @@ export async function generateClubQrPoster({
   const qrY = 62;
   doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
+  // Logo overlay (center of QR code)
+  if (logoDataUrl) {
+    const logoSize = 20;
+    const logoX = qrX + (qrSize - logoSize) / 2;
+    const logoY = qrY + (qrSize - logoSize) / 2;
+    doc.setFillColor("#ffffff");
+    doc.circle(qrX + qrSize / 2, qrY + qrSize / 2, logoSize / 2 + 1.5, "F");
+    doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
+  }
+
   // CTA
   doc.setTextColor(navy);
   doc.setFontSize(16);

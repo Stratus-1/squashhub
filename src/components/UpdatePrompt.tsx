@@ -11,8 +11,10 @@ import {
   isCriticalUpdate,
   isUpdateOfferable,
   setPendingWriteFlusher,
+  setUpdateClubContext,
   snoozeUpdate,
 } from "@/lib/pwa-update";
+import { useClubContext } from "@/contexts/ClubContext";
 import { isBusy, subscribeActivity } from "@/lib/app-activity";
 
 /**
@@ -27,6 +29,11 @@ import { isBusy, subscribeActivity } from "@/lib/app-activity";
 export function UpdatePrompt() {
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { club } = useClubContext();
+
+  useEffect(() => {
+    setUpdateClubContext(club?.id ?? null);
+  }, [club?.id]);
 
   const [pending, setPending] = useState(hasPendingUpdate);
   const [armed, setArmed] = useState(false);

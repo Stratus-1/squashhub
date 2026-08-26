@@ -506,7 +506,10 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         {/* Gateway transaction fees per payment method */}
         {gateway && (
           <div className="space-y-2">
-            <Label className="text-xs">Transaction fees (%) per payment method</Label>
+            <Label className="text-xs">Transaction fees (%) per payment method — enter VAT-inclusive rates</Label>
+            <p className="text-[10px] text-muted-foreground">
+              Gateways quote rates excluding VAT. Multiply the quoted rate by 1.15 (e.g. 2.95% → 3.39%).
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {METHOD_FEE_FIELDS.map(f => (
                 <div key={f.key} className="space-y-1">

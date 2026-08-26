@@ -252,24 +252,52 @@ export type OrganiserPair = {
   id: string;
   group_number: number;
   status: PairStatus;
+  origin?: string | null;
   member_a: string;
   member_a_name: string | null;
+  member_a_paid?: boolean;
   member_b: string;
   member_b_name: string | null;
+  member_b_paid?: boolean;
+  pays_for_partner?: boolean;
+  payer_member_id?: string | null;
   proposed_by: string;
+  locked_at?: string | null;
   created_at?: string | null;
   responded_at?: string | null;
 };
 
 export async function fetchOrganiserPairs(
   champId: string,
-): Promise<{ locked: boolean; pairs: OrganiserPair[] }> {
+): Promise<{ locked: boolean; entry_fee_cents: number; pairs: OrganiserPair[] }> {
   const { data, error } = await (supabase as any).rpc("tournament_doubles_pairs", {
     p_champ_id: champId,
   });
   if (error) throw error;
-  return { locked: !!data?.locked, pairs: Array.isArray(data?.pairs) ? data.pairs : [] };
+  return {
+    locked: !!data?.locked,
+    entry_fee_cents: Number(data?.entry_fee_cents || 0),
+    pairs: Array.isArray(data?.pairs) ? data.pairs : [],
+  };
 }
+
+/** Organiser pre-selects a pair for a division. */
+export async function adminPairPlayers(
+  champId: string,
+  groupNumber: number,
+  memberA: string,
+  memberB: string,
+) {
+  const { data, error } = await (supabase as any).rpc("admin_pair_doubles_players", {
+    p_champ_id: champId,
+    p_group_number: groupNumber,
+    p_member_a: memberA,
+    p_member_b: memberB,
+  });
+  if (error) throw error;
+  return data as { id: string; status: PairStatus };
+}
+
 
 export async function setPairingLocked(champId: string, locked: boolean) {
   const { error } = await (supabase as any).rpc("set_doubles_pairing_locked", {

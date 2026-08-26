@@ -1,59 +1,68 @@
 /**
- * Dynamic PWA manifest per tenant subdomain.
+ * Per-tenant PWA identity.
  *
- * Looks up the active club by subdomain and rewrites the <link rel="manifest">
- * to a blob-URL manifest whose `name`/`short_name` reflect the club name.
- * That's the label shown under the icon on the home screen.
+ * IMPORTANT — why this no longer builds a blob: manifest.
+ * Chrome only treats a page as installable when the <link rel="manifest">
+ * points at a real, same-origin http(s) URL that it can fetch and re-fetch.
+ * A `blob:` (or `data:`) manifest injected at runtime is parsed for display
+ * purposes at best, and in Chrome/Android it silently kills installability:
+ * `beforeinstallprompt` never fires, so the "Install app" / "Add to Home
+ * screen" option disappears on club subdomains (reported on
+ * nsc.squashapp.co.za, Aug 2026). Every club subdomain is its own origin, so
+ * each club already installs as a distinct app; we only need to keep the
+ * manifest URL real.
  *
- * IMPORTANT: Browsers PIN manifest fields at install time. Already-installed
- * PWAs will keep the old "SquashHub" label until the user removes and
- * re-installs the app. New installs pick up the club name immediately.
+ * What we still personalise safely:
+ *  - a `?club=<subdomain>` query on the manifest URL (still the same static
+ *    file, still installable, but a distinct manifest URL per tenant);
+ *  - the iOS home-screen label (`apple-mobile-web-app-title`), which iOS
+ *    reads from the document, not the manifest;
+ *  - the document title.
  */
 import { getClubSubdomain } from "@/lib/subdomain";
 import { getPublicClubBySubdomain } from "@/lib/public-clubs";
 
 const BASE_MANIFEST_URL = "/manifest.webmanifest";
 
+function setManifestHref(href: string): void {
+  const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+  if (link) {
+    if (link.getAttribute("href") !== href) link.setAttribute("href", href);
+    return;
+  }
+  const l = document.createElement("link");
+  l.rel = "manifest";
+  l.href = href;
+  document.head.appendChild(l);
+}
+
+function setAppleTitle(title: string): void {
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "apple-mobile-web-app-title";
+    document.head.appendChild(meta);
+  }
+  meta.content = title;
+}
+
 export async function applyDynamicManifest(): Promise<void> {
   try {
     const sub = getClubSubdomain();
     if (!sub) return; // root host — keep default SquashHub manifest
 
-    // Fetch base manifest + club name in parallel
-    const [baseRes, club] = await Promise.all([
-      fetch(BASE_MANIFEST_URL, { cache: "no-cache" }),
-      getPublicClubBySubdomain(sub),
-    ]);
+    // Distinct manifest URL per tenant, but still a real static same-origin
+    // file so Chrome's installability check passes.
+    setManifestHref(`${BASE_MANIFEST_URL}?club=${encodeURIComponent(sub)}`);
 
-    if (!baseRes.ok) return;
-    const base = await baseRes.json();
+    const club = await getPublicClubBySubdomain(sub);
     const clubName = club?.name?.trim();
     if (!clubName) return;
 
-    // short_name has ~12 char practical limit on Android launchers
-    const shortName = clubName.length > 12 ? clubName.slice(0, 12).trim() : clubName;
-
-    const overridden = {
-      ...base,
-      name: clubName,
-      short_name: shortName,
-      // Unique id per tenant so the OS treats each club's PWA as distinct
-      id: `/?source=pwa&club=${sub}`,
-      start_url: `/?source=pwa&club=${sub}`,
-    };
-
-    const blob = new Blob([JSON.stringify(overridden)], { type: "application/manifest+json" });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-    if (link) {
-      link.href = url;
-    } else {
-      const l = document.createElement("link");
-      l.rel = "manifest";
-      l.href = url;
-      document.head.appendChild(l);
-    }
+    // iOS reads its home-screen label from the document, so this one is safe
+    // to personalise without touching the manifest.
+    setAppleTitle(clubName.length > 12 ? clubName.slice(0, 12).trim() : clubName);
+    document.title = clubName;
   } catch (err) {
     console.warn("Dynamic manifest failed:", err);
   }

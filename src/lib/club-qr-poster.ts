@@ -6,6 +6,28 @@ interface PosterInput {
   url: string;
   cta: string;
   svg: SVGSVGElement;
+  logoUrl?: string | null;
+}
+
+function loadImageAsDataUrl(src: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || 128;
+      canvas.height = img.naturalHeight || 128;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas not supported"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => reject(new Error("Could not load logo"));
+    img.src = src;
+  });
 }
 
 function svgToPngDataUrl(svg: SVGSVGElement): Promise<string> {

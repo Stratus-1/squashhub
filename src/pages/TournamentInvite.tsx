@@ -160,7 +160,9 @@ export default function TournamentInvite() {
           divisions={enteredDivisions}
           token={token || null}
           verify={verify.trim() || null}
+          onPay={() => navigate(`/club-champs/${String(data.champ_id)}?pay=1`)}
         />
+
       </div>
     ) : null;
 

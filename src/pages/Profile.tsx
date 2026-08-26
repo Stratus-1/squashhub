@@ -404,6 +404,7 @@ export default function Profile() {
           fee_category_id: feeCategoryId || null,
           plays_league: derivedPlaysLeague,
           enable_league_association_id: derivedEnableAssocId,
+          ...skillsPatch(skillsDraft),
         };
 
         const { error: memErr } = await fromExt("club_members")

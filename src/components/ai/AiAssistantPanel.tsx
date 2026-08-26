@@ -235,7 +235,7 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
               <Sparkles className="h-3.5 w-3.5" /> Ask me anything, or say what you want to do.
             </p>
             <p className="text-muted-foreground mt-1">
-              Try “Help me set up tonight's team” or “How do I book a court?”
+              Try “Book court 1 at 5pm on Wednesday”, “Help me set up tonight's team” or “How do I book a court?”
             </p>
           </div>
         )}
@@ -251,11 +251,50 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
               )}
             >
               <p className="whitespace-pre-wrap">{turn.content}</p>
+
+              {turn.proposal && (
+                <div className="mt-2 rounded-md border border-primary/30 bg-background p-2.5">
+                  <p className="text-[12px] font-semibold">Confirm this booking</p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">
+                    {turn.proposal.court_name} · {turn.proposal.date} · {turn.proposal.start_time}–
+                    {turn.proposal.end_time}
+                  </p>
+                  {turn.proposalState === "confirmed" ? (
+                    <p className="mt-1.5 flex items-center gap-1 text-[12px] font-medium text-primary">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Booked
+                    </p>
+                  ) : turn.proposalState === "cancelled" ? (
+                    <p className="mt-1.5 text-[12px] text-muted-foreground">Cancelled — nothing was booked.</p>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="h-7 text-[12px]"
+                        disabled={confirmBooking.isPending}
+                        onClick={() => confirmProposal(i, turn.proposal!)}
+                      >
+                        {confirmBooking.isPending ? "Booking…" : "Confirm booking"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[12px]"
+                        disabled={confirmBooking.isPending}
+                        onClick={() => cancelProposal(i)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {action?.hasAction && (
                 <Button size="sm" variant="secondary" className="mt-2 h-7 text-[12px]" onClick={() => go(action.appPath)}>
                   {action.label} <ArrowRight className="ml-1 h-3 w-3" />
                 </Button>
               )}
+
               {turn.role === "assistant" && (
                 <div className="mt-1.5 flex items-center gap-1">
                   <Button size="icon" variant="ghost" className="h-6 w-6" aria-label="Helpful" onClick={() => rate(turn, "up")}>

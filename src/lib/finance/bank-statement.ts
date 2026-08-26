@@ -473,19 +473,31 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
 
   const lines = text
     .split(/\r?\n/)
-    .map((l) => l.replace(/\u00a0/g, " ").replace(/\s{2,}/g, "  ").trim())
-    .filter(Boolean);
+    .map((l) => l.replace(/\u00a0/g, " ").replace(/\s{2,}/g, "  ").trim());
 
   /* ---------------- pass 1: candidate rows ---------------- */
   const raw: RawRow[] = [];
-  for (const line of lines) {
+  let lastRowLine = -99;
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    if (!line) continue;
     if (SKIP_LINE.test(line)) continue;
     const dm = line.match(DATE_TOKEN);
-    // The date must sit at the very start of the line (the statement's date column).
-    if (!dm || (dm.index ?? 99) > 3) {
+    // The date must open the line (the statement's date column) — a date inside
+    // a sentence ("On 29 May 2026, the Prime Rate changed…") is not a transaction.
+    if (!dm || (dm.index ?? 99) > 1) {
+      // Wrapped description: only the line immediately below a transaction row,
+      // with real words (page footers/reference codes are all-caps or numeric).
       const last = raw[raw.length - 1];
-      if (last && !/\d[.,]\d{2}/.test(line) && line.length <= 60 && /[A-Za-z]{3}/.test(line)) {
+      if (
+        last &&
+        li === lastRowLine + 1 &&
+        !/\d[.,]\d{2}/.test(line) &&
+        line.length <= 60 &&
+        /[a-z]{3}/.test(line)
+      ) {
         last.description = `${last.description} ${line}`.replace(/\s{2,}/g, " ").slice(0, 160).trim();
+        lastRowLine = li;
       }
       continue;
     }
@@ -506,7 +518,9 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
       rest.slice(0, cut >= 0 ? cut : rest.length).replace(/\s{2,}/g, " ").trim() || "Bank transaction";
 
     raw.push({ dateRaw: dm[1].trim(), description, toks });
+    lastRowLine = li;
   }
+
 
   if (!raw.length) return [];
 

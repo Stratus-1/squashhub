@@ -9,6 +9,7 @@ import {
   suggestAccount,
   suggestMember,
   summarise,
+  parseTextStatement,
 } from "@/lib/finance/bank-statement";
 
 describe("parseAmount", () => {

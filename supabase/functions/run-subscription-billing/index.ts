@@ -552,7 +552,7 @@ Deno.serve(async (req) => {
           period_end: iso(periodEnd),
           next_renewal: iso(periodEnd),
           subscription_due: subDue,
-          issue_date: iso(billingDate),
+          issue_date: iso(invoiceDate),
           due_date: iso(dueDate),
           line_items: consolidated.lineItems,
           member_count: memberCount,
@@ -583,7 +583,7 @@ Deno.serve(async (req) => {
         plan_id: sub.plan_id,
         plan_name: plan.name,
         billing_cycle: cycle,
-        billing_month: billingMonth,
+        billing_month: invoiceMonth,
         invoice_kind: consolidated.kind,
         line_items: consolidated.lineItems,
         subscription_amount: consolidated.subscriptionAmount,
@@ -604,7 +604,7 @@ Deno.serve(async (req) => {
         fx_rate_to_zar: fxRate,
         due_date: dueDate.toISOString().slice(0, 10),
         // Dated on the renewal date even though it is emailed a few days earlier.
-        issued_at: billingDate.toISOString(),
+        issued_at: invoiceDate.toISOString(),
 
         snapshot: settings,
         // Snapshot of the club's billing details at issue time so past

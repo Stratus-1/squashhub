@@ -20,12 +20,25 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     )
 
-    // Auth check — must be platform admin
-    const { data: userData } = await supabase.auth.getUser()
-    const uid = userData?.user?.id
-    if (!uid) return json({ error: 'unauthorized' }, 401)
-    const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', uid).eq('role', 'admin').maybeSingle()
-    if (!roleData) return json({ error: 'forbidden' }, 403)
+    // Auth check — platform admin, or a trusted service-role caller (internal jobs).
+    const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+    let isServiceRole = false
+    try {
+      const p = bearer.split('.')[1]?.replaceAll('-', '+').replaceAll('_', '/')
+      if (p) {
+        const claims = JSON.parse(atob(p.padEnd(Math.ceil(p.length / 4) * 4, '=')))
+        isServiceRole = claims?.role === 'service_role'
+      }
+    } catch { /* not a JWT */ }
+
+    if (!isServiceRole) {
+      const { data: userData } = await supabase.auth.getUser()
+      const uid = userData?.user?.id
+      if (!uid) return json({ error: 'unauthorized' }, 401)
+      const { data: roleData } = await supabase.from('user_roles').select('role').eq('user_id', uid).eq('role', 'admin').maybeSingle()
+      if (!roleData) return json({ error: 'forbidden' }, 403)
+    }
+
 
     const { invoice_id, override_email } = await req.json()
     if (!invoice_id) return json({ error: 'invoice_id required' }, 400)

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { APP_BUILD_ID, APP_BUILD_SHORT, buildStamp, formatBuildTime } from "@/lib/app-version";
 import { checkForUpdateNow, hardRefresh } from "@/lib/pwa-update";
+import { isBusy } from "@/lib/app-activity";
 
 interface AppVersionBadgeProps {
   className?: string;

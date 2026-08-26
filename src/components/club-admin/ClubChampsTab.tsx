@@ -6509,17 +6509,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   if (!showWizard) {
     return (
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <h2 className="text-lg font-semibold">Club Tournaments</h2>
-          <div className="flex flex-col items-end gap-1">
-            <Button onClick={() => { resetWizard(); setShowWizard(true); }}>
+          <div className="flex flex-col gap-1 sm:items-end">
+            <Button className="w-full sm:w-auto" onClick={() => { resetWizard(); setShowWizard(true); }}>
               <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
             </Button>
-            <p className="text-xs text-muted-foreground max-w-xs text-right">
+            <p className="text-xs text-muted-foreground sm:max-w-xs sm:text-right">
               Tip: to save time, use the <strong>Template</strong> button on any tournament below to duplicate its full setup with new dates.
             </p>
           </div>
         </div>
+
 
         {champsLoading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>

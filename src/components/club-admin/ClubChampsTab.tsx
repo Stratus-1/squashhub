@@ -6509,17 +6509,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   if (!showWizard) {
     return (
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <h2 className="text-lg font-semibold">Club Tournaments</h2>
-          <div className="flex flex-col items-end gap-1">
-            <Button onClick={() => { resetWizard(); setShowWizard(true); }}>
+          <div className="flex flex-col gap-1 sm:items-end">
+            <Button className="w-full sm:w-auto" onClick={() => { resetWizard(); setShowWizard(true); }}>
               <Trophy className="w-4 h-4 mr-2" /> Plan New Tournament
             </Button>
-            <p className="text-xs text-muted-foreground max-w-xs text-right">
+            <p className="text-xs text-muted-foreground sm:max-w-xs sm:text-right">
               Tip: to save time, use the <strong>Template</strong> button on any tournament below to duplicate its full setup with new dates.
             </p>
           </div>
         </div>
+
 
         {champsLoading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
@@ -6531,9 +6532,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           const renderCard = (c: any, isCompleted: boolean) => (
             <Card key={c.id} className={isCompleted ? "opacity-75" : ""}>
               <CardContent className="flex flex-col gap-3 py-4">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
-                <div>
+                <div className="min-w-0">
+
                   <p className="font-medium flex items-center gap-2">
                     {c.name}
                     {(!c.start_date || !c.end_date) && (
@@ -6551,28 +6553,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <TournamentEntryCounts champId={c.id} className="mt-0.5" />
 
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
+                <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:justify-end sm:gap-1">
+                  <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => navigate(`/club-champs/${c.id}`)}>
                     <Eye className="w-4 h-4 mr-1" /> View
                   </Button>
+
                   {!isCompleted && (
                     <>
-                      <Button variant="outline" size="sm" onClick={() => setRegistrationsChamp(c)}>
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setRegistrationsChamp(c)}>
                         <UsersIcon className="w-4 h-4 mr-1" /> Registrations
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setBulkImportChamp(c)} title="Bulk import entrants & email magic-links">
-                        <Plus className="w-4 h-4 mr-1" /> Import entrants
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setBulkImportChamp(c)} title="Bulk import entrants & email magic-links">
+                        <Plus className="w-4 h-4 mr-1" /> <span className="truncate">Import entrants</span>
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => loadChampForEdit(c)}>
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => loadChampForEdit(c)}>
                         <Pencil className="w-4 h-4 mr-1" /> Edit
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setGovernanceChamp(c)} title="Ownership, sanctioning, eligibility, fee split, venues & audit history">
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setGovernanceChamp(c)} title="Ownership, sanctioning, eligibility, fee split, venues & audit history">
                         <ShieldCheck className="w-4 h-4 mr-1" /> Governance
                       </Button>
 
 
                       <Button
                         variant="outline" size="sm"
+                        className="w-full justify-center sm:w-auto"
                         disabled={setChampStatus.isPending}
                         onClick={() => setChampStatus.mutate({ id: c.id, status: "completed" })}
                       >
@@ -6583,13 +6587,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   {isCompleted && (
                     <Button
                       variant="outline" size="sm"
+                      className="w-full justify-center sm:w-auto"
                       disabled={setChampStatus.isPending}
                       onClick={() => setChampStatus.mutate({ id: c.id, status: "active" })}
                     >
                       Re-open
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => setDuplicateSource(c)} title="Use as template — duplicate this tournament's full setup with new dates">
+                  <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setDuplicateSource(c)} title="Use as template — duplicate this tournament's full setup with new dates">
                     <Copy className="w-4 h-4 mr-1" /> {isCompleted ? "Copy" : "Template"}
                   </Button>
                   {(() => {
@@ -6600,9 +6605,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     const canDelete = isSuperAdmin || notStartedYet;
                     if (!canDelete) return null;
                     return (
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })} title="Delete tournament">
+                      <Button variant="ghost" size="sm" className="w-full justify-center gap-1 text-destructive sm:w-auto sm:px-2" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })} title="Delete tournament">
                         <Trash2 className="w-4 h-4 text-destructive" />
+                        <span className="sm:hidden">Delete</span>
                       </Button>
+
                     );
                   })()}
                 </div>

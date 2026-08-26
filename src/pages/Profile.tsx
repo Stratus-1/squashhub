@@ -269,6 +269,18 @@ export default function Profile() {
 
   useEffect(() => { resetDraft(); }, [profile, clubMember]);
 
+  // Deep link from a communications action (e.g. /profile#skills) — scroll the
+  // requested section into view once the member has loaded.
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (!hash || !clubMember) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [clubMember]);
+
+
   // Seed league number drafts + ticked state whenever the associations load.
   // Internal leagues (e.g. NIL) inherit the member's club number — never a
   // separate ID, since the league lives entirely inside the home club.
@@ -633,10 +645,11 @@ export default function Profile() {
                   </div>
                 )}
 
-                <div className="border-t border-border pt-3 mt-3 space-y-3">
+                <div id="skills" className="border-t border-border pt-3 mt-3 space-y-3 scroll-mt-24">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Skills &amp; Expertise</p>
                   <SkillsExpertiseFields value={skillsDraft} onChange={setSkillsDraft} compact />
                 </div>
+
 
                 {leagueAssocs.length > 0 && (
                   <div className="border-t border-border pt-3 mt-3 space-y-3">

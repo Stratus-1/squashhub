@@ -9455,7 +9455,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               Use the <strong>Registrations</strong> button on the tournament card to manually pair or override entries.
             </p>
             {editingChampId && (
-              <DoublesPairsPanel champId={editingChampId} groupLabels={groupLabels as any} />
+              <DoublesPairsPanel champId={editingChampId} clubId={clubId} groupLabels={groupLabels as any} />
             )}
           </CardContent>
         </Card>

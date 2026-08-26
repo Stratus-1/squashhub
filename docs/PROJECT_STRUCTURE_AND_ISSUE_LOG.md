@@ -1231,3 +1231,12 @@ Tests: `src/test/booking-label.test.ts`.
 - Invoices are still dated on the renewal date: `issued_at`, `billing_month`, period and `due_date` (+14 days) all use the month-start date, while creation and emailing happen `advance_issue_days` earlier.
 - WhatsApp arrears now cut off at the actual run timestamp (the arrears month is incomplete when issuing early); remaining unbilled usage rolls into the next invoice.
 - Super Admin → Subscriptions → Invoice Options exposes "Send Invoices Days Early".
+
+## 2026-08-26 — Scorecard submission protection guards (Nelspruit phantom results)
+
+- **Symptom:** Nelspruit 2nd League scorecards were submitted at 11:45–11:47 SAST (ADMIN_OVERRIDE) for 17:00 fixtures — before any squash was played. This locked players out of live marking at 17:00 and risked bonus/penalty-only "phantom" results posting to standings.
+- **Fix:** two guards now apply whenever a save would finalise a fixture as `submitted`:
+  1. `LeagueGameDetail.tsx` `handleSubmit` blocks submission outright when total games played is 0 and no forfeit is recorded ("No games have been played yet — you can't submit results").
+  2. Both `handleSubmit` and `AdminManualScoreDialog` show a confirm warning when finalising before the fixture's scheduled start ("This match hasn't been played yet — submitting will pre-empt live marking").
+  3. `AdminManualScoreDialog` additionally blocks 0–0 total-points submissions and bonus-only entries (games explicitly 0–0 with points > 0).
+- **Guard:** draft/setup saves and forfeit-only results are unaffected; the pre-match warning is a confirm (not a block) so catch-up/admin workflows remain possible; live-sync standings recalc is unchanged.

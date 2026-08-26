@@ -5441,6 +5441,7 @@ export type Database = {
           status: string
           submitted_at: string | null
           submitted_by: string | null
+          totals_locked: boolean
           updated_at: string
           winner: string | null
         }
@@ -5464,6 +5465,7 @@ export type Database = {
           status?: string
           submitted_at?: string | null
           submitted_by?: string | null
+          totals_locked?: boolean
           updated_at?: string
           winner?: string | null
         }
@@ -5487,6 +5489,7 @@ export type Database = {
           status?: string
           submitted_at?: string | null
           submitted_by?: string | null
+          totals_locked?: boolean
           updated_at?: string
           winner?: string | null
         }
@@ -11802,6 +11805,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      recalc_league_fixture_totals: {
+        Args: { _fixture_id: string }
+        Returns: undefined
       }
       record_collection_payment: {
         Args: { _collection_id: string }

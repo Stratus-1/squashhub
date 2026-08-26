@@ -18,6 +18,12 @@ import { Building2, Users, Settings2, Plus, Pencil, Trash2, DollarSign, Clock, C
 import { fromExt } from "@/lib/supabase-ext";
 import { SaasTierPricingCard } from "@/components/admin/SaasTierPricingCard";
 import { PlatformTournamentFeeCard } from "@/components/admin/PlatformTournamentFeeCard";
+import {
+  BillingRunPreviewDialog,
+  nextInvoiceSentence,
+  cycleLabel,
+  type BillingRunSummary,
+} from "@/components/admin/BillingRunPreviewDialog";
 
 import {
   DEFAULT_TIERS,
@@ -436,6 +442,10 @@ export default function SuperAdminSubscriptions() {
     setStitchDirty(true);
   };
 
+  const [preview, setPreview] = useState<BillingRunSummary | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewScope, setPreviewScope] = useState<{ subscriptionIds?: string[]; clubLabel?: string }>({});
+
   const runBilling = useMutation({
     mutationFn: async (opts: boolean | { dryRun: boolean; subscriptionIds?: string[]; clubLabel?: string }) => {
       const dryRun = typeof opts === "boolean" ? opts : opts.dryRun;
@@ -445,13 +455,30 @@ export default function SuperAdminSubscriptions() {
         body: { dryRun, subscriptionIds },
       });
       if (error) throw error;
-      return { ...(data as { dryRun: boolean; processed: number; issued: number; skipped: number; failed: number; results?: any[] }), clubLabel };
+      return { ...(data as BillingRunSummary), clubLabel, subscriptionIds };
     },
     onSuccess: (r: any) => {
       const who = r.clubLabel ? ` for ${r.clubLabel}` : "";
       if (r.dryRun) {
-        toast.success(`Dry-run${who}: ${r.processed} subscription(s) would be billed`);
+        // Show the generated invoices so they can be checked before anything is sent.
+        setPreview(r);
+        setPreviewScope({ subscriptionIds: r.subscriptionIds, clubLabel: r.clubLabel });
+        setPreviewOpen(true);
+        const rows: any[] = r.results || [];
+        const single = rows.length === 1 ? rows[0] : null;
+        if (single) {
+          toast.success(nextInvoiceSentence(single), { duration: 9000 });
+        } else {
+          const billable = rows.filter(x => x.status === "dry-run");
+          const total = billable.reduce((s, x) => s + (x.total || 0), 0);
+          const cycles = Array.from(new Set(billable.map(x => cycleLabel(x.billing_cycle)))).join(", ");
+          toast.success(
+            `Preview${who}: ${billable.length} invoice(s) dated ${r.issue_date || ""} totalling R${total.toFixed(2)}${cycles ? ` (${cycles})` : ""}`,
+            { duration: 9000 },
+          );
+        }
       } else {
+        setPreviewOpen(false);
         toast.success(`Billing${who} complete — ${r.issued} issued, ${r.skipped} skipped, ${r.failed} failed`);
       }
       qc.invalidateQueries({ queryKey: ["sa-club-subscriptions"] });
@@ -883,7 +910,7 @@ export default function SuperAdminSubscriptions() {
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6 text-blue-600 hover:text-blue-700"
-                            title="Dry-run invoice for this club (no invoice created)"
+                            title="Preview this club\u2019s next invoice (nothing created or emailed)"
                             disabled={runBilling.isPending || !sub.plan_id}
                             onClick={() => runBilling.mutate({ dryRun: true, subscriptionIds: [sub.id], clubLabel: sub.clubs?.name })}
                           >
@@ -953,9 +980,9 @@ export default function SuperAdminSubscriptions() {
                 className="h-8 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/30"
                 onClick={() => runBilling.mutate(true)}
                 disabled={runBilling.isPending}
-                title="Preview what would be billed (no invoices created)"
+                title="Preview the invoices that would be generated (nothing created or emailed)"
               >
-                <Eye className="w-3.5 h-3.5 mr-1" /> Dry-Run
+                <Eye className="w-3.5 h-3.5 mr-1" /> Preview Invoices
               </Button>
               <Button
                 size="sm"
@@ -1458,6 +1485,19 @@ export default function SuperAdminSubscriptions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BillingRunPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        run={preview}
+        sending={runBilling.isPending}
+        onConfirmSend={() => {
+          const label = previewScope.clubLabel ? ` to ${previewScope.clubLabel}` : " to every club in this preview";
+          if (confirm(`Generate and email the previewed invoice(s)${label} now?`)) {
+            runBilling.mutate({ dryRun: false, subscriptionIds: previewScope.subscriptionIds, clubLabel: previewScope.clubLabel });
+          }
+        }}
+      />
     </div>
   );
 }

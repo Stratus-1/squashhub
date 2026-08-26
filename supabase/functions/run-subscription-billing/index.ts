@@ -498,6 +498,10 @@ Deno.serve(async (req) => {
           club: club?.name,
           status: 'skipped',
           reason: subDue ? 'Nothing billable this month' : `Next renewal ${iso(periodStart)}`,
+          billing_cycle: cycle,
+          period_start: iso(periodStart),
+          period_end: iso(periodEnd),
+          next_renewal: iso(periodStart),
         })
         continue
       }
@@ -534,6 +538,13 @@ Deno.serve(async (req) => {
           invoice_number: invoiceNumber,
           billing_month: billingMonth,
           invoice_kind: consolidated.kind,
+          billing_cycle: cycle,
+          period_start: iso(periodStart),
+          period_end: iso(periodEnd),
+          next_renewal: iso(periodEnd),
+          subscription_due: subDue,
+          issue_date: iso(billingDate),
+          due_date: iso(dueDate),
           line_items: consolidated.lineItems,
           member_count: memberCount,
           currency: billingCurrency,
@@ -770,6 +781,12 @@ Deno.serve(async (req) => {
 
   return json({
     dryRun,
+    run_date: iso(runDate),
+    issue_date: iso(billingDate),
+    billing_month: billingMonth,
+    advance_days: advanceDays,
+    in_advance_window: inAdvanceWindow,
+    vat_rate: vatRate,
     processed: (subs || []).length,
     issued,
     skipped,

@@ -56,7 +56,8 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
-  const [format_, setFormat] = useState<"csv" | "ofx">("csv");
+  const [format_, setFormat] = useState<"csv" | "ofx" | "pdf">("csv");
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedStatement | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);

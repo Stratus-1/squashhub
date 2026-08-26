@@ -27,8 +27,6 @@ export const CONSTRAINED_DRAFT_FIELDS = [
   "invite_source",
   "schedule_mode",
   "scheduling_mode",
-
-  "draw_type",
   "eligibility_scope",
   "payment_timing",
 ] as const;

@@ -125,10 +125,9 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
-import { Users as UsersIcon, ShieldCheck, ScrollText, RefreshCw, Shuffle } from "lucide-react";
+import { Users as UsersIcon, ShieldCheck, RefreshCw, Shuffle } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
-import { TournamentRulesDialog } from "@/components/tournaments/TournamentRulesDialog";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
@@ -6156,7 +6155,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   const [duplicateSource, setDuplicateSource] = useState<any>(null);
   const [governanceChamp, setGovernanceChamp] = useState<any>(null);
-  const [rulesChamp, setRulesChamp] = useState<any>(null);
 
   const duplicateChamp = async (champ: any, includePlayers: boolean) => {
     await loadChampForEdit(champ);
@@ -6448,9 +6446,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       <Button variant="outline" size="sm" onClick={() => setGovernanceChamp(c)} title="Ownership, sanctioning, eligibility, fee split, venues & audit history">
                         <ShieldCheck className="w-4 h-4 mr-1" /> Governance
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setRulesChamp(c)} title="Scoring format, draw type & standard of play">
-                        <ScrollText className="w-4 h-4 mr-1" /> Rules
-                      </Button>
 
 
                       <Button
@@ -6553,7 +6548,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         </Dialog>
 
         <TournamentGovernanceDialog champ={governanceChamp} scope={scope} onOpenChange={(v) => !v && setGovernanceChamp(null)} />
-        <TournamentRulesDialog champ={rulesChamp} onOpenChange={(v) => !v && setRulesChamp(null)} />
         <Dialog open={!!duplicateSource} onOpenChange={(v) => !v && setDuplicateSource(null)}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle>Duplicate tournament</DialogTitle></DialogHeader>

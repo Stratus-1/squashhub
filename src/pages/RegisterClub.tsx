@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
+import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyClub, useCreateClub } from "@/hooks/use-club";
@@ -44,6 +44,7 @@ export default function RegisterClub() {
   const navigate = useNavigate();
   const { data: existing, isLoading } = useMyClub();
   const createClub = useCreateClub();
+  const hideGoogleAuth = isGoogleAuthDisabled();
 
   const [form, setForm] = useState({
     name: "",
@@ -199,8 +200,16 @@ export default function RegisterClub() {
 
         <Card className="p-6">
           <div className="space-y-4 mb-4">
-            <GoogleSignInButton label="Continue with Google to register" preserveClub={false} />
-            <GoogleAuthDivider />
+            {!hideGoogleAuth ? (
+              <>
+                <GoogleSignInButton label="Continue with Google to register" preserveClub={false} />
+                <GoogleAuthDivider />
+              </>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+                Local development auth is set to email/password only. Use the form below to register the club.
+              </div>
+            )}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">

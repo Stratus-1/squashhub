@@ -414,6 +414,28 @@ export function useCancelBooking() {
 
   return useMutation({
     mutationFn: async (bookingId: string) => {
+      const { data: booking, error: loadError } = await supabase
+        .from("bookings")
+        .select("id, source, external_id")
+        .eq("id", bookingId)
+        .maybeSingle();
+      if (loadError) throw loadError;
+
+      const externalId = String((booking as any)?.external_id || "");
+      const isTournamentBooking =
+        (booking as any)?.source === "club_event" &&
+        externalId.startsWith("champ:") &&
+        externalId.includes(":match:");
+
+      if (isTournamentBooking) {
+        const matchId = externalId.split(":match:")[1];
+        if (matchId) {
+          const { error } = await supabase.rpc("unschedule_champ_match", { p_match_id: matchId });
+          if (!error) return;
+          // Fall through if the fixture link is already gone so the booking still cancels.
+        }
+      }
+
       const { error } = await supabase
         .from("bookings")
         .update({ status: "cancelled" })

@@ -17,6 +17,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, addDays } from "date-fns";
 import { isCurrentTournament } from "@/lib/tournaments/lifecycle";
 import { isActionableTournamentMatch, isActionableLeagueFixture } from "@/lib/tournaments/actionable-match";
+import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
 
 
 export type MatchType = "friendly" | "ladder" | "league" | "club_champs" | "tournament";
@@ -331,7 +332,11 @@ export function MarkerSetup({ onStart }: Props) {
 
       const champs = (allChamps || []).filter((c: any) => isCurrentTournament(c, todayISO));
       if (champs.length === 0) return [];
-      const champMap = new Map(champs.map((c: any) => [c.id, c]));
+      const { data: tournamentRules = [] } = await fromExt("tournaments")
+        .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+        .in("id", champs.map((c: any) => c.id));
+      const rulesMap = new Map((tournamentRules || []).map((c: any) => [c.id, c]));
+      const champMap = new Map(champs.map((c: any) => [c.id, { ...c, ...(rulesMap.get(c.id) || {}) }]));
 
       // 2. Their non-terminal, scheduled-from-today matches.
       const { data, error } = await supabase
@@ -407,18 +412,19 @@ export function MarkerSetup({ onStart }: Props) {
 
   function normalizeTournamentMatch(m: any, champ?: any, memberMap?: Map<string, any>) {
     const pA = memberMap?.get(m.player_a_member_id) || m.player_a || null;
-    const pB = memberMap?.get(m.player_b_member_id) || m.player_b || null;
-    const ptA = memberMap?.get(m.partner_a_member_id) || m.partner_a || null;
-    const ptB = memberMap?.get(m.partner_b_member_id) || m.partner_b || null;
-    return {
-      ...m,
-      champName: champ?.name || "Tournament",
-      matchType: champ?.match_type || "singles",
-      scoringMode: champ?.scoring_mode || null,
-      pointsPerGame: champ?.points_per_game ?? null,
-      bestOf: champ?.best_of ?? null,
-      playAllGames: champ?.play_all_games ?? false,
-      winCondition: champ?.win_condition || null,
+      const pB = memberMap?.get(m.player_b_member_id) || m.player_b || null;
+      const ptA = memberMap?.get(m.partner_a_member_id) || m.partner_a || null;
+      const ptB = memberMap?.get(m.partner_b_member_id) || m.partner_b || null;
+      const effective = effectiveTournamentSettings(champ, m.group_number);
+      return {
+        ...m,
+        champName: champ?.name || "Tournament",
+        matchType: effective.matchType,
+        scoringMode: effective.scoringMode,
+        pointsPerGame: effective.pointsPerGame,
+        bestOf: effective.bestOf,
+        playAllGames: effective.playAllGames,
+        winCondition: effective.winCondition,
       playerAName: pA?.name || "Player A",
       playerBName: pB?.name || "Player B",
       playerANumber: pA?.club_member_number || "",
@@ -451,7 +457,11 @@ export function MarkerSetup({ onStart }: Props) {
     const row = data as any;
     const champ = Array.isArray(row.club_champs) ? row.club_champs[0] : row.club_champs;
     if (clubId && champ?.club_id !== clubId) return null;
-    return normalizeTournamentMatch(row, champ);
+    const { data: tournamentRules } = await fromExt("tournaments")
+      .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+      .eq("id", champ.id)
+      .maybeSingle();
+    return normalizeTournamentMatch(row, { ...champ, ...(tournamentRules || {}) });
   }
 
   // Fetch upcoming bookings (today + next 7 days)

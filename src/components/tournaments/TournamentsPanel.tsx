@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, ScrollText, ShieldCheck } from "lucide-react";
+import { Eye, ShieldCheck } from "lucide-react";
 import { useTournamentsByOwner } from "@/hooks/use-tournaments";
 import { TournamentGovernanceDialog } from "./TournamentGovernanceDialog";
-import { TournamentRulesDialog } from "./TournamentRulesDialog";
 
 interface Props {
   /** Owning body — club, association or national federation. */
@@ -16,15 +15,13 @@ interface Props {
 }
 
 /**
- * Owner-agnostic tournament list. The same engine, governance and rules
- * surfaces are used whether the owner is a club, an association or the
- * federation — only `ownerOrgId` changes.
+ * Owner-agnostic tournament list. Structure/scoring stays in the setup wizard;
+ * this panel only exposes governance for ownership, eligibility and fees.
  */
 export function TournamentsPanel({ ownerOrgId, title = "Tournaments", description }: Props) {
   const navigate = useNavigate();
   const { data: tournaments = [], isLoading } = useTournamentsByOwner(ownerOrgId);
   const [governance, setGovernance] = useState<{ id: string; name: string } | null>(null);
-  const [rules, setRules] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <Card>
@@ -55,16 +52,12 @@ export function TournamentsPanel({ ownerOrgId, title = "Tournaments", descriptio
               <Button variant="outline" size="sm" onClick={() => setGovernance({ id: t.id, name: t.name })}>
                 <ShieldCheck className="w-4 h-4 mr-1" /> Governance
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setRules({ id: t.id, name: t.name })}>
-                <ScrollText className="w-4 h-4 mr-1" /> Rules
-              </Button>
             </div>
           </div>
         ))}
       </CardContent>
 
       <TournamentGovernanceDialog champ={governance} onOpenChange={(v) => !v && setGovernance(null)} />
-      <TournamentRulesDialog champ={rules} onOpenChange={(v) => !v && setRules(null)} />
     </Card>
   );
 }

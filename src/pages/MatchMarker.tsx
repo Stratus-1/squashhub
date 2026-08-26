@@ -22,6 +22,7 @@ import {
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { effectiveTournamentSettings } from "@/lib/tournaments/effective-settings";
 
 function parseTournamentScores(row: any): Array<{ a: number; b: number }> {
   const scores: Array<{ a: number; b: number }> = [];
@@ -178,7 +179,7 @@ export default function MatchMarker() {
       setTournamentLoadState("loading");
       const { data, error } = await fromExt("club_champs_matches")
         .select(`
-          id, champ_id, handicap_a, handicap_b, status, side_a_points, side_b_points, game_scores,
+          id, champ_id, group_number, handicap_a, handicap_b, status, side_a_points, side_b_points, game_scores,
           player_a_member_id, player_b_member_id,
           partner_a_member_id, partner_b_member_id,
           player_a:player_a_member_id(id, name, club_member_number),
@@ -207,7 +208,7 @@ export default function MatchMarker() {
       // resume should be equally direct and server-authoritative.
       const [{ data: tournamentData, error: tournamentError }, { data: rulesData, error: rulesError }] = await Promise.all([
         fromExt("tournaments")
-          .select("id, club_id, match_type")
+          .select("id, club_id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
           .eq("id", row.champ_id)
           .maybeSingle(),
         fromExt("tournament_rules")
@@ -224,8 +225,9 @@ export default function MatchMarker() {
         });
         return;
       }
-      const champ = { ...(tournamentData as any), ...(rulesData as any) };
-      if (champ?.scoring_mode === "time_capped_points") {
+      const champ = { ...(rulesData as any), ...(tournamentData as any) };
+      const effective = effectiveTournamentSettings(champ, row.group_number);
+      if (effective.scoringMode === "time_capped_points") {
         navigate(`/bells-marker/${matchId}`, { replace: true });
         return;
       }
@@ -292,14 +294,14 @@ export default function MatchMarker() {
         };
       };
 
-      const isDoubles = champ?.match_type === "doubles" || champ?.match_type === "mixed";
-      const ppg = Number(champ?.points_per_game);
+      const isDoubles = effective.isDoubles;
+      const ppg = Number(effective.pointsPerGame);
       const scoringFormat: "par11" | "par15" | "english9" =
         ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11";
-      const rawBest = Number(champ?.best_of);
+      const rawBest = Number(effective.bestOf);
       const bestOf: 3 | 5 = rawBest === 5 ? 5 : 3;
       const deuceRule: "win_by_2" | "sudden_death" =
-        champ?.win_condition === "sudden_death" ? "sudden_death" : "win_by_2";
+        effective.winCondition === "sudden_death" ? "sudden_death" : "win_by_2";
       const nextConfig: MarkerConfig = {
         playerA: playerFor(row.player_a_member_id, row.player_a, "Player A"),
         playerB: playerFor(row.player_b_member_id, row.player_b, "Player B"),
@@ -309,7 +311,7 @@ export default function MatchMarker() {
         matchType: "club_champs",
         scoringFormat,
         bestOf,
-        playAllGames: !!champ?.play_all_games,
+        playAllGames: effective.playAllGames,
         deuceRule,
         source: "tournament",
         sourceId: matchId,
@@ -344,17 +346,29 @@ export default function MatchMarker() {
     let cancelled = false;
     const syncTournamentScoring = async () => {
       const { data } = await fromExt("club_champs_matches")
-        .select("club_champs!inner(points_per_game, best_of, play_all_games, win_condition)")
+        .select("champ_id, group_number")
         .eq("id", config.sourceId)
         .maybeSingle();
 
       if (cancelled || !data) return;
-      const champ = Array.isArray((data as any).club_champs) ? (data as any).club_champs[0] : (data as any).club_champs;
-      const ppg = Number(champ?.points_per_game);
+      const row = data as any;
+      const [{ data: tournamentData }, { data: rulesData }] = await Promise.all([
+        fromExt("tournaments")
+          .select("id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+          .eq("id", row.champ_id)
+          .maybeSingle(),
+        fromExt("tournament_rules")
+          .select("tournament_id, scoring_mode, points_per_game, best_of, play_all_games, win_condition")
+          .eq("tournament_id", row.champ_id)
+          .maybeSingle(),
+      ]);
+      if (cancelled || !tournamentData) return;
+      const effective = effectiveTournamentSettings({ ...(rulesData as any), ...(tournamentData as any) }, row.group_number);
+      const ppg = Number(effective.pointsPerGame);
       const scoringFormat: MarkerConfig["scoringFormat"] = ppg === 15 ? "par15" : ppg === 9 ? "english9" : "par11";
-      const bestOf: MarkerConfig["bestOf"] = Number(champ?.best_of) === 5 ? 5 : 3;
-      const playAllGames = !!champ?.play_all_games;
-      const deuceRule: MarkerConfig["deuceRule"] = champ?.win_condition === "sudden_death" ? "sudden_death" : "win_by_2";
+      const bestOf: MarkerConfig["bestOf"] = Number(effective.bestOf) === 5 ? 5 : 3;
+      const playAllGames = effective.playAllGames;
+      const deuceRule: MarkerConfig["deuceRule"] = effective.winCondition === "sudden_death" ? "sudden_death" : "win_by_2";
 
       if (
         config.scoringFormat !== scoringFormat ||

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
+import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import { BackToHomeLink } from "@/components/BackToHomeLink";
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
   const { club, subdomain } = useClubContext();
+  const hideGoogleAuth = isGoogleAuthDisabled();
   const [loading, setLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
@@ -992,8 +993,16 @@ export default function ClubAuth() {
                 <TabsContent value="login">
                   <Card className="p-6">
                     <div className="space-y-4 mb-4">
-                      <GoogleSignInButton />
-                      <GoogleAuthDivider />
+                      {!hideGoogleAuth ? (
+                        <>
+                          <GoogleSignInButton />
+                          <GoogleAuthDivider />
+                        </>
+                      ) : (
+                        <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+                          Local development auth is set to email/password only. Use the form below to sign in for this club.
+                        </div>
+                      )}
                     </div>
                     <form onSubmit={handleLogin} className="space-y-4">
                       <div>
@@ -1066,8 +1075,16 @@ export default function ClubAuth() {
           <TabsContent value="login">
             <Card className="p-6">
               <div className="space-y-4 mb-4">
-                <GoogleSignInButton />
-                <GoogleAuthDivider />
+                {!hideGoogleAuth ? (
+                  <>
+                    <GoogleSignInButton />
+                    <GoogleAuthDivider />
+                  </>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+                    Local development auth is set to email/password only. Use the form below to sign in for this club.
+                  </div>
+                )}
               </div>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>

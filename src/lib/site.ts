@@ -33,6 +33,9 @@ export function getAuthRedirectBase(): string {
 
   if (typeof window !== "undefined") {
     const { hostname, origin } = window.location;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return origin.replace(/\/+$/, "");
+    }
     if (
       hostname === PRODUCTION_ROOT ||
       hostname.endsWith(`.${PRODUCTION_ROOT}`)
@@ -44,17 +47,28 @@ export function getAuthRedirectBase(): string {
 }
 
 /**
- * Builds an auth-email redirect URL that always lands on the production root
- * (so it survives Supabase's allowed-redirect-URL allowlist), and encodes the
- * active tenant subdomain as a `?tenant=<sub>` query parameter. A small
- * bootstrap script in `index.html` reads that param on the root domain and
- * re-routes the user (preserving the recovery/verification hash or `?code=`)
- * to the tenant subdomain so the password reset / signup confirmation always
- * completes on the club they were using.
+ * Builds an auth-email redirect URL that lands on the local dev origin when
+ * running on localhost, or on the production root otherwise. The active tenant
+ * subdomain is encoded as `?tenant=<sub>` so the bootstrap script in
+ * `index.html` can re-route production auth flows back to the club they were
+ * using while localhost dev stays on the local origin.
  */
 export function getTenantAwareAuthRedirect(path: string): string {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   let tenant: string | null = null;
+  let base = PRODUCTION_SITE_URL;
+
+  const envOverride = (import.meta.env.VITE_PUBLIC_URL as string | undefined)
+    ?.trim()
+    ?.replace(/\/+$/, "");
+  if (envOverride) {
+    base = envOverride;
+  } else if (typeof window !== "undefined") {
+    const { hostname, origin } = window.location;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      base = origin.replace(/\/+$/, "");
+    }
+  }
 
   if (typeof window !== "undefined") {
     const { hostname } = window.location;
@@ -64,9 +78,6 @@ export function getTenantAwareAuthRedirect(path: string): string {
     }
   }
 
-  // Always route auth-email links through the production root domain.
-  // The bridge script in index.html bounces back to the tenant subdomain.
-  const base = PRODUCTION_SITE_URL;
   const url = new URL(`${base}${cleanPath}`);
   if (tenant) url.searchParams.set("tenant", tenant);
   return url.toString();

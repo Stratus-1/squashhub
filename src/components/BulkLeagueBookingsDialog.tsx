@@ -73,6 +73,16 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
     },
   });
 
+  const courtOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return courts.filter((court) => {
+      const key = String(court.name || "").trim().toLowerCase() || `__court_${court.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [courts]);
+
   // Club's team codes (both leagues.code + leagues.nsa_team_code)
   const { data: teamCodeSet } = useQuery({
     queryKey: ["bulk-league:team-codes", clubId],
@@ -138,7 +148,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
   // Default primary/secondary courts (persisted per club)
   const storageKey = `bulk-league:default-courts:${clubId}`;
   useEffect(() => {
-    if (!open || courts.length === 0) return;
+    if (!open || courtOptions.length === 0) return;
     let p: number | null = null;
     let s: number | null = null;
     let st: string | null = null;
@@ -147,19 +157,19 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
       const raw = localStorage.getItem(storageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (courts.some((c) => c.id === parsed.primary)) p = parsed.primary;
-        if (courts.some((c) => c.id === parsed.secondary)) s = parsed.secondary;
+        if (courtOptions.some((c) => c.id === parsed.primary)) p = parsed.primary;
+        if (courtOptions.some((c) => c.id === parsed.secondary)) s = parsed.secondary;
         if (typeof parsed.startTime === "string") st = parsed.startTime;
         if (typeof parsed.endTime === "string") en = parsed.endTime;
       }
     } catch {}
-    if (p == null) p = courts[0].id;
-    if (s == null) s = courts[Math.min(1, courts.length - 1)].id;
+    if (p == null) p = courtOptions[0].id;
+    if (s == null) s = courtOptions[Math.min(1, courtOptions.length - 1)].id;
     setPrimaryCourtId(p);
     setSecondaryCourtId(s);
     if (st) setDefaultStart(st);
     if (en) setDefaultEnd(en);
-  }, [courts, open, storageKey]);
+  }, [courtOptions, open, storageKey]);
 
   // Persist defaults
   useEffect(() => {
@@ -171,7 +181,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
 
   // Build/rebuild rows whenever fixtures or the default courts change
   useEffect(() => {
-    if (!open || courts.length === 0 || primaryCourtId == null || secondaryCourtId == null) return;
+    if (!open || courtOptions.length === 0 || primaryCourtId == null || secondaryCourtId == null) return;
     const grouped: Record<string, Fixture[]> = {};
     for (const f of fixtures) (grouped[f.fixture_date] ||= []).push(f);
 
@@ -182,7 +192,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
         const courtId =
           idx === 0 ? primaryCourtId
           : idx === 1 ? secondaryCourtId
-          : courts[Math.min(idx, courts.length - 1)].id;
+          : courtOptions[Math.min(idx, courtOptions.length - 1)].id;
         built.push({
           fixtureId: f.id,
           date,
@@ -197,7 +207,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
       });
     }
     setRows(built);
-  }, [fixtures, courts, open, primaryCourtId, secondaryCourtId, defaultStart, defaultEnd]);
+  }, [fixtures, courtOptions, open, primaryCourtId, secondaryCourtId, defaultStart, defaultEnd]);
 
   const runConflictCheck = async () => {
     if (rows.length === 0) return;
@@ -293,7 +303,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
           </DialogDescription>
         </DialogHeader>
 
-        {courts.length > 0 && (
+        {courtOptions.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-lg border bg-muted/30">
             <div>
               <Label className="text-xs">Primary court</Label>
@@ -305,7 +315,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
                   <SelectValue placeholder="Select primary court" />
                 </SelectTrigger>
                 <SelectContent>
-                  {courts.map((c) => (
+                  {courtOptions.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)} className="text-xs">{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -321,7 +331,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
                   <SelectValue placeholder="Select secondary court" />
                 </SelectTrigger>
                 <SelectContent>
-                  {courts.map((c) => (
+                  {courtOptions.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)} className="text-xs">{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -399,7 +409,7 @@ export function BulkLeagueBookingsDialog({ open, onOpenChange, clubId }: Props) 
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {courts.map((c) => (
+                              {courtOptions.map((c) => (
                                 <SelectItem key={c.id} value={String(c.id)} className="text-xs">
                                   {c.name}
                                 </SelectItem>

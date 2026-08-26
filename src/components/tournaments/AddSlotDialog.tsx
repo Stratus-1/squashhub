@@ -48,6 +48,16 @@ export function AddSlotDialog({ open, onOpenChange, champs, allMatches, invalida
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   }, [allMatches, champId]);
 
+  const courtOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return courts.filter((court) => {
+      const key = String(court.name || "").trim().toLowerCase() || `__court_${court.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [courts]);
+
   // Suggest a group_number that already exists in the tournament
   const defaultGroup = useMemo(() => {
     for (const m of allMatches) {
@@ -137,10 +147,10 @@ export function AddSlotDialog({ open, onOpenChange, champs, allMatches, invalida
           <div>
             <Label className="text-xs">Courts</Label>
             <div className="flex flex-wrap gap-1.5 mt-1">
-              {courts.length === 0 && (
+              {courtOptions.length === 0 && (
                 <p className="text-xs text-muted-foreground">No courts found for this tournament yet.</p>
               )}
-              {courts.map((c) => {
+              {courtOptions.map((c) => {
                 const active = courtIds.has(c.id);
                 return (
                   <button

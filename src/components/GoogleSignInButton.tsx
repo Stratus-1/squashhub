@@ -14,6 +14,10 @@ interface Props {
   showHint?: boolean;
 }
 
+export function isGoogleAuthDisabled(): boolean {
+  return String(import.meta.env.VITE_DISABLE_GOOGLE_AUTH || "").toLowerCase() === "true";
+}
+
 /**
  * "Continue with Google" button using Supabase-direct Google OAuth (BYO credentials).
  *
@@ -26,6 +30,8 @@ interface Props {
  *  - Client ID + Secret pasted into Cloud → Auth Settings → Google provider.
  */
 export function GoogleSignInButton({ label = "Continue with Google", className, preserveClub = true, showHint = true }: Props) {
+  if (isGoogleAuthDisabled()) return null;
+
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {

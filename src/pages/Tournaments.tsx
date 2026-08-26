@@ -105,6 +105,10 @@ export default function Tournaments() {
   // agrees on what "current" means (see src/lib/tournaments/lifecycle.ts).
   const { current: champs, past: pastChamps, needsDates: undatedChamps } =
     splitTournamentsByLifecycle(allChamps as any[], todayStr);
+  const champById = useMemo(
+    () => new Map((allChamps as any[]).map((champ: any) => [champ.id, champ] as const)),
+    [allChamps],
+  );
 
   const champIds = allChamps.map((c: any) => c.id);
   const champIdsKey = champIds.slice().sort().join("|");
@@ -150,7 +154,7 @@ export default function Tournaments() {
   );
   const inPlay = (m: any) => {
     if (m.status !== "in_progress") return false;
-    const champ = allChamps.find((c: any) => c.id === m.champ_id);
+    const champ = champById.get(m.champ_id);
     if (champ?.scoring_mode !== "time_capped_points") return true;
     const bellActive = !!m.bell_ends_at && new Date(m.bell_ends_at).getTime() > Date.now();
     const paused = typeof m.bell_paused_seconds === "number" && m.bell_paused_seconds > 0;
@@ -237,7 +241,7 @@ export default function Tournaments() {
       if (!gm) continue;
       const poolMap = gm.get(m.group_number);
       if (!poolMap) continue;
-      const champ = allChamps.find((c: any) => c.id === m.champ_id);
+      const champ = champById.get(m.champ_id);
       const isDoubles = (champ as any)?.match_type === "doubles";
       const memberIds: string[] = [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id].filter(Boolean);
       for (const mid of memberIds) {
@@ -250,7 +254,7 @@ export default function Tournaments() {
       }
     }
     return out;
-  }, [allChamps, allEntries, allMatches]);
+  }, [allChamps, allEntries, allMatches, champById]);
 
   // `section_number` is what the draw engine persists for pool/section branches
   // (knockout rows), so it is authoritative whenever `pool_number` is absent.
@@ -298,15 +302,15 @@ export default function Tournaments() {
     }
     // Sort by champ name, then group-stage before playoffs, then group, then pool
     return [...seen.values()].sort((a, b) => {
-      const ca = allChamps.find((c: any) => c.id === a.champId)?.name || "";
-      const cb = allChamps.find((c: any) => c.id === b.champId)?.name || "";
+      const ca = champById.get(a.champId)?.name || "";
+      const cb = champById.get(b.champId)?.name || "";
       if (ca !== cb) return ca.localeCompare(cb);
       if (!!a.stage !== !!b.stage) return a.stage ? 1 : -1;
       const ga = a.group ?? 999; const gb = b.group ?? 999;
       if (ga !== gb) return ga - gb;
       return (a.pool ?? 999) - (b.pool ?? 999);
     });
-  }, [upcomingMatches, allChamps, poolByMatchId]);
+  }, [upcomingMatches, champById, poolByMatchId]);
 
   // Give every league/pool bucket its own distinct colour (sorted order), so
   // Pool A and Pool B of the same league never look alike.
@@ -317,7 +321,7 @@ export default function Tournaments() {
   const bucketColor = (key: string) => bucketColorMap.get(key) ?? getBucketColor(key);
 
   const bucketLabel = (b: { champId: string; group: number | null; pool: number | null; stage?: string | null; stageLabel?: string | null }, opts: { withChamp?: boolean } = {}) => {
-    const champ = allChamps.find((c: any) => c.id === b.champId);
+    const champ = champById.get(b.champId);
     const parts: string[] = [];
     if (opts.withChamp && champ) parts.push(champ.name);
     if (b.stage) {
@@ -358,6 +362,8 @@ export default function Tournaments() {
     );
   const filteredUpcoming = applyFilters(upcomingMatches);
   const filteredMine = applyFilters(myUpcoming);
+  const scheduleChamp = scheduleMatch ? champById.get(scheduleMatch.champ_id) ?? null : null;
+  const resultChamp = resultMatch ? champById.get(resultMatch.champ_id) ?? null : null;
 
 
   const hcLabel = (h: any) => {
@@ -898,7 +904,7 @@ export default function Tournaments() {
             label={isPlaceholder ? "Fill slot" : undefined}
             unscheduledOnly={isPlaceholder}
             getMatchLabel={(x) => {
-              const c = allChamps.find((cc: any) => cc.id === x.champ_id);
+              const c = champById.get(x.champ_id);
               const dbl = c?.match_type === "doubles";
               const a = sideLabel(x.player_a, x.partner_a, x.placeholder_a, dbl);
               const b = sideLabel(x.player_b, x.partner_b, x.placeholder_b, dbl);
@@ -955,7 +961,7 @@ export default function Tournaments() {
     // Only customise when every match belongs to the same cross-league tournament
     const champIds = [...new Set(matches.map((m) => m.champ_id))];
     if (champIds.length !== 1) return { a: "Player / Team A", b: "Player / Team B" };
-    const champ = allChamps.find((c: any) => c.id === champIds[0]);
+    const champ = champById.get(champIds[0]);
     if (!champ) {
       return { a: "Player / Team A", b: "Player / Team B" };
     }
@@ -996,7 +1002,7 @@ export default function Tournaments() {
     const { a: headerA, b: headerB } = getScheduleHeaders(matches);
     const rows = matches
       .map((m) => {
-        const champ = allChamps.find((c: any) => c.id === m.champ_id);
+        const champ = champById.get(m.champ_id);
         const isDoubles = champ?.match_type === "doubles";
         const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles);
         const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles);
@@ -1056,7 +1062,7 @@ export default function Tournaments() {
     const esc = (v: string) => `"${(v || "").replace(/"/g, '""')}"`;
     const lines = [header.join(",")];
     matches.forEach((m) => {
-      const champ = allChamps.find((c: any) => c.id === m.champ_id);
+      const champ = champById.get(m.champ_id);
       const isDoubles = champ?.match_type === "doubles";
       const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles);
       const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles);
@@ -1507,9 +1513,9 @@ export default function Tournaments() {
         clubId={clubId}
         match={scheduleMatch}
         canManage={canManageChamps || isClubAdmin}
-        opponentName={scheduleMatch ? `${sideLabel(scheduleMatch.player_a, scheduleMatch.partner_a, scheduleMatch.placeholder_a, allChamps.find((c: any) => c.id === scheduleMatch.champ_id)?.match_type === "doubles")} vs ${sideLabel(scheduleMatch.player_b, scheduleMatch.partner_b, scheduleMatch.placeholder_b, allChamps.find((c: any) => c.id === scheduleMatch.champ_id)?.match_type === "doubles")}` : undefined}
-        durationMinutes={allChamps.find((c: any) => c.id === scheduleMatch?.champ_id)?.match_duration_minutes ?? undefined}
-        courtIds={(allChamps.find((c: any) => c.id === scheduleMatch?.champ_id)?.court_ids as number[] | null) ?? null}
+        allowedCourtIds={(scheduleChamp as any)?.court_ids ?? []}
+        opponentName={scheduleMatch ? `${sideLabel(scheduleMatch.player_a, scheduleMatch.partner_a, scheduleMatch.placeholder_a, (scheduleChamp as any)?.match_type === "doubles")} vs ${sideLabel(scheduleMatch.player_b, scheduleMatch.partner_b, scheduleMatch.placeholder_b, (scheduleChamp as any)?.match_type === "doubles")}` : undefined}
+        durationMinutes={(scheduleChamp as any)?.match_duration_minutes ?? undefined}
       />
 
       <EnterResultDialog
@@ -1517,10 +1523,10 @@ export default function Tournaments() {
         onOpenChange={(o) => { if (!o) setResultMatch(null); }}
         clubId={clubId}
         match={resultMatch}
-        playerAName={resultMatch ? sideLabel(resultMatch.player_a, resultMatch.partner_a, resultMatch.placeholder_a, allChamps.find((c: any) => c.id === resultMatch.champ_id)?.match_type === "doubles") : ""}
-        playerBName={resultMatch ? sideLabel(resultMatch.player_b, resultMatch.partner_b, resultMatch.placeholder_b, allChamps.find((c: any) => c.id === resultMatch.champ_id)?.match_type === "doubles") : ""}
-        bestOf={allChamps.find((c: any) => c.id === resultMatch?.champ_id)?.best_of}
-        pointsTarget={allChamps.find((c: any) => c.id === resultMatch?.champ_id)?.points_per_game}
+        playerAName={resultMatch ? sideLabel(resultMatch.player_a, resultMatch.partner_a, resultMatch.placeholder_a, (resultChamp as any)?.match_type === "doubles") : ""}
+        playerBName={resultMatch ? sideLabel(resultMatch.player_b, resultMatch.partner_b, resultMatch.placeholder_b, (resultChamp as any)?.match_type === "doubles") : ""}
+        bestOf={(resultChamp as any)?.best_of}
+        pointsTarget={(resultChamp as any)?.points_per_game}
         onSaved={() => {
           setResultMatch(null);
           qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });

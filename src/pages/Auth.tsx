@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
 import shLogo from "@/assets/sh-logo.png";
-import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
+import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
 
 export default function Auth() {
@@ -38,6 +38,7 @@ export default function Auth() {
   const [clubName, setClubName] = useState("");
   const [subdomain, setSubdomain] = useState("");
   const [tenantType, setTenantType] = useState<"club" | "association">("club");
+  const hideGoogleAuth = isGoogleAuthDisabled();
 
   const STOP_WORDS = new Set(["the", "of", "and", "for", "a", "an", "in", "at", "club", "squash", "sports", "centre", "center"]);
 
@@ -241,8 +242,16 @@ export default function Auth() {
           <TabsContent value="login">
             <Card className="p-6">
               <div className="space-y-4">
-                <GoogleSignInButton />
-                <GoogleAuthDivider />
+                {!hideGoogleAuth ? (
+                  <>
+                    <GoogleSignInButton />
+                    <GoogleAuthDivider />
+                  </>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+                    Local development auth is set to email/password only. Use the form below to sign in to the relevant club.
+                  </div>
+                )}
               </div>
               <form onSubmit={handleLogin} className="space-y-4 mt-4">
                 <div>

@@ -28,7 +28,7 @@ export function MyChampionships() {
   const { data: clubData } = useMyClub();
   const clubId = contextClub?.id || clubData?.club?.id;
   const memberId = activeMember?.id;
-  const [scheduling, setScheduling] = useState<{ match: any; opponent: string } | null>(null);
+  const [scheduling, setScheduling] = useState<{ match: any; opponent: string; champ: any } | null>(null);
   const [entering, setEntering] = useState<{ match: any; champ: any; a: string; b: string } | null>(null);
 
   // Get all active champs for the club
@@ -293,7 +293,7 @@ export function MyChampionships() {
                               className="h-6 text-[11px]"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setScheduling({ match: m, opponent });
+                                setScheduling({ match: m, opponent, champ });
                               }}
                             >
                               Schedule match
@@ -349,7 +349,7 @@ export function MyChampionships() {
                           className="h-6 text-[10px] px-1.5 shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setScheduling({ match: m, opponent });
+                            setScheduling({ match: m, opponent, champ });
                           }}
                         >
                           Reschedule
@@ -411,8 +411,8 @@ export function MyChampionships() {
         clubId={clubId}
         match={scheduling?.match || null}
         opponentName={scheduling?.opponent}
-        durationMinutes={(allChamps.find((c: any) => c.id === scheduling?.match?.champ_id) as any)?.match_duration_minutes ?? undefined}
-        courtIds={((allChamps.find((c: any) => c.id === scheduling?.match?.champ_id) as any)?.court_ids as number[] | null) ?? null}
+        durationMinutes={scheduling?.champ?.match_duration_minutes ?? undefined}
+        allowedCourtIds={scheduling?.champ?.court_ids ?? []}
       />
 
       <EnterResultDialog

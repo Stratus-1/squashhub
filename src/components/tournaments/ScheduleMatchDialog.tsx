@@ -31,7 +31,7 @@ interface Props {
    * Courts explicitly chosen in tournament setup. When provided (non-empty)
    * only those courts are offered; otherwise external courts are excluded.
    */
-  courtIds?: number[] | null;
+  allowedCourtIds?: number[] | null;
 }
 
 
@@ -53,7 +53,7 @@ export function ScheduleMatchDialog({
   opponentName,
   durationMinutes,
   canManage,
-  courtIds: allowedCourtIds,
+  allowedCourtIds,
 }: Props) {
   const qc = useQueryClient();
   const [date, setDate] = useState<string>(
@@ -93,14 +93,12 @@ export function ScheduleMatchDialog({
   });
 
   const courtOptions = useMemo(() => {
-    const seen = new Set<string>();
+    const allowed = allowedCourtIds && allowedCourtIds.length > 0 ? new Set(allowedCourtIds) : null;
     return courts.filter((court) => {
-      const key = String(court.name || "").trim().toLowerCase() || `__court_${court.id}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
+      if (allowed) return allowed.has(court.id);
+      return !court.is_external;
     });
-  }, [courts]);
+  }, [allowedCourtIds, courts]);
 
 
   useEffect(() => {
@@ -123,7 +121,7 @@ export function ScheduleMatchDialog({
     setCourtId(courtOptions[0].id);
   }, [courtOptions, courtId, courts]);
 
-  const { data: bookings = [], isFetching } = useQuery({
+  const { data: bookings = [], isFetching, refetch: refetchBookings } = useQuery({
     queryKey: ["court-bookings-self-schedule", clubId, date],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
@@ -157,27 +155,54 @@ export function ScheduleMatchDialog({
 
   const confirm = async (time: string) => {
     if (!match || !courtId) return;
-    setSaving(true);
-    const { error } = await rpcExt("self_schedule_champ_match", {
-      p_match_id: match.id,
-      p_court_id: courtId,
-      p_date: date,
-      p_time: time.length === 5 ? `${time}:00` : time,
-      p_duration_minutes: duration,
-    });
-    setSaving(false);
-    if (error) {
-      toast.error(error.message || "Could not book that slot — please try another one.");
-      qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule"] });
+    if (courtOptions.length > 0 && !courtOptions.some((c) => c.id === courtId)) {
+      toast.error("That court is not available for this tournament.");
       return;
     }
-    toast.success(
-      alreadyScheduled
-        ? "Match rescheduled — the court booking was moved."
-        : "Match scheduled — both players have been notified.",
-    );
-    invalidateAll();
-    onOpenChange(false);
+
+    setSaving(true);
+    try {
+      const normalizedTime = time.length === 5 ? time : time.slice(0, 5);
+      const fresh = await refetchBookings();
+      const freshBookings = (fresh.data || []) as any[];
+      const stillFree = isSlotFreeForMatch(
+        normalizedTime,
+        duration,
+        courtId,
+        match,
+        freshBookings,
+        match?.booking_id ?? null,
+      );
+      if (!stillFree) {
+        toast.error("That slot is no longer available. Please pick another time.");
+        qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule", clubId, date] });
+        return;
+      }
+
+      const { error } = await rpcExt("self_schedule_champ_match", {
+        p_match_id: match.id,
+        p_court_id: courtId,
+        p_date: date,
+        p_time: `${normalizedTime}:00`,
+        p_duration_minutes: duration,
+      });
+      if (error) {
+        toast.error(error.message || "Could not book that slot — please try another one.");
+        qc.invalidateQueries({ queryKey: ["court-bookings-self-schedule"] });
+        return;
+      }
+      toast.success(
+        alreadyScheduled
+          ? "Match rescheduled — the court booking was moved."
+          : "Match scheduled — both players have been notified.",
+      );
+      invalidateAll();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error?.message || "Could not book that slot — please try another one.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const invalidateAll = () => {

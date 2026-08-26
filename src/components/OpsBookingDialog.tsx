@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,16 @@ export function OpsBookingDialog({
   const [dayOfWeek, setDayOfWeek] = useState<number>(new Date().getDay());
   const [submitting, setSubmitting] = useState(false);
 
+  const courtOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return courts.filter((court) => {
+      const key = String(court.name || "").trim().toLowerCase() || `__court_${court.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [courts]);
+
   const reset = () => {
     setNote("");
     setPhoto(null);
@@ -72,10 +82,10 @@ export function OpsBookingDialog({
 
   // Ensure a court is selected once courts arrive (or when they change)
   useEffect(() => {
-    if (courts.length > 0 && (courtId == null || !courts.some((c) => c.id === courtId))) {
-      setCourtId(courts[0].id);
+    if (courtOptions.length > 0 && (courtId == null || !courtOptions.some((c) => c.id === courtId))) {
+      setCourtId(courtOptions[0].id);
     }
-  }, [courts, courtId]);
+  }, [courtOptions, courtId]);
 
   const submit = async () => {
     if (!user?.id) {
@@ -173,7 +183,7 @@ export function OpsBookingDialog({
               <Select value={String(courtId ?? "")} onValueChange={(v) => setCourtId(Number(v))}>
                 <SelectTrigger><SelectValue placeholder="Court" /></SelectTrigger>
                 <SelectContent>
-                  {courts.map((c) => (
+                  {courtOptions.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>

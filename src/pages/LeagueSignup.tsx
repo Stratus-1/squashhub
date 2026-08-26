@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { GoogleSignInButton, GoogleAuthDivider } from "@/components/GoogleSignInButton";
+import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { useQuery } from "@tanstack/react-query";
@@ -43,6 +43,7 @@ export default function LeagueSignup() {
   const navigate = useNavigate();
   const presetClub = params.get("club") || null;
   const presetNsa = params.get("nsa") || "";
+  const hideGoogleAuth = isGoogleAuthDisabled();
 
   // Step 1 — find player. Always keep an "NSF" prefix so members only type their digits.
   const ensureNsfPrefix = (v: string) => {
@@ -242,8 +243,16 @@ export default function LeagueSignup() {
 
         <Card className="p-5 md:p-6 space-y-5">
           <div className="space-y-4">
-            <GoogleSignInButton label="Continue with Google" preserveClub={false} />
-            <GoogleAuthDivider />
+            {!hideGoogleAuth ? (
+              <>
+                <GoogleSignInButton label="Continue with Google" preserveClub={false} />
+                <GoogleAuthDivider />
+              </>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
+                Local development auth is set to email/password only. Use the form below to continue.
+              </div>
+            )}
           </div>
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Step 1 — find */}

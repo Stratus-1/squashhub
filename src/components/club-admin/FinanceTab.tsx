@@ -27,6 +27,7 @@ import { LedgerReconciliationDialog } from "./LedgerReconciliationDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
 import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 import { BankStatementImportDialog } from "./BankStatementImportDialog";
+import { BankingPanel } from "./BankingPanel";
 import DebitOrdersPanel from "./DebitOrdersPanel";
 
 /* ─── Chart of Accounts definition ─── */

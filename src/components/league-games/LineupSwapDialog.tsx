@@ -16,6 +16,7 @@ export interface SwapCandidate {
   squad: boolean;     // true = registered for this exact team-league
   reserve?: boolean;  // true = registered in another same-prefix reserve league
   byeFrom?: string;   // team code of a team on bye this week
+  alsoFrom?: string;  // another same-tier team; selectable when multi-fixture play is enabled
   inUse?: { side: "home" | "away"; position: number } | null;
 }
 
@@ -35,6 +36,8 @@ interface Props {
   associationId?: string | null;
   /** Fixture date (YYYY-MM-DD) — used to locate same-week bye fixtures (± 3 days) */
   fixtureDate?: string | null;
+  /** Allow registered players from another same-tier team to sub in this fixture. */
+  allowMultiFixturePerNight?: boolean;
   onSelect: (c: SwapCandidate) => void;
   onClear?: () => void;
 }
@@ -43,12 +46,13 @@ export function LineupSwapDialog({
   open, onOpenChange, teamCode, side, position,
   currentName, currentCode, inUseCodes,
   associationId, fixtureDate,
+  allowMultiFixturePerNight = false,
   onSelect, onClear,
 }: Props) {
   const [search, setSearch] = useState("");
 
   const { data: candidates, isLoading } = useQuery({
-    queryKey: ["lineup-swap-candidates", teamCode, associationId, fixtureDate],
+    queryKey: ["lineup-swap-candidates", teamCode, associationId, fixtureDate, allowMultiFixturePerNight],
     queryFn: async (): Promise<SwapCandidate[]> => {
       if (!teamCode) return [];
 
@@ -186,7 +190,9 @@ export function LineupSwapDialog({
       //    - reserves rows for ANY same-tier reserves league
       //    - squad rows (is_reserve = false) of same-tier teams that are on bye
       const reserveLeagueIdSet = new Set(sameTierReserveLeagueIds);
-      const candidateLeagueIds = [...new Set([...sameTierReserveLeagueIds, ...byeLeagueIds])];
+      const otherSameTierLeagueIds = Array.from(sameTierTeamLeagueIdToCode.keys());
+      const eligibleTeamLeagueIds = allowMultiFixturePerNight ? otherSameTierLeagueIds : byeLeagueIds;
+      const candidateLeagueIds = [...new Set([...sameTierReserveLeagueIds, ...eligibleTeamLeagueIds])];
       if (candidateLeagueIds.length === 0) return [];
       const { data: regs } = await (supabase as any)
         .from("member_league_registrations")
@@ -195,7 +201,7 @@ export function LineupSwapDialog({
 
       const filteredRegs = ((regs || []) as any[]).filter((r) => {
         if (reserveLeagueIdSet.has(r.league_id)) return true; // include all reserve-league rows
-        return r.is_reserve !== true; // bye-team squad players only
+        return r.is_reserve !== true; // eligible same-tier squad players
       });
 
       const regMemberIds = [...new Set(filteredRegs.map((r) => r.club_member_id))];
@@ -207,20 +213,22 @@ export function LineupSwapDialog({
         .in("id", regMemberIds);
       const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
 
-      interface Info { reserve: boolean; byeFrom?: string; code: string; rank?: number }
+      interface Info { reserve: boolean; byeFrom?: string; alsoFrom?: string; code: string; rank?: number }
       const regInfo = new Map<string, Info>();
       for (const r of filteredRegs) {
         const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
         const isReserve = reserveLeagueIdSet.has(r.league_id);
         const byeFrom = !isReserve ? sameTierTeamLeagueIdToCode.get(r.league_id) : undefined;
+        const alsoFrom = !isReserve && allowMultiFixturePerNight ? sameTierTeamLeagueIdToCode.get(r.league_id) : undefined;
         const existing = regInfo.get(r.club_member_id);
         if (existing) {
           if (isReserve) existing.reserve = true;
           if (byeFrom && !existing.byeFrom) existing.byeFrom = byeFrom;
+          if (alsoFrom && !existing.alsoFrom) existing.alsoFrom = alsoFrom;
           if (!existing.code && code) existing.code = code;
           if ((r.player_rank || 99) < (existing.rank ?? 99)) existing.rank = r.player_rank;
         } else {
-          regInfo.set(r.club_member_id, { reserve: isReserve, byeFrom, code, rank: r.player_rank });
+          regInfo.set(r.club_member_id, { reserve: isReserve, byeFrom, alsoFrom, code, rank: r.player_rank });
         }
       }
 
@@ -238,6 +246,7 @@ export function LineupSwapDialog({
           squad: false,
           reserve: info.reserve,
           byeFrom: info.byeFrom,
+          alsoFrom: info.alsoFrom,
         });
       }
       return out;
@@ -276,7 +285,9 @@ export function LineupSwapDialog({
             Currently: <span className="font-medium text-foreground">{currentName || "—"}</span>
             {currentCode && <span className="text-muted-foreground"> ({currentCode})</span>}
             <span className="block text-[10px] text-muted-foreground mt-1">
-              Reserves for this league and players from teams on a bye this week.
+              {allowMultiFixturePerNight
+                ? "Reserves and players from other teams in this league."
+                : "Reserves for this league and players from teams on a bye this week."}
             </span>
           </DialogDescription>
         </DialogHeader>
@@ -325,6 +336,8 @@ export function LineupSwapDialog({
                           <Badge variant="outline" className="text-[9px] px-1 py-0">Reserve</Badge>
                         ) : c.byeFrom ? (
                           <Badge variant="secondary" className="text-[9px] px-1 py-0">Bye · {c.byeFrom}</Badge>
+                        ) : c.alsoFrom ? (
+                          <Badge variant="secondary" className="text-[9px] px-1 py-0">Also · {c.alsoFrom}</Badge>
                         ) : null}
                         {c.rank != null && (
                           <span className="text-[10px] text-muted-foreground">#{c.rank}</span>

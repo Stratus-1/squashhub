@@ -113,39 +113,47 @@ export function useUpdateAssociationRules() {
       const patch: Record<string, any> = { ...input.patch };
       delete patch.id;
       delete patch.association_id;
+      delete patch.league_id;
+      delete patch.club_id;
       delete patch.created_at;
       delete patch.updated_at;
 
-      const { data: existingRows } = await supabase
+      const { data: existingRows, error: existingError } = await supabase
         .from("league_rules")
         .select("id")
         .eq("association_id", associationId)
         .is("league_id", null)
         .order("created_at", { ascending: true })
         .limit(1);
+      if (existingError) throw existingError;
       const existing = existingRows?.[0] ?? null;
-
-
 
       if (existing) {
         const { data: updated, error } = await supabase
           .from("league_rules")
           .update(patch)
           .eq("id", existing.id)
-          .select("id");
+          .eq("association_id", associationId)
+          .is("league_id", null)
+          .select("id, association_id");
         if (error) throw error;
-        if (!updated || updated.length === 0) {
+        if (!updated?.length || updated[0].association_id !== associationId) {
           throw new Error("You don't have permission to change these league rules.");
         }
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("league_rules")
-          .insert({ association_id: associationId, ...patch });
+          .insert({ ...patch, association_id: associationId, league_id: null, club_id: null })
+          .select("id, association_id");
         if (error) throw error;
+        if (!inserted?.length || inserted[0].association_id !== associationId) {
+          throw new Error("The club-specific league rules could not be saved.");
+        }
       }
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["association-rules", "direct", vars.associationId] });
+      qc.invalidateQueries({ queryKey: ["association-rules"] });
       toast.success("Rules saved");
     },
     onError: (e: any) => toast.error(e.message ?? "Failed to save rules"),

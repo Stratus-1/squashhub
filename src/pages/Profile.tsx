@@ -261,6 +261,7 @@ export default function Profile() {
       setSkillLevel(clubMember.skill_level || "");
       setMemberNumber(clubMember.club_member_number || "");
       setFeeCategoryId(clubMember.fee_category_id || "");
+      setSkillsDraft(skillsDraftFromMember(clubMember));
       // plays_league + per-association ticks are seeded from the leagueAssocs query.
     }
 

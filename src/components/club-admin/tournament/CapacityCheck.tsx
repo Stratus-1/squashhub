@@ -224,13 +224,16 @@ export function CapacityCheck(props: CapacityCheckProps) {
           </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             Each playing window gives <em>minutes × courts</em> of court time, and each league is costed at its own
-            match length. Round-robin leagues need N·(N−1)/2 matches per pool (doubled for a double round-robin);
-            Swiss leagues need ⌈N/2⌉ matches per round per pool. Play-off brackets add their own matches, and a
-            pre-play-off break removes court time from every court.{" "}
+            match length. Round-robin and Bells leagues need N·(N−1)/2 matches per pool (doubled for a double round
+            robin); Swiss leagues need ⌈N/2⌉ matches per round per pool. A second limit applies on top: nobody plays
+            two matches at once, so a league also needs one time slot per round — a round robin of N needs N−1 slots
+            in the playing window no matter how many courts are open. Play-off brackets add their own matches and
+            rounds, and a pre-play-off break removes court time from every court.{" "}
             {result.parallelApplied
               ? "Side-by-side mode divides the courts between leagues (any remainder goes to the earlier leagues)."
               : "Without side-by-side mode each league is sized as if it can use every selected court, so leagues sharing the same courts must be read together, not added up."}
           </p>
+
         </div>
       )}
     </div>

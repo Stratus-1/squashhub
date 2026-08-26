@@ -269,6 +269,18 @@ export default function Profile() {
 
   useEffect(() => { resetDraft(); }, [profile, clubMember]);
 
+  // Deep link from a communications action (e.g. /profile#skills) — scroll the
+  // requested section into view once the member has loaded.
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (!hash || !clubMember) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [clubMember]);
+
+
   // Seed league number drafts + ticked state whenever the associations load.
   // Internal leagues (e.g. NIL) inherit the member's club number — never a
   // separate ID, since the league lives entirely inside the home club.

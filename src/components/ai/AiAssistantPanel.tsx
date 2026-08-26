@@ -57,6 +57,8 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
   const ai = useAiAssistant();
   const ask = useAskAssistant();
   const feedback = useAiFeedback();
+  const confirmBooking = useConfirmAiBooking();
+  const { activeMember } = useMemberContext();
 
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);

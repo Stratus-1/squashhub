@@ -95,11 +95,11 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
     queryKey: ["club-members-lite", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("id, name, member_number")
+        .select("id, name, club_member_number")
         .eq("club_id", clubId)
         .limit(2000);
       if (error) throw error;
-      return (data || []).map((m: any) => ({ id: m.id, name: m.name || "", member_number: m.member_number }));
+      return (data || []).map((m: any) => ({ id: m.id, name: m.name || "", member_number: m.club_member_number }));
     },
     enabled: open && !!clubId,
   });

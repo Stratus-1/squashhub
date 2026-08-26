@@ -1360,6 +1360,144 @@ export type Database = {
           },
         ]
       }
+      club_bank_statements: {
+        Row: {
+          account: Database["public"]["Enums"]["gl_account"]
+          closing_balance: number | null
+          club_id: string
+          created_at: string
+          file_name: string
+          id: string
+          imported_by: string | null
+          is_first_statement: boolean
+          opening_balance: number | null
+          period_end: string | null
+          period_start: string | null
+          row_count: number
+          source_format: string
+          updated_at: string
+        }
+        Insert: {
+          account?: Database["public"]["Enums"]["gl_account"]
+          closing_balance?: number | null
+          club_id: string
+          created_at?: string
+          file_name: string
+          id?: string
+          imported_by?: string | null
+          is_first_statement?: boolean
+          opening_balance?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          row_count?: number
+          source_format?: string
+          updated_at?: string
+        }
+        Update: {
+          account?: Database["public"]["Enums"]["gl_account"]
+          closing_balance?: number | null
+          club_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          imported_by?: string | null
+          is_first_statement?: boolean
+          opening_balance?: number | null
+          period_end?: string | null
+          period_start?: string | null
+          row_count?: number
+          source_format?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_bank_statements_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_bank_transactions: {
+        Row: {
+          amount: number
+          balance: number | null
+          club_id: string
+          created_at: string
+          description: string
+          fingerprint: string
+          id: string
+          journal_ref: string | null
+          matched_account: Database["public"]["Enums"]["gl_account"] | null
+          matched_member_id: string | null
+          notes: string | null
+          reference: string | null
+          statement_id: string | null
+          status: string
+          txn_date: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          balance?: number | null
+          club_id: string
+          created_at?: string
+          description?: string
+          fingerprint: string
+          id?: string
+          journal_ref?: string | null
+          matched_account?: Database["public"]["Enums"]["gl_account"] | null
+          matched_member_id?: string | null
+          notes?: string | null
+          reference?: string | null
+          statement_id?: string | null
+          status?: string
+          txn_date: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          balance?: number | null
+          club_id?: string
+          created_at?: string
+          description?: string
+          fingerprint?: string
+          id?: string
+          journal_ref?: string | null
+          matched_account?: Database["public"]["Enums"]["gl_account"] | null
+          matched_member_id?: string | null
+          notes?: string | null
+          reference?: string | null
+          statement_id?: string | null
+          status?: string
+          txn_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_bank_transactions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_bank_transactions_matched_member_id_fkey"
+            columns: ["matched_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_bank_transactions_statement_id_fkey"
+            columns: ["statement_id"]
+            isOneToOne: false
+            referencedRelation: "club_bank_statements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_billing_audit: {
         Row: {
           changed_by: string | null
@@ -12234,6 +12372,7 @@ export type Database = {
         | "tournament_income"
         | "light_fees_income"
         | "member_credits"
+        | "opening_balance_equity"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -12407,6 +12546,7 @@ export const Constants = {
         "tournament_income",
         "light_fees_income",
         "member_credits",
+        "opening_balance_equity",
       ],
       integration_provider: [
         "strava",

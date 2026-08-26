@@ -333,9 +333,10 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
             <Landmark className="w-4 h-4 text-primary" /> Import Bank Statement
           </DialogTitle>
           <DialogDescription>
-            Upload a CSV / OFX / QIF statement export. Duplicate lines already imported are detected automatically
-            (same amount and narrative within 7 days), and each transaction can be allocated to an account and member
-            before posting to the ledger.
+            Upload a PDF, CSV, OFX or QIF statement. PDFs are read directly, and scanned/image-only PDFs are
+            processed with OCR. Duplicate lines already imported are detected automatically (same amount and
+            narrative within 7 days), and each transaction can be allocated to an account and member before
+            posting to the ledger.
           </DialogDescription>
         </DialogHeader>
 
@@ -344,17 +345,26 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,.txt,.tsv,.ofx,.qfx,.qif"
+              accept=".pdf,.csv,.txt,.tsv,.ofx,.qfx,.qif"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
             />
-            <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => fileRef.current?.click()}>
+            <Button size="sm" variant="outline" className="gap-1.5 h-8" disabled={!!pdfBusy} onClick={() => fileRef.current?.click()}>
               <Upload className="w-3.5 h-3.5" /> Choose statement file
             </Button>
             {fileName && (
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <FileText className="w-3.5 h-3.5" /> {fileName}
               </span>
+            )}
+            {pdfBusy && (
+              <span className="text-xs text-primary flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                {pdfBusy}
+              </span>
+            )}
+            {format_ === "pdf" && !pdfBusy && drafts.length > 0 && (
+              <Badge variant="outline" className="text-[10px]">Read from PDF — check dates and amounts</Badge>
             )}
             {isFirstStatement && (
               <Badge variant="outline" className="text-[10px]">First statement — opening balance will be seeded</Badge>

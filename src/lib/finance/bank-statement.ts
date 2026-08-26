@@ -457,7 +457,7 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
     if (!dm || (dm.index ?? 99) > 3) {
       // Wrapped description line — append to the previous transaction.
       const last = raw[raw.length - 1];
-      if (last && !MONEY.test("") && !/\d{2}[.,]\d{2}/.test(line) && line.length <= 60 && /[A-Za-z]{3}/.test(line)) {
+      if (last && !/\d{2}[.,]\d{2}/.test(line) && line.length <= 60 && /[A-Za-z]{3}/.test(line)) {
         last.description = `${last.description} ${line}`.replace(/\s{2,}/g, " ").slice(0, 160).trim();
       }
       continue;

@@ -74,8 +74,9 @@ export function nextInvoiceSentence(r: BillingRunResult): string {
   }
   return `${r.club || "Club"}: invoice dated ${day(r.issue_date)} for ${money(r.total)} (${cycle}), covering ${day(
     r.period_start,
-  )} – ${day(r.period_end)}, due ${day(r.due_date)}.`;
+  )} – ${day(r.period_end)}, sent ${day(r.scheduled_send)}, due ${day(r.due_date)}.`;
 }
+
 
 export function BillingRunPreviewDialog({
   open,

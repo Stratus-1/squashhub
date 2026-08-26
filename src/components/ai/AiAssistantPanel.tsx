@@ -33,7 +33,11 @@ type Turn = {
   content: string;
   action?: { key: string; params?: Record<string, string | undefined> } | null;
   workflowKey?: string | null;
+  /** A booking the assistant found; only written once the user confirms. */
+  proposal?: BookingProposal | null;
+  proposalState?: "pending" | "confirmed" | "cancelled";
 };
+
 
 /**
  * Platform-wide AI assistant: voice in, voice out, text chat, guided

@@ -16,6 +16,7 @@ import {
 } from "@/lib/pwa-update";
 import { useClubContext } from "@/contexts/ClubContext";
 import { isBusy, subscribeActivity } from "@/lib/app-activity";
+import { useMutationActivity } from "@/hooks/use-activity-guard";
 
 /**
  * Safe silent update surface.
@@ -30,6 +31,9 @@ export function UpdatePrompt() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { club } = useClubContext();
+
+  // In-flight writes count as "busy" so we never interrupt a save.
+  useMutationActivity();
 
   useEffect(() => {
     setUpdateClubContext(club?.id ?? null);

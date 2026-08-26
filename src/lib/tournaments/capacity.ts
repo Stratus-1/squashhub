@@ -65,6 +65,8 @@ export interface CapacityLeagueResult {
   label: string;
   format: LeagueFormat;
   isSwiss: boolean;
+  /** Bells: time-capped round robin ranked by points scored. */
+  isTimeCapped: boolean;
   slotMinutes: number;
   pools: number;
   rounds: number;
@@ -72,6 +74,12 @@ export interface CapacityLeagueResult {
   /** Match slots this league can be given by the schedule. */
   gamesAvailable: number;
   gamesPerPoolAvailable: number;
+  /** Time slots (bell rings) in the schedule — one match per entrant per slot. */
+  slotsAvailable: number;
+  /** Rounds this field must play through, including any play-off rounds. */
+  roundsNeeded: number;
+  /** The ceiling comes from the number of time slots, not the number of courts. */
+  slotLimited: boolean;
   /** Matches the current/expected field needs (group stage only). */
   gamesNeeded: number;
   playoffGames: number;
@@ -84,6 +92,8 @@ export interface CapacityLeagueResult {
   players: number;
   fits: boolean;
   shortfallGames: number;
+  shortfallRounds: number;
+
 }
 
 export interface CapacityResult {

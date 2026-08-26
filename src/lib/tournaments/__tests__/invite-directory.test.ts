@@ -18,6 +18,7 @@ const row = (over: Record<string, unknown> = {}) => ({
   ranking_points: 120,
   is_own_club: true,
   invite_status: null,
+  is_user: false,
   ...over,
 });
 
@@ -45,6 +46,16 @@ describe("safe projection", () => {
     expect(players[0].is_own_club).toBe(false);
     // The stable internal reference needed to create the invitation is present.
     expect(players[0].member_id).toBe("m2");
+  });
+
+  it("surfaces registered users without leaking auth identifiers", () => {
+    const players = sanitizeDirectory([
+      row({ member_id: "m3", is_user: true }),
+      row({ member_id: "m4", is_user: false }),
+    ]);
+    expect(players[0].is_user).toBe(true);
+    expect(players[1].is_user).toBe(false);
+    expect(JSON.stringify(players)).not.toMatch(/user_id|auth_user_id/);
   });
 
   it("drops rows without a usable member reference", () => {

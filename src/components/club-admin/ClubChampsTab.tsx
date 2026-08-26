@@ -8970,7 +8970,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     />
                     <p className="text-[11px] text-muted-foreground">
                       {directoryScopeLabel(eligibilityScope)} — only name, club, category and ranking are shown. Contact
-                      details stay private; SquashHub delivers the invitation on your behalf.
+                      details stay private; SquashHub delivers the invitation on your behalf.{" "}
+                      <span className="text-primary">*</span> indicates a player who already has a SquashHub login.
                     </p>
                     {directoryError && (
                       <p className="text-[11px] text-destructive">
@@ -9007,7 +9008,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   });
                                 }}
                               />
-                              <span className="truncate">{p.display_name}</span>
+                              <span className={cn("truncate", p.is_user && "text-primary font-medium")}>
+                                {p.display_name}
+                                {p.is_user && (
+                                  <span className="text-primary ml-0.5" title="Already has a SquashHub login">
+                                    *
+                                  </span>
+                                )}
+                              </span>
                               {p.gender && (
                                 <span className="text-[10px] text-muted-foreground shrink-0">{p.gender}</span>
                               )}

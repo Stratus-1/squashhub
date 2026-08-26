@@ -583,6 +583,9 @@ Deno.serve(async (req) => {
         display_total: displayTotal,
         fx_rate_to_zar: fxRate,
         due_date: dueDate.toISOString().slice(0, 10),
+        // Dated on the renewal date even though it is emailed a few days earlier.
+        issued_at: billingDate.toISOString(),
+
         snapshot: settings,
         // Snapshot of the club's billing details at issue time so past
         // invoices keep the address/VAT/PO that applied then.

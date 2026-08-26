@@ -1935,6 +1935,7 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
       ],
     },
     {
+      title: "Member Billing",
       description: "Statements, balances and invoicing",
       tiles: [
         { key: "" as FinanceView, label: "Member Statement", desc: "Full transaction history for one member", icon: FileText, onClick: onStatement },

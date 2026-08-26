@@ -52,8 +52,11 @@ export function listVoices(): VoiceOption[] {
 
 /** Best available default when neither the user nor the club picked a voice. */
 export function pickDefaultVoice(): string | null {
-  return listVoices()[0]?.id ?? null;
+  const all = listVoices();
+  const male = all.find((v) => !AVOID.test(v.id) && PREFERRED.some((re) => re.test(v.id)));
+  return male?.id ?? all.find((v) => !AVOID.test(v.id))?.id ?? all[0]?.id ?? null;
 }
+
 
 /** Calm, clear pace — a touch under normal speed. */
 export const DEFAULT_RATE = 0.95;

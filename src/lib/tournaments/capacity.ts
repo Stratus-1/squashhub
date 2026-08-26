@@ -367,15 +367,28 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
 
   const plannedEntities = perLeague.reduce((a, l) => a + l.entities, 0);
   const withField = perLeague.filter((l) => l.entities > 0);
-  const worst = [...withField].sort((a, b) => b.shortfallGames - a.shortfallGames)[0];
+  const worst = [...withField].sort(
+    (a, b) => (b.shortfallGames + b.shortfallRounds) - (a.shortfallGames + a.shortfallRounds),
+  )[0];
 
   let bottleneck: string | null = null;
   if (worst && !worst.fits) {
-    const extraMinutes = worst.shortfallGames * worst.slotMinutes;
-    bottleneck = `${worst.label} needs ${worst.shortfallGames} more match slot${
-      worst.shortfallGames === 1 ? "" : "s"
-    } (~${Math.round(extraMinutes / 60 * 10) / 10}h of court time). Add court time, add a court, shorten the match slot, or reduce the field.`;
+    if (worst.shortfallRounds > 0) {
+      // Court time is not the binding constraint — the day simply does not
+      // have enough time slots for everyone to meet everyone.
+      bottleneck = `${worst.label} needs ${worst.roundsNeeded} rounds but the day only has ${
+        worst.slotsAvailable
+      } ${worst.slotMinutes}-minute slot${worst.slotsAvailable === 1 ? "" : "s"} — each ${
+        input.isDoubles ? "pair" : "player"
+      } can only play once per slot. Extend the playing window, shorten the slot, split the league into pools, or reduce the field. Extra courts will not help.`;
+    } else {
+      const extraMinutes = worst.shortfallGames * worst.slotMinutes;
+      bottleneck = `${worst.label} needs ${worst.shortfallGames} more match slot${
+        worst.shortfallGames === 1 ? "" : "s"
+      } (~${Math.round(extraMinutes / 60 * 10) / 10}h of court time). Add court time, add a court, shorten the match slot, or reduce the field.`;
+    }
   }
+
 
   return {
     ready,

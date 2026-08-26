@@ -116,6 +116,185 @@ export type Database = {
           },
         ]
       }
+      ai_conversations: {
+        Row: {
+          club_id: string | null
+          club_member_id: string | null
+          created_at: string
+          id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+          workflow_key: string | null
+        }
+        Insert: {
+          club_id?: string | null
+          club_member_id?: string | null
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          workflow_key?: string | null
+        }
+        Update: {
+          club_id?: string | null
+          club_member_id?: string | null
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          workflow_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_feedback: {
+        Row: {
+          answer: string | null
+          club_id: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          question: string
+          rating: string | null
+          route: string | null
+          topic: string | null
+          unanswered: boolean
+          user_id: string
+        }
+        Insert: {
+          answer?: string | null
+          club_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          question: string
+          rating?: string | null
+          route?: string | null
+          topic?: string | null
+          unanswered?: boolean
+          user_id: string
+        }
+        Update: {
+          answer?: string | null
+          club_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          question?: string
+          rating?: string | null
+          route?: string | null
+          topic?: string | null
+          unanswered?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_feedback_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_feedback_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_messages: {
+        Row: {
+          action_key: string | null
+          action_params: Json
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+          workflow_key: string | null
+          workflow_step: number | null
+        }
+        Insert: {
+          action_key?: string | null
+          action_params?: Json
+          content?: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+          workflow_key?: string | null
+          workflow_step?: number | null
+        }
+        Update: {
+          action_key?: string | null
+          action_params?: Json
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          workflow_key?: string | null
+          workflow_step?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_user_preferences: {
+        Row: {
+          created_at: string
+          rate: number
+          response_style: string | null
+          speak_replies: boolean
+          updated_at: string
+          user_id: string
+          voice: string | null
+        }
+        Insert: {
+          created_at?: string
+          rate?: number
+          response_style?: string | null
+          speak_replies?: boolean
+          updated_at?: string
+          user_id: string
+          voice?: string | null
+        }
+        Update: {
+          created_at?: string
+          rate?: number
+          response_style?: string | null
+          speak_replies?: boolean
+          updated_at?: string
+          user_id?: string
+          voice?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
@@ -989,6 +1168,59 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: true
             referencedRelation: "club_champs_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_ai_settings: {
+        Row: {
+          actions_enabled: boolean
+          audience: string
+          club_id: string
+          created_at: string
+          default_rate: number
+          default_voice: string | null
+          enabled: boolean
+          response_style: string
+          text_chat_enabled: boolean
+          updated_at: string
+          voice_input_enabled: boolean
+          voice_output_enabled: boolean
+        }
+        Insert: {
+          actions_enabled?: boolean
+          audience?: string
+          club_id: string
+          created_at?: string
+          default_rate?: number
+          default_voice?: string | null
+          enabled?: boolean
+          response_style?: string
+          text_chat_enabled?: boolean
+          updated_at?: string
+          voice_input_enabled?: boolean
+          voice_output_enabled?: boolean
+        }
+        Update: {
+          actions_enabled?: boolean
+          audience?: string
+          club_id?: string
+          created_at?: string
+          default_rate?: number
+          default_voice?: string | null
+          enabled?: boolean
+          response_style?: string
+          text_chat_enabled?: boolean
+          updated_at?: string
+          voice_input_enabled?: boolean
+          voice_output_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_ai_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]

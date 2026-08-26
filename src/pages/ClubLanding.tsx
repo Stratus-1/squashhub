@@ -140,14 +140,9 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
   const captainDelegate = getDelegateName(club?.club_captain_member_id);
   const treasurerDelegate = getDelegateName(club?.treasurer_member_id);
 
-  const signInUrl = (() => {
-    const clubParam = displaySubdomain ? `club=${encodeURIComponent(displaySubdomain)}` : "";
-    const redirect = displaySubdomain
-      ? `redirectTo=${encodeURIComponent(`/?club=${displaySubdomain}`)}`
-      : "";
-    const query = [clubParam, redirect].filter(Boolean).join("&");
-    return query ? `/auth?${query}` : "/auth";
-  })();
+  const signInUrl = displaySubdomain
+    ? `${buildClubPublicUrl(displaySubdomain, "/auth")}?intent=apply`
+    : "/auth";
 
   if (loading) {
     return (

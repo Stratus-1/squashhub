@@ -1162,6 +1162,18 @@ export function MemberOnboardingWizard({
                       />
                     </div>
                   )}
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-sm">Skills &amp; Expertise</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Optional — helps the club find the right people when a need comes up. You can skip this and add it later.
+                      </p>
+                    </div>
+                    <SkillsExpertiseFields value={skillsDraft} onChange={setSkillsDraft} compact />
+                  </div>
                 </div>
               </motion.div>
             )}

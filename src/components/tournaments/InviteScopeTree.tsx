@@ -24,14 +24,22 @@ interface Props {
   selectedClubIds: string[];
   onChange: (next: string[]) => void;
   loading?: boolean;
+  error?: string | null;
 }
 
-export function InviteScopeTree({ tree, selectedClubIds, onChange, loading }: Props) {
+export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, error }: Props) {
   const selected = useMemo(() => new Set(selectedClubIds), [selectedClubIds]);
   const summary = useMemo(() => scopeSelectionSummary(tree, selected), [tree, selected]);
 
   if (loading) {
     return <p className="text-[13px] text-muted-foreground">Loading clubs…</p>;
+  }
+  if (error) {
+    return (
+      <p className="text-[13px] text-destructive">
+        Could not load the club list: {error}
+      </p>
+    );
   }
   if (tree.length === 0) {
     return (
@@ -40,6 +48,7 @@ export function InviteScopeTree({ tree, selectedClubIds, onChange, loading }: Pr
       </p>
     );
   }
+
 
   return (
     <div className="space-y-2">

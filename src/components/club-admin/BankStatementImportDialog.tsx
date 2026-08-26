@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   parseDelimitedStatement,
   parseOfx,
+  parseTextStatement,
   buildRows,
   detectDuplicate,
   suggestAccount,
@@ -26,6 +27,7 @@ import {
   type ParsedStatement,
   type DuplicateFlag,
 } from "@/lib/finance/bank-statement";
+import { extractPdfText, isPdfFile } from "@/lib/finance/pdf-statement";
 
 interface AccountMeta {
   label: string;

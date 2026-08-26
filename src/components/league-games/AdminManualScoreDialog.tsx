@@ -79,6 +79,9 @@ export function AdminManualScoreDialog({ open, onOpenChange, fixtureId, homeCode
         away_penalty_points: apen === "" ? null : num(apen),
         winner,
         status: "submitted",
+        // Manual override wins: stop the automatic rubber-based recalculation
+        // from overwriting the figures the admin typed in.
+        totals_locked: true,
         home_captain_signature: "ADMIN_MANUAL_OVERRIDE",
         away_captain_signature: "ADMIN_MANUAL_OVERRIDE",
         submitted_by: user.id,

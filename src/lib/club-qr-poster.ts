@@ -69,8 +69,17 @@ export async function generateClubQrPoster({
   url,
   cta,
   svg,
+  logoUrl,
 }: PosterInput): Promise<void> {
   const qrDataUrl = await svgToPngDataUrl(svg);
+  let logoDataUrl: string | undefined;
+  if (logoUrl) {
+    try {
+      logoDataUrl = await loadImageAsDataUrl(logoUrl);
+    } catch {
+      /* ignore logo load failures; poster still works without it */
+    }
+  }
 
   const doc = new jsPDF({
     orientation: "portrait",

@@ -329,8 +329,17 @@ Deno.serve(async (req) => {
     const set = clubRecipients.get(clubId)
     return set && set.size ? Array.from(set)[0] : null
   }
-  /** Everyone who should receive a copy of this club's invoice. */
-  const recipientsFor = (clubId: string) => Array.from(clubRecipients.get(clubId) || [])
+  /**
+   * Everyone who should receive a copy of this club's invoice.
+   * The platform billing mailbox always gets a copy for record-keeping.
+   */
+  const PLATFORM_COPY_EMAIL = 'admin@stratsol.co.za'
+  const recipientsFor = (clubId: string) => {
+    const set = new Set(clubRecipients.get(clubId) || [])
+    set.add(PLATFORM_COPY_EMAIL)
+    return Array.from(set)
+  }
+
 
 
   const results: any[] = []

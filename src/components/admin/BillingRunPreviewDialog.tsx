@@ -129,10 +129,11 @@ export function BillingRunPreviewDialog({
         </div>
 
         <div className="overflow-x-auto">
-        <Table className="min-w-[900px]">
+        <Table className="min-w-[1020px]">
           <TableHeader>
             <TableRow>
               <TableHead className="text-xs min-w-[190px]">Club</TableHead>
+              <TableHead className="text-xs whitespace-nowrap">Will be sent</TableHead>
               <TableHead className="text-xs whitespace-nowrap">Cycle</TableHead>
               <TableHead className="text-xs">Period covered</TableHead>
               <TableHead className="text-xs">Invoice date</TableHead>
@@ -146,19 +147,26 @@ export function BillingRunPreviewDialog({
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-xs text-muted-foreground py-6">
+                <TableCell colSpan={10} className="text-center text-xs text-muted-foreground py-6">
                   No subscriptions matched this run.
                 </TableCell>
               </TableRow>
             )}
             {rows.map((r, i) => {
               const skipped = r.status !== "dry-run";
+              const laterRun = !skipped && r.in_this_run === false;
               return (
                 <TableRow key={`${r.subscription_id || i}`} className={skipped ? "opacity-60" : ""}>
                   <TableCell className="text-xs font-medium align-top">
                     <div className="whitespace-nowrap">{r.club || "—"}</div>
                     {r.invoice_number && <div className="text-[10px] text-muted-foreground font-mono">{r.invoice_number}</div>}
                     {skipped && <div className="text-[10px] text-amber-600 whitespace-nowrap">{r.reason || r.error || r.status}</div>}
+                  </TableCell>
+                  <TableCell className="text-xs whitespace-nowrap align-top">
+                    {day(r.scheduled_send)}
+                    <div className={`text-[10px] ${laterRun ? "text-muted-foreground" : "text-emerald-600"}`}>
+                      {skipped ? "" : laterRun ? "future run" : "next run"}
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs whitespace-nowrap align-top">{cycleLabel(r.billing_cycle)}</TableCell>
                   <TableCell className="text-xs whitespace-nowrap align-top">
@@ -180,10 +188,11 @@ export function BillingRunPreviewDialog({
         </div>
 
 
-        {billable.some(r => r.subscription_due === false) && (
+        {later.length > 0 && (
           <p className="flex items-start gap-2 text-xs text-amber-600">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            Rows marked with a future renewal are previewed for inspection only — a live run would bill usage only.
+            Rows marked "future run" are projections of invoices that will only be generated and emailed on their own
+            send date — running billing now would not create them.
           </p>
         )}
 
@@ -191,12 +200,13 @@ export function BillingRunPreviewDialog({
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          {onConfirmSend && billable.length > 0 && (
+          {onConfirmSend && dueNow.length > 0 && (
             <Button size="sm" disabled={sending} onClick={onConfirmSend}>
-              Generate &amp; email {billable.length} invoice{billable.length === 1 ? "" : "s"}
+              Generate &amp; email {dueNow.length} invoice{dueNow.length === 1 ? "" : "s"} now
             </Button>
           )}
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

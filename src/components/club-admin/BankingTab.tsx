@@ -180,6 +180,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       ["Chairman", (club as any).chairman_member_id],
       ["Secretary", (club as any).secretary_member_id],
       ["Club Captain", (club as any).club_captain_member_id],
+      ["Treasurer", (club as any).treasurer_member_id],
     ];
     const byId = new Map(
       members.map((m: any) => [m.id, (m.name || m.profiles?.name || "").trim()])

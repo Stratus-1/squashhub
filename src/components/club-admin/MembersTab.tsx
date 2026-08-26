@@ -633,6 +633,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
     if ((club as any).chairman_member_id === memberId) titles.push("Chairman");
     if ((club as any).secretary_member_id === memberId) titles.push("Secretary");
     if ((club as any).club_captain_member_id === memberId) titles.push("Club Captain");
+    if ((club as any).treasurer_member_id === memberId) titles.push("Treasurer");
     return titles.length > 0 ? titles.join(" / ") : null;
   };
 

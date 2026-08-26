@@ -52,9 +52,11 @@ export function registerServiceWorker(): void {
           if (!registration) return;
 
           const check = () => {
-            import("./scoring-lock")
-              .then(({ isScoringActive }) => {
-                if (isScoringActive()) return;
+            import("./app-activity")
+              .then(({ isBusy }) => {
+                // Never pull a new worker into place while the user is
+                // mid-task; the check simply happens at the next poll.
+                if (isBusy()) return;
                 registration.update().catch(() => {});
               })
               .catch(() => {

@@ -295,6 +295,42 @@ export type Database = {
         }
         Relationships: []
       }
+      app_releases: {
+        Row: {
+          build_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          released_at: string
+          rollout_percent: number
+          severity: string
+          target_club_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          build_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          released_at?: string
+          rollout_percent?: number
+          severity?: string
+          target_club_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          build_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          released_at?: string
+          rollout_percent?: number
+          severity?: string
+          target_club_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string

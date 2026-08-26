@@ -79,7 +79,7 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
   { value: "emails", label: "Email Log", icon: Mail, permission: "communications", color: "sky", noStatus: true },
-  { value: "ai", label: "AI Assistant", icon: Bot, permission: "communications", color: "purple", noStatus: true },
+  // AI Assistant tab hidden while the feature is being reworked.
 ];
 
 const COLOR_STYLES: Record<string, string> = {

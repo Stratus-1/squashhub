@@ -197,18 +197,28 @@ export function CapacityCheck(props: CapacityCheckProps) {
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
                   {L.pools} pool{L.pools === 1 ? "" : "s"}
+                  {L.isTimeCapped && <> · Bells (time-capped round robin)</>}
                   {L.isSwiss && <> · {L.rounds} round{L.rounds === 1 ? "" : "s"}</>}
                   {" · "}
                   {L.gamesAvailable} match slot{L.gamesAvailable === 1 ? "" : "s"} available
+                  {" · "}
+                  {L.slotsAvailable} time slot{L.slotsAvailable === 1 ? "" : "s"} in the day
                   {L.entities > 0 && (
                     <>
                       {" · needs "}
                       {L.gamesNeeded}
                       {L.playoffGames > 0 && <> + {L.playoffGames} play-off</>}
-                      {L.fits ? " ✓" : ` · short by ${L.shortfallGames}`}
+                      {" in "}{L.roundsNeeded} round{L.roundsNeeded === 1 ? "" : "s"}
+                      {L.fits
+                        ? " ✓"
+                        : L.shortfallRounds > 0
+                          ? ` · ${L.shortfallRounds} round${L.shortfallRounds === 1 ? "" : "s"} too many for the day`
+                          : ` · short by ${L.shortfallGames}`}
                     </>
                   )}
+                  {L.entities === 0 && L.slotLimited && <> · capped by the number of time slots, not courts</>}
                 </div>
+
               </div>
             ))}
           </div>

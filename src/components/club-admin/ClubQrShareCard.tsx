@@ -121,6 +121,7 @@ export function ClubQrShareCard({ clubName, subdomain, logoUrl }: Props) {
         url,
         cta: meta.cta,
         svg,
+        logoUrl,
       });
       toast.success("Printable poster downloaded");
     } catch (err: any) {

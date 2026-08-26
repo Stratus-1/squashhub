@@ -485,16 +485,23 @@ Deno.serve(async (req) => {
 
       const periodEnd = addBillingMonths(periodStart, cycle)
 
-      // The subscription is only invoiced once the renewal date is here, or at
-      // most `advanceDays` before it. A club whose next period starts months
-      // from now (e.g. still on trial) is NOT invoiced today — even on a dry run.
-      const subDue = iso(addDays(runDate, advanceDays)) >= iso(periodStart)
+      // A real run bills every renewal that falls before the NEXT send run.
+      // A dry run (preview) always projects the upcoming invoice, however far
+      // away the renewal is, so admins can inspect it at any time.
+      const subDueForRun = iso(periodStart) <= iso(coverageEnd)
+      const subDue = dryRun ? true : subDueForRun
+      // The send run that will actually create/email this invoice: the fixed
+      // issue day on or before the renewal date, never in the past.
+      const scheduledSend = (() => {
+        const candidate = issueDayOnOrBefore(periodStart)
+        return candidate < nextIssueDate ? nextIssueDate : candidate
+      })()
 
-      // Every subscription invoice is DATED on the club's renewal date, even
-      // though it is created/emailed a few days earlier. WhatsApp-only invoices
-      // stay on the run's billing date.
+      // Every subscription invoice is DATED on the club's renewal date.
+      // WhatsApp-only invoices stay on the run's billing date.
       const invoiceDate = subDue ? periodStart : billingDate
       const invoiceMonth = monthStartIso(invoiceDate)
+
 
 
       const usage = waUsage.get(sub.club_id)

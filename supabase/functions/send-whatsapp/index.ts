@@ -278,7 +278,7 @@ Deno.serve(async (req) => {
         provider_sid: sid,
         status,
         error,
-        sent_by: userId,
+        sent_by: userId || null,
         payload: payload.interaction ? { interaction: payload.interaction } : null,
       });
 

@@ -336,16 +336,17 @@ Deno.serve(async (req) => {
   const waRange = { start: waRangeMonth.start, end: waCutoff.slice(0, 10) }
 
   // Existing invoice for this club + month → idempotency. A previously failed
-  // invoice is retried by reusing its row.
-  const existingByClub = new Map<string, any>()
+  // invoice is retried by reusing its row. Because invoices are dated on each
+  // club's own renewal date (not the run date), we index every month.
+  const existingByClubMonth = new Map<string, any>()
   if (clubIds.length) {
     const { data: existing } = await supabase
       .from('platform_subscription_invoices')
       .select('id, club_id, invoice_number, status, billing_month')
       .in('club_id', clubIds)
-      .eq('billing_month', billingMonth)
-    for (const e of existing || []) existingByClub.set(e.club_id, e)
+    for (const e of existing || []) existingByClubMonth.set(`${e.club_id}|${e.billing_month}`, e)
   }
+
 
   // Unbilled WhatsApp usage per club for the previous month.
   const waUsage = new Map<

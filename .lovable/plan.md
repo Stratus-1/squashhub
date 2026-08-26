@@ -1,54 +1,48 @@
-# Bank Statement Import & Reconciliation
+# Safe Silent Update System
 
-Add an **Import Statement** action next to *Enter Transaction* on the General Ledger, available when a bank/cash account is selected. It opens a guided dialog: upload → map columns → review & allocate → post.
+Your summary is correct: after a deploy the new version downloads quietly in the background and **no prompt appears while someone is working**. The banner only surfaces at a safe moment — a page/route change, returning to the app, or when the current task finishes. Critical security releases are the one exception.
 
-## 1. Import the statement (any format)
+## Behaviour
 
-- Accepts CSV, TSV, semicolon files, Excel (.xlsx/.xls), OFX/QIF, or a plain paste from the bank's website.
-- Auto-detects delimiter, date format (incl. dd/mm/yyyy), and whether amounts are one signed column or separate debit/credit columns.
-- If headers aren't recognised, a small **column mapping** step lets the admin point at Date / Description / Amount (or Debit + Credit) / Balance.
-- The statement is stored so the same file can't be imported twice, and so the reconciliation can be reopened later.
-
-## 2. Reconciliation screen
-
-One row per statement line, with a running count of *Matched / To allocate / Ignored*, and a summary of statement total vs posted total.
-
-Each line is auto-classified into one of:
-
-| State | Meaning |
+| Situation | What the user sees |
 | --- | --- |
-| **Already in books** | Matches an existing ledger entry — will not be posted again |
-| **Ignore** | Card/gateway settlement (Stitch, Yoco payouts) — income already recorded per transaction |
-| **Suggested** | App guessed the account (e.g. bank charges, electricity, rent) — admin can accept or change |
-| **Needs allocation** | No confidence — admin picks the account (and optionally a member) |
+| New build deployed, user mid-task (scoring, wizard, form with unsaved input, upload, payment) | Nothing. Update stays parked. |
+| User finishes the task or navigates to another page | Small banner: "New version ready — Update now / Later" |
+| Taps "Later" | Banner hides for the rest of the session; re-offered on next app open (or next navigation after a long idle) |
+| Taps "Update now" | Save state, let in-flight requests settle, reload, land back on the same screen |
+| Critical security release | Short countdown notice, then forced reload — still blocked only long enough to flush pending saves |
+| Phased rollout | Only the targeted percentage/clubs are offered the update; everyone else stays on the current build until the rollout widens |
 
-Admins can override any state, bulk-select rows, and allocate a whole selection at once.
+## What gets built
 
-### Duplicate detection
+### 1. Activity ("busy") detection
+New `src/lib/app-activity.ts` — a small ref-counted registry generalising today's `scoring-lock`:
+- `beginActivity(kind)` / `endActivity()` plus a `useActivityGuard()` React hook.
+- Auto-detected signals: live marker sessions (existing scoring lock feeds in), any open modal/dialog with a dirty form, in-flight mutations from React Query (`useIsMutating`), file uploads, payment redirect flows.
+- `isBusy()` is read by the update layer; nothing prompts while it is true.
 
-A statement line is treated as already-recorded when an existing `bank_current` journal entry has the same amount and a **date within a configurable window (default ±7 days)** — because the admin may have captured the payment on a different date to the bank. Member EFT fee payments, once-off card payments and recurring collections are all covered by this. Closer date + matching member/reference ranks higher; ties are shown for the admin to confirm rather than auto-linked.
+### 2. Deferred prompt gating
+Rework `src/lib/pwa-update.ts` + `UpdatePrompt.tsx`:
+- Waiting worker no longer immediately shows the banner — it sets a `pendingUpdate` state.
+- Banner shows only when **all** hold true: not busy, no dialog open, and a "safe moment" has occurred (route change via a router listener, tab re-focus after idle, or activity count dropping to zero).
+- "Later" records a session-scoped snooze; also honoured on the next cold start via `sessionStorage` (so a fresh app open re-offers it).
 
-### Ignore rules
+### 3. Graceful apply
+On "Update now": flush React Query mutations (wait up to ~3s), fire a `sh:before-update` event so screens can persist draft state to `sessionStorage`, then activate the waiting worker and reload. The existing route-restore logic is kept and extended to also restore per-screen draft state.
 
-Built-in patterns for gateway settlements (Stitch, Yoco, "SETTLEMENT", "PAYOUT") default to Ignored, since the individual card payments and their gateway fees are already in the ledger. The ignore list is editable per club.
+### 4. Release metadata: criticality + phased rollout
+New table `public.app_releases` (platform-admin managed, public read):
+`build_id, released_at, severity ('normal' | 'critical'), rollout_percent, target_club_ids[], notes`.
+- Client fetches the newest release row on the same 60s poll it already runs.
+- Rollout gate: stable hash of `user_id`/device id vs `rollout_percent`, plus optional club allow-list. If not in the cohort, the waiting worker is left parked (no prompt, no activation).
+- `severity = 'critical'` bypasses the "Later" snooze and the safe-moment wait: shows a 20s countdown, still flushes pending writes, then reloads.
+- Platform admin UI (a card in the existing platform admin area) to set severity and rollout percent per build, so a rollout can be widened without a redeploy.
 
-### Learn-once allocation
-
-When an admin allocates a line (e.g. "FNB FEE" → Bank Charges), a rule is saved from that description pattern. Every other line in the same import with a similar description is instantly re-allocated the same way, and future imports pick it up automatically. Rules are visible and removable.
-
-## 3. Opening balance
-
-If this is the club's first statement for that account, the dialog offers to set the statement's opening balance as the account's opening balance (using the existing opening-balance posting so nothing double-posts). On later imports it instead checks that the statement's opening balance agrees with the ledger and flags a difference.
-
-## 4. Posting
-
-"Post N transactions" posts all allocated lines in one balanced batch through the existing `post_journal` path (Dr/Cr the chosen account against the bank account), links each journal line back to its statement line, and marks matched/ignored lines as reconciled. Re-opening an import shows what was posted; posting is idempotent.
-
----
+### 5. No hard refreshes during workflows
+`hardRefresh()` and the version-badge check become activity-aware: if busy they warn ("Finish the current task first") instead of reloading.
 
 ## Technical notes
-
-- New tables: `bank_statement_imports` (club, account, filename, period, opening/closing balance, hash, totals), `bank_statement_lines` (date, description, amount, state, matched_journal_ref, allocated account/member), `bank_recon_rules` (club, pattern, account, ignore flag). RLS: club admins/treasurer only, with GRANTs; `service_role` for jobs.
-- Parsing + classification live in `src/lib/finance/bank-import/` (`parse.ts`, `match.ts`, `rules.ts`) as pure functions with unit tests — no parsing logic in components.
-- UI: `BankStatementImportDialog.tsx` in `src/components/club-admin/`, opened from `FinanceTab.tsx`'s ledger view; reuses the existing chart of accounts and `postJournal` helper.
-- Duplicate matching runs against `club_journal_entries` for the selected account within the statement period ± the tolerance window.
+- Table gets explicit GRANTs (`select` to `anon` + `authenticated`, `all` to `service_role`) and RLS: public read, write restricted to platform admins.
+- `scoring-lock.ts` is kept as a thin wrapper over the new activity registry so existing marker code needs no changes.
+- Unit tests for cohort hashing, snooze logic, and the safe-moment gate.
+- No change to install prompts, Firebase messaging worker, or preview/iframe SW guards.

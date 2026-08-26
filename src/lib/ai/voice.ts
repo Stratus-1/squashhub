@@ -18,16 +18,18 @@ export type VoiceOption = {
  */
 const PREFERRED = [
   /google uk english male/i,
-  /(daniel|arthur|oliver|george)/i, // Apple UK/AU male
-  /microsoft (ryan|george|guy|william|davis|thomas)/i,
+  /microsoft (ryan|george|guy|william|davis|thomas|mark|brandon)/i,
+  /(daniel|arthur|oliver|george|gordon|lee)/i, // Apple UK/AU male
+  /(alex|aaron|fred|rishi|tom|reed|eddy \(english)/i,
+  /\bmale\b/i,
   /google us english/i,
-  /(alex|aaron|fred|rishi)/i,
-  /male/i,
   /natural/i,
 ];
 
-/** Voices we never want to auto-pick — thin, robotic or clearly female defaults. */
-const AVOID = /(zira|hazel|susan|samantha|karen|serena|moira|tessa|fiona|victoria|female)/i;
+/** Voices we never auto-pick — female or thin/robotic defaults. */
+const AVOID =
+  /(zira|hazel|susan|samantha|karen|serena|moira|tessa|fiona|victoria|female|aria|jenny|michelle|ava|allison|nicky|nora|sonia|libby|natasha|clara|amber|ana|emily|joanna|kate|catherine|shelley|grandma|flo|sandy)/i;
+
 
 export function speechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
@@ -50,8 +52,11 @@ export function listVoices(): VoiceOption[] {
 
 /** Best available default when neither the user nor the club picked a voice. */
 export function pickDefaultVoice(): string | null {
-  return listVoices()[0]?.id ?? null;
+  const all = listVoices();
+  const male = all.find((v) => !AVOID.test(v.id) && PREFERRED.some((re) => re.test(v.id)));
+  return male?.id ?? all.find((v) => !AVOID.test(v.id))?.id ?? all[0]?.id ?? null;
 }
+
 
 /** Calm, clear pace — a touch under normal speed. */
 export const DEFAULT_RATE = 0.95;

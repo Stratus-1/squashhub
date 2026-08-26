@@ -99,7 +99,12 @@ export function useAiAssistant() {
   const { data: prefs } = useAiPreferences();
 
   const club = clubData?.club;
-  const allowed = !!settings?.enabled && (settings.audience !== "admins" || !!isAdmin);
+  // Global kill switch: the assistant is hidden for every club while the
+  // feature is being reworked. Flip to `true` to re-enable per-club settings.
+  const AI_ASSISTANT_RELEASED = false;
+  const allowed =
+    AI_ASSISTANT_RELEASED && !!settings?.enabled && (settings.audience !== "admins" || !!isAdmin);
+
 
   return useMemo(
     () => ({

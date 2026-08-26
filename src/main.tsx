@@ -4,6 +4,7 @@ import App from "./App.tsx";
 import "./index.css";
 import { initDeepLinks } from "@/lib/deep-links";
 import { registerServiceWorker } from "@/lib/pwa-register";
+import { installBlankScreenRecovery } from "@/lib/pwa-recovery";
 import { restoreRouteAfterUpdate } from "@/lib/pwa-update";
 
 import { isStandalone, markInstalled } from "@/lib/pwa-detect";
@@ -27,6 +28,10 @@ const savedTheme = localStorage.getItem("theme");
 if (savedTheme !== "light") {
   document.documentElement.classList.add("dark");
 }
+
+// Self-heal white screens caused by a stale cached index.html referencing
+// chunks that no longer exist after a deploy (installed desktop PWAs).
+installBlankScreenRecovery();
 
 void initDeepLinks();
 

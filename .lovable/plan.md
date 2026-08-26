@@ -1,6 +1,6 @@
 # Safe Silent Update System
 
-Your summary is correct: after a deploy the new version downloads quietly in the background and **no prompt appears while someone is working**. The banner only surfaces at a safe moment — a page/route change, returning to the app, or when the current task finishes. Critical security releases are the one exception.
+Your summary is correct: after a deploy the new version downloads quietly in the background and **no prompt appears while someone is working**. It only surfaces at a safe moment — a page/route change, returning to the app, or when the current task finishes — and even then it is only a small, ignorable icon in the corner, never a blocking banner. Critical security releases are the one exception.
 
 ## Behaviour
 

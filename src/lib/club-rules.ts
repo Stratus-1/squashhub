@@ -26,7 +26,7 @@ export interface ClubMembershipRules {
 export const CLUB_DOCUMENTS_BUCKET = "club-documents";
 
 export const DEFAULT_ACCEPTANCE_STATEMENT =
-  "I confirm I have read and understood the club constitution, house rules and membership rules, and agree to abide by them.";
+  "I hereby subject myself to the constitution and the house rules of the squash club. / Hiermee onderwerp ek my aan die konstitusie en huisreëls van die muurbalklub.";
 
 /**
  * Starter template (based on the Nelspruit club rules). Every club can edit

@@ -188,6 +188,9 @@ export function AllNextRoundDrawsDialog({
     if (problems.length > 0) return;
     setSaving(true);
     const done: string[] = [];
+    let notifiedPlayers = 0;
+    let notifyFailures = 0;
+    let waFailures = 0;
     try {
       for (const scope of scopes) {
         const state = stateOf(scope);
@@ -256,6 +259,23 @@ export function AllNextRoundDrawsDialog({
         if (insErr) throw insErr;
         done.push(scope.key);
 
+        // Notify both players in every fixture of this scope through the
+        // channels enabled for this tournament (in-app / email / WhatsApp).
+        try {
+          const notified = await notifyRoundDraw({
+            champId,
+            roundNumber: draft.board.round,
+            groupNumber: draft.board.groupNumber,
+            sections: Array.from(new Set(rows.map((r) => r.section_number))).filter(
+              (s) => typeof s === "number",
+            ) as number[],
+          });
+          notifiedPlayers += notified.sent;
+          waFailures += notified.whatsappFailed;
+        } catch {
+          notifyFailures += 1;
+        }
+
         // 3. Audit — never allowed to block a valid draw.
         try {
           const { data: auth } = await supabase.auth.getUser();
@@ -291,6 +311,9 @@ export function AllNextRoundDrawsDialog({
           ? "Draw confirmed — fixtures created. Next: set dates & courts."
           : `${done.length} draws confirmed — fixtures created. Next: set dates & courts.`,
       );
+      if (notifiedPlayers > 0) toast.success(`Notified ${notifiedPlayers} player${notifiedPlayers === 1 ? "" : "s"} of their next opponent.`);
+      if (notifyFailures > 0) toast.warning(`${notifyFailures} draw(s) confirmed but players could not be notified.`);
+      if (waFailures > 0) toast.warning(`${waFailures} WhatsApp message(s) failed.`);
       onOpenChange(false);
       onConfirmed?.(done);
     } catch (e: any) {

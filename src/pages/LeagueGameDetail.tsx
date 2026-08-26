@@ -3301,12 +3301,24 @@ export default function LeagueGameDetail() {
                               {!isSubmitted && pos.completed && !pos.isForfeit && (
                                 <>
                                   <button
+                                    onClick={() => {
+                                      if (!window.confirm(`Re-mark position ${idx + 1} live?\n\nThe recorded score is cleared and the marker opens.`)) return;
+                                      clearScores(idx);
+                                      startMarking(idx);
+                                    }}
+                                    className="bg-primary/80 text-primary-foreground rounded p-0.5 hover:bg-primary"
+                                    title="Re-mark this game live"
+                                  >
+                                    <Play className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
                                     onClick={() => setManualEntry(idx)}
                                     className="text-muted-foreground hover:text-primary hover:bg-accent rounded p-0.5"
                                     title="Edit scores"
                                   >
                                     <Edit3 className="w-4 h-4" />
                                   </button>
+
                                   <button
                                     onClick={() => {
                                       if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;

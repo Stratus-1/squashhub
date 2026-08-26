@@ -23,6 +23,7 @@ interface ClubContextType {
     chairman_member_id: string | null;
     secretary_member_id: string | null;
     club_captain_member_id: string | null;
+    treasurer_member_id: string | null;
     contact_person_name?: string | null;
     show_delegates_on_landing?: boolean | null;
     currency_code?: string | null;

@@ -33,6 +33,7 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     chairman_member_id: club.chairman_member_id || "",
     secretary_member_id: club.secretary_member_id || "",
     club_captain_member_id: club.club_captain_member_id || "",
+    treasurer_member_id: club.treasurer_member_id || "",
     logo_url: club.logo_url || "",
     show_delegates_on_landing: club.show_delegates_on_landing ?? true,
     currency_code: ((club as any).currency_code || "ZAR") as string,

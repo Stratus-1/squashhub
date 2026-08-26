@@ -19,6 +19,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { DrawBoard } from "./DrawBoard";
 import { roundRedrawState } from "@/lib/tournaments/round-draw";
+import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import {
   drawAuditSnapshot,
   drawToMatchRows,
@@ -145,6 +146,24 @@ export function ConfirmDrawDialog({
         const { error } = await fromExt("club_champs_matches").insert(rows as any);
         if (error) throw error;
         onConfirmed?.(rows.length);
+
+        // Tell every player who they play, on which number to reach them, and
+        // by when — through the channels this tournament enabled.
+        try {
+          const res = await notifyRoundDraw({
+            champId,
+            roundNumber: board.round,
+            groupNumber: board.groupNumber,
+            sections: Array.from(new Set(rows.map((r) => r.section_number))).filter(
+              (s) => typeof s === "number",
+            ) as number[],
+          });
+          if (res.sent > 0) toast.success(roundNotifySummary(res));
+          if (res.whatsappFailed > 0) toast.warning(`${res.whatsappFailed} WhatsApp message(s) failed.`);
+        } catch (notifyErr: any) {
+          toast.warning(`Fixtures created, but players were not notified: ${notifyErr?.message || "unknown error"}`);
+        }
+
 
 
 

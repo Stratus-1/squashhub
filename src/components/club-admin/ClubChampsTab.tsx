@@ -4323,6 +4323,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         groupNumber: gn,
         label: groupLabels[key] || `League ${gn}`,
         format: fmt,
+        scoring: scoringForLeague(gn),
+
         slotMinutes:
           fmt === "cross_league"
             ? Number(groupDurations["1"]) || matchDuration || 0
@@ -4336,7 +4338,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, leagueSections, usePerLeagueFormats, roundFormat]);
+  }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, leagueSections, usePerLeagueFormats, roundFormat, leagueScoringModes, scoringMode]);
 
 
   // Create/update champ

@@ -32,8 +32,11 @@ export interface CapacityLeagueInput {
   groupNumber: number;
   label?: string;
   format: LeagueFormat;
+  /** Scoring mode: Bells ("time_capped_points") is a time-capped round robin. */
+  scoring?: "standard" | "time_capped_points" | "swiss" | "";
   /** Planned minutes per match for this league (its own duration, not a global one). */
   slotMinutes: number;
+
   /** Pools the league is split into (1 = single draw). */
   pools: number;
   /** Configured Swiss rounds (0/undefined = derive a suggestion). */
@@ -62,6 +65,8 @@ export interface CapacityLeagueResult {
   label: string;
   format: LeagueFormat;
   isSwiss: boolean;
+  /** Bells: time-capped round robin ranked by points scored. */
+  isTimeCapped: boolean;
   slotMinutes: number;
   pools: number;
   rounds: number;
@@ -69,6 +74,12 @@ export interface CapacityLeagueResult {
   /** Match slots this league can be given by the schedule. */
   gamesAvailable: number;
   gamesPerPoolAvailable: number;
+  /** Time slots (bell rings) in the schedule — one match per entrant per slot. */
+  slotsAvailable: number;
+  /** Rounds this field must play through, including any play-off rounds. */
+  roundsNeeded: number;
+  /** The ceiling comes from the number of time slots, not the number of courts. */
+  slotLimited: boolean;
   /** Matches the current/expected field needs (group stage only). */
   gamesNeeded: number;
   playoffGames: number;
@@ -81,6 +92,8 @@ export interface CapacityLeagueResult {
   players: number;
   fits: boolean;
   shortfallGames: number;
+  shortfallRounds: number;
+
 }
 
 export interface CapacityResult {
@@ -194,28 +207,40 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
 
   const perLeague: CapacityLeagueResult[] = leagues.map((L, idx) => {
     const gn = L.groupNumber;
-    const isSwiss = L.format === "swiss";
+    // Bells (time-capped, ranked by points scored) is always a round-robin:
+    // every entrant meets every other one inside the time available. Its
+    // stored draw format may still say "swiss" from an earlier edit, so the
+    // scoring mode wins here.
+    const isTimeCapped = L.scoring === "time_capped_points";
+    const isSwiss = !isTimeCapped && L.format === "swiss";
     // Knockout: sections are carried in `pools`. A knockout league always
     // needs exactly (entrants - 1) real matches — every match eliminates one
     // entrant — including the league final between section winners.
-    const isKnockout = L.format === "knockout";
-    const isDouble = L.format === "double_round_robin";
+    const isKnockout = !isTimeCapped && L.format === "knockout";
+    const isDouble = !isTimeCapped && L.format === "double_round_robin";
     const slot = Math.max(0, Number(L.slotMinutes) || 0);
     const pools = Math.max(1, Number(L.pools) || 1);
 
     let gamesAvailable = 0;
     let availableMinutes = 0;
+    // Time slots (bell rings) available to any single entrant: one match per
+    // slot, no matter how many courts are running.
+    let slotsAvailable = 0;
     for (const s of sessions) {
       const leagueCourts = parallelApplied
         ? Math.floor(s.courts / leagueCount) + (idx < s.courts % leagueCount ? 1 : 0)
         : s.courts;
       availableMinutes += s.minutes * leagueCourts;
-      if (slot > 0) gamesAvailable += Math.floor(s.minutes / slot) * leagueCourts;
+      if (slot > 0) {
+        gamesAvailable += Math.floor(s.minutes / slot) * leagueCourts;
+        slotsAvailable += Math.floor(s.minutes / slot);
+      }
     }
     if (anyPlayoffs && slot > 0 && breakMinutes > 0) {
       const lost = Math.floor(breakMinutes / slot) * (parallelApplied ? Math.max(1, Math.floor(maxCourts / leagueCount)) : maxCourts);
       gamesAvailable = Math.max(0, gamesAvailable - lost);
       availableMinutes = Math.max(0, availableMinutes - breakMinutes * (parallelApplied ? Math.max(1, Math.floor(maxCourts / leagueCount)) : maxCourts));
+      slotsAvailable = Math.max(0, slotsAvailable - Math.floor(breakMinutes / slot));
     }
 
     const gamesPerPoolAvailable = Math.floor(gamesAvailable / pools);
@@ -243,8 +268,38 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
     const swissMaxEntities = isSwiss ? swissMaxPerPool * pools : 0;
 
     const knockoutMaxEntities = gamesAvailable > 0 ? gamesAvailable + 1 : 0;
-    const maxEntities = isKnockout ? knockoutMaxEntities : isSwiss ? swissMaxEntities : rrMaxEntities;
+    const courtLimitedMaxEntities = isKnockout ? knockoutMaxEntities : isSwiss ? swissMaxEntities : rrMaxEntities;
+
+    // Second, independent ceiling: nobody can play two matches at once.
+    // Round robin = N−1 rounds per pool (doubled for a double round robin),
+    // Swiss = its configured rounds, knockout = log2(N) rounds.
+    const perPoolSlotCap = isKnockout
+      ? Math.max(0, Math.pow(2, slotsAvailable))
+      : isSwiss
+        ? rounds > 0 && rounds <= slotsAvailable
+          ? Number.POSITIVE_INFINITY
+          : 0
+        : isDouble
+          ? Math.floor(slotsAvailable / 2) + 1
+          : slotsAvailable + 1;
+    const slotLimitedMaxEntities = Number.isFinite(perPoolSlotCap)
+      ? Math.max(0, Math.floor(perPoolSlotCap)) * pools
+      : courtLimitedMaxEntities;
+    const maxEntities = Math.min(courtLimitedMaxEntities, slotLimitedMaxEntities);
+    const slotLimited = slotLimitedMaxEntities < courtLimitedMaxEntities;
     const maxPlayers = isDoubles ? maxEntities * 2 : maxEntities;
+
+    // Rounds this field actually has to get through (one match per entrant per round).
+    const roundsNeeded = isKnockout
+      ? perPoolActual > 1
+        ? Math.ceil(Math.log2(perPoolActual))
+        : 0
+      : isSwiss
+        ? rounds
+        : perPoolActual > 1
+          ? (perPoolActual - 1) * (isDouble ? 2 : 1)
+          : 0;
+
 
     const rrGamesNeeded =
       perPoolActual > 1 ? ((perPoolActual * (perPoolActual - 1)) / (isDouble ? 1 : 2)) * pools : 0;
@@ -275,17 +330,25 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
     const playoffGames = L.playoffs && !isKnockout ? playoffMatchesForBracket(bracketSize) : 0;
     const totalGamesNeeded = gamesNeeded + playoffGames;
 
+    const playoffRounds = playoffGames > 0 ? Math.ceil(Math.log2(Math.max(2, bracketSize))) : 0;
+    const totalRoundsNeeded = roundsNeeded + playoffRounds;
+    const roundsFit = totalRoundsNeeded <= slotsAvailable;
+
     return {
       groupNumber: gn,
       label: L.label || `League ${gn}`,
       format: L.format,
       isSwiss,
+      isTimeCapped,
       slotMinutes: slot,
       pools,
       rounds,
       suggestedRounds,
       gamesAvailable,
       gamesPerPoolAvailable,
+      slotsAvailable,
+      roundsNeeded: totalRoundsNeeded,
+      slotLimited,
       gamesNeeded,
       playoffGames,
       totalGamesNeeded,
@@ -295,22 +358,37 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
       maxPlayers,
       entities,
       players: isDoubles ? entities * 2 : entities,
-      fits: totalGamesNeeded <= gamesAvailable,
+      fits: totalGamesNeeded <= gamesAvailable && roundsFit,
       shortfallGames: Math.max(0, totalGamesNeeded - gamesAvailable),
+      shortfallRounds: Math.max(0, totalRoundsNeeded - slotsAvailable),
     };
   });
 
+
   const plannedEntities = perLeague.reduce((a, l) => a + l.entities, 0);
   const withField = perLeague.filter((l) => l.entities > 0);
-  const worst = [...withField].sort((a, b) => b.shortfallGames - a.shortfallGames)[0];
+  const worst = [...withField].sort(
+    (a, b) => (b.shortfallGames + b.shortfallRounds) - (a.shortfallGames + a.shortfallRounds),
+  )[0];
 
   let bottleneck: string | null = null;
   if (worst && !worst.fits) {
-    const extraMinutes = worst.shortfallGames * worst.slotMinutes;
-    bottleneck = `${worst.label} needs ${worst.shortfallGames} more match slot${
-      worst.shortfallGames === 1 ? "" : "s"
-    } (~${Math.round(extraMinutes / 60 * 10) / 10}h of court time). Add court time, add a court, shorten the match slot, or reduce the field.`;
+    if (worst.shortfallRounds > 0) {
+      // Court time is not the binding constraint — the day simply does not
+      // have enough time slots for everyone to meet everyone.
+      bottleneck = `${worst.label} needs ${worst.roundsNeeded} rounds but the day only has ${
+        worst.slotsAvailable
+      } ${worst.slotMinutes}-minute slot${worst.slotsAvailable === 1 ? "" : "s"} — each ${
+        input.isDoubles ? "pair" : "player"
+      } can only play once per slot. Extend the playing window, shorten the slot, split the league into pools, or reduce the field. Extra courts will not help.`;
+    } else {
+      const extraMinutes = worst.shortfallGames * worst.slotMinutes;
+      bottleneck = `${worst.label} needs ${worst.shortfallGames} more match slot${
+        worst.shortfallGames === 1 ? "" : "s"
+      } (~${Math.round(extraMinutes / 60 * 10) / 10}h of court time). Add court time, add a court, shorten the match slot, or reduce the field.`;
+    }
   }
+
 
   return {
     ready,

@@ -494,6 +494,7 @@ function AppRoutes() {
         <Route path="/league-games" element={<ProtectedRoute><CapabilityRoute capability="leagues"><LeagueGames /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/league-games/:fixtureId" element={<ProtectedRoute><CapabilityRoute capability="leagues"><LeagueGameDetail /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/c/:subdomain" element={<ClubLanding />} />
+        <Route path="/c/:subdomain/auth" element={<ClubAuth />} />
         <Route path="/league" element={<LeagueSignup />} />
         <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>
           <Route index element={<SuperAdminDashboard />} />

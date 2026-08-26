@@ -25,6 +25,7 @@ import {
   signRuleDocument,
 } from "@/hooks/use-club-rules";
 import { ClubRulesContent } from "@/components/ClubRulesContent";
+import { ClubQrShareCard } from "@/components/club-admin/ClubQrShareCard";
 
 export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
   const { data: rules, isLoading } = useClubRules(clubId);

@@ -11054,6 +11054,7 @@ export type Database = {
         }
         Returns: Json
       }
+      notify_doubles_pair: { Args: { p_pair_id: string }; Returns: Json }
       org_descendants: {
         Args: { _org_id: string }
         Returns: {

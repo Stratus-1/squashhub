@@ -10251,6 +10251,7 @@ export type Database = {
           id: string
           include_visitors: boolean
           invite_audience: string
+          invite_audience_club_ids: string[]
           invite_audience_include_individuals: boolean
           invite_audience_league_ids: string[]
           invite_audience_member_ids: string[]
@@ -10334,6 +10335,7 @@ export type Database = {
           id?: string
           include_visitors?: boolean
           invite_audience?: string
+          invite_audience_club_ids?: string[]
           invite_audience_include_individuals?: boolean
           invite_audience_league_ids?: string[]
           invite_audience_member_ids?: string[]
@@ -10417,6 +10419,7 @@ export type Database = {
           id?: string
           include_visitors?: boolean
           invite_audience?: string
+          invite_audience_club_ids?: string[]
           invite_audience_include_individuals?: boolean
           invite_audience_league_ids?: string[]
           invite_audience_member_ids?: string[]
@@ -11199,6 +11202,10 @@ export type Database = {
       }
       can_access_league_fixture: {
         Args: { _fixture_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_browse_invite_directory: {
+        Args: { _club_id: string; _tournament_id: string; _uid: string }
         Returns: boolean
       }
       can_manage_tournament:
@@ -12328,6 +12335,7 @@ export type Database = {
       tournament_invite_directory: {
         Args: {
           p_club_id?: string
+          p_club_ids?: string[]
           p_limit?: number
           p_scope?: string
           p_search?: string
@@ -12343,6 +12351,30 @@ export type Database = {
           ladder_position: number
           member_id: string
           ranking_points: number
+        }[]
+      }
+      tournament_invite_member_ids: {
+        Args: {
+          p_club_id?: string
+          p_club_ids?: string[]
+          p_scope?: string
+          p_tournament_id?: string
+        }
+        Returns: {
+          club_id: string
+          member_id: string
+        }[]
+      }
+      tournament_invite_scope_tree: {
+        Args: { p_club_id?: string; p_scope?: string; p_tournament_id?: string }
+        Returns: {
+          association_id: string
+          association_name: string
+          club_id: string
+          club_name: string
+          is_own_club: boolean
+          member_count: number
+          registered_count: number
         }[]
       }
       tournament_owner_entity: {

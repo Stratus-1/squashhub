@@ -126,7 +126,7 @@ export function groupByClub(players: DirectoryPlayer[]): { clubId: string; clubN
 }
 
 export function directoryScopeLabel(scope: string | null | undefined): string {
-  if (scope === "association") return "Players from every club in this association / region";
+  if (scope === "association") return "Players from every club that plays in this association / region";
   if (scope === "open") return "Players from every club in the federation";
   return "Players from this club";
 }
@@ -137,6 +137,8 @@ export async function fetchInviteDirectory(input: {
   scope?: string | null;
   search?: string | null;
   limit?: number;
+  /** Narrow the search to the clubs ticked in the scope tree. */
+  clubIds?: string[] | null;
 }): Promise<DirectoryPlayer[]> {
   const { data, error } = await (supabase as any).rpc("tournament_invite_directory", {
     p_tournament_id: input.tournamentId || null,
@@ -144,7 +146,9 @@ export async function fetchInviteDirectory(input: {
     p_scope: input.scope || null,
     p_search: input.search?.trim() || null,
     p_limit: input.limit ?? 200,
+    p_club_ids: input.clubIds && input.clubIds.length > 0 ? input.clubIds : null,
   });
   if (error) throw error;
   return sanitizeDirectory((data as Record<string, unknown>[]) || []);
 }
+

@@ -5,7 +5,16 @@ import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
-import { audienceLabel, filterVisitorRecipients, resolveInviteAudience, type InviteAudienceMode } from "@/lib/tournaments/invite-audience";
+import {
+  audienceLabel,
+  audienceModesForScope,
+  filterVisitorRecipients,
+  resolveInviteAudience,
+  type InviteAudienceMode,
+} from "@/lib/tournaments/invite-audience";
+import { fetchScopeMemberIds, fetchScopeTree } from "@/lib/tournaments/invite-scope-tree";
+import { InviteScopeTree } from "@/components/tournaments/InviteScopeTree";
+
 import {
   fetchInviteDirectory,
   groupByClub,
@@ -195,18 +204,19 @@ const EVENT_TYPES: { value: string; label: string }[] = [
  * The scope defines the ELIGIBLE POPULATION only, never who is invited.
  */
 const ELIGIBILITY_SCOPES: { value: string; label: string; hint: string }[] = [
-  { value: "club", label: "Members of the owning club", hint: "Only members attached to the host club." },
+  { value: "club", label: "Club members", hint: "Only members attached to the host club." },
   {
     value: "association",
-    label: "Members of the owning association",
-    hint: "Every member of every club affiliated to the owning association.",
+    label: "Regional league",
+    hint: "Every club that PLAYS IN a regional league this club takes part in — owning it is not required.",
   },
   {
     value: "open",
-    label: "Open to everyone",
-    hint: "Every member under the federation, including unaffiliated clubs.",
+    label: "National & international",
+    hint: "Every club under the federation, including unaffiliated clubs.",
   },
 ];
+
 
 /**
  * Legacy `event_type` values mixed category with eligibility/ranking. Map the
@@ -1437,8 +1447,60 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteAudience, setInviteAudience] = useState<InviteAudienceMode>("all_club");
   const [audienceLeagueIds, setAudienceLeagueIds] = useState<Set<string>>(new Set());
   const [audienceMemberIds, setAudienceMemberIds] = useState<Set<string>>(new Set());
+  /** Scope-tree selection: which clubs (regional / national scopes) get invited. */
+  const [audienceClubIds, setAudienceClubIds] = useState<string[]>([]);
   const [audienceIncludeIndividuals, setAudienceIncludeIndividuals] = useState(false);
   const [audienceSearch, setAudienceSearch] = useState("");
+
+  const scopeIsWide = eligibilityScope === "association" || eligibilityScope === "open";
+
+  /** Association → club tree with counts only (never names or contact data). */
+  const { data: scopeTree = [], isFetching: scopeTreeLoading } = useQuery({
+    queryKey: ["tournament-invite-scope-tree", editingChampId, clubId, eligibilityScope],
+    queryFn: () => fetchScopeTree({ tournamentId: editingChampId, clubId, scope: eligibilityScope }),
+    enabled: !!clubId && showWizard && scopeIsWide,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  /**
+   * "Everyone in the region / federation" is simply every club in the scope
+   * tree, so it resolves through exactly the same server-side path as a manual
+   * club selection — the browser never sees more than counts and references.
+   */
+  const effectiveAudienceMode: InviteAudienceMode =
+    scopeIsWide && inviteAudience === "all_club" ? "clubs" : inviteAudience;
+  const effectiveAudienceClubIds = useMemo(
+    () =>
+      scopeIsWide && inviteAudience === "all_club"
+        ? scopeTree.flatMap((g) => g.clubs.map((c) => c.clubId))
+        : audienceClubIds,
+    [scopeIsWide, inviteAudience, scopeTree, audienceClubIds],
+  );
+
+  /** Member references for the ticked clubs — resolved server-side. */
+  const { data: scopeMemberIdsByClub = new Map<string, string[]>() } = useQuery({
+    queryKey: [
+      "tournament-invite-member-ids",
+      editingChampId,
+      clubId,
+      eligibilityScope,
+      effectiveAudienceClubIds.join(","),
+    ],
+    queryFn: () =>
+      fetchScopeMemberIds({
+        tournamentId: editingChampId,
+        clubId,
+        scope: eligibilityScope,
+        clubIds: effectiveAudienceClubIds,
+      }),
+    enabled:
+      !!clubId && showWizard && effectiveAudienceMode === "clubs" && effectiveAudienceClubIds.length > 0,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+
 
   /**
    * Cross-club invitation directory. A tournament opened to an association or
@@ -1459,6 +1521,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       clubId,
       eligibilityScope,
       audienceSearch.trim().toLowerCase(),
+      audienceClubIds.join(","),
     ],
     queryFn: () =>
       fetchInviteDirectory({
@@ -1467,7 +1530,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         scope: eligibilityScope,
         search: audienceSearch,
         limit: 300,
+        // Narrow individual search to the clubs ticked in the tree, when any.
+        clubIds: audienceClubIds,
       }),
+
     enabled: !!clubId && showWizard,
     staleTime: 30_000,
     retry: false,
@@ -1823,23 +1889,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const resolvedAudience = useMemo(
     () =>
       resolveInviteAudience({
-        mode: inviteAudience,
+        mode: effectiveAudienceMode,
         members: audienceMemberPool as any[],
         leagueIds: Array.from(audienceLeagueIds),
         registrationsByLeague,
         individualIds: Array.from(audienceMemberIds),
         includeIndividuals: audienceIncludeIndividuals,
+        clubIds: effectiveAudienceClubIds,
+        memberIdsByClub: scopeMemberIdsByClub as Map<string, string[]>,
         excludedIds: inviteExcludedMemberIds,
       }),
     [
-      inviteAudience,
+      effectiveAudienceMode,
       audienceMemberPool,
       audienceLeagueIds,
       registrationsByLeague,
       audienceMemberIds,
       audienceIncludeIndividuals,
+      effectiveAudienceClubIds,
+      scopeMemberIdsByClub,
       inviteExcludedMemberIds,
     ],
+
   );
 
   /** Team-by-team breakdown of who the audience league selection reaches. */
@@ -2168,6 +2239,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       invite_audience: inviteAudience,
       invite_audience_league_ids: Array.from(audienceLeagueIds),
       invite_audience_member_ids: Array.from(audienceMemberIds),
+      invite_audience_club_ids: audienceClubIds,
       invite_audience_include_individuals: audienceIncludeIndividuals,
       entry_source: entrySource,
       approval_gate: approvalGate,
@@ -4352,6 +4424,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             invite_audience: inviteAudience,
             invite_audience_league_ids: Array.from(audienceLeagueIds),
             invite_audience_member_ids: Array.from(audienceMemberIds),
+            invite_audience_club_ids: audienceClubIds,
             invite_audience_include_individuals: audienceIncludeIndividuals,
             entry_source: entrySource,
             approval_gate: approvalGate,
@@ -4430,6 +4503,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             invite_audience: inviteAudience,
             invite_audience_league_ids: Array.from(audienceLeagueIds),
             invite_audience_member_ids: Array.from(audienceMemberIds),
+            invite_audience_club_ids: audienceClubIds,
             invite_audience_include_individuals: audienceIncludeIndividuals,
             entry_source: entrySource,
             approval_gate: approvalGate,
@@ -5946,6 +6020,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteAudience((((champ as any).invite_audience as InviteAudienceMode) || "all_club"));
     setAudienceLeagueIds(new Set(((champ as any).invite_audience_league_ids as string[]) || []));
     setAudienceMemberIds(new Set(((champ as any).invite_audience_member_ids as string[]) || []));
+    setAudienceClubIds((((champ as any).invite_audience_club_ids as string[]) || []).filter(Boolean));
     setAudienceIncludeIndividuals(!!(champ as any).invite_audience_include_individuals);
     setHandicapMode(((champ as any).handicap_mode as any) || "none");
     setHandicapDivider(Math.max(1, Number((champ as any).handicap_divider) || 1));
@@ -8796,10 +8871,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                 <Label className="text-sm">Invite audience — who gets invited (choosing here never sends)</Label>
                 <p className="text-[11px] text-muted-foreground">
-                  Who gets invited. This is separate from the Structure step — the league/team selection there only decides how accepted entrants are grouped and seeded.
+                  Who gets invited, within the “{ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.label || "Club members"}” eligibility you chose in Step 1.
+                  This is separate from the Structure step — the league/team selection there only decides how accepted entrants are grouped and seeded.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 text-sm">
-                  {(["all_club", "leagues", "individuals"] as InviteAudienceMode[]).map((mode) => (
+                  {audienceModesForScope(eligibilityScope).map((mode) => (
                     <label key={mode} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
@@ -8807,10 +8883,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         checked={inviteAudience === mode}
                         onChange={() => setInviteAudience(mode)}
                       />
-                      {audienceLabel(mode)}
+                      {audienceLabel(mode, eligibilityScope)}
                     </label>
                   ))}
                 </div>
+
+                {inviteAudience === "clubs" && (
+                  <div className="space-y-2 pt-1">
+                    <Label className="text-xs text-muted-foreground">
+                      {eligibilityScope === "open"
+                        ? "Pick associations or individual clubs to invite"
+                        : "Pick which clubs in your region to invite"}
+                    </Label>
+                    <InviteScopeTree
+                      tree={scopeTree}
+                      selectedClubIds={audienceClubIds}
+                      onChange={setAudienceClubIds}
+                      loading={scopeTreeLoading}
+                    />
+                  </div>
+                )}
+
 
                 {inviteAudience === "leagues" && (
                   <div className="space-y-2 pt-1">
@@ -9068,7 +9161,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         : `Send invites now (${effectiveAllInviteCount})`}
                     </Button>
                     <p className="text-[11px] text-muted-foreground">
-                      Goes to the invitation audience above ({audienceLabel(inviteAudience)}) via{" "}
+                      Goes to the invitation audience above ({audienceLabel(inviteAudience, eligibilityScope)}) via{" "}
                       {Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}. {resolvedAudience.summary}
                     </p>
                     {lastInviteSend && (

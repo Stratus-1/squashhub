@@ -254,6 +254,22 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                 </div>
               )}
 
+              {hasRulesContent(publicRules) && (
+                <div id="club-rules" className="pt-4 text-left scroll-mt-8">
+                  <div className="text-sm font-bold uppercase tracking-wide text-white/90 text-center mb-2">
+                    Club Rules
+                  </div>
+                  <div className="rounded-xl border border-white/15 bg-white/5 p-4">
+                    <ClubRulesContent
+                      rulesText={publicRules?.rules_text}
+                      documents={publicRules?.documents}
+                      tone="onDark"
+                    />
+                  </div>
+                </div>
+              )}
+
+
               <div className="pt-4">
 
                 <Button

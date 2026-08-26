@@ -50,12 +50,14 @@ export function LeagueWeekAvailabilityCard() {
     [weekStartStr]
   );
 
-  // Is the member league-affiliated? Check team placement OR association affiliation OR plays_league flag.
+  // Is the member actually on a league roster? Only a real team registration or an
+  // active association affiliation counts. The `plays_league` flag defaults to true
+  // for new sign-ups, so it must NOT make someone "league affiliated" on its own.
   const { data: isLeaguePlayer } = useQuery({
     queryKey: ["lwa-eligible", clubId, memberId],
     enabled: !!clubId && !!memberId,
     queryFn: async () => {
-      const [{ count: regCount }, { count: affCount }, { data: cm }] = await Promise.all([
+      const [{ count: regCount }, { count: affCount }] = await Promise.all([
         fromExt("member_league_registrations")
           .select("club_member_id", { count: "exact", head: true })
           .eq("club_member_id", memberId!),
@@ -63,15 +65,11 @@ export function LeagueWeekAvailabilityCard() {
           .select("club_member_id", { count: "exact", head: true })
           .eq("club_member_id", memberId!)
           .eq("active", true),
-        supabase
-          .from("club_members")
-          .select("plays_league")
-          .eq("id", memberId!)
-          .maybeSingle(),
       ]);
-      return (regCount ?? 0) > 0 || (affCount ?? 0) > 0 || !!(cm as any)?.plays_league;
+      return (regCount ?? 0) > 0 || (affCount ?? 0) > 0;
     },
   });
+
 
   // Is there actually a league fixture scheduled for this club during the
   // upcoming week? If not, hide the prompt entirely.

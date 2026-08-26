@@ -675,6 +675,22 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         </Card>
       </div>
 
+      {/* Banking dialogs — mounted at top level so they can be opened from any view */}
+      <BankStatementImportDialog
+        open={bankImportOpen}
+        onOpenChange={setBankImportOpen}
+        clubId={clubId}
+        accounts={CHART_OF_ACCOUNTS as any}
+      />
+      <OpeningBalancesDialog
+        open={openingBalancesOpen}
+        onOpenChange={setOpeningBalancesOpen}
+        clubId={clubId}
+        accounts={CHART_OF_ACCOUNTS as any}
+      />
+
+
+
       <FinanceHub
         pendingCount={(pendingTransactions || []).length}
         onStatement={() => setStatementOpen(true)}

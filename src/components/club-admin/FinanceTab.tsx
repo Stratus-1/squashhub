@@ -1873,7 +1873,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 }
 
 /* ─── Finance Hub: tile-based navigation ─── */
-type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa" | "debit-orders";
+type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa" | "debit-orders" | "banking";
 
 interface FinanceHubProps {
   pendingCount: number;
@@ -1881,12 +1881,14 @@ interface FinanceHubProps {
   onBalances: (filter: "outstanding" | "credit" | "all") => void;
   onBill: () => void;
   onEnterTx: () => void;
+  onImportBank: () => void;
+  onOpeningBalances: () => void;
   moneyAccounts: Array<{ account: string; label: string; balance: number; display: string }>;
   onSelectAccount: (account: string) => void;
   children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
 }
 
-function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, moneyAccounts, onSelectAccount, children }: FinanceHubProps) {
+function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, children }: FinanceHubProps) {
   const [view, setView] = useState<FinanceView>("");
   const [hubStep, setHubStep] = useState("0");
 

@@ -15,7 +15,24 @@
  * Leagues + individuals can be combined explicitly via `includeIndividuals`.
  */
 
-export type InviteAudienceMode = "all_club" | "leagues" | "individuals";
+export type InviteAudienceMode = "all_club" | "leagues" | "individuals" | "clubs";
+
+/**
+ * Tournament scope → the audience choices that make sense at that level.
+ * Scope values (`club` / `association` / `open`) are unchanged in the database;
+ * only the wording and the option set follow participation, not ownership.
+ */
+export function eligibilityScopeLabel(scope: string | null | undefined): string {
+  if (scope === "association") return "Regional league";
+  if (scope === "open") return "National & international";
+  return "Club members";
+}
+
+export function audienceModesForScope(scope: string | null | undefined): InviteAudienceMode[] {
+  if (scope === "association" || scope === "open") return ["all_club", "clubs", "leagues", "individuals"];
+  return ["all_club", "leagues", "individuals"];
+}
+
 
 export interface AudienceMemberRow {
   id: string;
@@ -59,7 +76,16 @@ export function resolveInviteAudience(input: {
   individualIds?: string[];
   /** leagues mode: also invite the explicitly picked individuals. */
   includeIndividuals?: boolean;
+  /** clubs mode: the clubs the organiser ticked in the scope tree. */
+  clubIds?: string[];
+  /**
+   * clubs mode: clubId → member references resolved SERVER-SIDE
+   * (`tournament_invite_member_ids`). Those rows are already filtered to real
+   * active non-visitor members, so they are trusted without a local pool row.
+   */
+  memberIdsByClub?: Map<string, string[]>;
   excludedIds?: Iterable<string>;
+
 }): ResolvedAudience {
   const invitable = new Map<string, AudienceMemberRow>();
   const excludedCounts = { visitors: 0, inactive: 0, placeholders: 0 };
@@ -98,6 +124,29 @@ export function resolveInviteAudience(input: {
   }
 
 
+
+  if (input.mode === "clubs") {
+    const clubIds = Array.from(new Set((input.clubIds || []).filter(Boolean)));
+    const ids: string[] = [];
+    const seen = new Set<string>();
+    clubIds.forEach((cid) => {
+      (input.memberIdsByClub?.get(cid) || []).forEach((mid) => {
+        if (!mid || seen.has(mid) || excluded.has(mid)) return;
+        // A local pool row may exist for the host club — respect it when it does.
+        const local = invitable.has(mid);
+        const known = (input.members || []).some((m) => m?.id === mid);
+        if (known && !local) return;
+        seen.add(mid);
+        ids.push(mid);
+      });
+    });
+    return {
+      memberIds: ids,
+      excluded: excludedCounts,
+      summary: `${ids.length} member${ids.length === 1 ? "" : "s"} from ${clubIds.length} selected club${clubIds.length === 1 ? "" : "s"}.`,
+    };
+  }
+
   if (input.mode === "individuals") {
     const ids = keep(input.individualIds || []);
     return {
@@ -106,6 +155,7 @@ export function resolveInviteAudience(input: {
       summary: `${ids.length} individually selected member${ids.length === 1 ? "" : "s"}.`,
     };
   }
+
 
   const leagueIds = Array.from(new Set((input.leagueIds || []).filter(Boolean)));
   const fromLeagues = new Set<string>();
@@ -183,8 +233,15 @@ export function filterVisitorRecipients<T extends { club_member_id?: string | nu
   return { kept, removed: (registrations || []).length - kept.length };
 }
 
-export function audienceLabel(mode: InviteAudienceMode): string {
-  if (mode === "all_club") return "Invite all members of the club (open invitation)";
-  if (mode === "leagues") return "Selected leagues / league teams";
+export function audienceLabel(mode: InviteAudienceMode, scope?: string | null): string {
+  const wide = scope === "association" || scope === "open";
+  if (mode === "all_club") {
+    if (scope === "association") return "Everyone in the regional league (open invitation)";
+    if (scope === "open") return "Everyone in the federation (open invitation)";
+    return "Invite all members of the club (open invitation)";
+  }
+  if (mode === "clubs") return scope === "open" ? "Selected associations / clubs" : "Selected clubs";
+  if (mode === "leagues") return wide ? "Selected league teams" : "Selected leagues / league teams";
   return "Selected individual members";
+
 }

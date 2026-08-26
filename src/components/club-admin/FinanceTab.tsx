@@ -27,6 +27,7 @@ import { LedgerReconciliationDialog } from "./LedgerReconciliationDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
 import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 import { BankStatementImportDialog } from "./BankStatementImportDialog";
+import { BankingPanel } from "./BankingPanel";
 import DebitOrdersPanel from "./DebitOrdersPanel";
 
 /* ─── Chart of Accounts definition ─── */
@@ -675,12 +676,30 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         </Card>
       </div>
 
+      {/* Banking dialogs — mounted at top level so they can be opened from any view */}
+      <BankStatementImportDialog
+        open={bankImportOpen}
+        onOpenChange={setBankImportOpen}
+        clubId={clubId}
+        accounts={CHART_OF_ACCOUNTS as any}
+      />
+      <OpeningBalancesDialog
+        open={openingBalancesOpen}
+        onOpenChange={setOpeningBalancesOpen}
+        clubId={clubId}
+        accounts={CHART_OF_ACCOUNTS as any}
+      />
+
+
+
       <FinanceHub
         pendingCount={(pendingTransactions || []).length}
         onStatement={() => setStatementOpen(true)}
         onBalances={(filter) => { setBalancesFilter(filter); setBalancesSearch(""); setBalancesOpen(true); }}
         onBill={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }}
         onEnterTx={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }}
+        onImportBank={() => setBankImportOpen(true)}
+        onOpeningBalances={() => setOpeningBalancesOpen(true)}
         moneyAccounts={["bank_current", "bank", "cash"]
           .filter((a) => CHART_OF_ACCOUNTS[a as keyof typeof CHART_OF_ACCOUNTS])
           .map((a) => ({ account: a, label: getLabel(a), balance: getBalance(a), display: money(getBalance(a)) }))}
@@ -734,6 +753,19 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           <RenewalInvoicesTab clubId={clubId} />
         </TabsContent>
 
+        <TabsContent value="banking">
+          <BankingPanel
+            clubId={clubId}
+            money={money}
+            moneyAccounts={["bank_current", "bank", "cash"]
+              .filter((a) => CHART_OF_ACCOUNTS[a as keyof typeof CHART_OF_ACCOUNTS])
+              .map((a) => ({ account: a, label: getLabel(a), balance: getBalance(a), display: money(getBalance(a)) }))}
+            onImport={() => setBankImportOpen(true)}
+            onOpeningBalances={() => setOpeningBalancesOpen(true)}
+            onViewLedger={(a) => { setAccountFilter(a); setView("by-account"); }}
+          />
+        </TabsContent>
+
         <TabsContent value="debit-orders">
           <DebitOrdersPanel clubId={clubId} />
         </TabsContent>
@@ -763,24 +795,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <ListTree className="w-3.5 h-3.5" /> Resync Fees
                 </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => setBankImportOpen(true)} className="gap-1.5 h-8">
-                  <Landmark className="w-3.5 h-3.5" /> Import Bank Statement
+                <Button size="sm" variant="outline" onClick={() => setView("banking")} className="gap-1.5 h-8">
+                  <Landmark className="w-3.5 h-3.5" /> Banking
                 </Button>
-                <BankStatementImportDialog
-                  open={bankImportOpen}
-                  onOpenChange={setBankImportOpen}
-                  clubId={clubId}
-                  accounts={CHART_OF_ACCOUNTS as any}
-                />
-                <Button size="sm" variant="outline" onClick={() => setOpeningBalancesOpen(true)} className="gap-1.5 h-8">
-                  <BookOpen className="w-3.5 h-3.5" /> Opening Balances
-                </Button>
-                <OpeningBalancesDialog
-                  open={openingBalancesOpen}
-                  onOpenChange={setOpeningBalancesOpen}
-                  clubId={clubId}
-                  accounts={CHART_OF_ACCOUNTS as any}
-                />
                 {false && (
                 <Button size="sm" variant="outline" onClick={() => setResetOpen(true)} className="gap-1.5 h-8 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
                   <AlertTriangle className="w-3.5 h-3.5" /> Reset Finances
@@ -1873,7 +1890,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 }
 
 /* ─── Finance Hub: tile-based navigation ─── */
-type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa" | "debit-orders";
+type FinanceView = "" | "by-account" | "journal" | "pending" | "association-payables" | "renewals" | "trial" | "income" | "coa" | "debit-orders" | "banking";
 
 interface FinanceHubProps {
   pendingCount: number;
@@ -1881,12 +1898,14 @@ interface FinanceHubProps {
   onBalances: (filter: "outstanding" | "credit" | "all") => void;
   onBill: () => void;
   onEnterTx: () => void;
+  onImportBank: () => void;
+  onOpeningBalances: () => void;
   moneyAccounts: Array<{ account: string; label: string; balance: number; display: string }>;
   onSelectAccount: (account: string) => void;
   children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
 }
 
-function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, moneyAccounts, onSelectAccount, children }: FinanceHubProps) {
+function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, children }: FinanceHubProps) {
   const [view, setView] = useState<FinanceView>("");
   const [hubStep, setHubStep] = useState("0");
 
@@ -1914,6 +1933,15 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
         { key: "by-account", label: "By Account", desc: "Filter ledger entries per GL account", icon: Layers },
         { key: "pending", label: "Pending", desc: "Unposted transactions awaiting review", icon: Clock, badge: pendingCount },
         { key: "debit-orders", label: "Recurring Card Payments", desc: "Stitch card consents & subscriptions", icon: Banknote },
+      ],
+    },
+    {
+      title: "Banking",
+      description: "Bank & cash accounts, statement imports and reconciliation",
+      tiles: [
+        { key: "banking", label: "Bank & Cash Accounts", desc: "Balances, ledgers and imported statements", icon: Landmark },
+        { key: "" as FinanceView, label: "Import Bank Statement", desc: "Upload CSV / OFX / QIF and allocate lines", icon: FileText, onClick: onImportBank },
+        { key: "" as FinanceView, label: "Opening Balances", desc: "Seed starting balances for bank & cash", icon: BookOpen, onClick: onOpeningBalances },
       ],
     },
     {

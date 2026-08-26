@@ -6,6 +6,28 @@ interface PosterInput {
   url: string;
   cta: string;
   svg: SVGSVGElement;
+  logoUrl?: string | null;
+}
+
+function loadImageAsDataUrl(src: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth || 128;
+      canvas.height = img.naturalHeight || 128;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas not supported"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => reject(new Error("Could not load logo"));
+    img.src = src;
+  });
 }
 
 function svgToPngDataUrl(svg: SVGSVGElement): Promise<string> {
@@ -43,11 +65,21 @@ function svgToPngDataUrl(svg: SVGSVGElement): Promise<string> {
 
 export async function generateClubQrPoster({
   clubName,
+  subdomain,
   url,
   cta,
   svg,
+  logoUrl,
 }: PosterInput): Promise<void> {
   const qrDataUrl = await svgToPngDataUrl(svg);
+  let logoDataUrl: string | undefined;
+  if (logoUrl) {
+    try {
+      logoDataUrl = await loadImageAsDataUrl(logoUrl);
+    } catch {
+      /* ignore logo load failures; poster still works without it */
+    }
+  }
 
   const doc = new jsPDF({
     orientation: "portrait",
@@ -91,6 +123,16 @@ export async function generateClubQrPoster({
   const qrX = (pageW - qrSize) / 2;
   const qrY = 62;
   doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+
+  // Logo overlay (center of QR code)
+  if (logoDataUrl) {
+    const logoSize = 20;
+    const logoX = qrX + (qrSize - logoSize) / 2;
+    const logoY = qrY + (qrSize - logoSize) / 2;
+    doc.setFillColor("#ffffff");
+    doc.circle(qrX + qrSize / 2, qrY + qrSize / 2, logoSize / 2 + 1.5, "F");
+    doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoSize, logoSize);
+  }
 
   // CTA
   doc.setTextColor(navy);

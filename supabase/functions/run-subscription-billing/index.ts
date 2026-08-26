@@ -542,7 +542,10 @@ Deno.serve(async (req) => {
           period_start: iso(periodStart),
           period_end: iso(periodEnd),
           next_renewal: iso(periodStart),
+          scheduled_send: iso(scheduledSend),
+          in_this_run: subDueForRun,
         })
+
         continue
       }
 

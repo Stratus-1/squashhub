@@ -46,10 +46,10 @@ However, the guarantee is not yet complete:
    - Add regression coverage for reserve swap → weekly lineup edit → reopen → start marking.
    - Cover drag reorder, roster drop, clear, wizard apply, two-device stale edits, multiple reserves, and fixtures without a summary row.
    - Verify captains can replace players in unstarted rubbers while another rubber is live, but cannot change a rubber once its play begins.
-   - Verify club admins can correct the participant on a played/submitted rubber from the existing standings → game review path, while the score/result remains exactly unchanged and the correction is audited.
+   - Verify club admins can correct the participant on a played/submitted rubber from the existing standings → game review path, that the played scores are untouched, and that the original-player bonus, fixture totals, and standings recalculate correctly when an original player replaces a reserve (and the reverse). Confirm the correction is audited.
    - Confirm ordinary members and captains cannot invoke the post-play correction directly, and do not weaken existing row-level security.
    - Run focused league lineup/substitution tests, then the broader suite and production build. Do not publish.
 
 ## Expected result
 
-Once implemented, a captain-confirmed fixture lineup will remain the source of truth through refreshes, later weekly allocation changes, and match-marker startup. Captains may keep adjusting each unplayed rubber, with the latest valid save prevailing; play locks that rubber. Club admins retain a separate, audited identity-correction path after play without altering the recorded score.
+Once implemented, a captain-confirmed fixture lineup will remain the source of truth through refreshes, later weekly allocation changes, and match-marker startup. Captains may keep adjusting each unplayed rubber, with the latest valid save prevailing; play locks that rubber. Club admins retain a separate, audited correction path after play: the played scores stay as they were, but participant changes flow through to original-player bonus points, fixture totals, and the standings.

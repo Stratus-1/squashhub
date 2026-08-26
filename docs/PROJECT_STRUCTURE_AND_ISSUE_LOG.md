@@ -1240,3 +1240,10 @@ Tests: `src/test/booking-label.test.ts`.
   2. Both `handleSubmit` and `AdminManualScoreDialog` show a confirm warning when finalising before the fixture's scheduled start ("This match hasn't been played yet — submitting will pre-empt live marking").
   3. `AdminManualScoreDialog` additionally blocks 0–0 total-points submissions and bonus-only entries (games explicitly 0–0 with points > 0).
 - **Guard:** draft/setup saves and forfeit-only results are unaffected; the pre-match warning is a confirm (not a block) so catch-up/admin workflows remain possible; live-sync standings recalc is unchanged.
+
+## 2026-08-26 — Bank Statement Import & Reconciliation
+- New tables `club_bank_statements` and `club_bank_transactions` (club-admin RLS, unique fingerprint per club prevents re-importing the same line).
+- Added missing `opening_balance_equity` value to the `gl_account` enum (Opening Balances dialog previously failed on its balancing entry).
+- New parser `src/lib/finance/bank-statement.ts`: CSV/TSV (preamble skipping, auto column mapping, SA number/date formats), OFX and QIF, duplicate detection (exact fingerprint + ±7-day same-amount/narrative match), account auto-categorisation and fuzzy member matching.
+- New `BankStatementImportDialog` in Finance → Journal: upload, override column mapping, per-row allocate account/member, deselect duplicates, optional immediate posting to the GL (bank_current vs contra account, dated on the transaction date), and opening-balance seeding when it is the club's first statement.
+- Tests: `src/test/bank-statement.test.ts` (12).

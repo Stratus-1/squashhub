@@ -261,19 +261,31 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
               )}
               {publicFees.length > 0 && (
                 <div className="pt-4 text-left">
-                  <div className="text-sm font-bold uppercase tracking-wide text-white/90 text-center mb-2">
-                    Membership Fees
-                  </div>
-                  <ul className="divide-y divide-white/15 rounded-xl border border-white/15 bg-white/5">
-                    {publicFees.map((f) => (
-                      <li key={f.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                        <span className="text-sm text-white">{f.name}</span>
-                        <span className="text-sm font-bold text-white tabular-nums whitespace-nowrap">
-                          {formatFee(f.annual_fee, f.billing_period)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <Collapsible defaultOpen={false}>
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white/90 transition-colors hover:bg-white/10"
+                      >
+                        <span>Membership Fees</span>
+                        <ChevronDown className="w-4 h-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="rounded-b-xl border-x border-b border-white/15 bg-white/5 p-4 -mt-2 pt-6">
+                        <ul className="divide-y divide-white/15 rounded-xl border border-white/15 bg-white/5">
+                          {publicFees.map((f) => (
+                            <li key={f.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                              <span className="text-sm text-white">{f.name}</span>
+                              <span className="text-sm font-bold text-white tabular-nums whitespace-nowrap">
+                                {formatFee(f.annual_fee, f.billing_period)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               )}
 

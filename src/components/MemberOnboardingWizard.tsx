@@ -692,6 +692,7 @@ export function MemberOnboardingWizard({
         fee_category_id: feeCategoryId || null,
         plays_league: playsLeague,
         club_member_number: memberNumber || null,
+        ...skillsPatch(skillsDraft),
       };
 
       // Track whether this is a pre-existing member (admin-created, imported, or club founder)

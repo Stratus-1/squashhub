@@ -2,7 +2,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { addBillingMonths, CYCLE_MONTHS, cycleDiscount, type BillingCycle } from './billing-cycle.ts'
 import {
+  addDays,
   buildConsolidatedInvoice,
+  isFirstOfMonth,
   isSubscriptionDue,
   monthStartIso,
   previousMonthRange,
@@ -13,6 +15,10 @@ interface RequestBody {
   subscriptionIds?: string[]
   billingDate?: string // ISO date; defaults to today
   vatRate?: number // 0..1 override; falls back to settings/0
+  /** Days before the renewal date that invoices are issued/emailed. */
+  advanceDays?: number
+  /** Run even when today is not inside the advance-issue window. */
+  force?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -29,7 +35,8 @@ Deno.serve(async (req) => {
   } catch (_) {}
 
   const dryRun = !!body.dryRun
-  const billingDate = body.billingDate ? new Date(body.billingDate) : new Date()
+  const runDate = body.billingDate ? new Date(body.billingDate) : new Date()
+
 
   // 1) Load platform invoice settings + per-currency SaaS rates. Base is ZAR;
   //    USD/EUR clubs are billed at their configured rate.

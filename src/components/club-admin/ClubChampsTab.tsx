@@ -1455,13 +1455,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const scopeIsWide = eligibilityScope === "association" || eligibilityScope === "open";
 
   /** Association → club tree with counts only (never names or contact data). */
-  const { data: scopeTree = [], isFetching: scopeTreeLoading } = useQuery({
+  const {
+    data: scopeTree = [],
+    isFetching: scopeTreeLoading,
+    error: scopeTreeError,
+  } = useQuery({
     queryKey: ["tournament-invite-scope-tree", editingChampId, clubId, eligibilityScope],
     queryFn: () => fetchScopeTree({ tournamentId: editingChampId, clubId, scope: eligibilityScope }),
     enabled: !!clubId && showWizard && scopeIsWide,
     staleTime: 60_000,
     retry: false,
   });
+
 
   /**
    * "Everyone in the region / federation" is simply every club in the scope

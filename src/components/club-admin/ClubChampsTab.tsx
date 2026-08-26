@@ -6560,22 +6560,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                   {!isCompleted && (
                     <>
-                      <Button variant="outline" size="sm" onClick={() => setRegistrationsChamp(c)}>
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setRegistrationsChamp(c)}>
                         <UsersIcon className="w-4 h-4 mr-1" /> Registrations
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setBulkImportChamp(c)} title="Bulk import entrants & email magic-links">
-                        <Plus className="w-4 h-4 mr-1" /> Import entrants
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setBulkImportChamp(c)} title="Bulk import entrants & email magic-links">
+                        <Plus className="w-4 h-4 mr-1" /> <span className="truncate">Import entrants</span>
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => loadChampForEdit(c)}>
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => loadChampForEdit(c)}>
                         <Pencil className="w-4 h-4 mr-1" /> Edit
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setGovernanceChamp(c)} title="Ownership, sanctioning, eligibility, fee split, venues & audit history">
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setGovernanceChamp(c)} title="Ownership, sanctioning, eligibility, fee split, venues & audit history">
                         <ShieldCheck className="w-4 h-4 mr-1" /> Governance
                       </Button>
 
 
                       <Button
                         variant="outline" size="sm"
+                        className="w-full justify-center sm:w-auto"
                         disabled={setChampStatus.isPending}
                         onClick={() => setChampStatus.mutate({ id: c.id, status: "completed" })}
                       >
@@ -6586,13 +6587,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   {isCompleted && (
                     <Button
                       variant="outline" size="sm"
+                      className="w-full justify-center sm:w-auto"
                       disabled={setChampStatus.isPending}
                       onClick={() => setChampStatus.mutate({ id: c.id, status: "active" })}
                     >
                       Re-open
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => setDuplicateSource(c)} title="Use as template — duplicate this tournament's full setup with new dates">
+                  <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => setDuplicateSource(c)} title="Use as template — duplicate this tournament's full setup with new dates">
                     <Copy className="w-4 h-4 mr-1" /> {isCompleted ? "Copy" : "Template"}
                   </Button>
                   {(() => {
@@ -6603,9 +6605,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     const canDelete = isSuperAdmin || notStartedYet;
                     if (!canDelete) return null;
                     return (
-                      <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })} title="Delete tournament">
+                      <Button variant="ghost" size="sm" className="w-full justify-center gap-1 text-destructive sm:w-auto sm:px-2" onClick={() => setDeleteConfirm({ id: c.id, withBookings: true })} title="Delete tournament">
                         <Trash2 className="w-4 h-4 text-destructive" />
+                        <span className="sm:hidden">Delete</span>
                       </Button>
+
                     );
                   })()}
                 </div>

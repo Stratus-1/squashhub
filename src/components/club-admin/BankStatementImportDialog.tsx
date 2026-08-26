@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   parseDelimitedStatement,
   parseOfx,
+  parseTextStatement,
   buildRows,
   detectDuplicate,
   suggestAccount,
@@ -26,6 +27,7 @@ import {
   type ParsedStatement,
   type DuplicateFlag,
 } from "@/lib/finance/bank-statement";
+import { extractPdfText, isPdfFile } from "@/lib/finance/pdf-statement";
 
 interface AccountMeta {
   label: string;
@@ -54,7 +56,8 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
-  const [format_, setFormat] = useState<"csv" | "ofx">("csv");
+  const [format_, setFormat] = useState<"csv" | "ofx" | "pdf">("csv");
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedStatement | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -124,8 +127,41 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
     });
 
   const handleFile = async (file: File) => {
-    const text = await file.text();
     setFileName(file.name);
+
+    // ---- PDF: text layer first, OCR fallback for scanned statements ----
+    if (isPdfFile(file)) {
+      setParsed(null);
+      setMapping(null);
+      setFormat("pdf");
+      setPdfBusy("Reading PDF…");
+      try {
+        const res = await extractPdfText(file, (pct, stage) =>
+          setPdfBusy(stage === "ocr"
+            ? `Scanned PDF — running OCR… ${Math.round(pct * 100)}%`
+            : `Reading PDF… ${Math.round(pct * 100)}%`),
+        );
+        const rows = parseTextStatement(res.text);
+        if (!rows.length) {
+          return toast.error(
+            res.source === "ocr"
+              ? "Could not read any transactions from that scanned PDF. Try a clearer scan or a CSV export."
+              : "No transactions found in that PDF.",
+          );
+        }
+        setDrafts(hydrate(rows));
+        toast.success(
+          `${rows.length} transactions read from PDF${res.source === "ocr" ? " (OCR)" : ""} — please review before posting`,
+        );
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to read that PDF");
+      } finally {
+        setPdfBusy(null);
+      }
+      return;
+    }
+
+    const text = await file.text();
     const isOfx = /\.(ofx|qfx|qif)$/i.test(file.name) || /<STMTTRN>/i.test(text);
     if (isOfx) {
       setFormat("ofx");
@@ -143,6 +179,7 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
       rebuild(p, p.mapping);
     }
   };
+
 
   const stats = useMemo(() => summarise(drafts.filter((d) => d.include)), [drafts]);
   const dupCount = drafts.filter((d) => d.duplicate !== "none").length;
@@ -296,9 +333,10 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
             <Landmark className="w-4 h-4 text-primary" /> Import Bank Statement
           </DialogTitle>
           <DialogDescription>
-            Upload a CSV / OFX / QIF statement export. Duplicate lines already imported are detected automatically
-            (same amount and narrative within 7 days), and each transaction can be allocated to an account and member
-            before posting to the ledger.
+            Upload a PDF, CSV, OFX or QIF statement. PDFs are read directly, and scanned/image-only PDFs are
+            processed with OCR. Duplicate lines already imported are detected automatically (same amount and
+            narrative within 7 days), and each transaction can be allocated to an account and member before
+            posting to the ledger.
           </DialogDescription>
         </DialogHeader>
 
@@ -307,17 +345,26 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,.txt,.tsv,.ofx,.qfx,.qif"
+              accept=".pdf,.csv,.txt,.tsv,.ofx,.qfx,.qif"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
             />
-            <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => fileRef.current?.click()}>
+            <Button size="sm" variant="outline" className="gap-1.5 h-8" disabled={!!pdfBusy} onClick={() => fileRef.current?.click()}>
               <Upload className="w-3.5 h-3.5" /> Choose statement file
             </Button>
             {fileName && (
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <FileText className="w-3.5 h-3.5" /> {fileName}
               </span>
+            )}
+            {pdfBusy && (
+              <span className="text-xs text-primary flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                {pdfBusy}
+              </span>
+            )}
+            {format_ === "pdf" && !pdfBusy && drafts.length > 0 && (
+              <Badge variant="outline" className="text-[10px]">Read from PDF — check dates and amounts</Badge>
             )}
             {isFirstStatement && (
               <Badge variant="outline" className="text-[10px]">First statement — opening balance will be seeded</Badge>

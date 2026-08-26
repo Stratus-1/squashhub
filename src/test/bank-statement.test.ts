@@ -9,6 +9,7 @@ import {
   suggestAccount,
   suggestMember,
   summarise,
+  parseTextStatement,
 } from "@/lib/finance/bank-statement";
 
 describe("parseAmount", () => {
@@ -114,5 +115,42 @@ describe("summarise", () => {
     expect(s.period_end).toBe("2026-08-27");
     expect(s.opening_balance).toBeCloseTo(5120);
     expect(s.closing_balance).toBeCloseTo(4450);
+  });
+});
+
+describe("parseTextStatement (PDF / OCR text)", () => {
+  it("parses date + narrative + amount + balance lines", () => {
+    const text = [
+      "FNB Cheque Account Statement",
+      "01 Mar 2026  OPENING BALANCE            12 000.00",
+      "03/03/2026  POS PURCHASE SPAR        -250.00   11 750.00",
+      "05/03/2026  EFT CREDIT J SMITH        500.00   12 250.00",
+      "some footer text",
+    ].join("\n");
+    const rows = parseTextStatement(text);
+    expect(rows.length).toBe(2);
+    expect(rows[0].txn_date).toBe("2026-03-03");
+    expect(rows[0].amount).toBe(-250);
+    expect(rows[0].balance).toBe(11750);
+    expect(rows[1].amount).toBe(500);
+    expect(rows[1].description).toContain("EFT CREDIT");
+  });
+
+  it("uses the running balance to correct a missing minus sign", () => {
+    const text = [
+      "02/04/2026 CREDIT 1 000.00 5 000.00",
+      "03/04/2026 BANK CHARGES 100.00 4 900.00",
+    ].join("\n");
+    const rows = parseTextStatement(text);
+    expect(rows[1].amount).toBe(-100);
+  });
+
+  it("fills in a missing year from the fallback", () => {
+    const rows = parseTextStatement("12 Jun  CASH DEPOSIT  1 500.00", 2025);
+    expect(rows[0].txn_date).toBe("2025-06-12");
+  });
+
+  it("ignores lines with no money token", () => {
+    expect(parseTextStatement("01/01/2026 Statement period continues").length).toBe(0);
   });
 });

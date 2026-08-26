@@ -2,22 +2,22 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { addBillingMonths, CYCLE_MONTHS, cycleDiscount, type BillingCycle } from './billing-cycle.ts'
 import {
-  addDays,
   buildConsolidatedInvoice,
-  isFirstOfMonth,
   monthStartIso,
   previousMonthRange,
 } from './consolidated.ts'
+
 
 interface RequestBody {
   dryRun?: boolean
   subscriptionIds?: string[]
   billingDate?: string // ISO date; defaults to today
   vatRate?: number // 0..1 override; falls back to settings/0
-  /** Days before the renewal date that invoices are issued/emailed. */
-  advanceDays?: number
-  /** Run even when today is not inside the advance-issue window. */
+  /** Fixed day of the month invoices are issued/emailed on (1-28, default 25). */
+  issueDay?: number
+  /** Run even when today is not the fixed issue day. */
   force?: boolean
+
 }
 
 Deno.serve(async (req) => {
@@ -76,31 +76,56 @@ Deno.serve(async (req) => {
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
 
-  // --- Advance issuing ---------------------------------------------------
-  // Invoices are DATED on the renewal date (1st of the billing month) but are
-  // created and emailed `advanceDays` earlier so clubs have time to pay.
-  const advanceDaysRaw =
-    typeof body.advanceDays === 'number' ? body.advanceDays : Number(settings.advance_issue_days ?? 5)
-  const advanceDays = isFinite(advanceDaysRaw) ? Math.max(0, Math.min(28, Math.round(advanceDaysRaw))) : 5
-  // Are we exactly `advanceDays` before a month start? Then this run issues the
-  // invoices for that month, dated on the 1st.
-  const advanceTarget = addDays(runDate, advanceDays)
-  const inAdvanceWindow = isFirstOfMonth(advanceTarget)
-  // The date the invoice is dated as if issued on (the renewal date). Manual and
-  // dry runs outside the window keep using today's date, as before.
-  const billingDate = inAdvanceWindow ? advanceTarget : runDate
+  // --- Fixed monthly issue day -------------------------------------------
+  // Invoices are created + emailed on a FIXED day of every month (default the
+  // 25th). Each invoice is still DATED on the club's own renewal date, but the
+  // send run happens on the issue day and covers every renewal that falls
+  // before the following month's issue day.
+  const issueDayRaw =
+    typeof body.issueDay === 'number'
+      ? body.issueDay
+      : Number(settings.issue_day_of_month ?? settings.invoice_issue_day ?? 25)
+  const issueDay = isFinite(issueDayRaw) ? Math.max(1, Math.min(28, Math.round(issueDayRaw))) : 25
 
-  // Guard: the scheduler fires daily; only the advance-issue day actually bills.
-  // Manual/dry runs and targeted subscription runs bypass the window.
-  if (!dryRun && !body.force && !body.subscriptionIds?.length && !inAdvanceWindow) {
+  const dateOnly = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+  const issueDayIn = (year: number, monthIdx: number) => {
+    const lastDay = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate()
+    return new Date(Date.UTC(year, monthIdx, Math.min(issueDay, lastDay)))
+  }
+  /** First issue-day on or after `d`. */
+  const issueDayOnOrAfter = (d: Date) => {
+    const base = dateOnly(d)
+    const thisMonth = issueDayIn(base.getUTCFullYear(), base.getUTCMonth())
+    return thisMonth >= base ? thisMonth : issueDayIn(base.getUTCFullYear(), base.getUTCMonth() + 1)
+  }
+  /** Last issue-day on or before `d`. */
+  const issueDayOnOrBefore = (d: Date) => {
+    const base = dateOnly(d)
+    const thisMonth = issueDayIn(base.getUTCFullYear(), base.getUTCMonth())
+    return thisMonth <= base ? thisMonth : issueDayIn(base.getUTCFullYear(), base.getUTCMonth() - 1)
+  }
+
+  const today = dateOnly(runDate)
+  const isIssueDay = today.getTime() === issueDayIn(today.getUTCFullYear(), today.getUTCMonth()).getTime()
+  // Renewals up to (and including) the NEXT send run are covered by this run.
+  const coverageEnd = isIssueDay
+    ? issueDayIn(today.getUTCFullYear(), today.getUTCMonth() + 1)
+    : issueDayOnOrAfter(today)
+  const nextIssueDate = isIssueDay ? today : issueDayOnOrAfter(today)
+  const billingDate = runDate
+
+  // Guard: the scheduler fires daily; only the fixed issue day actually bills.
+  // Manual/dry runs and targeted subscription runs bypass the guard.
+  if (!dryRun && !body.force && !body.subscriptionIds?.length && !isIssueDay) {
     return json({
       skipped: true,
-      reason: 'outside-advance-issue-window',
+      reason: 'not-issue-day',
       runDate: runDate.toISOString().slice(0, 10),
-      nextIssueTargets: advanceTarget.toISOString().slice(0, 10),
-      advanceDays,
+      issue_day_of_month: issueDay,
+      next_issue_date: nextIssueDate.toISOString().slice(0, 10),
     })
   }
+
 
 
 
@@ -459,16 +484,25 @@ Deno.serve(async (req) => {
 
       const periodEnd = addBillingMonths(periodStart, cycle)
 
-      // The subscription is only invoiced once the renewal date is here, or at
-      // most `advanceDays` before it. A club whose next period starts months
-      // from now (e.g. still on trial) is NOT invoiced today — even on a dry run.
-      const subDue = iso(addDays(runDate, advanceDays)) >= iso(periodStart)
+      // A real run bills every renewal that falls before the NEXT send run.
+      // A dry run (preview) always projects the upcoming invoice, however far
+      // away the renewal is, so admins can inspect it at any time.
+      const subDueForRun = iso(periodStart) <= iso(coverageEnd)
+      const subDue = dryRun ? true : subDueForRun
+      // The send run that will actually create/email this invoice: the fixed
+      // issue day on or before the renewal date. If that day has already passed
+      // (overdue), it goes out with the very next run.
+      const scheduledSend = (() => {
+        const candidate = issueDayOnOrBefore(periodStart)
+        return candidate < today ? today : candidate
+      })()
 
-      // Every subscription invoice is DATED on the club's renewal date, even
-      // though it is created/emailed a few days earlier. WhatsApp-only invoices
-      // stay on the run's billing date.
+
+      // Every subscription invoice is DATED on the club's renewal date.
+      // WhatsApp-only invoices stay on the run's billing date.
       const invoiceDate = subDue ? periodStart : billingDate
       const invoiceMonth = monthStartIso(invoiceDate)
+
 
 
       const usage = waUsage.get(sub.club_id)
@@ -509,7 +543,10 @@ Deno.serve(async (req) => {
           period_start: iso(periodStart),
           period_end: iso(periodEnd),
           next_renewal: iso(periodStart),
+          scheduled_send: iso(scheduledSend),
+          in_this_run: subDueForRun,
         })
+
         continue
       }
 
@@ -551,8 +588,11 @@ Deno.serve(async (req) => {
           period_end: iso(periodEnd),
           next_renewal: iso(periodEnd),
           subscription_due: subDue,
+          in_this_run: subDueForRun,
+          scheduled_send: iso(scheduledSend),
           issue_date: iso(invoiceDate),
           due_date: iso(dueDate),
+
           line_items: consolidated.lineItems,
           member_count: memberCount,
           currency: billingCurrency,
@@ -792,8 +832,11 @@ Deno.serve(async (req) => {
     run_date: iso(runDate),
     issue_date: iso(billingDate),
     billing_month: billingMonth,
-    advance_days: advanceDays,
-    in_advance_window: inAdvanceWindow,
+    issue_day_of_month: issueDay,
+    is_issue_day: isIssueDay,
+    next_issue_date: iso(nextIssueDate),
+    coverage_end: iso(coverageEnd),
+
     vat_rate: vatRate,
     processed: (subs || []).length,
     issued,

@@ -15,6 +15,8 @@ export type BillingRunResult = {
   period_end?: string;
   next_renewal?: string;
   issue_date?: string;
+  scheduled_send?: string;
+  in_this_run?: boolean;
   due_date?: string;
   subscription_due?: boolean;
   member_count?: number;
@@ -35,8 +37,10 @@ export type BillingRunSummary = {
   run_date?: string;
   issue_date?: string;
   billing_month?: string;
-  advance_days?: number;
-  in_advance_window?: boolean;
+  issue_day_of_month?: number;
+  is_issue_day?: boolean;
+  next_issue_date?: string;
+  coverage_end?: string;
   processed?: number;
   issued?: number;
   skipped?: number;
@@ -44,6 +48,7 @@ export type BillingRunSummary = {
   results?: BillingRunResult[];
   clubLabel?: string;
 };
+
 
 const CYCLE_LABEL: Record<string, string> = {
   monthly: "Monthly",
@@ -69,8 +74,9 @@ export function nextInvoiceSentence(r: BillingRunResult): string {
   }
   return `${r.club || "Club"}: invoice dated ${day(r.issue_date)} for ${money(r.total)} (${cycle}), covering ${day(
     r.period_start,
-  )} – ${day(r.period_end)}, due ${day(r.due_date)}.`;
+  )} – ${day(r.period_end)}, sent ${day(r.scheduled_send)}, due ${day(r.due_date)}.`;
 }
+
 
 export function BillingRunPreviewDialog({
   open,
@@ -85,9 +91,14 @@ export function BillingRunPreviewDialog({
   onConfirmSend?: () => void;
   sending?: boolean;
 }) {
-  const rows = run?.results || [];
+  const rows = [...(run?.results || [])].sort((a, b) =>
+    (a.scheduled_send || a.next_renewal || "9999").localeCompare(b.scheduled_send || b.next_renewal || "9999"),
+  );
   const billable = rows.filter(r => r.status === "dry-run");
+  const dueNow = billable.filter(r => r.in_this_run !== false);
+  const later = billable.filter(r => r.in_this_run === false);
   const grandTotal = billable.reduce((s, r) => s + (r.total || 0), 0);
+  const dueNowTotal = dueNow.reduce((s, r) => s + (r.total || 0), 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,30 +106,34 @@ export function BillingRunPreviewDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Receipt className="h-4 w-4" />
-            Invoice preview {run?.clubLabel ? `— ${run.clubLabel}` : ""}
+            Upcoming invoices {run?.clubLabel ? `— ${run.clubLabel}` : ""}
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge variant="secondary" className="gap-1">
             <CalendarClock className="h-3 w-3" />
-            Run {day(run?.run_date || run?.issue_date)}
+            Next send run {day(run?.next_issue_date)}
           </Badge>
           <Badge variant="outline">
-            Each invoice is dated on the club's renewal date (issued up to {run?.advance_days ?? 0} days early)
+            Issued on the {run?.issue_day_of_month ?? 25}
+            {(run?.issue_day_of_month ?? 25) === 1 ? "st" : "th"} of each month; each invoice is dated on the club's own
+            renewal date
           </Badge>
 
-          <Badge variant="outline">{billable.length} to invoice</Badge>
-          <Badge variant="outline">{rows.length - billable.length} skipped</Badge>
-          <Badge className="bg-emerald-600 hover:bg-emerald-600">Total {money(grandTotal)}</Badge>
+          <Badge variant="outline">{dueNow.length} in next run ({money(dueNowTotal)})</Badge>
+          {later.length > 0 && <Badge variant="outline">{later.length} scheduled later</Badge>}
+          <Badge className="bg-emerald-600 hover:bg-emerald-600">All upcoming {money(grandTotal)}</Badge>
           <span className="text-muted-foreground">Nothing has been created or emailed yet.</span>
+
         </div>
 
         <div className="overflow-x-auto">
-        <Table className="min-w-[900px]">
+        <Table className="min-w-[1020px]">
           <TableHeader>
             <TableRow>
               <TableHead className="text-xs min-w-[190px]">Club</TableHead>
+              <TableHead className="text-xs whitespace-nowrap">Will be sent</TableHead>
               <TableHead className="text-xs whitespace-nowrap">Cycle</TableHead>
               <TableHead className="text-xs">Period covered</TableHead>
               <TableHead className="text-xs">Invoice date</TableHead>
@@ -132,19 +147,26 @@ export function BillingRunPreviewDialog({
           <TableBody>
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-xs text-muted-foreground py-6">
+                <TableCell colSpan={10} className="text-center text-xs text-muted-foreground py-6">
                   No subscriptions matched this run.
                 </TableCell>
               </TableRow>
             )}
             {rows.map((r, i) => {
               const skipped = r.status !== "dry-run";
+              const laterRun = !skipped && r.in_this_run === false;
               return (
                 <TableRow key={`${r.subscription_id || i}`} className={skipped ? "opacity-60" : ""}>
                   <TableCell className="text-xs font-medium align-top">
                     <div className="whitespace-nowrap">{r.club || "—"}</div>
                     {r.invoice_number && <div className="text-[10px] text-muted-foreground font-mono">{r.invoice_number}</div>}
                     {skipped && <div className="text-[10px] text-amber-600 whitespace-nowrap">{r.reason || r.error || r.status}</div>}
+                  </TableCell>
+                  <TableCell className="text-xs whitespace-nowrap align-top">
+                    {day(r.scheduled_send)}
+                    <div className={`text-[10px] ${laterRun ? "text-muted-foreground" : "text-emerald-600"}`}>
+                      {skipped ? "" : laterRun ? "future run" : "next run"}
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs whitespace-nowrap align-top">{cycleLabel(r.billing_cycle)}</TableCell>
                   <TableCell className="text-xs whitespace-nowrap align-top">
@@ -166,10 +188,11 @@ export function BillingRunPreviewDialog({
         </div>
 
 
-        {billable.some(r => r.subscription_due === false) && (
+        {later.length > 0 && (
           <p className="flex items-start gap-2 text-xs text-amber-600">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            Rows marked with a future renewal are previewed for inspection only — a live run would bill usage only.
+            Rows marked "future run" are projections of invoices that will only be generated and emailed on their own
+            send date — running billing now would not create them.
           </p>
         )}
 
@@ -177,12 +200,13 @@ export function BillingRunPreviewDialog({
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          {onConfirmSend && billable.length > 0 && (
+          {onConfirmSend && dueNow.length > 0 && (
             <Button size="sm" disabled={sending} onClick={onConfirmSend}>
-              Generate &amp; email {billable.length} invoice{billable.length === 1 ? "" : "s"}
+              Generate &amp; email {dueNow.length} invoice{dueNow.length === 1 ? "" : "s"} now
             </Button>
           )}
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

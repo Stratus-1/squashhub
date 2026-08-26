@@ -1,22 +1,24 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { buildClubPublicUrl } from "../club-public-url";
 
 describe("buildClubPublicUrl", () => {
-  let originalLocation: Location;
+  const realLocation = window.location;
 
   beforeEach(() => {
-    originalLocation = window.location;
-    // @ts-expect-error - replacing window.location for tests
-    delete window.location;
+    vi.stubGlobal("location", {
+      ...realLocation,
+    });
   });
 
   afterEach(() => {
-    window.location = originalLocation;
+    vi.unstubAllGlobals();
   });
 
   function setHostname(hostname: string, protocol = "https:") {
-    // @ts-expect-error - partial mock
-    window.location = { hostname, origin: `${protocol}//${hostname}` };
+    vi.stubGlobal("location", {
+      hostname,
+      origin: `${protocol}//${hostname}`,
+    });
   }
 
   it("returns /c/:subdomain path on preview hosts", () => {

@@ -8900,7 +8900,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       selectedClubIds={audienceClubIds}
                       onChange={setAudienceClubIds}
                       loading={scopeTreeLoading}
+                      error={scopeTreeError instanceof Error ? scopeTreeError.message : null}
                     />
+
                   </div>
                 )}
 

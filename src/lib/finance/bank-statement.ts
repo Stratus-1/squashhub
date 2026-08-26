@@ -604,7 +604,8 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
 
     const base = {
       txn_date: r.txn_date,
-      description: r.description,
+      description:
+        r.description === "Bank transaction" && amount < 0 ? "Bank charges" : r.description,
       amount: Number(amount.toFixed(2)),
     };
     const key = `${base.txn_date}|${norm(base.description)}|${base.amount.toFixed(2)}`;

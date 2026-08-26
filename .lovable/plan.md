@@ -1,4 +1,4 @@
-# Guarantee league replacements remain saved
+# Guarantee league replacements and controlled corrections
 
 ## Confirmed current state
 
@@ -28,17 +28,25 @@ However, the guarantee is not yet complete:
    - Show a saving/saved/error state and roll back or refetch if persistence fails, rather than leaving an unsaved local lineup that appears successful.
    - Ensure “Reset to default” remains the only explicit action that discards fixture overrides.
 
-3. **Make concurrent edits safe**
+3. **Apply the match-state authorization rule per rubber**
+   - Before any play is recorded for a rubber, the latest authorized save wins. A team captain may still make a last-minute replacement while the fixture is in progress, provided that specific rubber has not started.
+   - As soon as a rubber has live points, completed games, a forfeit, or a winner, lock its participants against further captain changes. Other not-yet-started rubbers in the same fixture remain editable.
+   - After play has started or results have been submitted, expose a separate correction action only to the relevant club admin/platform admin. This may replace the recorded player identity but must preserve game scores, winner, forfeit state, fixture totals, signatures, and submitted status byte-for-byte.
+   - Record who made the post-play correction, when it was made, and the before/after participant identity for auditability. Do not silently treat this as a normal captain lineup save.
+
+4. **Make concurrent edits safe**
    - Replace warn-after-write behavior with an atomic backend save using the last-known lineup timestamp/version.
-   - Reject stale writes, refetch the authoritative lineup, and tell the captain that another user changed it.
+   - Before play starts, accept the latest valid captain/admin save; reject a stale open-screen write that was based on an older server version, refetch, and clearly show the newer authoritative lineup.
    - Save all affected positions transactionally so a multi-position swap cannot partially persist.
 
-4. **Verify every entry path**
+5. **Verify every entry path and role boundary**
    - Add regression coverage for reserve swap → weekly lineup edit → reopen → start marking.
    - Cover drag reorder, roster drop, clear, wizard apply, two-device stale edits, multiple reserves, and fixtures without a summary row.
-   - Confirm a completed/scored rubber remains immutable and no RLS policy is weakened.
+   - Verify captains can replace players in unstarted rubbers while another rubber is live, but cannot change a rubber once its play begins.
+   - Verify club admins can correct the participant on a played/submitted rubber from the existing standings → game review path, while the score/result remains exactly unchanged and the correction is audited.
+   - Confirm ordinary members and captains cannot invoke the post-play correction directly, and do not weaken existing row-level security.
    - Run focused league lineup/substitution tests, then the broader suite and production build. Do not publish.
 
 ## Expected result
 
-Once implemented, a captain-confirmed fixture lineup will remain the source of truth through refreshes, later weekly allocation changes, and match-marker startup. Only an explicit fixture edit/reset by an authorized captain or admin can change it.
+Once implemented, a captain-confirmed fixture lineup will remain the source of truth through refreshes, later weekly allocation changes, and match-marker startup. Captains may keep adjusting each unplayed rubber, with the latest valid save prevailing; play locks that rubber. Club admins retain a separate, audited identity-correction path after play without altering the recorded score.

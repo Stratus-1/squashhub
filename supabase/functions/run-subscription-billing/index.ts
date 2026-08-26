@@ -2,12 +2,11 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { addBillingMonths, CYCLE_MONTHS, cycleDiscount, type BillingCycle } from './billing-cycle.ts'
 import {
-  addDays,
   buildConsolidatedInvoice,
-  isFirstOfMonth,
   monthStartIso,
   previousMonthRange,
 } from './consolidated.ts'
+
 
 interface RequestBody {
   dryRun?: boolean

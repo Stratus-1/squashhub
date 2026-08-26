@@ -519,12 +519,12 @@ Deno.serve(async (req) => {
       const total = consolidated.total
       const displayTotal = +((subtotal + vatAmount) / (fxRate || 1)).toFixed(2)
 
-      const dueDate = new Date(billingDate)
+      const dueDate = new Date(invoiceDate)
       dueDate.setDate(dueDate.getDate() + 14)
 
       // Idempotency: one invoice per club per billing month. An existing issued
       // or paid invoice is left alone; a failed one is retried in place.
-      const prior = existingByClub.get(sub.club_id)
+      const prior = existingByClubMonth.get(`${sub.club_id}|${invoiceMonth}`)
       if (!dryRun && prior && prior.status !== 'failed') {
         skipped++
         results.push({
@@ -532,7 +532,7 @@ Deno.serve(async (req) => {
           club: club?.name,
           invoice_number: prior.invoice_number,
           status: 'skipped',
-          reason: `Already invoiced for ${billingMonth}`,
+          reason: `Already invoiced for ${invoiceMonth}`,
         })
         continue
       }
@@ -544,7 +544,8 @@ Deno.serve(async (req) => {
           subscription_id: sub.id,
           club: club?.name,
           invoice_number: invoiceNumber,
-          billing_month: billingMonth,
+          billing_month: invoiceMonth,
+
           invoice_kind: consolidated.kind,
           billing_cycle: cycle,
           period_start: iso(periodStart),

@@ -1,4 +1,4 @@
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, Navigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,6 +53,10 @@ interface ClubLandingProps {
 export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProps = {}) {
   const { subdomain } = useParams<{ subdomain: string }>();
   const { user, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  // Signed-in admins can preview the public page with ?preview=1 — otherwise
+  // signed-in users are bounced straight to their dashboard.
+  const isPreview = searchParams.get("preview") === "1";
 
   const effectiveSubdomain = subdomain ?? hostSubdomain ?? null;
   const needsQuery = !hostClub && !!effectiveSubdomain;
@@ -162,7 +166,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
     );
   }
 
-  if (!authLoading && user) {
+  if (!authLoading && user && !isPreview) {
     return <Navigate to={displaySubdomain ? `/?club=${encodeURIComponent(displaySubdomain)}` : "/"} replace />;
   }
 
@@ -170,6 +174,12 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
 
   return (
     <div className="min-h-screen bg-background">
+      {isPreview && user && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-amber-500 text-black text-xs font-medium px-4 py-1.5 shadow-lg">
+          Preview mode — this is what visitors see
+          <Link to="/" className="underline underline-offset-2 font-semibold">Back to app</Link>
+        </div>
+      )}
       <SEO
         title={`${club.name} | SquashHub`}
         description={`Join ${club.name} on SquashHub — book courts, track matches, and compete on the ladder.`}

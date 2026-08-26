@@ -1,0 +1,26 @@
+/**
+ * Build a public URL for a club that works on production subdomains,
+ * preview hosts, and localhost.
+ *
+ * Production canonical root is derived from `window.location.origin`.
+ * If the current origin is the root domain, we return a real subdomain URL.
+ * On preview/localhost we keep the `/c/:subdomain` path format so the link
+ * still works inside the sandbox.
+ */
+export function buildClubPublicUrl(subdomain: string, path = ""): string {
+  if (typeof window === "undefined") return "";
+
+  const origin = window.location.origin;
+  const hostname = window.location.hostname;
+  const isPreview = hostname.includes("lovable.app") || hostname === "localhost" || hostname.includes("localhost");
+
+  if (isPreview) {
+    return `${origin}/c/${subdomain}${path}`;
+  }
+
+  // Production: derive the root domain from the current origin.
+  // If we are already on a subdomain (e.g. nsc.squashhub.co.za), strip it.
+  const parts = hostname.split(".");
+  const rootDomain = parts.length > 2 ? parts.slice(-2).join(".") : hostname;
+  return `https://${subdomain}.${rootDomain}${path}`;
+}

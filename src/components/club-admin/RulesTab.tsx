@@ -25,6 +25,7 @@ import {
   signRuleDocument,
 } from "@/hooks/use-club-rules";
 import { ClubRulesContent } from "@/components/ClubRulesContent";
+import { ClubQrShareCard } from "@/components/club-admin/ClubQrShareCard";
 
 export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
   const { data: rules, isLoading } = useClubRules(clubId);
@@ -236,6 +237,13 @@ export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ClubQrShareCard
+        clubId={clubId}
+        clubName={club?.name || "Club"}
+        subdomain={club?.subdomain || ""}
+        logoUrl={club?.logo_url}
+      />
 
       <Card className="p-4 md:p-5 space-y-3">
         <div className="flex items-center justify-between">

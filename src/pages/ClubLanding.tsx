@@ -323,7 +323,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                   className="w-full gap-2 bg-landing-navy hover:bg-landing-navy/90 text-white rounded-full h-12"
                   onClick={() => { window.location.href = signInUrl; }}
                 >
-                  Sign In / Register / Apply for Membership
+                  Sign In
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>

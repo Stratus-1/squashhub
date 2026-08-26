@@ -421,9 +421,12 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
   const seen = new Map<string, number>();
   let prevBalance: number | null = null;
 
+  const SKIP = /(opening|closing|brought\s*forward|carried\s*forward|balance\s*b\/?f|b\/fwd|total)\s*(balance)?/i;
+
   for (const line of lines) {
     const m = line.match(DATE_AT_START);
     if (!m) continue;
+    if (SKIP.test(line)) continue;
     let dateRaw = m[1].trim();
     // "03 Mar" with no year → attach the fallback year
     if (/^\d{1,2}[\s-][A-Za-z]{3,9}$/.test(dateRaw)) dateRaw = `${dateRaw} ${year}`;

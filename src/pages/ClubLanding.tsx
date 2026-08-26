@@ -141,8 +141,9 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
   const treasurerDelegate = getDelegateName(club?.treasurer_member_id);
 
   const signInUrl = displaySubdomain
-    ? `${buildClubPublicUrl(displaySubdomain, "/auth")}?intent=apply`
+    ? buildClubPublicUrl(displaySubdomain, "/auth")
     : "/auth";
+
 
   if (loading) {
     return (

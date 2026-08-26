@@ -27,7 +27,7 @@ describe("buildClubPublicUrl", () => {
   });
 
   it("returns /c/:subdomain path on localhost", () => {
-    setHostname("localhost");
+    setHostname("localhost", "http:");
     expect(buildClubPublicUrl("nsc", "/auth")).toBe("http://localhost/c/nsc/auth");
   });
 

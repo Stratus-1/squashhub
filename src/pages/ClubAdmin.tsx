@@ -6,10 +6,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle, CreditCard, MessageCircle, Router, ScrollText } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake } from "lucide-react";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 import { RulesTab } from "@/components/club-admin/RulesTab";
+import { SkillsDirectoryTab } from "@/components/club-admin/SkillsDirectoryTab";
 
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
@@ -69,6 +70,7 @@ const SETUP_TABS: AdminTab[] = [
 const OPERATIONS_TABS: AdminTab[] = [
   { value: "members", label: "Members", icon: Users, permission: "members", color: "indigo" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users", color: "violet" },
+  { value: "skills", label: "Skills Directory", icon: HeartHandshake, permission: "members", color: "rose", noStatus: true },
   { value: "visitors", label: "Visitors", icon: Globe, permission: "visitors", color: "sky", capability: "visitors" },
   { value: "finance", label: "Club Books", icon: Landmark, permission: "finance", color: "teal", capability: "finance" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs", color: "yellow", capability: "tournaments" },
@@ -202,6 +204,7 @@ export default function ClubAdmin() {
       case "router": return <RouterTab clubId={club.id} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
       case "rules": return <RulesTab clubId={club.id} club={club} />;
+      case "skills": return <SkillsDirectoryTab clubId={club.id} />;
       case "features": return <FeaturesTab clubId={club.id} club={club} />;
       default: return null;
     }

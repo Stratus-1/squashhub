@@ -5,7 +5,6 @@ import {
   addDays,
   buildConsolidatedInvoice,
   isFirstOfMonth,
-  isSubscriptionDue,
   monthStartIso,
   previousMonthRange,
 } from './consolidated.ts'
@@ -320,7 +319,7 @@ Deno.serve(async (req) => {
   // e.g. trial ends 11 Aug 2026 → first invoice issued 12 Aug 2026 covering 12 Aug – 11 Sep.
   const dayAfter = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1))
   const iso = (d: Date) => d.toISOString().slice(0, 10)
-  const billingDay = iso(billingDate)
+
 
   // --- Consolidated monthly billing -------------------------------------
   // One invoice per club per billing month: subscription (renewal months only)

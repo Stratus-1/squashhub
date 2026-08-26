@@ -201,6 +201,8 @@ export async function fetchPairingState(
   return {
     member_id: data?.member_id ?? null,
     locked: !!data?.locked,
+    entry_fee_cents: Number(data?.entry_fee_cents || 0),
+    my_fee_paid: !!data?.my_fee_paid,
     pairs: Array.isArray(data?.pairs) ? (data.pairs as MyPair[]) : [],
   };
 }
@@ -210,6 +212,7 @@ export async function proposePartner(
   groupNumber: number,
   partnerMemberId: string,
   auth: TokenAuth = {},
+  payForPartner = false,
 ) {
   const { data, error } = await (supabase as any).rpc("propose_doubles_partner", {
     p_champ_id: champId,
@@ -217,10 +220,12 @@ export async function proposePartner(
     p_partner_member_id: partnerMemberId,
     p_token: auth.token || null,
     p_verify: auth.verify || null,
+    p_pay_for_partner: !!payForPartner,
   });
   if (error) throw error;
   return data as { id: string; status: PairStatus };
 }
+
 
 export async function respondToPair(pairId: string, accept: boolean, auth: TokenAuth = {}) {
   const { data, error } = await (supabase as any).rpc("respond_doubles_pair", {

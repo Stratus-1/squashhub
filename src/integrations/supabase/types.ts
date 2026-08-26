@@ -10685,6 +10685,18 @@ export type Database = {
         }[]
       }
       get_club_member_count: { Args: { _club_id: string }; Returns: number }
+      get_club_public_fees: {
+        Args: { _club_id: string }
+        Returns: {
+          annual_fee: number
+          billing_period: string
+          description: string
+          fee_class: string
+          id: string
+          name: string
+          sort_order: number
+        }[]
+      }
       get_club_whatsapp_usage: {
         Args: { _club_id: string; _period_end: string; _period_start: string }
         Returns: {

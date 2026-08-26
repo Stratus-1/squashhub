@@ -2506,6 +2506,7 @@ export type Database = {
           joined_at: string
           ladder_position: number | null
           name: string | null
+          occupation: string | null
           pending_captain_claim: boolean
           person_id: string | null
           phone: string | null
@@ -2513,6 +2514,9 @@ export type Database = {
           ranking_points: number
           role: Database["public"]["Enums"]["club_member_role"]
           skill_level: string | null
+          skills: string[]
+          skills_other: string | null
+          skills_updated_at: string | null
           status: Database["public"]["Enums"]["member_status"]
           suspended_at: string | null
           suspension_cleared_at: string | null
@@ -2522,6 +2526,7 @@ export type Database = {
           suspension_status: Database["public"]["Enums"]["member_suspension_status"]
           updated_at: string
           user_id: string | null
+          volunteer_willing: boolean
           whatsapp_opt_out: boolean
         }
         Insert: {
@@ -2546,6 +2551,7 @@ export type Database = {
           joined_at?: string
           ladder_position?: number | null
           name?: string | null
+          occupation?: string | null
           pending_captain_claim?: boolean
           person_id?: string | null
           phone?: string | null
@@ -2553,6 +2559,9 @@ export type Database = {
           ranking_points?: number
           role?: Database["public"]["Enums"]["club_member_role"]
           skill_level?: string | null
+          skills?: string[]
+          skills_other?: string | null
+          skills_updated_at?: string | null
           status?: Database["public"]["Enums"]["member_status"]
           suspended_at?: string | null
           suspension_cleared_at?: string | null
@@ -2562,6 +2571,7 @@ export type Database = {
           suspension_status?: Database["public"]["Enums"]["member_suspension_status"]
           updated_at?: string
           user_id?: string | null
+          volunteer_willing?: boolean
           whatsapp_opt_out?: boolean
         }
         Update: {
@@ -2586,6 +2596,7 @@ export type Database = {
           joined_at?: string
           ladder_position?: number | null
           name?: string | null
+          occupation?: string | null
           pending_captain_claim?: boolean
           person_id?: string | null
           phone?: string | null
@@ -2593,6 +2604,9 @@ export type Database = {
           ranking_points?: number
           role?: Database["public"]["Enums"]["club_member_role"]
           skill_level?: string | null
+          skills?: string[]
+          skills_other?: string | null
+          skills_updated_at?: string | null
           status?: Database["public"]["Enums"]["member_status"]
           suspended_at?: string | null
           suspension_cleared_at?: string | null
@@ -2602,6 +2616,7 @@ export type Database = {
           suspension_status?: Database["public"]["Enums"]["member_suspension_status"]
           updated_at?: string
           user_id?: string | null
+          volunteer_willing?: boolean
           whatsapp_opt_out?: boolean
         }
         Relationships: [

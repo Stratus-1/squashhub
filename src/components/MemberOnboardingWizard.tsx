@@ -26,6 +26,12 @@ import { useMemberClubRules, recordRuleAcceptance } from "@/hooks/use-club-rules
 import { ClubRulesContent } from "@/components/ClubRulesContent";
 import { hasRulesContent, DEFAULT_ACCEPTANCE_STATEMENT } from "@/lib/club-rules";
 import { ScrollText } from "lucide-react";
+import {
+  SkillsExpertiseFields,
+  emptySkillsDraft,
+  skillsPatch,
+  type SkillsDraft,
+} from "@/components/SkillsExpertiseFields";
 import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy, Camera, ScanFace, LogOut } from "lucide-react";
 
 interface StepDef {
@@ -221,6 +227,7 @@ export function MemberOnboardingWizard({
   const [playsLeague, setPlaysLeague] = useState(false);
   const [leagueSelections, setLeagueSelections] = useState<Record<string, LeagueSelection>>({});
   const [memberNumber, setMemberNumber] = useState("");
+  const [skillsDraft, setSkillsDraft] = useState<SkillsDraft>(emptySkillsDraft());
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
   const [detectedAge, setDetectedAge] = useState<number | null>(null);
   const [categoryAutoSet, setCategoryAutoSet] = useState(false);
@@ -685,6 +692,7 @@ export function MemberOnboardingWizard({
         fee_category_id: feeCategoryId || null,
         plays_league: playsLeague,
         club_member_number: memberNumber || null,
+        ...skillsPatch(skillsDraft),
       };
 
       // Track whether this is a pre-existing member (admin-created, imported, or club founder)
@@ -1154,6 +1162,18 @@ export function MemberOnboardingWizard({
                       />
                     </div>
                   )}
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                    <div>
+                      <Label className="text-sm">Skills &amp; Expertise</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Optional — helps the club find the right people when a need comes up. You can skip this and add it later.
+                      </p>
+                    </div>
+                    <SkillsExpertiseFields value={skillsDraft} onChange={setSkillsDraft} compact />
+                  </div>
                 </div>
               </motion.div>
             )}

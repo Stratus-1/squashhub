@@ -104,18 +104,32 @@ export function doublesDivisions(
   );
 }
 
+const ACTIVE_PAIR_STATUSES: PairStatus[] = ["pending", "awaiting_payment", "confirmed"];
+
 export function pairForDivision(pairs: MyPair[], groupNumber: number): MyPair | null {
   const active = pairs.filter(
-    (p) => p.group_number === groupNumber && (p.status === "pending" || p.status === "confirmed"),
+    (p) => p.group_number === groupNumber && ACTIVE_PAIR_STATUSES.includes(p.status),
   );
-  return active.find((p) => p.status === "confirmed") || active[0] || null;
+  return (
+    active.find((p) => p.status === "confirmed") ||
+    active.find((p) => p.status === "awaiting_payment") ||
+    active[0] ||
+    null
+  );
 }
 
 /** What the player is asked to do next for one doubles division. */
-export type PairAction = "choose" | "awaiting_partner" | "respond" | "confirmed" | "locked";
+export type PairAction =
+  | "choose"
+  | "awaiting_partner"
+  | "respond"
+  | "awaiting_payment"
+  | "confirmed"
+  | "locked";
 
 export function pairAction(pair: MyPair | null, locked: boolean): PairAction {
   if (pair?.status === "confirmed") return locked ? "locked" : "confirmed";
+  if (pair?.status === "awaiting_payment") return "awaiting_payment";
   if (locked) return "locked";
   if (!pair) return "choose";
   return pair.proposed_by_me ? "awaiting_partner" : "respond";
@@ -123,10 +137,27 @@ export function pairAction(pair: MyPair | null, locked: boolean): PairAction {
 
 export function pairStatusLabel(pair: MyPair | null): string {
   if (!pair) return "No partner yet";
-  if (pair.status === "confirmed") return `Paired with ${pair.partner_name || "your partner"}`;
-  if (pair.proposed_by_me) return `Waiting for ${pair.partner_name || "your partner"} to accept`;
+  const who = pair.partner_name || "your partner";
+  if (pair.status === "confirmed") return `Paired with ${who} — pair locked`;
+  if (pair.status === "awaiting_payment") return `Paired with ${who} — awaiting payment`;
+  if (pair.proposed_by_me) return `Waiting for ${who} to accept`;
   return `${pair.partner_name || "A player"} asked to pair with you`;
 }
+
+/** Money-aware line shown under the pair status: exactly what is still owed. */
+export function pairPaymentLabel(pair: MyPair | null, feeCents: number, money: (r: number) => string): string | null {
+  if (!pair || feeCents <= 0) return null;
+  const fee = money(feeCents / 100);
+  const who = pair.partner_name || "your partner";
+  if (pair.my_fee_paid && pair.partner_fee_paid) return "Both entry fees are paid.";
+  if (!pair.my_fee_paid && pair.covered_by_partner) return `${who} is paying your ${fee} entry fee.`;
+  if (!pair.my_fee_paid && pair.payer_is_me && pair.pays_for_partner)
+    return `You chose to pay for both entries — ${money((feeCents * 2) / 100)} due.`;
+  if (!pair.my_fee_paid) return `Your ${fee} entry fee is still to pay.`;
+  if (!pair.partner_fee_paid) return `Waiting for ${who} to pay their ${fee} entry fee.`;
+  return null;
+}
+
 
 export function partnerOptionSubtitle(option: PartnerOption): string {
   const bits: string[] = [];

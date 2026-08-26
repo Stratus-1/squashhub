@@ -10950,6 +10950,7 @@ export type Database = {
           id: string | null
           include_visitors: boolean | null
           invite_audience: string | null
+          invite_audience_club_ids: string[] | null
           invite_audience_include_individuals: boolean | null
           invite_audience_league_ids: string[] | null
           invite_audience_member_ids: string[] | null

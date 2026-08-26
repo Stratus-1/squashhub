@@ -245,6 +245,30 @@ Deno.serve(async (req) => {
     const allowed = new Set((ctx.actions ?? []).map((a) => a.key));
     if (reply.action && !allowed.has(reply.action.key)) reply.action = null;
 
+    // ---- Phase 1: turn a create_booking tool call into a proposal to confirm.
+    let proposal: BookingProposal | null = null;
+    if (
+      reply.tool?.name === "create_booking" &&
+      ctx.clubId &&
+      !(ctx as { toolsDisabled?: boolean }).toolsDisabled
+    ) {
+      if (!(await bookingsEnabled(supabase, ctx.clubId))) {
+        reply.answer = "Court booking isn't enabled for this club.";
+      } else {
+        const outcome = await proposeBooking(supabase, ctx.clubId, reply.tool.args ?? {});
+        if (outcome.ok) {
+          proposal = outcome.proposal;
+          reply.answer =
+            reply.answer ||
+            `I can book ${outcome.proposal.summary}. Tap confirm and I'll make it.`;
+        } else {
+          reply.answer = outcome.message;
+        }
+      }
+      reply.action = null;
+    }
+
+
     // Persist the turn (best effort — a logging failure must not break the chat).
     let conversationId = body.conversationId ?? null;
     try {

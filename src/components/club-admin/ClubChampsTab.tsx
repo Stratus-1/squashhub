@@ -984,6 +984,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    */
   const inviteDivisionFormats = (): string[] =>
     Array.from({ length: Math.max(1, numGroups || 1) }, (_, i) => formatForLeague(i + 1) || "").filter(Boolean);
+  /** Stable dependency key so the auto invite text refreshes when formats change. */
+  const divisionFormatsKey = inviteDivisionFormats().join("|");
+
 
   /**
    * Self-scheduled knockout: every division is a knockout AND the players

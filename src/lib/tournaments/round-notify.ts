@@ -57,11 +57,24 @@ export async function notifyRoundDraw(scope: RoundDrawNotifyScope): Promise<Roun
 
   let whatsappSent = 0;
   let whatsappFailed = 0;
-  if (channels.includes("whatsapp") && waList.length > 0 && scope.clubId) {
+  if (channels.includes("whatsapp") && waList.length > 0) {
+    let clubId = scope.clubId ?? null;
+    if (!clubId) {
+      const { data: champ } = await (supabase as any)
+        .from("club_champs")
+        .select("club_id")
+        .eq("id", scope.champId)
+        .maybeSingle();
+      clubId = champ?.club_id ?? null;
+    }
     for (const w of waList) {
+      if (!clubId) {
+        whatsappFailed += 1;
+        continue;
+      }
       try {
         await sendWhatsApp({
-          clubId: scope.clubId,
+          clubId,
           recipients: [{ member_id: w.member_id }],
           kind: "champ_round_draw",
           category: "utility",

@@ -7,8 +7,8 @@ Your summary is correct: after a deploy the new version downloads quietly in the
 | Situation | What the user sees |
 | --- | --- |
 | New build deployed, user mid-task (scoring, wizard, form with unsaved input, upload, payment) | Nothing. Update stays parked. |
-| User finishes the task or navigates to another page | Small banner: "New version ready — Update now / Later" |
-| Taps "Later" | Banner hides for the rest of the session; re-offered on next app open (or next navigation after a long idle) |
+| User finishes the task or navigates to another page | A tiny pill in the bottom corner: a refresh icon + "Update" — no overlay, nothing blocked |
+| Taps "Later" (small x on the pill) | Pill hides for the rest of the session; re-offered on next app open (or next navigation after a long idle) |
 | Taps "Update now" | Save state, let in-flight requests settle, reload, land back on the same screen |
 | Critical security release | Short countdown notice, then forced reload — still blocked only long enough to flush pending saves |
 | Phased rollout | Only the targeted percentage/clubs are offered the update; everyone else stays on the current build until the rollout widens |

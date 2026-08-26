@@ -77,11 +77,17 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: userData, error: userErr } = await admin.auth.getUser(
-      authHeader.replace("Bearer ", ""),
-    );
-    if (userErr || !userData?.user) return json({ error: "Not authenticated" }, 401);
-    const userId = userData.user.id;
+    // Trusted internal caller (e.g. the scheduled comms dispatcher) presents
+    // the service-role key instead of a user JWT.
+    const bearer = authHeader.replace("Bearer ", "").trim();
+    const isInternal = !!serviceKey && bearer === serviceKey;
+
+    let userId = "";
+    if (!isInternal) {
+      const { data: userData, error: userErr } = await admin.auth.getUser(bearer);
+      if (userErr || !userData?.user) return json({ error: "Not authenticated" }, 401);
+      userId = userData.user.id;
+    }
 
     const payload = (await req.json()) as Payload;
     const clubId = payload?.club_id;
@@ -95,12 +101,14 @@ Deno.serve(async (req) => {
     const category = payload.category ?? (payload.content_sid ? "utility" : "service");
 
     // Authorisation: club admin of this club, or platform admin.
-    const [{ data: isClubAdmin }, { data: isPlatformAdmin }] = await Promise.all([
-      admin.rpc("is_club_admin", { _user_id: userId, _club_id: clubId }),
-      admin.rpc("is_platform_admin", { _user_id: userId }),
-    ]);
-    if (!isClubAdmin && !isPlatformAdmin) {
-      return json({ error: "You need club admin rights to send WhatsApp messages" }, 403);
+    if (!isInternal) {
+      const [{ data: isClubAdmin }, { data: isPlatformAdmin }] = await Promise.all([
+        admin.rpc("is_club_admin", { _user_id: userId, _club_id: clubId }),
+        admin.rpc("is_platform_admin", { _user_id: userId }),
+      ]);
+      if (!isClubAdmin && !isPlatformAdmin) {
+        return json({ error: "You need club admin rights to send WhatsApp messages" }, 403);
+      }
     }
 
     const { data: club } = await admin

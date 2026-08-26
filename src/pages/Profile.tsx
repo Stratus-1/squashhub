@@ -632,6 +632,12 @@ export default function Profile() {
                     )}
                   </div>
                 )}
+
+                <div className="border-t border-border pt-3 mt-3 space-y-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Skills &amp; Expertise</p>
+                  <SkillsExpertiseFields value={skillsDraft} onChange={setSkillsDraft} compact />
+                </div>
+
                 {leagueAssocs.length > 0 && (
                   <div className="border-t border-border pt-3 mt-3 space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">League Participation</p>

@@ -84,10 +84,13 @@ function systemPrompt(ctx: NonNullable<Body["context"]>) {
         ? "Answer thoroughly but stay under 120 words."
         : "Answer warmly and briefly, like a helpful club-mate. Under 80 words.";
 
+  const canBook = (ctx.capabilities ?? []).includes("bookings");
+
   return [
     "You are the SquashHub assistant inside a squash club management app.",
     `Club: ${ctx.clubName ?? "this club"}. User: ${ctx.memberName ?? "a member"} (role: ${ctx.role ?? "member"}).`,
     `They are currently on the page: ${ctx.route ?? "/"}.`,
+    `Today's date is ${ctx.today ?? new Date().toISOString().slice(0, 10)} (ISO, club local time).`,
     `Enabled modules: ${(ctx.capabilities ?? []).join(", ") || "unknown"}.`,
     style,
     "Your replies are also read aloud, so write plain spoken language — no markdown, no bullet characters, no links.",
@@ -98,10 +101,20 @@ function systemPrompt(ctx: NonNullable<Body["context"]>) {
     "For multi-step tasks, return a workflow key instead of explaining every step yourself:",
     workflows || "(no workflows available)",
     "",
+    canBook
+      ? [
+          "TOOL — create_booking: when the user asks you to book or reserve a court, return",
+          'tool: {"name": "create_booking", "args": {"date": "YYYY-MM-DD", "start_time": "HH:MM", "duration_minutes": number optional, "court_name": string optional}}.',
+          "Resolve relative dates like 'tonight', 'Wednesday' or 'tomorrow' against today's date, and convert times like '5 o'clock' to 24-hour format (assume afternoon/evening for 1 to 9 o'clock unless they say a.m.).",
+          "If the day or the time is genuinely unclear, ask one short question instead of returning the tool.",
+          "Never claim the booking is made — the app asks the user to confirm first. In your answer just say you have found a slot to confirm.",
+        ].join("\n")
+      : "Court booking is not enabled for this club, so never offer to book a court.",
+    "",
     "Never reveal other members' personal details, payment data or credentials.",
     "If the app cannot do what they ask, or you are not sure, say so plainly and set unanswered to true.",
     "",
-    'Reply with ONLY a JSON object: {"answer": string, "action": {"key": string, "params": object} | null, "workflow_key": string | null, "unanswered": boolean}',
+    'Reply with ONLY a JSON object: {"answer": string, "action": {"key": string, "params": object} | null, "workflow_key": string | null, "tool": {"name": string, "args": object} | null, "unanswered": boolean}',
   ].join("\n");
 }
 
@@ -116,12 +129,17 @@ function parseReply(raw: string) {
           ? { key: parsed.action.key, params: parsed.action.params ?? {} }
           : null,
       workflow_key: typeof parsed.workflow_key === "string" ? parsed.workflow_key : null,
+      tool:
+        parsed.tool && typeof parsed.tool?.name === "string"
+          ? { name: String(parsed.tool.name), args: parsed.tool.args ?? {} }
+          : null,
       unanswered: !!parsed.unanswered,
     };
   } catch {
-    return { answer: raw.trim(), action: null, workflow_key: null, unanswered: false };
+    return { answer: raw.trim(), action: null, workflow_key: null, tool: null, unanswered: false };
   }
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

@@ -498,7 +498,9 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
         li === lastRowLine + 1 &&
         !/\d[.,]\d{2}/.test(line) &&
         line.length <= 60 &&
-        /[a-z]{3}/.test(line)
+        /[A-Za-z]{3}/.test(line) &&
+        !/[:#]\s*\d/.test(line) && // page footers / reference codes
+        !/^\d/.test(line)
       ) {
         last.description = `${last.description} ${line}`.replace(/\s{2,}/g, " ").slice(0, 160).trim();
         lastRowLine = li;
@@ -509,7 +511,9 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
     let rest = line.slice((dm.index ?? 0) + dm[1].length);
     // Some statements repeat a second (value / processed) date — drop it.
     const second = rest.match(DATE_TOKEN);
-    if (second && (second.index ?? 99) <= 2 && parseDate(second[1].trim())) {
+    // Only a token that *starts with a day number* can be a repeated value date —
+    // "PAYMENT 1 000.00" must never be mistaken for one.
+    if (second && (second.index ?? 99) <= 2 && /^\d/.test(second[1].trim()) && parseDate(second[1].trim())) {
       rest = rest.slice((second.index ?? 0) + second[1].length);
     }
 

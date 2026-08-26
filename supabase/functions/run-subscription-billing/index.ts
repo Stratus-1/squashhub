@@ -326,7 +326,14 @@ Deno.serve(async (req) => {
   // One invoice per club per billing month: subscription (renewal months only)
   // + WhatsApp usage for the PREVIOUS calendar month (billed in arrears).
   const billingMonth = monthStartIso(billingDate)
-  const waRange = previousMonthRange(billingDate)
+  const waRangeMonth = previousMonthRange(billingDate)
+  // Because invoices are issued a few days early, the arrears month is not
+  // complete yet at run time. We bill every unbilled message up to the moment of
+  // issuing; anything after that is picked up by the next invoice.
+  const waCutoff = runDate < new Date(`${waRangeMonth.end}T23:59:59.999Z`)
+    ? runDate.toISOString()
+    : `${waRangeMonth.end}T23:59:59.999Z`
+  const waRange = { start: waRangeMonth.start, end: waCutoff.slice(0, 10) }
 
   // Existing invoice for this club + month → idempotency. A previously failed
   // invoice is retried by reusing its row.
@@ -355,7 +362,8 @@ Deno.serve(async (req) => {
       .is('platform_invoice_id', null)
       .is('invoice_id', null)
       .gte('created_at', `${waRange.start}T00:00:00Z`)
-      .lt('created_at', `${waRange.end}T23:59:59.999Z`)
+      .lt('created_at', waCutoff)
+
       .range(0, 99999)
     for (const r of waRows || []) {
       const cur =

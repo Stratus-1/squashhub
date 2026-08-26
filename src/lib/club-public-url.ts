@@ -18,9 +18,16 @@ export function buildClubPublicUrl(subdomain: string, path = ""): string {
     return `${origin}/c/${subdomain}${path}`;
   }
 
-  // Production: derive the root domain from the current origin.
-  // If we are already on a subdomain (e.g. nsc.squashhub.co.za), strip it.
-  const parts = hostname.split(".");
-  const rootDomain = parts.length > 2 ? parts.slice(-2).join(".") : hostname;
+  // Production: canonical root domain for SquashHub.
+  // For known *.squashhub.co.za hosts the root is always squashhub.co.za
+  // (not co.za). For unknown/custom domains, strip exactly one subdomain
+  // level as a safe fallback.
+  const knownRoot = "squashhub.co.za";
+  const isKnownDomain = hostname === knownRoot || hostname.endsWith(`.${knownRoot}`);
+  const rootDomain = isKnownDomain
+    ? knownRoot
+    : hostname.includes(".")
+      ? hostname.split(".").slice(1).join(".")
+      : hostname;
   return `https://${subdomain}.${rootDomain}${path}`;
 }

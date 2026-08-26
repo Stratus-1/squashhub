@@ -126,8 +126,41 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
     });
 
   const handleFile = async (file: File) => {
-    const text = await file.text();
     setFileName(file.name);
+
+    // ---- PDF: text layer first, OCR fallback for scanned statements ----
+    if (isPdfFile(file)) {
+      setParsed(null);
+      setMapping(null);
+      setFormat("pdf");
+      setPdfBusy("Reading PDF…");
+      try {
+        const res = await extractPdfText(file, (pct, stage) =>
+          setPdfBusy(stage === "ocr"
+            ? `Scanned PDF — running OCR… ${Math.round(pct * 100)}%`
+            : `Reading PDF… ${Math.round(pct * 100)}%`),
+        );
+        const rows = parseTextStatement(res.text);
+        if (!rows.length) {
+          return toast.error(
+            res.source === "ocr"
+              ? "Could not read any transactions from that scanned PDF. Try a clearer scan or a CSV export."
+              : "No transactions found in that PDF.",
+          );
+        }
+        setDrafts(hydrate(rows));
+        toast.success(
+          `${rows.length} transactions read from PDF${res.source === "ocr" ? " (OCR)" : ""} — please review before posting`,
+        );
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to read that PDF");
+      } finally {
+        setPdfBusy(null);
+      }
+      return;
+    }
+
+    const text = await file.text();
     const isOfx = /\.(ofx|qfx|qif)$/i.test(file.name) || /<STMTTRN>/i.test(text);
     if (isOfx) {
       setFormat("ofx");
@@ -145,6 +178,7 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
       rebuild(p, p.mapping);
     }
   };
+
 
   const stats = useMemo(() => summarise(drafts.filter((d) => d.include)), [drafts]);
   const dupCount = drafts.filter((d) => d.duplicate !== "none").length;

@@ -7,6 +7,7 @@
 // route through the shared action registry.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { confirmBooking, proposeBooking, type BookingProposal } from "./booking.ts";
 
 const MODEL = "google/gemini-3.7-flash";
 
@@ -16,18 +17,53 @@ type Body = {
   question?: string;
   history?: ChatMsg[];
   conversationId?: string | null;
+  /** Set when the user taps "Confirm" on a proposed action. */
+  confirm?: { tool: "create_booking"; proposal: BookingProposal } | null;
   context?: {
     clubId?: string | null;
     clubName?: string | null;
     memberName?: string | null;
+    memberId?: string | null;
     role?: string;
     route?: string;
     style?: string;
+    today?: string;
     capabilities?: string[];
     actions?: { key: string; label: string; needs?: string[] }[];
     workflows?: { key: string; title: string; summary: string }[];
   };
 };
+
+/** The member row for this user in this club (used as the booking owner). */
+async function resolveMemberId(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  clubId: string,
+  preferred?: string | null,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("club_members")
+    .select("id")
+    .eq("club_id", clubId)
+    .eq("user_id", userId);
+  const ids = (data ?? []).map((r) => String(r.id));
+  if (preferred && ids.includes(preferred)) return preferred;
+  return ids[0] ?? null;
+}
+
+async function bookingsEnabled(
+  supabase: ReturnType<typeof createClient>,
+  clubId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("club_capabilities")
+    .select("enabled")
+    .eq("club_id", clubId)
+    .eq("capability", "bookings")
+    .maybeSingle();
+  return data ? !!data.enabled : true;
+}
+
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -48,10 +84,13 @@ function systemPrompt(ctx: NonNullable<Body["context"]>) {
         ? "Answer thoroughly but stay under 120 words."
         : "Answer warmly and briefly, like a helpful club-mate. Under 80 words.";
 
+  const canBook = (ctx.capabilities ?? []).includes("bookings");
+
   return [
     "You are the SquashHub assistant inside a squash club management app.",
     `Club: ${ctx.clubName ?? "this club"}. User: ${ctx.memberName ?? "a member"} (role: ${ctx.role ?? "member"}).`,
     `They are currently on the page: ${ctx.route ?? "/"}.`,
+    `Today's date is ${ctx.today ?? new Date().toISOString().slice(0, 10)} (ISO, club local time).`,
     `Enabled modules: ${(ctx.capabilities ?? []).join(", ") || "unknown"}.`,
     style,
     "Your replies are also read aloud, so write plain spoken language — no markdown, no bullet characters, no links.",
@@ -62,10 +101,20 @@ function systemPrompt(ctx: NonNullable<Body["context"]>) {
     "For multi-step tasks, return a workflow key instead of explaining every step yourself:",
     workflows || "(no workflows available)",
     "",
+    canBook
+      ? [
+          "TOOL — create_booking: when the user asks you to book or reserve a court, return",
+          'tool: {"name": "create_booking", "args": {"date": "YYYY-MM-DD", "start_time": "HH:MM", "duration_minutes": number optional, "court_name": string optional}}.',
+          "Resolve relative dates like 'tonight', 'Wednesday' or 'tomorrow' against today's date, and convert times like '5 o'clock' to 24-hour format (assume afternoon/evening for 1 to 9 o'clock unless they say a.m.).",
+          "If the day or the time is genuinely unclear, ask one short question instead of returning the tool.",
+          "Never claim the booking is made — the app asks the user to confirm first. In your answer just say you have found a slot to confirm.",
+        ].join("\n")
+      : "Court booking is not enabled for this club, so never offer to book a court.",
+    "",
     "Never reveal other members' personal details, payment data or credentials.",
     "If the app cannot do what they ask, or you are not sure, say so plainly and set unanswered to true.",
     "",
-    'Reply with ONLY a JSON object: {"answer": string, "action": {"key": string, "params": object} | null, "workflow_key": string | null, "unanswered": boolean}',
+    'Reply with ONLY a JSON object: {"answer": string, "action": {"key": string, "params": object} | null, "workflow_key": string | null, "tool": {"name": string, "args": object} | null, "unanswered": boolean}',
   ].join("\n");
 }
 
@@ -80,12 +129,17 @@ function parseReply(raw: string) {
           ? { key: parsed.action.key, params: parsed.action.params ?? {} }
           : null,
       workflow_key: typeof parsed.workflow_key === "string" ? parsed.workflow_key : null,
+      tool:
+        parsed.tool && typeof parsed.tool?.name === "string"
+          ? { name: String(parsed.tool.name), args: parsed.tool.args ?? {} }
+          : null,
       unanswered: !!parsed.unanswered,
     };
   } catch {
-    return { answer: raw.trim(), action: null, workflow_key: null, unanswered: false };
+    return { answer: raw.trim(), action: null, workflow_key: null, tool: null, unanswered: false };
   }
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -104,10 +158,6 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "Not authenticated" }, 401);
 
     const body = (await req.json()) as Body;
-    const question = String(body.question ?? "").trim();
-    if (!question) return json({ error: "A question is required" }, 400);
-    if (question.length > 2000) return json({ error: "That question is too long" }, 400);
-
     const ctx = body.context ?? {};
 
     // The club switch is authoritative and checked server-side, not just in UI.
@@ -123,8 +173,33 @@ Deno.serve(async (req) => {
       if (settings.audience === "admins" && ctx.role !== "admin") {
         return json({ error: "The AI assistant is currently limited to club admins." }, 403);
       }
-      if (settings.actions_enabled === false) ctx.actions = [];
+      if (settings.actions_enabled === false) {
+        ctx.actions = [];
+        if (body.confirm) return json({ error: "Assistant actions are switched off for this club." }, 403);
+        (ctx as { toolsDisabled?: boolean }).toolsDisabled = true;
+      }
     }
+
+    // ---- Phase 2: the user tapped "Confirm" on a proposed booking. ----
+    if (body.confirm?.tool === "create_booking") {
+      const clubId = ctx.clubId ?? body.confirm.proposal?.club_id ?? null;
+      if (!clubId) return json({ error: "No club selected." }, 400);
+      if (!(await bookingsEnabled(supabase, clubId))) {
+        return json({ error: "Court booking is not enabled for this club." }, 403);
+      }
+      const memberId = await resolveMemberId(supabase, user.id, clubId, ctx.memberId ?? null);
+      const result = await confirmBooking(supabase, user.id, clubId, memberId, body.confirm.proposal);
+      return json(
+        result.ok
+          ? { answer: result.message, booking: { id: result.bookingId }, conversationId: body.conversationId ?? null }
+          : { answer: result.message, bookingFailed: true, conversationId: body.conversationId ?? null },
+      );
+    }
+
+    const question = String(body.question ?? "").trim();
+    if (!question) return json({ error: "A question is required" }, 400);
+    if (question.length > 2000) return json({ error: "That question is too long" }, 400);
+
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return json({ error: "AI is not configured for this deployment." }, 500);
@@ -169,6 +244,30 @@ Deno.serve(async (req) => {
     // client-side permission filter.
     const allowed = new Set((ctx.actions ?? []).map((a) => a.key));
     if (reply.action && !allowed.has(reply.action.key)) reply.action = null;
+
+    // ---- Phase 1: turn a create_booking tool call into a proposal to confirm.
+    let proposal: BookingProposal | null = null;
+    if (
+      reply.tool?.name === "create_booking" &&
+      ctx.clubId &&
+      !(ctx as { toolsDisabled?: boolean }).toolsDisabled
+    ) {
+      if (!(await bookingsEnabled(supabase, ctx.clubId))) {
+        reply.answer = "Court booking isn't enabled for this club.";
+      } else {
+        const outcome = await proposeBooking(supabase, ctx.clubId, reply.tool.args ?? {});
+        if (outcome.ok) {
+          proposal = outcome.proposal;
+          reply.answer =
+            reply.answer ||
+            `I can book ${outcome.proposal.summary}. Tap confirm and I'll make it.`;
+        } else {
+          reply.answer = outcome.message;
+        }
+      }
+      reply.action = null;
+    }
+
 
     // Persist the turn (best effort — a logging failure must not break the chat).
     let conversationId = body.conversationId ?? null;
@@ -217,7 +316,7 @@ Deno.serve(async (req) => {
       console.error("ai-assistant persistence failed", e);
     }
 
-    return json({ ...reply, conversationId });
+    return json({ ...reply, proposal, conversationId });
   } catch (e) {
     console.error("ai-assistant failed", e);
     return json({ error: "The assistant hit an unexpected error." }, 500);

@@ -22,7 +22,14 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useDictation } from "@/hooks/use-dictation";
 import { dictationLabel } from "@/lib/help/dictation";
-import { useAiAssistant, useAskAssistant, useAiFeedback } from "@/hooks/use-ai-assistant";
+import {
+  useAiAssistant,
+  useAskAssistant,
+  useAiFeedback,
+  useConfirmAiBooking,
+  type BookingProposal,
+} from "@/hooks/use-ai-assistant";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { actionCatalogue, resolveAiAction } from "@/lib/ai/registry";
 import { availableWorkflows, WORKFLOW_MAP, matchWorkflow, type WorkflowDef } from "@/lib/ai/workflows";
 import { speak, stopSpeaking } from "@/lib/ai/voice";
@@ -33,7 +40,11 @@ type Turn = {
   content: string;
   action?: { key: string; params?: Record<string, string | undefined> } | null;
   workflowKey?: string | null;
+  /** A booking the assistant found; only written once the user confirms. */
+  proposal?: BookingProposal | null;
+  proposalState?: "pending" | "confirmed" | "cancelled";
 };
+
 
 /**
  * Platform-wide AI assistant: voice in, voice out, text chat, guided
@@ -46,6 +57,8 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
   const ai = useAiAssistant();
   const ask = useAskAssistant();
   const feedback = useAiFeedback();
+  const confirmBooking = useConfirmAiBooking();
+  const { activeMember } = useMemberContext();
 
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -94,6 +107,50 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
     say(`${def.title}. ${def.steps[0].title}. ${def.steps[0].detail}`);
   };
 
+  /** Context every assistant call shares (also used by the confirm step). */
+  const baseContext = () => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return {
+      clubId: ai.clubId,
+      clubName: ai.clubName,
+      memberId: activeMember?.id ?? null,
+      role: ai.isAdmin ? "admin" : "member",
+      route: location.pathname,
+      style: ai.style,
+      today,
+      capabilities: Array.from(ai.capabilities),
+    };
+  };
+
+  /** The user tapped Confirm on a proposed booking — only now is it written. */
+  const confirmProposal = async (index: number, proposal: BookingProposal) => {
+    if (confirmBooking.isPending) return;
+    stopSpeaking();
+    try {
+      const res = await confirmBooking.mutateAsync({
+        proposal,
+        conversationId,
+        context: baseContext(),
+      });
+      setTurns((t) =>
+        t.map((turn, i) => (i === index ? { ...turn, proposalState: "confirmed" as const } : turn)),
+      );
+      setTurns((t) => [...t, { role: "assistant", content: res.answer }]);
+      toast.success(res.answer);
+      say(res.answer);
+    } catch (e: any) {
+      const message = e?.message || "The booking could not be made.";
+      setTurns((t) => [...t, { role: "assistant", content: message }]);
+      toast.error(message);
+    }
+  };
+
+  const cancelProposal = (index: number) => {
+    setTurns((t) => t.map((turn, i) => (i === index ? { ...turn, proposalState: "cancelled" as const } : turn)));
+  };
+
+
   const submit = async (raw?: string) => {
     const question = (raw ?? input).trim();
     if (!question || ask.isPending) return;
@@ -115,12 +172,7 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
         conversationId,
         history: turns.slice(-8).map((t) => ({ role: t.role, content: t.content })),
         context: {
-          clubId: ai.clubId,
-          clubName: ai.clubName,
-          role: ai.isAdmin ? "admin" : "member",
-          route: location.pathname,
-          style: ai.style,
-          capabilities: Array.from(ai.capabilities),
+          ...baseContext(),
           actions: ai.settings?.actions_enabled === false ? [] : actionCatalogue(actionCtx),
           workflows: workflows.map((w) => ({ key: w.key, title: w.title, summary: w.summary })),
         },
@@ -128,8 +180,16 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
       setConversationId(res.conversationId ?? conversationId);
       setTurns((t) => [
         ...t,
-        { role: "assistant", content: res.answer, action: res.action, workflowKey: res.workflow_key },
+        {
+          role: "assistant",
+          content: res.answer,
+          action: res.action,
+          workflowKey: res.workflow_key,
+          proposal: res.proposal ?? null,
+          proposalState: res.proposal ? "pending" : undefined,
+        },
       ]);
+
       if (res.workflow_key && WORKFLOW_MAP[res.workflow_key]) {
         const def = WORKFLOW_MAP[res.workflow_key];
         if (workflows.some((w) => w.key === def.key)) setWorkflow({ def, step: 0 });
@@ -175,7 +235,7 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
               <Sparkles className="h-3.5 w-3.5" /> Ask me anything, or say what you want to do.
             </p>
             <p className="text-muted-foreground mt-1">
-              Try “Help me set up tonight's team” or “How do I book a court?”
+              Try “Book court 1 at 5pm on Wednesday”, “Help me set up tonight's team” or “How do I book a court?”
             </p>
           </div>
         )}
@@ -191,11 +251,50 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
               )}
             >
               <p className="whitespace-pre-wrap">{turn.content}</p>
+
+              {turn.proposal && (
+                <div className="mt-2 rounded-md border border-primary/30 bg-background p-2.5">
+                  <p className="text-[12px] font-semibold">Confirm this booking</p>
+                  <p className="text-[12px] text-muted-foreground mt-0.5">
+                    {turn.proposal.court_name} · {turn.proposal.date} · {turn.proposal.start_time}–
+                    {turn.proposal.end_time}
+                  </p>
+                  {turn.proposalState === "confirmed" ? (
+                    <p className="mt-1.5 flex items-center gap-1 text-[12px] font-medium text-primary">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Booked
+                    </p>
+                  ) : turn.proposalState === "cancelled" ? (
+                    <p className="mt-1.5 text-[12px] text-muted-foreground">Cancelled — nothing was booked.</p>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        className="h-7 text-[12px]"
+                        disabled={confirmBooking.isPending}
+                        onClick={() => confirmProposal(i, turn.proposal!)}
+                      >
+                        {confirmBooking.isPending ? "Booking…" : "Confirm booking"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[12px]"
+                        disabled={confirmBooking.isPending}
+                        onClick={() => cancelProposal(i)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {action?.hasAction && (
                 <Button size="sm" variant="secondary" className="mt-2 h-7 text-[12px]" onClick={() => go(action.appPath)}>
                   {action.label} <ArrowRight className="ml-1 h-3 w-3" />
                 </Button>
               )}
+
               {turn.role === "assistant" && (
                 <div className="mt-1.5 flex items-center gap-1">
                   <Button size="icon" variant="ghost" className="h-6 w-6" aria-label="Helpful" onClick={() => rate(turn, "up")}>

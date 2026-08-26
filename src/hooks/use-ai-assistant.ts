@@ -122,11 +122,26 @@ export function useAiAssistant() {
   );
 }
 
+/** A concrete booking the assistant found and is waiting for the user to confirm. */
+export type BookingProposal = {
+  club_id: string;
+  court_id: number;
+  court_name: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  summary: string;
+};
+
 export type AssistantTurn = {
   answer: string;
   action: { key: string; params?: Record<string, string | undefined> } | null;
   workflow_key: string | null;
   unanswered: boolean;
+  proposal?: BookingProposal | null;
+  booking?: { id: string } | null;
+  bookingFailed?: boolean;
   conversationId: string | null;
 };
 
@@ -145,6 +160,38 @@ export function useAskAssistant() {
     },
   });
 }
+
+/**
+ * Second phase of a "doer" action: the user explicitly confirmed, so the server
+ * may now write the booking. Nothing is ever written from the chat turn itself.
+ */
+export function useConfirmAiBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      proposal: BookingProposal;
+      conversationId?: string | null;
+      context: Record<string, unknown>;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("ai-assistant", {
+        body: {
+          confirm: { tool: "create_booking", proposal: payload.proposal },
+          conversationId: payload.conversationId ?? null,
+          context: payload.context,
+        },
+      });
+      if (error) throw new Error((data as any)?.error || error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const turn = data as AssistantTurn;
+      if (turn.bookingFailed) throw new Error(turn.answer || "The booking could not be made.");
+      return turn;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+}
+
 
 /** Rate an answer / flag an unanswered question so admins can improve it. */
 export function useAiFeedback() {

@@ -21,11 +21,13 @@ New `src/lib/app-activity.ts` — a small ref-counted registry generalising toda
 - Auto-detected signals: live marker sessions (existing scoring lock feeds in), any open modal/dialog with a dirty form, in-flight mutations from React Query (`useIsMutating`), file uploads, payment redirect flows.
 - `isBusy()` is read by the update layer; nothing prompts while it is true.
 
-### 2. Deferred prompt gating
-Rework `src/lib/pwa-update.ts` + `UpdatePrompt.tsx`:
-- Waiting worker no longer immediately shows the banner — it sets a `pendingUpdate` state.
-- Banner shows only when **all** hold true: not busy, no dialog open, and a "safe moment" has occurred (route change via a router listener, tab re-focus after idle, or activity count dropping to zero).
-- "Later" records a session-scoped snooze; also honoured on the next cold start via `sessionStorage` (so a fresh app open re-offers it).
+### 2. Deferred, unobtrusive prompt
+`UpdatePrompt.tsx` is redesigned from a top card into a **small corner pill**: a refresh icon plus the word "Update", fixed bottom-right above the bottom nav, subtle background, safe-area aware, with a tiny dismiss x. It never covers content and never blocks input. Tapping it expands to a one-line confirm ("Update to the latest version?") and applies.
+
+Gating in `src/lib/pwa-update.ts`:
+- Waiting worker no longer shows anything immediately — it sets a `pendingUpdate` state.
+- The pill appears only when **all** hold true: not busy, no dialog open, and a "safe moment" has occurred (route change via a router listener, tab re-focus after idle, or activity count dropping to zero). Because it is so small, an early appearance is harmless.
+- The dismiss x records a session-scoped snooze; a fresh app open re-offers it.
 
 ### 3. Graceful apply
 On "Update now": flush React Query mutations (wait up to ~3s), fire a `sh:before-update` event so screens can persist draft state to `sessionStorage`, then activate the waiting worker and reload. The existing route-restore logic is kept and extended to also restore per-screen draft state.

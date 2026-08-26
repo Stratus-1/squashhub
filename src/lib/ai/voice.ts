@@ -74,9 +74,11 @@ export function speak(text: string, opts: { voice?: string | null; rate?: number
   const synth = window.speechSynthesis;
   synth.cancel();
   const utter = new SpeechSynthesisUtterance(clean);
-  const match = opts.voice ? synth.getVoices().find((v) => v.name === opts.voice) : undefined;
+  const wanted = opts.voice ?? pickDefaultVoice();
+  const match = wanted ? synth.getVoices().find((v) => v.name === wanted) : undefined;
   if (match) utter.voice = match;
-  utter.rate = Math.min(1.6, Math.max(0.6, opts.rate ?? 1));
+  utter.rate = Math.min(1.6, Math.max(0.6, opts.rate ?? DEFAULT_RATE));
+  utter.pitch = 0.95; // calmer, slightly lower delivery
   synth.speak(utter);
 }
 

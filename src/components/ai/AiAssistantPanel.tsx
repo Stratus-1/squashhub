@@ -107,6 +107,50 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
     say(`${def.title}. ${def.steps[0].title}. ${def.steps[0].detail}`);
   };
 
+  /** Context every assistant call shares (also used by the confirm step). */
+  const baseContext = () => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return {
+      clubId: ai.clubId,
+      clubName: ai.clubName,
+      memberId: activeMember?.id ?? null,
+      role: ai.isAdmin ? "admin" : "member",
+      route: location.pathname,
+      style: ai.style,
+      today,
+      capabilities: Array.from(ai.capabilities),
+    };
+  };
+
+  /** The user tapped Confirm on a proposed booking — only now is it written. */
+  const confirmProposal = async (index: number, proposal: BookingProposal) => {
+    if (confirmBooking.isPending) return;
+    stopSpeaking();
+    try {
+      const res = await confirmBooking.mutateAsync({
+        proposal,
+        conversationId,
+        context: baseContext(),
+      });
+      setTurns((t) =>
+        t.map((turn, i) => (i === index ? { ...turn, proposalState: "confirmed" as const } : turn)),
+      );
+      setTurns((t) => [...t, { role: "assistant", content: res.answer }]);
+      toast.success(res.answer);
+      say(res.answer);
+    } catch (e: any) {
+      const message = e?.message || "The booking could not be made.";
+      setTurns((t) => [...t, { role: "assistant", content: message }]);
+      toast.error(message);
+    }
+  };
+
+  const cancelProposal = (index: number) => {
+    setTurns((t) => t.map((turn, i) => (i === index ? { ...turn, proposalState: "cancelled" as const } : turn)));
+  };
+
+
   const submit = async (raw?: string) => {
     const question = (raw ?? input).trim();
     if (!question || ask.isPending) return;

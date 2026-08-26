@@ -394,3 +394,78 @@ export function summarise(rows: ParsedBankRow[]) {
     closing_balance: closing,
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Free-text statements (PDF text layer or OCR output)                 */
+/* ------------------------------------------------------------------ */
+
+const DATE_AT_START =
+  /^\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}[\s-][A-Za-z]{3,9}[\s-]?\d{0,4}|[A-Za-z]{3,9}[\s-]\d{1,2},?[\s-]?\d{0,4})\s+(.*)$/;
+
+/** A money token: 1 234,56 / 1,234.56 / (123.45) / -123.45 / R 99.00 — with cents. */
+const MONEY = /\(?-?R?\s?\d{1,3}(?:[ ,.\u00a0]\d{3})*[.,]\d{2}\)?-?/g;
+
+/**
+ * Parse a statement that only exists as free text (PDF text layer or OCR).
+ * Each transaction is assumed to start with a date, followed by a
+ * description, and to end with one or two money columns
+ * (amount, optional running balance).
+ *
+ * `fallbackYear` fills in the year when the statement prints dates like
+ * "03 Mar" without one.
+ */
+export function parseTextStatement(text: string, fallbackYear?: number): ParsedBankRow[] {
+  const year = fallbackYear ?? new Date().getFullYear();
+  const lines = text.split(/\r?\n/).map((l) => l.replace(/\u00a0/g, " ").trim()).filter(Boolean);
+  const out: ParsedBankRow[] = [];
+  const seen = new Map<string, number>();
+  let prevBalance: number | null = null;
+
+  for (const line of lines) {
+    const m = line.match(DATE_AT_START);
+    if (!m) continue;
+    let dateRaw = m[1].trim();
+    // "03 Mar" with no year → attach the fallback year
+    if (/^\d{1,2}[\s-][A-Za-z]{3,9}$/.test(dateRaw)) dateRaw = `${dateRaw} ${year}`;
+    if (/^[A-Za-z]{3,9}[\s-]\d{1,2},?$/.test(dateRaw)) dateRaw = `${dateRaw.replace(/,$/, "")} ${year}`;
+    const txn_date = parseDate(dateRaw);
+    if (!txn_date) continue;
+
+    const rest = m[2];
+    const tokens = rest.match(MONEY);
+    if (!tokens || !tokens.length) continue;
+
+    const nums = tokens.map((t) => parseAmount(t.replace(/-\s*$/, "").trim()) ?? NaN)
+      .map((n, i) => (/-\s*$/.test(tokens[i]) ? -Math.abs(n) : n))
+      .filter((n) => Number.isFinite(n)) as number[];
+    if (!nums.length) continue;
+
+    let amount: number;
+    let balance: number | null = null;
+    if (nums.length >= 2) {
+      balance = nums[nums.length - 1];
+      amount = nums[nums.length - 2];
+      // Sanity check the sign against the running balance when we have one
+      if (prevBalance !== null && Math.abs(prevBalance + amount - balance) > 0.02) {
+        if (Math.abs(prevBalance - amount - balance) <= 0.02) amount = -amount;
+      }
+    } else {
+      amount = nums[0];
+    }
+    if (!Number.isFinite(amount) || amount === 0) continue;
+    prevBalance = balance ?? prevBalance;
+
+    // Description = text before the first money token
+    const firstTok = rest.indexOf(tokens[0]);
+    const description = rest.slice(0, firstTok >= 0 ? firstTok : rest.length)
+      .replace(/\s{2,}/g, " ")
+      .trim() || "Bank transaction";
+
+    const base = { txn_date, description, amount };
+    const key = `${txn_date}|${norm(description)}|${amount.toFixed(2)}`;
+    const occ = (seen.get(key) ?? -1) + 1;
+    seen.set(key, occ);
+    out.push({ ...base, reference: null, balance, fingerprint: makeFingerprint("", base, occ) });
+  }
+  return out.sort((a, b) => a.txn_date.localeCompare(b.txn_date));
+}

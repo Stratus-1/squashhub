@@ -959,25 +959,18 @@ export default function SuperAdminSubscriptions() {
 
         {/* ─── ALL INVOICES TAB ─── */}
         <TabsContent value="invoices-list" className="space-y-4 mt-4">
-          <AllInvoicesList />
-        </TabsContent>
-
-        {/* ─── INVOICE DETAILS TAB ─── */}
-        <TabsContent value="invoice" className="space-y-4 mt-4">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                Head-office details printed on every club subscription invoice
-              </p>
+              <p className="text-sm font-semibold">Club subscription invoices</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                These details appear as the "From" party on monthly/annual invoices auto-generated for each active club subscription.
+                Preview what the next billing run would create, or generate and email invoices now.
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button
                 size="sm"
-                variant="secondary"
-                className="h-8 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/30"
+                variant="outline"
+                className="h-8 text-xs"
                 onClick={() => runBilling.mutate(true)}
                 disabled={runBilling.isPending}
                 title="Preview the invoices that would be generated (nothing created or emailed)"
@@ -997,6 +990,24 @@ export default function SuperAdminSubscriptions() {
                 <Play className="w-3.5 h-3.5 mr-1" />
                 {runBilling.isPending ? "Running..." : "Run Billing Now"}
               </Button>
+            </div>
+          </div>
+          <AllInvoicesList />
+        </TabsContent>
+
+        {/* ─── INVOICE DETAILS TAB ─── */}
+        <TabsContent value="invoice" className="space-y-4 mt-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                Head-office details printed on every club subscription invoice
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                These details appear as the "From" party on monthly/annual invoices auto-generated for each active club subscription.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+
               <Button
                 size="sm"
                 className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"

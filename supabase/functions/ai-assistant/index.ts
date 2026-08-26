@@ -316,7 +316,7 @@ Deno.serve(async (req) => {
       console.error("ai-assistant persistence failed", e);
     }
 
-    return json({ ...reply, conversationId });
+    return json({ ...reply, proposal, conversationId });
   } catch (e) {
     console.error("ai-assistant failed", e);
     return json({ error: "The assistant hit an unexpected error." }, 500);

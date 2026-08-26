@@ -681,6 +681,8 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         onBalances={(filter) => { setBalancesFilter(filter); setBalancesSearch(""); setBalancesOpen(true); }}
         onBill={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }}
         onEnterTx={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }}
+        onImportBank={() => setBankImportOpen(true)}
+        onOpeningBalances={() => setOpeningBalancesOpen(true)}
         moneyAccounts={["bank_current", "bank", "cash"]
           .filter((a) => CHART_OF_ACCOUNTS[a as keyof typeof CHART_OF_ACCOUNTS])
           .map((a) => ({ account: a, label: getLabel(a), balance: getBalance(a), display: money(getBalance(a)) }))}

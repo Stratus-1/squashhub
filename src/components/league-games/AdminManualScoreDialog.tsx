@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ShieldAlert } from "lucide-react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +15,8 @@ interface Props {
   fixtureId: string;
   homeCode: string;
   awayCode: string;
+  fixtureDate?: string | null;
+  fixtureStartTime?: string | null;
   existing?: {
     home_total_points?: number | null;
     away_total_points?: number | null;

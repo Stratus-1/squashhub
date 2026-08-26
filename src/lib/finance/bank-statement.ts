@@ -399,76 +399,141 @@ export function summarise(rows: ParsedBankRow[]) {
 /* Free-text statements (PDF text layer or OCR output)                 */
 /* ------------------------------------------------------------------ */
 
-const DATE_AT_START =
-  /^\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}[\s-][A-Za-z]{3,9}[\s-]?\d{0,4}|[A-Za-z]{3,9}[\s-]\d{1,2},?[\s-]?\d{0,4})\s+(.*)$/;
+const DATE_TOKEN =
+  /(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}[\s-][A-Za-z]{3,9}[\s-]?\d{0,4}|[A-Za-z]{3,9}[\s-]\d{1,2},?[\s-]?\d{0,4})/;
 
-/** A money token: 1 234,56 / 1,234.56 / (123.45) / -123.45 / R 99.00 — with cents. */
-const MONEY = /\(?-?R?\s?\d{1,3}(?:[ ,.\u00a0]\d{3})*[.,]\d{2}\)?-?/g;
+/** A money token: 1 234,56 / 1,234.56 / (123.45) / -123.45 / R 99.00 — cents required. */
+const MONEY = /\(?-?R?\s?\d{1,3}(?:[ ,.\u00a0]\d{3})*[.,]\d{2}\)?\s?(?:-|CR|Cr|cr|DR|Dr|dr)?/g;
+
+const SKIP_LINE =
+  /(opening|closing|brought\s*forward|carried\s*forward|balance\s*b\/?f|b\/fwd|^\s*total|statement\s+period|page\s+\d+\s+of)/i;
+
+type RawRow = { txn_date: string; description: string; nums: number[]; signHint: 0 | 1 | -1 };
+
+/** Numbers on a line, in reading order, with explicit sign markers applied. */
+function moneyTokens(rest: string): { values: number[]; signHint: 0 | 1 | -1 } {
+  const toks = rest.match(MONEY) || [];
+  let signHint: 0 | 1 | -1 = 0;
+  const values: number[] = [];
+  for (const t of toks) {
+    const trailingMinus = /-\s*$/.test(t);
+    const cr = /cr\s*$/i.test(t);
+    const dr = /dr\s*$/i.test(t);
+    const clean = t.replace(/(?:-|CR|Cr|cr|DR|Dr|dr)\s*$/, "").trim();
+    let n = parseAmount(clean);
+    if (n == null || !Number.isFinite(n)) continue;
+    if (trailingMinus || dr) n = -Math.abs(n);
+    if (cr) n = Math.abs(n);
+    if (cr) signHint = 1;
+    if (dr || trailingMinus) signHint = -1;
+    values.push(n);
+  }
+  return { values, signHint };
+}
 
 /**
  * Parse a statement that only exists as free text (PDF text layer or OCR).
- * Each transaction is assumed to start with a date, followed by a
- * description, and to end with one or two money columns
- * (amount, optional running balance).
  *
- * `fallbackYear` fills in the year when the statement prints dates like
- * "03 Mar" without one.
+ * Pass 1 collects candidate transaction lines (date + at least one money
+ * amount) and folds wrapped description lines into the previous row.
+ * Pass 2 works out which column is the running balance and derives each
+ * amount (and its sign) from the balance movement, which is far more reliable
+ * than guessing from layout — especially with noisy OCR output.
  */
 export function parseTextStatement(text: string, fallbackYear?: number): ParsedBankRow[] {
-  const year = fallbackYear ?? new Date().getFullYear();
-  const lines = text.split(/\r?\n/).map((l) => l.replace(/\u00a0/g, " ").trim()).filter(Boolean);
-  const out: ParsedBankRow[] = [];
-  const seen = new Map<string, number>();
-  let prevBalance: number | null = null;
+  const docYear = text.match(/\b(19|20)\d{2}\b/)?.[0];
+  const year = fallbackYear ?? (docYear ? Number(docYear) : new Date().getFullYear());
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.replace(/\u00a0/g, " ").replace(/\s{2,}/g, "  ").trim())
+    .filter(Boolean);
 
-  const SKIP = /(opening|closing|brought\s*forward|carried\s*forward|balance\s*b\/?f|b\/fwd|total)\s*(balance)?/i;
-
+  /* ---------------- pass 1: candidate rows ---------------- */
+  const raw: RawRow[] = [];
   for (const line of lines) {
-    const m = line.match(DATE_AT_START);
-    if (!m) continue;
-    if (SKIP.test(line)) continue;
-    let dateRaw = m[1].trim();
-    // "03 Mar" with no year → attach the fallback year
+    if (SKIP_LINE.test(line)) continue;
+    const dm = line.match(DATE_TOKEN);
+    // Date must sit at the start of the line (statement date column).
+    if (!dm || (dm.index ?? 99) > 3) {
+      // Wrapped description line — append to the previous transaction.
+      const last = raw[raw.length - 1];
+      if (last && !/\d{2}[.,]\d{2}/.test(line) && line.length <= 60 && /[A-Za-z]{3}/.test(line)) {
+        last.description = `${last.description} ${line}`.replace(/\s{2,}/g, " ").slice(0, 160).trim();
+      }
+      continue;
+    }
+
+    let dateRaw = dm[1].trim();
     if (/^\d{1,2}[\s-][A-Za-z]{3,9}$/.test(dateRaw)) dateRaw = `${dateRaw} ${year}`;
     if (/^[A-Za-z]{3,9}[\s-]\d{1,2},?$/.test(dateRaw)) dateRaw = `${dateRaw.replace(/,$/, "")} ${year}`;
     const txn_date = parseDate(dateRaw);
     if (!txn_date) continue;
 
-    const rest = m[2];
-    const tokens = rest.match(MONEY);
-    if (!tokens || !tokens.length) continue;
+    let rest = line.slice((dm.index ?? 0) + dm[1].length);
+    // Some statements repeat a second (value/processed) date — drop it.
+    const second = rest.match(DATE_TOKEN);
+    if (second && (second.index ?? 99) <= 2 && parseDate(second[1].trim())) {
+      rest = rest.slice((second.index ?? 0) + second[1].length);
+    }
 
-    const nums = tokens.map((t) => parseAmount(t.replace(/-\s*$/, "").trim()) ?? NaN)
-      .map((n, i) => (/-\s*$/.test(tokens[i]) ? -Math.abs(n) : n))
-      .filter((n) => Number.isFinite(n)) as number[];
-    if (!nums.length) continue;
+    const { values, signHint } = moneyTokens(rest);
+    if (!values.length) continue;
 
-    let amount: number;
+    const firstTok = (rest.match(MONEY) || [])[0];
+    const cut = firstTok ? rest.indexOf(firstTok) : -1;
+    const description =
+      rest.slice(0, cut >= 0 ? cut : rest.length).replace(/\s{2,}/g, " ").trim() || "Bank transaction";
+
+    raw.push({ txn_date, description, nums: values, signHint });
+  }
+
+  if (!raw.length) return [];
+
+  /* ---------------- pass 2: balance column + signs ---------------- */
+  // A running-balance column exists when most rows carry 2+ money columns and
+  // the last column actually moves like a balance.
+  const multi = raw.filter((r) => r.nums.length >= 2).length;
+  const hasBalance = multi >= Math.max(2, Math.ceil(raw.length * 0.6));
+
+  const out: ParsedBankRow[] = [];
+  const seen = new Map<string, number>();
+  let prevBalance: number | null = null;
+
+  for (const r of raw) {
+    let amount: number | null = null;
     let balance: number | null = null;
-    if (nums.length >= 2) {
-      balance = nums[nums.length - 1];
-      amount = nums[nums.length - 2];
-      // Sanity check the sign against the running balance when we have one
-      if (prevBalance !== null && Math.abs(prevBalance + amount - balance) > 0.02) {
-        if (Math.abs(prevBalance - amount - balance) <= 0.02) amount = -amount;
+
+    if (hasBalance && r.nums.length >= 2) {
+      balance = r.nums[r.nums.length - 1];
+      const candidates = r.nums.slice(0, -1);
+      if (prevBalance !== null) {
+        const delta = Number((balance - prevBalance).toFixed(2));
+        // Trust the balance movement when it matches one of the printed columns.
+        const match = candidates.find((c) => Math.abs(Math.abs(c) - Math.abs(delta)) <= 0.02);
+        amount = match !== undefined ? delta : delta !== 0 ? delta : null;
+      }
+      if (amount === null) {
+        const c = candidates[candidates.length - 1];
+        amount = r.signHint === -1 ? -Math.abs(c) : r.signHint === 1 ? Math.abs(c) : c;
       }
     } else {
-      amount = nums[0];
+      const c = r.nums[0];
+      amount = r.signHint === -1 ? -Math.abs(c) : r.signHint === 1 ? Math.abs(c) : c;
     }
-    if (!Number.isFinite(amount) || amount === 0) continue;
-    prevBalance = balance ?? prevBalance;
 
-    // Description = text before the first money token
-    const firstTok = rest.indexOf(tokens[0]);
-    const description = rest.slice(0, firstTok >= 0 ? firstTok : rest.length)
-      .replace(/\s{2,}/g, " ")
-      .trim() || "Bank transaction";
+    if (amount === null || !Number.isFinite(amount) || amount === 0) {
+      if (balance !== null) prevBalance = balance;
+      continue;
+    }
+    if (balance !== null) prevBalance = balance;
 
-    const base = { txn_date, description, amount };
-    const key = `${txn_date}|${norm(description)}|${amount.toFixed(2)}`;
+    const base = { txn_date: r.txn_date, description: r.description, amount: Number(amount.toFixed(2)) };
+    const key = `${base.txn_date}|${norm(base.description)}|${base.amount.toFixed(2)}`;
     const occ = (seen.get(key) ?? -1) + 1;
     seen.set(key, occ);
     out.push({ ...base, reference: null, balance, fingerprint: makeFingerprint("", base, occ) });
   }
+
   return out.sort((a, b) => a.txn_date.localeCompare(b.txn_date));
 }
+

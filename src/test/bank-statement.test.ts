@@ -154,3 +154,32 @@ describe("parseTextStatement (PDF / OCR text)", () => {
     expect(parseTextStatement("01/01/2026 Statement period continues").length).toBe(0);
   });
 });
+
+describe("parseTextStatement — balance-chain reconciliation", () => {
+  it("derives amounts and signs from the running balance", () => {
+    const text = [
+      "Statement period 01 Mar 2026 to 31 Mar 2026",
+      "Opening balance 1 000,00",
+      "01 Mar 2026 CLUB FEES JOE   500,00   1 500,00",
+      "03 Mar 2026 BALL PURCHASE   250,00   1 250,00",
+      "05 Mar 2026 BANK CHARGES   50,00   1 200,00",
+    ].join("\n");
+    const rows = parseTextStatement(text);
+    expect(rows.map((r) => [r.txn_date, r.amount])).toEqual([
+      ["2026-03-01", 500],
+      ["2026-03-03", -250],
+      ["2026-03-05", -50],
+    ]);
+  });
+
+  it("uses Cr/Dr markers when there is no balance column", () => {
+    const rows = parseTextStatement("02/03/2026 EFT IN 1 234,56 Cr\n04/03/2026 EFT OUT 100,00 Dr");
+    expect(rows.map((r) => r.amount)).toEqual([1234.56, -100]);
+  });
+
+  it("folds wrapped description lines into the previous transaction", () => {
+    const rows = parseTextStatement("01 Mar 2026 EFT PAYMENT 100,00\nREF SQUASH CLUB");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].description).toContain("REF SQUASH CLUB");
+  });
+});

@@ -162,6 +162,9 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
     }
 
     const text = await file.text();
+    if (text.startsWith("%PDF")) {
+      return toast.error("That file is a PDF — please re-upload it so it can be read as a PDF.");
+    }
     const isOfx = /\.(ofx|qfx|qif)$/i.test(file.name) || /<STMTTRN>/i.test(text);
     if (isOfx) {
       setFormat("ofx");

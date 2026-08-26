@@ -31,6 +31,7 @@ interface ClubData {
   chairman_member_id?: string | null;
   secretary_member_id?: string | null;
   club_captain_member_id?: string | null;
+  treasurer_member_id?: string | null;
   show_delegates_on_landing?: boolean;
 }
 
@@ -129,6 +130,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
   const chairmanDelegate = getDelegateName(club?.chairman_member_id);
   const secretaryDelegate = getDelegateName(club?.secretary_member_id);
   const captainDelegate = getDelegateName(club?.club_captain_member_id);
+  const treasurerDelegate = getDelegateName(club?.treasurer_member_id);
 
   const signInUrl = (() => {
     const clubParam = displaySubdomain ? `club=${encodeURIComponent(displaySubdomain)}` : "";
@@ -164,7 +166,7 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
     return <Navigate to={displaySubdomain ? `/?club=${encodeURIComponent(displaySubdomain)}` : "/"} replace />;
   }
 
-  const hasDelegates = chairmanDelegate || secretaryDelegate || captainDelegate;
+  const hasDelegates = chairmanDelegate || secretaryDelegate || captainDelegate || treasurerDelegate;
 
   return (
     <div className="min-h-screen bg-background">
@@ -235,9 +237,15 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                     </div>
                   )}
                   {captainDelegate && (
-                    <div className="col-span-2">
+                    <div>
                       <div className="font-bold text-sm">Captain:</div>
                       <div className="text-sm">{captainDelegate.name}</div>
+                    </div>
+                  )}
+                  {treasurerDelegate && (
+                    <div>
+                      <div className="font-bold text-sm">Treasurer:</div>
+                      <div className="text-sm">{treasurerDelegate.name}</div>
                     </div>
                   )}
                 </div>

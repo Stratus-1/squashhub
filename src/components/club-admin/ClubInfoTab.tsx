@@ -144,7 +144,7 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
   const steps: SetupStep[] = [
     { id: "identity", label: "Identity", description: "Give the club its name and upload the logo that appears on the app, invoices and emails.", complete: !!form.name && !!form.logo_url },
     { id: "contact", label: "Contact details", description: "Where members and visitors reach the club — address, phone, email and who to speak to.", complete: !!form.address && !!form.email && !!form.phone },
-    { id: "bearers", label: "Office bearers", description: "Link the chairman, secretary and club captain to their member records, and choose whether they show on your public page.", complete: !!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id },
+    { id: "bearers", label: "Office bearers", description: "Link the chairman, secretary, club captain and treasurer to their member records, and choose whether they show on your public page.", complete: !!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id || !!form.treasurer_member_id },
     { id: "currency", label: "Currency", description: "Pick the currency used for every fee, invoice, statement and bar sale.", complete: !!form.currency_code },
   ];
 
@@ -230,27 +230,29 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
       {step === "bearers" && (
         <SetupSection
           title="Office bearers"
-          description="Chairman, secretary and club captain — pulled from your member list."
-          complete={!!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id}
+          description="Chairman, secretary, club captain and treasurer — pulled from your member list."
+          complete={!!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id || !!form.treasurer_member_id}
           editing={isEditing("bearers")}
           onEdit={() => startEdit("bearers")}
           onCancel={() => cancelEdit("bearers")}
-          onSave={() => save("bearers", ["chairman_member_id", "secretary_member_id", "club_captain_member_id", "show_delegates_on_landing"])}
+          onSave={() => save("bearers", ["chairman_member_id", "secretary_member_id", "club_captain_member_id", "treasurer_member_id", "show_delegates_on_landing"])}
           saving={updateClub.isPending}
         >
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {isEditing("bearers") ? (
                 <>
                   <SearchableMemberSelect label="Chairman" value={form.chairman_member_id} field="chairman_member_id" />
                   <SearchableMemberSelect label="Secretary" value={form.secretary_member_id} field="secretary_member_id" />
                   <SearchableMemberSelect label="Club Captain" value={form.club_captain_member_id} field="club_captain_member_id" />
+                  <SearchableMemberSelect label="Treasurer" value={form.treasurer_member_id} field="treasurer_member_id" />
                 </>
               ) : (
                 <>
                   <SetupField label="Chairman" editing={false} value={memberName(form.chairman_member_id)}><span /></SetupField>
                   <SetupField label="Secretary" editing={false} value={memberName(form.secretary_member_id)}><span /></SetupField>
                   <SetupField label="Club Captain" editing={false} value={memberName(form.club_captain_member_id)}><span /></SetupField>
+                  <SetupField label="Treasurer" editing={false} value={memberName(form.treasurer_member_id)}><span /></SetupField>
                 </>
               )}
             </div>

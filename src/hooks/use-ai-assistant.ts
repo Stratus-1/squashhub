@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { DEFAULT_RATE } from "@/lib/ai/voice";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -112,7 +113,7 @@ export function useAiAssistant() {
       isAdmin: !!isAdmin,
       capabilities,
       voice: prefs?.voice ?? settings?.default_voice ?? null,
-      rate: Number(prefs?.rate ?? settings?.default_rate ?? 1),
+      rate: Number(prefs?.rate ?? settings?.default_rate ?? DEFAULT_RATE),
       style: prefs?.response_style ?? settings?.response_style ?? "friendly",
       speakReplies: (prefs?.speak_replies ?? true) && !!settings?.voice_output_enabled,
       voiceInput: !!settings?.voice_input_enabled,

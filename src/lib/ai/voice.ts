@@ -12,22 +12,28 @@ export type VoiceOption = {
   lang: string;
 };
 
+/**
+ * Ordered preference: calm, clear, male English voices first.
+ * (Platform voice names differ, so we match on the well-known ones.)
+ */
 const PREFERRED = [
-  /google uk english female/i,
+  /google uk english male/i,
+  /(daniel|arthur|oliver|george)/i, // Apple UK/AU male
+  /microsoft (ryan|george|guy|william|davis|thomas)/i,
   /google us english/i,
-  /samantha/i,
-  /karen/i,
-  /serena/i,
-  /aria/i,
-  /jenny/i,
+  /(alex|aaron|fred|rishi)/i,
+  /male/i,
   /natural/i,
 ];
+
+/** Voices we never want to auto-pick — thin, robotic or clearly female defaults. */
+const AVOID = /(zira|hazel|susan|samantha|karen|serena|moira|tessa|fiona|victoria|female)/i;
 
 export function speechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-/** Selectable voices, best-sounding English ones first. */
+/** Selectable voices, calmest/clearest English male voices first. */
 export function listVoices(): VoiceOption[] {
   if (!speechSupported()) return [];
   const voices = window.speechSynthesis.getVoices() ?? [];
@@ -35,11 +41,21 @@ export function listVoices(): VoiceOption[] {
     .filter((v) => /^en/i.test(v.lang) || /^af/i.test(v.lang))
     .map((v) => {
       const rank = PREFERRED.findIndex((re) => re.test(v.name));
-      return { v, rank: rank === -1 ? PREFERRED.length : rank };
+      const base = rank === -1 ? PREFERRED.length : rank;
+      return { v, rank: AVOID.test(v.name) ? base + PREFERRED.length : base };
     })
     .sort((a, b) => a.rank - b.rank || a.v.name.localeCompare(b.v.name));
   return scored.map(({ v }) => ({ id: v.name, label: `${v.name} (${v.lang})`, lang: v.lang }));
 }
+
+/** Best available default when neither the user nor the club picked a voice. */
+export function pickDefaultVoice(): string | null {
+  return listVoices()[0]?.id ?? null;
+}
+
+/** Calm, clear pace — a touch under normal speed. */
+export const DEFAULT_RATE = 0.95;
+
 
 /** Strip anything that reads badly out loud. */
 export function speakableText(text: string): string {
@@ -58,9 +74,11 @@ export function speak(text: string, opts: { voice?: string | null; rate?: number
   const synth = window.speechSynthesis;
   synth.cancel();
   const utter = new SpeechSynthesisUtterance(clean);
-  const match = opts.voice ? synth.getVoices().find((v) => v.name === opts.voice) : undefined;
+  const wanted = opts.voice ?? pickDefaultVoice();
+  const match = wanted ? synth.getVoices().find((v) => v.name === wanted) : undefined;
   if (match) utter.voice = match;
-  utter.rate = Math.min(1.6, Math.max(0.6, opts.rate ?? 1));
+  utter.rate = Math.min(1.6, Math.max(0.6, opts.rate ?? DEFAULT_RATE));
+  utter.pitch = 0.95; // calmer, slightly lower delivery
   synth.speak(utter);
 }
 

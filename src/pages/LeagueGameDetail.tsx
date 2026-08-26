@@ -3900,6 +3900,8 @@ export default function LeagueGameDetail() {
           fixtureId={fixtureId}
           homeCode={homeCode}
           awayCode={awayCode}
+          fixtureDate={(fixture as any)?.fixture_date ?? null}
+          fixtureStartTime={(fixture as any)?.start_time ?? null}
           existing={existingResult as any}
           onSaved={() => {
             queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });

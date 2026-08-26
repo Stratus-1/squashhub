@@ -158,10 +158,6 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "Not authenticated" }, 401);
 
     const body = (await req.json()) as Body;
-    const question = String(body.question ?? "").trim();
-    if (!question) return json({ error: "A question is required" }, 400);
-    if (question.length > 2000) return json({ error: "That question is too long" }, 400);
-
     const ctx = body.context ?? {};
 
     // The club switch is authoritative and checked server-side, not just in UI.
@@ -177,8 +173,33 @@ Deno.serve(async (req) => {
       if (settings.audience === "admins" && ctx.role !== "admin") {
         return json({ error: "The AI assistant is currently limited to club admins." }, 403);
       }
-      if (settings.actions_enabled === false) ctx.actions = [];
+      if (settings.actions_enabled === false) {
+        ctx.actions = [];
+        if (body.confirm) return json({ error: "Assistant actions are switched off for this club." }, 403);
+        (ctx as { toolsDisabled?: boolean }).toolsDisabled = true;
+      }
     }
+
+    // ---- Phase 2: the user tapped "Confirm" on a proposed booking. ----
+    if (body.confirm?.tool === "create_booking") {
+      const clubId = ctx.clubId ?? body.confirm.proposal?.club_id ?? null;
+      if (!clubId) return json({ error: "No club selected." }, 400);
+      if (!(await bookingsEnabled(supabase, clubId))) {
+        return json({ error: "Court booking is not enabled for this club." }, 403);
+      }
+      const memberId = await resolveMemberId(supabase, user.id, clubId, ctx.memberId ?? null);
+      const result = await confirmBooking(supabase, user.id, clubId, memberId, body.confirm.proposal);
+      return json(
+        result.ok
+          ? { answer: result.message, booking: { id: result.bookingId }, conversationId: body.conversationId ?? null }
+          : { answer: result.message, bookingFailed: true, conversationId: body.conversationId ?? null },
+      );
+    }
+
+    const question = String(body.question ?? "").trim();
+    if (!question) return json({ error: "A question is required" }, 400);
+    if (question.length > 2000) return json({ error: "That question is too long" }, 400);
+
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) return json({ error: "AI is not configured for this deployment." }, 500);

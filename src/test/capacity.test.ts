@@ -150,8 +150,46 @@ describe("computeCapacity", () => {
     // 8 players round-robin = 28 games × 20 min = 560 court-minutes vs 60 available
     expect(r.requiredCourtMinutes).toBe(560);
     expect(r.fits).toBe(false);
-    expect(r.bottleneck).toMatch(/more match slot/);
+    // Only 3 time slots in the hour, so the round limit bites before court time does
+    expect(r.bottleneck).toMatch(/only has 3 20-minute slots/);
   });
+
+  it("caps a Bells league by the number of time slots, not the number of courts", () => {
+    // 09:00–15:00 = 360 min, 20 min slots, 4 courts → 18 time slots, 72 match slots
+    const day = [{ date: "2026-09-05", minutes: 360, courts: 4 }];
+    const r = computeCapacity({
+      sessions: day,
+      // Stored draw format may still say swiss; the Bells scoring mode wins.
+      leagues: [league({ format: "swiss", scoring: "time_capped_points", slotMinutes: 20, entities: 0 })],
+      isDoubles: true,
+      parallelLeagues: false,
+      crossLeague: false,
+    });
+    const L = r.perLeague[0];
+    expect(L.isTimeCapped).toBe(true);
+    expect(L.isSwiss).toBe(false);
+    expect(L.slotsAvailable).toBe(18);
+    expect(L.gamesAvailable).toBe(72);
+    // 12 pairs = 66 matches over 11 rounds — both limits respected
+    expect(L.maxEntities).toBe(12);
+    expect(r.maxPlayersTotal).toBe(24);
+  });
+
+  it("flags a Bells field that cannot get through its rounds in the day", () => {
+    const day = [{ date: "2026-09-05", minutes: 360, courts: 8 }];
+    const r = computeCapacity({
+      sessions: day,
+      leagues: [league({ scoring: "time_capped_points", slotMinutes: 20, entities: 24 })],
+      isDoubles: false,
+      parallelLeagues: false,
+      crossLeague: false,
+    });
+    expect(r.perLeague[0].roundsNeeded).toBe(23);
+    expect(r.perLeague[0].shortfallRounds).toBe(5);
+    expect(r.fits).toBe(false);
+    expect(r.bottleneck).toMatch(/Extra courts will not help/);
+  });
+
 
   it("returns fits=null while no field is planned", () => {
     const r = computeCapacity({ sessions, leagues: [league()], isDoubles: false, parallelLeagues: false, crossLeague: false });

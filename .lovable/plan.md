@@ -1,14 +1,14 @@
 # Safe Silent Update System
 
-Your summary is correct: after a deploy the new version downloads quietly in the background and **no prompt appears while someone is working**. The banner only surfaces at a safe moment — a page/route change, returning to the app, or when the current task finishes. Critical security releases are the one exception.
+Your summary is correct: after a deploy the new version downloads quietly in the background and **no prompt appears while someone is working**. It only surfaces at a safe moment — a page/route change, returning to the app, or when the current task finishes — and even then it is only a small, ignorable icon in the corner, never a blocking banner. Critical security releases are the one exception.
 
 ## Behaviour
 
 | Situation | What the user sees |
 | --- | --- |
 | New build deployed, user mid-task (scoring, wizard, form with unsaved input, upload, payment) | Nothing. Update stays parked. |
-| User finishes the task or navigates to another page | Small banner: "New version ready — Update now / Later" |
-| Taps "Later" | Banner hides for the rest of the session; re-offered on next app open (or next navigation after a long idle) |
+| User finishes the task or navigates to another page | A tiny pill in the bottom corner: a refresh icon + "Update" — no overlay, nothing blocked |
+| Taps "Later" (small x on the pill) | Pill hides for the rest of the session; re-offered on next app open (or next navigation after a long idle) |
 | Taps "Update now" | Save state, let in-flight requests settle, reload, land back on the same screen |
 | Critical security release | Short countdown notice, then forced reload — still blocked only long enough to flush pending saves |
 | Phased rollout | Only the targeted percentage/clubs are offered the update; everyone else stays on the current build until the rollout widens |
@@ -21,11 +21,13 @@ New `src/lib/app-activity.ts` — a small ref-counted registry generalising toda
 - Auto-detected signals: live marker sessions (existing scoring lock feeds in), any open modal/dialog with a dirty form, in-flight mutations from React Query (`useIsMutating`), file uploads, payment redirect flows.
 - `isBusy()` is read by the update layer; nothing prompts while it is true.
 
-### 2. Deferred prompt gating
-Rework `src/lib/pwa-update.ts` + `UpdatePrompt.tsx`:
-- Waiting worker no longer immediately shows the banner — it sets a `pendingUpdate` state.
-- Banner shows only when **all** hold true: not busy, no dialog open, and a "safe moment" has occurred (route change via a router listener, tab re-focus after idle, or activity count dropping to zero).
-- "Later" records a session-scoped snooze; also honoured on the next cold start via `sessionStorage` (so a fresh app open re-offers it).
+### 2. Deferred, unobtrusive prompt
+`UpdatePrompt.tsx` is redesigned from a top card into a **small corner pill**: a refresh icon plus the word "Update", fixed bottom-right above the bottom nav, subtle background, safe-area aware, with a tiny dismiss x. It never covers content and never blocks input. Tapping it expands to a one-line confirm ("Update to the latest version?") and applies.
+
+Gating in `src/lib/pwa-update.ts`:
+- Waiting worker no longer shows anything immediately — it sets a `pendingUpdate` state.
+- The pill appears only when **all** hold true: not busy, no dialog open, and a "safe moment" has occurred (route change via a router listener, tab re-focus after idle, or activity count dropping to zero). Because it is so small, an early appearance is harmless.
+- The dismiss x records a session-scoped snooze; a fresh app open re-offers it.
 
 ### 3. Graceful apply
 On "Update now": flush React Query mutations (wait up to ~3s), fire a `sh:before-update` event so screens can persist draft state to `sessionStorage`, then activate the waiting worker and reload. The existing route-restore logic is kept and extended to also restore per-screen draft state.

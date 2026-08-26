@@ -17,6 +17,7 @@ import {
   parseDelimitedStatement,
   parseOfx,
   parseTextStatement,
+  detectOpeningBalance,
   buildRows,
   detectDuplicate,
   suggestAccount,
@@ -142,6 +143,8 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
             : `Reading PDF… ${Math.round(pct * 100)}%`),
         );
         const rows = parseTextStatement(res.text);
+        const detectedOpening = detectOpeningBalance(res.text);
+        if (detectedOpening !== null && isFirstStatement) setOpeningBalance(String(detectedOpening));
         if (!rows.length) {
           return toast.error(
             res.source === "ocr"

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  detectOpeningBalance,
   parseAmount,
   parseDate,
   parseDelimitedStatement,
@@ -181,5 +182,46 @@ describe("parseTextStatement — balance-chain reconciliation", () => {
     const rows = parseTextStatement("01 Mar 2026 EFT PAYMENT 100,00\nREF SQUASH CLUB");
     expect(rows).toHaveLength(1);
     expect(rows[0].description).toContain("REF SQUASH CLUB");
+  });
+});
+
+describe("parseTextStatement — FNB statement layout", () => {
+  // Real FNB call-account layout: no year on dates, `Cr` markers instead of
+  // signs, and an accrued-bank-charges column printed AFTER the balance.
+  const fnb = [
+    "Statement Period : 30 April 2026 to 30 July 2026",
+    "Opening Balance 4,758.51 Cr Service Fees 450.00 Dr",
+    "Closing Balance 10,202.43 Cr",
+    "Date Description Amount Balance",
+    "02 May FNB App Payment To Broomstix Squash Bane 810.00 3,948.51Cr 45.00",
+    "02 May FNB App Payment To Gbay Security 002019 736.11 3,212.40Cr 45.00",
+    "27 May Payshap Credit Aam Coetzee & Family 1,260.00Cr 4,472.40Cr",
+    "30 May 135.00 4,337.40Cr",
+    "On 29 May 2026, the Prime Lending Rate changed to 10.50%.",
+  ].join("\n");
+
+  it("reads amounts, signs and the balance column correctly", () => {
+    const rows = parseTextStatement(fnb);
+    expect(rows.map((r) => [r.txn_date, r.amount, r.balance])).toEqual([
+      ["2026-05-02", -810, 3948.51],
+      ["2026-05-02", -736.11, 3212.4],
+      ["2026-05-27", 1260, 4472.4],
+      ["2026-05-30", -135, 4337.4],
+    ]);
+  });
+
+  it("keeps the reference digits in the description, not in the amount", () => {
+    const rows = parseTextStatement(fnb);
+    expect(rows[1].description).toContain("002019");
+  });
+
+  it("ignores rate footnotes and reconciles to the closing balance", () => {
+    const rows = parseTextStatement(fnb);
+    const net = rows.reduce((s, r) => s + r.amount, 0);
+    expect(Number((4758.51 + net).toFixed(2))).toBe(4337.4);
+  });
+
+  it("detects the printed opening balance", () => {
+    expect(detectOpeningBalance(fnb)).toBe(4758.51);
   });
 });

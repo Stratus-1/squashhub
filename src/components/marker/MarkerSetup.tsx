@@ -336,7 +336,7 @@ export function MarkerSetup({ onStart }: Props) {
         .select("id, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
         .in("id", champs.map((c: any) => c.id));
       const rulesMap = new Map((tournamentRules || []).map((c: any) => [c.id, c]));
-      const champMap = new Map(champs.map((c: any) => [c.id, { ...c, ...(rulesMap.get(c.id) || {}) }]));
+      const champMap = new Map(champs.map((c: any) => [c.id, { ...c, ...((rulesMap.get(c.id) as any) || {}) }]));
 
       // 2. Their non-terminal, scheduled-from-today matches.
       const { data, error } = await supabase

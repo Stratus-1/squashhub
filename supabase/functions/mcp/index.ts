@@ -20,7 +20,7 @@ function clientFor(ctx) {
 }
 var whoami_default = defineTool({
   name: "whoami",
-  title: "Who Am I",
+  title: "Who am I",
   description: "Return the signed-in SquashHub user's basic profile and club memberships.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },

@@ -3563,6 +3563,7 @@ export default function LeagueGameDetail() {
           associationId={fixtureRulesAssociationId ?? null}
           fixtureDate={fixture?.fixture_date ?? null}
           allowMultiFixturePerNight={!!leagueRules?.allow_multi_fixture_per_night}
+          subRules={leagueRules}
           onSelect={handleSwap}
           onClear={() => handleClearSlot(swapTarget.idx, swapTarget.side)}
         />

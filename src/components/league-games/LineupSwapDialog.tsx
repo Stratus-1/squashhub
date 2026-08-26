@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, UserMinus, ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
+import { checkSubEligibility, parseLeagueNumber, type SubRules } from "@/lib/league-sub-eligibility";
 
 export interface SwapCandidate {
   memberId: string;
@@ -38,6 +39,7 @@ interface Props {
   fixtureDate?: string | null;
   /** Allow registered players from another same-tier team to sub in this fixture. */
   allowMultiFixturePerNight?: boolean;
+  subRules?: SubRules | null;
   onSelect: (c: SwapCandidate) => void;
   onClear?: () => void;
 }
@@ -47,12 +49,13 @@ export function LineupSwapDialog({
   currentName, currentCode, inUseCodes,
   associationId, fixtureDate,
   allowMultiFixturePerNight = false,
+  subRules,
   onSelect, onClear,
 }: Props) {
   const [search, setSearch] = useState("");
 
   const { data: candidates, isLoading } = useQuery({
-    queryKey: ["lineup-swap-candidates", teamCode, associationId, fixtureDate, allowMultiFixturePerNight],
+    queryKey: ["lineup-swap-candidates", teamCode, associationId, fixtureDate, allowMultiFixturePerNight, subRules],
     queryFn: async (): Promise<SwapCandidate[]> => {
       if (!teamCode) return [];
 
@@ -141,6 +144,7 @@ export function LineupSwapDialog({
       };
 
       const targetTier = tierOf({ code: teamCode, name: teamLeagueName });
+      const targetLeagueNumber = parseLeagueNumber(targetTier ?? teamLeagueName, teamCode);
 
       // 5) Same-tier reserves leagues (any name with "reserve" + matching ordinal).
       const sameTierReserveLeagueIds: string[] = [];
@@ -245,6 +249,20 @@ export function LineupSwapDialog({
         const m = memberMap.get(id);
         const info = regInfo.get(id);
         if (!m || !info) continue;
+        const registration = filteredRegs.find((r) => r.club_member_id === id && !reserveLeagueIdSet.has(r.league_id))
+          ?? filteredRegs.find((r) => r.club_member_id === id);
+        const sourceLeague = leaguesList.find((l) => l.id === registration?.league_id);
+        const sourceLeagueNumber = sourceLeague
+          ? parseLeagueNumber(tierOf(sourceLeague) ?? sourceLeague.name, sourceLeague.code)
+          : null;
+        if (targetLeagueNumber != null) {
+          const eligibility = checkSubEligibility(
+            subRules,
+            { homeLeagueNumber: sourceLeagueNumber, homePosition: info.rank ?? null, gender: null },
+            { leagueNumber: targetLeagueNumber, position, gender: "open" },
+          );
+          if (!eligibility.ok) continue;
+        }
         const code = (info.code || m.club_member_number || "").toString().toUpperCase();
         out.push({
           memberId: id,

@@ -848,13 +848,18 @@ export type Database = {
       }
       champ_doubles_pairs: {
         Row: {
+          accepted_at: string | null
           champ_id: string
           created_at: string
           group_number: number
           id: string
+          locked_at: string | null
           member_a: string
           member_b: string
           note: string | null
+          origin: string
+          payer_member_id: string | null
+          pays_for_partner: boolean
           proposed_by: string
           responded_at: string | null
           responded_by: string | null
@@ -862,13 +867,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accepted_at?: string | null
           champ_id: string
           created_at?: string
           group_number: number
           id?: string
+          locked_at?: string | null
           member_a: string
           member_b: string
           note?: string | null
+          origin?: string
+          payer_member_id?: string | null
+          pays_for_partner?: boolean
           proposed_by: string
           responded_at?: string | null
           responded_by?: string | null
@@ -876,13 +886,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accepted_at?: string | null
           champ_id?: string
           created_at?: string
           group_number?: number
           id?: string
+          locked_at?: string | null
           member_a?: string
           member_b?: string
           note?: string | null
+          origin?: string
+          payer_member_id?: string | null
+          pays_for_partner?: boolean
           proposed_by?: string
           responded_at?: string | null
           responded_by?: string | null
@@ -10319,6 +10334,15 @@ export type Database = {
           phone: string
         }[]
       }
+      admin_pair_doubles_players: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
+          p_member_a: string
+          p_member_b: string
+        }
+        Returns: Json
+      }
       admin_reorder_ladder: {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined
@@ -10414,6 +10438,7 @@ export type Database = {
         Args: { p_champ_id: string; p_group_number: number }
         Returns: boolean
       }
+      champ_entry_fee_cents: { Args: { p_champ_id: string }; Returns: number }
       champ_member_accepted: {
         Args: {
           p_champ_id: string
@@ -10422,6 +10447,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      champ_member_fee_paid: {
+        Args: { p_champ_id: string; p_member_id: string }
+        Returns: boolean
+      }
+      champ_member_invited: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
+          p_member_id: string
+        }
+        Returns: boolean
+      }
+      champ_pair_settle: { Args: { p_pair_id: string }; Returns: string }
       champ_pairing_locked: { Args: { p_champ_id: string }; Returns: boolean }
       champ_sync_pair_entries: {
         Args: {
@@ -11016,6 +11054,7 @@ export type Database = {
         }
         Returns: Json
       }
+      notify_doubles_pair: { Args: { p_pair_id: string }; Returns: Json }
       org_descendants: {
         Args: { _org_id: string }
         Returns: {
@@ -11064,6 +11103,7 @@ export type Database = {
           p_champ_id: string
           p_group_number: number
           p_partner_member_id: string
+          p_pay_for_partner?: boolean
           p_token?: string
           p_verify?: string
         }

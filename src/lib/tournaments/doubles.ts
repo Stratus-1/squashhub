@@ -31,16 +31,29 @@ export const PARTNER_OPTION_FIELDS = [
   "ladder_position",
 ] as const;
 
-export type PairStatus = "pending" | "confirmed" | "rejected" | "cancelled";
+export type PairStatus =
+  | "pending"
+  | "awaiting_payment"
+  | "confirmed"
+  | "rejected"
+  | "cancelled";
 
 export type MyPair = {
   id: string;
   group_number: number;
   status: PairStatus;
+  origin?: string | null;
   proposed_by_me: boolean;
   partner_member_id: string;
   partner_name: string | null;
   partner_club: string | null;
+  /** The proposer promised to pay both entry fees. */
+  pays_for_partner?: boolean;
+  payer_is_me?: boolean;
+  covered_by_partner?: boolean;
+  my_fee_paid?: boolean;
+  partner_fee_paid?: boolean;
+  locked_at?: string | null;
   created_at?: string | null;
   responded_at?: string | null;
 };
@@ -48,11 +61,14 @@ export type MyPair = {
 export type PairingState = {
   member_id: string | null;
   locked: boolean;
+  entry_fee_cents: number;
+  my_fee_paid: boolean;
   pairs: MyPair[];
 };
 
 export const PARTNER_MUST_REGISTER_MESSAGE =
-  "Your partner must register first before you can select them.";
+  "Only players who were invited to this division can be picked as a partner.";
+
 
 /** Defence in depth: never let anything but the safe fields reach the UI. */
 export function sanitizePartnerOption(raw: any): PartnerOption | null {
@@ -88,18 +104,32 @@ export function doublesDivisions(
   );
 }
 
+const ACTIVE_PAIR_STATUSES: PairStatus[] = ["pending", "awaiting_payment", "confirmed"];
+
 export function pairForDivision(pairs: MyPair[], groupNumber: number): MyPair | null {
   const active = pairs.filter(
-    (p) => p.group_number === groupNumber && (p.status === "pending" || p.status === "confirmed"),
+    (p) => p.group_number === groupNumber && ACTIVE_PAIR_STATUSES.includes(p.status),
   );
-  return active.find((p) => p.status === "confirmed") || active[0] || null;
+  return (
+    active.find((p) => p.status === "confirmed") ||
+    active.find((p) => p.status === "awaiting_payment") ||
+    active[0] ||
+    null
+  );
 }
 
 /** What the player is asked to do next for one doubles division. */
-export type PairAction = "choose" | "awaiting_partner" | "respond" | "confirmed" | "locked";
+export type PairAction =
+  | "choose"
+  | "awaiting_partner"
+  | "respond"
+  | "awaiting_payment"
+  | "confirmed"
+  | "locked";
 
 export function pairAction(pair: MyPair | null, locked: boolean): PairAction {
   if (pair?.status === "confirmed") return locked ? "locked" : "confirmed";
+  if (pair?.status === "awaiting_payment") return "awaiting_payment";
   if (locked) return "locked";
   if (!pair) return "choose";
   return pair.proposed_by_me ? "awaiting_partner" : "respond";
@@ -107,10 +137,27 @@ export function pairAction(pair: MyPair | null, locked: boolean): PairAction {
 
 export function pairStatusLabel(pair: MyPair | null): string {
   if (!pair) return "No partner yet";
-  if (pair.status === "confirmed") return `Paired with ${pair.partner_name || "your partner"}`;
-  if (pair.proposed_by_me) return `Waiting for ${pair.partner_name || "your partner"} to accept`;
+  const who = pair.partner_name || "your partner";
+  if (pair.status === "confirmed") return `Paired with ${who} — pair locked`;
+  if (pair.status === "awaiting_payment") return `Paired with ${who} — awaiting payment`;
+  if (pair.proposed_by_me) return `Waiting for ${who} to accept`;
   return `${pair.partner_name || "A player"} asked to pair with you`;
 }
+
+/** Money-aware line shown under the pair status: exactly what is still owed. */
+export function pairPaymentLabel(pair: MyPair | null, feeCents: number, money: (r: number) => string): string | null {
+  if (!pair || feeCents <= 0) return null;
+  const fee = money(feeCents / 100);
+  const who = pair.partner_name || "your partner";
+  if (pair.my_fee_paid && pair.partner_fee_paid) return "Both entry fees are paid.";
+  if (!pair.my_fee_paid && pair.covered_by_partner) return `${who} is paying your ${fee} entry fee.`;
+  if (!pair.my_fee_paid && pair.payer_is_me && pair.pays_for_partner)
+    return `You chose to pay for both entries — ${money((feeCents * 2) / 100)} due.`;
+  if (!pair.my_fee_paid) return `Your ${fee} entry fee is still to pay.`;
+  if (!pair.partner_fee_paid) return `Waiting for ${who} to pay their ${fee} entry fee.`;
+  return null;
+}
+
 
 export function partnerOptionSubtitle(option: PartnerOption): string {
   const bits: string[] = [];
@@ -154,6 +201,8 @@ export async function fetchPairingState(
   return {
     member_id: data?.member_id ?? null,
     locked: !!data?.locked,
+    entry_fee_cents: Number(data?.entry_fee_cents || 0),
+    my_fee_paid: !!data?.my_fee_paid,
     pairs: Array.isArray(data?.pairs) ? (data.pairs as MyPair[]) : [],
   };
 }
@@ -163,6 +212,7 @@ export async function proposePartner(
   groupNumber: number,
   partnerMemberId: string,
   auth: TokenAuth = {},
+  payForPartner = false,
 ) {
   const { data, error } = await (supabase as any).rpc("propose_doubles_partner", {
     p_champ_id: champId,
@@ -170,10 +220,12 @@ export async function proposePartner(
     p_partner_member_id: partnerMemberId,
     p_token: auth.token || null,
     p_verify: auth.verify || null,
+    p_pay_for_partner: !!payForPartner,
   });
   if (error) throw error;
   return data as { id: string; status: PairStatus };
 }
+
 
 export async function respondToPair(pairId: string, accept: boolean, auth: TokenAuth = {}) {
   const { data, error } = await (supabase as any).rpc("respond_doubles_pair", {
@@ -200,24 +252,52 @@ export type OrganiserPair = {
   id: string;
   group_number: number;
   status: PairStatus;
+  origin?: string | null;
   member_a: string;
   member_a_name: string | null;
+  member_a_paid?: boolean;
   member_b: string;
   member_b_name: string | null;
+  member_b_paid?: boolean;
+  pays_for_partner?: boolean;
+  payer_member_id?: string | null;
   proposed_by: string;
+  locked_at?: string | null;
   created_at?: string | null;
   responded_at?: string | null;
 };
 
 export async function fetchOrganiserPairs(
   champId: string,
-): Promise<{ locked: boolean; pairs: OrganiserPair[] }> {
+): Promise<{ locked: boolean; entry_fee_cents: number; pairs: OrganiserPair[] }> {
   const { data, error } = await (supabase as any).rpc("tournament_doubles_pairs", {
     p_champ_id: champId,
   });
   if (error) throw error;
-  return { locked: !!data?.locked, pairs: Array.isArray(data?.pairs) ? data.pairs : [] };
+  return {
+    locked: !!data?.locked,
+    entry_fee_cents: Number(data?.entry_fee_cents || 0),
+    pairs: Array.isArray(data?.pairs) ? data.pairs : [],
+  };
 }
+
+/** Organiser pre-selects a pair for a division. */
+export async function adminPairPlayers(
+  champId: string,
+  groupNumber: number,
+  memberA: string,
+  memberB: string,
+) {
+  const { data, error } = await (supabase as any).rpc("admin_pair_doubles_players", {
+    p_champ_id: champId,
+    p_group_number: groupNumber,
+    p_member_a: memberA,
+    p_member_b: memberB,
+  });
+  if (error) throw error;
+  return data as { id: string; status: PairStatus };
+}
+
 
 export async function setPairingLocked(champId: string, locked: boolean) {
   const { error } = await (supabase as any).rpc("set_doubles_pairing_locked", {

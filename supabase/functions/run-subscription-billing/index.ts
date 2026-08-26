@@ -14,10 +14,11 @@ interface RequestBody {
   subscriptionIds?: string[]
   billingDate?: string // ISO date; defaults to today
   vatRate?: number // 0..1 override; falls back to settings/0
-  /** Days before the renewal date that invoices are issued/emailed. */
-  advanceDays?: number
-  /** Run even when today is not inside the advance-issue window. */
+  /** Fixed day of the month invoices are issued/emailed on (1-28, default 25). */
+  issueDay?: number
+  /** Run even when today is not the fixed issue day. */
   force?: boolean
+
 }
 
 Deno.serve(async (req) => {

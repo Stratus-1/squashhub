@@ -6,9 +6,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle, CreditCard, MessageCircle, Router } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle, CreditCard, MessageCircle, Router, ScrollText } from "lucide-react";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
+import { RulesTab } from "@/components/club-admin/RulesTab";
 
 import { ClubInfoTab } from "@/components/club-admin/ClubInfoTab";
 import { FinanceTab } from "@/components/club-admin/FinanceTab";
@@ -47,6 +48,7 @@ type AdminTab = { value: string; label: string; icon: any; permission?: Permissi
 const SETUP_TABS: AdminTab[] = [
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
+  { value: "rules", label: "Rules & Constitution", icon: ScrollText, permission: "club", color: "amber", noStatus: true },
   { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true },
   // Courts is core: admins must always be able to add courts, otherwise a club
   // with Court Bookings off could never set them up (circular dependency).
@@ -199,6 +201,7 @@ export default function ClubAdmin() {
       case "whatsapp": return <div className="mt-4"><WhatsAppBillingCard clubId={club.id} /></div>;
       case "router": return <RouterTab clubId={club.id} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
+      case "rules": return <RulesTab clubId={club.id} club={club} />;
       case "features": return <FeaturesTab clubId={club.id} club={club} />;
       default: return null;
     }

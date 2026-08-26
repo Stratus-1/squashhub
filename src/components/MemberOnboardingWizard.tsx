@@ -21,6 +21,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useMemberClubRules, recordRuleAcceptance } from "@/hooks/use-club-rules";
+import { ClubRulesContent } from "@/components/ClubRulesContent";
+import { hasRulesContent, DEFAULT_ACCEPTANCE_STATEMENT } from "@/lib/club-rules";
+import { ScrollText } from "lucide-react";
 import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy, Camera, ScanFace, LogOut } from "lucide-react";
 
 interface StepDef {
@@ -36,6 +41,7 @@ const BASE_STEPS: StepDef[] = [
   { id: "fees", label: "Fees & Payment", icon: CreditCard },
 ];
 
+const RULES_STEP: StepDef = { id: "rules", label: "Club Rules", icon: ScrollText };
 const FACE_STEP: StepDef = { id: "face", label: "Face Enrolment", icon: ScanFace };
 const DONE_STEP: StepDef = { id: "done", label: "Complete", icon: Check };
 
@@ -108,12 +114,21 @@ export function MemberOnboardingWizard({
   // Check face_enrolment_required from useMyClub data OR fetch directly from ClubContext
   const faceRequired = !!(club as any)?.face_enrolment_required || !!(ctxClub as any)?.face_enrolment_required;
 
+  const { data: clubRules } = useMemberClubRules(clubId);
+  const rulesApply = hasRulesContent(clubRules);
+  const rulesRequireAcceptance = rulesApply && clubRules?.require_acceptance !== false;
+  const [rulesAccepted, setRulesAccepted] = useState(false);
+  const acceptanceStatement = clubRules?.acceptance_statement || DEFAULT_ACCEPTANCE_STATEMENT;
+
   const STEPS = useMemo(() => {
     const steps = [...BASE_STEPS];
+    // Rules sit between "Membership" and "Fees & Payment" so members read them
+    // before anything is charged.
+    if (rulesApply) steps.splice(3, 0, RULES_STEP);
     if (faceRequired) steps.push(FACE_STEP);
     steps.push(DONE_STEP);
     return steps;
-  }, [faceRequired]);
+  }, [faceRequired, rulesApply]);
 
   // Face enrolment state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -801,6 +816,21 @@ export function MemberOnboardingWizard({
         cmId = cmData?.id ?? null;
       }
 
+      // Audit record: exactly which rules version this member accepted, and when.
+      if (rulesRequireAcceptance && rulesAccepted && clubId && user?.id) {
+        try {
+          await recordRuleAcceptance({
+            clubId,
+            userId: user.id,
+            clubMemberId: cmId,
+            version: clubRules?.current_version || 1,
+            statement: acceptanceStatement,
+          });
+        } catch (e) {
+          console.warn("[MemberOnboardingWizard] rule acceptance record error", e);
+        }
+      }
+
       if (playsLeague && cmId && Object.keys(leagueSelections).length > 0) {
         try {
           await applyLeagueSelections({
@@ -886,6 +916,7 @@ export function MemberOnboardingWizard({
   const canProceed = () => {
     if (step === 1) return name.trim().length >= 2;
     if (step === 2) return true;
+    if (currentStepId === "rules") return !rulesRequireAcceptance || rulesAccepted;
     if (currentStepId === "face") return !!capturedPhoto;
     return true;
   };
@@ -1127,8 +1158,37 @@ export function MemberOnboardingWizard({
               </motion.div>
             )}
 
+            {/* ─── CLUB RULES ─── */}
+            {currentStepId === "rules" && (
+              <motion.div key="rules" {...slideVariants} className="flex-1 space-y-4 pt-2">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-heading">Club Rules &amp; Constitution</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    Please read the club rules below before completing your registration.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <Card className="p-4 max-h-[45vh] overflow-y-auto">
+                  <ClubRulesContent rulesText={clubRules?.rules_text} documents={clubRules?.documents} />
+                </Card>
+
+                {rulesRequireAcceptance && (
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={rulesAccepted}
+                      onCheckedChange={(v) => setRulesAccepted(v === true)}
+                      aria-label="Accept club rules"
+                    />
+                    <span className="text-[12px] leading-snug text-muted-foreground">
+                      {acceptanceStatement} <span className="text-destructive">*</span>
+                    </span>
+                  </label>
+                )}
+              </motion.div>
+            )}
+
             {/* ─── FEES ─── */}
-            {step === 3 && (
+            {currentStepId === "fees" && (
               <motion.div key="fees" {...slideVariants} className="flex-1 space-y-4 pt-2">
                 <DialogHeader>
                   <DialogTitle className="text-lg font-heading">Fees Summary</DialogTitle>

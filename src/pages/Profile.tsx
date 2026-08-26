@@ -12,6 +12,14 @@ import { Loader2, Pencil, Camera, Trash2, ScanFace, CheckCircle2 } from "lucide-
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { GoBookCredentialsCard } from "@/components/GoBookCredentialsCard";
 import { NsaCredentialsCard } from "@/components/NsaCredentialsCard";
+import {
+  SkillsExpertiseFields,
+  emptySkillsDraft,
+  skillsDraftFromMember,
+  skillsPatch,
+  type SkillsDraft,
+} from "@/components/SkillsExpertiseFields";
+import { skillLabel, normaliseSkills, parseOtherSkills } from "@/lib/member-skills";
 
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

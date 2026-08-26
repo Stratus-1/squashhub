@@ -26,6 +26,7 @@ import { RenewalInvoicesTab } from "./RenewalInvoicesTab";
 import { LedgerReconciliationDialog } from "./LedgerReconciliationDialog";
 import { IncomeStatementTab } from "./IncomeStatementTab";
 import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
+import { BankStatementImportDialog } from "./BankStatementImportDialog";
 import DebitOrdersPanel from "./DebitOrdersPanel";
 
 /* ─── Chart of Accounts definition ─── */
@@ -146,6 +147,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [openingBalancesOpen, setOpeningBalancesOpen] = useState(false);
+  const [bankImportOpen, setBankImportOpen] = useState(false);
   const [statementMemberId, setStatementMemberId] = useState<string>("");
   const [statementOpen, setStatementOpen] = useState(false);
   const [statementSearch, setStatementSearch] = useState("");
@@ -761,6 +763,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   <ListTree className="w-3.5 h-3.5" /> Resync Fees
                 </Button>
                 )}
+                <Button size="sm" variant="outline" onClick={() => setBankImportOpen(true)} className="gap-1.5 h-8">
+                  <Landmark className="w-3.5 h-3.5" /> Import Bank Statement
+                </Button>
+                <BankStatementImportDialog
+                  open={bankImportOpen}
+                  onOpenChange={setBankImportOpen}
+                  clubId={clubId}
+                  accounts={CHART_OF_ACCOUNTS as any}
+                />
                 <Button size="sm" variant="outline" onClick={() => setOpeningBalancesOpen(true)} className="gap-1.5 h-8">
                   <BookOpen className="w-3.5 h-3.5" /> Opening Balances
                 </Button>

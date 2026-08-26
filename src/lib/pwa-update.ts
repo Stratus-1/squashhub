@@ -1,42 +1,164 @@
-// UPDATE flow (deliberately separate from the INSTALL flow).
+// SAFE SILENT UPDATE flow (deliberately separate from the INSTALL flow).
 //
 // A waiting service worker means a newer deployed build is ready. We never
-// activate it silently: the user gets "Update now / Later", and we never
-// reload while live scoring is in progress.
+// activate it silently, and we never interrupt someone who is mid-task:
+//   • the new build downloads in the background,
+//   • nothing is shown while the user is busy (scoring, forms, uploads,
+//     open dialogs, in-flight writes),
+//   • at the next safe moment (route change, tab return, activity finishing)
+//     a small corner pill offers the update,
+//   • "Later" snoozes it for the session; a fresh app open re-offers it,
+//   • "Update now" flushes pending writes, saves state, reloads, and returns
+//     the user to the same screen,
+//   • only releases marked `critical` force an immediate (still graceful)
+//     reload.
+
+import { isBusy } from "./app-activity";
+import {
+  fetchLatestRelease,
+  getDeviceId,
+  isInRolloutCohort,
+  type ReleaseInfo,
+} from "./release-policy";
 
 export const SW_UPDATE_EVENT = "sh:sw-update-available";
+/** Fired just before the page reloads so screens can persist draft state. */
+export const BEFORE_UPDATE_EVENT = "sh:before-update";
 
 type UpdateFn = (reload?: boolean) => Promise<void>;
 
 let applyFn: UpdateFn | null = null;
+let release: ReleaseInfo | null = null;
+let cohortChecked = false;
+let inCohort = true;
+let snoozed = false;
+let clubId: string | null = null;
+
+const SNOOZE_KEY = "sh.pwa.updateSnoozed";
+const RETURN_KEY = "sh.pwa.updateReturnTo";
+const DRAFT_EVENT_KEY = "sh.pwa.updateAt";
+
+try {
+  snoozed = sessionStorage.getItem(SNOOZE_KEY) === "1";
+} catch {
+  // ignore
+}
+
+function announce() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(SW_UPDATE_EVENT));
+}
+
+/** Set by the app once the active club is known (used for club-targeted rollouts). */
+export function setUpdateClubContext(id: string | null): void {
+  if (clubId === id) return;
+  clubId = id;
+  cohortChecked = false;
+  void evaluateCohort();
+}
+
+async function evaluateCohort(): Promise<void> {
+  if (cohortChecked) return;
+  cohortChecked = true;
+  release = await fetchLatestRelease();
+  inCohort = isInRolloutCohort(release, getDeviceId(), clubId);
+  announce();
+}
 
 /** Called by pwa-register when workbox reports a waiting worker. */
 export function setUpdateHandler(fn: UpdateFn): void {
   applyFn = fn;
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent(SW_UPDATE_EVENT));
-  }
+  void evaluateCohort();
+  announce();
 }
 
 export function hasPendingUpdate(): boolean {
   return applyFn !== null;
 }
 
-const RETURN_KEY = "sh.pwa.updateReturnTo";
+/** True when the waiting build is a critical (security) release. */
+export function isCriticalUpdate(): boolean {
+  return !!applyFn && release?.severity === "critical";
+}
 
-/** Activate the waiting SW and reload. Caller must confirm with the user. */
+/** True when this device is inside the rollout cohort for the waiting build. */
+export function isUpdateInCohort(): boolean {
+  return inCohort;
+}
+
+export function isUpdateSnoozed(): boolean {
+  return snoozed;
+}
+
+/**
+ * Should the update pill be shown right now?
+ * The caller additionally gates on a "safe moment" having occurred.
+ */
+export function isUpdateOfferable(): boolean {
+  if (!applyFn) return false;
+  if (!inCohort) return false;
+  if (isCriticalUpdate()) return true;
+  if (snoozed) return false;
+  return !isBusy();
+}
+
+/** "Later": hide for this session only. The waiting worker stays parked. */
+export function snoozeUpdate(): void {
+  snoozed = true;
+  try {
+    sessionStorage.setItem(SNOOZE_KEY, "1");
+  } catch {
+    // ignore
+  }
+  announce();
+}
+
+/** Allow the app to flush in-flight writes before reloading. */
+type Flusher = () => Promise<void>;
+let flusher: Flusher | null = null;
+export function setPendingWriteFlusher(fn: Flusher | null): void {
+  flusher = fn;
+}
+
+/**
+ * Activate the waiting SW and reload — gracefully.
+ * Caller must confirm with the user (or it must be a critical release).
+ */
 export async function applyPendingUpdate(): Promise<void> {
   const fn = applyFn;
   if (!fn) return;
   applyFn = null;
-  // Some installed shells (notably Android) relaunch at start_url after the
-  // new worker takes control. Remember where the user was so we can restore it.
+
+  // 1. Let screens persist any draft/scratch state.
   try {
-    const here = window.location.pathname + window.location.search + window.location.hash;
-    if (here && here !== "/") sessionStorage.setItem(RETURN_KEY, here);
+    window.dispatchEvent(new CustomEvent(BEFORE_UPDATE_EVENT));
+    sessionStorage.setItem(DRAFT_EVENT_KEY, String(Date.now()));
   } catch {
     // ignore
   }
+
+  // 2. Let in-flight writes settle (bounded — never hang the UI).
+  if (flusher) {
+    try {
+      await Promise.race([
+        flusher(),
+        new Promise((r) => setTimeout(r, 3000)),
+      ]);
+    } catch {
+      // ignore
+    }
+  }
+
+  // 3. Remember where the user was: some installed shells (notably Android)
+  // relaunch at start_url after the new worker takes control.
+  try {
+    const here = window.location.pathname + window.location.search + window.location.hash;
+    if (here && here !== "/") sessionStorage.setItem(RETURN_KEY, here);
+    sessionStorage.removeItem(SNOOZE_KEY);
+  } catch {
+    // ignore
+  }
+
   await fn(true);
 }
 
@@ -58,10 +180,8 @@ export function restoreRouteAfterUpdate(): void {
   }
 }
 
-
 export function dismissPendingUpdate(): void {
-  // Keep applyFn so the user can still update later from the same session
-  // (the banner itself is what gets hidden).
+  snoozeUpdate();
 }
 
 /**
@@ -92,8 +212,11 @@ export async function checkForUpdateNow(): Promise<boolean> {
   return false;
 }
 
-/** Last resort: drop app caches and reload from the network. */
+/** Last resort: drop app caches and reload from the network. Never mid-task. */
 export async function hardRefresh(): Promise<void> {
+  if (isBusy()) {
+    throw new Error("BUSY");
+  }
   try {
     if ("caches" in window) {
       const names = await caches.keys();
@@ -107,4 +230,14 @@ export async function hardRefresh(): Promise<void> {
     // ignore
   }
   window.location.reload();
+}
+
+/** Test-only reset. */
+export function __resetUpdateState(): void {
+  applyFn = null;
+  release = null;
+  cohortChecked = false;
+  inCohort = true;
+  snoozed = false;
+  clubId = null;
 }

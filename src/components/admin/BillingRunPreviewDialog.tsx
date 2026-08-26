@@ -91,9 +91,14 @@ export function BillingRunPreviewDialog({
   onConfirmSend?: () => void;
   sending?: boolean;
 }) {
-  const rows = run?.results || [];
+  const rows = [...(run?.results || [])].sort((a, b) =>
+    (a.scheduled_send || a.next_renewal || "9999").localeCompare(b.scheduled_send || b.next_renewal || "9999"),
+  );
   const billable = rows.filter(r => r.status === "dry-run");
+  const dueNow = billable.filter(r => r.in_this_run !== false);
+  const later = billable.filter(r => r.in_this_run === false);
   const grandTotal = billable.reduce((s, r) => s + (r.total || 0), 0);
+  const dueNowTotal = dueNow.reduce((s, r) => s + (r.total || 0), 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -101,23 +106,26 @@ export function BillingRunPreviewDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Receipt className="h-4 w-4" />
-            Invoice preview {run?.clubLabel ? `— ${run.clubLabel}` : ""}
+            Upcoming invoices {run?.clubLabel ? `— ${run.clubLabel}` : ""}
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge variant="secondary" className="gap-1">
             <CalendarClock className="h-3 w-3" />
-            Run {day(run?.run_date || run?.issue_date)}
+            Next send run {day(run?.next_issue_date)}
           </Badge>
           <Badge variant="outline">
-            Each invoice is dated on the club's renewal date (issued up to {run?.advance_days ?? 0} days early)
+            Issued on the {run?.issue_day_of_month ?? 25}
+            {(run?.issue_day_of_month ?? 25) === 1 ? "st" : "th"} of each month; each invoice is dated on the club's own
+            renewal date
           </Badge>
 
-          <Badge variant="outline">{billable.length} to invoice</Badge>
-          <Badge variant="outline">{rows.length - billable.length} skipped</Badge>
-          <Badge className="bg-emerald-600 hover:bg-emerald-600">Total {money(grandTotal)}</Badge>
+          <Badge variant="outline">{dueNow.length} in next run ({money(dueNowTotal)})</Badge>
+          {later.length > 0 && <Badge variant="outline">{later.length} scheduled later</Badge>}
+          <Badge className="bg-emerald-600 hover:bg-emerald-600">All upcoming {money(grandTotal)}</Badge>
           <span className="text-muted-foreground">Nothing has been created or emailed yet.</span>
+
         </div>
 
         <div className="overflow-x-auto">

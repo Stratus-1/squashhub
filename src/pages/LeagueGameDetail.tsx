@@ -1512,6 +1512,36 @@ export default function LeagueGameDetail() {
   }, [clearFromExcluded]);
 
 
+  // ---- Never let a score write clobber the saved lineup. ----
+  // Score/live-rally upserts historically carried player codes from local
+  // state, so a device holding a stale lineup could silently re-apply the
+  // original players over a newer reserve swap. The server row is the
+  // authority: only send player fields when the server has none yet (i.e. we
+  // are materialising the row for the first time).
+  const playerFieldsForScoreWrite = useCallback(async (
+    posIdx: number,
+    p: { homeCode?: string; awayCode?: string; homeName?: string; awayName?: string } | null | undefined,
+  ): Promise<Record<string, string>> => {
+    const fields = {
+      home_player_code: (p?.homeCode || "").toUpperCase(),
+      away_player_code: (p?.awayCode || "").toUpperCase(),
+      home_player_name: p?.homeName || "",
+      away_player_name: p?.awayName || "",
+    };
+    if (!fixtureId) return fields;
+    const { data } = await supabase
+      .from("league_match_results" as any)
+      .select("home_player_code,away_player_code,home_player_name,away_player_name")
+      .eq("fixture_id", fixtureId)
+      .eq("position", posIdx + 1)
+      .maybeSingle();
+    const row = data as any;
+    const serverHasPlayers = !!row && !!(
+      row.home_player_code || row.home_player_name || row.away_player_code || row.away_player_name
+    );
+    return serverHasPlayers ? {} : fields;
+  }, [fixtureId]);
+
   // ---- Auto-save a single position's FINISHED game scores to DB.
   // Always clears `current_game` (the in-progress rally is over once a game ends).
   // Only sets `winner` when the rubber is truly decided — never from mid-match counts.

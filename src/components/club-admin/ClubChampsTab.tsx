@@ -8766,38 +8766,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <Label className="text-sm">Tournament details (shown in invites)</Label>
                   <Textarea
                     rows={10}
-                    placeholder={`Click "Fill from settings" to insert the tournament details (category, format, dates, registration window, fee) into this box, then add anything extra like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
+                    placeholder={`The tournament details block is filled in automatically from your setup. Add anything extra below it, like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
                 <div className="flex flex-row md:flex-col gap-2 md:w-44 shrink-0">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 md:flex-none"
-                    onClick={() => {
-                      const lines = buildInviteDetailLines({
-                        gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-                        startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
-                        registrationOpensAt, registrationClosesAt, entryFeeRand,
-                        pointsPerGame, bestOf,
-                        registrationRequired, registrationMode: (registrationMode || "open") as any,
-                        tournamentName: champName, divisionFormats: inviteDivisionFormats(),
-                        selfScheduled: schedulingMode === "self", roundDeadlines,
-                      });
-                      const bullets = lines.map((l) => `• ${l}`).join("\n");
-                      // Strip any previously inserted auto-block (between markers) then prepend fresh.
-                      const stripped = description
-                        .replace(/^[\s\S]*?— Tournament details —\n([\s\S]*?)\n— End details —\n?/m, "")
-                        .trimStart();
-                      const block = `— Tournament details —\n${bullets}\n— End details —`;
-                      setDescription(stripped ? `${block}\n\n${stripped}` : block);
-                    }}
-                  >
-                    Fill from settings
-                  </Button>
                   <Button
                     type="button"
                     size="sm"
@@ -8810,8 +8784,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                This whole text appears inside the in-app notification and the email invitation. Use “Fill from settings” to pull in the current tournament configuration so you can edit it before sending. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
+                The details block at the top is generated automatically from this tournament's settings and refreshes on its own whenever you change the category, format, dates, registration window or fee — anything you type below it is kept. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
               </p>
+
             </div>
 
             <div className="space-y-2">

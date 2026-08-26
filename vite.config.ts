@@ -12,6 +12,7 @@ const buildId =
   process.env.COMMIT_SHA ||
   process.env.BUILD_ID ||
   "dev";
+const isWindows = process.platform === "win32";
 
 export default defineConfig(() => ({
   define: {
@@ -27,7 +28,7 @@ export default defineConfig(() => ({
   },
   plugins: [
     react(),
-    mcpPlugin(),
+    ...(!isWindows ? [mcpPlugin()] : []),
     VitePWA({
       // Use injectManifest? No — generateSW is simpler. Use existing manifest.webmanifest.
       strategies: "generateSW",

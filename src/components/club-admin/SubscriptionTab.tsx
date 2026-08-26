@@ -184,6 +184,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
       if (status === "paid") {
         toast.success("Payment confirmed — invoice marked paid.", { id: t });
         qc.invalidateQueries({ queryKey: ["club-platform-invoices", clubId] });
+        qc.invalidateQueries({ queryKey: ["club-unpaid-sub-invoices", clubId] });
       } else {
         toast.message(`Stitch status: ${stitchState || status || "unknown"}`, { id: t });
       }
@@ -221,6 +222,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
               { id: toastId }
             );
             qc.invalidateQueries({ queryKey: ["club-platform-invoices", clubId] });
+            qc.invalidateQueries({ queryKey: ["club-unpaid-sub-invoices", clubId] });
             // Clean the query string so refreshes don't re-poll
             const next = new URLSearchParams(searchParams);
             next.delete("reference");

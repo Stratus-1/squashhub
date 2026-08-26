@@ -105,7 +105,7 @@ const EMPTY_INVOICE_SETTINGS = {
   bank_swift: "",
   invoice_prefix: "INV-",
   invoice_footer: "",
-  advance_issue_days: "6",
+  issue_day_of_month: "25",
   logo_url: "",
 };
 type InvoiceSettings = typeof EMPTY_INVOICE_SETTINGS;

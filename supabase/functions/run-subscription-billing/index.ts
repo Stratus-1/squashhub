@@ -83,21 +83,26 @@ Deno.serve(async (req) => {
   const advanceDaysRaw =
     typeof body.advanceDays === 'number' ? body.advanceDays : Number(settings.advance_issue_days ?? 5)
   const advanceDays = isFinite(advanceDaysRaw) ? Math.max(0, Math.min(28, Math.round(advanceDaysRaw))) : 5
-  // The date the invoice is dated as if issued on (the renewal date).
-  const billingDate = addDays(runDate, advanceDays)
+  // Are we exactly `advanceDays` before a month start? Then this run issues the
+  // invoices for that month, dated on the 1st.
+  const advanceTarget = addDays(runDate, advanceDays)
+  const inAdvanceWindow = isFirstOfMonth(advanceTarget)
+  // The date the invoice is dated as if issued on (the renewal date). Manual and
+  // dry runs outside the window keep using today's date, as before.
+  const billingDate = inAdvanceWindow ? advanceTarget : runDate
 
-  // Guard: the scheduler fires daily; only the day that lands exactly
-  // `advanceDays` before a month start actually bills. Manual/dry runs and
-  // targeted subscription runs bypass the window.
-  if (!dryRun && !body.force && !body.subscriptionIds?.length && !isFirstOfMonth(billingDate)) {
+  // Guard: the scheduler fires daily; only the advance-issue day actually bills.
+  // Manual/dry runs and targeted subscription runs bypass the window.
+  if (!dryRun && !body.force && !body.subscriptionIds?.length && !inAdvanceWindow) {
     return json({
       skipped: true,
       reason: 'outside-advance-issue-window',
       runDate: runDate.toISOString().slice(0, 10),
-      wouldBillOn: billingDate.toISOString().slice(0, 10),
+      nextIssueTargets: advanceTarget.toISOString().slice(0, 10),
       advanceDays,
     })
   }
+
 
 
 

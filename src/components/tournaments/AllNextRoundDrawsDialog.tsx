@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { fromExt } from "@/lib/supabase-ext";
+import { notifyRoundDraw } from "@/lib/tournaments/round-notify";
 import { supabase } from "@/integrations/supabase/client";
 import { DrawBoard } from "./DrawBoard";
 import { typeForPlayers, type SectionProgression } from "@/lib/tournaments/knockout-progression";

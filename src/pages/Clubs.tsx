@@ -17,6 +17,7 @@ interface TenantPublic {
   tenant_type: string;
   nsa_club_id: string | null;
   chairman_member_id: string | null;
+  treasurer_member_id?: string | null;
 }
 
 export default function Clubs() {

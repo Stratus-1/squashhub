@@ -52,6 +52,7 @@ interface TenantPublic {
   tenant_type: string;
   nsa_club_id: string | null;
   chairman_member_id: string | null;
+  treasurer_member_id?: string | null;
 }
 const PROBLEMS = [
   { icon: Calendar, label: "Manual bookings and double-ups" },

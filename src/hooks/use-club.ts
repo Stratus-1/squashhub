@@ -21,6 +21,7 @@ export interface Club {
   chairman_member_id?: string;
   secretary_member_id?: string;
   club_captain_member_id?: string;
+  treasurer_member_id?: string;
   member_number_prefix?: string;
   member_number_length?: number;
   member_number_start?: number;
@@ -252,7 +253,7 @@ export function useIsClubAdmin() {
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
-  // Check if user holds a delegate position (Chairman / Secretary / Club Captain) at the active club
+  // Check if user holds a delegate position (Chairman / Secretary / Club Captain / Treasurer) at the active club
   const clubId = data?.club?.id;
   const { data: isDelegate } = useQuery({
     queryKey: ["my-delegate-flag", user?.id, clubId],
@@ -265,7 +266,7 @@ export function useIsClubAdmin() {
       const memberIds = (members || []).map((m: any) => m.id);
       if (memberIds.length === 0) return false;
       const club: any = data?.club;
-      return [club?.chairman_member_id, club?.secretary_member_id, club?.club_captain_member_id]
+      return [club?.chairman_member_id, club?.secretary_member_id, club?.club_captain_member_id, club?.treasurer_member_id]
         .filter(Boolean)
         .some((id: string) => memberIds.includes(id));
     },

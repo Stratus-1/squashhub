@@ -3647,6 +3647,7 @@ export type Database = {
           subdomain: string | null
           suspension_rules: Json
           tenant_type: string
+          treasurer_member_id: string | null
           updated_at: string
           uses_gobook: boolean
           variance_threshold_pct: number | null
@@ -3759,6 +3760,7 @@ export type Database = {
           subdomain?: string | null
           suspension_rules?: Json
           tenant_type?: string
+          treasurer_member_id?: string | null
           updated_at?: string
           uses_gobook?: boolean
           variance_threshold_pct?: number | null
@@ -3871,6 +3873,7 @@ export type Database = {
           subdomain?: string | null
           suspension_rules?: Json
           tenant_type?: string
+          treasurer_member_id?: string | null
           updated_at?: string
           uses_gobook?: boolean
           variance_threshold_pct?: number | null
@@ -3901,6 +3904,13 @@ export type Database = {
           {
             foreignKeyName: "clubs_secretary_member_id_fkey"
             columns: ["secretary_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clubs_treasurer_member_id_fkey"
+            columns: ["treasurer_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
             referencedColumns: ["id"]
@@ -10981,6 +10991,7 @@ export type Database = {
           show_delegates_on_landing: boolean
           subdomain: string
           tenant_type: string
+          treasurer_member_id: string
         }[]
       }
       get_sla_prompt_state: { Args: { _club_id: string }; Returns: Json }
@@ -11107,6 +11118,7 @@ export type Database = {
           show_delegates_on_landing: boolean
           subdomain: string
           tenant_type: string
+          treasurer_member_id: string
         }[]
       }
       lookup_existing_member_for_signup: {

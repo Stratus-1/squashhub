@@ -5,7 +5,6 @@ import {
   addDays,
   buildConsolidatedInvoice,
   isFirstOfMonth,
-  isSubscriptionDue,
   monthStartIso,
   previousMonthRange,
 } from './consolidated.ts'
@@ -320,7 +319,7 @@ Deno.serve(async (req) => {
   // e.g. trial ends 11 Aug 2026 → first invoice issued 12 Aug 2026 covering 12 Aug – 11 Sep.
   const dayAfter = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1))
   const iso = (d: Date) => d.toISOString().slice(0, 10)
-  const billingDay = iso(billingDate)
+
 
   // --- Consolidated monthly billing -------------------------------------
   // One invoice per club per billing month: subscription (renewal months only)
@@ -336,16 +335,17 @@ Deno.serve(async (req) => {
   const waRange = { start: waRangeMonth.start, end: waCutoff.slice(0, 10) }
 
   // Existing invoice for this club + month → idempotency. A previously failed
-  // invoice is retried by reusing its row.
-  const existingByClub = new Map<string, any>()
+  // invoice is retried by reusing its row. Because invoices are dated on each
+  // club's own renewal date (not the run date), we index every month.
+  const existingByClubMonth = new Map<string, any>()
   if (clubIds.length) {
     const { data: existing } = await supabase
       .from('platform_subscription_invoices')
       .select('id, club_id, invoice_number, status, billing_month')
       .in('club_id', clubIds)
-      .eq('billing_month', billingMonth)
-    for (const e of existing || []) existingByClub.set(e.club_id, e)
+    for (const e of existing || []) existingByClubMonth.set(`${e.club_id}|${e.billing_month}`, e)
   }
+
 
   // Unbilled WhatsApp usage per club for the previous month.
   const waUsage = new Map<
@@ -459,10 +459,17 @@ Deno.serve(async (req) => {
 
       const periodEnd = addBillingMonths(periodStart, cycle)
 
-      // Subscription is charged only in a renewal month (monthly clubs: every
-      // month; 6-monthly / annual clubs: only when the next period has started).
-      // Dry runs always price the subscription so admins can preview it.
-      const subDue = dryRun || isSubscriptionDue(iso(periodStart), billingDay)
+      // The subscription is only invoiced once the renewal date is here, or at
+      // most `advanceDays` before it. A club whose next period starts months
+      // from now (e.g. still on trial) is NOT invoiced today — even on a dry run.
+      const subDue = iso(addDays(runDate, advanceDays)) >= iso(periodStart)
+
+      // Every subscription invoice is DATED on the club's renewal date, even
+      // though it is created/emailed a few days earlier. WhatsApp-only invoices
+      // stay on the run's billing date.
+      const invoiceDate = subDue ? periodStart : billingDate
+      const invoiceMonth = monthStartIso(invoiceDate)
+
 
       const usage = waUsage.get(sub.club_id)
       const consolidated = buildConsolidatedInvoice({
@@ -511,12 +518,12 @@ Deno.serve(async (req) => {
       const total = consolidated.total
       const displayTotal = +((subtotal + vatAmount) / (fxRate || 1)).toFixed(2)
 
-      const dueDate = new Date(billingDate)
+      const dueDate = new Date(invoiceDate)
       dueDate.setDate(dueDate.getDate() + 14)
 
       // Idempotency: one invoice per club per billing month. An existing issued
       // or paid invoice is left alone; a failed one is retried in place.
-      const prior = existingByClub.get(sub.club_id)
+      const prior = existingByClubMonth.get(`${sub.club_id}|${invoiceMonth}`)
       if (!dryRun && prior && prior.status !== 'failed') {
         skipped++
         results.push({
@@ -524,7 +531,7 @@ Deno.serve(async (req) => {
           club: club?.name,
           invoice_number: prior.invoice_number,
           status: 'skipped',
-          reason: `Already invoiced for ${billingMonth}`,
+          reason: `Already invoiced for ${invoiceMonth}`,
         })
         continue
       }
@@ -536,14 +543,15 @@ Deno.serve(async (req) => {
           subscription_id: sub.id,
           club: club?.name,
           invoice_number: invoiceNumber,
-          billing_month: billingMonth,
+          billing_month: invoiceMonth,
+
           invoice_kind: consolidated.kind,
           billing_cycle: cycle,
           period_start: iso(periodStart),
           period_end: iso(periodEnd),
           next_renewal: iso(periodEnd),
           subscription_due: subDue,
-          issue_date: iso(billingDate),
+          issue_date: iso(invoiceDate),
           due_date: iso(dueDate),
           line_items: consolidated.lineItems,
           member_count: memberCount,
@@ -574,7 +582,7 @@ Deno.serve(async (req) => {
         plan_id: sub.plan_id,
         plan_name: plan.name,
         billing_cycle: cycle,
-        billing_month: billingMonth,
+        billing_month: invoiceMonth,
         invoice_kind: consolidated.kind,
         line_items: consolidated.lineItems,
         subscription_amount: consolidated.subscriptionAmount,
@@ -595,7 +603,7 @@ Deno.serve(async (req) => {
         fx_rate_to_zar: fxRate,
         due_date: dueDate.toISOString().slice(0, 10),
         // Dated on the renewal date even though it is emailed a few days earlier.
-        issued_at: billingDate.toISOString(),
+        issued_at: invoiceDate.toISOString(),
 
         snapshot: settings,
         // Snapshot of the club's billing details at issue time so past

@@ -102,11 +102,12 @@ export function BillingRunPreviewDialog({
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge variant="secondary" className="gap-1">
             <CalendarClock className="h-3 w-3" />
-            Invoices dated {day(run?.issue_date)}
+            Run {day(run?.run_date || run?.issue_date)}
           </Badge>
-          {run?.run_date && run.run_date !== run.issue_date && (
-            <Badge variant="outline">Sent {day(run.run_date)} ({run?.advance_days ?? 0} days early)</Badge>
-          )}
+          <Badge variant="outline">
+            Each invoice is dated on the club's renewal date (issued up to {run?.advance_days ?? 0} days early)
+          </Badge>
+
           <Badge variant="outline">{billable.length} to invoice</Badge>
           <Badge variant="outline">{rows.length - billable.length} skipped</Badge>
           <Badge className="bg-emerald-600 hover:bg-emerald-600">Total {money(grandTotal)}</Badge>

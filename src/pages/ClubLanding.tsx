@@ -236,8 +236,26 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                   )}
                 </div>
               )}
+              {publicFees.length > 0 && (
+                <div className="pt-4 text-left">
+                  <div className="text-sm font-bold uppercase tracking-wide text-white/90 text-center mb-2">
+                    Membership Fees
+                  </div>
+                  <ul className="divide-y divide-white/15 rounded-xl border border-white/15 bg-white/5">
+                    {publicFees.map((f) => (
+                      <li key={f.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                        <span className="text-sm text-white">{f.name}</span>
+                        <span className="text-sm font-bold text-white tabular-nums whitespace-nowrap">
+                          {formatFee(f.annual_fee, f.billing_period)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <div className="pt-4">
+
                 <Button
                   size="lg"
                   className="w-full gap-2 bg-landing-navy hover:bg-landing-navy/90 text-white rounded-full h-12"

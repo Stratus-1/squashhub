@@ -146,7 +146,14 @@ export function LineupSwapDialog({
       const sameTierReserveLeagueIds: string[] = [];
       // Same-tier non-reserve team leagues (for bye candidates), with id↔code map.
       const sameTierTeamLeagueIdToCode = new Map<string, string>();
+      // All other registered teams in this association. Same-night participation
+      // is intentionally wider than bye eligibility; normal substitution rules
+      // still determine whether moving up/down the league order is valid.
+      const associationTeamLeagueIdToCode = new Map<string, string>();
       for (const l of leaguesList) {
+        if (!/reserves?/i.test(l.name) && l.id !== teamLeagueId) {
+          associationTeamLeagueIdToCode.set(l.id, l.code);
+        }
         const t = tierOf(l);
         if (!targetTier || t !== targetTier) continue;
         if (/reserves?/i.test(l.name)) {
@@ -190,8 +197,9 @@ export function LineupSwapDialog({
       //    - reserves rows for ANY same-tier reserves league
       //    - squad rows (is_reserve = false) of same-tier teams that are on bye
       const reserveLeagueIdSet = new Set(sameTierReserveLeagueIds);
-      const otherSameTierLeagueIds = Array.from(sameTierTeamLeagueIdToCode.keys());
-      const eligibleTeamLeagueIds = allowMultiFixturePerNight ? otherSameTierLeagueIds : byeLeagueIds;
+      const eligibleTeamLeagueIds = allowMultiFixturePerNight
+        ? Array.from(associationTeamLeagueIdToCode.keys())
+        : byeLeagueIds;
       const candidateLeagueIds = [...new Set([...sameTierReserveLeagueIds, ...eligibleTeamLeagueIds])];
       if (candidateLeagueIds.length === 0) return [];
       const { data: regs } = await (supabase as any)
@@ -219,7 +227,7 @@ export function LineupSwapDialog({
         const code = (r.league_association_number || r.ssa_number || "").toString().toUpperCase();
         const isReserve = reserveLeagueIdSet.has(r.league_id);
         const byeFrom = !isReserve ? sameTierTeamLeagueIdToCode.get(r.league_id) : undefined;
-        const alsoFrom = !isReserve && allowMultiFixturePerNight ? sameTierTeamLeagueIdToCode.get(r.league_id) : undefined;
+        const alsoFrom = !isReserve && allowMultiFixturePerNight ? associationTeamLeagueIdToCode.get(r.league_id) : undefined;
         const existing = regInfo.get(r.club_member_id);
         if (existing) {
           if (isReserve) existing.reserve = true;

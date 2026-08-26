@@ -1,0 +1,118 @@
+import { describe, it, expect } from "vitest";
+import {
+  parseAmount,
+  parseDate,
+  parseDelimitedStatement,
+  buildRows,
+  parseOfx,
+  detectDuplicate,
+  suggestAccount,
+  suggestMember,
+  summarise,
+} from "@/lib/finance/bank-statement";
+
+describe("parseAmount", () => {
+  it("handles SA and international formats", () => {
+    expect(parseAmount("1 234,56")).toBeCloseTo(1234.56);
+    expect(parseAmount("R 1,234.56")).toBeCloseTo(1234.56);
+    expect(parseAmount("(120.00)")).toBeCloseTo(-120);
+    expect(parseAmount("-45")).toBe(-45);
+    expect(parseAmount("")).toBeNull();
+  });
+});
+
+describe("parseDate", () => {
+  it("parses common formats day-first", () => {
+    expect(parseDate("2026-08-26")).toBe("2026-08-26");
+    expect(parseDate("26/08/2026")).toBe("2026-08-26");
+    expect(parseDate("26 Aug 2026")).toBe("2026-08-26");
+    expect(parseDate("20260826")).toBe("2026-08-26");
+    expect(parseDate("nonsense")).toBeNull();
+  });
+});
+
+const CSV = `Some Bank Ltd Statement
+Account 1234567890
+
+Date,Description,Reference,Debit,Credit,Balance
+26/08/2026,MONTHLY SERVICE FEE,,"120,00",,"5 000,00"
+27/08/2026,SUBS PRETORIUS W,MEM001,,"450,00","5 450,00"
+27/08/2026,ESKOM PREPAID,,"1 000,00",,"4 450,00"
+`;
+
+describe("delimited statement parsing", () => {
+  it("skips preamble, maps columns and signs amounts", () => {
+    const parsed = parseDelimitedStatement(CSV);
+    expect(parsed.headers[0].toLowerCase()).toBe("date");
+    const rows = buildRows(parsed);
+    expect(rows).toHaveLength(3);
+    expect(rows[0].amount).toBeCloseTo(-120);
+    expect(rows[1].amount).toBeCloseTo(450);
+    expect(rows[1].reference).toBe("MEM001");
+    expect(rows[0].balance).toBeCloseTo(5000);
+  });
+
+  it("gives every row a unique fingerprint even when identical", () => {
+    const dupCsv = `Date,Description,Amount\n01/08/2026,COFFEE,-50\n01/08/2026,COFFEE,-50\n`;
+    const rows = buildRows(parseDelimitedStatement(dupCsv));
+    expect(rows[0].fingerprint).not.toBe(rows[1].fingerprint);
+  });
+});
+
+describe("OFX/QIF", () => {
+  it("parses OFX transactions", () => {
+    const ofx = `<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20260826120000<TRNAMT>-120.00<FITID>abc<NAME>BANK CHARGE</STMTTRN>`;
+    const rows = parseOfx(ofx);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].txn_date).toBe("2026-08-26");
+    expect(rows[0].amount).toBeCloseTo(-120);
+  });
+
+  it("parses QIF transactions", () => {
+    const qif = `!Type:Bank\nD26/08/2026\nT-120.00\nPBANK CHARGE\n^\n`;
+    const rows = parseOfx(qif);
+    expect(rows[0].description).toBe("BANK CHARGE");
+  });
+});
+
+describe("duplicate detection", () => {
+  const rows = buildRows(parseDelimitedStatement(CSV));
+  it("flags exact re-imports", () => {
+    const existing = rows.map((r) => ({ ...r }));
+    expect(detectDuplicate(rows[0], existing)).toBe("exact");
+  });
+  it("flags likely duplicates within 7 days", () => {
+    const existing = [{ fingerprint: "other", txn_date: "2026-08-22", amount: -120, description: "MONTHLY SERVICE FEE" }];
+    expect(detectDuplicate(rows[0], existing)).toBe("likely");
+  });
+  it("does not flag outside the window", () => {
+    const existing = [{ fingerprint: "other", txn_date: "2026-07-01", amount: -120, description: "MONTHLY SERVICE FEE" }];
+    expect(detectDuplicate(rows[0], existing)).toBe("none");
+  });
+});
+
+describe("categorisation", () => {
+  const rows = buildRows(parseDelimitedStatement(CSV));
+  it("suggests accounts from the narrative", () => {
+    expect(suggestAccount(rows[0]).account).toBe("bank_charges");
+    expect(suggestAccount(rows[2]).account).toBe("electricity");
+    expect(suggestAccount(rows[1]).account).toBe("membership_income");
+  });
+  it("matches members by number and surname", () => {
+    const members = [{ id: "m1", name: "Willem Pretorius", club_member_number: null } as any];
+    expect(suggestMember(rows[1], [{ id: "m1", name: "Willem Pretorius" }])).toBe("m1");
+    expect(suggestMember(rows[0], members)).toBeNull();
+  });
+});
+
+describe("summarise", () => {
+  it("derives period and opening balance", () => {
+    const rows = buildRows(parseDelimitedStatement(CSV));
+    const s = summarise(rows);
+    expect(s.count).toBe(3);
+    expect(s.period_start).toBe("2026-08-26");
+    expect(s.period_end).toBe("2026-08-27");
+    expect(s.opening_balance).toBeCloseTo(5120);
+    expect(s.closing_balance).toBeCloseTo(4450);
+  });
+});

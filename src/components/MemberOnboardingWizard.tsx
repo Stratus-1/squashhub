@@ -26,6 +26,12 @@ import { useMemberClubRules, recordRuleAcceptance } from "@/hooks/use-club-rules
 import { ClubRulesContent } from "@/components/ClubRulesContent";
 import { hasRulesContent, DEFAULT_ACCEPTANCE_STATEMENT } from "@/lib/club-rules";
 import { ScrollText } from "lucide-react";
+import {
+  SkillsExpertiseFields,
+  emptySkillsDraft,
+  skillsPatch,
+  type SkillsDraft,
+} from "@/components/SkillsExpertiseFields";
 import { User, ChevronRight, ChevronLeft, Check, Loader2, CreditCard, Users, FileText, Trophy, Camera, ScanFace, LogOut } from "lucide-react";
 
 interface StepDef {

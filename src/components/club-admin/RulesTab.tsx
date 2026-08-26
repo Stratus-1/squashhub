@@ -218,9 +218,14 @@ export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
         </div>
       </Card>
 
-      {preview && (
-        <Card className="p-4 md:p-5 space-y-3">
-          <h3 className="font-semibold text-sm">Preview — what members and visitors see</h3>
+      <Dialog open={preview} onOpenChange={setPreview}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Preview — what members and visitors see</DialogTitle>
+            <DialogDescription className="text-xs">
+              Shows the unsaved text currently in the editor.
+            </DialogDescription>
+          </DialogHeader>
           <div className="rounded-lg border border-border p-4">
             <ClubRulesContent rulesText={text} documents={documents} />
             {requireAcceptance && (
@@ -229,8 +234,8 @@ export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
               </p>
             )}
           </div>
-        </Card>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <Card className="p-4 md:p-5 space-y-3">
         <div className="flex items-center justify-between">

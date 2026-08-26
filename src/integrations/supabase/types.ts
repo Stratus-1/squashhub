@@ -12348,6 +12348,7 @@ export type Database = {
           gender: string
           invite_status: string
           is_own_club: boolean
+          is_user: boolean
           ladder_position: number
           member_id: string
           ranking_points: number

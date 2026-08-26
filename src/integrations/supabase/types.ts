@@ -2663,6 +2663,94 @@ export type Database = {
           },
         ]
       }
+      club_membership_rule_versions: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string | null
+          documents: Json
+          id: string
+          rules_text: string
+          version: number
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          documents?: Json
+          id?: string
+          rules_text?: string
+          version: number
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          documents?: Json
+          id?: string
+          rules_text?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_membership_rule_versions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_membership_rules: {
+        Row: {
+          acceptance_statement: string
+          club_id: string
+          created_at: string
+          current_version: number
+          documents: Json
+          id: string
+          require_acceptance: boolean
+          rules_text: string
+          show_on_landing: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          acceptance_statement?: string
+          club_id: string
+          created_at?: string
+          current_version?: number
+          documents?: Json
+          id?: string
+          require_acceptance?: boolean
+          rules_text?: string
+          show_on_landing?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          acceptance_statement?: string
+          club_id?: string
+          created_at?: string
+          current_version?: number
+          documents?: Json
+          id?: string
+          require_acceptance?: boolean
+          rules_text?: string
+          show_on_landing?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_membership_rules_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_permission_roles: {
         Row: {
           club_id: string
@@ -2905,6 +2993,47 @@ export type Database = {
           },
           {
             foreignKeyName: "club_router_polls_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_rule_acceptances: {
+        Row: {
+          accepted_at: string
+          club_id: string
+          club_member_id: string | null
+          created_at: string
+          id: string
+          statement: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          accepted_at?: string
+          club_id: string
+          club_member_id?: string | null
+          created_at?: string
+          id?: string
+          statement?: string
+          user_id?: string
+          version?: number
+        }
+        Update: {
+          accepted_at?: string
+          club_id?: string
+          club_member_id?: string | null
+          created_at?: string
+          id?: string
+          statement?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_rule_acceptances_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
@@ -10685,6 +10814,16 @@ export type Database = {
         }[]
       }
       get_club_member_count: { Args: { _club_id: string }; Returns: number }
+      get_club_membership_rules_for_member: {
+        Args: { _club_id: string }
+        Returns: {
+          acceptance_statement: string
+          current_version: number
+          documents: Json
+          require_acceptance: boolean
+          rules_text: string
+        }[]
+      }
       get_club_public_fees: {
         Args: { _club_id: string }
         Returns: {
@@ -10695,6 +10834,15 @@ export type Database = {
           id: string
           name: string
           sort_order: number
+        }[]
+      }
+      get_club_public_membership_rules: {
+        Args: { _club_id: string }
+        Returns: {
+          acceptance_statement: string
+          current_version: number
+          documents: Json
+          rules_text: string
         }[]
       }
       get_club_whatsapp_usage: {

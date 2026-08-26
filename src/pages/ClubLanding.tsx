@@ -89,6 +89,32 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
     enabled: !!club?.id,
   });
 
+  // Fees the club admin flagged for the public page (safe, definer-backed read)
+  const { data: publicFees = [] } = useQuery({
+    queryKey: ["club-public-fees", club?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_club_public_fees", { _club_id: club!.id });
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        annual_fee: number;
+        billing_period: string | null;
+      }>;
+    },
+    enabled: !!club?.id,
+  });
+
+  const formatFee = (amount: number, period?: string | null) => {
+    const value = `R${Math.round(Number(amount) || 0).toLocaleString("en-ZA")}`;
+    if (!period || period === "annual" || period === "yearly") return `${value} / year`;
+    if (period === "monthly") return `${value} / month`;
+    if (period === "quarterly") return `${value} / quarter`;
+    return value;
+  };
+
+
   const getDelegateName = (memberId: string | null | undefined) => {
     if (!memberId) return null;
     return delegates.find(d => d.id === memberId) || null;

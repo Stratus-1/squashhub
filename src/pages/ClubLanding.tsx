@@ -2,7 +2,7 @@ import { useParams, Navigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2, ArrowRight } from "lucide-react";
+import { Loader2, Building2, ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect } from "react";
@@ -12,6 +12,9 @@ import { getPublicClubBySubdomain } from "@/lib/public-clubs";
 import { usePublicClubRules } from "@/hooks/use-club-rules";
 import { ClubRulesContent } from "@/components/ClubRulesContent";
 import { hasRulesContent } from "@/lib/club-rules";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+
+
 
 
 
@@ -280,16 +283,26 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
 
               {hasRulesContent(publicRules) && (
                 <div id="club-rules" className="pt-4 text-left scroll-mt-8">
-                  <div className="text-sm font-bold uppercase tracking-wide text-white/90 text-center mb-2">
-                    Club Rules
-                  </div>
-                  <div className="rounded-xl border border-white/15 bg-white/5 p-4">
-                    <ClubRulesContent
-                      rulesText={publicRules?.rules_text}
-                      documents={publicRules?.documents}
-                      tone="onDark"
-                    />
-                  </div>
+                  <Collapsible defaultOpen={false}>
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white/90 transition-colors hover:bg-white/10"
+                      >
+                        <span>Club Rules</span>
+                        <ChevronDown className="w-4 h-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="rounded-b-xl border-x border-b border-white/15 bg-white/5 p-4 -mt-2 pt-6">
+                        <ClubRulesContent
+                          rulesText={publicRules?.rules_text}
+                          documents={publicRules?.documents}
+                          tone="onDark"
+                        />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               )}
 

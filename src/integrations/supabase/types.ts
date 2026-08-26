@@ -3932,6 +3932,251 @@ export type Database = {
           },
         ]
       }
+      comms_campaigns: {
+        Row: {
+          action: Json
+          audience_filter: Json
+          audience_league_id: string | null
+          audience_member_ids: string[]
+          audience_type: string
+          channels: string[]
+          club_id: string
+          content: Json
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          id: string
+          last_error: string | null
+          name: string
+          scheduled_for: string | null
+          secondary_action: Json | null
+          sent_at: string | null
+          sent_count: number
+          skipped_count: number
+          started_at: string | null
+          status: string
+          template_id: string | null
+          total_recipients: number
+          updated_at: string
+        }
+        Insert: {
+          action?: Json
+          audience_filter?: Json
+          audience_league_id?: string | null
+          audience_member_ids?: string[]
+          audience_type?: string
+          channels?: string[]
+          club_id: string
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          last_error?: string | null
+          name?: string
+          scheduled_for?: string | null
+          secondary_action?: Json | null
+          sent_at?: string | null
+          sent_count?: number
+          skipped_count?: number
+          started_at?: string | null
+          status?: string
+          template_id?: string | null
+          total_recipients?: number
+          updated_at?: string
+        }
+        Update: {
+          action?: Json
+          audience_filter?: Json
+          audience_league_id?: string | null
+          audience_member_ids?: string[]
+          audience_type?: string
+          channels?: string[]
+          club_id?: string
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          last_error?: string | null
+          name?: string
+          scheduled_for?: string | null
+          secondary_action?: Json | null
+          sent_at?: string | null
+          sent_count?: number
+          skipped_count?: number
+          started_at?: string | null
+          status?: string
+          template_id?: string | null
+          total_recipients?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comms_campaigns_audience_league_id_fkey"
+            columns: ["audience_league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comms_campaigns_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comms_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "comms_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comms_deliveries: {
+        Row: {
+          campaign_id: string
+          channel: string
+          club_id: string
+          club_member_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          recipient_name: string | null
+          sent_at: string | null
+          status: string
+          target: string | null
+        }
+        Insert: {
+          campaign_id: string
+          channel: string
+          club_id: string
+          club_member_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+          target?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          channel?: string
+          club_id?: string
+          club_member_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+          target?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comms_deliveries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "comms_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comms_deliveries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comms_template_versions: {
+        Row: {
+          body: string
+          channel: string
+          content_sid: string | null
+          created_at: string
+          id: string
+          subject: string
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          channel: string
+          content_sid?: string | null
+          created_at?: string
+          id?: string
+          subject?: string
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          content_sid?: string | null
+          created_at?: string
+          id?: string
+          subject?: string
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comms_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "comms_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comms_templates: {
+        Row: {
+          action: Json
+          category: string
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          secondary_action: Json | null
+          updated_at: string
+        }
+        Insert: {
+          action?: Json
+          category?: string
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          secondary_action?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          action?: Json
+          category?: string
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          secondary_action?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comms_templates_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       court_reflow_log: {
         Row: {
           club_id: string | null

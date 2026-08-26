@@ -35,14 +35,14 @@ type GatewayDef = {
   fields: FieldDef[];
 };
 
-const DEFAULT_FEE_PCT: Record<string, number> = { yoco: 2.9, stitch: 2.5 };
+const DEFAULT_FEE_PCT: Record<string, number> = { yoco: 3.34, stitch: 3.39 };
 
-// Per-method gateway rates (local SA market defaults)
+// Per-method gateway rates (local SA market defaults, VAT-inclusive: list rate x 1.15)
 const METHOD_FEE_FIELDS = [
-  { key: "gateway_fee_pct_card_local", label: "Card — local", default: 2.95 },
-  { key: "gateway_fee_pct_card_intl", label: "Card — international", default: 3.4 },
-  { key: "gateway_fee_pct_wallet", label: "Apple Pay / Google Pay", default: 2.95 },
-  { key: "gateway_fee_pct_capitec", label: "Capitec Pay", default: 1.9 },
+  { key: "gateway_fee_pct_card_local", label: "Card — local", default: 3.39 },
+  { key: "gateway_fee_pct_card_intl", label: "Card — international", default: 3.91 },
+  { key: "gateway_fee_pct_wallet", label: "Apple Pay / Google Pay", default: 3.39 },
+  { key: "gateway_fee_pct_capitec", label: "Capitec Pay", default: 2.19 },
 ] as const;
 type MethodFeeKey = (typeof METHOD_FEE_FIELDS)[number]["key"];
 const methodFeesFromClub = (club: any): Record<string, string> =>
@@ -506,7 +506,10 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         {/* Gateway transaction fees per payment method */}
         {gateway && (
           <div className="space-y-2">
-            <Label className="text-xs">Transaction fees (%) per payment method</Label>
+            <Label className="text-xs">Transaction fees (%) per payment method — enter VAT-inclusive rates</Label>
+            <p className="text-[10px] text-muted-foreground">
+              Gateways quote rates excluding VAT. Multiply the quoted rate by 1.15 (e.g. 2.95% → 3.39%).
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {METHOD_FEE_FIELDS.map(f => (
                 <div key={f.key} className="space-y-1">

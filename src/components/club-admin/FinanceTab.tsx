@@ -80,9 +80,10 @@ const ALL_ACCOUNTS = Object.keys(CHART_OF_ACCOUNTS) as GLAccount[];
 const DEBIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Asset" || CHART_OF_ACCOUNTS[a].category === "Expense");
 const CREDIT_ACCOUNTS: GLAccount[] = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Liability" || CHART_OF_ACCOUNTS[a].category === "Income");
 
-// Default gateway fee percentages by provider (overridable per club in Banking settings)
-const DEFAULT_GATEWAY_FEE_PCT: Record<string, number> = { yoco: 2.9, stitch: 2.5 };
-const FALLBACK_GATEWAY_FEE_PCT = 3.5;
+// Default gateway fee percentages by provider, VAT-inclusive (list rate x 1.15).
+// Overridable per club in Banking settings.
+const DEFAULT_GATEWAY_FEE_PCT: Record<string, number> = { yoco: 3.34, stitch: 3.39 };
+const FALLBACK_GATEWAY_FEE_PCT = 4.03;
 export type CardMethod = "card_local" | "card_intl" | "wallet" | "capitec";
 export const CARD_METHOD_LABELS: Record<CardMethod, string> = {
   card_local: "Card — local",

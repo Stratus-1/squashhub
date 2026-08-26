@@ -1584,7 +1584,7 @@ export default function LeagueGameDetail() {
     } catch (err: any) {
       console.error("Auto-save failed:", err);
     }
-  }, [fixtureId, user, queryClient, bestOf]);
+  }, [fixtureId, user, queryClient, bestOf, playerFieldsForScoreWrite]);
 
 
   // ---- Persist only the IN-PROGRESS rally (e.g. 7-3 in the current game).
@@ -1612,7 +1612,7 @@ export default function LeagueGameDetail() {
     } catch (err) {
       console.error("Live-rally save failed:", err);
     }
-  }, [fixtureId, user, positions]);
+  }, [fixtureId, user, positions, playerFieldsForScoreWrite]);
 
   // ---- Mark a position as a forfeit (player unavailable) ----
   // Awards the non-forfeiting side 3 clean games (15-0, 15-0, 15-0) and applies a

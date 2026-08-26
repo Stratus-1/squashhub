@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ShieldAlert } from "lucide-react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +15,8 @@ interface Props {
   fixtureId: string;
   homeCode: string;
   awayCode: string;
+  fixtureDate?: string | null;
+  fixtureStartTime?: string | null;
   existing?: {
     home_total_points?: number | null;
     away_total_points?: number | null;
@@ -27,7 +30,7 @@ interface Props {
   onSaved?: () => void;
 }
 
-export function AdminManualScoreDialog({ open, onOpenChange, fixtureId, homeCode, awayCode, existing, onSaved }: Props) {
+export function AdminManualScoreDialog({ open, onOpenChange, fixtureId, homeCode, awayCode, fixtureDate, fixtureStartTime, existing, onSaved }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [hp, setHp] = useState("");
@@ -62,10 +65,35 @@ export function AdminManualScoreDialog({ open, onOpenChange, fixtureId, homeCode
       toast.error("Enter both home and away total points");
       return;
     }
+    const homeTotal = num(hp);
+    const awayTotal = num(ap);
+    // GUARD 1: a 0–0 submission means no games were played — block it. A real
+    // no-show must be captured as forfeits on the scorecard, not as a manual
+    // zero result.
+    if (homeTotal === 0 && awayTotal === 0) {
+      toast.error("No games have been played — a 0–0 result can't be submitted. Use the scorecard to record forfeits instead.");
+      return;
+    }
+    // GUARD 2: bonus-only results (points entered but zero games played) post
+    // phantom points to the standings — block when games are explicitly 0–0.
+    if (hg !== "" && ag !== "" && num(hg) + num(ag) === 0) {
+      toast.error("Games played total is 0 — you can't submit a result with no games played (bonus-only). Enter the actual games won.");
+      return;
+    }
+    // GUARD 3: warn when finalising before the scheduled start — submitting
+    // early pre-empts live marking and locks the scorecard for players.
+    if (fixtureDate) {
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      const start = new Date(`${fixtureDate}T${(fixtureStartTime || "00:00:00").slice(0, 8)}`);
+      const isBeforeStart = fixtureStartTime ? Date.now() < start.getTime() : fixtureDate > todayStr;
+      if (isBeforeStart && !window.confirm(
+        `This match hasn't been played yet — it is scheduled for ${fixtureDate}${fixtureStartTime ? ` at ${fixtureStartTime.slice(0, 5)}` : ""}.\n\nSubmitting now will pre-empt live marking and post unplayed results to the standings.\n\nSubmit anyway?`
+      )) {
+        return;
+      }
+    }
     setSaving(true);
     try {
-      const homeTotal = num(hp);
-      const awayTotal = num(ap);
       const winner = homeTotal > awayTotal ? "home" : awayTotal > homeTotal ? "away" : "draw";
       const { error } = await supabase.from("league_fixture_results" as any).upsert({
         fixture_id: fixtureId,

@@ -229,6 +229,7 @@ export default function Profile() {
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [tickedAssociations, setTickedAssociations] = useState<Record<string, boolean>>({});
   const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
+  const [skillsDraft, setSkillsDraft] = useState<SkillsDraft>(emptySkillsDraft());
 
   const [didInitFromUrl, setDidInitFromUrl] = useState(false);
   const nextAfterSave = searchParams.get("next"); // "account" → go to /my-account on save

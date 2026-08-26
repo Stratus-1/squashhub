@@ -31,16 +31,29 @@ export const PARTNER_OPTION_FIELDS = [
   "ladder_position",
 ] as const;
 
-export type PairStatus = "pending" | "confirmed" | "rejected" | "cancelled";
+export type PairStatus =
+  | "pending"
+  | "awaiting_payment"
+  | "confirmed"
+  | "rejected"
+  | "cancelled";
 
 export type MyPair = {
   id: string;
   group_number: number;
   status: PairStatus;
+  origin?: string | null;
   proposed_by_me: boolean;
   partner_member_id: string;
   partner_name: string | null;
   partner_club: string | null;
+  /** The proposer promised to pay both entry fees. */
+  pays_for_partner?: boolean;
+  payer_is_me?: boolean;
+  covered_by_partner?: boolean;
+  my_fee_paid?: boolean;
+  partner_fee_paid?: boolean;
+  locked_at?: string | null;
   created_at?: string | null;
   responded_at?: string | null;
 };
@@ -48,11 +61,14 @@ export type MyPair = {
 export type PairingState = {
   member_id: string | null;
   locked: boolean;
+  entry_fee_cents: number;
+  my_fee_paid: boolean;
   pairs: MyPair[];
 };
 
 export const PARTNER_MUST_REGISTER_MESSAGE =
-  "Your partner must register first before you can select them.";
+  "Only players who were invited to this division can be picked as a partner.";
+
 
 /** Defence in depth: never let anything but the safe fields reach the UI. */
 export function sanitizePartnerOption(raw: any): PartnerOption | null {

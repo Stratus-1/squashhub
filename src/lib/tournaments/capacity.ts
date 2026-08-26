@@ -194,28 +194,40 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
 
   const perLeague: CapacityLeagueResult[] = leagues.map((L, idx) => {
     const gn = L.groupNumber;
-    const isSwiss = L.format === "swiss";
+    // Bells (time-capped, ranked by points scored) is always a round-robin:
+    // every entrant meets every other one inside the time available. Its
+    // stored draw format may still say "swiss" from an earlier edit, so the
+    // scoring mode wins here.
+    const isTimeCapped = L.scoring === "time_capped_points";
+    const isSwiss = !isTimeCapped && L.format === "swiss";
     // Knockout: sections are carried in `pools`. A knockout league always
     // needs exactly (entrants - 1) real matches — every match eliminates one
     // entrant — including the league final between section winners.
-    const isKnockout = L.format === "knockout";
-    const isDouble = L.format === "double_round_robin";
+    const isKnockout = !isTimeCapped && L.format === "knockout";
+    const isDouble = !isTimeCapped && L.format === "double_round_robin";
     const slot = Math.max(0, Number(L.slotMinutes) || 0);
     const pools = Math.max(1, Number(L.pools) || 1);
 
     let gamesAvailable = 0;
     let availableMinutes = 0;
+    // Time slots (bell rings) available to any single entrant: one match per
+    // slot, no matter how many courts are running.
+    let slotsAvailable = 0;
     for (const s of sessions) {
       const leagueCourts = parallelApplied
         ? Math.floor(s.courts / leagueCount) + (idx < s.courts % leagueCount ? 1 : 0)
         : s.courts;
       availableMinutes += s.minutes * leagueCourts;
-      if (slot > 0) gamesAvailable += Math.floor(s.minutes / slot) * leagueCourts;
+      if (slot > 0) {
+        gamesAvailable += Math.floor(s.minutes / slot) * leagueCourts;
+        slotsAvailable += Math.floor(s.minutes / slot);
+      }
     }
     if (anyPlayoffs && slot > 0 && breakMinutes > 0) {
       const lost = Math.floor(breakMinutes / slot) * (parallelApplied ? Math.max(1, Math.floor(maxCourts / leagueCount)) : maxCourts);
       gamesAvailable = Math.max(0, gamesAvailable - lost);
       availableMinutes = Math.max(0, availableMinutes - breakMinutes * (parallelApplied ? Math.max(1, Math.floor(maxCourts / leagueCount)) : maxCourts));
+      slotsAvailable = Math.max(0, slotsAvailable - Math.floor(breakMinutes / slot));
     }
 
     const gamesPerPoolAvailable = Math.floor(gamesAvailable / pools);
@@ -243,8 +255,38 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
     const swissMaxEntities = isSwiss ? swissMaxPerPool * pools : 0;
 
     const knockoutMaxEntities = gamesAvailable > 0 ? gamesAvailable + 1 : 0;
-    const maxEntities = isKnockout ? knockoutMaxEntities : isSwiss ? swissMaxEntities : rrMaxEntities;
+    const courtLimitedMaxEntities = isKnockout ? knockoutMaxEntities : isSwiss ? swissMaxEntities : rrMaxEntities;
+
+    // Second, independent ceiling: nobody can play two matches at once.
+    // Round robin = N−1 rounds per pool (doubled for a double round robin),
+    // Swiss = its configured rounds, knockout = log2(N) rounds.
+    const perPoolSlotCap = isKnockout
+      ? Math.max(0, Math.pow(2, slotsAvailable))
+      : isSwiss
+        ? rounds > 0 && rounds <= slotsAvailable
+          ? Number.POSITIVE_INFINITY
+          : 0
+        : isDouble
+          ? Math.floor(slotsAvailable / 2) + 1
+          : slotsAvailable + 1;
+    const slotLimitedMaxEntities = Number.isFinite(perPoolSlotCap)
+      ? Math.max(0, Math.floor(perPoolSlotCap)) * pools
+      : courtLimitedMaxEntities;
+    const maxEntities = Math.min(courtLimitedMaxEntities, slotLimitedMaxEntities);
+    const slotLimited = slotLimitedMaxEntities < courtLimitedMaxEntities;
     const maxPlayers = isDoubles ? maxEntities * 2 : maxEntities;
+
+    // Rounds this field actually has to get through (one match per entrant per round).
+    const roundsNeeded = isKnockout
+      ? perPoolActual > 1
+        ? Math.ceil(Math.log2(perPoolActual))
+        : 0
+      : isSwiss
+        ? rounds
+        : perPoolActual > 1
+          ? (perPoolActual - 1) * (isDouble ? 2 : 1)
+          : 0;
+
 
     const rrGamesNeeded =
       perPoolActual > 1 ? ((perPoolActual * (perPoolActual - 1)) / (isDouble ? 1 : 2)) * pools : 0;

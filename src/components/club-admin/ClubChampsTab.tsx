@@ -4323,6 +4323,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         groupNumber: gn,
         label: groupLabels[key] || `League ${gn}`,
         format: fmt,
+        scoring: scoringForLeague(gn),
+
         slotMinutes:
           fmt === "cross_league"
             ? Number(groupDurations["1"]) || matchDuration || 0

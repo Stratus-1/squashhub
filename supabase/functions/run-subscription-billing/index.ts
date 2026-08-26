@@ -587,8 +587,11 @@ Deno.serve(async (req) => {
           period_end: iso(periodEnd),
           next_renewal: iso(periodEnd),
           subscription_due: subDue,
+          in_this_run: subDueForRun,
+          scheduled_send: iso(scheduledSend),
           issue_date: iso(invoiceDate),
           due_date: iso(dueDate),
+
           line_items: consolidated.lineItems,
           member_count: memberCount,
           currency: billingCurrency,

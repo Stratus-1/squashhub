@@ -1218,3 +1218,9 @@ Tests: `src/test/booking-label.test.ts`.
 - After a correction, an admin banner shows before/after bonus and total points and requires an explicit "Save corrected points & standings" action, so standings never shift silently.
 - Coverage: `src/test/league-lineup.test.ts` (17 tests) including play detection and role boundaries.
 - Follow-up hardening (same day): score/live-rally upserts no longer send player codes when the server row already has players (`playerFieldsForScoreWrite`), so a stale device cannot re-apply original players over a newer reserve swap; and "Save Setup" no longer blanks an already-submitted `league_fixture_results` row (only the format snapshot is refreshed).
+
+## 2026-08-26 — `club_champs` security-definer view finding
+
+- **Issue:** a later `CREATE OR REPLACE VIEW public.club_champs` omitted the view's `security_invoker` option, so the compatibility view reverted to owner-context access and triggered the database security linter.
+- **Fix:** restored `security_invoker=true` without recreating the view, changing its columns, or changing its existing grants.
+- **Guard:** reads now apply the underlying RLS rules on `tournaments`, `tournament_governance`, and `tournament_rules` for the caller. Existing member, captain, club-admin, association-admin, and platform-admin access remains governed by those policies. The security-definer-view linter error is cleared.

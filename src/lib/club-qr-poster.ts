@@ -43,6 +43,7 @@ function svgToPngDataUrl(svg: SVGSVGElement): Promise<string> {
 
 export async function generateClubQrPoster({
   clubName,
+  subdomain,
   url,
   cta,
   svg,

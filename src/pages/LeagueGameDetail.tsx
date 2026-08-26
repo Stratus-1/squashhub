@@ -1797,7 +1797,7 @@ export default function LeagueGameDetail() {
     } finally {
       setSavingSetup(false);
     }
-  }, [fixtureId, user, positions, originalLineupSnapshot, scoringFormat, bestOf, queryClient]);
+  }, [fixtureId, user, positions, originalLineupSnapshot, scoringFormat, bestOf, queryClient, existingResult]);
 
   // ---- Marker ----
   const buildMarkerConfigForPosition = useCallback((posIdx: number): MarkerConfig | null => {

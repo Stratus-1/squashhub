@@ -531,21 +531,24 @@ export default function LeagueGameDetail() {
         captainCodeByCode: {} as Record<string, string>,
         captainMemberIdByCode: {} as Record<string, string>,
         logoByCode: {} as Record<string, string>,
+        associationIdByCode: {} as Record<string, string>,
         ruleByCode: {} as Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null }>,
       };
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
       if (codes.length === 0) return empty;
       const { data: leagues } = await (supabase as any)
-        .from("leagues").select("id, code, name, club_id, captain_member_id, logo_url").in("code", codes);
+        .from("leagues").select("id, code, name, club_id, association_id, captain_member_id, logo_url").in("code", codes);
       const nameByCode: Record<string, string> = {};
       const clubIdByCode: Record<string, string> = {};
       const leagueIdToCode: Record<string, string> = {};
       const captainMemberIdByCode: Record<string, string> = {};
       const logoByCode: Record<string, string> = {};
+      const associationIdByCode: Record<string, string> = {};
       for (const l of (leagues || []) as any[]) {
         const k = String(l.code || "").toUpperCase();
         if (l.name) nameByCode[k] = l.name;
         if (l.club_id) clubIdByCode[k] = l.club_id;
+        if (l.association_id) associationIdByCode[k] = l.association_id;
         leagueIdToCode[l.id] = k;
         if (l.captain_member_id) captainMemberIdByCode[k] = l.captain_member_id;
         if (l.logo_url) logoByCode[k] = l.logo_url;
@@ -582,7 +585,7 @@ export default function LeagueGameDetail() {
           if (k && c) captainCodeByCode[k] = c;
         }
       }
-      return { nameByCode, clubIdByCode, captainCodeByCode, captainMemberIdByCode, logoByCode, ruleByCode };
+      return { nameByCode, clubIdByCode, captainCodeByCode, captainMemberIdByCode, logoByCode, associationIdByCode, ruleByCode };
     },
   });
   const teamNamesByCode = teamMeta?.nameByCode;
@@ -709,7 +712,16 @@ export default function LeagueGameDetail() {
 
   // Apply association-level league rules — pulled up early because positionCount
   // logic below needs team_size_mode / team_size to clamp scorecard size.
-  const { data: leagueRules } = useAssociationRules(fixture?.association_id);
+  const homeRulesAssociationId = fixture?.home_team_code
+    ? teamMeta?.associationIdByCode?.[fixture.home_team_code.toUpperCase()]
+    : null;
+  const awayRulesAssociationId = fixture?.away_team_code
+    ? teamMeta?.associationIdByCode?.[fixture.away_team_code.toUpperCase()]
+    : null;
+  // Platform fixtures carry the organiser association ID, while club-specific
+  // overrides live on the tenant association linked to each local team.
+  const fixtureRulesAssociationId = homeRulesAssociationId ?? awayRulesAssociationId ?? fixture?.association_id;
+  const { data: leagueRules } = useAssociationRules(fixtureRulesAssociationId);
 
 
   // Resize positions state when positionCount changes (preserves existing entries).
@@ -3548,8 +3560,10 @@ export default function LeagueGameDetail() {
           currentName={swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName}
           currentCode={swapTarget.side === "home" ? positions[swapTarget.idx].homeCode : positions[swapTarget.idx].awayCode}
           inUseCodes={buildInUseMap(swapTarget.side)}
-          associationId={fixture?.association_id ?? null}
+          associationId={fixtureRulesAssociationId ?? null}
           fixtureDate={fixture?.fixture_date ?? null}
+          allowMultiFixturePerNight={!!leagueRules?.allow_multi_fixture_per_night}
+          subRules={leagueRules}
           onSelect={handleSwap}
           onClear={() => handleClearSlot(swapTarget.idx, swapTarget.side)}
         />

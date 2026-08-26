@@ -831,8 +831,11 @@ Deno.serve(async (req) => {
     run_date: iso(runDate),
     issue_date: iso(billingDate),
     billing_month: billingMonth,
-    advance_days: advanceDays,
-    in_advance_window: inAdvanceWindow,
+    issue_day_of_month: issueDay,
+    is_issue_day: isIssueDay,
+    next_issue_date: iso(nextIssueDate),
+    coverage_end: iso(coverageEnd),
+
     vat_rate: vatRate,
     processed: (subs || []).length,
     issued,

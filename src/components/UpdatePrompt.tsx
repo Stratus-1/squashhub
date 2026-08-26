@@ -144,8 +144,9 @@ export function UpdatePrompt() {
   return (
     <div
       className={cn(
-        "fixed right-3 z-40 print:hidden",
-        "bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] md:bottom-4",
+        "fixed right-3 z-[60] print:hidden",
+        // Mobile: sit just below the help/feedback bubble (≈84px) so both are visible.
+        "bottom-[calc(env(safe-area-inset-bottom,0px)+8rem)] md:bottom-4",
       )}
     >
       {expanded || critical ? (

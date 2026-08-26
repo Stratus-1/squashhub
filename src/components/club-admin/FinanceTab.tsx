@@ -752,6 +752,19 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           <RenewalInvoicesTab clubId={clubId} />
         </TabsContent>
 
+        <TabsContent value="banking">
+          <BankingPanel
+            clubId={clubId}
+            money={money}
+            moneyAccounts={["bank_current", "bank", "cash"]
+              .filter((a) => CHART_OF_ACCOUNTS[a as keyof typeof CHART_OF_ACCOUNTS])
+              .map((a) => ({ account: a, label: getLabel(a), balance: getBalance(a), display: money(getBalance(a)) }))}
+            onImport={() => setBankImportOpen(true)}
+            onOpeningBalances={() => setOpeningBalancesOpen(true)}
+            onViewLedger={(a) => { setAccountFilter(a); setView("by-account"); }}
+          />
+        </TabsContent>
+
         <TabsContent value="debit-orders">
           <DebitOrdersPanel clubId={clubId} />
         </TabsContent>

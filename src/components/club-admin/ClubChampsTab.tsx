@@ -4338,7 +4338,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, leagueSections, usePerLeagueFormats, roundFormat]);
+  }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, leagueSections, usePerLeagueFormats, roundFormat, leagueScoringModes, scoringMode]);
 
 
   // Create/update champ

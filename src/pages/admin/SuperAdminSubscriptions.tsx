@@ -1485,6 +1485,19 @@ export default function SuperAdminSubscriptions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BillingRunPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        run={preview}
+        sending={runBilling.isPending}
+        onConfirmSend={() => {
+          const label = previewScope.clubLabel ? ` to ${previewScope.clubLabel}` : " to every club in this preview";
+          if (confirm(`Generate and email the previewed invoice(s)${label} now?`)) {
+            runBilling.mutate({ dryRun: false, subscriptionIds: previewScope.subscriptionIds, clubLabel: previewScope.clubLabel });
+          }
+        }}
+      />
     </div>
   );
 }
@@ -1680,19 +1693,6 @@ function AllInvoicesList() {
           </Table>
         </div>
       </Card>
-
-      <BillingRunPreviewDialog
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        run={preview}
-        sending={runBilling.isPending}
-        onConfirmSend={() => {
-          const label = previewScope.clubLabel ? ` to ${previewScope.clubLabel}` : " to every club in this preview";
-          if (confirm(`Generate and email the previewed invoice(s)${label} now?`)) {
-            runBilling.mutate({ dryRun: false, subscriptionIds: previewScope.subscriptionIds, clubLabel: previewScope.clubLabel });
-          }
-        }}
-      />
     </div>
   );
 }

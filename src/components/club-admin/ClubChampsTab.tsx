@@ -2572,6 +2572,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
   };
 
+  /**
+   * The "Tournament details" block inside the invite message is derived, never
+   * typed. It is inserted automatically and re-generated whenever anything in
+   * the tournament setup changes, so the organiser always sees the current
+   * configuration. Anything the organiser types below the block is preserved.
+   */
+  const autoDetailBlock = useMemo(() => {
+    const lines = buildInviteDetailLines({
+      gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+      startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+      registrationOpensAt, registrationClosesAt, entryFeeRand,
+      pointsPerGame, bestOf,
+      registrationRequired, registrationMode: (registrationMode || "open") as any,
+      tournamentName: champName, divisionFormats: inviteDivisionFormats(),
+      selfScheduled: schedulingMode === "self", roundDeadlines,
+    });
+    if (!lines.length) return "";
+    return `— Tournament details —\n${lines.map((l) => `• ${l}`).join("\n")}\n— End details —`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
+    startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
+    registrationOpensAt, registrationClosesAt, entryFeeRand, pointsPerGame, bestOf,
+    registrationRequired, registrationMode, champName, schedulingMode, roundDeadlines,
+    divisionFormatsKey,
+  ]);
+
+  useEffect(() => {
+    if (!autoDetailBlock) return;
+    setDescription((prev) => {
+      const extra = prev
+        .replace(/^[\s\S]*?— Tournament details —\n([\s\S]*?)\n— End details —\n?/m, "")
+        .trimStart();
+      const next = extra ? `${autoDetailBlock}\n\n${extra}` : autoDetailBlock;
+      return next === prev ? prev : next;
+    });
+  }, [autoDetailBlock]);
+
 
   const goToStep = (s: WizardStep) => {
     // Note: we intentionally do NOT auto-select all players when entering the

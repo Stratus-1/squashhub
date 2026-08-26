@@ -77,6 +77,30 @@ Deno.serve(async (req) => {
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
 
+  // --- Advance issuing ---------------------------------------------------
+  // Invoices are DATED on the renewal date (1st of the billing month) but are
+  // created and emailed `advanceDays` earlier so clubs have time to pay.
+  const advanceDaysRaw =
+    typeof body.advanceDays === 'number' ? body.advanceDays : Number(settings.advance_issue_days ?? 5)
+  const advanceDays = isFinite(advanceDaysRaw) ? Math.max(0, Math.min(28, Math.round(advanceDaysRaw))) : 5
+  // The date the invoice is dated as if issued on (the renewal date).
+  const billingDate = addDays(runDate, advanceDays)
+
+  // Guard: the scheduler fires daily; only the day that lands exactly
+  // `advanceDays` before a month start actually bills. Manual/dry runs and
+  // targeted subscription runs bypass the window.
+  if (!dryRun && !body.force && !body.subscriptionIds?.length && !isFirstOfMonth(billingDate)) {
+    return json({
+      skipped: true,
+      reason: 'outside-advance-issue-window',
+      runDate: runDate.toISOString().slice(0, 10),
+      wouldBillOn: billingDate.toISOString().slice(0, 10),
+      advanceDays,
+    })
+  }
+
+
+
   // Per-currency rate resolver. Falls back to plan.price_per_member (ZAR base) if unset.
   const num = (k: string, d: number) => {
     const v = settingsMap.get(k)

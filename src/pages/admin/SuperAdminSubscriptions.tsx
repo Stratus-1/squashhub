@@ -99,6 +99,7 @@ const EMPTY_INVOICE_SETTINGS = {
   bank_swift: "",
   invoice_prefix: "INV-",
   invoice_footer: "",
+  advance_issue_days: "5",
   logo_url: "",
 };
 type InvoiceSettings = typeof EMPTY_INVOICE_SETTINGS;
@@ -1083,6 +1084,22 @@ export default function SuperAdminSubscriptions() {
                 <Label className="text-xs">Invoice Number Prefix</Label>
                 <Input className="h-8 text-xs font-mono" value={invoiceForm.invoice_prefix} onChange={e => updateInvoiceField("invoice_prefix", e.target.value)} placeholder="INV-" />
                 <p className="text-[10px] text-muted-foreground mt-1">e.g. {invoiceForm.invoice_prefix || "INV-"}2026-00001</p>
+              </div>
+              <div>
+                <Label className="text-xs">Send Invoices Days Early</Label>
+                <Input
+                  className="h-8 text-xs"
+                  type="number"
+                  min={0}
+                  max={28}
+                  value={invoiceForm.advance_issue_days}
+                  onChange={e => updateInvoiceField("advance_issue_days", e.target.value)}
+                  placeholder="5"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Invoices are dated on the renewal date (1st of the billing month) but generated and emailed this many days
+                  earlier, giving clubs time to pay.
+                </p>
               </div>
               <div>
                 <Label className="text-xs">Footer / Terms</Label>

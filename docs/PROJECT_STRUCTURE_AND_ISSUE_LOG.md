@@ -1224,3 +1224,10 @@ Tests: `src/test/booking-label.test.ts`.
 - **Issue:** a later `CREATE OR REPLACE VIEW public.club_champs` omitted the view's `security_invoker` option, so the compatibility view reverted to owner-context access and triggered the database security linter.
 - **Fix:** restored `security_invoker=true` without recreating the view, changing its columns, or changing its existing grants.
 - **Guard:** reads now apply the underlying RLS rules on `tournaments`, `tournament_governance`, and `tournament_rules` for the caller. Existing member, captain, club-admin, association-admin, and platform-admin access remains governed by those policies. The security-definer-view linter error is cleared.
+
+## 2026-08-26 — Platform invoices issued in advance of the renewal date
+- `run-subscription-billing` now reads `advance_issue_days` (default 5) from `platform_invoice_settings`.
+- The billing cron (`run-subscription-billing-monthly`, jobid 52) fires nightly at 02:00; the function only bills on the day that is exactly `advance_issue_days` before a month start (manual/dry/targeted runs bypass the window via `force`/`subscriptionIds`).
+- Invoices are still dated on the renewal date: `issued_at`, `billing_month`, period and `due_date` (+14 days) all use the month-start date, while creation and emailing happen `advance_issue_days` earlier.
+- WhatsApp arrears now cut off at the actual run timestamp (the arrears month is incomplete when issuing early); remaining unbilled usage rolls into the next invoice.
+- Super Admin → Subscriptions → Invoice Options exposes "Send Invoices Days Early".

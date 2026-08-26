@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  addDays,
   buildConsolidatedInvoice,
+  isFirstOfMonth,
   isSubscriptionDue,
   monthStartIso,
   previousMonthRange,
@@ -144,5 +146,32 @@ describe("consolidated invoice", () => {
     const r = buildConsolidatedInvoice({ subscription: sub({ due: false }), whatsapp: wa(4, 1.8) });
     expect(r.lineItems[0].unit_price).toBe(0.45);
     expect(r.lineItems[0].quantity).toBe(4);
+  });
+});
+
+
+describe("advance issuing window", () => {
+  it("lands on the 1st when run 5 days before a 31-day month end", () => {
+    const target = addDays(new Date("2026-08-27T02:00:00Z"), 5);
+    expect(target.toISOString().slice(0, 10)).toBe("2026-09-01");
+    expect(isFirstOfMonth(target)).toBe(true);
+  });
+
+  it("lands on the 1st when run 5 days before a 30-day month end", () => {
+    const target = addDays(new Date("2026-09-26T02:00:00Z"), 5);
+    expect(target.toISOString().slice(0, 10)).toBe("2026-10-01");
+    expect(isFirstOfMonth(target)).toBe(true);
+  });
+
+  it("does not fire on other days", () => {
+    expect(isFirstOfMonth(addDays(new Date("2026-08-20T02:00:00Z"), 5))).toBe(false);
+    expect(isFirstOfMonth(addDays(new Date("2026-08-28T02:00:00Z"), 5))).toBe(false);
+  });
+
+  it("dates the invoice on the renewal month start", () => {
+    const billingDate = addDays(new Date("2026-08-27T02:00:00Z"), 5);
+    expect(monthStartIso(billingDate)).toBe("2026-09-01");
+    expect(previousMonthRange(billingDate)).toEqual({ start: "2026-08-01", end: "2026-08-31" });
+    expect(isSubscriptionDue("2026-09-01", billingDate.toISOString().slice(0, 10))).toBe(true);
   });
 });

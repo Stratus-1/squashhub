@@ -2,7 +2,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { addBillingMonths, CYCLE_MONTHS, cycleDiscount, type BillingCycle } from './billing-cycle.ts'
 import {
+  addDays,
   buildConsolidatedInvoice,
+  isFirstOfMonth,
   isSubscriptionDue,
   monthStartIso,
   previousMonthRange,
@@ -13,6 +15,10 @@ interface RequestBody {
   subscriptionIds?: string[]
   billingDate?: string // ISO date; defaults to today
   vatRate?: number // 0..1 override; falls back to settings/0
+  /** Days before the renewal date that invoices are issued/emailed. */
+  advanceDays?: number
+  /** Run even when today is not inside the advance-issue window. */
+  force?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -29,7 +35,8 @@ Deno.serve(async (req) => {
   } catch (_) {}
 
   const dryRun = !!body.dryRun
-  const billingDate = body.billingDate ? new Date(body.billingDate) : new Date()
+  const runDate = body.billingDate ? new Date(body.billingDate) : new Date()
+
 
   // 1) Load platform invoice settings + per-currency SaaS rates. Base is ZAR;
   //    USD/EUR clubs are billed at their configured rate.
@@ -69,6 +76,35 @@ Deno.serve(async (req) => {
   const invoicePrefix: string = settings.invoice_prefix || 'INV-'
   const vatRate: number =
     typeof body.vatRate === 'number' ? body.vatRate : settings.vat_number ? 0.15 : 0
+
+  // --- Advance issuing ---------------------------------------------------
+  // Invoices are DATED on the renewal date (1st of the billing month) but are
+  // created and emailed `advanceDays` earlier so clubs have time to pay.
+  const advanceDaysRaw =
+    typeof body.advanceDays === 'number' ? body.advanceDays : Number(settings.advance_issue_days ?? 5)
+  const advanceDays = isFinite(advanceDaysRaw) ? Math.max(0, Math.min(28, Math.round(advanceDaysRaw))) : 5
+  // Are we exactly `advanceDays` before a month start? Then this run issues the
+  // invoices for that month, dated on the 1st.
+  const advanceTarget = addDays(runDate, advanceDays)
+  const inAdvanceWindow = isFirstOfMonth(advanceTarget)
+  // The date the invoice is dated as if issued on (the renewal date). Manual and
+  // dry runs outside the window keep using today's date, as before.
+  const billingDate = inAdvanceWindow ? advanceTarget : runDate
+
+  // Guard: the scheduler fires daily; only the advance-issue day actually bills.
+  // Manual/dry runs and targeted subscription runs bypass the window.
+  if (!dryRun && !body.force && !body.subscriptionIds?.length && !inAdvanceWindow) {
+    return json({
+      skipped: true,
+      reason: 'outside-advance-issue-window',
+      runDate: runDate.toISOString().slice(0, 10),
+      nextIssueTargets: advanceTarget.toISOString().slice(0, 10),
+      advanceDays,
+    })
+  }
+
+
+
 
   // Per-currency rate resolver. Falls back to plan.price_per_member (ZAR base) if unset.
   const num = (k: string, d: number) => {
@@ -290,7 +326,14 @@ Deno.serve(async (req) => {
   // One invoice per club per billing month: subscription (renewal months only)
   // + WhatsApp usage for the PREVIOUS calendar month (billed in arrears).
   const billingMonth = monthStartIso(billingDate)
-  const waRange = previousMonthRange(billingDate)
+  const waRangeMonth = previousMonthRange(billingDate)
+  // Because invoices are issued a few days early, the arrears month is not
+  // complete yet at run time. We bill every unbilled message up to the moment of
+  // issuing; anything after that is picked up by the next invoice.
+  const waCutoff = runDate < new Date(`${waRangeMonth.end}T23:59:59.999Z`)
+    ? runDate.toISOString()
+    : `${waRangeMonth.end}T23:59:59.999Z`
+  const waRange = { start: waRangeMonth.start, end: waCutoff.slice(0, 10) }
 
   // Existing invoice for this club + month → idempotency. A previously failed
   // invoice is retried by reusing its row.
@@ -319,7 +362,8 @@ Deno.serve(async (req) => {
       .is('platform_invoice_id', null)
       .is('invoice_id', null)
       .gte('created_at', `${waRange.start}T00:00:00Z`)
-      .lt('created_at', `${waRange.end}T23:59:59.999Z`)
+      .lt('created_at', waCutoff)
+
       .range(0, 99999)
     for (const r of waRows || []) {
       const cur =
@@ -539,6 +583,9 @@ Deno.serve(async (req) => {
         display_total: displayTotal,
         fx_rate_to_zar: fxRate,
         due_date: dueDate.toISOString().slice(0, 10),
+        // Dated on the renewal date even though it is emailed a few days earlier.
+        issued_at: billingDate.toISOString(),
+
         snapshot: settings,
         // Snapshot of the club's billing details at issue time so past
         // invoices keep the address/VAT/PO that applied then.

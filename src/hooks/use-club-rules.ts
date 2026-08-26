@@ -6,11 +6,16 @@ import {
   ClubMembershipRules,
   ClubRuleDocument,
   DEFAULT_ACCEPTANCE_STATEMENT,
+  DEFAULT_RULES_TEMPLATE,
 } from "@/lib/club-rules";
 
+/**
+ * Clubs that have never saved rules get the starter template pre-filled, so
+ * the admin editor opens with sensible defaults they can edit — not a blank page.
+ */
 const emptyRules = (clubId: string): ClubMembershipRules => ({
   club_id: clubId,
-  rules_text: "",
+  rules_text: DEFAULT_RULES_TEMPLATE,
   documents: [],
   show_on_landing: false,
   require_acceptance: true,

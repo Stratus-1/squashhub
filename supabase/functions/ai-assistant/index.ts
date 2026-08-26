@@ -7,6 +7,7 @@
 // route through the shared action registry.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { confirmBooking, proposeBooking, type BookingProposal } from "./booking.ts";
 
 const MODEL = "google/gemini-3.7-flash";
 
@@ -16,18 +17,53 @@ type Body = {
   question?: string;
   history?: ChatMsg[];
   conversationId?: string | null;
+  /** Set when the user taps "Confirm" on a proposed action. */
+  confirm?: { tool: "create_booking"; proposal: BookingProposal } | null;
   context?: {
     clubId?: string | null;
     clubName?: string | null;
     memberName?: string | null;
+    memberId?: string | null;
     role?: string;
     route?: string;
     style?: string;
+    today?: string;
     capabilities?: string[];
     actions?: { key: string; label: string; needs?: string[] }[];
     workflows?: { key: string; title: string; summary: string }[];
   };
 };
+
+/** The member row for this user in this club (used as the booking owner). */
+async function resolveMemberId(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  clubId: string,
+  preferred?: string | null,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("club_members")
+    .select("id")
+    .eq("club_id", clubId)
+    .eq("user_id", userId);
+  const ids = (data ?? []).map((r) => String(r.id));
+  if (preferred && ids.includes(preferred)) return preferred;
+  return ids[0] ?? null;
+}
+
+async function bookingsEnabled(
+  supabase: ReturnType<typeof createClient>,
+  clubId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("club_capabilities")
+    .select("enabled")
+    .eq("club_id", clubId)
+    .eq("capability", "bookings")
+    .maybeSingle();
+  return data ? !!data.enabled : true;
+}
+
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

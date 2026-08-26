@@ -128,12 +128,7 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
         conversationId,
         history: turns.slice(-8).map((t) => ({ role: t.role, content: t.content })),
         context: {
-          clubId: ai.clubId,
-          clubName: ai.clubName,
-          role: ai.isAdmin ? "admin" : "member",
-          route: location.pathname,
-          style: ai.style,
-          capabilities: Array.from(ai.capabilities),
+          ...baseContext(),
           actions: ai.settings?.actions_enabled === false ? [] : actionCatalogue(actionCtx),
           workflows: workflows.map((w) => ({ key: w.key, title: w.title, summary: w.summary })),
         },
@@ -141,8 +136,16 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
       setConversationId(res.conversationId ?? conversationId);
       setTurns((t) => [
         ...t,
-        { role: "assistant", content: res.answer, action: res.action, workflowKey: res.workflow_key },
+        {
+          role: "assistant",
+          content: res.answer,
+          action: res.action,
+          workflowKey: res.workflow_key,
+          proposal: res.proposal ?? null,
+          proposalState: res.proposal ? "pending" : undefined,
+        },
       ]);
+
       if (res.workflow_key && WORKFLOW_MAP[res.workflow_key]) {
         const def = WORKFLOW_MAP[res.workflow_key];
         if (workflows.some((w) => w.key === def.key)) setWorkflow({ def, step: 0 });

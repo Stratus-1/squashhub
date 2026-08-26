@@ -11007,6 +11007,15 @@ export type Database = {
       }
       norm_person_name: { Args: { _name: string }; Returns: string }
       norm_phone_tail: { Args: { _phone: string }; Returns: string }
+      notify_champ_round_draw: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
+          p_round_number: number
+          p_sections?: number[]
+        }
+        Returns: Json
+      }
       org_descendants: {
         Args: { _org_id: string }
         Returns: {

@@ -1599,13 +1599,11 @@ export default function LeagueGameDetail() {
       const pos = positions[posIdx];
       let hw = 0, aw = 0;
       for (const s of completedScores) { if (s.home > s.away) hw++; else if (s.away > s.home) aw++; }
+      const playerFields = await playerFieldsForScoreWrite(posIdx, pos);
       await supabase.from("league_match_results" as any).upsert({
         fixture_id: fixtureId,
         position: posIdx + 1,
-        home_player_code: (pos?.homeCode || "").toUpperCase(),
-        away_player_code: (pos?.awayCode || "").toUpperCase(),
-        home_player_name: pos?.homeName || "",
-        away_player_name: pos?.awayName || "",
+        ...playerFields,
         game_scores: completedScores,
         home_games_won: hw,
         away_games_won: aw,

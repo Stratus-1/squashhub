@@ -19,7 +19,7 @@ import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScor
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { clearMarkerStateForSession, getMarkerSessionKeys, hasMarkerStateForSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
-import { shouldKeepSavedRow, resolveLineupPositions, applyPrefillSlot, lineupDiffers } from "@/lib/league/lineup";
+import { shouldKeepSavedRow, resolveLineupPositions, applyPrefillSlot, lineupDiffers, rubberHasPlay, rubberEditRights } from "@/lib/league/lineup";
 
 import { LineupSwapDialog, type SwapCandidate } from "@/components/league-games/LineupSwapDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -316,7 +316,8 @@ export default function LeagueGameDetail() {
   const [awaySig, setAwaySig] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [savingSetup, setSavingSetup] = useState(false);
-  const [swapTarget, setSwapTarget] = useState<{ idx: number; side: "home" | "away" } | null>(null);
+  const [swapTarget, setSwapTarget] = useState<{ idx: number; side: "home" | "away"; correction?: boolean } | null>(null);
+  const [savingCorrectedTotals, setSavingCorrectedTotals] = useState(false);
   const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
   const [adminOverride, setAdminOverride] = useState(false);
   const isClubAdmin = useIsClubAdmin();
@@ -1447,16 +1448,43 @@ export default function LeagueGameDetail() {
 
   const handleSwap = useCallback(async (c: SwapCandidate) => {
     if (!swapTarget) return;
-    const { idx, side } = swapTarget;
+    const { idx, side, correction } = swapTarget;
     const updatedPositionsForSave = buildSwappedPositions(positions, idx, side, c);
 
     setPositions(updatedPositionsForSave);
     setSwapTarget(null);
 
+    // ---- Post-play admin correction ----------------------------------
+    // The rubber has already been played: scores stay exactly as they are.
+    // Only the recorded player identity changes, through an audited RPC.
+    // Bonus points / totals are then recalculated and saved by the admin
+    // from the "corrected totals" banner in the summary.
+    if (correction) {
+      const p = updatedPositionsForSave[idx];
+      const newCode = (side === "home" ? p.homeCode : p.awayCode) || "";
+      const newName = (side === "home" ? p.homeName : p.awayName) || "";
+      const { error } = await (supabase as any).rpc("admin_correct_rubber_participant", {
+        p_fixture_id: fixtureId,
+        p_position: idx + 1,
+        p_side: side,
+        p_player_code: newCode.toUpperCase(),
+        p_player_name: newName,
+        p_reason: "Club admin post-play correction",
+      });
+      if (error) {
+        toast.error(error.message || "Could not correct the recorded player");
+        setPositions(positions);
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });
+      toast.success("Player corrected — review and save the recalculated points below");
+      return;
+    }
+
     const ok = await persistLineupPlayers(updatedPositionsForSave);
     if (ok) toast.success("Player swapped and lineup saved");
     else toast.success("Player swapped — save the setup to keep this change");
-  }, [swapTarget, positions, buildSwappedPositions, persistLineupPlayers]);
+  }, [swapTarget, positions, buildSwappedPositions, persistLineupPlayers, fixtureId, queryClient]);
 
 
   const handleClearSlot = useCallback((idx: number, side: "home" | "away") => {
@@ -2436,6 +2464,22 @@ export default function LeagueGameDetail() {
   const isHomeCaptain = !!(activeMember?.id && homeCaptainMemberId && activeMember.id === homeCaptainMemberId);
   const isAwayCaptain = !!(activeMember?.id && awayCaptainMemberId && activeMember.id === awayCaptainMemberId);
   const canEditLineup = !isSubmitted && (isClubAdmin || isHomeCaptain || isAwayCaptain);
+  /**
+   * Per-rubber edit authority.
+   *  - Not yet played → captain/admin may keep replacing players; latest save wins.
+   *  - Played (scores, live game or forfeit) → captains are locked out; a club
+   *    admin may still correct WHO is recorded through the audited RPC.
+   */
+  const rightsForPosition = (idx: number, side: "home" | "away") => {
+    const pos = positions[idx];
+    const isCaptain = side === "home" ? isHomeCaptain : isAwayCaptain;
+    return rubberEditRights({
+      hasPlay: rubberHasPlay(pos),
+      isClubAdmin,
+      isCaptain: isCaptain || isHomeCaptain || isAwayCaptain,
+      isViewMode,
+    });
+  };
   const isCaptainCode = (code: string | null | undefined, side: "home" | "away") => {
     const c = (code || "").toUpperCase();
     if (!c) return false;
@@ -2826,15 +2870,22 @@ export default function LeagueGameDetail() {
                                   )}
                                 </>
                               )}
-                              {!isSubmitted && (
-                                <button
-                                  onClick={() => setSwapTarget({ idx, side: "home" })}
-                                  className="text-muted-foreground hover:text-primary"
-                                  title="Replace player (pick from squad / reserves)"
-                                >
-                                  <ArrowLeftRight className="w-3 h-3" />
-                                </button>
-                              )}
+                              {(() => {
+                                const rights = rightsForPosition(idx, "home");
+                                if (!rights.canCaptainEdit && !rights.canAdminCorrect) return null;
+                                const correction = rights.canAdminCorrect;
+                                return (
+                                  <button
+                                    onClick={() => setSwapTarget({ idx, side: "home", correction })}
+                                    className={correction ? "text-amber-600 hover:text-amber-700" : "text-muted-foreground hover:text-primary"}
+                                    title={correction
+                                      ? "Admin correction: change the recorded player (score stays as played)"
+                                      : "Replace player (pick from squad / reserves)"}
+                                  >
+                                    <ArrowLeftRight className="w-3 h-3" />
+                                  </button>
+                                );
+                              })()}
                               {!isSubmitted && !pos.isForfeit && (
                                 <button
                                   onClick={() => {
@@ -2894,6 +2945,22 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5">{(pos.completed || pos.scores.length > 0) ? pr.homeWins : ""}</span>
                             <span className="text-center text-xs font-bold py-0.5 text-primary">{(pos.completed || pos.scores.length > 0) ? homeTotalPts : ""}</span>
                             <span className="flex items-center justify-center gap-0.5">
+                              {(() => {
+                                const rights = rightsForPosition(idx, "home");
+                                if (!rights.canCaptainEdit && !rights.canAdminCorrect) return null;
+                                const correction = rights.canAdminCorrect;
+                                return (
+                                  <button
+                                    onClick={() => setSwapTarget({ idx, side: "home", correction })}
+                                    className={cn("rounded p-0.5 hover:bg-accent", correction ? "text-amber-600 hover:text-amber-700" : "text-muted-foreground hover:text-primary")}
+                                    title={correction
+                                      ? "Admin correction: change the recorded player (score stays as played)"
+                                      : "Replace player"}
+                                  >
+                                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                                  </button>
+                                );
+                              })()}
                               {!isSubmitted && !pos.isForfeit && (pos.completed || pos.scores.length > 0) && (
                                 <>
                                   <button
@@ -2996,15 +3063,22 @@ export default function LeagueGameDetail() {
                                   )}
                                 </>
                               )}
-                              {!isSubmitted && (
-                                <button
-                                  onClick={() => setSwapTarget({ idx, side: "away" })}
-                                  className="text-muted-foreground hover:text-primary"
-                                  title="Replace player (pick from squad / reserves)"
-                                >
-                                  <ArrowLeftRight className="w-3 h-3" />
-                                </button>
-                              )}
+                              {(() => {
+                                const rights = rightsForPosition(idx, "away");
+                                if (!rights.canCaptainEdit && !rights.canAdminCorrect) return null;
+                                const correction = rights.canAdminCorrect;
+                                return (
+                                  <button
+                                    onClick={() => setSwapTarget({ idx, side: "away", correction })}
+                                    className={correction ? "text-amber-600 hover:text-amber-700" : "text-muted-foreground hover:text-primary"}
+                                    title={correction
+                                      ? "Admin correction: change the recorded player (score stays as played)"
+                                      : "Replace player (pick from squad / reserves)"}
+                                  >
+                                    <ArrowLeftRight className="w-3 h-3" />
+                                  </button>
+                                );
+                              })()}
                               {!isSubmitted && !pos.isForfeit && (
                                 <button
                                   onClick={() => {
@@ -3065,6 +3139,22 @@ export default function LeagueGameDetail() {
                             <span className="text-center text-xs font-bold py-0.5 text-primary">{(pos.completed || pos.scores.length > 0) ? awayTotalPts : ""}</span>
                             {/* Action buttons */}
                             <span className="flex items-center justify-center gap-0.5">
+                              {(() => {
+                                const rights = rightsForPosition(idx, "away");
+                                if (!rights.canCaptainEdit && !rights.canAdminCorrect) return null;
+                                const correction = rights.canAdminCorrect;
+                                return (
+                                  <button
+                                    onClick={() => setSwapTarget({ idx, side: "away", correction })}
+                                    className={cn("rounded p-0.5 hover:bg-accent", correction ? "text-amber-600 hover:text-amber-700" : "text-muted-foreground hover:text-primary")}
+                                    title={correction
+                                      ? "Admin correction: change the recorded player (score stays as played)"
+                                      : "Replace player"}
+                                  >
+                                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                                  </button>
+                                );
+                              })()}
                               {(() => {
                                 const lockKey = `${fixtureId}|${idx + 1}`;
                                 const lock = markerLocks[lockKey];
@@ -3474,6 +3564,68 @@ export default function LeagueGameDetail() {
               </Button>
             )}
 
+
+            {/* Post-play correction: recalculated bonus / totals awaiting admin save */}
+            {isClubAdmin && existingResult && (() => {
+              const savedHome = Number((existingResult as any).home_total_points ?? 0);
+              const savedAway = Number((existingResult as any).away_total_points ?? 0);
+              const savedHomeBonus = Number((existingResult as any).home_bonus_points ?? 0);
+              const savedAwayBonus = Number((existingResult as any).away_bonus_points ?? 0);
+              const drift =
+                savedHome !== displaySummary.homeTotal ||
+                savedAway !== displaySummary.awayTotal ||
+                savedHomeBonus !== displaySummary.homeBonusPoints ||
+                savedAwayBonus !== displaySummary.awayBonusPoints;
+              if (!drift) return null;
+              return (
+                <div className="pt-2 border-t border-amber-500/30 space-y-2">
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Points recalculated from the current recorded players (scores unchanged).
+                    <br />
+                    Bonus: <b>{savedHomeBonus} → {displaySummary.homeBonusPoints}</b> home, <b>{savedAwayBonus} → {displaySummary.awayBonusPoints}</b> away.
+                    <br />
+                    Total: <b>{savedHome} → {displaySummary.homeTotal}</b> home, <b>{savedAway} → {displaySummary.awayTotal}</b> away.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full border-amber-500/60 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+                    disabled={savingCorrectedTotals || !fixtureId || !user}
+                    onClick={async () => {
+                      if (!fixtureId || !user) return;
+                      setSavingCorrectedTotals(true);
+                      try {
+                        const prevMf = (existingResult?.match_format as any) || {};
+                        const { error } = await supabase.from("league_fixture_results" as any).upsert({
+                          fixture_id: fixtureId,
+                          home_total_games: displaySummary.homeTotalGames,
+                          away_total_games: displaySummary.awayTotalGames,
+                          home_bonus_points: displaySummary.homeBonusPoints,
+                          away_bonus_points: displaySummary.awayBonusPoints,
+                          home_penalty_points: displaySummary.homePenaltyPoints,
+                          away_penalty_points: displaySummary.awayPenaltyPoints,
+                          home_total_points: displaySummary.homeTotal,
+                          away_total_points: displaySummary.awayTotal,
+                          winner: displaySummary.winner,
+                          match_format: { ...prevMf, originalCountAdjustment: originalCountAdj },
+                        } as any, { onConflict: "fixture_id" });
+                        if (error) throw error;
+                        toast.success("Corrected bonus points and totals saved");
+                        queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
+                        queryClient.invalidateQueries({ queryKey: ["internal-standings"] });
+                      } catch (err: any) {
+                        toast.error(err.message || "Failed to save corrected points");
+                      } finally {
+                        setSavingCorrectedTotals(false);
+                      }
+                    }}
+                  >
+                    {savingCorrectedTotals ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                    Save corrected points &amp; standings
+                  </Button>
+                </div>
+              );
+            })()}
 
             {displaySummary.opbEnabled && (() => {
               const savedAdj = ((existingResult?.match_format as any)?.originalCountAdjustment) || { home: 0, away: 0 };

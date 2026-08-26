@@ -156,3 +156,53 @@ export function lineupDiffers(
   }
   return false;
 }
+
+/* ------------------------------------------------------------------ *
+ * Per-rubber edit authority
+ *
+ * Rule (agreed with club admins):
+ *  - Until a rubber has started, the LATEST authorised save wins. A captain
+ *    may bring a reserve in at the last minute, even while another rubber of
+ *    the same fixture is being played.
+ *  - Once that rubber has play (games, a live game, or a forfeit), captains
+ *    can no longer change who is recorded for it.
+ *  - A club/platform admin keeps an explicit, audited correction path after
+ *    play. Scores stay as played; bonus points and totals are recalculated.
+ * ------------------------------------------------------------------ */
+
+export type RubberPlayState = {
+  completed?: boolean | null;
+  isForfeit?: boolean | null;
+  scores?: unknown[] | null;
+  currentGame?: unknown;
+};
+
+/** Has this rubber started (or finished) being played? */
+export function rubberHasPlay(pos: RubberPlayState | null | undefined): boolean {
+  if (!pos) return false;
+  if (pos.completed || pos.isForfeit) return true;
+  if (Array.isArray(pos.scores) && pos.scores.length > 0) return true;
+  return !!(pos.currentGame && typeof pos.currentGame === "object");
+}
+
+export type RubberEditRights = {
+  /** Normal lineup edit — writes through the captain persistence path. */
+  canCaptainEdit: boolean;
+  /** Post-play identity correction — writes through the audited admin RPC. */
+  canAdminCorrect: boolean;
+};
+
+export function rubberEditRights(opts: {
+  hasPlay: boolean;
+  isClubAdmin: boolean;
+  isCaptain: boolean;
+  isViewMode?: boolean;
+}): RubberEditRights {
+  if (opts.isViewMode) return { canCaptainEdit: false, canAdminCorrect: false };
+  const authorised = opts.isClubAdmin || opts.isCaptain;
+  if (!opts.hasPlay) {
+    return { canCaptainEdit: authorised, canAdminCorrect: false };
+  }
+  return { canCaptainEdit: false, canAdminCorrect: opts.isClubAdmin };
+}
+

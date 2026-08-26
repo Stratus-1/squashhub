@@ -31,8 +31,11 @@ However, the guarantee is not yet complete:
 3. **Apply the match-state authorization rule per rubber**
    - Before any play is recorded for a rubber, the latest authorized save wins. A team captain may still make a last-minute replacement while the fixture is in progress, provided that specific rubber has not started.
    - As soon as a rubber has live points, completed games, a forfeit, or a winner, lock its participants against further captain changes. Other not-yet-started rubbers in the same fixture remain editable.
-   - After play has started or results have been submitted, expose a separate correction action only to the relevant club admin/platform admin. This may replace the recorded player identity but must preserve game scores, winner, forfeit state, fixture totals, signatures, and submitted status byte-for-byte.
-   - Record who made the post-play correction, when it was made, and the before/after participant identity for auditability. Do not silently treat this as a normal captain lineup save.
+   - After play has started or results have been submitted, expose a separate correction action only to the relevant club admin/platform admin. This may replace the recorded player identity while the game-by-game scores, rubber winners, and forfeit state stay exactly as played.
+   - Bonus points are not frozen by this correction. When the corrected participant changes who counted as an original (permanent squad) player versus a reserve, recalculate the original-player bonus, the fixture point totals, and the resulting league standings from the corrected participants, using the league's own bonus rules. The club admin's final edit is the authoritative version.
+   - Show the admin the recalculated before/after totals before saving, so a correction never silently shifts standings.
+   - Record who made the post-play correction, when it was made, the before/after participant identity, and the before/after bonus and total points. Do not silently treat this as a normal captain lineup save.
+
 
 4. **Make concurrent edits safe**
    - Replace warn-after-write behavior with an atomic backend save using the last-known lineup timestamp/version.

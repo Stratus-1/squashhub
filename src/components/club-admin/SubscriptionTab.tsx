@@ -222,6 +222,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
               { id: toastId }
             );
             qc.invalidateQueries({ queryKey: ["club-platform-invoices", clubId] });
+            qc.invalidateQueries({ queryKey: ["club-unpaid-sub-invoices", clubId] });
             // Clean the query string so refreshes don't re-poll
             const next = new URLSearchParams(searchParams);
             next.delete("reference");

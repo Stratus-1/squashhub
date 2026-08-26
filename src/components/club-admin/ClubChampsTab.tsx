@@ -6553,10 +6553,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <TournamentEntryCounts champId={c.id} className="mt-0.5" />
 
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/club-champs/${c.id}`)}>
+                <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:justify-end sm:gap-1">
+                  <Button variant="outline" size="sm" className="w-full justify-center sm:w-auto" onClick={() => navigate(`/club-champs/${c.id}`)}>
                     <Eye className="w-4 h-4 mr-1" /> View
                   </Button>
+
                   {!isCompleted && (
                     <>
                       <Button variant="outline" size="sm" onClick={() => setRegistrationsChamp(c)}>

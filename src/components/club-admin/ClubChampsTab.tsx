@@ -6532,9 +6532,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           const renderCard = (c: any, isCompleted: boolean) => (
             <Card key={c.id} className={isCompleted ? "opacity-75" : ""}>
               <CardContent className="flex flex-col gap-3 py-4">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
-                <div>
+                <div className="min-w-0">
+
                   <p className="font-medium flex items-center gap-2">
                     {c.name}
                     {(!c.start_date || !c.end_date) && (

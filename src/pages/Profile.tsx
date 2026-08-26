@@ -804,6 +804,44 @@ function ViewMode({
         </Card>
       )}
 
+      {clubMember && (() => {
+        const tags = normaliseSkills((clubMember as any).skills);
+        const others = parseOtherSkills((clubMember as any).skills_other);
+        const occupation = String((clubMember as any).occupation || "").trim();
+        const volunteer = !!(clubMember as any).volunteer_willing;
+        const empty = !tags.length && !others.length && !occupation && !volunteer;
+        return (
+          <Card className="border-border/60">
+            <CardContent className="p-4 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Skills &amp; Expertise</p>
+              {empty ? (
+                <p className="text-xs text-muted-foreground">
+                  Not completed yet — tap Edit to tell the club what you could help with.
+                </p>
+              ) : (
+                <>
+                  {occupation && <p className="text-xs text-muted-foreground">Occupation: {occupation}</p>}
+                  {(tags.length > 0 || others.length > 0) && (
+                    <div className="flex flex-wrap gap-1">
+                      {tags.map((t) => (
+                        <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[10px]">{skillTagLabel(t)}</span>
+                      ))}
+                      {others.map((t) => (
+                        <span key={`o-${t}`} className="rounded-full bg-muted px-2 py-0.5 text-[10px]">{t}</span>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Willing to volunteer: {volunteer ? "Yes" : "No"}
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+
       {clubMember && faceRequired && (
         <Card className="border-border/60">
           <CardContent className="p-4 space-y-2">

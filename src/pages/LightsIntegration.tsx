@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { ArrowLeft, Zap, Lightbulb, Wifi, Gauge, ShieldCheck, Receipt, CheckCircle2, Users, CalendarClock, DoorOpen, Fingerprint, Smartphone, UserCheck, KeyRound, Sparkles } from "lucide-react";
 import shellyImg from "@/assets/shelly-pro-4pm.jpg";
-import shellyGuideImg from "@/assets/shelly-install-guide.png.asset.json";
+import shellyGuideImg from "@/assets/shelly-install-guide.png";
 
 export default function LightsIntegration() {
   const navigate = useNavigate();
@@ -243,7 +243,7 @@ export default function LightsIntegration() {
         </p>
         <figure className="rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] shadow-2xl">
           <img
-            src={shellyGuideImg.url}
+            src={shellyGuideImg}
             alt="Five-step guide to installing a Shelly smart relay for squash court lighting: mount in the DB board, wire the circuits, connect to Wi-Fi, pair in the app, and control the lights"
             loading="lazy"
             className="w-full object-contain"

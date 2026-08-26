@@ -31,9 +31,9 @@ import playerRacketImg from "@/assets/player-racket.jpg";
 import playersMatchImg from "@/assets/players-match.jpg";
 import shellyImg from "@/assets/shelly-pro-4pm.jpg";
 import lightsAccessVideo from "@/assets/lights-access-demo-v3.mp4.asset.json";
-import doorAccessImg from "@/assets/club-door-access.png.asset.json";
-import appShowcaseImg from "@/assets/app-showcase.png.asset.json";
-import appHomePhoneImg from "@/assets/app-home-phone.png.asset.json";
+import doorAccessImg from "@/assets/club-door-access.png";
+import appShowcaseImg from "@/assets/app-showcase.png";
+import appHomePhoneImg from "@/assets/app-home-phone.png";
 import shLogoFull from "@/assets/shub-logo-white.png";
 import featuresCourtBg from "@/assets/features-court-bg.jpg";
 import { listPublicClubs } from "@/lib/public-clubs";
@@ -351,7 +351,7 @@ export default function Home() {
                 className="relative"
               >
                 <img
-                  src={appHomePhoneImg.url}
+                  src={appHomePhoneImg}
                   alt="SquashHub member home screen on a phone showing club stats, quick actions and door access"
                   loading="eager"
                   className="w-full max-w-[300px] rounded-2xl drop-shadow-[0_28px_60px_rgba(0,0,0,0.6)]"
@@ -473,7 +473,7 @@ export default function Home() {
             >
               <figure className="relative w-full max-w-md">
                 <img
-                  src={doorAccessImg.url}
+                  src={doorAccessImg}
                   alt="Member unlocking the squash club door with the SquashHub app on his phone"
                   loading="lazy"
                   className="w-full rounded-2xl border border-slate-900/10 dark:border-white/10 object-cover shadow-[0_8px_32px_-12px_rgba(0,0,0,0.4)]"
@@ -517,7 +517,7 @@ export default function Home() {
             <motion.img
               {...fadeUp}
               transition={{ duration: 0.5 }}
-              src={appShowcaseImg.url}
+              src={appShowcaseImg}
               alt="SquashHub app screens: court booking, smart lighting, door access, club administration and member dashboard"
               loading="lazy"
               className="w-full rounded-2xl border border-white/10 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)]"

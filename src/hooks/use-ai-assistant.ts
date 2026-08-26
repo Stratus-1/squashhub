@@ -123,7 +123,7 @@ export function useAiAssistant() {
 
 export type AssistantTurn = {
   answer: string;
-  action: { key: string; params?: Record<string, unknown> } | null;
+  action: { key: string; params?: Record<string, string | undefined> } | null;
   workflow_key: string | null;
   unanswered: boolean;
   conversationId: string | null;

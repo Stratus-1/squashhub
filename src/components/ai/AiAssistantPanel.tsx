@@ -31,7 +31,7 @@ import { AiVoiceSettings } from "@/components/ai/AiVoiceSettings";
 type Turn = {
   role: "user" | "assistant";
   content: string;
-  action?: { key: string; params?: Record<string, unknown> } | null;
+  action?: { key: string; params?: Record<string, string | undefined> } | null;
   workflowKey?: string | null;
 };
 
@@ -57,6 +57,7 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const dictation = useDictation((merge) => setInput((v) => merge(v)));
+  const listening = dictation.state === "listening";
 
   const roleCtx = useMemo(
     () => ({ isAdmin: ai.isAdmin, isCaptain: ai.isAdmin, capabilities: ai.capabilities }),
@@ -96,7 +97,7 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
   const submit = async (raw?: string) => {
     const question = (raw ?? input).trim();
     if (!question || ask.isPending) return;
-    if (dictation.listening) dictation.stop();
+    if (listening) dictation.stop();
     stopSpeaking();
     setInput("");
     setTurns((t) => [...t, { role: "user", content: question }]);
@@ -292,12 +293,12 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
             <Button
               type="button"
               size="sm"
-              variant={dictation.listening ? "destructive" : "outline"}
+              variant={listening ? "destructive" : "outline"}
               className="h-8 text-[12px]"
-              onClick={() => (dictation.listening ? dictation.stop() : dictation.start())}
+              onClick={() => (listening ? dictation.stop() : dictation.start())}
             >
-              {dictation.listening ? <MicOff className="mr-1 h-3.5 w-3.5" /> : <Mic className="mr-1 h-3.5 w-3.5" />}
-              {dictationLabel(dictation.listening)}
+              {listening ? <MicOff className="mr-1 h-3.5 w-3.5" /> : <Mic className="mr-1 h-3.5 w-3.5" />}
+              {dictationLabel(listening)}
             </Button>
           )}
           {ai.settings?.voice_output_enabled && (

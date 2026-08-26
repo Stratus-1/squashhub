@@ -298,7 +298,7 @@ export function AiAssistantPanel({ onClose }: { onClose: () => void }) {
               onClick={() => (listening ? dictation.stop() : dictation.start())}
             >
               {listening ? <MicOff className="mr-1 h-3.5 w-3.5" /> : <Mic className="mr-1 h-3.5 w-3.5" />}
-              {dictationLabel(listening)}
+              {dictationLabel(dictation.state)}
             </Button>
           )}
           {ai.settings?.voice_output_enabled && (

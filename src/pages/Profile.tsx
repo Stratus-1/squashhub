@@ -19,7 +19,7 @@ import {
   skillsPatch,
   type SkillsDraft,
 } from "@/components/SkillsExpertiseFields";
-import { skillLabel, normaliseSkills, parseOtherSkills } from "@/lib/member-skills";
+import { skillLabel as skillTagLabel, normaliseSkills, parseOtherSkills } from "@/lib/member-skills";
 
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

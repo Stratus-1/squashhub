@@ -403,7 +403,7 @@ const DATE_TOKEN =
   /(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}[\s-][A-Za-z]{3,9}(?:[\s-](?:\d{4}|\d{2}))?\b|[A-Za-z]{3,9}[\s-]\d{1,2},?(?:[\s-](?:\d{4}|\d{2}))?\b)/;
 
 /** A money token: 1 234,56 / 1,234.56 / (123.45) / -123.45 / R 99.00 / 1 000.00 Cr. */
-const MONEY = /\(?-?R?\s?\d{1,3}(?:[ ,.\u00a0]\d{3})*[.,]\d{2}\)?\s?(?:-|CR|Cr|cr|DR|Dr|dr)?/g;
+const MONEY = /(?<![\d,.])\(?-?R?\s?\d{1,3}(?:[ ,.\u00a0]\d{3})*[.,]\d{2}\)?\s?(?:-|CR|Cr|cr|DR|Dr|dr)?/g;
 
 const SKIP_LINE =
   /(opening\s+balance|closing\s+balance|brought\s*forward|carried\s*forward|balance\s*b\/?f|b\/fwd|^\s*total\b|turnover|no\.\s*(credit|debit)\s+transactions|statement\s+period|statement\s+date|page\s+\d+\s+of|vat\s+registration)/i;

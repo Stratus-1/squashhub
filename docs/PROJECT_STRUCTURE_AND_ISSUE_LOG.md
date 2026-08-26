@@ -1217,3 +1217,4 @@ Tests: `src/test/booking-label.test.ts`.
 - UI (`LeagueGameDetail.tsx`): per-rubber rights come from `rubberEditRights()` in `src/lib/league/lineup.ts`. Captains may replace players in any not-yet-started rubber (latest save wins); once a rubber has play, only admins see the amber correction action.
 - After a correction, an admin banner shows before/after bonus and total points and requires an explicit "Save corrected points & standings" action, so standings never shift silently.
 - Coverage: `src/test/league-lineup.test.ts` (17 tests) including play detection and role boundaries.
+- Follow-up hardening (same day): score/live-rally upserts no longer send player codes when the server row already has players (`playerFieldsForScoreWrite`), so a stale device cannot re-apply original players over a newer reserve swap; and "Save Setup" no longer blanks an already-submitted `league_fixture_results` row (only the format snapshot is refreshed).

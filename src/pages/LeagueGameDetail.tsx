@@ -1765,15 +1765,28 @@ export default function LeagueGameDetail() {
         .delete()
         .eq("fixture_id", fixtureId)
         .gt("position", positionsToSave.length);
-      const { error: sumErr } = await supabase.from("league_fixture_results" as any).upsert({
-        fixture_id: fixtureId,
-        home_total_games: 0, away_total_games: 0,
-        home_bonus_points: 0, away_bonus_points: 0,
-        home_total_points: 0, away_total_points: 0,
-        winner: null, status: "setup",
-        submitted_by: user.id,
-        match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot },
-      } as any, { onConflict: "fixture_id" });
+      // Never let a setup-save blank an authoritative submitted result: once a
+      // fixture has been submitted/completed, only refresh the format snapshot.
+      const savedStatus = String((existingResult as any)?.status || "");
+      const isAuthoritative = savedStatus === "submitted" || savedStatus === "completed";
+      const { error: sumErr } = isAuthoritative
+        ? await supabase.from("league_fixture_results" as any)
+            .update({
+              match_format: {
+                ...(((existingResult as any)?.match_format as any) || {}),
+                scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot,
+              },
+            } as any)
+            .eq("fixture_id", fixtureId)
+        : await supabase.from("league_fixture_results" as any).upsert({
+            fixture_id: fixtureId,
+            home_total_games: 0, away_total_games: 0,
+            home_bonus_points: 0, away_bonus_points: 0,
+            home_total_points: 0, away_total_points: 0,
+            winner: null, status: "setup",
+            submitted_by: user.id,
+            match_format: { scoringFormat, bestOf, originalLineupSnapshot: setupOriginalSnapshot },
+          } as any, { onConflict: "fixture_id" });
       if (sumErr) throw sumErr;
       queryClient.invalidateQueries({ queryKey: ["league-fixture-result", fixtureId] });
       queryClient.invalidateQueries({ queryKey: ["league-match-results", fixtureId] });

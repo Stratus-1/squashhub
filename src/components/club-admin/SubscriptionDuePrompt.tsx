@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,15 +7,24 @@ import { AlertCircle, CreditCard } from "lucide-react";
 
 /**
  * Shows tenant admins a prompt when their club has an unpaid platform
- * subscription invoice. Disappears automatically once the invoice is paid.
+ * subscription invoice. Disappears automatically once the invoice is paid:
+ * the billing webhook updates the invoice row, realtime pushes the change
+ * here instantly, and a gentle poll covers environments without realtime
+ * (payment often completes in a separate browser tab).
  */
 export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   const { data: invoices } = useQuery({
     queryKey: ["club-unpaid-sub-invoices", clubId],
     enabled: !!clubId,
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    // While anything is outstanding, poll as a fallback so the banner clears
+    // even when realtime is unavailable. Stops once nothing is due.
+    refetchInterval: (query) =>
+      ((query.state.data as unknown[] | undefined)?.length ?? 0) > 0 ? 60_000 : false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("platform_subscription_invoices")
@@ -26,6 +36,30 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
       return data || [];
     },
   });
+
+  // Instant clear: any invoice change for this club (paid, void, new) refreshes.
+  useEffect(() => {
+    if (!clubId) return;
+    const channel = supabase
+      .channel(`sub-invoices-${clubId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "platform_subscription_invoices",
+          filter: `club_id=eq.${clubId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["club-unpaid-sub-invoices", clubId] });
+          qc.invalidateQueries({ queryKey: ["club-platform-invoices", clubId] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clubId, qc]);
 
   if (!invoices || invoices.length === 0) return null;
 

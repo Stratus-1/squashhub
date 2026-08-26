@@ -184,6 +184,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
       if (status === "paid") {
         toast.success("Payment confirmed — invoice marked paid.", { id: t });
         qc.invalidateQueries({ queryKey: ["club-platform-invoices", clubId] });
+        qc.invalidateQueries({ queryKey: ["club-unpaid-sub-invoices", clubId] });
       } else {
         toast.message(`Stitch status: ${stitchState || status || "unknown"}`, { id: t });
       }

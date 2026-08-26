@@ -71,14 +71,37 @@ export function MemberProvider({ children }: { children: ReactNode }) {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const { data: ownMembers, error: ownErr } = await fromExt("club_members")
-          .select("id, name, email, club_member_number, gender, user_id, role")
-          .eq("club_id", club.id)
-          .eq("user_id", user.id)
-          .order("joined_at", { ascending: true });
+        const loadOwnMembers = async () =>
+          fromExt("club_members")
+            .select("id, name, email, club_member_number, gender, user_id, role")
+            .eq("club_id", club.id)
+            .eq("user_id", user.id)
+            .order("joined_at", { ascending: true });
+
+        let { data: ownMembers, error: ownErr } = await loadOwnMembers();
         if (ownErr) throw ownErr;
 
+        // Self-heal: a member who signs in on a fresh install with an account
+        // that isn't linked yet (re-install, new device, address change) would
+        // otherwise land with NO membership — losing their player identity and
+        // every "this is my match" action (schedule / enter result).
+        // If their verified email matches an unclaimed member row, claim it.
+        if (!(ownMembers || []).length) {
+          try {
+            const { data: unclaimed } = await (supabase.rpc as any)("find_unclaimed_memberships");
+            const mine = ((unclaimed || []) as any[]).find((r) => r.club_id === club.id);
+            if (mine?.member_id) {
+              await (supabase.rpc as any)("claim_unclaimed_membership", { _member_id: mine.member_id });
+              const retry = await loadOwnMembers();
+              if (!retry.error) ownMembers = retry.data;
+            }
+          } catch (e) {
+            console.warn("[MemberContext] auto-claim skipped:", e);
+          }
+        }
+
         const myMembership = (ownMembers || [])[0] as any;
+
         // Captain is league-scoped only. Officer positions (chairman/secretary/club_captain)
         // are auto-assigned the matching permission role on the server, but that role can be
         // revoked or changed by an admin — so we no longer hardcode them as full admin here.

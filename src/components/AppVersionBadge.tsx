@@ -22,12 +22,22 @@ export function AppVersionBadge({ className, variant = "full" }: AppVersionBadge
 
   const handleClick = async () => {
     if (busy) return;
+    if (isBusy()) {
+      toast.info("Finish the current task first", {
+        description: "SquashHub will update as soon as you're done.",
+      });
+      return;
+    }
     setBusy(true);
     try {
       const applied = await checkForUpdateNow();
       if (!applied) {
         toast.info("Refreshing to the latest build…");
         await hardRefresh();
+      }
+    } catch (e: any) {
+      if (e?.message === "BUSY") {
+        toast.info("Finish the current task first");
       }
     } finally {
       setBusy(false);

@@ -1124,21 +1124,22 @@ export default function SuperAdminSubscriptions() {
                 <p className="text-[10px] text-muted-foreground mt-1">e.g. {invoiceForm.invoice_prefix || "INV-"}2026-00001</p>
               </div>
               <div>
-                <Label className="text-xs">Send Invoices Days Early</Label>
+                <Label className="text-xs">Invoice Issue Day (of each month)</Label>
                 <Input
                   className="h-8 text-xs"
                   type="number"
-                  min={0}
+                  min={1}
                   max={28}
-                  value={invoiceForm.advance_issue_days}
-                  onChange={e => updateInvoiceField("advance_issue_days", e.target.value)}
-                  placeholder="5"
+                  value={invoiceForm.issue_day_of_month}
+                  onChange={e => updateInvoiceField("issue_day_of_month", e.target.value)}
+                  placeholder="25"
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Invoices are dated on the renewal date (1st of the billing month) but generated and emailed this many days
-                  earlier, giving clubs time to pay.
+                  Invoices are generated and emailed on this fixed day every month, covering every renewal that falls
+                  before the next issue day. Each invoice is still dated on the club's own renewal date.
                 </p>
               </div>
+
               <div>
                 <Label className="text-xs">Footer / Terms</Label>
                 <Textarea rows={3} className="text-xs" value={invoiceForm.invoice_footer} onChange={e => updateInvoiceField("invoice_footer", e.target.value)} placeholder="Payment due within 14 days. E&OE." />

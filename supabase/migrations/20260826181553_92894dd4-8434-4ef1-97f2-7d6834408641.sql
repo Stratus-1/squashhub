@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.recalc_league_fixture_totals(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.trg_recalc_league_fixture_totals() FROM PUBLIC, anon, authenticated;

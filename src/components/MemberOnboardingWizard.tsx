@@ -227,6 +227,7 @@ export function MemberOnboardingWizard({
   const [playsLeague, setPlaysLeague] = useState(false);
   const [leagueSelections, setLeagueSelections] = useState<Record<string, LeagueSelection>>({});
   const [memberNumber, setMemberNumber] = useState("");
+  const [skillsDraft, setSkillsDraft] = useState<SkillsDraft>(emptySkillsDraft());
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
   const [detectedAge, setDetectedAge] = useState<number | null>(null);
   const [categoryAutoSet, setCategoryAutoSet] = useState(false);

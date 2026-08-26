@@ -67,6 +67,16 @@ export function monthStartIso(d: Date): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-01`
 }
 
+/** UTC date `n` days after `d` (no mutation, time component dropped). */
+export function addDays(d: Date, n: number): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + n))
+}
+
+/** True when `d` falls on the 1st of a month (UTC) — the renewal/issue date. */
+export function isFirstOfMonth(d: Date): boolean {
+  return d.getUTCDate() === 1
+}
+
 /** The previous calendar month relative to `billingDate`, as ISO date bounds. */
 export function previousMonthRange(billingDate: Date): { start: string; end: string } {
   const y = billingDate.getUTCFullYear()

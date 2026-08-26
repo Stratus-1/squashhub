@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { DEFAULT_RATE } from "@/lib/ai/voice";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";

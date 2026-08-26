@@ -413,9 +413,13 @@ type RawRow = { dateRaw: string; description: string; toks: Tok[] };
 
 /** Money tokens on a line, in reading order, with their Cr/Dr/minus markers. */
 function moneyTokens(rest: string): Tok[] {
-  const toks = rest.match(MONEY) || [];
   const out: Tok[] = [];
-  for (const t of toks) {
+  const re = new RegExp(MONEY.source, "g");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(rest))) {
+    const t = m[0];
+    // "10.50%" is a rate, not money.
+    if (rest.slice(m.index + t.length).trimStart().startsWith("%")) continue;
     const dr = /(?:dr|-)\s*$/i.test(t);
     const cr = /cr\s*$/i.test(t);
     const clean = t.replace(/(?:-|CR|Cr|cr|DR|Dr|dr)\s*$/, "").trim();

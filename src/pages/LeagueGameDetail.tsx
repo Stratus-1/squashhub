@@ -2019,13 +2019,37 @@ export default function LeagueGameDetail() {
       toast.error("Still loading team lineup — please wait a moment and try again.");
       return;
     }
+    // ---- Submission protection guards ----
+    const _fxDateStr: string | undefined = (fixture as any)?.fixture_date;
+    const _fxStartTime: string | undefined = (fixture as any)?.start_time;
+    const _todayStr = format(new Date(), "yyyy-MM-dd");
+    const isFixtureSameDayOrPast = !!_fxDateStr && _fxDateStr <= _todayStr;
+    const wouldFinalize = !!(adminOverride || (isClubAdmin && isFixtureSameDayOrPast) || (homeSig && awaySig));
+    if (wouldFinalize) {
+      // GUARD 1: never submit a final result with zero games played and no
+      // forfeits recorded. A bonus/penalty-only submission posts phantom
+      // points to the standings (Nelspruit, 26 Aug 2026: scorecards submitted
+      // in the morning with placeholder totals before any squash was played).
+      const totalGames = (summary.homeTotalGames ?? 0) + (summary.awayTotalGames ?? 0);
+      const anyForfeit = positions.some((p) => !!p.isForfeit);
+      if (totalGames === 0 && !anyForfeit) {
+        toast.error("No games have been played yet — you can't submit results. Capture rubber scores first, or record a forfeit.");
+        return;
+      }
+      // GUARD 2: warn when finalising before the scheduled start — submitting
+      // early pre-empts live marking and locks the scorecard for players.
+      if (_fxDateStr) {
+        const start = new Date(`${_fxDateStr}T${(_fxStartTime || "00:00:00").slice(0, 8)}`);
+        const isBeforeStart = _fxStartTime ? Date.now() < start.getTime() : _fxDateStr > _todayStr;
+        if (isBeforeStart && !window.confirm(
+          `This match hasn't been played yet — it is scheduled for ${format(parseISO(_fxDateStr), "dd MMM yyyy")}${_fxStartTime ? ` at ${_fxStartTime.slice(0, 5)}` : ""}.\n\nSubmitting now will pre-empt live marking and post unplayed results to the standings.\n\nSubmit anyway?`
+        )) {
+          return;
+        }
+      }
+    }
     setSubmitting(true);
     try {
-      // Allow admins to finalize on or after the fixture date even without
-      // both captain signatures (signatures often aren't captured live).
-      const _fxDateStr: string | undefined = (fixture as any)?.fixture_date;
-      const _todayStr = format(new Date(), "yyyy-MM-dd");
-      const isFixtureSameDayOrPast = !!_fxDateStr && _fxDateStr <= _todayStr;
       const setupOriginalSnapshot = hasOriginalSnapshot(originalLineupSnapshot)
         ? originalLineupSnapshot!
         : buildOriginalSnapshot(positions);

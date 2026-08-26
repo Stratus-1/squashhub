@@ -2151,9 +2151,20 @@ export default function LeagueGameDetail() {
     const hasPlayers = !!(pos.homeCode || pos.homeName) && !!(pos.awayCode || pos.awayName);
     return hasPlayers && !pos.completed && !pos.isForfeit;
   });
-  const isSubmittedLocked = isSubmittedRaw && !hasUnfinishedPlayablePositions;
   const fixtureDateStr: string | undefined = (fixture as any)?.fixture_date;
   const fixtureStartTime: string | undefined = (fixture as any)?.start_time;
+  // A scorecard that was "submitted" BEFORE the match actually started (an
+  // admin/captain pre-submitting placeholder scores in the morning) must never
+  // lock the marker on match night. Nelspruit 26 Aug: the fixture was submitted
+  // at 09:47 for a 17:00 start, which hid every "Mark" button for the players.
+  const isPreMatchSubmission = (() => {
+    const submittedAt = (existingResult as any)?.submitted_at;
+    if (!isSubmittedRaw || !submittedAt || !fixtureDateStr) return false;
+    const start = new Date(`${fixtureDateStr}T${(fixtureStartTime || "00:00:00").slice(0, 8)}`);
+    return new Date(submittedAt).getTime() < start.getTime();
+  })();
+  const isSubmittedLocked = isSubmittedRaw && !hasUnfinishedPlayablePositions && !isPreMatchSubmission;
+
   const isFixturePast = (() => {
     // Date-only check: a fixture is only "overdue" once its scheduled day has
     // fully passed. Same-day matches (even past start time) are never
@@ -3290,12 +3301,24 @@ export default function LeagueGameDetail() {
                               {!isSubmitted && pos.completed && !pos.isForfeit && (
                                 <>
                                   <button
+                                    onClick={() => {
+                                      if (!window.confirm(`Re-mark position ${idx + 1} live?\n\nThe recorded score is cleared and the marker opens.`)) return;
+                                      clearScores(idx);
+                                      startMarking(idx);
+                                    }}
+                                    className="bg-primary/80 text-primary-foreground rounded p-0.5 hover:bg-primary"
+                                    title="Re-mark this game live"
+                                  >
+                                    <Play className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
                                     onClick={() => setManualEntry(idx)}
                                     className="text-muted-foreground hover:text-primary hover:bg-accent rounded p-0.5"
                                     title="Edit scores"
                                   >
                                     <Edit3 className="w-4 h-4" />
                                   </button>
+
                                   <button
                                     onClick={() => {
                                       if (!window.confirm(`Scratch the recorded score for position ${idx + 1}?\n\nThis clears the game so it can be re-marked or re-entered.`)) return;

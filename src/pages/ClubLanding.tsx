@@ -12,6 +12,9 @@ import { getPublicClubBySubdomain } from "@/lib/public-clubs";
 import { usePublicClubRules } from "@/hooks/use-club-rules";
 import { ClubRulesContent } from "@/components/ClubRulesContent";
 import { hasRulesContent } from "@/lib/club-rules";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+
+
 
 
 

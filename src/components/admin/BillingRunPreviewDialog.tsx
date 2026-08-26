@@ -114,11 +114,12 @@ export function BillingRunPreviewDialog({
           <span className="text-muted-foreground">Nothing has been created or emailed yet.</span>
         </div>
 
-        <Table>
+        <div className="overflow-x-auto">
+        <Table className="min-w-[900px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs">Club</TableHead>
-              <TableHead className="text-xs">Cycle</TableHead>
+              <TableHead className="text-xs min-w-[190px]">Club</TableHead>
+              <TableHead className="text-xs whitespace-nowrap">Cycle</TableHead>
               <TableHead className="text-xs">Period covered</TableHead>
               <TableHead className="text-xs">Invoice date</TableHead>
               <TableHead className="text-xs">Due</TableHead>
@@ -140,28 +141,30 @@ export function BillingRunPreviewDialog({
               const skipped = r.status !== "dry-run";
               return (
                 <TableRow key={`${r.subscription_id || i}`} className={skipped ? "opacity-60" : ""}>
-                  <TableCell className="text-xs font-medium">
-                    {r.club || "—"}
+                  <TableCell className="text-xs font-medium align-top">
+                    <div className="whitespace-nowrap">{r.club || "—"}</div>
                     {r.invoice_number && <div className="text-[10px] text-muted-foreground font-mono">{r.invoice_number}</div>}
-                    {skipped && <div className="text-[10px] text-amber-600">{r.reason || r.error || r.status}</div>}
+                    {skipped && <div className="text-[10px] text-amber-600 whitespace-nowrap">{r.reason || r.error || r.status}</div>}
                   </TableCell>
-                  <TableCell className="text-xs">{cycleLabel(r.billing_cycle)}</TableCell>
-                  <TableCell className="text-xs whitespace-nowrap">
+                  <TableCell className="text-xs whitespace-nowrap align-top">{cycleLabel(r.billing_cycle)}</TableCell>
+                  <TableCell className="text-xs whitespace-nowrap align-top">
                     {skipped ? `Next renewal ${day(r.next_renewal)}` : `${day(r.period_start)} – ${day(r.period_end)}`}
                   </TableCell>
-                  <TableCell className="text-xs whitespace-nowrap">{day(r.issue_date)}</TableCell>
-                  <TableCell className="text-xs whitespace-nowrap">{day(r.due_date)}</TableCell>
-                  <TableCell className="text-xs text-right font-mono">{money(r.subscription_amount)}</TableCell>
-                  <TableCell className="text-xs text-right font-mono">
+                  <TableCell className="text-xs whitespace-nowrap align-top">{day(r.issue_date)}</TableCell>
+                  <TableCell className="text-xs whitespace-nowrap align-top">{day(r.due_date)}</TableCell>
+                  <TableCell className="text-xs text-right font-mono align-top">{money(r.subscription_amount)}</TableCell>
+                  <TableCell className="text-xs text-right font-mono align-top">
                     {r.whatsapp_amount ? `${money(r.whatsapp_amount)} (${r.whatsapp_message_count || 0})` : "—"}
                   </TableCell>
-                  <TableCell className="text-xs text-right font-mono">{money(r.vat)}</TableCell>
-                  <TableCell className="text-xs text-right font-mono font-semibold">{money(r.total)}</TableCell>
+                  <TableCell className="text-xs text-right font-mono align-top">{money(r.vat)}</TableCell>
+                  <TableCell className="text-xs text-right font-mono font-semibold align-top">{money(r.total)}</TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
+        </div>
+
 
         {billable.some(r => r.subscription_due === false) && (
           <p className="flex items-start gap-2 text-xs text-amber-600">

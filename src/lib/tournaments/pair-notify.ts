@@ -39,14 +39,16 @@ export async function notifyDoublesPair(
   const waList: Array<{ member_id: string; message: string }> = Array.isArray(data?.whatsapp)
     ? data.whatsapp
     : [];
+  const club = clubId || (data?.club_id ? String(data.club_id) : null);
 
   let whatsappSent = 0;
   let whatsappFailed = 0;
-  if (channels.includes("whatsapp") && waList.length > 0 && clubId) {
+  if (channels.includes("whatsapp") && waList.length > 0 && club) {
     for (const w of waList) {
       try {
         await sendWhatsApp({
-          clubId,
+          clubId: club,
+
           recipients: [{ member_id: w.member_id }],
           kind: "champ_doubles_pair",
           category: "utility",

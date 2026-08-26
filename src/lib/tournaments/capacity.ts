@@ -317,17 +317,25 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
     const playoffGames = L.playoffs && !isKnockout ? playoffMatchesForBracket(bracketSize) : 0;
     const totalGamesNeeded = gamesNeeded + playoffGames;
 
+    const playoffRounds = playoffGames > 0 ? Math.ceil(Math.log2(Math.max(2, bracketSize))) : 0;
+    const totalRoundsNeeded = roundsNeeded + playoffRounds;
+    const roundsFit = totalRoundsNeeded <= slotsAvailable;
+
     return {
       groupNumber: gn,
       label: L.label || `League ${gn}`,
       format: L.format,
       isSwiss,
+      isTimeCapped,
       slotMinutes: slot,
       pools,
       rounds,
       suggestedRounds,
       gamesAvailable,
       gamesPerPoolAvailable,
+      slotsAvailable,
+      roundsNeeded: totalRoundsNeeded,
+      slotLimited,
       gamesNeeded,
       playoffGames,
       totalGamesNeeded,
@@ -337,10 +345,12 @@ export function computeCapacity(input: CapacityInput): CapacityResult {
       maxPlayers,
       entities,
       players: isDoubles ? entities * 2 : entities,
-      fits: totalGamesNeeded <= gamesAvailable,
+      fits: totalGamesNeeded <= gamesAvailable && roundsFit,
       shortfallGames: Math.max(0, totalGamesNeeded - gamesAvailable),
+      shortfallRounds: Math.max(0, totalRoundsNeeded - slotsAvailable),
     };
   });
+
 
   const plannedEntities = perLeague.reduce((a, l) => a + l.entities, 0);
   const withField = perLeague.filter((l) => l.entities > 0);

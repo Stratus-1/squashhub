@@ -238,6 +238,13 @@ export function RulesTab({ clubId, club }: { clubId: string; club: any }) {
         </DialogContent>
       </Dialog>
 
+      <ClubQrShareCard
+        clubId={clubId}
+        clubName={club?.name || "Club"}
+        subdomain={club?.subdomain || ""}
+        logoUrl={club?.logo_url}
+      />
+
       <Card className="p-4 md:p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-sm flex items-center gap-2">

@@ -323,6 +323,35 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     return meta.normal === "Dr" ? b.debit - b.credit : b.credit - b.debit;
   };
 
+  /* ─── Club-defined GL accounts ─── */
+  const { data: customAccounts = [] } = useClubGLAccounts(clubId);
+  const customBalances: Record<string, BalEntry> = (journalEntries || []).reduce(
+    (acc: Record<string, BalEntry>, entry: any) => {
+      const id = entry.custom_account_id as string | null;
+      if (!id) return acc;
+      if (!acc[id]) acc[id] = { debit: 0, credit: 0 };
+      acc[id].debit += Number(entry.debit);
+      acc[id].credit += Number(entry.credit);
+      return acc;
+    },
+    {}
+  );
+  const getCustomBalance = (id: string) => {
+    const b = customBalances[id] || { debit: 0, credit: 0 };
+    const acc = customAccounts.find((a) => a.id === id);
+    const normalDr = !acc || acc.category === "Asset" || acc.category === "Expense";
+    return normalDr ? b.debit - b.credit : b.credit - b.debit;
+  };
+  const customIncomeAccounts = customAccounts.filter((a) => a.is_active && a.category === "Income");
+  const customExpenseAccounts = customAccounts.filter((a) => a.is_active && a.category === "Expense");
+  const getAccountLabel = (value: string) => {
+    if (value?.startsWith("custom:")) {
+      return customAccounts.find((a) => a.id === value.slice(7))?.name || "Club account";
+    }
+    return getLabel(value);
+  };
+
+
   const totalIncome = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Income").reduce((s, a) => s + getBalance(a), 0);
   const totalExpenses = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Expense").reduce((s, a) => s + getBalance(a), 0);
   const bankBalance = getBalance("bank_current");

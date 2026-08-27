@@ -203,7 +203,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
                   onValueChange={(v) => setEditing((s) => ({
                     ...(s || {}),
                     category: v as GLCategory,
-                    base_account: rollupOptions(v as GLCategory)[0],
+                    base_account: null,
                   }))}
                 >
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
@@ -215,16 +215,20 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
               <div>
                 <Label className="text-xs">Reports under</Label>
                 <Select
-                  value={editing?.base_account || ""}
-                  onValueChange={(v) => setEditing((s) => ({ ...(s || {}), base_account: v }))}
+                  value={editing?.base_account || "__none__"}
+                  onValueChange={(v) => setEditing((s) => ({ ...(s || {}), base_account: v === "__none__" ? null : v }))}
                 >
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Standard account" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__none__">None — standalone account</SelectItem>
                     {rollupOptions((editing?.category as GLCategory) || "Expense").map((k) => (
                       <SelectItem key={k} value={k}>{accounts[k].label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Standalone accounts report as their own line; otherwise the balance is grouped under the selected standard account.
+                </p>
               </div>
             </div>
             <div>

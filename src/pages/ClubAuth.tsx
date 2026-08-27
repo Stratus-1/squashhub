@@ -223,6 +223,9 @@ export default function ClubAuth() {
     toast.error(msg || "Sign-up failed");
   };
   const isAssociation = (club as any)?.tenant_type === "association";
+  // NSA-specific messaging (league player CTA, NSF-number prompts) may only be
+  // shown on clubs actually affiliated with the NSA.
+  const isNsaClub = !!(club as any)?.nsa_club_id;
   // NSC-specific: hide the member/league number field on existing-member signup
   // so members only need email + cell phone (numbers are issued by the club).
   const hideMemberNumberField = (subdomain || "").toLowerCase() === "nsc";

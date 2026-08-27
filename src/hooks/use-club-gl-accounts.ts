@@ -8,10 +8,19 @@ export interface ClubGLAccount {
   club_id: string;
   name: string;
   category: GLCategory;
-  base_account: string;
+  /** Standard account this rolls up into for the double-entry ledger. Null = standalone. */
+  base_account: string | null;
   description: string | null;
   is_active: boolean;
 }
+
+/** Ledger account used to carry standalone (parentless) custom accounts per category. */
+export const STANDALONE_FALLBACK_ACCOUNT: Record<GLCategory, string> = {
+  Asset: "cash",
+  Liability: "creditors",
+  Income: "fee_income",
+  Expense: "general_expense",
+};
 
 /** Club-defined general ledger accounts (in addition to the standard chart). */
 export function useClubGLAccounts(clubId?: string) {
@@ -35,12 +44,12 @@ export function useClubGLAccountMutations(clubId: string) {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["club-gl-accounts", clubId] });
 
   return {
-    async create(input: { name: string; category: GLCategory; base_account: string; description?: string | null }) {
+    async create(input: { name: string; category: GLCategory; base_account?: string | null; description?: string | null }) {
       const { error } = await fromExt("club_gl_accounts").insert({
         club_id: clubId,
         name: input.name.trim(),
         category: input.category,
-        base_account: input.base_account,
+        base_account: input.base_account ?? null,
         description: input.description?.trim() || null,
       } as any);
       if (error) throw error;

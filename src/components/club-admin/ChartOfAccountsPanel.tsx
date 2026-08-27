@@ -29,9 +29,10 @@ interface Props {
   getBalance: (account: string) => number;
   getCustomBalance: (customAccountId: string) => number;
   money: (n: number) => string;
+  onOpeningBalances?: () => void;
 }
 
-export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBalance, money }: Props) {
+export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBalance, money, onOpeningBalances }: Props) {
   const { data: customAccounts = [], isLoading } = useClubGLAccounts(clubId);
   const mutations = useClubGLAccountMutations(clubId);
 

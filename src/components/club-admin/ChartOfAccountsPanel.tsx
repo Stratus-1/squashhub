@@ -43,20 +43,19 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
   const rollupOptions = (category: GLCategory) =>
     standardKeys.filter((k) => accounts[k].category === category);
 
-  const openNew = () => setEditing({ name: "", category: "Expense", base_account: "general_expense", description: "" });
+  const openNew = () => setEditing({ name: "", category: "Expense", base_account: null, description: "" });
 
   const save = async () => {
     if (!editing) return;
     const name = (editing.name || "").trim();
     if (!name) return toast.error("Give the account a name");
-    if (!editing.base_account) return toast.error("Pick a standard account it rolls up into");
     setBusy(true);
     try {
       if (editing.id) {
         await mutations.update(editing.id, {
           name,
           category: editing.category as GLCategory,
-          base_account: editing.base_account,
+          base_account: editing.base_account ?? null,
           description: editing.description ?? null,
           is_active: editing.is_active !== false,
         });
@@ -66,7 +65,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
         await mutations.create({
           name,
           category: editing.category as GLCategory,
-          base_account: editing.base_account,
+          base_account: editing.base_account ?? null,
           description: editing.description ?? null,
         });
         toast.success("Account added");
@@ -80,7 +79,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
   };
 
   const remove = async (acc: ClubGLAccount) => {
-    if (!confirm(`Delete "${acc.name}"? Existing entries stay in the ledger under ${accounts[acc.base_account]?.label || acc.base_account}.`)) return;
+    if (!confirm(`Delete "${acc.name}"? Existing entries stay in the ledger${acc.base_account ? ` under ${accounts[acc.base_account]?.label || acc.base_account}` : ""}.`)) return;
     try {
       await mutations.remove(acc.id);
       toast.success("Account deleted");
@@ -144,7 +143,6 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
               })}
 
               {custom.map((acc) => {
-                const meta = accounts[acc.base_account];
                 const balance = getCustomBalance(acc.id);
                 const normal: "Dr" | "Cr" = acc.category === "Asset" || acc.category === "Expense" ? "Dr" : "Cr";
                 return (

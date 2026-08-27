@@ -8910,6 +8910,10 @@ export type Database = {
           eft_proof_path: string | null
           eft_proof_uploaded_at: string | null
           eft_proof_uploaded_by: string | null
+          eft_review_note: string | null
+          eft_review_status: string | null
+          eft_reviewed_at: string | null
+          eft_reviewed_by: string | null
           email_sent_at: string | null
           email_status: string | null
           fx_rate_to_zar: number | null
@@ -8953,6 +8957,10 @@ export type Database = {
           eft_proof_path?: string | null
           eft_proof_uploaded_at?: string | null
           eft_proof_uploaded_by?: string | null
+          eft_review_note?: string | null
+          eft_review_status?: string | null
+          eft_reviewed_at?: string | null
+          eft_reviewed_by?: string | null
           email_sent_at?: string | null
           email_status?: string | null
           fx_rate_to_zar?: number | null
@@ -8996,6 +9004,10 @@ export type Database = {
           eft_proof_path?: string | null
           eft_proof_uploaded_at?: string | null
           eft_proof_uploaded_by?: string | null
+          eft_review_note?: string | null
+          eft_review_status?: string | null
+          eft_reviewed_at?: string | null
+          eft_reviewed_by?: string | null
           email_sent_at?: string | null
           email_status?: string | null
           fx_rate_to_zar?: number | null
@@ -12215,6 +12227,10 @@ export type Database = {
           p_verify?: string
         }
         Returns: Json
+      }
+      review_platform_invoice_eft_proof: {
+        Args: { _approve: boolean; _invoice_id: string; _note?: string }
+        Returns: undefined
       }
       save_bells_match_result: {
         Args: {

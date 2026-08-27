@@ -52,9 +52,14 @@ type Draft = ParsedBankRow & {
   duplicate: DuplicateFlag;
   account: string;
   memberId: string | null;
+  key: string;
+  discarded: boolean;
+  fromRule: boolean;
+  touched: boolean;
 };
 
 const BANK_ACCOUNT = "bank_current";
+
 
 export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts }: Props) {
   const qc = useQueryClient();

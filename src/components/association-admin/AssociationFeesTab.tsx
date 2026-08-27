@@ -193,5 +193,124 @@ export function AssociationFeesTab({ clubId }: { clubId: string }) {
         )}
       </Card>
     </div>
+      </TabsContent>
+    </Tabs>
   );
 }
+
+interface TeamRow { team_id: string; club_id: string; club_name: string; player_count: number; season_year: number }
+
+function ClubBillingPreview({ clubId }: { clubId: string }) {
+  const season = new Date().getFullYear();
+  const { data: items = [] } = useAssociationFeeItems(clubId);
+
+  const { data: teams = [] } = useQuery({
+    queryKey: ["association-billing-teams", clubId, season],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("association_league_teams" as any, {
+        _tenant_id: clubId,
+        _season_year: season,
+      });
+      if (error) throw error;
+      return (data || []) as TeamRow[];
+    },
+  });
+
+  const { data: members = [] } = useQuery({
+    queryKey: ["association-billing-members", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("association_member_affiliations_v")
+        .select("club_id, club_name, club_member_id")
+        .eq("association_tenant_id", clubId)
+        .eq("active", true);
+      if (error) throw error;
+      return (data || []) as { club_id: string; club_name: string; club_member_id: string }[];
+    },
+  });
+
+  const active = items.filter(i => i.active && i.direction === "receivable" && (!i.season_year || i.season_year === season));
+  const perMember = active.filter(i => i.basis === "member").reduce((s, i) => s + Number(i.amount || 0), 0);
+  const perClub = active.filter(i => i.basis === "club").reduce((s, i) => s + Number(i.amount || 0), 0);
+  const perTeam = active.filter(i => i.basis === "league_team").reduce((s, i) => s + Number(i.amount || 0), 0);
+
+  const clubs = useMemo(() => {
+    const map = new Map<string, { name: string; members: Set<string>; teams: number }>();
+    const ensure = (id: string, name: string) => {
+      if (!map.has(id)) map.set(id, { name, members: new Set(), teams: 0 });
+      return map.get(id)!;
+    };
+    members.forEach(m => ensure(m.club_id, m.club_name).members.add(m.club_member_id));
+    teams.forEach(t => { ensure(t.club_id, t.club_name).teams += 1; });
+    return Array.from(map.entries())
+      .map(([id, v]) => {
+        const memberCount = v.members.size;
+        const total = perClub + memberCount * perMember + v.teams * perTeam;
+        return { id, name: v.name, memberCount, teams: v.teams, total };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [members, teams, perClub, perMember, perTeam]);
+
+  const grand = clubs.reduce((s, c) => s + c.total, 0);
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4 space-y-3">
+        <div>
+          <h3 className="font-semibold flex items-center gap-2"><Receipt className="w-4 h-4" /> Billing by Club — {season}</h3>
+          <p className="text-xs text-muted-foreground">
+            Calculated from the active receivable fee schedule. Fees are invoiced to the club, not the member.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          {active.length === 0
+            ? <span className="text-muted-foreground">No active receivable fees for {season} — add them in Fee Schedule.</span>
+            : active.map(i => (
+                <Badge key={i.id} variant="secondary" className="text-[10px]">
+                  {i.label} · {BASIS_LABEL[i.basis]} · {fmt(Number(i.amount || 0))}
+                </Badge>
+              ))}
+        </div>
+
+        <table className="w-full text-xs">
+          <thead className="text-muted-foreground">
+            <tr>
+              <th className="text-left px-2 py-1.5 font-medium">Club</th>
+              <th className="text-right px-2 py-1.5 font-medium">Members</th>
+              <th className="text-right px-2 py-1.5 font-medium">Teams</th>
+              <th className="text-right px-2 py-1.5 font-medium">Club fee</th>
+              <th className="text-right px-2 py-1.5 font-medium">Member fees</th>
+              <th className="text-right px-2 py-1.5 font-medium">Team fees</th>
+              <th className="text-right px-2 py-1.5 font-medium">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clubs.map(c => (
+              <tr key={c.id} className="border-t hover:bg-accent/30">
+                <td className="px-2 py-1.5 flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-muted-foreground" />{c.name}</td>
+                <td className="px-2 py-1.5 text-right">{c.memberCount}</td>
+                <td className="px-2 py-1.5 text-right">{c.teams}</td>
+                <td className="px-2 py-1.5 text-right">{fmt(perClub)}</td>
+                <td className="px-2 py-1.5 text-right">{fmt(c.memberCount * perMember)}</td>
+                <td className="px-2 py-1.5 text-right">{fmt(c.teams * perTeam)}</td>
+                <td className="px-2 py-1.5 text-right font-semibold">{fmt(c.total)}</td>
+              </tr>
+            ))}
+            {clubs.length === 0 && (
+              <tr><td colSpan={7} className="text-center text-muted-foreground py-6">No affiliated clubs with members or teams yet.</td></tr>
+            )}
+          </tbody>
+          {clubs.length > 0 && (
+            <tfoot>
+              <tr className="border-t bg-muted/40">
+                <td className="px-2 py-1.5 font-semibold" colSpan={6}>Total receivable</td>
+                <td className="px-2 py-1.5 text-right font-bold">{fmt(grand)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </Card>
+    </div>
+  );
+}
+

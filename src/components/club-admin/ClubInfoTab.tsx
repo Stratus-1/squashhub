@@ -146,7 +146,9 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     { id: "contact", label: "Contact details", description: "Where members and visitors reach the club — address, phone, email and who to speak to.", complete: !!form.address && !!form.email && !!form.phone },
     { id: "bearers", label: "Office bearers", description: "Link the chairman, secretary, club captain and treasurer to their member records, and choose whether they show on your public page.", complete: !!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id || !!form.treasurer_member_id },
     { id: "currency", label: "Currency", description: "Pick the currency used for every fee, invoice, statement and bar sale.", complete: !!form.currency_code },
+    { id: "applications", label: "Membership applications", description: "Decide whether the public can apply from your landing page, and when a new applicant gains access to club data.", complete: true },
   ];
+
 
   return (
     <div className="space-y-4 mt-4">

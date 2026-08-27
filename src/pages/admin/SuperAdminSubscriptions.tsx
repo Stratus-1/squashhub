@@ -1517,7 +1517,10 @@ export default function SuperAdminSubscriptions() {
 // ─── All Platform Subscription Invoices (Super Admin view) ───
 function AllInvoicesList() {
   const qc = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    const s = new URLSearchParams(window.location.search).get("status");
+    return s === "awaiting_eft" ? "awaiting_eft" : "all";
+  });
   const [q, setQ] = useState("");
   const [resendingId, setResendingId] = useState<string | null>(null);
 

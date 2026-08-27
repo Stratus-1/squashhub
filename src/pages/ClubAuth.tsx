@@ -1464,11 +1464,27 @@ export default function ClubAuth() {
           {/* ─── NEW MEMBER ─── */}
           <TabsContent value="new">
             <Card className="p-6">
+              {isNsaClub && (
+                <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
+                  <p className="font-semibold text-foreground">Already an NSA league player?</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Don't sign up here — claim your existing league profile for free so your
+                    NSA number, team and results are linked.
+                  </p>
+                  <Link
+                    to={`/league${subdomain ? `?club=${encodeURIComponent(subdomain)}` : ""}`}
+                    className="mt-2 inline-flex items-center font-semibold text-amber-600 hover:underline"
+                  >
+                    Register as an NSA league player →
+                  </Link>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mb-4">
                 {isAssociation
                   ? <>New to {clubName}? Create an account and select your home club below.</>
                   : <>New to {clubName}? Create an account and complete your profile.</>}
               </p>
+
               <form onSubmit={handleNewMemberSignup} className="space-y-3">
                 <div>
                   <Label htmlFor="new-name">Full Name <span className="text-destructive">*</span></Label>

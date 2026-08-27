@@ -1,0 +1,1 @@
+ALTER TABLE public.club_gl_accounts ALTER COLUMN base_account DROP NOT NULL;

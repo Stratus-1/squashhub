@@ -1261,6 +1261,14 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                       .map(a => (
                         <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
                       ))}
+                    {(txDirection === "income" ? customIncomeAccounts : customExpenseAccounts).length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-[10px]">Club accounts</SelectLabel>
+                        {(txDirection === "income" ? customIncomeAccounts : customExpenseAccounts).map(a => (
+                          <SelectItem key={a.id} value={`custom:${a.id}`}>{a.name}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
                   </SelectContent>
                 </Select>
               )}
@@ -1270,11 +1278,12 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   {txDirection === "income" ? (
                     <>
                       <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} {money(parseFloat(txAmount))}</p>
-                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getLabel(txAccount)} {money(parseFloat(txAmount))}</p>
+                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getAccountLabel(txAccount)} {money(parseFloat(txAmount))}</p>
                     </>
                   ) : (
                     <>
-                      <p>• Debit {getLabel(txAccount)} {money(parseFloat(txAmount))}</p>
+                      <p>• Debit {getAccountLabel(txAccount)} {money(parseFloat(txAmount))}</p>
+
                       <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} {money(parseFloat(txAmount))}</p>
                     </>
                   )}

@@ -565,34 +565,43 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
                       <th className="p-2 w-28 text-right">Amount</th>
                       <th className="p-2 w-44">Allocate to</th>
                       <th className="p-2 w-44">Member</th>
+                      <th className="p-2 w-10"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {drafts.map((d, i) => (
-                      <tr key={`${d.fingerprint}-${i}`} className={cn(d.duplicate !== "none" && "bg-amber-500/5", !d.include && "opacity-50")}>
+                      <tr key={`${d.fingerprint}-${i}`} className={cn(d.duplicate !== "none" && "bg-amber-500/5", d.discarded && "bg-destructive/5", !d.include && "opacity-50")}>
                         <td className="p-2 align-middle">
                           <Checkbox
                             checked={d.include}
-                            onCheckedChange={(v) => setDrafts((prev) => prev.map((p, idx) => (idx === i ? { ...p, include: !!v } : p)))}
+                            disabled={d.discarded}
+                            onCheckedChange={(v) => setDrafts((prev) => prev.map((p, idx) => (idx === i ? { ...p, include: !!v, touched: true } : p)))}
                           />
                         </td>
                         <td className="p-2 tabular-nums whitespace-nowrap">{d.txn_date}</td>
                         <td className="p-2">
-                          <span className="line-clamp-1">{d.description}</span>
-                          {d.duplicate !== "none" && (
-                            <Badge variant="outline" className="text-[9px] mt-0.5 border-amber-500/50 text-amber-600">
-                              {d.duplicate === "exact" ? "Already imported" : "Possible duplicate"}
-                            </Badge>
-                          )}
+                          <span className={cn("line-clamp-1", d.discarded && "line-through")}>{d.description}</span>
+                          <div className="flex gap-1 mt-0.5 flex-wrap">
+                            {d.duplicate !== "none" && (
+                              <Badge variant="outline" className="text-[9px] border-amber-500/50 text-amber-600">
+                                {d.duplicate === "exact" ? "Already imported" : "Possible duplicate"}
+                              </Badge>
+                            )}
+                            {d.discarded && (
+                              <Badge variant="outline" className="text-[9px] border-destructive/50 text-destructive">Discarded</Badge>
+                            )}
+                            {d.fromRule && !d.discarded && (
+                              <Badge variant="outline" className="text-[9px] gap-1">
+                                <Wand2 className="w-2.5 h-2.5" /> Learned
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className={cn("p-2 text-right tabular-nums whitespace-nowrap", d.amount < 0 ? "text-destructive" : "text-emerald-600")}>
                           {money(d.amount)}
                         </td>
                         <td className="p-2">
-                          <Select
-                            value={d.account}
-                            onValueChange={(v) => setDrafts((prev) => prev.map((p, idx) => (idx === i ? { ...p, account: v } : p)))}
-                          >
+                          <Select value={d.account} onValueChange={(v) => changeAccount(i, v)}>
                             <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {accountOptions.map((a) => (
@@ -604,9 +613,7 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
                         <td className="p-2">
                           <Select
                             value={d.memberId ?? "none"}
-                            onValueChange={(v) =>
-                              setDrafts((prev) => prev.map((p, idx) => (idx === i ? { ...p, memberId: v === "none" ? null : v } : p)))
-                            }
+                            onValueChange={(v) => changeMember(i, v === "none" ? null : v)}
                           >
                             <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
                             <SelectContent className="max-h-64">
@@ -617,8 +624,20 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
                             </SelectContent>
                           </Select>
                         </td>
+                        <td className="p-2 text-right">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            title={d.discarded ? "Undo discard" : "Discard this line and remember it"}
+                            onClick={() => toggleDiscard(i)}
+                          >
+                            {d.discarded ? <Undo2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5 text-muted-foreground" />}
+                          </Button>
+                        </td>
                       </tr>
                     ))}
+
                   </tbody>
                 </table>
               </ScrollArea>

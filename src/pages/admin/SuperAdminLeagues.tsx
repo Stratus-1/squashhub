@@ -409,39 +409,14 @@ export default function SuperAdminLeagues() {
               <TabsTrigger value="penalties" className="gap-1.5">
                 <AlertTriangle className="h-4 w-4" /> Penalties
               </TabsTrigger>
-              <TabsTrigger value="rules" className="gap-1.5">
-                <ScrollText className="h-4 w-4" /> Rules
-              </TabsTrigger>
             </TabsList>
 
             {/* Fixtures Tab */}
             <TabsContent value="fixtures" className="space-y-4">
-              {(() => {
-                const a = activeAssociationObj(associations as any[], activeAssociation);
-                if (!a?.external_source) return null;
-                return (
-                  <div className="flex items-center justify-between gap-3 p-3 rounded-md border border-border bg-muted/30">
-                    <div className="text-xs text-muted-foreground">
-                      <span className="font-semibold text-foreground uppercase tracking-wide">{a.external_source}</span>
-                      {a.external_season ? <span className="ml-1">· season {a.external_season}</span> : null}
-                      {a.last_fixtures_sync_at ? (
-                        <span className="ml-2">
-                          · last synced {formatDistanceToNow(new Date(a.last_fixtures_sync_at), { addSuffix: true })}
-                        </span>
-                      ) : (
-                        <span className="ml-2 text-amber-600">· never synced</span>
-                      )}
-                      {a.last_fixtures_sync_summary ? (
-                        <div className="text-[11px] mt-0.5 opacity-75">{a.last_fixtures_sync_summary}</div>
-                      ) : null}
-                    </div>
-                    <Button size="sm" onClick={() => handleSyncFromNsa(a.id)} disabled={syncing}>
-                      <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
-                      {syncing ? "Syncing…" : "Sync from NSA"}
-                    </Button>
-                  </div>
-                );
-              })()}
+              <p className="text-[11px] text-muted-foreground">
+                Fixture syncing now lives in the association's own workspace (Leagues → Rounds &amp; fixtures).
+              </p>
+
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -482,32 +457,10 @@ export default function SuperAdminLeagues() {
 
             {/* Members Tab */}
             <TabsContent value="members" className="space-y-4">
-              {(() => {
-                const a = activeAssociationObj(associations as any[], activeAssociation);
-                if (!a?.external_source) return null;
-                return (
-                  <div className="flex items-center justify-between gap-3 p-3 rounded-md border border-border bg-muted/30">
-                    <div className="text-xs text-muted-foreground">
-                      <span className="font-semibold text-foreground uppercase tracking-wide">{a.external_source}</span>
-                      {a.external_season ? <span className="ml-1">· season {a.external_season}</span> : null}
-                      {a.last_members_sync_at ? (
-                        <span className="ml-2">
-                          · last synced {formatDistanceToNow(new Date(a.last_members_sync_at), { addSuffix: true })}
-                        </span>
-                      ) : (
-                        <span className="ml-2 text-amber-600">· never synced</span>
-                      )}
-                      {a.last_members_sync_summary ? (
-                        <div className="text-[11px] mt-0.5 opacity-75">{a.last_members_sync_summary}</div>
-                      ) : null}
-                    </div>
-                    <Button size="sm" onClick={() => handleSyncMembersFromNsa(a.id)} disabled={syncingMembers}>
-                      <RefreshCw className={`h-4 w-4 mr-2 ${syncingMembers ? "animate-spin" : ""}`} />
-                      {syncingMembers ? "Syncing…" : "Sync members from NSA"}
-                    </Button>
-                  </div>
-                );
-              })()}
+              <p className="text-[11px] text-muted-foreground">
+                Member syncing now lives in the association's own workspace (Leagues → Rounds &amp; fixtures).
+              </p>
+
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -593,10 +546,8 @@ export default function SuperAdminLeagues() {
               {activeAssociation ? <AssociationPenaltiesTab associationId={activeAssociation} /> : <p className="text-sm text-muted-foreground">Select a league to view penalties.</p>}
             </TabsContent>
 
-            {/* Rules Tab */}
-            <TabsContent value="rules" className="space-y-4">
-              {activeAssociation ? <AssociationRulesTab associationId={activeAssociation} /> : <p className="text-sm text-muted-foreground">Select a league to configure rules.</p>}
-            </TabsContent>
+
+
           </Tabs>
         </>
       )}

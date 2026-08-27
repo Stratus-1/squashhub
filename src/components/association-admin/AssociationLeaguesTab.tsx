@@ -19,8 +19,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronRight, Search, Trophy, UserPlus, Plus, CalendarPlus, Building2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChevronRight, Search, Trophy, UserPlus, Plus, CalendarPlus, Building2, ScrollText } from "lucide-react";
+import { usePlatformAssociation } from "@/hooks/use-platform-association";
+import { AssociationFixturesPanel } from "@/components/association-admin/AssociationFixturesPanel";
+import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
 import { toast } from "sonner";
+
 import { cn } from "@/lib/utils";
 import {
   AssocTeam,
@@ -75,18 +80,9 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
     },
   });
 
-  const { data: platformAssocId } = useQuery({
-    queryKey: ["assoc-platform-id", clubId],
-    queryFn: async () => {
-      const { data: tenant } = await supabase.from("clubs").select("name").eq("id", clubId).maybeSingle();
-      const { data } = await supabase
-        .from("league_associations")
-        .select("platform_association_id, name")
-        .not("platform_association_id", "is", null);
-      const match = (data || []).find((r: any) => r.name === tenant?.name);
-      return (match?.platform_association_id as string | null) ?? null;
-    },
-  });
+  const { data: platformAssoc } = usePlatformAssociation(clubId);
+  const platformAssocId = platformAssoc?.id ?? null;
+
 
   const seasons = useMemo(() => seasonsOf(teams), [teams]);
 
@@ -108,7 +104,38 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4">
+      <Tabs defaultValue="teams" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="teams" className="gap-1.5 text-xs">
+            <Trophy className="h-3.5 w-3.5" /> Teams &amp; players
+          </TabsTrigger>
+          <TabsTrigger value="fixtures" className="gap-1.5 text-xs">
+            <CalendarPlus className="h-3.5 w-3.5" /> Rounds &amp; fixtures
+          </TabsTrigger>
+          <TabsTrigger value="rules" className="gap-1.5 text-xs">
+            <ScrollText className="h-3.5 w-3.5" /> Rules
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="fixtures">
+          <AssociationFixturesPanel association={platformAssoc ?? null} />
+        </TabsContent>
+
+        <TabsContent value="rules">
+          {platformAssocId ? (
+            <AssociationRulesTab associationId={platformAssocId} />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-xs text-muted-foreground">
+                This tenant is not linked to a league association yet, so there are no rules to configure.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="teams" className="space-y-4">
       <Card>
+
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Trophy className="h-4 w-4" /> Affiliated club leagues
@@ -256,6 +283,9 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
+
 
       <AddTeamDialog
         tenantId={clubId}

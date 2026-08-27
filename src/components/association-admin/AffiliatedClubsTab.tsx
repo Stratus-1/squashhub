@@ -13,6 +13,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Building2, PlusCircle } from "lucide-react";
+import { usePlatformAssociation } from "@/hooks/use-platform-association";
+import { NsaClubImportPanel } from "@/components/association-admin/NsaClubImportPanel";
 
 interface Affiliation {
   id: string;
@@ -30,6 +32,7 @@ interface ClubOption {
 
 export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
+  const { data: platformAssoc } = usePlatformAssociation(clubId);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -279,6 +282,13 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {platformAssoc?.external_source?.toLowerCase() === "nsa" && (
+        <Card className="p-4">
+          <NsaClubImportPanel />
+        </Card>
+      )}
     </div>
   );
 }
+

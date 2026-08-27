@@ -32,7 +32,7 @@ function slugFromCode(code: string): string {
   return (code || "").slice(0, 3).toLowerCase().replace(/[^a-z]/g, "");
 }
 
-export default function SuperAdminNsaImport() {
+export function NsaClubImportPanel() {
   const qc = useQueryClient();
   const [season, setSeason] = useState(NSA_CURRENT_SEASON);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -167,13 +167,13 @@ export default function SuperAdminNsaImport() {
   });
 
   return (
-    <div className="space-y-4 p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Building2 className="w-6 h-6 text-amber-300" />
+          <Building2 className="w-6 h-6 text-amber-600" />
           <div>
-            <h1 className="text-xl font-bold text-white">NSA Bulk Club Import</h1>
-            <p className="text-xs text-white/60">
+            <h2 className="text-base font-bold text-foreground">Bulk club import</h2>
+            <p className="text-xs text-muted-foreground">
               Provisions clubs from the NSA league API as free-tier tenants (until 30 Sep 2026).
             </p>
           </div>
@@ -183,34 +183,34 @@ export default function SuperAdminNsaImport() {
           size="sm"
           onClick={() => refetchFx()}
           disabled={fxLoading}
-          className="border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08]"
+          className="border-border bg-background text-foreground hover:bg-muted"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${fxLoading ? "animate-spin" : ""}`} /> Refresh
         </Button>
       </div>
 
-      <Card className="p-4 bg-white/[0.04] border-white/10 backdrop-blur-md">
+      <Card className="p-4 bg-background border-border">
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-white/60">Season</label>
+            <label className="text-xs text-muted-foreground">Season</label>
             <Input
               value={season}
               onChange={(e) => setSeason(e.target.value)}
-              className="h-8 w-24 bg-white/[0.04] border-white/15 text-white"
+              className="h-8 w-24 bg-background border-border text-foreground"
             />
           </div>
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter clubs…"
-            className="h-8 max-w-xs bg-white/[0.04] border-white/15 text-white"
+            className="h-8 max-w-xs bg-background border-border text-foreground"
           />
           <div className="ml-auto flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={toggleAll}
-              className="border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08]"
+              className="border-border bg-background text-foreground hover:bg-muted"
             >
               Toggle eligible
             </Button>
@@ -227,14 +227,14 @@ export default function SuperAdminNsaImport() {
         </div>
 
         {fxLoading ? (
-          <div className="py-12 text-center text-white/60">
+          <div className="py-12 text-center text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" /> Loading NSA fixtures…
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-[13px] text-white/85">
-              <thead className="text-white/55 uppercase tracking-wide text-[11px]">
-                <tr className="border-b border-white/10">
+            <table className="w-full text-[13px] text-foreground">
+              <thead className="text-muted-foreground uppercase tracking-wide text-[11px]">
+                <tr className="border-b border-border">
                   <th className="text-left py-2 pr-3 w-8"></th>
                   <th className="text-left py-2 pr-3">Club</th>
                   <th className="text-left py-2 pr-3">NSA #</th>
@@ -248,7 +248,7 @@ export default function SuperAdminNsaImport() {
                 {filtered.map((r) => {
                   const isExisting = !!r.existing_club_id;
                   return (
-                    <tr key={r.nsa_club_id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                    <tr key={r.nsa_club_id} className="border-b border-border hover:bg-muted/50">
                       <td className="py-2 pr-3">
                         <Checkbox
                           checked={selected.has(r.nsa_club_id)}
@@ -257,12 +257,12 @@ export default function SuperAdminNsaImport() {
                         />
                       </td>
                       <td className="py-2 pr-3 font-medium">{r.name}</td>
-                      <td className="py-2 pr-3 text-white/55 font-mono text-[12px]">{r.nsa_club_id}</td>
-                      <td className="py-2 pr-3 font-mono text-[12px] text-amber-300">
+                      <td className="py-2 pr-3 text-muted-foreground font-mono text-[12px]">{r.nsa_club_id}</td>
+                      <td className="py-2 pr-3 font-mono text-[12px] text-amber-600">
                         {r.existing_subdomain || r.proposed_slug}
                       </td>
                       <td className="py-2 pr-3">{r.team_count}</td>
-                      <td className="py-2 pr-3 text-white/65 text-[12px]">
+                      <td className="py-2 pr-3 text-muted-foreground text-[12px]">
                         {r.divisions.slice(0, 4).join(", ")}
                         {r.divisions.length > 4 && ` +${r.divisions.length - 4}`}
                       </td>
@@ -272,13 +272,13 @@ export default function SuperAdminNsaImport() {
                             {r.roster_seeded_at ? (
                               <Badge
                                 variant="outline"
-                                className="border-emerald-500/40 text-emerald-300 bg-emerald-500/15"
+                                className="border-emerald-500/40 text-emerald-600 bg-emerald-500/15"
                                 title={`Roster seeded ${new Date(r.roster_seeded_at).toLocaleString()}`}
                               >
                                 Seeded
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                              <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 bg-emerald-500/10">
                                 Provisioned
                               </Badge>
                             )}
@@ -287,7 +287,7 @@ export default function SuperAdminNsaImport() {
                               variant="outline"
                               disabled={seedingClubId === r.existing_club_id}
                               onClick={() => seedRoster.mutate(r.existing_club_id!)}
-                              className="h-6 px-2 text-[11px] border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
+                              className="h-6 px-2 text-[11px] border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20"
                             >
                               {seedingClubId === r.existing_club_id ? (
                                 <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -298,7 +298,7 @@ export default function SuperAdminNsaImport() {
                             </Button>
                           </div>
                         ) : (
-                          <Badge variant="outline" className="border-amber-500/40 text-amber-200 bg-amber-500/10">
+                          <Badge variant="outline" className="border-amber-500/40 text-amber-700 bg-amber-500/10">
                             Available
                           </Badge>
                         )}
@@ -308,7 +308,7 @@ export default function SuperAdminNsaImport() {
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-white/50">
+                    <td colSpan={7} className="py-8 text-center text-muted-foreground">
                       No clubs match the filter.
                     </td>
                   </tr>
@@ -319,11 +319,12 @@ export default function SuperAdminNsaImport() {
         )}
       </Card>
 
-      <p className="text-[12px] text-white/45 leading-relaxed">
+      <p className="text-[12px] text-muted-foreground leading-relaxed">
         After provisioning, each club appears in <strong>Clubs &amp; Associations</strong> with subdomain access
-        (e.g. <code className="text-amber-300">slug.squashhub.app</code>). Phase 3 (roster + ladder seeding) runs
+        (e.g. <code className="text-amber-600">slug.squashhub.app</code>). Phase 3 (roster + ladder seeding) runs
         per-club from that page once you've reviewed which tenants to populate.
       </p>
     </div>
   );
 }
+export default NsaClubImportPanel;

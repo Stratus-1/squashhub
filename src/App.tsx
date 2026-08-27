@@ -88,7 +88,6 @@ import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
 import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
 import SuperAdminSettings from "./pages/admin/SuperAdminSettings";
 import SuperAdminLeagues from "./pages/admin/SuperAdminLeagues";
-import SuperAdminNsaImport from "./pages/admin/SuperAdminNsaImport";
 import SuperAdminOutreach from "./pages/admin/SuperAdminOutreach";
 import SuperAdminOutreachCampaigns from "./pages/admin/SuperAdminOutreachCampaigns";
 import SuperAdminOutreachCampaignEditor from "./pages/admin/SuperAdminOutreachCampaignEditor";
@@ -507,7 +506,6 @@ function AppRoutes() {
           <Route path="users" element={<SuperAdminUsers />} />
           <Route path="affiliations" element={<SuperAdminLeagues />} />
           <Route path="leagues" element={<Navigate to="/admin/affiliations" replace />} />
-          <Route path="nsa-import" element={<SuperAdminNsaImport />} />
           <Route path="outreach" element={<SuperAdminOutreach />} />
           <Route path="outreach/campaigns" element={<SuperAdminOutreachCampaigns />} />
           <Route path="outreach/campaigns/:id" element={<SuperAdminOutreachCampaignEditor />} />

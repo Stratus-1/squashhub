@@ -23,7 +23,6 @@ const navItems = [
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Affiliations", url: "/admin/affiliations", icon: Trophy },
   { title: "Tournaments", url: "/admin/tournaments", icon: Swords },
-  { title: "NSA Import", url: "/admin/nsa-import", icon: Download },
   { title: "Outreach", url: "/admin/outreach", icon: Megaphone },
   { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard },
   { title: "Help Videos", url: "/admin/help", icon: GraduationCap },

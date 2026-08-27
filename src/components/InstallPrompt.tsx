@@ -153,9 +153,11 @@ export function InstallPrompt() {
         exit={{ opacity: 0, y: 40 }}
         className={
           desktop
-            ? "fixed bottom-6 right-6 z-[60] w-[22rem] max-w-[calc(100vw-3rem)]"
-            : "fixed bottom-4 left-4 right-4 z-[60] max-w-md mx-auto"
+            ? // Sit above the small update pill (bottom-4) so the two never overlap.
+              "fixed bottom-20 right-6 z-[55] w-[22rem] max-w-[calc(100vw-3rem)]"
+            : "fixed bottom-[calc(env(safe-area-inset-bottom,0px)+13rem)] left-4 right-4 z-[55] max-w-md mx-auto"
         }
+
       >
         <Card className="border-primary/30 shadow-xl">
           <CardContent className="p-4">

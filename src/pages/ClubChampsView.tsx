@@ -2493,12 +2493,18 @@ export default function ClubChampsView() {
             {groupMatches.map((m: any) => renderMatchRow(m))}
           </div>
         );
-        fixtureCards.push(
-          <Card key={`f-${gn}`}>
-            <CardHeader>
-              <CardTitle className="text-lg">{getGroupLabel(champ, gn)} — Fixtures & Results</CardTitle>
-            </CardHeader>
-            <CardContent>{fixtureBody}</CardContent>
+        standingsCards.push(
+          <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
+            <CardHeader>{titleNode}</CardHeader>
+            <CardContent className="space-y-4">
+              {swissControlsFor(gn)}
+              {standingsTable}
+              <Separator />
+              <div>
+                <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
+                {fixtureBody}
+              </div>
+            </CardContent>
           </Card>
         );
 

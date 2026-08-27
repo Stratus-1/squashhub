@@ -98,6 +98,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember, useIsSuperAdmin } from "@/hooks/use-club";
+import { useIsAssociationAdmin } from "@/hooks/use-association-admin";
 import { NoClubAccess } from "@/components/NoClubAccess";
 import { fromExt } from "@/lib/supabase-ext";
 import Terms from "./pages/Terms";
@@ -271,11 +272,12 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
   const { subdomain, club } = useClubContext();
   const { data: myClubMember, isLoading } = useMyClubMember();
   const isSuperAdmin = useIsSuperAdmin();
+  const isAssociationAdmin = useIsAssociationAdmin(club?.id);
   const [hasMembershipElsewhere, setHasMembershipElsewhere] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    if (!user?.id || !subdomain || !club?.id || myClubMember || isSuperAdmin) {
+    if (!user?.id || !subdomain || !club?.id || myClubMember || isSuperAdmin || isAssociationAdmin) {
       setHasMembershipElsewhere(null);
       return;
     }
@@ -300,12 +302,13 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, subdomain, club?.id, myClubMember, isSuperAdmin]);
+  }, [user?.id, subdomain, club?.id, myClubMember, isSuperAdmin, isAssociationAdmin]);
 
   // Only gate on club subdomains, once the club context and user are known.
   if (!user || !subdomain || !club?.id) return <>{children}</>;
-  // Platform super-admins can access any club subdomain without a membership row.
-  if (isSuperAdmin) return <>{children}</>;
+  // Platform super-admins and association admins can access association tenants
+  // without needing a local club_members row.
+  if (isSuperAdmin || isAssociationAdmin) return <>{children}</>;
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

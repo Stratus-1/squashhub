@@ -1,0 +1,12 @@
+REVOKE ALL ON FUNCTION public.association_league_teams(uuid, int) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.association_league_team_players(uuid, uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.association_create_team(uuid, uuid, text, text, int, text, boolean, int) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.association_add_placeholder_player(uuid, uuid, text, text, int, boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.association_save_fixtures(uuid, uuid, jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.is_association_admin(uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.association_league_teams(uuid, int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.association_league_team_players(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.association_create_team(uuid, uuid, text, text, int, text, boolean, int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.association_add_placeholder_player(uuid, uuid, text, text, int, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.association_save_fixtures(uuid, uuid, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_association_admin(uuid, uuid) TO authenticated;

@@ -39,6 +39,7 @@ interface ClubData {
   club_captain_member_id?: string | null;
   treasurer_member_id?: string | null;
   show_delegates_on_landing?: boolean;
+  nsa_club_id?: string | null;
 }
 
 function AnimatedCount({ value }: { value: number }) {

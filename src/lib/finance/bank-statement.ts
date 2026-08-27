@@ -330,16 +330,27 @@ export type AccountGuess = { account: string; confidence: "high" | "low" };
 const RULES: Array<{ re: RegExp; account: string; sign?: "in" | "out" }> = [
   { re: /bank charge|service fee|admin fee|monthly fee|cash dep fee|fee:/i, account: "bank_charges", sign: "out" },
   { re: /yoco|stitch|payfast|card fee|merchant fee/i, account: "gateway_fees", sign: "out" },
-  { re: /eskom|electric|prepaid meter|city power|municipal/i, account: "electricity", sign: "out" },
-  { re: /rent|lease/i, account: "rent", sign: "out" },
-  { re: /repair|maintenance|plumb|paint|court resurf|garden/i, account: "maintenance", sign: "out" },
-  { re: /clean|janitor|housekeep|domestic|sanit|hygiene/i, account: "cleaning_services", sign: "out" },
-  { re: /liquor|bottle store|makro|bar stock|beverage|coca ?cola|drinks/i, account: "bar_expense", sign: "out" },
+  { re: /eskom|electric|prepaid meter|city power|municipal|ligte|krag/i, account: "electricity", sign: "out" },
+  // Security / guarding suppliers (incl. common SA armed-response brands and Afrikaans "sekuriteit")
+  {
+    re: /\bsecurity\b|securit(y|ies)|sekuriteit|armed response|guard(ing|s)?\b|patrol|alarm|cctv|adt\b|fidelity ?adt|beagle watch|chubb|stallion|coin ?security|blue ?security|bidvest protea/i,
+    account: "security",
+    sign: "out",
+  },
+  { re: /rent|lease|huur/i, account: "rent", sign: "out" },
+  { re: /repair|maintenance|plumb|paint|court resurf|garden|herstel|onderhoud/i, account: "maintenance", sign: "out" },
+  // Cleaning: services plus consumables (brooms, mops, detergents, cleaning suppliers)
+  {
+    re: /clean|janitor|housekeep|domestic|sanit|hygiene|broom ?stix|broomstix|\bbroom(s)?\b|\bmop(s)?\b|detergent|washroom|toilet paper|schoonmaak|skoonmaak/i,
+    account: "cleaning_services",
+    sign: "out",
+  },
+  { re: /liquor|bottle store|makro|bar stock|beverage|coca ?cola|drinks|drank/i, account: "bar_expense", sign: "out" },
   { re: /squash sa|ssa|nsa|association|federation|league fee/i, account: "national_body_expense", sign: "out" },
-  { re: /sub(scription)?|membership|member fee|annual fee/i, account: "membership_income", sign: "in" },
-  { re: /tournament|champs|championship/i, account: "tournament_income", sign: "in" },
+  { re: /sub(scription)?|membership|member fee|annual fee|ledegeld|ledegelde/i, account: "membership_income", sign: "in" },
+  { re: /tournament|champs|championship|toernooi/i, account: "tournament_income", sign: "in" },
   { re: /wi-?fi|wifi|internet|hotspot|router data/i, account: "wifi_income", sign: "in" },
-  { re: /light|court light/i, account: "light_fees_income", sign: "in" },
+  { re: /light|court light|ligte/i, account: "light_fees_income", sign: "in" },
   { re: /bar|tab|honesty/i, account: "bar_income", sign: "in" },
 ];
 

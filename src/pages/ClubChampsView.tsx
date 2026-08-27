@@ -2628,7 +2628,11 @@ export default function ClubChampsView() {
         {winnersCard}
 
         {woodenSpoonsCard}
-        {standingsCards}
+        <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
+          {standingsCards}
+          {fixtureCards}
+          {combinedFixtures}
+        </div>
         {isHandicapChamp && champ?.club_id && (
           <ChampLadderSuggestions
             champId={champId!}
@@ -2636,10 +2640,6 @@ export default function ClubChampsView() {
             isAdmin={canManage}
           />
         )}
-        <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
-          {fixtureCards}
-          {combinedFixtures}
-        </div>
 
         <KnockoutCard
           champId={champId!}

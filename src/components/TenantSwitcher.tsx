@@ -14,7 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Building2, ChevronDown, Trophy, Check } from "lucide-react";
+import { Building2, ChevronDown, Trophy, Check, ShieldCheck } from "lucide-react";
+import { useIsSuperAdmin } from "@/hooks/use-club";
 
 interface TenantOption {
   id: string;

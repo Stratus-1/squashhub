@@ -22,6 +22,8 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
+
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
 function getAgeFromSaId(idNumber: string): number | null {
@@ -362,7 +364,11 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const { format } = useClubCurrency();
   const { data: allMembersRaw = [], isLoading } = useClubMembers(clubId);
   // Exclude visitor-role entries — they live in the Visitors tab to avoid mixing them with real members.
-  const members = allMembersRaw.filter((m: any) => String(m.role || "").toLowerCase() !== "visitor");
+  // Pending applicants live in the applications panel above until they are approved.
+  const members = allMembersRaw.filter(
+    (m: any) => String(m.role || "").toLowerCase() !== "visitor" && !m.is_pending_approval,
+  );
+
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);
@@ -962,7 +968,10 @@ export function MembersTab({ clubId }: { clubId: string }) {
         </div>
       </div>
 
+      <PendingApplicationsPanel clubId={clubId} />
+
       <BulkMembershipTypesDialog clubId={clubId} open={bulkTypesOpen} onOpenChange={setBulkTypesOpen} members={members} feeCategories={feeCategories} />
+
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>

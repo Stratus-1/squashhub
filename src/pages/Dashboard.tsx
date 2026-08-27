@@ -642,7 +642,19 @@ export default function Dashboard() {
         )}
 
         <div className="px-8 pt-3">
+          {((activeMember as any)?.is_pending_approval || (myClubMember as any)?.is_pending_approval) && (
+            <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2">
+              <p className="text-[13px] font-semibold text-amber-700 dark:text-amber-400">
+                Your membership application is pending
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                You can view and pay your fees below. Full club access (roster, bookings, leagues) unlocks once the
+                club activates your membership.
+              </p>
+            </div>
+          )}
           <div className="mb-3"><LinkExistingMembershipCard /></div>
+
           <DashboardTournamentInvitesCard />
           <div className="mt-3"><DebitOrderPromptCard clubMemberId={myMemberId} /></div>
           {myPrimaryLeagueReg?.is_captain && myClubMember?.id && (

@@ -38,7 +38,10 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     show_delegates_on_landing: club.show_delegates_on_landing ?? true,
     currency_code: ((club as any).currency_code || "ZAR") as string,
     currency_symbol: ((club as any).currency_symbol || "R") as string,
+    public_applications_enabled: (club as any).public_applications_enabled ?? true,
+    member_activation_mode: ((club as any).member_activation_mode || "auto_on_payment") as string,
   });
+
 
   const [form, setForm] = useState(initial);
 
@@ -146,7 +149,9 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     { id: "contact", label: "Contact details", description: "Where members and visitors reach the club — address, phone, email and who to speak to.", complete: !!form.address && !!form.email && !!form.phone },
     { id: "bearers", label: "Office bearers", description: "Link the chairman, secretary, club captain and treasurer to their member records, and choose whether they show on your public page.", complete: !!form.chairman_member_id || !!form.secretary_member_id || !!form.club_captain_member_id || !!form.treasurer_member_id },
     { id: "currency", label: "Currency", description: "Pick the currency used for every fee, invoice, statement and bar sale.", complete: !!form.currency_code },
+    { id: "applications", label: "Membership applications", description: "Decide whether the public can apply from your landing page, and when a new applicant gains access to club data.", complete: true },
   ];
+
 
   return (
     <div className="space-y-4 mt-4">
@@ -308,6 +313,61 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
           </div>
         </SetupSection>
       )}
+
+      {step === "applications" && (
+        <SetupSection
+          title="Membership applications"
+          description="New people who sign up from your landing page or QR code start as applicants — they can see only their own record and fee statement until they are activated."
+          complete
+          editing={isEditing("applications")}
+          onEdit={() => startEdit("applications")}
+          onCancel={() => cancelEdit("applications")}
+          onSave={() => save("applications", ["public_applications_enabled", "member_activation_mode"])}
+          saving={updateClub.isPending}
+        >
+          <div className="space-y-4 max-w-lg">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="public-applications"
+                disabled={!isEditing("applications")}
+                checked={form.public_applications_enabled}
+                onCheckedChange={(checked) => setForm(p => ({ ...p, public_applications_enabled: checked }))}
+              />
+              <Label htmlFor="public-applications" className="text-xs font-normal cursor-pointer">
+                Allow anyone to apply for membership from the public landing page
+              </Label>
+            </div>
+            <SetupField
+              label="When does a new applicant get access?"
+              editing={isEditing("applications")}
+              value={
+                form.member_activation_mode === "immediate"
+                  ? "Immediately after signing up"
+                  : form.member_activation_mode === "admin_approval"
+                    ? "Only after an admin approves them"
+                    : "Automatically once their first fee is paid"
+              }
+            >
+              <Select
+                value={form.member_activation_mode}
+                onValueChange={(v) => setForm(p => ({ ...p, member_activation_mode: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto_on_payment">Automatically once their first fee is paid</SelectItem>
+                  <SelectItem value="admin_approval">Only after an admin approves them</SelectItem>
+                  <SelectItem value="immediate">Immediately after signing up</SelectItem>
+                </SelectContent>
+              </Select>
+            </SetupField>
+            <p className="text-[11px] text-muted-foreground">
+              Pending applications appear at the top of the Members tab, where you can approve or decline them.
+            </p>
+          </div>
+        </SetupSection>
+      )}
+
+
 
       <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>

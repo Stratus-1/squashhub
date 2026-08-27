@@ -3021,6 +3021,9 @@ export type Database = {
         Row: {
           access_suspended_at: string | null
           address: string | null
+          applied_at: string | null
+          approved_at: string | null
+          approved_by: string | null
           avatar_url: string | null
           billing_exempt: boolean
           club_id: string
@@ -3037,6 +3040,7 @@ export type Database = {
           id: string
           id_number: string | null
           is_league_only_membership: boolean
+          is_pending_approval: boolean
           joined_at: string
           ladder_position: number | null
           name: string | null
@@ -3066,6 +3070,9 @@ export type Database = {
         Insert: {
           access_suspended_at?: string | null
           address?: string | null
+          applied_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           billing_exempt?: boolean
           club_id: string
@@ -3082,6 +3089,7 @@ export type Database = {
           id?: string
           id_number?: string | null
           is_league_only_membership?: boolean
+          is_pending_approval?: boolean
           joined_at?: string
           ladder_position?: number | null
           name?: string | null
@@ -3111,6 +3119,9 @@ export type Database = {
         Update: {
           access_suspended_at?: string | null
           address?: string | null
+          applied_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           billing_exempt?: boolean
           club_id?: string
@@ -3127,6 +3138,7 @@ export type Database = {
           id?: string
           id_number?: string | null
           is_league_only_membership?: boolean
+          is_pending_approval?: boolean
           joined_at?: string
           ladder_position?: number | null
           name?: string | null
@@ -4157,6 +4169,7 @@ export type Database = {
           max_bookings_per_day: number
           max_member_events_per_month: number
           max_peak_bookings_per_day: number
+          member_activation_mode: string
           member_fee_annual: number | null
           member_fee_due_month: number | null
           member_number_length: number | null
@@ -4180,6 +4193,7 @@ export type Database = {
           points_favourite_win_min: number
           points_loser_deduction: number
           points_upset_bonus_per_rank: number
+          public_applications_enabled: boolean
           ranking_points_enabled: boolean
           roster_seeded_at: string | null
           secretary_member_id: string | null
@@ -4270,6 +4284,7 @@ export type Database = {
           max_bookings_per_day?: number
           max_member_events_per_month?: number
           max_peak_bookings_per_day?: number
+          member_activation_mode?: string
           member_fee_annual?: number | null
           member_fee_due_month?: number | null
           member_number_length?: number | null
@@ -4293,6 +4308,7 @@ export type Database = {
           points_favourite_win_min?: number
           points_loser_deduction?: number
           points_upset_bonus_per_rank?: number
+          public_applications_enabled?: boolean
           ranking_points_enabled?: boolean
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
@@ -4383,6 +4399,7 @@ export type Database = {
           max_bookings_per_day?: number
           max_member_events_per_month?: number
           max_peak_bookings_per_day?: number
+          member_activation_mode?: string
           member_fee_annual?: number | null
           member_fee_due_month?: number | null
           member_number_length?: number | null
@@ -4406,6 +4423,7 @@ export type Database = {
           points_favourite_win_min?: number
           points_loser_deduction?: number
           points_upset_bonus_per_rank?: number
+          public_applications_enabled?: boolean
           ranking_points_enabled?: boolean
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
@@ -12227,6 +12245,10 @@ export type Database = {
           p_verify?: string
         }
         Returns: Json
+      }
+      review_membership_application: {
+        Args: { _approve: boolean; _member_id: string }
+        Returns: undefined
       }
       review_platform_invoice_eft_proof: {
         Args: { _approve: boolean; _invoice_id: string; _note?: string }

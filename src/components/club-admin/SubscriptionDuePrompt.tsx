@@ -107,9 +107,10 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
             {overdue ? "Subscription payment overdue" : "Subscription payment due"}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {invoices.length === 1
+            {actionable.length === 1
               ? `Invoice ${oldest.invoice_number} — ${sym}${Number(oldest.total || 0).toFixed(2)}`
-              : `${invoices.length} invoices outstanding — ${sym}${outstanding.toFixed(2)}`}
+              : `${actionable.length} invoices outstanding — ${sym}${outstanding.toFixed(2)}`}
+
             {oldest.due_date ? ` · due ${new Date(oldest.due_date).toLocaleDateString()}` : ""}
           </p>
           <div className="flex flex-wrap gap-2 mt-2">

@@ -72,6 +72,23 @@ interface OverviewTile {
   show?: boolean;
 }
 
+const ADMIN_TAB_STYLES: Record<string, string> = {
+  association: "border-blue-500/50 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25",
+  setup: "border-slate-500/50 bg-slate-50 text-slate-800 hover:bg-slate-100 dark:bg-slate-500/15 dark:text-slate-200 dark:hover:bg-slate-500/25",
+  affiliated: "border-sky-500/50 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-200 dark:hover:bg-sky-500/25",
+  leagues: "border-amber-500/50 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-200 dark:hover:bg-amber-500/25",
+  champs: "border-purple-500/50 bg-purple-50 text-purple-800 hover:bg-purple-100 dark:bg-purple-500/15 dark:text-purple-200 dark:hover:bg-purple-500/25",
+  members: "border-emerald-500/50 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25",
+  users: "border-cyan-500/50 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:bg-cyan-500/15 dark:text-cyan-200 dark:hover:bg-cyan-500/25",
+  fees: "border-lime-500/50 bg-lime-50 text-lime-800 hover:bg-lime-100 dark:bg-lime-500/15 dark:text-lime-200 dark:hover:bg-lime-500/25",
+  banking: "border-green-500/50 bg-green-50 text-green-800 hover:bg-green-100 dark:bg-green-500/15 dark:text-green-200 dark:hover:bg-green-500/25",
+  finance: "border-teal-500/50 bg-teal-50 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:hover:bg-teal-500/25",
+  comms: "border-rose-500/50 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25",
+  emails: "border-pink-500/50 bg-pink-50 text-pink-800 hover:bg-pink-100 dark:bg-pink-500/15 dark:text-pink-200 dark:hover:bg-pink-500/25",
+  settings: "border-slate-500/50 bg-slate-50 text-slate-800 hover:bg-slate-100 dark:bg-slate-500/15 dark:text-slate-200 dark:hover:bg-slate-500/25",
+  permissions: "border-red-500/50 bg-red-50 text-red-800 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-200 dark:hover:bg-red-500/25",
+};
+
 export default function AssociationDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -295,7 +312,7 @@ export default function AssociationDashboard() {
                       "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
                       isActive
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                        : ADMIN_TAB_STYLES[tab.value] || "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
                     )}
                   >
                     <Icon className="w-4 h-4 md:w-5 md:h-5" />

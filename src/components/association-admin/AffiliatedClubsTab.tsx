@@ -279,6 +279,13 @@ export function AffiliatedClubsTab({ clubId }: { clubId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {platformAssoc?.external_source?.toLowerCase() === "nsa" && (
+        <Card className="p-4">
+          <NsaClubImportPanel />
+        </Card>
+      )}
     </div>
   );
 }
+

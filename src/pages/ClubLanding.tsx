@@ -352,22 +352,19 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                 </Button>
 
                 {isNsaClub && (
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full gap-2 rounded-full h-12 border-amber-400/50 bg-amber-400/10 text-white hover:bg-amber-400/20 hover:text-white"
-                    onClick={() => { window.location.href = leagueSignupUrl; }}
-                  >
-                    NSA league player? Register free
-                    <Trophy className="w-4 h-4 text-amber-300" />
-                  </Button>
+                  <div className="pt-2">
+                    <LeaguePlayerSignupBanner
+                      clubSubdomain={displaySubdomain || null}
+                      clubName={club.name}
+                      signupUrl={leagueSignupUrl}
+                    />
+                  </div>
                 )}
 
-                <div className={`grid ${isNsaClub ? "grid-cols-3" : "grid-cols-2"} gap-3 pt-2`}>
+                <div className="grid grid-cols-2 gap-3 pt-2">
                   {[
                     { label: "Log in / register", url: signInUrl },
                     { label: "New member sign-up", url: applyUrl },
-                    ...(isNsaClub ? [{ label: "NSA league player sign-up", url: leagueSignupUrl }] : []),
                   ].map((q) => (
                     <div key={q.label} className="flex flex-col items-center gap-2">
                       <div className="rounded-xl bg-white p-2 shadow-sm">

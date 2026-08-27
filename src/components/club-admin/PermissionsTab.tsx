@@ -13,7 +13,6 @@ import { Plus, Edit2, Trash2, Shield, ShieldCheck } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import {
-  PERMISSION_SLUGS,
   SUPER_ADMIN_ONLY_SLUGS,
   usePermissionRoles,
   useSavePermissionRole,
@@ -21,8 +20,19 @@ import {
   useUpsertMemberPermission,
   type PermissionRole,
 } from "@/hooks/use-club-permissions";
-import { useIsSuperAdmin } from "@/hooks/use-club";
+import { useIsSuperAdmin, useMyClub } from "@/hooks/use-club";
+import { useClubContext } from "@/contexts/ClubContext";
+import { permissionSlugsForTenant, permissionLabel } from "@/lib/permission-scope";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+
+/** True when the workspace being administered is an association/federation tenant. */
+function useIsAssociationTenant(): boolean {
+  const { data: clubData } = useMyClub();
+  const { club: contextClub } = useClubContext();
+  const tenantType =
+    (clubData?.club as any)?.tenant_type ?? (contextClub as any)?.tenant_type;
+  return tenantType === "association" || tenantType === "federation";
+}
 
 export function PermissionsTab({ clubId }: { clubId: string }) {
   const [step, setStep] = useState("roles");
@@ -47,6 +57,7 @@ export function PermissionsTab({ clubId }: { clubId: string }) {
 /* ─── Roles Section ─── */
 
 function RolesSection({ clubId }: { clubId: string }) {
+  const isAssociation = useIsAssociationTenant();
   const { data: roles = [] } = usePermissionRoles(clubId);
   const saveRole = useSavePermissionRole();
   const deleteRole = useDeletePermissionRole();
@@ -95,7 +106,7 @@ function RolesSection({ clubId }: { clubId: string }) {
                     <div className="flex flex-wrap gap-1">
                       {role.permissions.map(p => (
                         <Badge key={p} variant="outline" className="text-[10px]">
-                          {PERMISSION_SLUGS.find(s => s.value === p)?.label || p}
+                          {permissionLabel(p, isAssociation)}
                         </Badge>
                       ))}
                     </div>
@@ -128,7 +139,8 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
   const save = useSavePermissionRole();
   const isSuperAdmin = useIsSuperAdmin();
   /** Federation-level slugs may only be handed out by a platform super admin. */
-  const grantableSlugs = PERMISSION_SLUGS.filter(
+  const isAssociation = useIsAssociationTenant();
+  const grantableSlugs = permissionSlugsForTenant(isAssociation).filter(
     (s) => isSuperAdmin || !SUPER_ADMIN_ONLY_SLUGS.includes(s.value),
   );
 
@@ -200,6 +212,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
 /* ─── Member Permissions Section ─── */
 
 function MemberPermissionsSection({ clubId }: { clubId: string }) {
+  const isAssociation = useIsAssociationTenant();
   const qc = useQueryClient();
   const { data: members = [] } = useQuery({
     queryKey: ["club-members-for-perms", clubId],
@@ -478,7 +491,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                     <div className="flex flex-wrap gap-1">
                       {perm.custom_permissions.map((p: string) => (
                         <Badge key={p} variant="secondary" className="text-[10px]">
-                          {PERMISSION_SLUGS.find(s => s.value === p)?.label || p}
+                          {permissionLabel(p, isAssociation)}
                         </Badge>
                       ))}
                     </div>
@@ -526,7 +539,8 @@ function MemberPermDialog({
   const upsert = useUpsertMemberPermission();
   const isSuperAdmin = useIsSuperAdmin();
   /** Federation-level slugs may only be handed out by a platform super admin. */
-  const grantableSlugs = PERMISSION_SLUGS.filter(
+  const isAssociation = useIsAssociationTenant();
+  const grantableSlugs = permissionSlugsForTenant(isAssociation).filter(
     (s) => isSuperAdmin || !SUPER_ADMIN_ONLY_SLUGS.includes(s.value),
   );
 
@@ -589,7 +603,7 @@ function MemberPermDialog({
               <div className="flex flex-wrap gap-1 mt-1">
                 {selectedRole.permissions.map(p => (
                   <Badge key={p} variant="outline" className="text-[10px]">
-                    {PERMISSION_SLUGS.find(s => s.value === p)?.label || p}
+                    {permissionLabel(p, isAssociation)}
                   </Badge>
                 ))}
               </div>

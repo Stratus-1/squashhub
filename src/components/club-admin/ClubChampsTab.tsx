@@ -160,7 +160,8 @@ import {
   roundIsClubScheduled,
   type RoundMatchRow,
 } from "@/lib/tournaments/self-scheduled-rounds";
-import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
+import { useTournamentEligibility, useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
+import { owningAssociation } from "@/lib/tournaments/eligibility";
 import { DoublesPairsPanel } from "@/components/club-admin/DoublesPairsPanel";
 import { z } from "zod";
 import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";

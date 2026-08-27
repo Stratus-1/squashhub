@@ -333,6 +333,7 @@ const RULES: Array<{ re: RegExp; account: string; sign?: "in" | "out" }> = [
   { re: /eskom|electric|prepaid meter|city power|municipal/i, account: "electricity", sign: "out" },
   { re: /rent|lease/i, account: "rent", sign: "out" },
   { re: /repair|maintenance|plumb|paint|court resurf|garden/i, account: "maintenance", sign: "out" },
+  { re: /clean|janitor|housekeep|domestic|sanit|hygiene/i, account: "cleaning_services", sign: "out" },
   { re: /liquor|bottle store|makro|bar stock|beverage|coca ?cola|drinks/i, account: "bar_expense", sign: "out" },
   { re: /squash sa|ssa|nsa|association|federation|league fee/i, account: "national_body_expense", sign: "out" },
   { re: /sub(scription)?|membership|member fee|annual fee/i, account: "membership_income", sign: "in" },

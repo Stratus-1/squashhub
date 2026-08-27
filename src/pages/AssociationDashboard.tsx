@@ -137,7 +137,12 @@ export default function AssociationDashboard() {
 
   const overviewTiles: OverviewTile[] = [
     ...(hasAdminAccess ? [{
-      onClick: () => setView("admin"),
+      onClick: () => {
+        const first = visibleAdminTabs.find((t) => !PROMOTED.some((p) => p.value === t.value));
+        if (first) setAdminTab(first.value);
+        setView("admin");
+      },
+
       label: "Setup",
       description: "Association setup & configuration",
       icon: Settings,

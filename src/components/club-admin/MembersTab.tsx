@@ -962,7 +962,10 @@ export function MembersTab({ clubId }: { clubId: string }) {
         </div>
       </div>
 
+      <PendingApplicationsPanel clubId={clubId} />
+
       <BulkMembershipTypesDialog clubId={clubId} open={bulkTypesOpen} onOpenChange={setBulkTypesOpen} members={members} feeCategories={feeCategories} />
+
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>{members.length} member{members.length !== 1 ? "s" : ""}</span>

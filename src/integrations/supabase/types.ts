@@ -12205,6 +12205,15 @@ export type Database = {
         }
         Returns: number
       }
+      my_admin_tenants: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+          subdomain: string
+          tenant_type: string
+        }[]
+      }
       new_invite_token: { Args: never; Returns: string }
       next_bottom_ladder_position: {
         Args: { _club_id: string; _gender: string }

@@ -151,6 +151,13 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
     ? buildClubPublicUrl(displaySubdomain, "/auth?intent=apply")
     : "/auth?intent=apply";
 
+  // NSA content (league player self-signup) is only shown for clubs that are
+  // actually affiliated with the NSA.
+  const isNsaClub = !!club?.nsa_club_id;
+  const leagueSignupUrl = displaySubdomain
+    ? buildClubPublicUrl(displaySubdomain, `/league?club=${encodeURIComponent(displaySubdomain)}`)
+    : "/league";
+
 
 
   if (loading) {

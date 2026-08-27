@@ -766,8 +766,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Who may enter — governance field, kept here because the eligible player
   // pool is derived from it (club / owning association / whole federation).
-  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "open");
+  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "association");
   const eligibility = useTournamentEligibility({ scope: eligibilityScope, clubId, ownerOrgId });
+
+  // Name of the owning association, used to label the eligibility option.
+  const { data: orgHierarchy } = useOrgHierarchyLite();
+  const associationName = useMemo(() => {
+    if (!orgHierarchy) return null;
+    return owningAssociation(ownerOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.name ?? null;
+  }, [orgHierarchy, ownerOrgId]);
+
+  const eventTypeOptions = useMemo(() => eventTypesFor(scope), [scope]);
+  const eligibilityOptions = useMemo(
+    () => eligibilityScopesFor(scope, associationName),
+    [scope, associationName]
+  );
+
 
   // Player pool = every member of every eligible club (plus host/venue clubs).
   const playerPoolClubIds = useMemo(() => {

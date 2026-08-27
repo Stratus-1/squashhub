@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, AlertTriangle, FileText, Landmark } from "lucide-react";
+import { Upload, AlertTriangle, FileText, Landmark, Ban, Wand2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   parseDelimitedStatement,
@@ -23,12 +23,15 @@ import {
   suggestAccount,
   suggestMember,
   summarise,
+  ruleKey,
   type ParsedBankRow,
   type ColumnMapping,
   type ParsedStatement,
   type DuplicateFlag,
 } from "@/lib/finance/bank-statement";
+import { useClubBankRules, matchRule, ruleAccountValue } from "@/hooks/use-club-bank-rules";
 import { extractPdfText, isPdfFile } from "@/lib/finance/pdf-statement";
+
 
 interface AccountMeta {
   label: string;

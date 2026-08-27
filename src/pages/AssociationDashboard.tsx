@@ -115,65 +115,46 @@ export default function AssociationDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, visibleAdminTabs.length]);
 
+  // Tabs promoted onto the dashboard as coloured tiles (still open inside admin view)
+  const PROMOTED: { value: string; label: string; description: string; icon: any; color: string }[] = [
+    { value: "affiliated", label: "Affiliated Clubs", description: "Clubs in this association", icon: Network, color: "text-sky-500 bg-sky-500/10" },
+    { value: "leagues", label: "Leagues", description: "Seasons, teams & fixtures", icon: Trophy, color: "text-amber-500 bg-amber-500/10" },
+    { value: "champs", label: "Tournaments", description: "Draws, entries & results", icon: Medal, color: "text-purple-500 bg-purple-500/10" },
+    { value: "members", label: "Members", description: "League members across clubs", icon: Users, color: "text-emerald-500 bg-emerald-500/10" },
+    { value: "users", label: "Users", description: "Logins & access", icon: UserCheck, color: "text-cyan-500 bg-cyan-500/10" },
+    { value: "comms", label: "Comms", description: "Templates & campaigns", icon: MessageCircle, color: "text-rose-500 bg-rose-500/10" },
+  ];
+
+  const promotedTiles: OverviewTile[] = PROMOTED
+    .filter((p) => visibleAdminTabs.some((t) => t.value === p.value))
+    .map((p) => ({
+      onClick: () => { setAdminTab(p.value); setView("admin"); },
+      label: p.label,
+      description: p.description,
+      icon: p.icon,
+      color: p.color,
+    }));
+
   const overviewTiles: OverviewTile[] = [
     ...(hasAdminAccess ? [{
-      onClick: () => setView("admin"),
-      label: "Admin",
-      description: "Association management & settings",
-      icon: ShieldAlert,
+      onClick: () => {
+        const first = visibleAdminTabs.find((t) => !PROMOTED.some((p) => p.value === t.value));
+        if (first) setAdminTab(first.value);
+        setView("admin");
+      },
+
+      label: "Setup",
+      description: "Association setup & configuration",
+      icon: Settings,
       color: "text-primary bg-primary/10",
     }] : []),
-    {
-      to: "/challenges",
-      label: "Challenges",
-      description: "Inter-club challenges & invitations",
-      icon: Trophy,
-      color: "text-amber-500 bg-amber-500/10",
-    },
-    {
-      to: "/events",
-      label: "Events",
-      description: "Association events & gatherings",
-      icon: CalendarDays,
-      color: "text-purple-500 bg-purple-500/10",
-    },
-    {
-      to: "/league-games",
-      label: "Leagues",
-      description: "Fixtures, standings & results",
-      icon: Medal,
-      color: "text-blue-500 bg-blue-500/10",
-    },
-    {
-      to: "/feed",
-      label: "Feed",
-      description: "Latest activity across the association",
-      icon: MessageCircle,
-      color: "text-emerald-500 bg-emerald-500/10",
-    },
-    {
-      to: "/analytics",
-      label: "Analytics",
-      description: "Stats & insights",
-      icon: BarChart3,
-      color: "text-cyan-500 bg-cyan-500/10",
-    },
+    ...promotedTiles,
     {
       to: "/my-account",
       label: "My Account",
       description: "Profile, fees & preferences",
       icon: Wallet,
-      color: "text-rose-500 bg-rose-500/10",
-    },
-    {
-      onClick: hasAdminAccess && visibleAdminTabs.some((tab) => tab.value === "settings")
-        ? () => { setAdminTab("settings"); setView("admin"); }
-        : undefined,
-      to: hasAdminAccess && visibleAdminTabs.some((tab) => tab.value === "settings") ? undefined : "/settings",
-      label: "Settings",
-      description: hasAdminAccess ? "Association preferences" : "Theme & preferences",
-      icon: Settings,
-      color: "text-slate-500 bg-slate-500/10",
+      color: "text-indigo-500 bg-indigo-500/10",
     },
     {
       to: "/support",
@@ -183,6 +164,7 @@ export default function AssociationDashboard() {
       color: "text-orange-500 bg-orange-500/10",
     },
   ];
+
 
   const renderAdminTab = () => {
     if (!association) return null;
@@ -278,13 +260,16 @@ export default function AssociationDashboard() {
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
               <h2 className="text-sm font-semibold flex items-center gap-1.5">
-                <ShieldAlert className="w-4 h-4 text-primary" /> Admin
+                <ShieldAlert className="w-4 h-4 text-primary" /> Setup
               </h2>
               <span className="w-[60px]" />
             </div>
 
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-11 gap-2 md:gap-2.5">
-              {visibleAdminTabs.map((tab) => {
+              {visibleAdminTabs
+                .filter((t) => !PROMOTED.some((p) => p.value === t.value) || t.value === adminTab)
+                .map((tab) => {
+
                 const Icon = tab.icon;
                 const isActive = adminTab === tab.value;
                 return (

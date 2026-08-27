@@ -5,6 +5,8 @@ import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { PageHeader } from "@/components/PageHeader";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClubContext } from "@/contexts/ClubContext";
+
 import { Navigate } from "react-router-dom";
 import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, DoorOpen, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake } from "lucide-react";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
@@ -103,8 +105,15 @@ const COLOR_STYLES: Record<string, string> = {
 export default function ClubAdmin() {
   const { user } = useAuth();
   const { data, isLoading } = useMyClub();
+  const { subdomain, club: contextClub, isLoading: clubContextLoading } = useClubContext();
   const isAdmin = useIsClubAdmin();
   const myPermissions = useMyPermissions();
+  // On a club subdomain the membership query stays disabled until the tenant club
+  // resolves. While that is pending `data` is simply undefined — treat it as
+  // loading, otherwise we bounce a legitimate admin to /register-club.
+  const tenantResolving =
+    !!subdomain && (clubContextLoading || !contextClub || data === undefined);
+
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "club");
   useEffect(() => {
@@ -126,7 +135,7 @@ export default function ClubAdmin() {
     enabled: !!user && !!baseClub?.id,
     staleTime: 30_000,
   });
-  const club = (adminClub || baseClub) as typeof baseClub;
+  const club = (adminClub || baseClub || contextClub) as typeof baseClub;
   // Hooks must run on every render — call before any early returns.
   const setupStatus = useSetupStatus(club?.id ?? "", club as any);
   const { enabled: enabledCaps, hasRows: hasCapRows, isLoading: capsLoading } = useCapabilities(club?.id);
@@ -153,9 +162,12 @@ export default function ClubAdmin() {
     setWizardOpen(true);
   }, [capsReady, hasCapRows, untouchedCaps, coreIncomplete, club?.id]);
 
-  if (isLoading || (baseClub?.id && isFetchingAdminClub && !adminClub)) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (isLoading || tenantResolving || (baseClub?.id && isFetchingAdminClub && !adminClub)) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  if (!data?.club || !club) return <Navigate to="/register-club" replace />;
+  // Fall back to the tenant club so admins/super-admins on a club subdomain are
+  // never sent to club registration just because they hold no member row there.
+  if (!club && !contextClub) return <Navigate to="/register-club" replace />;
+
   if (!isAdmin && myPermissions.size === 0) return <Navigate to="/dashboard" replace />;
 
   // Associations have a unified dashboard at "/" — there's no separate admin page.

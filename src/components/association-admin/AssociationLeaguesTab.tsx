@@ -75,18 +75,9 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
     },
   });
 
-  const { data: platformAssocId } = useQuery({
-    queryKey: ["assoc-platform-id", clubId],
-    queryFn: async () => {
-      const { data: tenant } = await supabase.from("clubs").select("name").eq("id", clubId).maybeSingle();
-      const { data } = await supabase
-        .from("league_associations")
-        .select("platform_association_id, name")
-        .not("platform_association_id", "is", null);
-      const match = (data || []).find((r: any) => r.name === tenant?.name);
-      return (match?.platform_association_id as string | null) ?? null;
-    },
-  });
+  const { data: platformAssoc } = usePlatformAssociation(clubId);
+  const platformAssocId = platformAssoc?.id ?? null;
+
 
   const seasons = useMemo(() => seasonsOf(teams), [teams]);
 

@@ -1274,3 +1274,7 @@ Tests: `src/test/booking-label.test.ts`.
 - New parser `src/lib/finance/bank-statement.ts`: CSV/TSV (preamble skipping, auto column mapping, SA number/date formats), OFX and QIF, duplicate detection (exact fingerprint + ±7-day same-amount/narrative match), account auto-categorisation and fuzzy member matching.
 - New `BankStatementImportDialog` in Finance → Journal: upload, override column mapping, per-row allocate account/member, deselect duplicates, optional immediate posting to the GL (bank_current vs contra account, dated on the transaction date), and opening-balance seeding when it is the club's first statement.
 - Tests: `src/test/bank-statement.test.ts` (12).
+
+## Tournament entry payment self-service hardening (2026-08-27)
+- Finding: RLS UPDATE policies on `club_champs_registrations` were row-scoped but column-unrestricted, so an entrant could self-set `status='paid'`, `fee_paid_cents`, `payment_ref`, `paid_at`.
+- Fix: `club_champs_registrations_guard_self_update` / `_guard_self_insert` BEFORE triggers block financial/confirmation column changes and restrict self status transitions to `pending_payment|pending_eft|cancelled|declined`. Admins (`is_club_admin_or_permitted(..,'champs')`), SECURITY DEFINER RPCs and service_role/webhook writes bypass (guard only applies when `current_user = 'authenticated'`).

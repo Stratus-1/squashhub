@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.club_champs_registrations_guard_self_update() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_champs_registrations_guard_self_insert() FROM PUBLIC, anon, authenticated;

@@ -76,13 +76,12 @@ export default function AssociationDashboard() {
   const { data: profile } = useProfile();
   const { data: myRoles = [] } = useMyRoles();
   const { data: clubData } = useMyClub();
+  const association = clubData?.club;
   const { activeMember } = useMemberContext();
   const isClubAdmin = useIsClubAdmin();
   const isAssociationAdmin = useIsAssociationAdmin(association?.id);
   const isPlatformAdmin = myRoles.includes("admin");
   const myPermissions = useMyPermissions();
-
-  const association = clubData?.club;
   const firstName = (activeMember?.name || profile?.name)?.split(" ")[0] || "Member";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
 

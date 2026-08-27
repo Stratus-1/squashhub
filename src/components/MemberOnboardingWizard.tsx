@@ -26,6 +26,7 @@ import { useMemberClubRules, recordRuleAcceptance } from "@/hooks/use-club-rules
 import { ClubRulesContent } from "@/components/ClubRulesContent";
 import { hasRulesContent, DEFAULT_ACCEPTANCE_STATEMENT } from "@/lib/club-rules";
 import { ScrollText } from "lucide-react";
+import { useHasCapability } from "@/hooks/use-club-capabilities";
 import {
   SkillsExpertiseFields,
   emptySkillsDraft,
@@ -228,6 +229,7 @@ export function MemberOnboardingWizard({
   const [leagueSelections, setLeagueSelections] = useState<Record<string, LeagueSelection>>({});
   const [memberNumber, setMemberNumber] = useState("");
   const [skillsDraft, setSkillsDraft] = useState<SkillsDraft>(emptySkillsDraft());
+  const skillsEnabled = useHasCapability("skills");
   const [suggestedCategory, setSuggestedCategory] = useState<string>("");
   const [detectedAge, setDetectedAge] = useState<number | null>(null);
   const [categoryAutoSet, setCategoryAutoSet] = useState(false);
@@ -1165,6 +1167,7 @@ export function MemberOnboardingWizard({
 
                   <Separator />
 
+                  {skillsEnabled && (
                   <div className="space-y-2">
                     <div>
                       <Label className="text-sm">Skills &amp; Expertise</Label>
@@ -1174,6 +1177,7 @@ export function MemberOnboardingWizard({
                     </div>
                     <SkillsExpertiseFields value={skillsDraft} onChange={setSkillsDraft} compact />
                   </div>
+                  )}
                 </div>
               </motion.div>
             )}

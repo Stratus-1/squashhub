@@ -27,6 +27,7 @@ export const CAPABILITIES = [
   "whatsapp",
   "lights",
   "events",
+  "skills",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -202,6 +203,17 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     worksWith: ["finance"],
     defaultOn: false,
     tabs: ["whatsapp"],
+  },
+  skills: {
+    slug: "skills",
+    label: "Skills & Volunteers",
+    question: "Do you collect members' skills, trades and volunteer offers?",
+    description: "Optional Skills & Expertise section on member profiles plus the admin Skills Directory.",
+    group: "community",
+    requires: [],
+    worksWith: ["events"],
+    defaultOn: true,
+    tabs: ["skills"],
   },
   events: {
     slug: "events",

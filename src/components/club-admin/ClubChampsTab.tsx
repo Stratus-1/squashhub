@@ -783,6 +783,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     [scope, associationName]
   );
 
+  // Association / federation tenants can never sit on a club-only value.
+  useEffect(() => {
+    if (scope !== "club" && eligibilityScope === "club") setEligibilityScope("association");
+  }, [scope, eligibilityScope]);
+
+
+
 
   // Player pool = every member of every eligible club (plus host/venue clubs).
   const playerPoolClubIds = useMemo(() => {

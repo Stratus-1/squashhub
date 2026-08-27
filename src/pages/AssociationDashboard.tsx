@@ -67,6 +67,8 @@ interface OverviewTile {
   description: string;
   icon: any;
   color: string;
+  border?: string;
+  shadow?: string;
   show?: boolean;
 }
 

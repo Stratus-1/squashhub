@@ -973,10 +973,12 @@ export default function ClubAuth() {
           <p className="text-xs text-primary font-mono mt-0.5">{subdomain}.squashhub.co.za</p>
         </div>
 
-        {/* NSA league player free-signup CTA */}
-        <div className="mb-4">
-          <LeaguePlayerSignupBanner clubSubdomain={subdomain || null} clubName={clubName} />
-        </div>
+        {/* NSA league player free-signup CTA — NSA-affiliated clubs only */}
+        {isNsaClub && (
+          <div className="mb-4">
+            <LeaguePlayerSignupBanner clubSubdomain={subdomain || null} clubName={clubName} />
+          </div>
+        )}
 
         {(() => {
           const isAssociation = (club as any)?.tenant_type === "association";

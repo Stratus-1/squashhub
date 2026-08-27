@@ -493,7 +493,7 @@ function carriedBalance(prevBalance: number, toks: Tok[]): number | null {
 function bootstrapOpeningBalance(rows: { toks: Tok[] }[]): number | null {
   const probe = rows.slice(0, 25);
   if (!probe.length) return null;
-  let best: { opening: number; score: number } | null = null;
+  let best: { opening: number; score: number; total: number } | null = null;
 
   for (let start = 0; start < 1; start++) {
     const toks = probe[start].toks;
@@ -501,6 +501,10 @@ function bootstrapOpeningBalance(rows: { toks: Tok[] }[]): number | null {
       const bal = signed(toks[j]);
       for (let i = j - 1; i >= 0; i--) {
         for (const amt of [toks[i].value, -toks[i].value]) {
+          // Prefer the sign the statement itself printed (Cr / Dr / unmarked
+          // debit) so a tie on chain length doesn't flip the first row.
+          const markerFits =
+            (toks[i].cr && amt > 0) || (toks[i].dr && amt < 0) || (!toks[i].cr && !toks[i].dr && amt < 0);
           const openingAtStart = bal - amt;
           // Walk back is not possible, so only score forward from this row.
           let prev = openingAtStart;
@@ -515,7 +519,8 @@ function bootstrapOpeningBalance(rows: { toks: Tok[] }[]): number | null {
               if (carried !== null) prev = carried;
             }
           }
-          if (!best || score > best.score) best = { opening: openingAtStart, score };
+          const total = score * 2 + (markerFits ? 1 : 0);
+          if (!best || total > best.total) best = { opening: openingAtStart, score, total };
         }
       }
     }

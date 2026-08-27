@@ -118,6 +118,8 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
 
   const isFirstStatement = statements.length === 0;
 
+  const { rules, saveRule } = useClubBankRules(clubId, open);
+
   const rebuild = (p: ParsedStatement, map: ColumnMapping) => {
     const rows = buildRows(p, map);
     setDrafts(hydrate(rows));
@@ -126,14 +128,117 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
   const hydrate = (rows: ParsedBankRow[]): Draft[] =>
     rows.map((r) => {
       const dup = detectDuplicate(r, existing);
+      const key = ruleKey(r.description, r.reference);
+      const rule = matchRule(rules, key, r.amount > 0 ? "in" : "out");
+      const memberId = rule?.member_id ?? suggestMember(r, members);
+      const ruleAccount = rule ? ruleAccountValue(rule) : null;
+      const discarded = !!rule?.discard;
       return {
         ...r,
+        key,
         duplicate: dup,
-        include: dup !== "exact",
-        account: suggestAccount(r).account,
-        memberId: suggestMember(r, members),
+        discarded,
+        fromRule: !!rule,
+        touched: false,
+        include: dup !== "exact" && !discarded,
+        account: ruleAccount || suggestAccount(r, { memberMatched: !!memberId }).account,
+        memberId,
       };
     });
+
+  /** Re-apply learned rules when they load after a file was already parsed. */
+  const rulesSig = rules.map((r) => `${r.match_key}|${r.direction}|${r.account}|${r.custom_account_id}|${r.member_id}|${r.discard}`).join(";");
+  const appliedSig = useRef("");
+  useEffect(() => {
+    if (!drafts.length || rulesSig === appliedSig.current) return;
+    appliedSig.current = rulesSig;
+    setDrafts((prev) =>
+      prev.map((d) => {
+        if (d.touched) return d;
+        const rule = matchRule(rules, d.key, d.amount > 0 ? "in" : "out");
+        if (!rule) return d;
+        const acc = ruleAccountValue(rule);
+        return {
+          ...d,
+          fromRule: true,
+          account: acc || d.account,
+          memberId: rule.member_id ?? d.memberId,
+          discarded: rule.discard,
+          include: d.duplicate !== "exact" && !rule.discard,
+        };
+      }),
+    );
+  }, [rulesSig, drafts.length]);
+
+  /** Change a row's account and apply the same decision to every untouched matching row. */
+  const changeAccount = (index: number, value: string) => {
+    const target = drafts[index];
+    if (!target) return;
+    const dir: "in" | "out" = target.amount > 0 ? "in" : "out";
+    let applied = 0;
+    setDrafts((prev) =>
+      prev.map((p, idx) => {
+        if (idx === index) return { ...p, account: value, touched: true };
+        if (p.touched || p.key !== target.key || (p.amount > 0 ? "in" : "out") !== dir) return p;
+        applied += 1;
+        return { ...p, account: value, fromRule: true };
+      }),
+    );
+    if (target.key) {
+      saveRule({ match_key: target.key, direction: dir, accountValue: value, discard: false })
+        .then(() => {
+          appliedSig.current = "";
+          toast.success(
+            applied > 0
+              ? `Applied to ${applied} other matching line${applied === 1 ? "" : "s"} — remembered for future imports`
+              : "Remembered for future imports",
+          );
+        })
+        .catch(() => {/* rule persistence is best-effort */});
+    }
+  };
+
+  const changeMember = (index: number, memberId: string | null) => {
+    const target = drafts[index];
+    if (!target) return;
+    const dir: "in" | "out" = target.amount > 0 ? "in" : "out";
+    setDrafts((prev) =>
+      prev.map((p, idx) => {
+        if (idx === index) return { ...p, memberId, touched: true };
+        if (p.touched || p.key !== target.key) return p;
+        return { ...p, memberId };
+      }),
+    );
+    if (target.key) {
+      saveRule({ match_key: target.key, direction: dir, member_id: memberId, discard: false })
+        .then(() => { appliedSig.current = ""; })
+        .catch(() => {});
+    }
+  };
+
+  /** Discard a line and remember that this narrative should be discarded in future. */
+  const toggleDiscard = (index: number) => {
+    const target = drafts[index];
+    if (!target) return;
+    const dir: "in" | "out" = target.amount > 0 ? "in" : "out";
+    const next = !target.discarded;
+    setDrafts((prev) =>
+      prev.map((p, idx) => {
+        if (idx === index) return { ...p, discarded: next, include: next ? false : p.duplicate !== "exact", touched: true };
+        if (p.touched || p.key !== target.key || (p.amount > 0 ? "in" : "out") !== dir) return p;
+        return { ...p, discarded: next, include: next ? false : p.duplicate !== "exact" };
+      }),
+    );
+    if (target.key) {
+      saveRule({ match_key: target.key, direction: dir, discard: next })
+        .then(() => {
+          appliedSig.current = "";
+          toast.success(next ? "Discarded — future imports will skip this kind of line" : "No longer discarded");
+        })
+        .catch(() => {});
+    }
+  };
+
 
   const handleFile = async (file: File) => {
     setFileName(file.name);

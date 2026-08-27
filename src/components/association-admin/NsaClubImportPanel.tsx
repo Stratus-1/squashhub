@@ -167,12 +167,12 @@ export function NsaClubImportPanel() {
   });
 
   return (
-    <div className="space-y-4 p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Building2 className="w-6 h-6 text-amber-600" />
           <div>
-            <h1 className="text-xl font-bold text-foreground">NSA Bulk Club Import</h1>
+            <h2 className="text-base font-bold text-foreground">Bulk club import</h2>
             <p className="text-xs text-muted-foreground">
               Provisions clubs from the NSA league API as free-tier tenants (until 30 Sep 2026).
             </p>
@@ -327,3 +327,4 @@ export function NsaClubImportPanel() {
     </div>
   );
 }
+export default NsaClubImportPanel;

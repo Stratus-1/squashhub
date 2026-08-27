@@ -105,8 +105,15 @@ const COLOR_STYLES: Record<string, string> = {
 export default function ClubAdmin() {
   const { user } = useAuth();
   const { data, isLoading } = useMyClub();
+  const { subdomain, club: contextClub, isLoading: clubContextLoading } = useClubContext();
   const isAdmin = useIsClubAdmin();
   const myPermissions = useMyPermissions();
+  // On a club subdomain the membership query stays disabled until the tenant club
+  // resolves. While that is pending `data` is simply undefined — treat it as
+  // loading, otherwise we bounce a legitimate admin to /register-club.
+  const tenantResolving =
+    !!subdomain && (clubContextLoading || !contextClub || data === undefined);
+
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "club");
   useEffect(() => {

@@ -224,4 +224,16 @@ describe("parseTextStatement — FNB statement layout", () => {
   it("detects the printed opening balance", () => {
     expect(detectOpeningBalance(fnb)).toBe(4758.51);
   });
+  it("still reads the amount column when the opening balance line is missing", () => {
+    const noHeader = fnb
+      .split("\n")
+      .filter((l) => !/opening\s+balance/i.test(l))
+      .join("\n");
+    expect(detectOpeningBalance(noHeader)).toBeNull();
+    const rows = parseTextStatement(noHeader);
+    const withBal = parseTextStatement(fnb);
+    expect(rows.map((r) => [r.txn_date, r.amount])).toEqual(
+      withBal.map((r) => [r.txn_date, r.amount]),
+    );
+  });
 });

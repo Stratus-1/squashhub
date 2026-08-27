@@ -36,6 +36,7 @@ import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSugg
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
+import { looksLikePhone } from "@/lib/member-display";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import {
   canScheduleFixture,

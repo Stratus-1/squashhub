@@ -28,7 +28,9 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("platform_subscription_invoices")
-        .select("id, invoice_number, total, currency, due_date, status, stitch_payment_link")
+        .select(
+          "id, invoice_number, total, currency, due_date, status, stitch_payment_link, eft_proof_uploaded_at, eft_review_status"
+        )
         .eq("club_id", clubId!)
         .in("status", ["issued", "unpaid", "pending", "overdue", "past_due"])
         .order("due_date", { ascending: true });
@@ -36,6 +38,7 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
       return data || [];
     },
   });
+
 
   // Instant clear: any invoice change for this club (paid, void, new) refreshes.
   useEffect(() => {

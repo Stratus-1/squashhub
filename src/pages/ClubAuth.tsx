@@ -1615,7 +1615,7 @@ export default function ClubAuth() {
                 )
               )}
 
-              {(user || visitorGate === "ok") && (
+              {(user || !isNsaClub || visitorGate === "ok") && (
               <>
               <p className="text-xs text-muted-foreground mb-4">
                 Visiting {clubName} for a tournament or league? Fill in your details below and create a visitor account with your email and a password.

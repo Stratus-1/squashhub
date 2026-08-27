@@ -12445,6 +12445,7 @@ export type Database = {
         | "member_credits"
         | "opening_balance_equity"
         | "cleaning_services"
+        | "wifi_income"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -12620,6 +12621,7 @@ export const Constants = {
         "member_credits",
         "opening_balance_equity",
         "cleaning_services",
+        "wifi_income",
       ],
       integration_provider: [
         "strava",

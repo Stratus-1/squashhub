@@ -6587,6 +6587,7 @@ export type Database = {
           club_id: string
           code: string | null
           created_at: string
+          created_by_association_id: string | null
           division: string | null
           id: string
           is_reserve: boolean | null
@@ -6614,6 +6615,7 @@ export type Database = {
           club_id: string
           code?: string | null
           created_at?: string
+          created_by_association_id?: string | null
           division?: string | null
           id?: string
           is_reserve?: boolean | null
@@ -6641,6 +6643,7 @@ export type Database = {
           club_id?: string
           code?: string | null
           created_at?: string
+          created_by_association_id?: string | null
           division?: string | null
           id?: string
           is_reserve?: boolean | null
@@ -6674,6 +6677,13 @@ export type Database = {
           {
             foreignKeyName: "leagues_club_id_fkey"
             columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leagues_created_by_association_id_fkey"
+            columns: ["created_by_association_id"]
             isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
@@ -11362,6 +11372,66 @@ export type Database = {
         Args: { _club_id: string; _member_id: string; _role_name: string }
         Returns: undefined
       }
+      association_add_placeholder_player: {
+        Args: {
+          _is_reserve?: boolean
+          _league_number?: string
+          _name: string
+          _player_rank?: number
+          _team_id: string
+          _tenant_id: string
+        }
+        Returns: string
+      }
+      association_create_team: {
+        Args: {
+          _category?: string
+          _club_id: string
+          _code?: string
+          _is_reserve?: boolean
+          _level?: number
+          _name: string
+          _season_year?: number
+          _tenant_id: string
+        }
+        Returns: string
+      }
+      association_league_team_players: {
+        Args: { _team_id: string; _tenant_id: string }
+        Returns: {
+          is_captain: boolean
+          is_reserve: boolean
+          league_number: string
+          member_id: string
+          player_name: string
+          player_rank: number
+          registration_id: string
+        }[]
+      }
+      association_league_teams: {
+        Args: { _season_year?: number; _tenant_id: string }
+        Returns: {
+          category: string
+          club_id: string
+          club_name: string
+          created_by_association: boolean
+          is_reserve: boolean
+          level: number
+          player_count: number
+          season_year: number
+          team_code: string
+          team_id: string
+          team_name: string
+        }[]
+      }
+      association_save_fixtures: {
+        Args: {
+          _fixtures: Json
+          _platform_association_id: string
+          _tenant_id: string
+        }
+        Returns: number
+      }
       auto_complete_past_tournaments: { Args: never; Returns: number }
       bill_wifi_monthly: { Args: never; Returns: Json }
       can_access_champ_match: {
@@ -11891,6 +11961,10 @@ export type Database = {
       }
       invite_verification_ok: {
         Args: { p_member_id: string; p_verify: string }
+        Returns: boolean
+      }
+      is_association_admin: {
+        Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
       is_bells_participant_member: {

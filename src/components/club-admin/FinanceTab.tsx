@@ -1111,44 +1111,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
         {/* Chart of Accounts Tab */}
         <TabsContent value="coa">
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <ListTree className="w-4 h-4 text-primary" />
-              <h3 className="font-semibold text-sm">Chart of Accounts</h3>
-            </div>
-            {accountsByCategory.map(({ category, accounts }) => (
-              <div key={category}>
-                <h4 className={cn("text-xs font-bold uppercase tracking-wider mb-2", categoryColor[category])}>{category}</h4>
-                <div className="border rounded-lg overflow-hidden mb-3">
-                  <div className="grid grid-cols-[1fr_60px_70px_90px] gap-1 px-3 py-1.5 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <span>Account</span>
-                    <span>Type</span>
-                    <span>Normal</span>
-                    <span className="text-right">Balance</span>
-                  </div>
-                  {accounts.map(account => {
-                    const meta = CHART_OF_ACCOUNTS[account];
-                    const balance = getBalance(account);
-                    return (
-                      <div key={account} className="grid grid-cols-[1fr_60px_70px_90px] gap-1 px-3 py-2 text-xs items-center border-b last:border-b-0">
-                        <span className="font-medium">{meta.label}</span>
-                        <Badge variant="outline" className="text-[10px] w-fit">{meta.type}</Badge>
-                        <span className="text-[10px] text-muted-foreground">{meta.normal}</span>
-                        <span className={cn("text-right tabular-nums font-medium",
-                          balance > 0 ? (meta.category === "Expense" ? "text-destructive" : "text-green-600") :
-                          balance < 0 ? "text-destructive" : "text-muted-foreground"
-                        )}>
-                          {money(Math.abs(balance))}
-                          {balance < 0 ? " Cr" : balance > 0 ? " Dr" : ""}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </Card>
+          <ChartOfAccountsPanel
+            clubId={clubId}
+            accounts={CHART_OF_ACCOUNTS as any}
+            getBalance={getBalance}
+            getCustomBalance={getCustomBalance}
+            money={money}
+          />
         </TabsContent>
+
           </Tabs>
         )}
       </FinanceHub>

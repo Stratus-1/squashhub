@@ -314,6 +314,29 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
     }
   };
 
+  /** Change a club-role admin back to a normal member (removes automatic full access). */
+  const demoteAdmin = async (memberId: string, name: string) => {
+    if (!confirm(`Change ${name || "this member"} from Admin to Member? They will lose automatic full admin access.`)) return;
+    try {
+      const { error } = await fromExt("club_members").update({ role: "member" }).eq("id", memberId);
+      if (error) throw error;
+      const existing = permMap.get(memberId);
+      if (existing?.is_full_admin) {
+        await upsert.mutateAsync({
+          club_member_id: memberId,
+          permission_role_id: existing?.permission_role_id ?? null,
+          custom_permissions: existing?.custom_permissions ?? [],
+          is_full_admin: false,
+        });
+      }
+      await qc.invalidateQueries({ queryKey: ["club-members-for-perms", clubId] });
+      toast.success("Club role changed to Member");
+    } catch (err: any) {
+      toast.error(err.message || "Could not change role");
+    }
+  };
+
+
   /** Defer the save until after the Select has finished closing/unmounting. */
   const deferAssignRole = (memberId: string, roleId: string | null) => {
     setTimeout(() => { void handleAssignRole(memberId, roleId); }, 0);

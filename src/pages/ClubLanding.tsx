@@ -2,7 +2,7 @@ import { useParams, Navigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2, ArrowRight, ChevronDown, UserPlus } from "lucide-react";
+import { Loader2, Building2, ArrowRight, ChevronDown, UserPlus, Trophy } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ interface ClubData {
   club_captain_member_id?: string | null;
   treasurer_member_id?: string | null;
   show_delegates_on_landing?: boolean;
+  nsa_club_id?: string | null;
 }
 
 function AnimatedCount({ value }: { value: number }) {
@@ -149,6 +150,13 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
   const applyUrl = displaySubdomain
     ? buildClubPublicUrl(displaySubdomain, "/auth?intent=apply")
     : "/auth?intent=apply";
+
+  // NSA content (league player self-signup) is only shown for clubs that are
+  // actually affiliated with the NSA.
+  const isNsaClub = !!club?.nsa_club_id;
+  const leagueSignupUrl = displaySubdomain
+    ? buildClubPublicUrl(displaySubdomain, `/league?club=${encodeURIComponent(displaySubdomain)}`)
+    : "/league";
 
 
 
@@ -342,10 +350,23 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                   <UserPlus className="w-4 h-4" />
                 </Button>
 
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                {isNsaClub && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full gap-2 rounded-full h-12 border-amber-400/50 bg-amber-400/10 text-white hover:bg-amber-400/20 hover:text-white"
+                    onClick={() => { window.location.href = leagueSignupUrl; }}
+                  >
+                    NSA league player? Register free
+                    <Trophy className="w-4 h-4 text-amber-300" />
+                  </Button>
+                )}
+
+                <div className={`grid ${isNsaClub ? "grid-cols-3" : "grid-cols-2"} gap-3 pt-2`}>
                   {[
                     { label: "Log in / register", url: signInUrl },
                     { label: "New member sign-up", url: applyUrl },
+                    ...(isNsaClub ? [{ label: "NSA league player sign-up", url: leagueSignupUrl }] : []),
                   ].map((q) => (
                     <div key={q.label} className="flex flex-col items-center gap-2">
                       <div className="rounded-xl bg-white p-2 shadow-sm">

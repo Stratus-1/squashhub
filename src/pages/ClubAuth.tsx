@@ -21,6 +21,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
+import { NsaLeagueQrCard } from "@/components/NsaLeagueQrCard";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 
 export default function ClubAuth() {
@@ -223,6 +224,9 @@ export default function ClubAuth() {
     toast.error(msg || "Sign-up failed");
   };
   const isAssociation = (club as any)?.tenant_type === "association";
+  // NSA-specific messaging (league player CTA, NSF-number prompts) may only be
+  // shown on clubs actually affiliated with the NSA.
+  const isNsaClub = !!(club as any)?.nsa_club_id;
   // NSC-specific: hide the member/league number field on existing-member signup
   // so members only need email + cell phone (numbers are issued by the club).
   const hideMemberNumberField = (subdomain || "").toLowerCase() === "nsc";
@@ -970,10 +974,18 @@ export default function ClubAuth() {
           <p className="text-xs text-primary font-mono mt-0.5">{subdomain}.squashhub.co.za</p>
         </div>
 
-        {/* NSA league player free-signup CTA */}
-        <div className="mb-4">
-          <LeaguePlayerSignupBanner clubSubdomain={subdomain || null} clubName={clubName} />
-        </div>
+        {/* NSA league player free-signup CTA — NSA-affiliated clubs only */}
+        {isNsaClub && (
+          <div className="mb-4 space-y-3">
+            <LeaguePlayerSignupBanner clubSubdomain={subdomain || null} clubName={clubName} />
+            <div className="flex justify-center">
+              <NsaLeagueQrCard
+                url={`${typeof window !== "undefined" ? window.location.origin : ""}/league${subdomain ? `?club=${encodeURIComponent(subdomain)}` : ""}`}
+                size={96}
+              />
+            </div>
+          </div>
+        )}
 
         {(() => {
           const isAssociation = (club as any)?.tenant_type === "association";
@@ -1553,7 +1565,7 @@ export default function ClubAuth() {
           {/* ─── VISITOR ─── */}
           <TabsContent value="visitor">
             <Card className="p-6">
-              {!user && visitorGate !== "ok" && (
+              {!user && isNsaClub && visitorGate !== "ok" && (
                 visitorGate === "nsa" ? (
                   <div className="space-y-4">
                     <h3 className="text-base font-bold font-heading">Register via the NSA league page first</h3>
@@ -1610,7 +1622,7 @@ export default function ClubAuth() {
                 )
               )}
 
-              {(user || visitorGate === "ok") && (
+              {(user || !isNsaClub || visitorGate === "ok") && (
               <>
               <p className="text-xs text-muted-foreground mb-4">
                 Visiting {clubName} for a tournament or league? Fill in your details below and create a visitor account with your email and a password.

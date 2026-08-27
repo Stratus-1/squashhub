@@ -12087,6 +12087,10 @@ export type Database = {
       is_national_admin: { Args: { _user_id: string }; Returns: boolean }
       is_person_self: { Args: { _person_id: string }; Returns: boolean }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_platform_association_admin: {
+        Args: { _platform_association_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_public_club_document: { Args: { _path: string }; Returns: boolean }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
       list_doubles_partner_options: {

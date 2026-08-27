@@ -13,7 +13,6 @@ import { Plus, Edit2, Trash2, Shield, ShieldCheck } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import {
-  PERMISSION_SLUGS,
   SUPER_ADMIN_ONLY_SLUGS,
   usePermissionRoles,
   useSavePermissionRole,
@@ -58,6 +57,7 @@ export function PermissionsTab({ clubId }: { clubId: string }) {
 /* ─── Roles Section ─── */
 
 function RolesSection({ clubId }: { clubId: string }) {
+  const isAssociation = useIsAssociationTenant();
   const { data: roles = [] } = usePermissionRoles(clubId);
   const saveRole = useSavePermissionRole();
   const deleteRole = useDeletePermissionRole();
@@ -212,6 +212,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
 /* ─── Member Permissions Section ─── */
 
 function MemberPermissionsSection({ clubId }: { clubId: string }) {
+  const isAssociation = useIsAssociationTenant();
   const qc = useQueryClient();
   const { data: members = [] } = useQuery({
     queryKey: ["club-members-for-perms", clubId],

@@ -12,6 +12,13 @@
 - **Fix:** Club Admin now waits for explicit platform-role resolution without waiting for a tenant membership row. The membership helper runs under its fixed owner context, and the redundant recursive delegate policy was removed; the normal same-club, own-row, and platform-admin visibility policies remain authoritative.
 - **Guard:** Platform administrators must be able to administer any resolved tenant without a local `club_members` row. Keep membership helper functions security-definer with a fixed search path, and do not add `club_members` policies that query `clubs` policies which query `club_members` again.
 
+# 2026-08-27 — Existing Riverside member was shown new-member onboarding after login
+
+- **Symptom:** An existing, active Riverside member signing in with Google was shown the six-step new-membership wizard.
+- **Finding:** The member row and auth link were correct, but a transient membership-query failure caused the dashboard to treat missing query data as a confirmed missing membership.
+- **Fix:** The dashboard now suppresses all onboarding decisions while the membership query is in an error state; the repaired membership policy allows the existing Riverside row to resolve normally.
+- **Guard:** A new-member workflow may open only after a successful membership lookup confirms there is no tenant membership. Loading or failed queries must never be interpreted as absence.
+
 # SquashHub — Project Structure, Issue & Fix Log
 
 > **Purpose.** This is the canonical reference for *how the system is wired* and *what has already

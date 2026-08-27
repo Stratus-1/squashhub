@@ -65,7 +65,11 @@ export default function Dashboard() {
   const showFamilySwitcher = linkedMembers.length > 1;
   const { data: profile, isLoading } = useProfile();
   const { data: clubData, isLoading: isClubLoading } = useMyClub();
-  const { data: myClubMember, isLoading: isClubMemberLoading } = useMyClubMember();
+  const {
+    data: myClubMember,
+    isLoading: isClubMemberLoading,
+    isError: isClubMemberError,
+  } = useMyClubMember();
   const effectiveClub = clubData?.club || contextClub;
   const isClubAdmin = useIsClubAdmin();
   const myPermissions = useMyPermissions();
@@ -453,7 +457,7 @@ export default function Dashboard() {
   const isSuperAdmin = (myRoles || []).includes("admin") || (myRoles || []).includes("moderator");
 
   useEffect(() => {
-    if (isLoading || isClubLoading || isClubMemberLoading || !profile) return;
+    if (isLoading || isClubLoading || isClubMemberLoading || isClubMemberError || !profile) return;
 
     // Super admins (platform-level) can browse any club without being forced to onboard.
     if (isSuperAdmin) return;
@@ -562,6 +566,7 @@ export default function Dashboard() {
     isLoading,
     isClubLoading,
     isClubMemberLoading,
+    isClubMemberError,
     profile,
     effectiveClub,
     myClubMember,

@@ -98,6 +98,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember, useIsSuperAdmin } from "@/hooks/use-club";
+import { useIsAssociationAdmin } from "@/hooks/use-association-admin";
 import { NoClubAccess } from "@/components/NoClubAccess";
 import { fromExt } from "@/lib/supabase-ext";
 import Terms from "./pages/Terms";

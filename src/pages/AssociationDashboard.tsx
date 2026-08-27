@@ -78,6 +78,7 @@ export default function AssociationDashboard() {
   const { data: clubData } = useMyClub();
   const { activeMember } = useMemberContext();
   const isClubAdmin = useIsClubAdmin();
+  const isAssociationAdmin = useIsAssociationAdmin(association?.id);
   const isPlatformAdmin = myRoles.includes("admin");
   const myPermissions = useMyPermissions();
 
@@ -87,9 +88,9 @@ export default function AssociationDashboard() {
 
   const visibleAdminTabs = ADMIN_TABS.filter(tab => {
     if (isPlatformAdmin) return true;
-    if (tab.adminOnly) return isClubAdmin;
-    if (!tab.permission) return isClubAdmin;
-    return isClubAdmin || myPermissions.has(tab.permission);
+    if (tab.adminOnly) return isClubAdmin || isAssociationAdmin;
+    if (!tab.permission) return isClubAdmin || isAssociationAdmin;
+    return isClubAdmin || isAssociationAdmin || myPermissions.has(tab.permission);
   });
 
   const hasAdminAccess = isPlatformAdmin || visibleAdminTabs.length > 0;

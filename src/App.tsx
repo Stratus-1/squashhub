@@ -302,12 +302,13 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, subdomain, club?.id, myClubMember, isSuperAdmin]);
+  }, [user?.id, subdomain, club?.id, myClubMember, isSuperAdmin, isAssociationAdmin]);
 
   // Only gate on club subdomains, once the club context and user are known.
   if (!user || !subdomain || !club?.id) return <>{children}</>;
-  // Platform super-admins can access any club subdomain without a membership row.
-  if (isSuperAdmin) return <>{children}</>;
+  // Platform super-admins and association admins can access association tenants
+  // without needing a local club_members row.
+  if (isSuperAdmin || isAssociationAdmin) return <>{children}</>;
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

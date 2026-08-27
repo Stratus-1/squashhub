@@ -32,7 +32,7 @@ function slugFromCode(code: string): string {
   return (code || "").slice(0, 3).toLowerCase().replace(/[^a-z]/g, "");
 }
 
-export default function SuperAdminNsaImport() {
+export function NsaClubImportPanel() {
   const qc = useQueryClient();
   const [season, setSeason] = useState(NSA_CURRENT_SEASON);
   const [selected, setSelected] = useState<Set<string>>(new Set());

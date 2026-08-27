@@ -1396,6 +1396,70 @@ export type Database = {
           },
         ]
       }
+      club_bank_rules: {
+        Row: {
+          account: Database["public"]["Enums"]["gl_account"] | null
+          club_id: string
+          created_at: string
+          custom_account_id: string | null
+          direction: string
+          discard: boolean
+          hit_count: number
+          id: string
+          match_key: string
+          member_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          account?: Database["public"]["Enums"]["gl_account"] | null
+          club_id: string
+          created_at?: string
+          custom_account_id?: string | null
+          direction?: string
+          discard?: boolean
+          hit_count?: number
+          id?: string
+          match_key: string
+          member_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account?: Database["public"]["Enums"]["gl_account"] | null
+          club_id?: string
+          created_at?: string
+          custom_account_id?: string | null
+          direction?: string
+          discard?: boolean
+          hit_count?: number
+          id?: string
+          match_key?: string
+          member_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_bank_rules_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_bank_rules_custom_account_id_fkey"
+            columns: ["custom_account_id"]
+            isOneToOne: false
+            referencedRelation: "club_gl_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_bank_rules_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_bank_statements: {
         Row: {
           account: Database["public"]["Enums"]["gl_account"]

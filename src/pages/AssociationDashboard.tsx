@@ -16,6 +16,7 @@ import { useProfile, useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useIsAssociationAdmin } from "@/hooks/use-association-admin";
 
 import { AssociationInfoTab } from "@/components/association-admin/AssociationInfoTab";
 import { AffiliatedClubsTab } from "@/components/association-admin/AffiliatedClubsTab";
@@ -75,20 +76,20 @@ export default function AssociationDashboard() {
   const { data: profile } = useProfile();
   const { data: myRoles = [] } = useMyRoles();
   const { data: clubData } = useMyClub();
+  const association = clubData?.club;
   const { activeMember } = useMemberContext();
   const isClubAdmin = useIsClubAdmin();
+  const isAssociationAdmin = useIsAssociationAdmin(association?.id);
   const isPlatformAdmin = myRoles.includes("admin");
   const myPermissions = useMyPermissions();
-
-  const association = clubData?.club;
   const firstName = (activeMember?.name || profile?.name)?.split(" ")[0] || "Member";
   const openProfile = (to: string = "/profile") => navigate(to, { state: { backgroundLocation: location } });
 
   const visibleAdminTabs = ADMIN_TABS.filter(tab => {
     if (isPlatformAdmin) return true;
-    if (tab.adminOnly) return isClubAdmin;
-    if (!tab.permission) return isClubAdmin;
-    return isClubAdmin || myPermissions.has(tab.permission);
+    if (tab.adminOnly) return isClubAdmin || isAssociationAdmin;
+    if (!tab.permission) return isClubAdmin || isAssociationAdmin;
+    return isClubAdmin || isAssociationAdmin || myPermissions.has(tab.permission);
   });
 
   const hasAdminAccess = isPlatformAdmin || visibleAdminTabs.length > 0;

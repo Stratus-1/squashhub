@@ -7,7 +7,7 @@
  * the association can create the team and placeholder players itself, then
  * generate the two-leg season fixtures.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,6 +89,14 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
   });
 
   const seasons = useMemo(() => seasonsOf(teams), [teams]);
+
+  const currentYear = new Date().getFullYear();
+  useEffect(() => {
+    if (season === ALL && seasons.length > 0 && seasons.includes(currentYear)) {
+      setSeason(String(currentYear));
+    }
+  }, [seasons, currentYear]);
+
   const scoped = useMemo(
     () => (season === ALL ? teams : teams.filter((t) => String(t.season_year ?? "") === season)),
     [teams, season]

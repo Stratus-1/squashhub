@@ -242,10 +242,14 @@ export default function AssociationDashboard() {
                         handle();
                       }
                     }}
-                    className="p-3 cursor-pointer hover:border-primary/40 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className={cn(
+                      "p-3 cursor-pointer transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring border-2 hover:-translate-y-0.5 hover:shadow-md",
+                      tile.border || "border-border",
+                      tile.shadow || ""
+                    )}
                   >
-                    <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-2", tile.color)}>
-                      <tile.icon className="w-5 h-5" />
+                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 shadow-sm", tile.color)}>
+                      <tile.icon className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex items-center justify-between gap-1">
                       <h3 className="text-sm font-semibold leading-tight truncate">{tile.label}</h3>

@@ -759,6 +759,7 @@ function ViewMode({
   close: () => void;
   setMode: (m: "edit") => void;
 }) {
+  const skillsCapEnabled = useHasCapability("skills");
   const { data: club } = useMyClub();
   const { format: fmtMoney } = useClubCurrency();
   const faceRequired = !!(club as any)?.face_enrolment_required;
@@ -821,7 +822,7 @@ function ViewMode({
         </Card>
       )}
 
-      {clubMember && skillsEnabled && (() => {
+      {clubMember && skillsCapEnabled && (() => {
         const tags = normaliseSkills((clubMember as any).skills);
         const others = parseOtherSkills((clubMember as any).skills_other);
         const occupation = String((clubMember as any).occupation || "").trim();

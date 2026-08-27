@@ -162,9 +162,12 @@ export default function ClubAdmin() {
     setWizardOpen(true);
   }, [capsReady, hasCapRows, untouchedCaps, coreIncomplete, club?.id]);
 
-  if (isLoading || (baseClub?.id && isFetchingAdminClub && !adminClub)) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (isLoading || tenantResolving || (baseClub?.id && isFetchingAdminClub && !adminClub)) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
-  if (!data?.club || !club) return <Navigate to="/register-club" replace />;
+  // Fall back to the tenant club so admins/super-admins on a club subdomain are
+  // never sent to club registration just because they hold no member row there.
+  if (!club && !contextClub) return <Navigate to="/register-club" replace />;
+
   if (!isAdmin && myPermissions.size === 0) return <Navigate to="/dashboard" replace />;
 
   // Associations have a unified dashboard at "/" — there's no separate admin page.

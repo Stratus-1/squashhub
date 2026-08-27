@@ -90,23 +90,32 @@ export function TenantSwitcher() {
     );
   }, [tenants, search]);
 
-  if (tenants.length < 2) return null;
+  if (tenants.length < 2 && !isPlatformAdmin) return null;
+
+  const isPreviewHost = () =>
+    typeof window !== "undefined" &&
+    (
+      window.location.hostname.includes("lovable.app") ||
+      window.location.hostname.includes("lovableproject.com") ||
+      window.location.hostname.includes("id-preview--") ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    );
 
   const goToTenant = (sub: string) => {
     if (sub === currentSubdomain) return;
-    const isPreview =
-      typeof window !== "undefined" &&
-      (
-        window.location.hostname.includes("lovable.app") ||
-        window.location.hostname.includes("lovableproject.com") ||
-        window.location.hostname.includes("id-preview--") ||
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1"
-      );
-    if (isPreview) {
+    if (isPreviewHost()) {
       window.location.href = `/c/${sub}/`;
     } else {
       window.location.href = `https://${sub}.squashhub.co.za/`;
+    }
+  };
+
+  const goToSuperAdmin = () => {
+    if (isPreviewHost()) {
+      window.location.href = "/admin";
+    } else {
+      window.location.href = "https://squashhub.co.za/admin";
     }
   };
 

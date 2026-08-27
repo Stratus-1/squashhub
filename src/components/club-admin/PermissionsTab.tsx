@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2, Shield, ShieldCheck } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import {
   PERMISSION_SLUGS,
@@ -200,6 +200,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
 /* ─── Member Permissions Section ─── */
 
 function MemberPermissionsSection({ clubId }: { clubId: string }) {
+  const qc = useQueryClient();
   const { data: members = [] } = useQuery({
     queryKey: ["club-members-for-perms", clubId],
     queryFn: async () => {
@@ -360,7 +361,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                 <TableHead>Club Role</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Permissions</TableHead>
-                <TableHead className="w-[60px]" />
+                <TableHead className="w-[150px]" />
               </TableRow>
             </TableHeader>
             <TableBody>

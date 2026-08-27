@@ -146,6 +146,11 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
     ? buildClubPublicUrl(displaySubdomain, "/auth")
     : "/auth";
 
+  const applyUrl = displaySubdomain
+    ? buildClubPublicUrl(displaySubdomain, "/auth?intent=apply")
+    : "/auth?intent=apply";
+
+
 
   if (loading) {
     return (

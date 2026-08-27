@@ -9,6 +9,11 @@ import { restoreRouteAfterUpdate } from "@/lib/pwa-update";
 
 import { isStandalone, markInstalled } from "@/lib/pwa-detect";
 import { applyDynamicManifest } from "@/lib/dynamic-manifest";
+import { initializeInstallPromptCapture } from "@/lib/pwa-install-event";
+
+// Chrome emits `beforeinstallprompt` only once per page visit. Capture it
+// before auth/club state resolves so the signed-in install UI cannot miss it.
+initializeInstallPromptCapture();
 
 // If the app launched in standalone mode, remember that this device has
 // it installed. We use this later to detect uninstall + browser reopen.

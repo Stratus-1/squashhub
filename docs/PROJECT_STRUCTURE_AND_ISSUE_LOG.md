@@ -1,3 +1,10 @@
+# 2026-08-27 — Mobile Chrome PWA install prompt event was lost during auth loading
+
+- **Symptom:** Eligible Android Chrome users, including Vian at Nelspruit, did not receive the SquashHub install prompt even though the manifest and service worker were valid.
+- **Cause:** `beforeinstallprompt` is a one-shot browser event, but both listeners lived in authenticated React UI. Chrome could emit it before authentication and club context finished loading, so the event was permanently missed.
+- **Fix:** Added an app-start install-event broker that captures and retains the event before React/auth initialization. `InstallPrompt` and the Settings install card now subscribe to the retained event and consume it only after the browser prompt is used.
+- **Scope:** Install flow only; service-worker update behavior and preview/native guards are unchanged.
+
 # SquashHub — Project Structure, Issue & Fix Log
 
 > **Purpose.** This is the canonical reference for *how the system is wired* and *what has already

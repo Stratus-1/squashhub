@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Capacitor } from "@capacitor/core";
 import { isStandalone } from "@/lib/pwa-detect";
 import { setDecision } from "@/lib/permission-cache";
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-};
+import {
+  consumeInstallPromptEvent,
+  getInstallPromptEvent,
+  subscribeToInstallPrompt,
+  type BeforeInstallPromptEvent,
+} from "@/lib/pwa-install-event";
 
 function isIosDevice(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -30,19 +31,15 @@ function isIosSafari(): boolean {
  * on demand instead of relying on an automatic popup.
  */
 export function InstallAppCard() {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(() => getInstallPromptEvent());
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    const onBip = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
     const onInstalled = () => setInstalled(true);
-    window.addEventListener("beforeinstallprompt", onBip);
+    const unsubscribe = subscribeToInstallPrompt(setDeferred);
     window.addEventListener("appinstalled", onInstalled);
     return () => {
-      window.removeEventListener("beforeinstallprompt", onBip);
+      unsubscribe();
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
@@ -62,7 +59,7 @@ export function InstallAppCard() {
     } catch {
       /* ignore */
     }
-    setDeferred(null);
+    consumeInstallPromptEvent();
   };
 
   return (

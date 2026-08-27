@@ -18,6 +18,12 @@ import {
   clearSnooze,
 } from "@/lib/pwa-install";
 import { isStandalone as detectStandalone, recordInstalled } from "@/lib/pwa-detect";
+import {
+  consumeInstallPromptEvent,
+  getInstallPromptEvent,
+  subscribeToInstallPrompt,
+  type BeforeInstallPromptEvent,
+} from "@/lib/pwa-install-event";
 
 // Routes where the install prompt must never appear — it can overlap
 // form buttons and block the user from finishing a task.
@@ -36,11 +42,6 @@ const BLOCKED_PATH_PREFIXES = [
   "/match-tracker",
 ];
 
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-};
-
 /**
  * First-party INSTALL prompt (distinct from the update banner).
  * Desktop Chromium/Edge, Android Chromium: driven by a real captured
@@ -48,7 +49,7 @@ type BeforeInstallPromptEvent = Event & {
  */
 export function InstallPrompt() {
   const { pathname } = useLocation();
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(() => getInstallPromptEvent());
   const [iosSheet, setIosSheet] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -59,15 +60,18 @@ export function InstallPrompt() {
   useEffect(() => {
     if (Capacitor.isNativePlatform() || isPreviewContext()) return;
 
-    const onBip = (e: Event) => {
-      e.preventDefault();
+    const onBip = (e: BeforeInstallPromptEvent | null) => {
+      if (!e) {
+        setDeferred(null);
+        return;
+      }
       // The browser only fires this when the app is NOT installed. If we had
       // stale "installed"/snooze state, the user uninstalled — reset it.
       if (!detectStandalone() && readInstallCompleted()) {
         clearInstallCompleted();
         clearSnooze();
       }
-      setDeferred(e as BeforeInstallPromptEvent);
+      setDeferred(e);
     };
     const onInstalled = () => {
       markInstallCompleted();
@@ -76,7 +80,7 @@ export function InstallPrompt() {
       setIosSheet(false);
     };
 
-    window.addEventListener("beforeinstallprompt", onBip);
+    const unsubscribe = subscribeToInstallPrompt(onBip);
     window.addEventListener("appinstalled", onInstalled);
 
     // iOS never fires beforeinstallprompt — offer the manual guidance once
@@ -91,7 +95,7 @@ export function InstallPrompt() {
     }
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", onBip);
+      unsubscribe();
       window.removeEventListener("appinstalled", onInstalled);
       if (t) window.clearTimeout(t);
     };
@@ -107,7 +111,7 @@ export function InstallPrompt() {
     } catch {
       writeSnooze();
     }
-    setDeferred(null);
+    consumeInstallPromptEvent();
   }, [deferred]);
 
   const handleDismiss = () => {

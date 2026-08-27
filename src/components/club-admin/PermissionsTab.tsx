@@ -20,18 +20,26 @@ import {
   useUpsertMemberPermission,
   type PermissionRole,
 } from "@/hooks/use-club-permissions";
-import { useIsSuperAdmin, useMyClub } from "@/hooks/use-club";
-import { useClubContext } from "@/contexts/ClubContext";
+import { useIsSuperAdmin } from "@/hooks/use-club";
 import { permissionSlugsForTenant, permissionLabel } from "@/lib/permission-scope";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
-/** True when the workspace being administered is an association/federation tenant. */
-function useIsAssociationTenant(): boolean {
-  const { data: clubData } = useMyClub();
-  const { club: contextClub } = useClubContext();
-  const tenantType =
-    (clubData?.club as any)?.tenant_type ?? (contextClub as any)?.tenant_type;
-  return tenantType === "association" || tenantType === "federation";
+/**
+ * True when the workspace being administered is an association/federation tenant.
+ * Resolved from the tenant row actually being edited (the clubId prop), not the
+ * viewer's own club — a super admin editing an association must see association wording.
+ */
+function useIsAssociationTenant(clubId: string): boolean {
+  const { data } = useQuery({
+    queryKey: ["tenant-type", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("clubs").select("tenant_type").eq("id", clubId).maybeSingle();
+      if (error) throw error;
+      return (data as { tenant_type: string | null } | null)?.tenant_type ?? null;
+    },
+    enabled: !!clubId,
+  });
+  return data === "association" || data === "federation";
 }
 
 export function PermissionsTab({ clubId }: { clubId: string }) {
@@ -57,7 +65,7 @@ export function PermissionsTab({ clubId }: { clubId: string }) {
 /* ─── Roles Section ─── */
 
 function RolesSection({ clubId }: { clubId: string }) {
-  const isAssociation = useIsAssociationTenant();
+  const isAssociation = useIsAssociationTenant(clubId);
   const { data: roles = [] } = usePermissionRoles(clubId);
   const saveRole = useSavePermissionRole();
   const deleteRole = useDeletePermissionRole();
@@ -139,7 +147,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
   const save = useSavePermissionRole();
   const isSuperAdmin = useIsSuperAdmin();
   /** Federation-level slugs may only be handed out by a platform super admin. */
-  const isAssociation = useIsAssociationTenant();
+  const isAssociation = useIsAssociationTenant(clubId);
   const grantableSlugs = permissionSlugsForTenant(isAssociation).filter(
     (s) => isSuperAdmin || !SUPER_ADMIN_ONLY_SLUGS.includes(s.value),
   );
@@ -212,7 +220,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
 /* ─── Member Permissions Section ─── */
 
 function MemberPermissionsSection({ clubId }: { clubId: string }) {
-  const isAssociation = useIsAssociationTenant();
+  const isAssociation = useIsAssociationTenant(clubId);
   const qc = useQueryClient();
   const { data: members = [] } = useQuery({
     queryKey: ["club-members-for-perms", clubId],
@@ -539,7 +547,7 @@ function MemberPermDialog({
   const upsert = useUpsertMemberPermission();
   const isSuperAdmin = useIsSuperAdmin();
   /** Federation-level slugs may only be handed out by a platform super admin. */
-  const isAssociation = useIsAssociationTenant();
+  const isAssociation = useIsAssociationTenant(clubId);
   const grantableSlugs = permissionSlugsForTenant(isAssociation).filter(
     (s) => isSuperAdmin || !SUPER_ADMIN_ONLY_SLUGS.includes(s.value),
   );

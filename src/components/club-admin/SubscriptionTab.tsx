@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ import { ClubParticipationCard } from "@/components/club-admin/ClubParticipation
 import { BillingFrequencyCard } from "@/components/club-admin/BillingFrequencyCard";
 import { billingOptionLabel } from "@/lib/billing/frequency";
 import { openStitchCheckout, buildStitchReturnUrl } from "@/lib/stitch-checkout";
+import { PlatformInvoiceEftDialog } from "@/components/club-admin/PlatformInvoiceEftDialog";
 
 interface Invoice {
   id: string;
@@ -138,6 +139,12 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
       () => toast.error("Copy failed")
     );
   };
+
+  const [eftInvoiceId, setEftInvoiceId] = useState<string | null>(null);
+  const eftInvoice = useMemo(
+    () => invoices.find((i) => i.id === eftInvoiceId) || null,
+    [invoices, eftInvoiceId]
+  );
 
   const openInvoice = (inv: Invoice) => {
     // Past invoices keep the billing details captured when they were issued.
@@ -272,6 +279,26 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, invoices, invLoading]);
 
+  // Deep link from the dashboard prompt / emails: /club-admin?tab=subscription&eft=<invoice_id>
+  const autoEftRef = useRef<string | null>(null);
+  useEffect(() => {
+    const eftId = searchParams.get("eft");
+    if (!eftId || invLoading) return;
+    if (autoEftRef.current === eftId) return;
+    autoEftRef.current = eftId;
+    const next = new URLSearchParams(searchParams);
+    next.delete("eft");
+    setSearchParams(next, { replace: true });
+    const inv = invoices.find((i) => i.id === eftId) || outstanding[0];
+    if (!inv) return;
+    if (inv.status === "paid" || inv.status === "void") {
+      toast.info(`Invoice ${inv.invoice_number} is already ${inv.status}.`);
+      return;
+    }
+    setEftInvoiceId(inv.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, invoices, invLoading]);
+
   const paidInvoices = useMemo(() => invoices.filter((i) => i.status === "paid"), [invoices]);
 
   const invoiceRows = (rows: Invoice[], emptyText: string) =>
@@ -347,7 +374,16 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                       {unpaid && (
                         <>
                           <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => handlePayStitch(inv)}>
-                            <ExternalLink className="w-3 h-3 mr-1" /> Pay via Stitch
+                            <ExternalLink className="w-3 h-3 mr-1" /> Pay with card
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => setEftInvoiceId(inv.id)}
+                            title="Bank details and proof of payment upload"
+                          >
+                            <Landmark className="w-3 h-3 mr-1" /> Pay by EFT
                           </Button>
                           <Button
                             size="sm"
@@ -387,6 +423,14 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
         totalOutstanding={totalOutstanding}
         currency={outstandingCurrency}
         outstandingCount={outstanding.length}
+      />
+
+      <PlatformInvoiceEftDialog
+        open={!!eftInvoice}
+        onOpenChange={(v) => !v && setEftInvoiceId(null)}
+        invoice={eftInvoice as any}
+        clubId={clubId}
+        bank={bank}
       />
 
       <Tabs defaultValue="subscription" className="w-full">

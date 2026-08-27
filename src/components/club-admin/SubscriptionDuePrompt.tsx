@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CreditCard } from "lucide-react";
+import { AlertCircle, CreditCard, Landmark } from "lucide-react";
 
 /**
  * Shows tenant admins a prompt when their club has an unpaid platform

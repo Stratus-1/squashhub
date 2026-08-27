@@ -99,7 +99,38 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4">
+      <Tabs defaultValue="teams" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="teams" className="gap-1.5 text-xs">
+            <Trophy className="h-3.5 w-3.5" /> Teams &amp; players
+          </TabsTrigger>
+          <TabsTrigger value="fixtures" className="gap-1.5 text-xs">
+            <CalendarPlus className="h-3.5 w-3.5" /> Rounds &amp; fixtures
+          </TabsTrigger>
+          <TabsTrigger value="rules" className="gap-1.5 text-xs">
+            <ScrollText className="h-3.5 w-3.5" /> Rules
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="fixtures">
+          <AssociationFixturesPanel association={platformAssoc ?? null} />
+        </TabsContent>
+
+        <TabsContent value="rules">
+          {platformAssocId ? (
+            <AssociationRulesTab associationId={platformAssocId} />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-xs text-muted-foreground">
+                This tenant is not linked to a league association yet, so there are no rules to configure.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="teams" className="space-y-4">
       <Card>
+
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Trophy className="h-4 w-4" /> Affiliated club leagues

@@ -456,6 +456,82 @@ export function detectOpeningBalance(text: string): number | null {
 }
 
 /**
+ * Given the previous running balance, find the (amount, balance) pair on a row
+ * that reconciles: prevBalance ± amount === balance. Copes with trailing
+ * columns printed after the balance (FNB's accrued bank charges) and with
+ * amount columns that carry no sign at all.
+ */
+function reconcileRow(prevBalance: number, toks: Tok[]): { amount: number; balance: number } | null {
+  for (let j = toks.length - 1; j >= 1; j--) {
+    const bal = signed(toks[j]);
+    for (let i = j - 1; i >= 0; i--) {
+      const v = toks[i].value;
+      if (Math.abs(prevBalance + v - bal) <= 0.02) return { amount: v, balance: bal };
+      if (Math.abs(prevBalance - v - bal) <= 0.02) return { amount: -v, balance: bal };
+    }
+  }
+  return null;
+}
+
+/** A row with no movement still prints the unchanged running balance. */
+function carriedBalance(prevBalance: number, toks: Tok[]): number | null {
+  for (let j = toks.length - 1; j >= 0; j--) {
+    if (Math.abs(signed(toks[j]) - prevBalance) <= 0.02) return signed(toks[j]);
+  }
+  return null;
+}
+
+/**
+ * When the statement header's opening balance can't be read (common with OCR
+ * and with PDF text layers that scramble the summary box), infer it from the
+ * transaction rows themselves: try every (amount, balance) interpretation of
+ * the first rows and keep the one whose implied opening balance makes the
+ * longest chain of following rows reconcile. Without this the parser falls
+ * back to positional guessing and can read the running balance column as the
+ * transaction amount.
+ */
+function bootstrapOpeningBalance(rows: { toks: Tok[] }[]): number | null {
+  const probe = rows.slice(0, 25);
+  if (!probe.length) return null;
+  let best: { opening: number; score: number; total: number } | null = null;
+
+  for (let start = 0; start < 1; start++) {
+    const toks = probe[start].toks;
+    for (let j = toks.length - 1; j >= 1; j--) {
+      const bal = signed(toks[j]);
+      for (let i = j - 1; i >= 0; i--) {
+        for (const amt of [toks[i].value, -toks[i].value]) {
+          // Prefer the sign the statement itself printed (Cr / Dr / unmarked
+          // debit) so a tie on chain length doesn't flip the first row.
+          const markerFits =
+            (toks[i].cr && amt > 0) || (toks[i].dr && amt < 0) || (!toks[i].cr && !toks[i].dr && amt < 0);
+          const openingAtStart = bal - amt;
+          // Walk back is not possible, so only score forward from this row.
+          let prev = openingAtStart;
+          let score = 0;
+          for (let k = start; k < probe.length; k++) {
+            const hit = reconcileRow(prev, probe[k].toks);
+            if (hit) {
+              prev = hit.balance;
+              score++;
+            } else {
+              const carried = carriedBalance(prev, probe[k].toks);
+              if (carried !== null) prev = carried;
+            }
+          }
+          const total = score * 2 + (markerFits ? 1 : 0);
+          if (!best || total > best.total) best = { opening: openingAtStart, score, total };
+        }
+      }
+    }
+    if (best && best.score >= 3) break;
+  }
+
+  return best && best.score >= 3 ? best.opening : null;
+}
+
+/**
+
  * Parse a statement that only exists as free text (PDF text layer or OCR).
  *
  * Pass 1 collects candidate transaction lines (date + at least one money
@@ -560,34 +636,21 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
   const out: ParsedBankRow[] = [];
   const seen = new Map<string, number>();
   let prevBalance: number | null = detectOpeningBalance(text);
+  if (prevBalance === null) prevBalance = bootstrapOpeningBalance(dated);
 
   for (const r of dated) {
     let amount: number | null = null;
     let balance: number | null = null;
 
-    // Find the (amount, balance) pair that reconciles with the running balance.
-    // Handles trailing columns after the balance and unsigned amount columns.
-    if (prevBalance !== null && r.toks.length >= 2) {
-      for (let j = r.toks.length - 1; j >= 1 && amount === null; j--) {
-        const bal = signed(r.toks[j]);
-        for (let i = j - 1; i >= 0; i--) {
-          const v = r.toks[i].value;
-          if (Math.abs(prevBalance + v - bal) <= 0.02) {
-            amount = v;
-            balance = bal;
-            break;
-          }
-          if (Math.abs(prevBalance - v - bal) <= 0.02) {
-            amount = -v;
-            balance = bal;
-            break;
-          }
-        }
-      }
-      // A zero-movement row (e.g. a printed interest rate) still carries the balance.
-      if (amount === null) {
-        const tail = r.toks[r.toks.length - 1];
-        if (Math.abs(signed(tail) - prevBalance) <= 0.02) balance = signed(tail);
+    if (prevBalance !== null) {
+      const hit = reconcileRow(prevBalance, r.toks);
+      if (hit) {
+        amount = hit.amount;
+        balance = hit.balance;
+      } else {
+        // A zero-movement row (e.g. a printed interest rate) still carries the balance.
+        const carried = carriedBalance(prevBalance, r.toks);
+        if (carried !== null) balance = carried;
       }
     }
 
@@ -602,6 +665,7 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
         amount = amtTok.value;
       }
     }
+
 
     if (balance !== null) prevBalance = balance;
     if (!Number.isFinite(amount) || amount === 0) continue;

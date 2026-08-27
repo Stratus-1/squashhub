@@ -357,7 +357,19 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                       <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
                     </TableCell>
                     <TableCell>
-                      {granted && m.role !== "admin" && (
+                      <div className="flex gap-1 justify-end">
+                        {m.role === "admin" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[11px]"
+                            title="Change club role to Member (removes automatic full admin)"
+                            onClick={() => void demoteAdmin(m.id, m.name)}
+                          >
+                            Change to member
+                          </Button>
+                        )}
+                        {granted && m.role !== "admin" && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -381,8 +393,10 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
-                      )}
+                        )}
+                      </div>
                     </TableCell>
+
                   </TableRow>
                 );
               })}

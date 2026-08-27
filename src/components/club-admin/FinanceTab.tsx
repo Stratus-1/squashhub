@@ -78,6 +78,7 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   bank_charges:            { label: "Bank Charges",              type: "IS", category: "Expense", normal: "Dr" },
   gateway_fees:            { label: "Payment Gateway Fees",      type: "IS", category: "Expense", normal: "Dr" },
   cleaning_services:       { label: "Cleaning Services",         type: "IS", category: "Expense", normal: "Dr" },
+  security:                { label: "Security",                  type: "IS", category: "Expense", normal: "Dr" },
   general_expense:         { label: "General Expenses",          type: "IS", category: "Expense", normal: "Dr" },
 };
 

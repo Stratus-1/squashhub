@@ -64,29 +64,36 @@ function fmt(ts: string) {
   return new Date(ts).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
 }
 
-export function EmailLogTab({ clubId }: { clubId: string }) {
+const CLUB_ONLY_TEMPLATES = ["club-notification", "club-smtp"];
+
+export function EmailLogTab({ clubId, mode = "club" }: { clubId: string; mode?: "club" | "association" }) {
   const qc = useQueryClient();
   const [range, setRange] = useState<RangeKey>("7d");
   const [status, setStatus] = useState<string>("all");
   const [template, setTemplate] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const isAssociation = mode === "association";
 
   const since = useMemo(
     () => new Date(Date.now() - RANGES[range] * 86_400_000).toISOString(),
     [range],
   );
 
-  const { data: logs = [], isFetching } = useQuery({
-    queryKey: ["email-log", clubId, since],
+  const { data: rawLogs = [], isFetching } = useQuery({
+    queryKey: ["email-log", clubId, since, mode],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("email_send_log")
         .select("id,message_id,template_name,recipient_email,status,error_message,created_at")
         .eq("club_id", clubId)
         .gte("created_at", since)
         .order("created_at", { ascending: false })
         .limit(1000);
+      if (isAssociation) {
+        q = q.not("template_name", "in", `(${CLUB_ONLY_TEMPLATES.map(t => `"${t}"`).join(",")})`);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       // One email produces several rows sharing a message_id; keep the latest.
       const seen = new Map<string, LogRow>();

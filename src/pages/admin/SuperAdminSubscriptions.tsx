@@ -1667,6 +1667,7 @@ function AllInvoicesList() {
             <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="awaiting_eft">EFT to verify{awaitingCount ? ` (${awaitingCount})` : ""}</SelectItem>
               <SelectItem value="issued">Issued</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="overdue">Overdue</SelectItem>
@@ -1674,6 +1675,11 @@ function AllInvoicesList() {
               <SelectItem value="draft">Draft</SelectItem>
             </SelectContent>
           </Select>
+          {awaitingCount > 0 && statusFilter !== "awaiting_eft" && (
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setStatusFilter("awaiting_eft")}>
+              {awaitingCount} EFT proof{awaitingCount === 1 ? "" : "s"} awaiting approval
+            </Button>
+          )}
           <div className="text-[11px] text-muted-foreground ml-auto">{filtered.length} shown</div>
         </div>
 
@@ -1690,10 +1696,12 @@ function AllInvoicesList() {
                 <TableHead className="text-xs">Due</TableHead>
                 <TableHead className="text-xs">Paid</TableHead>
                 <TableHead className="text-xs">Status</TableHead>
+                <TableHead className="text-xs">EFT proof</TableHead>
                 <TableHead className="text-xs">Email</TableHead>
                 <TableHead className="text-xs w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Loading…</TableCell></TableRow>

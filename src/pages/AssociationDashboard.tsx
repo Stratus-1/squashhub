@@ -255,13 +255,16 @@ export default function AssociationDashboard() {
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
               <h2 className="text-sm font-semibold flex items-center gap-1.5">
-                <ShieldAlert className="w-4 h-4 text-primary" /> Admin
+                <ShieldAlert className="w-4 h-4 text-primary" /> Setup
               </h2>
               <span className="w-[60px]" />
             </div>
 
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-11 gap-2 md:gap-2.5">
-              {visibleAdminTabs.map((tab) => {
+              {visibleAdminTabs
+                .filter((t) => !PROMOTED.some((p) => p.value === t.value) || t.value === adminTab)
+                .map((tab) => {
+
                 const Icon = tab.icon;
                 const isActive = adminTab === tab.value;
                 return (

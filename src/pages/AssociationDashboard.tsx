@@ -16,6 +16,7 @@ import { useProfile, useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { useMemberContext } from "@/contexts/MemberContext";
+import { useIsAssociationAdmin } from "@/hooks/use-association-admin";
 
 import { AssociationInfoTab } from "@/components/association-admin/AssociationInfoTab";
 import { AffiliatedClubsTab } from "@/components/association-admin/AffiliatedClubsTab";

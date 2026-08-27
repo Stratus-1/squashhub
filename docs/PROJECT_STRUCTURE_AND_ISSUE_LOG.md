@@ -5,6 +5,13 @@
 - **Fix:** Added an app-start install-event broker that captures and retains the event before React/auth initialization. `InstallPrompt` and the Settings install card now subscribe to the retained event and consume it only after the browser prompt is used.
 - **Scope:** Install flow only; service-worker update behavior and preview/native guards are unchanged.
 
+# 2026-08-27 — Club Admin spinner and recursive membership-policy failures
+
+- **Symptom:** A platform administrator opening Club Admin for a tenant without a local membership row was redirected, left on a spinner, or saw partial admin data fail with backend 500 responses.
+- **Finding:** The page conflated unresolved authorization with denied authorization, while a redundant `club_members` delegate-visibility policy re-entered membership access checks and caused `42P17` policy recursion.
+- **Fix:** Club Admin now waits for explicit platform-role resolution without waiting for a tenant membership row. The membership helper runs under its fixed owner context, and the redundant recursive delegate policy was removed; the normal same-club, own-row, and platform-admin visibility policies remain authoritative.
+- **Guard:** Platform administrators must be able to administer any resolved tenant without a local `club_members` row. Keep membership helper functions security-definer with a fixed search path, and do not add `club_members` policies that query `clubs` policies which query `club_members` again.
+
 # SquashHub — Project Structure, Issue & Fix Log
 
 > **Purpose.** This is the canonical reference for *how the system is wired* and *what has already

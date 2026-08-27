@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Same-club members can view club delegates" ON public.club_members;

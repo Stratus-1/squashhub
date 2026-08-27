@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Members can insert own payment journal entries" ON public.club_journal_entries;

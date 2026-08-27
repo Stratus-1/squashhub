@@ -1542,7 +1542,7 @@ function AllInvoicesList() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("platform_subscription_invoices")
-        .select("id, invoice_number, status, issued_at, due_date, paid_at, period_start, period_end, plan_name, member_count, total, currency, email_sent_at, email_status, club_id, clubs:club_id(name, subdomain)")
+        .select("id, invoice_number, status, issued_at, due_date, paid_at, period_start, period_end, plan_name, member_count, total, currency, email_sent_at, email_status, club_id, eft_proof_path, eft_proof_uploaded_at, eft_review_status, eft_review_note, clubs:club_id(name, subdomain)")
         .order("issued_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -1550,14 +1550,49 @@ function AllInvoicesList() {
     },
   });
 
+  const isAwaitingEft = (i: any) =>
+    i.status !== "paid" &&
+    i.status !== "void" &&
+    (i.eft_review_status === "pending" || (!!i.eft_proof_uploaded_at && i.eft_review_status !== "rejected"));
+
+  const openProof = async (path: string) => {
+    const { data, error } = await supabase.storage.from("payment-proofs").createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) {
+      toast.error(error?.message || "Could not open proof of payment");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener");
+  };
+
+  const reviewEft = useMutation({
+    mutationFn: async (vals: { id: string; approve: boolean; note?: string | null }) => {
+      const { error } = await (supabase as any).rpc("review_platform_invoice_eft_proof", {
+        _invoice_id: vals.id,
+        _approve: vals.approve,
+        _note: vals.note || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_d, vals) => {
+      toast.success(vals.approve ? "EFT approved — invoice marked paid" : "EFT proof rejected");
+      qc.invalidateQueries({ queryKey: ["all-platform-invoices"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Review failed"),
+  });
+
   const filtered = invoices.filter((i) => {
-    if (statusFilter !== "all" && i.status !== statusFilter) return false;
+    if (statusFilter === "awaiting_eft") {
+      if (!isAwaitingEft(i)) return false;
+    } else if (statusFilter !== "all" && i.status !== statusFilter) return false;
     if (q) {
       const s = q.toLowerCase();
       if (!(i.invoice_number?.toLowerCase().includes(s) || i.clubs?.name?.toLowerCase().includes(s))) return false;
     }
     return true;
   });
+
+  const awaitingCount = invoices.filter(isAwaitingEft).length;
+
 
   // Group totals by currency — mixing ZAR/USD/EUR into one sum is meaningless.
   type Bucket = { count: number; value: number; paidCount: number; paidValue: number; dueCount: number; dueValue: number };

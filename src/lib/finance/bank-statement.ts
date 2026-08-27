@@ -560,34 +560,21 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
   const out: ParsedBankRow[] = [];
   const seen = new Map<string, number>();
   let prevBalance: number | null = detectOpeningBalance(text);
+  if (prevBalance === null) prevBalance = bootstrapOpeningBalance(dated);
 
   for (const r of dated) {
     let amount: number | null = null;
     let balance: number | null = null;
 
-    // Find the (amount, balance) pair that reconciles with the running balance.
-    // Handles trailing columns after the balance and unsigned amount columns.
-    if (prevBalance !== null && r.toks.length >= 2) {
-      for (let j = r.toks.length - 1; j >= 1 && amount === null; j--) {
-        const bal = signed(r.toks[j]);
-        for (let i = j - 1; i >= 0; i--) {
-          const v = r.toks[i].value;
-          if (Math.abs(prevBalance + v - bal) <= 0.02) {
-            amount = v;
-            balance = bal;
-            break;
-          }
-          if (Math.abs(prevBalance - v - bal) <= 0.02) {
-            amount = -v;
-            balance = bal;
-            break;
-          }
-        }
-      }
-      // A zero-movement row (e.g. a printed interest rate) still carries the balance.
-      if (amount === null) {
-        const tail = r.toks[r.toks.length - 1];
-        if (Math.abs(signed(tail) - prevBalance) <= 0.02) balance = signed(tail);
+    if (prevBalance !== null) {
+      const hit = reconcileRow(prevBalance, r.toks);
+      if (hit) {
+        amount = hit.amount;
+        balance = hit.balance;
+      } else {
+        // A zero-movement row (e.g. a printed interest rate) still carries the balance.
+        const carried = carriedBalance(prevBalance, r.toks);
+        if (carried !== null) balance = carried;
       }
     }
 
@@ -602,6 +589,7 @@ export function parseTextStatement(text: string, fallbackYear?: number): ParsedB
         amount = amtTok.value;
       }
     }
+
 
     if (balance !== null) prevBalance = balance;
     if (!Number.isFinite(amount) || amount === 0) continue;

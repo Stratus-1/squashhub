@@ -68,12 +68,9 @@ export function TenantSwitcher() {
         if (error) throw error;
         for (const row of (data || []) as any[]) push(row.club);
 
-        // Association tenants the user administers (organisation -> tenant club).
-        const { data: adminRows } = await fromExt("organisation_admins")
-          .select("org:org_id(club:club_id(id, name, subdomain, tenant_type))")
-          .eq("user_id", user!.id)
-          .eq("active", true);
-        for (const row of (adminRows || []) as any[]) push(row.org?.club);
+        // Association tenants the user administers (RLS-safe RPC).
+        const { data: adminTenants } = await (supabase as any).rpc("my_admin_tenants");
+        for (const c of (adminTenants || []) as any[]) push(c);
       }
 
       return list.sort((a, b) => {

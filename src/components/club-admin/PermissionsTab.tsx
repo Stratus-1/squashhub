@@ -424,7 +424,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                 <TableCell>
                   <Select
                     value={perm?.permission_role_id || "none"}
-                    onValueChange={v => handleAssignRole(m.id, v === "none" ? null : v)}
+                    onValueChange={v => deferAssignRole(m.id, v === "none" ? null : v)}
                   >
                     <SelectTrigger className="h-8 text-xs w-[160px]">
                       <SelectValue placeholder="None" />

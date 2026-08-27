@@ -90,13 +90,22 @@ export function beginActivity(kind: ActivityKind): () => void {
   };
 }
 
-/** True while a modal / dialog / sheet is open (Radix marks these in the DOM). */
+/**
+ * True while a modal / dialog / sheet is open (Radix marks these in the DOM).
+ * Dialogs (or ancestors) marked with `data-activity-exempt` are navigation
+ * chrome rather than unsaved work — e.g. the mobile sidebar sheet that hosts
+ * the "check for updates" badge — and do not count.
+ */
 export function isDialogOpen(): boolean {
   if (typeof document === "undefined") return false;
   try {
-    return !!document.querySelector(
+    const open = document.querySelectorAll(
       '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
     );
+    for (const el of Array.from(open)) {
+      if (!(el as HTMLElement).closest("[data-activity-exempt]")) return true;
+    }
+    return false;
   } catch {
     return false;
   }

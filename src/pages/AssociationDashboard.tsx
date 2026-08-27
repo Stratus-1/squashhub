@@ -312,7 +312,7 @@ export default function AssociationDashboard() {
                       "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
                       isActive
                         ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                        : ADMIN_TAB_STYLES[tab.value] || "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
                     )}
                   >
                     <Icon className="w-4 h-4 md:w-5 md:h-5" />

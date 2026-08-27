@@ -136,6 +136,18 @@ export function TenantSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="text-xs">Switch workspace</DropdownMenuLabel>
+        {isPlatformAdmin && (
+          <>
+            <DropdownMenuItem onClick={goToSuperAdmin} className="cursor-pointer">
+              <ShieldCheck className="w-3.5 h-3.5 mr-2 text-primary" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm truncate">Super Admin</p>
+                <p className="text-[10px] text-muted-foreground">Platform console</p>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {tenants.length > 6 && (
           <div className="px-2 pb-1">
             <Input

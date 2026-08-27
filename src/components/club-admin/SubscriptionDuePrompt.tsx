@@ -66,11 +66,37 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
 
   if (!invoices || invoices.length === 0) return null;
 
-  const oldest = invoices[0];
+  // Proof of payment submitted → stop nagging the admin. The invoice sits with
+  // the platform team until they verify the EFT and mark it paid.
+  const awaitingReview = invoices.filter(
+    (i: any) => i.eft_review_status === "pending" || (i.eft_proof_uploaded_at && i.eft_review_status !== "rejected")
+  );
+  const actionable = invoices.filter((i: any) => !awaitingReview.includes(i));
+
+  if (actionable.length === 0) {
+    if (awaitingReview.length === 0) return null;
+    return (
+      <div className="rounded-lg border border-sky-500/40 bg-sky-500/5 p-2.5">
+        <div className="flex items-start gap-2">
+          <Clock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-sky-500" />
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Proof of payment received</span> for{" "}
+            {awaitingReview.length === 1
+              ? `invoice ${awaitingReview[0].invoice_number}`
+              : `${awaitingReview.length} invoices`}
+            . We're verifying the EFT — the invoice is marked paid once confirmed.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const oldest = actionable[0];
   const sym = (oldest.currency || "ZAR").toUpperCase() === "USD" ? "$"
     : (oldest.currency || "ZAR").toUpperCase() === "EUR" ? "€" : "R";
-  const outstanding = invoices.reduce((s, i: any) => s + Number(i.total || 0), 0);
+  const outstanding = actionable.reduce((s, i: any) => s + Number(i.total || 0), 0);
   const overdue = oldest.due_date ? new Date(oldest.due_date) < new Date() : false;
+
 
   return (
     <div className={`rounded-lg border p-3 ${overdue ? "border-destructive/50 bg-destructive/5" : "border-amber-500/50 bg-amber-500/5"}`}>

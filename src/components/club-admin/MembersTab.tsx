@@ -364,7 +364,11 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const { format } = useClubCurrency();
   const { data: allMembersRaw = [], isLoading } = useClubMembers(clubId);
   // Exclude visitor-role entries — they live in the Visitors tab to avoid mixing them with real members.
-  const members = allMembersRaw.filter((m: any) => String(m.role || "").toLowerCase() !== "visitor");
+  // Pending applicants live in the applications panel above until they are approved.
+  const members = allMembersRaw.filter(
+    (m: any) => String(m.role || "").toLowerCase() !== "visitor" && !m.is_pending_approval,
+  );
+
   const { data: feeCategories = [] } = useFeeCategories(clubId);
   const { data: associations = [] } = useLeagueAssociations(clubId);
   const { data: nationalFees = [] } = useNationalBodyFees(clubId);

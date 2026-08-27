@@ -38,7 +38,10 @@ export function ClubInfoTab({ club, clubId }: { club: Club; clubId: string }) {
     show_delegates_on_landing: club.show_delegates_on_landing ?? true,
     currency_code: ((club as any).currency_code || "ZAR") as string,
     currency_symbol: ((club as any).currency_symbol || "R") as string,
+    public_applications_enabled: (club as any).public_applications_enabled ?? true,
+    member_activation_mode: ((club as any).member_activation_mode || "auto_on_payment") as string,
   });
+
 
   const [form, setForm] = useState(initial);
 

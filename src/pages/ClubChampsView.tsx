@@ -2550,7 +2550,7 @@ export default function ClubChampsView() {
             <CardContent className="space-y-4">
               {swissControlsFor(gn)}
               {standingsTable}
-              {!isCrossLeague && (
+              {!isCrossLeague && groupMatches.length > 0 && (
                 <>
                   <Separator />
                   <div>

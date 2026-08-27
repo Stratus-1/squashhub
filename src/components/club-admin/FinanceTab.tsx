@@ -1966,8 +1966,8 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
       tiles: [
         { key: "banking", label: "Bank & Cash Accounts", desc: "Balances, ledgers and imported statements", icon: Landmark },
         { key: "" as FinanceView, label: "Import Bank Statement", desc: "Upload CSV / OFX / QIF and allocate lines", icon: FileText, onClick: onImportBank },
-        ],
       ],
+
     },
     {
       title: "Affiliations",

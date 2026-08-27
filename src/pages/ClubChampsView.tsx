@@ -2467,13 +2467,8 @@ export default function ClubChampsView() {
       );
 
       if (multipleGroups && !isCrossLeague) {
-        // Split: standings on top, fixtures grouped below
-        standingsCards.push(
-          <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
-            <CardHeader>{titleNode}</CardHeader>
-            <CardContent>{swissControlsFor(gn)}{standingsTable}</CardContent>
-          </Card>
-        );
+        // One card per league: standings followed directly by that league's
+        // fixtures, so "1st League games" live under "1st League".
         const pc = poolCountFor(gn);
         const fixtureBody = pc > 1 ? (
           <div className="space-y-4">

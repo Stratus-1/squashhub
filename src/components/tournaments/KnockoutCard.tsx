@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { looksLikePhone } from "@/lib/member-display";
 import { sectionLetter, type KnockoutMatchLike } from "@/lib/tournaments/knockout";
 import {
 

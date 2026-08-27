@@ -1558,7 +1558,7 @@ export default function ClubAuth() {
           {/* ─── VISITOR ─── */}
           <TabsContent value="visitor">
             <Card className="p-6">
-              {!user && visitorGate !== "ok" && (
+              {!user && isNsaClub && visitorGate !== "ok" && (
                 visitorGate === "nsa" ? (
                   <div className="space-y-4">
                     <h3 className="text-base font-bold font-heading">Register via the NSA league page first</h3>

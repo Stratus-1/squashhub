@@ -108,11 +108,11 @@ export default function ClubAdmin() {
   const { subdomain, club: contextClub, isLoading: clubContextLoading } = useClubContext();
   const isAdmin = useIsClubAdmin();
   const myPermissions = useMyPermissions();
-  // On a club subdomain the membership query stays disabled until the tenant club
-  // resolves. While that is pending `data` is simply undefined — treat it as
-  // loading, otherwise we bounce a legitimate admin to /register-club.
-  const tenantResolving =
-    !!subdomain && (clubContextLoading || !contextClub || data === undefined);
+  // On a club subdomain wait only for the tenant club itself to resolve. Never
+  // wait on the membership query — a super-admin with no member row there would
+  // otherwise hang on a spinner forever.
+  const tenantResolving = !!subdomain && clubContextLoading && !contextClub;
+
 
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "club");

@@ -2467,13 +2467,8 @@ export default function ClubChampsView() {
       );
 
       if (multipleGroups && !isCrossLeague) {
-        // Split: standings on top, fixtures grouped below
-        standingsCards.push(
-          <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
-            <CardHeader>{titleNode}</CardHeader>
-            <CardContent>{swissControlsFor(gn)}{standingsTable}</CardContent>
-          </Card>
-        );
+        // One card per league: standings followed directly by that league's
+        // fixtures, so "1st League games" live under "1st League".
         const pc = poolCountFor(gn);
         const fixtureBody = pc > 1 ? (
           <div className="space-y-4">
@@ -2498,12 +2493,18 @@ export default function ClubChampsView() {
             {groupMatches.map((m: any) => renderMatchRow(m))}
           </div>
         );
-        fixtureCards.push(
-          <Card key={`f-${gn}`}>
-            <CardHeader>
-              <CardTitle className="text-lg">{getGroupLabel(champ, gn)} — Fixtures & Results</CardTitle>
-            </CardHeader>
-            <CardContent>{fixtureBody}</CardContent>
+        standingsCards.push(
+          <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
+            <CardHeader>{titleNode}</CardHeader>
+            <CardContent className="space-y-4">
+              {swissControlsFor(gn)}
+              {standingsTable}
+              <Separator />
+              <div>
+                <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
+                {fixtureBody}
+              </div>
+            </CardContent>
           </Card>
         );
 
@@ -2627,7 +2628,11 @@ export default function ClubChampsView() {
         {winnersCard}
 
         {woodenSpoonsCard}
-        {standingsCards}
+        <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
+          {standingsCards}
+          {fixtureCards}
+          {combinedFixtures}
+        </div>
         {isHandicapChamp && champ?.club_id && (
           <ChampLadderSuggestions
             champId={champId!}
@@ -2635,10 +2640,6 @@ export default function ClubChampsView() {
             isAdmin={canManage}
           />
         )}
-        <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
-          {fixtureCards}
-          {combinedFixtures}
-        </div>
 
         <KnockoutCard
           champId={champId!}

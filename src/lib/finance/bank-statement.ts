@@ -343,7 +343,7 @@ const RULES: Array<{ re: RegExp; account: string; sign?: "in" | "out" }> = [
   { re: /bar|tab|honesty/i, account: "bar_income", sign: "in" },
 ];
 
-export function suggestAccount(row: ParsedBankRow): AccountGuess {
+export function suggestAccount(row: ParsedBankRow, opts?: { memberMatched?: boolean }): AccountGuess {
   const text = `${row.description} ${row.reference || ""}`;
   const isIn = row.amount > 0;
   for (const r of RULES) {
@@ -352,8 +352,30 @@ export function suggestAccount(row: ParsedBankRow): AccountGuess {
     if (r.sign === "out" && isIn) continue;
     return { account: r.account, confidence: "high" };
   }
+  // Money in from a recognised member is almost always their membership/subs payment.
+  if (isIn && opts?.memberMatched) return { account: "membership_income", confidence: "high" };
   return { account: isIn ? "fee_income" : "general_expense", confidence: "low" };
 }
+
+/**
+ * Stable key used to remember how a club allocates a recurring narrative.
+ * Strips dates, reference numbers and amounts so "EFT PMT J SMITH 12/08" and
+ * "EFT PMT J SMITH 09/09" collapse to the same rule.
+ */
+export function ruleKey(description: string, reference?: string | null): string {
+  const raw = `${description || ""} ${reference || ""}`;
+  return norm(raw)
+    .replace(/\d+([.,]\d+)?/g, " ")
+    .replace(/\b(ref|eft|pmt|payment|transfer|trf|deposit|dep|abs|fnb|nedbank|capitec|standard bank)\b/g, " ")
+    .replace(/[^a-z ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(" ");
+}
+
 
 /** Fuzzy member match on the narrative (surname / initials + surname / member number). */
 export function suggestMember(

@@ -7,6 +7,8 @@ export type JournalLine = {
   description?: string;
   member_id?: string | null;
   payment_id?: string | null;
+  /** Optional club-defined GL account this line also belongs to. */
+  custom_account_id?: string | null;
 };
 
 /**
@@ -30,7 +32,9 @@ export async function postJournal(
     description: l.description ?? null,
     member_id: l.member_id ?? null,
     payment_id: l.payment_id ?? null,
+    custom_account_id: l.custom_account_id ?? null,
   }));
+
 
   const rpcArgs: Record<string, unknown> = {
     p_club_id: clubId,

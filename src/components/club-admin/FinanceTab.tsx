@@ -29,6 +29,9 @@ import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 import { BankStatementImportDialog } from "./BankStatementImportDialog";
 import { BankingPanel } from "./BankingPanel";
 import DebitOrdersPanel from "./DebitOrdersPanel";
+import { ChartOfAccountsPanel } from "./ChartOfAccountsPanel";
+import { useClubGLAccounts } from "@/hooks/use-club-gl-accounts";
+
 
 /* ─── Chart of Accounts definition ─── */
 
@@ -320,6 +323,35 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     return meta.normal === "Dr" ? b.debit - b.credit : b.credit - b.debit;
   };
 
+  /* ─── Club-defined GL accounts ─── */
+  const { data: customAccounts = [] } = useClubGLAccounts(clubId);
+  const customBalances: Record<string, BalEntry> = (journalEntries || []).reduce(
+    (acc: Record<string, BalEntry>, entry: any) => {
+      const id = entry.custom_account_id as string | null;
+      if (!id) return acc;
+      if (!acc[id]) acc[id] = { debit: 0, credit: 0 };
+      acc[id].debit += Number(entry.debit);
+      acc[id].credit += Number(entry.credit);
+      return acc;
+    },
+    {}
+  );
+  const getCustomBalance = (id: string) => {
+    const b = customBalances[id] || { debit: 0, credit: 0 };
+    const acc = customAccounts.find((a) => a.id === id);
+    const normalDr = !acc || acc.category === "Asset" || acc.category === "Expense";
+    return normalDr ? b.debit - b.credit : b.credit - b.debit;
+  };
+  const customIncomeAccounts = customAccounts.filter((a) => a.is_active && a.category === "Income");
+  const customExpenseAccounts = customAccounts.filter((a) => a.is_active && a.category === "Expense");
+  const getAccountLabel = (value: string) => {
+    if (value?.startsWith("custom:")) {
+      return customAccounts.find((a) => a.id === value.slice(7))?.name || "Club account";
+    }
+    return getLabel(value);
+  };
+
+
   const totalIncome = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Income").reduce((s, a) => s + getBalance(a), 0);
   const totalExpenses = ALL_ACCOUNTS.filter(a => CHART_OF_ACCOUNTS[a].category === "Expense").reduce((s, a) => s + getBalance(a), 0);
   const bankBalance = getBalance("bank_current");
@@ -400,9 +432,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     // When a member is linked on an income transaction, force Accounts Receivable
     // (debtors) so the payment settles their outstanding bill instead of double-
     // counting income.
-    const effectiveTxAccount = (txDirection === "income" && memberLinked) ? "debtors" : txAccount;
-    if (!effectiveTxAccount) { toast.error("Select an account"); return; }
+    const selectedTxAccount = (txDirection === "income" && memberLinked) ? "debtors" : txAccount;
+    if (!selectedTxAccount) { toast.error("Select an account"); return; }
     if (!txDescription.trim()) { toast.error("Enter a description"); return; }
+
+    // Club-defined accounts post to their standard roll-up account and carry
+    // the custom account id so they report separately in the chart of accounts.
+    const customId = selectedTxAccount.startsWith("custom:") ? selectedTxAccount.slice(7) : null;
+    const customMeta = customId ? customAccounts.find((a) => a.id === customId) : null;
+    if (customId && !customMeta) { toast.error("Select an account"); return; }
+    const effectiveTxAccount = customMeta ? customMeta.base_account : selectedTxAccount;
 
     // Determine the money account based on payment method
     const moneyAccount = txMethod === "cash" ? "cash" : "bank_current";
@@ -417,9 +456,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       const memberId = (txMemberId && txMemberId !== "__none__") ? txMemberId : null;
       const desc = txDescription.trim();
       const lines: any[] = [
-        { account: debitAccount, debit: amount, description: desc, member_id: memberId },
-        { account: creditAccount, credit: amount, description: desc, member_id: memberId },
+        { account: debitAccount, debit: amount, description: desc, member_id: memberId, custom_account_id: txDirection === "income" ? null : customId },
+        { account: creditAccount, credit: amount, description: desc, member_id: memberId, custom_account_id: txDirection === "income" ? customId : null },
       ];
+
       await postJournal(clubId, lines, { description: desc });
 
       // Auto-charge 3.5% gateway fee for card payments
@@ -1071,44 +1111,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
         {/* Chart of Accounts Tab */}
         <TabsContent value="coa">
-          <Card className="p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <ListTree className="w-4 h-4 text-primary" />
-              <h3 className="font-semibold text-sm">Chart of Accounts</h3>
-            </div>
-            {accountsByCategory.map(({ category, accounts }) => (
-              <div key={category}>
-                <h4 className={cn("text-xs font-bold uppercase tracking-wider mb-2", categoryColor[category])}>{category}</h4>
-                <div className="border rounded-lg overflow-hidden mb-3">
-                  <div className="grid grid-cols-[1fr_60px_70px_90px] gap-1 px-3 py-1.5 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    <span>Account</span>
-                    <span>Type</span>
-                    <span>Normal</span>
-                    <span className="text-right">Balance</span>
-                  </div>
-                  {accounts.map(account => {
-                    const meta = CHART_OF_ACCOUNTS[account];
-                    const balance = getBalance(account);
-                    return (
-                      <div key={account} className="grid grid-cols-[1fr_60px_70px_90px] gap-1 px-3 py-2 text-xs items-center border-b last:border-b-0">
-                        <span className="font-medium">{meta.label}</span>
-                        <Badge variant="outline" className="text-[10px] w-fit">{meta.type}</Badge>
-                        <span className="text-[10px] text-muted-foreground">{meta.normal}</span>
-                        <span className={cn("text-right tabular-nums font-medium",
-                          balance > 0 ? (meta.category === "Expense" ? "text-destructive" : "text-green-600") :
-                          balance < 0 ? "text-destructive" : "text-muted-foreground"
-                        )}>
-                          {money(Math.abs(balance))}
-                          {balance < 0 ? " Cr" : balance > 0 ? " Dr" : ""}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </Card>
+          <ChartOfAccountsPanel
+            clubId={clubId}
+            accounts={CHART_OF_ACCOUNTS as any}
+            getBalance={getBalance}
+            getCustomBalance={getCustomBalance}
+            money={money}
+          />
         </TabsContent>
+
           </Tabs>
         )}
       </FinanceHub>
@@ -1221,6 +1232,14 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                       .map(a => (
                         <SelectItem key={a} value={a}>{CHART_OF_ACCOUNTS[a].label}</SelectItem>
                       ))}
+                    {(txDirection === "income" ? customIncomeAccounts : customExpenseAccounts).length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-[10px]">Club accounts</SelectLabel>
+                        {(txDirection === "income" ? customIncomeAccounts : customExpenseAccounts).map(a => (
+                          <SelectItem key={a.id} value={`custom:${a.id}`}>{a.name}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
                   </SelectContent>
                 </Select>
               )}
@@ -1230,11 +1249,12 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   {txDirection === "income" ? (
                     <>
                       <p>• Debit {txMethod === "cash" ? "Cash" : "Current Account"} {money(parseFloat(txAmount))}</p>
-                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getLabel(txAccount)} {money(parseFloat(txAmount))}</p>
+                      <p>• Credit {(txMemberId && txMemberId !== "__none__") ? "Accounts Receivable" : getAccountLabel(txAccount)} {money(parseFloat(txAmount))}</p>
                     </>
                   ) : (
                     <>
-                      <p>• Debit {getLabel(txAccount)} {money(parseFloat(txAmount))}</p>
+                      <p>• Debit {getAccountLabel(txAccount)} {money(parseFloat(txAmount))}</p>
+
                       <p>• Credit {txMethod === "cash" ? "Cash" : "Current Account"} {money(parseFloat(txAmount))}</p>
                     </>
                   )}
@@ -1985,12 +2005,16 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
 
   return (
     <div className="space-y-4 mt-2">
-      {/* Primary action */}
-      <div className="flex justify-end">
+      {/* Primary actions — Chart of Accounts is always one click away */}
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setView("coa")} className="gap-1.5">
+          <ListTree className="w-4 h-4" /> Chart of Accounts
+        </Button>
         <Button onClick={onEnterTx} className="gap-1.5">
           <Plus className="w-4 h-4" /> Enter Transaction
         </Button>
       </div>
+
 
       <SetupSteps steps={steps} value={hubStep} onChange={setHubStep} />
 

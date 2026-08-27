@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ListTree, Plus, Pencil, Trash2 } from "lucide-react";
+import { ListTree, Plus, Pencil, Trash2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useClubGLAccounts, useClubGLAccountMutations, type ClubGLAccount, type GLCategory } from "@/hooks/use-club-gl-accounts";
@@ -29,9 +29,10 @@ interface Props {
   getBalance: (account: string) => number;
   getCustomBalance: (customAccountId: string) => number;
   money: (n: number) => string;
+  onOpeningBalances?: () => void;
 }
 
-export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBalance, money }: Props) {
+export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBalance, money, onOpeningBalances }: Props) {
   const { data: customAccounts = [], isLoading } = useClubGLAccounts(clubId);
   const mutations = useClubGLAccountMutations(clubId);
 
@@ -95,10 +96,18 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
           <ListTree className="w-4 h-4 text-primary" />
           <h3 className="font-semibold text-sm">Chart of Accounts</h3>
         </div>
-        <Button size="sm" onClick={openNew} className="gap-1.5 h-8">
-          <Plus className="w-3.5 h-3.5" /> Add Account
-        </Button>
+        <div className="flex items-center gap-2">
+          {onOpeningBalances && (
+            <Button size="sm" variant="outline" onClick={onOpeningBalances} className="gap-1.5 h-8">
+              <BookOpen className="w-3.5 h-3.5" /> Opening Balances
+            </Button>
+          )}
+          <Button size="sm" onClick={openNew} className="gap-1.5 h-8">
+            <Plus className="w-3.5 h-3.5" /> Add Account
+          </Button>
+        </div>
       </div>
+
 
       {CATEGORIES.map((category) => {
         const std = standardKeys.filter((a) => accounts[a].category === category);

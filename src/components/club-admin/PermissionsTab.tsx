@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -259,16 +259,46 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
   // a matching role (which can be revoked) and are listed in the editable section below.
   const adminMembers = members.filter((m) => m.role === "admin" || isGrantedFullAdmin(m.id));
 
-  const assignableMembers = members
-    .filter((m) => m.role !== "admin" && !isGrantedFullAdmin(m.id))
-    .sort((a, b) => {
-      const pa = permMap.get(a.id);
-      const pb = permMap.get(b.id);
-      const aHas = !!(pa?.permission_role_id || pa?.custom_permissions?.length);
-      const bHas = !!(pb?.permission_role_id || pb?.custom_permissions?.length);
-      if (aHas !== bHas) return aHas ? -1 : 1;
-      return (a.name || "").localeCompare(b.name || "");
-    });
+  // Stable ordering: compute the "members with permissions first" order once per
+  // member-set, then keep it. Re-sorting after every save made the edited row jump
+  // to the top mid-interaction, which also tore the dropdown down before it could
+  // release its page scroll lock.
+  const orderRef = useRef<{ key: string; ids: string[] }>({ key: "", ids: [] });
+  const permMapRef = useRef(permMap);
+  permMapRef.current = permMap;
+
+  const assignableMembers = useMemo(() => {
+    const pool = members.filter((m) => m.role !== "admin" && !isGrantedFullAdmin(m.id));
+    const key = pool.map((m) => m.id).sort().join(",");
+    if (orderRef.current.key !== key) {
+      const pm = permMapRef.current;
+      orderRef.current = {
+        key,
+        ids: [...pool]
+          .sort((a, b) => {
+            const pa = pm.get(a.id);
+            const pb = pm.get(b.id);
+            const aHas = !!(pa?.permission_role_id || pa?.custom_permissions?.length);
+            const bHas = !!(pb?.permission_role_id || pb?.custom_permissions?.length);
+            if (aHas !== bHas) return aHas ? -1 : 1;
+            return (a.name || "").localeCompare(b.name || "");
+          })
+          .map((m) => m.id),
+      };
+    }
+    const index = new Map(orderRef.current.ids.map((id, i) => [id, i]));
+    return [...pool].sort((a, b) => (index.get(a.id) ?? 9e9) - (index.get(b.id) ?? 9e9));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members, memberPerms]);
+
+  // Safety net: if a dropdown was unmounted mid-close, Radix's scroll lock can be
+  // left behind and the page becomes unscrollable. Clear any stale lock.
+  useEffect(() => {
+    return () => {
+      if (document.body.style.pointerEvents === "none") document.body.style.pointerEvents = "";
+      if (document.body.style.overflow === "hidden") document.body.style.overflow = "";
+    };
+  }, []);
 
   const handleAssignRole = async (memberId: string, roleId: string | null) => {
     try {
@@ -283,6 +313,12 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
       toast.error(err.message);
     }
   };
+
+  /** Defer the save until after the Select has finished closing/unmounting. */
+  const deferAssignRole = (memberId: string, roleId: string | null) => {
+    setTimeout(() => { void handleAssignRole(memberId, roleId); }, 0);
+  };
+
 
   return (
     <Card className="p-6 space-y-4">
@@ -388,7 +424,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                 <TableCell>
                   <Select
                     value={perm?.permission_role_id || "none"}
-                    onValueChange={v => handleAssignRole(m.id, v === "none" ? null : v)}
+                    onValueChange={v => deferAssignRole(m.id, v === "none" ? null : v)}
                   >
                     <SelectTrigger className="h-8 text-xs w-[160px]">
                       <SelectValue placeholder="None" />

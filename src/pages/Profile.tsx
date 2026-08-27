@@ -19,6 +19,7 @@ import {
   skillsPatch,
   type SkillsDraft,
 } from "@/components/SkillsExpertiseFields";
+import { useHasCapability } from "@/hooks/use-club-capabilities";
 import { skillLabel as skillTagLabel, normaliseSkills, parseOtherSkills } from "@/lib/member-skills";
 
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -230,6 +231,7 @@ export default function Profile() {
   const [tickedAssociations, setTickedAssociations] = useState<Record<string, boolean>>({});
   const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
   const [skillsDraft, setSkillsDraft] = useState<SkillsDraft>(emptySkillsDraft());
+  const skillsEnabled = useHasCapability("skills");
 
   const [didInitFromUrl, setDidInitFromUrl] = useState(false);
   const nextAfterSave = searchParams.get("next"); // "account" → go to /my-account on save
@@ -645,10 +647,12 @@ export default function Profile() {
                   </div>
                 )}
 
-                <div id="skills" className="border-t border-border pt-3 mt-3 space-y-3 scroll-mt-24">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Skills &amp; Expertise</p>
-                  <SkillsExpertiseFields value={skillsDraft} onChange={setSkillsDraft} compact />
-                </div>
+                {skillsEnabled && (
+                  <div id="skills" className="border-t border-border pt-3 mt-3 space-y-3 scroll-mt-24">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Skills &amp; Expertise</p>
+                    <SkillsExpertiseFields value={skillsDraft} onChange={setSkillsDraft} compact />
+                  </div>
+                )}
 
 
                 {leagueAssocs.length > 0 && (
@@ -817,7 +821,7 @@ function ViewMode({
         </Card>
       )}
 
-      {clubMember && (() => {
+      {clubMember && skillsEnabled && (() => {
         const tags = normaliseSkills((clubMember as any).skills);
         const others = parseOtherSkills((clubMember as any).skills_other);
         const occupation = String((clubMember as any).occupation || "").trim();

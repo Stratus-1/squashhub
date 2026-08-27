@@ -1466,6 +1466,7 @@ export type Database = {
           id: string
           journal_ref: string | null
           matched_account: Database["public"]["Enums"]["gl_account"] | null
+          matched_custom_account_id: string | null
           matched_member_id: string | null
           notes: string | null
           reference: string | null
@@ -1484,6 +1485,7 @@ export type Database = {
           id?: string
           journal_ref?: string | null
           matched_account?: Database["public"]["Enums"]["gl_account"] | null
+          matched_custom_account_id?: string | null
           matched_member_id?: string | null
           notes?: string | null
           reference?: string | null
@@ -1502,6 +1504,7 @@ export type Database = {
           id?: string
           journal_ref?: string | null
           matched_account?: Database["public"]["Enums"]["gl_account"] | null
+          matched_custom_account_id?: string | null
           matched_member_id?: string | null
           notes?: string | null
           reference?: string | null
@@ -1516,6 +1519,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_bank_transactions_matched_custom_account_id_fkey"
+            columns: ["matched_custom_account_id"]
+            isOneToOne: false
+            referencedRelation: "club_gl_accounts"
             referencedColumns: ["id"]
           },
           {
@@ -2651,6 +2661,50 @@ export type Database = {
           },
         ]
       }
+      club_gl_accounts: {
+        Row: {
+          base_account: Database["public"]["Enums"]["gl_account"]
+          category: string
+          club_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          base_account: Database["public"]["Enums"]["gl_account"]
+          category: string
+          club_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          base_account?: Database["public"]["Enums"]["gl_account"]
+          category?: string
+          club_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_gl_accounts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_journal_entries: {
         Row: {
           account: Database["public"]["Enums"]["gl_account"]
@@ -2658,6 +2712,7 @@ export type Database = {
           club_member_id: string | null
           created_at: string
           credit: number
+          custom_account_id: string | null
           debit: number
           description: string
           fee_payment_id: string | null
@@ -2672,6 +2727,7 @@ export type Database = {
           club_member_id?: string | null
           created_at?: string
           credit?: number
+          custom_account_id?: string | null
           debit?: number
           description: string
           fee_payment_id?: string | null
@@ -2686,6 +2742,7 @@ export type Database = {
           club_member_id?: string | null
           created_at?: string
           credit?: number
+          custom_account_id?: string | null
           debit?: number
           description?: string
           fee_payment_id?: string | null
@@ -2707,6 +2764,13 @@ export type Database = {
             columns: ["club_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_journal_entries_custom_account_id_fkey"
+            columns: ["custom_account_id"]
+            isOneToOne: false
+            referencedRelation: "club_gl_accounts"
             referencedColumns: ["id"]
           },
           {

@@ -33,6 +33,7 @@ export function TenantSwitcher() {
   const { user } = useAuth();
   const { club: currentClub, subdomain: currentSubdomain } = useClubContext();
   const [search, setSearch] = useState("");
+  const isPlatformAdmin = useIsSuperAdmin();
 
   const { data: tenants = [] } = useQuery({
     queryKey: ["my-tenants", user?.id],

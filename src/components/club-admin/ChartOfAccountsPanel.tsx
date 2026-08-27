@@ -57,8 +57,10 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
           category: editing.category as GLCategory,
           base_account: editing.base_account,
           description: editing.description ?? null,
+          is_active: editing.is_active !== false,
         });
         toast.success("Account updated");
+
       } else {
         await mutations.create({
           name,

@@ -197,6 +197,8 @@ export default function AssociationDashboard() {
       case "fees": return <AssociationFeesTab clubId={association.id} />;
       case "banking": return <BankingTab club={association as any} clubId={association.id} />;
       case "finance": return <FinanceTab club={association as any} clubId={association.id} />;
+      case "comms": return <CommunicationsTab clubId={association.id} />;
+      case "emails": return <EmailLogTab clubId={association.id} />;
       case "settings": return <SettingsTab club={association as any} clubId={association.id} />;
       case "permissions": return <PermissionsTab clubId={association.id} />;
       default: return null;

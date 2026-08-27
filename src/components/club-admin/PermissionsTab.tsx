@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2, Shield, ShieldCheck } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import {
   PERMISSION_SLUGS,
@@ -200,6 +200,7 @@ function RoleDialog({ clubId, open, onOpenChange, existing }: { clubId: string; 
 /* ─── Member Permissions Section ─── */
 
 function MemberPermissionsSection({ clubId }: { clubId: string }) {
+  const qc = useQueryClient();
   const { data: members = [] } = useQuery({
     queryKey: ["club-members-for-perms", clubId],
     queryFn: async () => {
@@ -314,6 +315,29 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
     }
   };
 
+  /** Change a club-role admin back to a normal member (removes automatic full access). */
+  const demoteAdmin = async (memberId: string, name: string) => {
+    if (!confirm(`Change ${name || "this member"} from Admin to Member? They will lose automatic full admin access.`)) return;
+    try {
+      const { error } = await fromExt("club_members").update({ role: "member" }).eq("id", memberId);
+      if (error) throw error;
+      const existing = permMap.get(memberId);
+      if (existing?.is_full_admin) {
+        await upsert.mutateAsync({
+          club_member_id: memberId,
+          permission_role_id: existing?.permission_role_id ?? null,
+          custom_permissions: existing?.custom_permissions ?? [],
+          is_full_admin: false,
+        });
+      }
+      await qc.invalidateQueries({ queryKey: ["club-members-for-perms", clubId] });
+      toast.success("Club role changed to Member");
+    } catch (err: any) {
+      toast.error(err.message || "Could not change role");
+    }
+  };
+
+
   /** Defer the save until after the Select has finished closing/unmounting. */
   const deferAssignRole = (memberId: string, roleId: string | null) => {
     setTimeout(() => { void handleAssignRole(memberId, roleId); }, 0);
@@ -337,7 +361,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                 <TableHead>Club Role</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Permissions</TableHead>
-                <TableHead className="w-[60px]" />
+                <TableHead className="w-[150px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -357,7 +381,19 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                       <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
                     </TableCell>
                     <TableCell>
-                      {granted && m.role !== "admin" && (
+                      <div className="flex gap-1 justify-end">
+                        {m.role === "admin" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[11px]"
+                            title="Change club role to Member (removes automatic full admin)"
+                            onClick={() => void demoteAdmin(m.id, m.name)}
+                          >
+                            Change to member
+                          </Button>
+                        )}
+                        {granted && m.role !== "admin" && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -381,8 +417,10 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
-                      )}
+                        )}
+                      </div>
                     </TableCell>
+
                   </TableRow>
                 );
               })}

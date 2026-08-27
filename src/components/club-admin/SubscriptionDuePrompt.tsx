@@ -29,7 +29,7 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
       const { data, error } = await supabase
         .from("platform_subscription_invoices")
         .select(
-          "id, invoice_number, total, currency, due_date, status, stitch_payment_link, eft_proof_uploaded_at, eft_review_status"
+          "id, invoice_number, total, currency, due_date, status, stitch_payment_link, stitch_payment_id, eft_proof_uploaded_at, eft_review_status"
         )
         .eq("club_id", clubId!)
         .in("status", ["issued", "unpaid", "pending", "overdue", "past_due"])
@@ -38,6 +38,37 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
       return data || [];
     },
   });
+
+  // Card payments: a Stitch payment may complete in another tab or after the
+  // admin closes the browser, so the invoice can sit "issued" until someone
+  // verifies. Silently re-check every outstanding invoice that has a Stitch
+  // payment attached; the edge function marks it paid when Stitch says PAID,
+  // realtime then clears this prompt.
+  useEffect(() => {
+    if (!clubId || !invoices?.length) return;
+    let cancelled = false;
+    (async () => {
+      const pending = invoices.filter((i: any) => i.stitch_payment_id);
+      if (!pending.length) return;
+      let anyPaid = false;
+      for (const inv of pending) {
+        const { data } = await supabase.functions.invoke("stitch-verify-platform-invoice", {
+          body: { invoice_number: (inv as any).invoice_number },
+        });
+        if ((data as any)?.status === "paid") anyPaid = true;
+      }
+      if (anyPaid && !cancelled) {
+        qc.invalidateQueries({ queryKey: ["club-unpaid-sub-invoices", clubId] });
+        qc.invalidateQueries({ queryKey: ["club-platform-invoices", clubId] });
+      }
+    })().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // Re-runs whenever the outstanding set changes (incl. the 60s poll).
+  }, [clubId, invoices, qc]);
+
+
 
 
   // Instant clear: any invoice change for this club (paid, void, new) refreshes.

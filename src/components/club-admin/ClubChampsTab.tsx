@@ -217,6 +217,30 @@ const ELIGIBILITY_SCOPES: { value: string; label: string; hint: string }[] = [
   },
 ];
 
+/**
+ * Association / federation tenants never run "club" events: they have no
+ * roster of their own. Drop club-only options and name the association
+ * explicitly instead of the generic "Regional league".
+ */
+function eventTypesFor(scope: "club" | "association" | "federation") {
+  if (scope === "club") return EVENT_TYPES;
+  return EVENT_TYPES.filter((t) => t.value !== "club_championship");
+}
+
+function eligibilityScopesFor(
+  scope: "club" | "association" | "federation",
+  associationName?: string | null
+) {
+  const named = ELIGIBILITY_SCOPES.map((s) =>
+    s.value === "association" && associationName
+      ? { ...s, label: associationName, hint: `Every club affiliated to ${associationName}.` }
+      : s
+  );
+  if (scope === "club") return named;
+  return named.filter((s) => s.value !== "club");
+}
+
+
 
 /**
  * Legacy `event_type` values mixed category with eligibility/ranking. Map the

@@ -21,7 +21,6 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
-import { NsaLeagueQrCard } from "@/components/NsaLeagueQrCard";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 
 export default function ClubAuth() {
@@ -976,14 +975,12 @@ export default function ClubAuth() {
 
         {/* NSA league player free-signup CTA — NSA-affiliated clubs only */}
         {isNsaClub && (
-          <div className="mb-4 space-y-3">
-            <LeaguePlayerSignupBanner clubSubdomain={subdomain || null} clubName={clubName} />
-            <div className="flex justify-center">
-              <NsaLeagueQrCard
-                url={`${typeof window !== "undefined" ? window.location.origin : ""}/league${subdomain ? `?club=${encodeURIComponent(subdomain)}` : ""}`}
-                size={96}
-              />
-            </div>
+          <div className="mb-4">
+            <LeaguePlayerSignupBanner
+              clubSubdomain={subdomain || null}
+              clubName={clubName}
+              signupUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/league${subdomain ? `?club=${encodeURIComponent(subdomain)}` : ""}`}
+            />
           </div>
         )}
 

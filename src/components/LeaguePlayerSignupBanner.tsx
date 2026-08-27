@@ -1,38 +1,75 @@
 import { Trophy, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
 
 interface Props {
   clubSubdomain?: string | null;
   clubName?: string;
+  /** Full URL the banner (and its QR code) should link to. */
+  signupUrl?: string;
 }
 
 /**
- * Prominent CTA banner shown on tenant ClubAuth pages and the root landing.
- * Targets NSA league players: free, fast self-signup linked to their seeded
- * roster row. Deep-links to /league with the club preselected when shown
- * inside a tenant context.
+ * Prominent NSA league player CTA card shown on tenant ClubAuth pages and the
+ * root landing. Targets NSA/NSF-numbered players with a clear, high-contrast
+ * "register for free" value proposition and an integrated scan-to-join QR code.
  */
-export function LeaguePlayerSignupBanner({ clubSubdomain, clubName }: Props) {
-  const href = clubSubdomain ? `/league?club=${encodeURIComponent(clubSubdomain)}` : "/league";
+export function LeaguePlayerSignupBanner({ clubSubdomain, clubName, signupUrl }: Props) {
+  const href =
+    signupUrl ||
+    (clubSubdomain ? `/league?club=${encodeURIComponent(clubSubdomain)}` : "/league");
+
   return (
     <Link
       to={href}
-      className="block group relative overflow-hidden rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-primary/10 p-4 hover:from-amber-500/15 hover:to-primary/15 transition-all"
+      className="block group relative"
+      aria-label="Register for free as an NSA league player"
     >
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-          <Trophy className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold font-heading leading-tight">
-            NSA league player{clubName ? ` at ${clubName}` : ""}?
+      {/* Ambient glow */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-accent to-orange-500 rounded-[2rem] blur opacity-25 group-hover:opacity-45 transition duration-700 group-hover:duration-200" />
+
+      <div className="relative flex flex-col md:flex-row items-center gap-6 md:gap-8 bg-landing-navy/90 border border-white/10 p-6 md:p-8 rounded-[1.5rem] backdrop-blur-xl shadow-2xl overflow-hidden">
+        {/* Decorative ambient orbs */}
+        <div className="absolute -top-16 -right-16 w-48 h-48 bg-accent/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-orange-500/5 rounded-full blur-3xl" />
+
+        {/* Content */}
+        <div className="relative flex-1 space-y-4 text-center md:text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold tracking-widest uppercase">
+            <Trophy className="w-4 h-4" />
+            NSA League Access
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5">
-            <span className="font-semibold text-amber-700 dark:text-amber-400">Players join for free.</span>{" "}
-            Sign up in 30 seconds with your NSA number →
+
+          <div className="space-y-1">
+            <h2 className="text-white text-2xl md:text-3xl font-extrabold font-heading tracking-tight leading-tight">
+              NSA league player{clubName ? ` at ${clubName}` : ""}?
+            </h2>
+            <p className="text-white/70 text-base md:text-lg">
+              Register for free to enjoy NSA league functionality.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-center md:justify-start gap-2 text-accent font-bold group/btn">
+            <span className="text-sm uppercase tracking-widest">Start registration</span>
+            <ArrowRight className="w-5 h-5 transform transition-transform group-hover/btn:translate-x-1.5" />
           </div>
         </div>
-        <ArrowRight className="w-4 h-4 text-amber-600 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+
+        {/* QR code */}
+        <div className="relative flex-shrink-0">
+          <div className="bg-white p-3 rounded-2xl shadow-xl transform rotate-2 group-hover:rotate-0 transition-transform duration-500">
+            <QRCodeSVG
+              value={href}
+              size={120}
+              bgColor="#ffffff"
+              fgColor="#1E3A5F"
+              level="M"
+            />
+          </div>
+          <div className="absolute -bottom-2 -right-2 bg-accent text-accent-foreground px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter shadow-lg">
+            Scan to join
+          </div>
+        </div>
       </div>
     </Link>
   );

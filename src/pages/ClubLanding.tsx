@@ -2,7 +2,9 @@ import { useParams, Navigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Building2, ArrowRight, ChevronDown } from "lucide-react";
+import { Loader2, Building2, ArrowRight, ChevronDown, UserPlus } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+
 import { Button } from "@/components/ui/button";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect } from "react";

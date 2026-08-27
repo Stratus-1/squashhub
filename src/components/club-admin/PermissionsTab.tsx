@@ -21,7 +21,7 @@ import {
   type PermissionRole,
 } from "@/hooks/use-club-permissions";
 import { useIsSuperAdmin } from "@/hooks/use-club";
-import { permissionSlugsForTenant, permissionLabel } from "@/lib/permission-scope";
+import { permissionSlugsForTenant, permissionLabel, visibleSlugs } from "@/lib/permission-scope";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 
 /**
@@ -112,7 +112,7 @@ function RolesSection({ clubId }: { clubId: string }) {
                     <Badge className="text-[10px] gap-1"><ShieldCheck className="w-3 h-3" /> Full admin</Badge>
                   ) : (
                     <div className="flex flex-wrap gap-1">
-                      {role.permissions.map(p => (
+                      {visibleSlugs(role.permissions, isAssociation).map(p => (
                         <Badge key={p} variant="outline" className="text-[10px]">
                           {permissionLabel(p, isAssociation)}
                         </Badge>
@@ -497,7 +497,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
                 <TableCell>
                   {perm?.custom_permissions?.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {perm.custom_permissions.map((p: string) => (
+                      {visibleSlugs(perm.custom_permissions, isAssociation).map((p: string) => (
                         <Badge key={p} variant="secondary" className="text-[10px]">
                           {permissionLabel(p, isAssociation)}
                         </Badge>
@@ -609,7 +609,7 @@ function MemberPermDialog({
             </Select>
             {selectedRole && (
               <div className="flex flex-wrap gap-1 mt-1">
-                {selectedRole.permissions.map(p => (
+                {visibleSlugs(selectedRole.permissions, isAssociation).map(p => (
                   <Badge key={p} variant="outline" className="text-[10px]">
                     {permissionLabel(p, isAssociation)}
                   </Badge>

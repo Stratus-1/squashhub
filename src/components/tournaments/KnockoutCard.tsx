@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { looksLikePhone } from "@/lib/member-display";
 import { sectionLetter, type KnockoutMatchLike } from "@/lib/tournaments/knockout";
 import {
 
@@ -41,7 +42,8 @@ function buildNameMap(matches: any[]): Map<string, string> {
   const put = (id?: string | null, rel?: any) => {
     if (!id) return;
     const name = rel?.profiles?.name || rel?.name;
-    if (name && !map.has(id)) map.set(id, name);
+    // Never surface phone-number placeholder names (imported shells).
+    if (name && !looksLikePhone(name) && !map.has(id)) map.set(id, name);
   };
   for (const m of matches) {
     put(m.player_a_member_id, m.player_a);

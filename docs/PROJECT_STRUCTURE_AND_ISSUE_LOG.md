@@ -95,6 +95,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-08-27 · Club Admin spinner for platform admins outside the tenant roster
+- **Symptom:** A platform super-admin opening Club Admin for a club where they had no membership row remained on the full-page spinner or was redirected before permissions resolved.
+- **Finding:** The page treated secondary membership/full-club fetches as render blockers and permission hooks represented their initial pending state as an empty permission set.
+- **Fix:** Tenant context is now sufficient to render, secondary club enrichment no longer blocks the page, and authorization waits explicitly for platform-role/member-permission resolution before allowing or denying access.
+- **Guard:** Never infer denial from an unresolved permission query, and never require a tenant membership row for platform-admin access.
+
 ### 2026-08-25 · Recurring debit webhooks rejected by stale club signing secret
 - **Symptom:** Stitch recurring debit notifications returned 401 with `No matching signature found`, so successful collections were not posted and failed collections were not counted or retried.
 - **Finding:** The collection handler preferred a club-level webhook secret and did not read the shared endpoint secret already configured for the public Stitch webhook. It also incorrectly treated the API client secret as a possible webhook signing secret.

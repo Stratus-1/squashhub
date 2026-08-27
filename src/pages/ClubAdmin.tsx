@@ -36,7 +36,7 @@ import { RouterTab } from "@/components/club-admin/RouterTab";
 import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
 import { AiAssistantTab } from "@/components/club-admin/AiAssistantTab";
 import { EmailLogTab } from "@/components/club-admin/EmailLogTab";
-import { useMyPermissions, type PermissionSlug } from "@/hooks/use-club-permissions";
+import { useMyPermissionsStatus, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
@@ -107,7 +107,7 @@ export default function ClubAdmin() {
   const { data, isLoading } = useMyClub();
   const { subdomain, club: contextClub, isLoading: clubContextLoading } = useClubContext();
   const isAdmin = useIsClubAdmin();
-  const myPermissions = useMyPermissions();
+  const { permissions: myPermissions, isLoading: permissionsLoading } = useMyPermissionsStatus();
   // On a club subdomain wait only for the tenant club itself to resolve. Never
   // wait on the membership query — a super-admin with no member row there would
   // otherwise hang on a spinner forever.
@@ -162,7 +162,11 @@ export default function ClubAdmin() {
     setWizardOpen(true);
   }, [capsReady, hasCapRows, untouchedCaps, coreIncomplete, club?.id]);
 
-  if (isLoading || tenantResolving || (baseClub?.id && isFetchingAdminClub && !adminClub)) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  // The public tenant record is enough to render. Do not block on membership or
+  // the richer club query: platform admins often have no membership at the
+  // tenant they are managing, and a slow secondary query must not blank the UI.
+  const clubResolving = !contextClub && (isLoading || tenantResolving);
+  if (clubResolving || permissionsLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   // Fall back to the tenant club so admins/super-admins on a club subdomain are
   // never sent to club registration just because they hold no member row there.

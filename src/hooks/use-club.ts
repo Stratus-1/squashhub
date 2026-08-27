@@ -236,11 +236,10 @@ export function useMyClub() {
   });
 }
 
-/** Check if user is club admin (or platform super-admin or club delegate) */
-export function useIsClubAdmin() {
+/** Resolve the current user's platform role without treating the initial query as "not admin". */
+export function useSuperAdminStatus() {
   const { user } = useAuth();
-  const { data } = useMyClub();
-  const { data: superRoles } = useQuery({
+  const { data: superRoles, isPending } = useQuery({
     queryKey: ["my-super-roles", user?.id],
     queryFn: async () => {
       if (!user) return [] as string[];
@@ -253,6 +252,17 @@ export function useIsClubAdmin() {
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
+  return {
+    isSuperAdmin: (superRoles || []).includes("admin") || (superRoles || []).includes("moderator"),
+    isLoading: !!user && isPending,
+  };
+}
+
+/** Check if user is club admin (or platform super-admin or club delegate) */
+export function useIsClubAdmin() {
+  const { user } = useAuth();
+  const { data } = useMyClub();
+  const { isSuperAdmin } = useSuperAdminStatus();
   // Check if user holds a delegate position (Chairman / Secretary / Club Captain / Treasurer) at the active club
   const clubId = data?.club?.id;
   const { data: isDelegate } = useQuery({
@@ -273,7 +283,6 @@ export function useIsClubAdmin() {
     enabled: !!user && !!clubId,
     staleTime: 60 * 1000,
   });
-  const isSuperAdmin = (superRoles || []).includes("admin") || (superRoles || []).includes("moderator");
   // Note: 'captain' is a TEAM captain (league-scoped), NOT a full club admin.
   return isSuperAdmin || data?.membership?.role === "admin" || !!isDelegate;
 }
@@ -281,21 +290,7 @@ export function useIsClubAdmin() {
 
 /** Check if user is a platform super-admin (or moderator) */
 export function useIsSuperAdmin() {
-  const { user } = useAuth();
-  const { data: superRoles } = useQuery({
-    queryKey: ["my-super-roles", user?.id],
-    queryFn: async () => {
-      if (!user) return [] as string[];
-      const { data: rows } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      return (rows || []).map((r: any) => r.role as string);
-    },
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
-  });
-  return (superRoles || []).includes("admin") || (superRoles || []).includes("moderator");
+  return useSuperAdminStatus().isSuperAdmin;
 }
 
 /** Get the current user's own club member record */

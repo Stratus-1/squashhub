@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useIsSuperAdmin } from "@/hooks/use-club";
+import { useIsSuperAdmin, useSuperAdminStatus } from "@/hooks/use-club";
 
 /** All available permission slugs */
 export const PERMISSION_SLUGS = [
@@ -130,12 +130,12 @@ export function useHasPermission(permission: PermissionSlug): boolean {
 /**
  * Get all effective permissions for the current member.
  */
-export function useMyPermissions(): Set<string> {
+export function useMyPermissionsStatus(): { permissions: Set<string>; isLoading: boolean } {
   const { activeMember, isAdmin } = useMemberContext();
-  const isSuperAdmin = useIsSuperAdmin();
+  const { isSuperAdmin, isLoading: superAdminLoading } = useSuperAdminStatus();
   const memberId = activeMember?.id;
 
-  const { data: memberRow } = useQuery({
+  const { data: memberRow, isPending: memberRolePending } = useQuery({
     queryKey: ["member-role", memberId],
     queryFn: async () => {
       const { data } = await fromExt("club_members").select("role").eq("id", memberId!).single();
@@ -146,13 +146,14 @@ export function useMyPermissions(): Set<string> {
 
   const memberRole = memberRow?.role;
   const isRoleFullAccess = isSuperAdmin || memberRole === "admin" || isAdmin;
-  const { data: perm } = useMemberPermission(memberId);
+  const permissionQuery = useMemberPermission(memberId);
+  const perm = permissionQuery.data;
 
   const allSlugs = PERMISSION_SLUGS.map(s => s.value as string);
   // Club-level full admin gets everything except super-admin-only slugs.
   const clubWide = allSlugs.filter(s => !SUPER_ADMIN_ONLY_SLUGS.includes(s));
 
-  if (isSuperAdmin) return new Set(allSlugs);
+  if (isSuperAdmin) return { permissions: new Set(allSlugs), isLoading: false };
 
   const perms = new Set<string>();
   // Explicit grants first (these may include restricted slugs granted by a super admin).
@@ -163,7 +164,16 @@ export function useMyPermissions(): Set<string> {
     isRoleFullAccess || perm?.is_full_admin || (perm as any)?.club_permission_roles?.is_full_admin;
   if (impliedFull) clubWide.forEach(p => perms.add(p));
 
-  return perms;
+  return {
+    permissions: perms,
+    isLoading: superAdminLoading || (!!memberId && (memberRolePending || permissionQuery.isPending)),
+  };
+
+}
+
+/** Get all effective permissions for the current member. */
+export function useMyPermissions(): Set<string> {
+  return useMyPermissionsStatus().permissions;
 
 }
 

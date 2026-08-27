@@ -31,6 +31,8 @@ import { UsersTab } from "@/components/club-admin/UsersTab";
 import { LeaguesTab } from "@/components/club-admin/LeaguesTab";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
+import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
+import { EmailLogTab } from "@/components/club-admin/EmailLogTab";
 
 interface TabDef {
   value: string;
@@ -51,6 +53,8 @@ const ADMIN_TABS: TabDef[] = [
   { value: "fees", label: "Fees", icon: Receipt, permission: "fees" },
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance" },
+  { value: "comms", label: "Comms", icon: MessageCircle, permission: "communications" },
+  { value: "emails", label: "Email Log", icon: MessageCircle, permission: "communications" },
   { value: "settings", label: "Preferences", icon: Settings, permission: "settings" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, adminOnly: true },
 ];

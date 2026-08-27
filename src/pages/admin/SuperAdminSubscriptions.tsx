@@ -1704,9 +1704,9 @@ function AllInvoicesList() {
 
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Loading…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-6">Loading…</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">No invoices found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-6">No invoices found</TableCell></TableRow>
               ) : (
                 filtered.map((inv) => (
                   <TableRow key={inv.id}>
@@ -1721,7 +1721,57 @@ function AllInvoicesList() {
                     <TableCell className="text-xs">{fmtDate(inv.issued_at)}</TableCell>
                     <TableCell className="text-xs">{fmtDate(inv.due_date)}</TableCell>
                     <TableCell className="text-xs">{fmtDate(inv.paid_at)}</TableCell>
-                    <TableCell><Badge className={statusBadge(inv.status)} variant="secondary">{inv.status}</Badge></TableCell>
+                    <TableCell>
+                      {isAwaitingEft(inv) ? (
+                        <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300" variant="secondary">
+                          EFT to verify
+                        </Badge>
+                      ) : (
+                        <Badge className={statusBadge(inv.status)} variant="secondary">{inv.status}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-[11px]">
+                      {inv.eft_proof_path ? (
+                        <div className="space-y-1">
+                          <button className="text-primary hover:underline" onClick={() => openProof(inv.eft_proof_path)}>
+                            View proof
+                          </button>
+                          <div className="text-[10px] text-muted-foreground">
+                            {fmtDate(inv.eft_proof_uploaded_at)}
+                            {inv.eft_review_status && inv.eft_review_status !== "pending" ? ` · ${inv.eft_review_status}` : ""}
+                          </div>
+                          {isAwaitingEft(inv) && (
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                className="h-6 text-[10px] px-2"
+                                disabled={reviewEft.isPending}
+                                onClick={() => {
+                                  if (confirm(`Confirm the EFT for ${inv.invoice_number} was received and mark it paid?`))
+                                    reviewEft.mutate({ id: inv.id, approve: true });
+                                }}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 text-[10px] px-2"
+                                disabled={reviewEft.isPending}
+                                onClick={() => {
+                                  const note = prompt("Reason for rejecting this proof of payment?") || "";
+                                  if (note !== null && note !== "") reviewEft.mutate({ id: inv.id, approve: false, note });
+                                }}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-[11px]">
                       {inv.email_sent_at ? (
                         <span className="text-emerald-600">sent {fmtDate(inv.email_sent_at)}</span>
@@ -1729,6 +1779,7 @@ function AllInvoicesList() {
                         <span className="text-muted-foreground">{inv.email_status || "—"}</span>
                       )}
                     </TableCell>
+
                     <TableCell className="text-right">
                       <Button
                         size="sm"

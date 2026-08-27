@@ -30,7 +30,7 @@ import { BankStatementImportDialog } from "./BankStatementImportDialog";
 import { BankingPanel } from "./BankingPanel";
 import DebitOrdersPanel from "./DebitOrdersPanel";
 import { ChartOfAccountsPanel } from "./ChartOfAccountsPanel";
-import { useClubGLAccounts } from "@/hooks/use-club-gl-accounts";
+import { useClubGLAccounts, STANDALONE_FALLBACK_ACCOUNT } from "@/hooks/use-club-gl-accounts";
 
 
 /* ─── Chart of Accounts definition ─── */
@@ -441,7 +441,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     const customId = selectedTxAccount.startsWith("custom:") ? selectedTxAccount.slice(7) : null;
     const customMeta = customId ? customAccounts.find((a) => a.id === customId) : null;
     if (customId && !customMeta) { toast.error("Select an account"); return; }
-    const effectiveTxAccount = customMeta ? customMeta.base_account : selectedTxAccount;
+    const effectiveTxAccount = customMeta
+      ? (customMeta.base_account ?? STANDALONE_FALLBACK_ACCOUNT[customMeta.category])
+      : selectedTxAccount;
 
     // Determine the money account based on payment method
     const moneyAccount = txMethod === "cash" ? "cash" : "bank_current";

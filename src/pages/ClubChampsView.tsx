@@ -221,7 +221,10 @@ export default function ClubChampsView() {
 
 
 
-  const getPlayerName = (player: any) => player?.name || player?.profiles?.name || "Unknown";
+  const getPlayerName = (player: any) => {
+    const raw = player?.name || player?.profiles?.name;
+    return looksLikePhone(raw) ? "Unknown" : raw || "Unknown";
+  };
 
   const getTeamName = (player: any, partner: any) => {
     if (!partner) return getPlayerName(player);

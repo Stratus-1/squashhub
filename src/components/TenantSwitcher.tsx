@@ -31,29 +31,65 @@ interface TenantOption {
 export function TenantSwitcher() {
   const { user } = useAuth();
   const { club: currentClub, subdomain: currentSubdomain } = useClubContext();
+  const [search, setSearch] = useState("");
 
   const { data: tenants = [] } = useQuery({
     queryKey: ["my-tenants", user?.id],
     enabled: !!user?.id,
     queryFn: async (): Promise<TenantOption[]> => {
-      const { data, error } = await fromExt("club_members")
-        .select("club:club_id(id, name, subdomain, tenant_type)")
-        .eq("user_id", user!.id);
-      if (error) throw error;
       const seen = new Set<string>();
       const list: TenantOption[] = [];
-      for (const row of (data || []) as any[]) {
-        const c = row.club;
-        if (!c || !c.subdomain || seen.has(c.id)) continue;
+      const push = (c: any) => {
+        if (!c || !c.subdomain || seen.has(c.id)) return;
         seen.add(c.id);
         list.push({ id: c.id, name: c.name, subdomain: c.subdomain, tenant_type: c.tenant_type || "club" });
+      };
+
+      // Platform super admin: browse all clubs/associations.
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user!.id)
+        .eq("role", "admin");
+      const isSuperAdmin = (roles || []).length > 0;
+
+      if (isSuperAdmin) {
+        const { data, error } = await fromExt("clubs")
+          .select("id, name, subdomain, tenant_type")
+          .not("subdomain", "is", null)
+          .order("name");
+        if (error) throw error;
+        for (const c of (data || []) as any[]) push(c);
+      } else {
+        // Tenants where the user is a member.
+        const { data, error } = await fromExt("club_members")
+          .select("club:club_id(id, name, subdomain, tenant_type)")
+          .eq("user_id", user!.id);
+        if (error) throw error;
+        for (const row of (data || []) as any[]) push(row.club);
+
+        // Association tenants the user administers (organisation -> tenant club).
+        const { data: adminRows } = await fromExt("organisation_admins")
+          .select("org:org_id(club:club_id(id, name, subdomain, tenant_type))")
+          .eq("user_id", user!.id)
+          .eq("active", true);
+        for (const row of (adminRows || []) as any[]) push(row.org?.club);
       }
+
       return list.sort((a, b) => {
         if (a.tenant_type === b.tenant_type) return a.name.localeCompare(b.name);
         return a.tenant_type === "club" ? -1 : 1;
       });
     },
   });
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return tenants;
+    return tenants.filter(
+      (t) => t.name.toLowerCase().includes(q) || (t.subdomain || "").toLowerCase().includes(q),
+    );
+  }, [tenants, search]);
 
   if (tenants.length < 2) return null;
 

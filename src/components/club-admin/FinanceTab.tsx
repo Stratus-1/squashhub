@@ -432,9 +432,16 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
     // When a member is linked on an income transaction, force Accounts Receivable
     // (debtors) so the payment settles their outstanding bill instead of double-
     // counting income.
-    const effectiveTxAccount = (txDirection === "income" && memberLinked) ? "debtors" : txAccount;
-    if (!effectiveTxAccount) { toast.error("Select an account"); return; }
+    const selectedTxAccount = (txDirection === "income" && memberLinked) ? "debtors" : txAccount;
+    if (!selectedTxAccount) { toast.error("Select an account"); return; }
     if (!txDescription.trim()) { toast.error("Enter a description"); return; }
+
+    // Club-defined accounts post to their standard roll-up account and carry
+    // the custom account id so they report separately in the chart of accounts.
+    const customId = selectedTxAccount.startsWith("custom:") ? selectedTxAccount.slice(7) : null;
+    const customMeta = customId ? customAccounts.find((a) => a.id === customId) : null;
+    if (customId && !customMeta) { toast.error("Select an account"); return; }
+    const effectiveTxAccount = customMeta ? customMeta.base_account : selectedTxAccount;
 
     // Determine the money account based on payment method
     const moneyAccount = txMethod === "cash" ? "cash" : "bank_current";
@@ -449,9 +456,10 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       const memberId = (txMemberId && txMemberId !== "__none__") ? txMemberId : null;
       const desc = txDescription.trim();
       const lines: any[] = [
-        { account: debitAccount, debit: amount, description: desc, member_id: memberId },
-        { account: creditAccount, credit: amount, description: desc, member_id: memberId },
+        { account: debitAccount, debit: amount, description: desc, member_id: memberId, custom_account_id: txDirection === "income" ? null : customId },
+        { account: creditAccount, credit: amount, description: desc, member_id: memberId, custom_account_id: txDirection === "income" ? customId : null },
       ];
+
       await postJournal(clubId, lines, { description: desc });
 
       // Auto-charge 3.5% gateway fee for card payments

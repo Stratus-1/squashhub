@@ -322,7 +322,12 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
           </TableHeader>
           <TableBody>
             {rows.map((inv) => {
-              const unpaid = inv.status !== "paid" && inv.status !== "void";
+              const awaitingEft =
+                inv.status !== "paid" &&
+                inv.status !== "void" &&
+                ((inv as any).eft_review_status === "pending" ||
+                  (!!(inv as any).eft_proof_uploaded_at && (inv as any).eft_review_status !== "rejected"));
+              const unpaid = inv.status !== "paid" && inv.status !== "void" && !awaitingEft;
               return (
                 <TableRow key={inv.id}>
                   <TableCell className="font-mono text-xs">
@@ -356,9 +361,20 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                     {inv.status === "paid" ? fmtDate(inv.paid_at) : fmtDate(inv.due_date)}
                   </TableCell>
                   <TableCell>
-                    <Badge className={STATUS_COLORS[inv.status] || ""} variant="secondary">
-                      {inv.status}
-                    </Badge>
+                    {awaitingEft ? (
+                      <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300" variant="secondary">
+                        awaiting verification
+                      </Badge>
+                    ) : (
+                      <Badge className={STATUS_COLORS[inv.status] || ""} variant="secondary">
+                        {inv.status}
+                      </Badge>
+                    )}
+                    {(inv as any).eft_review_status === "rejected" && (
+                      <div className="text-[10px] text-destructive mt-0.5">
+                        Proof not accepted{(inv as any).eft_review_note ? ` — ${(inv as any).eft_review_note}` : ""}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-1 justify-end">
@@ -371,6 +387,17 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                       >
                         <Printer className="w-3 h-3 mr-1" /> View
                       </Button>
+                      {awaitingEft && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => setEftInvoiceId(inv.id)}
+                          title="View bank details or replace your proof of payment"
+                        >
+                          <Landmark className="w-3 h-3 mr-1" /> EFT proof
+                        </Button>
+                      )}
                       {unpaid && (
                         <>
                           <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => handlePayStitch(inv)}>
@@ -396,6 +423,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                           </Button>
                         </>
                       )}
+
                       <Button
                         size="sm"
                         variant="outline"

@@ -495,7 +495,7 @@ function bootstrapOpeningBalance(rows: { toks: Tok[] }[]): number | null {
   if (!probe.length) return null;
   let best: { opening: number; score: number } | null = null;
 
-  for (let start = 0; start < Math.min(probe.length, 3); start++) {
+  for (let start = 0; start < 1; start++) {
     const toks = probe[start].toks;
     for (let j = toks.length - 1; j >= 1; j--) {
       const bal = signed(toks[j]);
@@ -515,8 +515,7 @@ function bootstrapOpeningBalance(rows: { toks: Tok[] }[]): number | null {
               if (carried !== null) prev = carried;
             }
           }
-          if (start === 0 && (!best || score > best.score)) best = { opening: openingAtStart, score };
-          else if (start > 0 && score > (best?.score ?? 0) + start) best = { opening: openingAtStart, score };
+          if (!best || score > best.score) best = { opening: openingAtStart, score };
         }
       }
     }

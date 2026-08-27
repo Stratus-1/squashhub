@@ -84,19 +84,21 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
             {oldest.due_date ? ` · due ${new Date(oldest.due_date).toLocaleDateString()}` : ""}
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
-            <Button size="sm" className="h-7 text-xs" onClick={() => navigate("/club-admin?tab=subscription")}>
-              <CreditCard className="w-3.5 h-3.5 mr-1.5" /> Pay now
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => navigate(`/club-admin?tab=subscription&pay=${oldest.id}`)}
+            >
+              <CreditCard className="w-3.5 h-3.5 mr-1.5" /> Pay with card now
             </Button>
-            {oldest.stitch_payment_link && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={() => window.open(oldest.stitch_payment_link as string, "_blank", "noopener")}
-              >
-                Open payment link
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={() => navigate(`/club-admin?tab=subscription&eft=${oldest.id}`)}
+            >
+              <Landmark className="w-3.5 h-3.5 mr-1.5" /> Pay by EFT now
+            </Button>
           </div>
         </div>
       </div>

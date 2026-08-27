@@ -391,6 +391,86 @@ export type Database = {
           },
         ]
       }
+      association_fee_items: {
+        Row: {
+          active: boolean
+          amount: number
+          association_club_id: string
+          basis: string
+          created_at: string
+          created_by: string | null
+          direction: string
+          id: string
+          label: string
+          league_association_id: string | null
+          league_id: string | null
+          notes: string | null
+          season_year: number | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          amount?: number
+          association_club_id: string
+          basis?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          label: string
+          league_association_id?: string | null
+          league_id?: string | null
+          notes?: string | null
+          season_year?: number | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          association_club_id?: string
+          basis?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          label?: string
+          league_association_id?: string | null
+          league_id?: string | null
+          notes?: string | null
+          season_year?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_fee_items_association_club_id_fkey"
+            columns: ["association_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "association_fee_items_league_association_id_fkey"
+            columns: ["league_association_id"]
+            isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "association_fee_items_league_association_id_fkey"
+            columns: ["league_association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "association_fee_items_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           action: string

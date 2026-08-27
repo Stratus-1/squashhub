@@ -1542,7 +1542,7 @@ function AllInvoicesList() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("platform_subscription_invoices")
-        .select("id, invoice_number, status, issued_at, due_date, paid_at, period_start, period_end, plan_name, member_count, total, currency, email_sent_at, email_status, club_id, clubs:club_id(name, subdomain)")
+        .select("id, invoice_number, status, issued_at, due_date, paid_at, period_start, period_end, plan_name, member_count, total, currency, email_sent_at, email_status, club_id, eft_proof_path, eft_proof_uploaded_at, eft_review_status, eft_review_note, clubs:club_id(name, subdomain)")
         .order("issued_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -1550,14 +1550,49 @@ function AllInvoicesList() {
     },
   });
 
+  const isAwaitingEft = (i: any) =>
+    i.status !== "paid" &&
+    i.status !== "void" &&
+    (i.eft_review_status === "pending" || (!!i.eft_proof_uploaded_at && i.eft_review_status !== "rejected"));
+
+  const openProof = async (path: string) => {
+    const { data, error } = await supabase.storage.from("payment-proofs").createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) {
+      toast.error(error?.message || "Could not open proof of payment");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener");
+  };
+
+  const reviewEft = useMutation({
+    mutationFn: async (vals: { id: string; approve: boolean; note?: string | null }) => {
+      const { error } = await (supabase as any).rpc("review_platform_invoice_eft_proof", {
+        _invoice_id: vals.id,
+        _approve: vals.approve,
+        _note: vals.note || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_d, vals) => {
+      toast.success(vals.approve ? "EFT approved — invoice marked paid" : "EFT proof rejected");
+      qc.invalidateQueries({ queryKey: ["all-platform-invoices"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Review failed"),
+  });
+
   const filtered = invoices.filter((i) => {
-    if (statusFilter !== "all" && i.status !== statusFilter) return false;
+    if (statusFilter === "awaiting_eft") {
+      if (!isAwaitingEft(i)) return false;
+    } else if (statusFilter !== "all" && i.status !== statusFilter) return false;
     if (q) {
       const s = q.toLowerCase();
       if (!(i.invoice_number?.toLowerCase().includes(s) || i.clubs?.name?.toLowerCase().includes(s))) return false;
     }
     return true;
   });
+
+  const awaitingCount = invoices.filter(isAwaitingEft).length;
+
 
   // Group totals by currency — mixing ZAR/USD/EUR into one sum is meaningless.
   type Bucket = { count: number; value: number; paidCount: number; paidValue: number; dueCount: number; dueValue: number };
@@ -1632,6 +1667,7 @@ function AllInvoicesList() {
             <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="awaiting_eft">EFT to verify{awaitingCount ? ` (${awaitingCount})` : ""}</SelectItem>
               <SelectItem value="issued">Issued</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="overdue">Overdue</SelectItem>
@@ -1639,6 +1675,11 @@ function AllInvoicesList() {
               <SelectItem value="draft">Draft</SelectItem>
             </SelectContent>
           </Select>
+          {awaitingCount > 0 && statusFilter !== "awaiting_eft" && (
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setStatusFilter("awaiting_eft")}>
+              {awaitingCount} EFT proof{awaitingCount === 1 ? "" : "s"} awaiting approval
+            </Button>
+          )}
           <div className="text-[11px] text-muted-foreground ml-auto">{filtered.length} shown</div>
         </div>
 
@@ -1655,15 +1696,17 @@ function AllInvoicesList() {
                 <TableHead className="text-xs">Due</TableHead>
                 <TableHead className="text-xs">Paid</TableHead>
                 <TableHead className="text-xs">Status</TableHead>
+                <TableHead className="text-xs">EFT proof</TableHead>
                 <TableHead className="text-xs">Email</TableHead>
                 <TableHead className="text-xs w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">Loading…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-6">Loading…</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-6">No invoices found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-6">No invoices found</TableCell></TableRow>
               ) : (
                 filtered.map((inv) => (
                   <TableRow key={inv.id}>
@@ -1678,7 +1721,57 @@ function AllInvoicesList() {
                     <TableCell className="text-xs">{fmtDate(inv.issued_at)}</TableCell>
                     <TableCell className="text-xs">{fmtDate(inv.due_date)}</TableCell>
                     <TableCell className="text-xs">{fmtDate(inv.paid_at)}</TableCell>
-                    <TableCell><Badge className={statusBadge(inv.status)} variant="secondary">{inv.status}</Badge></TableCell>
+                    <TableCell>
+                      {isAwaitingEft(inv) ? (
+                        <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300" variant="secondary">
+                          EFT to verify
+                        </Badge>
+                      ) : (
+                        <Badge className={statusBadge(inv.status)} variant="secondary">{inv.status}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-[11px]">
+                      {inv.eft_proof_path ? (
+                        <div className="space-y-1">
+                          <button className="text-primary hover:underline" onClick={() => openProof(inv.eft_proof_path)}>
+                            View proof
+                          </button>
+                          <div className="text-[10px] text-muted-foreground">
+                            {fmtDate(inv.eft_proof_uploaded_at)}
+                            {inv.eft_review_status && inv.eft_review_status !== "pending" ? ` · ${inv.eft_review_status}` : ""}
+                          </div>
+                          {isAwaitingEft(inv) && (
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                className="h-6 text-[10px] px-2"
+                                disabled={reviewEft.isPending}
+                                onClick={() => {
+                                  if (confirm(`Confirm the EFT for ${inv.invoice_number} was received and mark it paid?`))
+                                    reviewEft.mutate({ id: inv.id, approve: true });
+                                }}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 text-[10px] px-2"
+                                disabled={reviewEft.isPending}
+                                onClick={() => {
+                                  const note = prompt("Reason for rejecting this proof of payment?") || "";
+                                  if (note !== null && note !== "") reviewEft.mutate({ id: inv.id, approve: false, note });
+                                }}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-[11px]">
                       {inv.email_sent_at ? (
                         <span className="text-emerald-600">sent {fmtDate(inv.email_sent_at)}</span>
@@ -1686,6 +1779,7 @@ function AllInvoicesList() {
                         <span className="text-muted-foreground">{inv.email_status || "—"}</span>
                       )}
                     </TableCell>
+
                     <TableCell className="text-right">
                       <Button
                         size="sm"

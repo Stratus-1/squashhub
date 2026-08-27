@@ -14,7 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Building2, ChevronDown, Trophy, Check } from "lucide-react";
+import { Building2, ChevronDown, Trophy, Check, ShieldCheck } from "lucide-react";
+import { useIsSuperAdmin } from "@/hooks/use-club";
 
 interface TenantOption {
   id: string;
@@ -32,6 +33,7 @@ export function TenantSwitcher() {
   const { user } = useAuth();
   const { club: currentClub, subdomain: currentSubdomain } = useClubContext();
   const [search, setSearch] = useState("");
+  const isPlatformAdmin = useIsSuperAdmin();
 
   const { data: tenants = [] } = useQuery({
     queryKey: ["my-tenants", user?.id],
@@ -88,23 +90,32 @@ export function TenantSwitcher() {
     );
   }, [tenants, search]);
 
-  if (tenants.length < 2) return null;
+  if (tenants.length < 2 && !isPlatformAdmin) return null;
+
+  const isPreviewHost = () =>
+    typeof window !== "undefined" &&
+    (
+      window.location.hostname.includes("lovable.app") ||
+      window.location.hostname.includes("lovableproject.com") ||
+      window.location.hostname.includes("id-preview--") ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    );
 
   const goToTenant = (sub: string) => {
     if (sub === currentSubdomain) return;
-    const isPreview =
-      typeof window !== "undefined" &&
-      (
-        window.location.hostname.includes("lovable.app") ||
-        window.location.hostname.includes("lovableproject.com") ||
-        window.location.hostname.includes("id-preview--") ||
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1"
-      );
-    if (isPreview) {
+    if (isPreviewHost()) {
       window.location.href = `/c/${sub}/`;
     } else {
       window.location.href = `https://${sub}.squashhub.co.za/`;
+    }
+  };
+
+  const goToSuperAdmin = () => {
+    if (isPreviewHost()) {
+      window.location.href = "/admin";
+    } else {
+      window.location.href = "https://squashhub.co.za/admin";
     }
   };
 
@@ -125,6 +136,18 @@ export function TenantSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="text-xs">Switch workspace</DropdownMenuLabel>
+        {isPlatformAdmin && (
+          <>
+            <DropdownMenuItem onClick={goToSuperAdmin} className="cursor-pointer">
+              <ShieldCheck className="w-3.5 h-3.5 mr-2 text-primary" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm truncate">Super Admin</p>
+                <p className="text-[10px] text-muted-foreground">Platform console</p>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         {tenants.length > 6 && (
           <div className="px-2 pb-1">
             <Input

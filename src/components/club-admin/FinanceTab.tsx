@@ -1117,7 +1117,9 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
             getBalance={getBalance}
             getCustomBalance={getCustomBalance}
             money={money}
+            onOpeningBalances={() => setOpeningBalancesOpen(true)}
           />
+
         </TabsContent>
 
           </Tabs>

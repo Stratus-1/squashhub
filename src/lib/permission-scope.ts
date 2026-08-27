@@ -50,3 +50,10 @@ export function permissionLabel(slug: string, isAssociation: boolean): string {
   if (isAssociation && ASSOCIATION_LABEL_OVERRIDES[slug]) return ASSOCIATION_LABEL_OVERRIDES[slug];
   return PERMISSION_SLUGS.find((s) => s.value === slug)?.label || slug;
 }
+
+/** Hide stored club-only slugs when displaying an association tenant's grants. */
+export function visibleSlugs(slugs: string[] | null | undefined, isAssociation: boolean): string[] {
+  const list = slugs ?? [];
+  if (!isAssociation) return list;
+  return list.filter((s) => !(CLUB_ONLY_SLUGS as readonly string[]).includes(s));
+}

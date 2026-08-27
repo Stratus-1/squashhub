@@ -19,8 +19,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronRight, Search, Trophy, UserPlus, Plus, CalendarPlus, Building2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChevronRight, Search, Trophy, UserPlus, Plus, CalendarPlus, Building2, ScrollText } from "lucide-react";
+import { usePlatformAssociation } from "@/hooks/use-platform-association";
+import { AssociationFixturesPanel } from "@/components/association-admin/AssociationFixturesPanel";
+import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
 import { toast } from "sonner";
+
 import { cn } from "@/lib/utils";
 import {
   AssocTeam,

@@ -2005,12 +2005,16 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
 
   return (
     <div className="space-y-4 mt-2">
-      {/* Primary action */}
-      <div className="flex justify-end">
+      {/* Primary actions — Chart of Accounts is always one click away */}
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setView("coa")} className="gap-1.5">
+          <ListTree className="w-4 h-4" /> Chart of Accounts
+        </Button>
         <Button onClick={onEnterTx} className="gap-1.5">
           <Plus className="w-4 h-4" /> Enter Transaction
         </Button>
       </div>
+
 
       <SetupSteps steps={steps} value={hubStep} onChange={setHubStep} />
 

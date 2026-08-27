@@ -29,6 +29,9 @@ import { OpeningBalancesDialog } from "./OpeningBalancesDialog";
 import { BankStatementImportDialog } from "./BankStatementImportDialog";
 import { BankingPanel } from "./BankingPanel";
 import DebitOrdersPanel from "./DebitOrdersPanel";
+import { ChartOfAccountsPanel } from "./ChartOfAccountsPanel";
+import { useClubGLAccounts } from "@/hooks/use-club-gl-accounts";
+
 
 /* ─── Chart of Accounts definition ─── */
 

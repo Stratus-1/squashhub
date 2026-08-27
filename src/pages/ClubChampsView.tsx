@@ -2428,8 +2428,14 @@ export default function ClubChampsView() {
 
 
     const multipleGroups = orderedGroups.length > 1;
+    // Compact tournaments (e.g. Bells with a couple of pools) read better as
+    // "all summary tables first, then the fixtures per league". Once there are
+    // many leagues, interleaving each league's fixtures under its own heading
+    // keeps the page navigable.
+    const summaryFirst = multipleGroups && !isCrossLeague && orderedGroups.length <= 3;
     const standingsCards: JSX.Element[] = [];
     const fixtureCards: JSX.Element[] = [];
+
 
     orderedGroups.forEach((gn: number) => {
       const groupMemberIds = new Set<string>(
@@ -2493,22 +2499,50 @@ export default function ClubChampsView() {
             {groupMatches.map((m: any) => renderMatchRow(m))}
           </div>
         );
-        standingsCards.push(
-          <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
-            <CardHeader>{titleNode}</CardHeader>
-            <CardContent className="space-y-4">
-              {swissControlsFor(gn)}
-              {standingsTable}
-              <Separator />
-              <div>
-                <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
-                {fixtureBody}
-              </div>
-            </CardContent>
-          </Card>
-        );
+        if (summaryFirst) {
+          // Summary tables first, fixtures for each league below them.
+          standingsCards.push(
+            <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
+              <CardHeader>{titleNode}</CardHeader>
+              <CardContent className="space-y-4">
+                {swissControlsFor(gn)}
+                {standingsTable}
+              </CardContent>
+            </Card>
+          );
+          if (groupMatches.length > 0) {
+            fixtureCards.push(
+              <Card key={`f-${gn}`}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{getGroupLabel(champ, gn)} — Fixtures &amp; Results</CardTitle>
+                </CardHeader>
+                <CardContent>{fixtureBody}</CardContent>
+              </Card>
+            );
+          }
+        } else {
+          standingsCards.push(
+            <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
+              <CardHeader>{titleNode}</CardHeader>
+              <CardContent className="space-y-4">
+                {swissControlsFor(gn)}
+                {standingsTable}
+                {groupMatches.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="font-medium text-sm mb-2">Fixtures &amp; Results</h4>
+                      {fixtureBody}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          );
+        }
 
       } else {
+
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(
           <Card key={gn} className={cn(isLeading && "border-primary/40")}>
@@ -2516,7 +2550,7 @@ export default function ClubChampsView() {
             <CardContent className="space-y-4">
               {swissControlsFor(gn)}
               {standingsTable}
-              {!isCrossLeague && (
+              {!isCrossLeague && groupMatches.length > 0 && (
                 <>
                   <Separator />
                   <div>

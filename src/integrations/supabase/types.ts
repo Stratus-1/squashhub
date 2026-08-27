@@ -2727,7 +2727,7 @@ export type Database = {
       }
       club_gl_accounts: {
         Row: {
-          base_account: Database["public"]["Enums"]["gl_account"]
+          base_account: Database["public"]["Enums"]["gl_account"] | null
           category: string
           club_id: string
           created_at: string
@@ -2738,7 +2738,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          base_account: Database["public"]["Enums"]["gl_account"]
+          base_account?: Database["public"]["Enums"]["gl_account"] | null
           category: string
           club_id: string
           created_at?: string
@@ -2749,7 +2749,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          base_account?: Database["public"]["Enums"]["gl_account"]
+          base_account?: Database["public"]["Enums"]["gl_account"] | null
           category?: string
           club_id?: string
           created_at?: string

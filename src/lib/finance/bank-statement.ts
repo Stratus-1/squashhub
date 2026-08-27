@@ -346,14 +346,21 @@ const RULES: Array<{ re: RegExp; account: string; sign?: "in" | "out" }> = [
 export function suggestAccount(row: ParsedBankRow, opts?: { memberMatched?: boolean }): AccountGuess {
   const text = `${row.description} ${row.reference || ""}`;
   const isIn = row.amount > 0;
+  // Money in from a recognised member defaults to their membership/subs payment —
+  // unless the narrative clearly says it is for something specific (bar, lights,
+  // wifi, tournament), in which case the keyword rule below wins.
+  if (isIn && opts?.memberMatched) {
+    const specificIncome = RULES.some(
+      (r) => r.sign === "in" && r.account !== "membership_income" && r.re.test(text),
+    );
+    if (!specificIncome) return { account: "membership_income", confidence: "high" };
+  }
   for (const r of RULES) {
     if (!r.re.test(text)) continue;
     if (r.sign === "in" && !isIn) continue;
     if (r.sign === "out" && isIn) continue;
     return { account: r.account, confidence: "high" };
   }
-  // Money in from a recognised member is almost always their membership/subs payment.
-  if (isIn && opts?.memberMatched) return { account: "membership_income", confidence: "high" };
   return { account: isIn ? "fee_income" : "general_expense", confidence: "low" };
 }
 

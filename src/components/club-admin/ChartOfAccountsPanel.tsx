@@ -43,20 +43,19 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
   const rollupOptions = (category: GLCategory) =>
     standardKeys.filter((k) => accounts[k].category === category);
 
-  const openNew = () => setEditing({ name: "", category: "Expense", base_account: "general_expense", description: "" });
+  const openNew = () => setEditing({ name: "", category: "Expense", base_account: null, description: "" });
 
   const save = async () => {
     if (!editing) return;
     const name = (editing.name || "").trim();
     if (!name) return toast.error("Give the account a name");
-    if (!editing.base_account) return toast.error("Pick a standard account it rolls up into");
     setBusy(true);
     try {
       if (editing.id) {
         await mutations.update(editing.id, {
           name,
           category: editing.category as GLCategory,
-          base_account: editing.base_account,
+          base_account: editing.base_account ?? null,
           description: editing.description ?? null,
           is_active: editing.is_active !== false,
         });
@@ -66,7 +65,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
         await mutations.create({
           name,
           category: editing.category as GLCategory,
-          base_account: editing.base_account,
+          base_account: editing.base_account ?? null,
           description: editing.description ?? null,
         });
         toast.success("Account added");
@@ -80,7 +79,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
   };
 
   const remove = async (acc: ClubGLAccount) => {
-    if (!confirm(`Delete "${acc.name}"? Existing entries stay in the ledger under ${accounts[acc.base_account]?.label || acc.base_account}.`)) return;
+    if (!confirm(`Delete "${acc.name}"? Existing entries stay in the ledger${acc.base_account ? ` under ${accounts[acc.base_account]?.label || acc.base_account}` : ""}.`)) return;
     try {
       await mutations.remove(acc.id);
       toast.success("Account deleted");
@@ -144,7 +143,6 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
               })}
 
               {custom.map((acc) => {
-                const meta = accounts[acc.base_account];
                 const balance = getCustomBalance(acc.id);
                 const normal: "Dr" | "Cr" = acc.category === "Asset" || acc.category === "Expense" ? "Dr" : "Cr";
                 return (
@@ -205,7 +203,7 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
                   onValueChange={(v) => setEditing((s) => ({
                     ...(s || {}),
                     category: v as GLCategory,
-                    base_account: rollupOptions(v as GLCategory)[0],
+                    base_account: null,
                   }))}
                 >
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
@@ -217,16 +215,20 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
               <div>
                 <Label className="text-xs">Reports under</Label>
                 <Select
-                  value={editing?.base_account || ""}
-                  onValueChange={(v) => setEditing((s) => ({ ...(s || {}), base_account: v }))}
+                  value={editing?.base_account || "__none__"}
+                  onValueChange={(v) => setEditing((s) => ({ ...(s || {}), base_account: v === "__none__" ? null : v }))}
                 >
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Standard account" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__none__">None — standalone account</SelectItem>
                     {rollupOptions((editing?.category as GLCategory) || "Expense").map((k) => (
                       <SelectItem key={k} value={k}>{accounts[k].label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Standalone accounts report as their own line; otherwise the balance is grouped under the selected standard account.
+                </p>
               </div>
             </div>
             <div>

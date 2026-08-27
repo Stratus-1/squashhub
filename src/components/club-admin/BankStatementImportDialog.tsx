@@ -202,11 +202,18 @@ export function BankStatementImportDialog({ open, onOpenChange, clubId, accounts
     const target = drafts[index];
     if (!target) return;
     const dir: "in" | "out" = target.amount > 0 ? "in" : "out";
+    // Linking a member to money coming IN defaults the line to membership fees —
+    // member EFTs are almost always subs. Only applied while the line still sits
+    // on the generic fallback (fee_income) so explicit choices/rules are kept.
+    const toMembership = (p: Draft) =>
+      memberId && p.amount > 0 && p.account === "fee_income"
+        ? { ...p, account: "membership_income" }
+        : p;
     setDrafts((prev) =>
       prev.map((p, idx) => {
-        if (idx === index) return { ...p, memberId, touched: true };
+        if (idx === index) return { ...toMembership(p), memberId, touched: true };
         if (p.touched || p.key !== target.key) return p;
-        return { ...p, memberId };
+        return { ...toMembership(p), memberId };
       }),
     );
     if (target.key) {

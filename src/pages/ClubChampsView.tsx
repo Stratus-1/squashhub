@@ -2428,8 +2428,14 @@ export default function ClubChampsView() {
 
 
     const multipleGroups = orderedGroups.length > 1;
+    // Compact tournaments (e.g. Bells with a couple of pools) read better as
+    // "all summary tables first, then the fixtures per league". Once there are
+    // many leagues, interleaving each league's fixtures under its own heading
+    // keeps the page navigable.
+    const summaryFirst = multipleGroups && !isCrossLeague && orderedGroups.length <= 3;
     const standingsCards: JSX.Element[] = [];
     const fixtureCards: JSX.Element[] = [];
+
 
     orderedGroups.forEach((gn: number) => {
       const groupMemberIds = new Set<string>(

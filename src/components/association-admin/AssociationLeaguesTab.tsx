@@ -278,6 +278,9 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
+
 
       <AddTeamDialog
         tenantId={clubId}

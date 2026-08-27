@@ -135,7 +135,7 @@ export default function ClubAdmin() {
     enabled: !!user && !!baseClub?.id,
     staleTime: 30_000,
   });
-  const club = (adminClub || baseClub) as typeof baseClub;
+  const club = (adminClub || baseClub || contextClub) as typeof baseClub;
   // Hooks must run on every render — call before any early returns.
   const setupStatus = useSetupStatus(club?.id ?? "", club as any);
   const { enabled: enabledCaps, hasRows: hasCapRows, isLoading: capsLoading } = useCapabilities(club?.id);

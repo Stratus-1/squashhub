@@ -8907,6 +8907,9 @@ export type Database = {
           display_price_per_member: number | null
           display_total: number | null
           due_date: string | null
+          eft_proof_path: string | null
+          eft_proof_uploaded_at: string | null
+          eft_proof_uploaded_by: string | null
           email_sent_at: string | null
           email_status: string | null
           fx_rate_to_zar: number | null
@@ -8947,6 +8950,9 @@ export type Database = {
           display_price_per_member?: number | null
           display_total?: number | null
           due_date?: string | null
+          eft_proof_path?: string | null
+          eft_proof_uploaded_at?: string | null
+          eft_proof_uploaded_by?: string | null
           email_sent_at?: string | null
           email_status?: string | null
           fx_rate_to_zar?: number | null
@@ -8987,6 +8993,9 @@ export type Database = {
           display_price_per_member?: number | null
           display_total?: number | null
           due_date?: string | null
+          eft_proof_path?: string | null
+          eft_proof_uploaded_at?: string | null
+          eft_proof_uploaded_by?: string | null
           email_sent_at?: string | null
           email_status?: string | null
           fx_rate_to_zar?: number | null
@@ -12367,6 +12376,10 @@ export type Database = {
       set_doubles_pairing_locked: {
         Args: { p_champ_id: string; p_locked: boolean }
         Returns: boolean
+      }
+      submit_platform_invoice_eft_proof: {
+        Args: { _invoice_id: string; _path: string }
+        Returns: undefined
       }
       sync_bells_match_state: {
         Args: {

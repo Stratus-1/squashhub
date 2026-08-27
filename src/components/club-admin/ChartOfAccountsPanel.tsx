@@ -95,10 +95,18 @@ export function ChartOfAccountsPanel({ clubId, accounts, getBalance, getCustomBa
           <ListTree className="w-4 h-4 text-primary" />
           <h3 className="font-semibold text-sm">Chart of Accounts</h3>
         </div>
-        <Button size="sm" onClick={openNew} className="gap-1.5 h-8">
-          <Plus className="w-3.5 h-3.5" /> Add Account
-        </Button>
+        <div className="flex items-center gap-2">
+          {onOpeningBalances && (
+            <Button size="sm" variant="outline" onClick={onOpeningBalances} className="gap-1.5 h-8">
+              <BookOpen className="w-3.5 h-3.5" /> Opening Balances
+            </Button>
+          )}
+          <Button size="sm" onClick={openNew} className="gap-1.5 h-8">
+            <Plus className="w-3.5 h-3.5" /> Add Account
+          </Button>
+        </div>
       </div>
+
 
       {CATEGORIES.map((category) => {
         const std = standardKeys.filter((a) => accounts[a].category === category);

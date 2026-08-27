@@ -35,7 +35,7 @@ import DebitOrdersPanel from "./DebitOrdersPanel";
 type GLAccount =
   | "debtors" | "creditors" | "bank_current" | "cash"
   | "opening_balance_equity" | "member_credits" | "association_payable"
-  | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income"
+  | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income" | "wifi_income"
   | "bar_expense" | "league_fees_expense" | "national_body_expense"
   | "maintenance" | "electricity" | "rent" | "bank_charges" | "gateway_fees" | "cleaning_services" | "general_expense";
 
@@ -57,13 +57,14 @@ const CHART_OF_ACCOUNTS: Record<GLAccount, AccountMeta> = {
   association_payable: { label: "Association Payable", type: "BS", category: "Liability", normal: "Cr" },
   opening_balance_equity: { label: "Opening Balance Equity", type: "BS", category: "Liability", normal: "Cr" },
   // Income
-  fee_income:        { label: "Fee Income",           type: "IS", category: "Income",    normal: "Cr" },
-  membership_income: { label: "Membership Income",    type: "IS", category: "Income",    normal: "Cr" },
-  bar_income:        { label: "Bar Sales Income",     type: "IS", category: "Income",    normal: "Cr" },
-  league_fees_income:      { label: "League Fees Income",       type: "IS", category: "Income",  normal: "Cr" },
-  national_body_income:    { label: "National Body Fees Income", type: "IS", category: "Income", normal: "Cr" },
-  tournament_income:       { label: "Tournament Income",         type: "IS", category: "Income", normal: "Cr" },
-  light_fees_income:       { label: "Light Fees Income",          type: "IS", category: "Income", normal: "Cr" },
+  fee_income:        { label: "Fee Income — General",     type: "IS", category: "Income",    normal: "Cr" },
+  membership_income: { label: "Fee Income — Membership",  type: "IS", category: "Income",    normal: "Cr" },
+  bar_income:        { label: "Bar Sales Income",         type: "IS", category: "Income",    normal: "Cr" },
+  league_fees_income:      { label: "Fee Income — League",        type: "IS", category: "Income",  normal: "Cr" },
+  national_body_income:    { label: "Fee Income — National Body", type: "IS", category: "Income", normal: "Cr" },
+  tournament_income:       { label: "Fee Income — Tournament",    type: "IS", category: "Income", normal: "Cr" },
+  light_fees_income:       { label: "Fee Income — Lights",        type: "IS", category: "Income", normal: "Cr" },
+  wifi_income:             { label: "Fee Income — Wi-Fi",         type: "IS", category: "Income", normal: "Cr" },
   // Expenses
   bar_expense:             { label: "Bar Stock Purchases",       type: "IS", category: "Expense", normal: "Dr" },
   league_fees_expense:     { label: "League Fees Payouts",       type: "IS", category: "Expense", normal: "Dr" },

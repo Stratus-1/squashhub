@@ -1,0 +1,1 @@
+ALTER TYPE gl_account ADD VALUE IF NOT EXISTS 'wifi_income';

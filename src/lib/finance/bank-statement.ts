@@ -338,6 +338,7 @@ const RULES: Array<{ re: RegExp; account: string; sign?: "in" | "out" }> = [
   { re: /squash sa|ssa|nsa|association|federation|league fee/i, account: "national_body_expense", sign: "out" },
   { re: /sub(scription)?|membership|member fee|annual fee/i, account: "membership_income", sign: "in" },
   { re: /tournament|champs|championship/i, account: "tournament_income", sign: "in" },
+  { re: /wi-?fi|wifi|internet|hotspot|router data/i, account: "wifi_income", sign: "in" },
   { re: /light|court light/i, account: "light_fees_income", sign: "in" },
   { re: /bar|tab|honesty/i, account: "bar_income", sign: "in" },
 ];

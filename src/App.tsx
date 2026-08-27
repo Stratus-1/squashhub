@@ -272,11 +272,12 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
   const { subdomain, club } = useClubContext();
   const { data: myClubMember, isLoading } = useMyClubMember();
   const isSuperAdmin = useIsSuperAdmin();
+  const isAssociationAdmin = useIsAssociationAdmin(club?.id);
   const [hasMembershipElsewhere, setHasMembershipElsewhere] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    if (!user?.id || !subdomain || !club?.id || myClubMember || isSuperAdmin) {
+    if (!user?.id || !subdomain || !club?.id || myClubMember || isSuperAdmin || isAssociationAdmin) {
       setHasMembershipElsewhere(null);
       return;
     }

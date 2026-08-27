@@ -55,7 +55,7 @@ export function useClubGLAccountMutations(clubId: string) {
       if (error) throw error;
       await invalidate();
     },
-    async update(id: string, patch: Partial<Pick<ClubGLAccount, "name" | "category" | "base_account" | "description" | "is_active">>) {
+    async update(id: string, patch: Partial<Pick<ClubGLAccount, "name" | "category" | "description" | "is_active">> & { base_account?: string | null }) {
       const { error } = await fromExt("club_gl_accounts").update(patch as any).eq("id", id);
       if (error) throw error;
       await invalidate();

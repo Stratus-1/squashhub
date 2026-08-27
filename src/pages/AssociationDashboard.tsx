@@ -67,6 +67,8 @@ interface OverviewTile {
   description: string;
   icon: any;
   color: string;
+  border?: string;
+  shadow?: string;
   show?: boolean;
 }
 
@@ -117,13 +119,13 @@ export default function AssociationDashboard() {
   }, [location.search, visibleAdminTabs.length]);
 
   // Tabs promoted onto the dashboard as coloured tiles (still open inside admin view)
-  const PROMOTED: { value: string; label: string; description: string; icon: any; color: string }[] = [
-    { value: "affiliated", label: "Affiliated Clubs", description: "Clubs in this association", icon: Network, color: "text-sky-500 bg-sky-500/10" },
-    { value: "leagues", label: "Leagues", description: "Seasons, teams & fixtures", icon: Trophy, color: "text-amber-500 bg-amber-500/10" },
-    { value: "champs", label: "Tournaments", description: "Draws, entries & results", icon: Medal, color: "text-purple-500 bg-purple-500/10" },
-    { value: "members", label: "Members", description: "League members across clubs", icon: Users, color: "text-emerald-500 bg-emerald-500/10" },
-    { value: "users", label: "Users", description: "Logins & access", icon: UserCheck, color: "text-cyan-500 bg-cyan-500/10" },
-    { value: "comms", label: "Comms", description: "Templates & campaigns", icon: MessageCircle, color: "text-rose-500 bg-rose-500/10" },
+  const PROMOTED: { value: string; label: string; description: string; icon: any; color: string; gradient: string; border: string; shadow: string }[] = [
+    { value: "affiliated", label: "Affiliated Clubs", description: "Clubs in this association", icon: Network, color: "text-sky-600", gradient: "from-sky-400 to-blue-600", border: "border-sky-200 dark:border-sky-800", shadow: "shadow-sky-500/10" },
+    { value: "leagues", label: "Leagues", description: "Seasons, teams & fixtures", icon: Trophy, color: "text-amber-600", gradient: "from-amber-400 to-orange-500", border: "border-amber-200 dark:border-amber-800", shadow: "shadow-amber-500/10" },
+    { value: "champs", label: "Tournaments", description: "Draws, entries & results", icon: Medal, color: "text-purple-600", gradient: "from-purple-400 to-fuchsia-600", border: "border-purple-200 dark:border-purple-800", shadow: "shadow-purple-500/10" },
+    { value: "members", label: "Members", description: "League members across clubs", icon: Users, color: "text-emerald-600", gradient: "from-emerald-400 to-teal-600", border: "border-emerald-200 dark:border-emerald-800", shadow: "shadow-emerald-500/10" },
+    { value: "users", label: "Users", description: "Logins & access", icon: UserCheck, color: "text-cyan-600", gradient: "from-cyan-400 to-blue-500", border: "border-cyan-200 dark:border-cyan-800", shadow: "shadow-cyan-500/10" },
+    { value: "comms", label: "Comms", description: "Templates & campaigns", icon: MessageCircle, color: "text-rose-600", gradient: "from-rose-400 to-pink-600", border: "border-rose-200 dark:border-rose-800", shadow: "shadow-rose-500/10" },
   ];
 
   const promotedTiles: OverviewTile[] = PROMOTED
@@ -133,7 +135,9 @@ export default function AssociationDashboard() {
       label: p.label,
       description: p.description,
       icon: p.icon,
-      color: p.color,
+      color: `${p.color} bg-gradient-to-br ${p.gradient}`,
+      border: p.border,
+      shadow: p.shadow,
     }));
 
   const overviewTiles: OverviewTile[] = [
@@ -147,7 +151,9 @@ export default function AssociationDashboard() {
       label: "Setup",
       description: "Association setup & configuration",
       icon: Settings,
-      color: "text-primary bg-primary/10",
+      color: "text-white bg-gradient-to-br from-primary to-primary/80",
+      border: "border-primary/30 dark:border-primary/40",
+      shadow: "shadow-primary/15",
     }] : []),
     ...promotedTiles,
     {
@@ -155,14 +161,18 @@ export default function AssociationDashboard() {
       label: "My Account",
       description: "Profile, fees & preferences",
       icon: Wallet,
-      color: "text-indigo-500 bg-indigo-500/10",
+      color: "text-white bg-gradient-to-br from-indigo-500 to-violet-600",
+      border: "border-indigo-200 dark:border-indigo-800",
+      shadow: "shadow-indigo-500/10",
     },
     {
       to: "/support",
       label: "Support",
       description: "Get help",
       icon: LifeBuoy,
-      color: "text-orange-500 bg-orange-500/10",
+      color: "text-white bg-gradient-to-br from-orange-500 to-red-500",
+      border: "border-orange-200 dark:border-orange-800",
+      shadow: "shadow-orange-500/10",
     },
   ];
 
@@ -181,7 +191,7 @@ export default function AssociationDashboard() {
       case "banking": return <BankingTab club={association as any} clubId={association.id} />;
       case "finance": return <FinanceTab club={association as any} clubId={association.id} />;
       case "comms": return <CommunicationsTab clubId={association.id} />;
-      case "emails": return <EmailLogTab clubId={association.id} />;
+      case "emails": return <EmailLogTab clubId={association.id} mode="association" />;
       case "settings": return <SettingsTab club={association as any} clubId={association.id} />;
       case "permissions": return <PermissionsTab clubId={association.id} />;
       default: return null;
@@ -234,10 +244,14 @@ export default function AssociationDashboard() {
                         handle();
                       }
                     }}
-                    className="p-3 cursor-pointer hover:border-primary/40 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className={cn(
+                      "p-3 cursor-pointer transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring border-2 hover:-translate-y-0.5 hover:shadow-md",
+                      tile.border || "border-border",
+                      tile.shadow || ""
+                    )}
                   >
-                    <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center mb-2", tile.color)}>
-                      <tile.icon className="w-5 h-5" />
+                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 shadow-sm", tile.color)}>
+                      <tile.icon className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex items-center justify-between gap-1">
                       <h3 className="text-sm font-semibold leading-tight truncate">{tile.label}</h3>

@@ -35,7 +35,7 @@ import DebitOrdersPanel from "./DebitOrdersPanel";
 type GLAccount =
   | "debtors" | "creditors" | "bank_current" | "cash"
   | "opening_balance_equity" | "member_credits" | "association_payable"
-  | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income"
+  | "fee_income" | "bar_income" | "membership_income" | "league_fees_income" | "national_body_income" | "tournament_income" | "light_fees_income" | "wifi_income"
   | "bar_expense" | "league_fees_expense" | "national_body_expense"
   | "maintenance" | "electricity" | "rent" | "bank_charges" | "gateway_fees" | "cleaning_services" | "general_expense";
 

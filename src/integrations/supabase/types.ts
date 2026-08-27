@@ -12493,6 +12493,10 @@ export type Database = {
         Args: { _invoice_id: string; _path: string }
         Returns: undefined
       }
+      sync_association_clubs_from_federation: {
+        Args: { _tenant_id?: string }
+        Returns: number
+      }
       sync_bells_match_state: {
         Args: {
           _bell_ends_at?: string

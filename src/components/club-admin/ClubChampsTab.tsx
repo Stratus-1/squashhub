@@ -160,7 +160,8 @@ import {
   roundIsClubScheduled,
   type RoundMatchRow,
 } from "@/lib/tournaments/self-scheduled-rounds";
-import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
+import { useTournamentEligibility, useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
+import { owningAssociation } from "@/lib/tournaments/eligibility";
 import { DoublesPairsPanel } from "@/components/club-admin/DoublesPairsPanel";
 import { z } from "zod";
 import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";
@@ -216,6 +217,30 @@ const ELIGIBILITY_SCOPES: { value: string; label: string; hint: string }[] = [
     hint: "Every club under the federation, including unaffiliated clubs.",
   },
 ];
+
+/**
+ * Association / federation tenants never run "club" events: they have no
+ * roster of their own. Drop club-only options and name the association
+ * explicitly instead of the generic "Regional league".
+ */
+function eventTypesFor(scope: "club" | "association" | "federation") {
+  if (scope === "club") return EVENT_TYPES;
+  return EVENT_TYPES.filter((t) => t.value !== "club_championship");
+}
+
+function eligibilityScopesFor(
+  scope: "club" | "association" | "federation",
+  associationName?: string | null
+) {
+  const named = ELIGIBILITY_SCOPES.map((s) =>
+    s.value === "association" && associationName
+      ? { ...s, label: associationName, hint: `Every club affiliated to ${associationName}.` }
+      : s
+  );
+  if (scope === "club") return named;
+  return named.filter((s) => s.value !== "club");
+}
+
 
 
 /**
@@ -742,8 +767,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Who may enter — governance field, kept here because the eligible player
   // pool is derived from it (club / owning association / whole federation).
-  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "open");
+  const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "association");
   const eligibility = useTournamentEligibility({ scope: eligibilityScope, clubId, ownerOrgId });
+
+  // Name of the owning association, used to label the eligibility option.
+  const { data: orgHierarchy } = useOrgHierarchyLite();
+  const associationName = useMemo(() => {
+    if (!orgHierarchy) return null;
+    return owningAssociation(ownerOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.name ?? null;
+  }, [orgHierarchy, ownerOrgId]);
+
+  const eventTypeOptions = useMemo(() => eventTypesFor(scope), [scope]);
+  const eligibilityOptions = useMemo(
+    () => eligibilityScopesFor(scope, associationName),
+    [scope, associationName]
+  );
+
+  // Association / federation tenants can never sit on a club-only value.
+  useEffect(() => {
+    if (scope !== "club" && eligibilityScope === "club") setEligibilityScope("association");
+  }, [scope, eligibilityScope]);
+
+
+
 
   // Player pool = every member of every eligible club (plus host/venue clubs).
   const playerPoolClubIds = useMemo(() => {
@@ -1421,6 +1467,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
   // Tournament category / capacity / seeding — stored on the tournaments row.
   const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open_tournament");
+  useEffect(() => {
+    if (scope !== "club" && eventType === "club_championship") setEventType("open_tournament");
+  }, [scope, eventType]);
   // `eligibilityScope` is declared near the top of the component because the
   // eligible player pool query depends on it.
   // Load the saved eligibility whenever a different tournament is opened for edit.
@@ -6789,7 +6838,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <Select value={eventType} onValueChange={setEventType}>
                     <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {EVENT_TYPES.map((t) => (
+                      {eventTypeOptions.map((t) => (
                         <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -6801,7 +6850,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <Select value={eligibilityScope} onValueChange={setEligibilityScope}>
                     <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {ELIGIBILITY_SCOPES.map((t) => (
+                      {eligibilityOptions.map((t) => (
                         <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -6811,7 +6860,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <strong>Entry &amp; fees / Players</strong>.
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    {ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.hint}
+                    {eligibilityOptions.find((s) => s.value === eligibilityScope)?.hint}
                   </p>
                   {eligibility && (
                     <p className="text-[11px] font-medium text-primary mt-1">Eligible: {eligibility.summary}</p>
@@ -8885,7 +8934,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                 <Label className="text-sm">Invite audience — who gets invited (choosing here never sends)</Label>
                 <p className="text-[11px] text-muted-foreground">
-                  Who gets invited, within the “{ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.label || "Club members"}” eligibility you chose in Step 1.
+                  Who gets invited, within the “{eligibilityOptions.find((s) => s.value === eligibilityScope)?.label || "Club members"}” eligibility you chose in Step 1.
                   This is separate from the Structure step — the league/team selection there only decides how accepted entrants are grouped and seeded.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 text-sm">

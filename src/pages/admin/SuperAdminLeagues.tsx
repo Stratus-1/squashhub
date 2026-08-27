@@ -593,10 +593,8 @@ export default function SuperAdminLeagues() {
               {activeAssociation ? <AssociationPenaltiesTab associationId={activeAssociation} /> : <p className="text-sm text-muted-foreground">Select a league to view penalties.</p>}
             </TabsContent>
 
-            {/* Rules Tab */}
-            <TabsContent value="rules" className="space-y-4">
-              {activeAssociation ? <AssociationRulesTab associationId={activeAssociation} /> : <p className="text-sm text-muted-foreground">Select a league to configure rules.</p>}
-            </TabsContent>
+
+
           </Tabs>
         </>
       )}

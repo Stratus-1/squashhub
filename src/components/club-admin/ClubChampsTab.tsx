@@ -6828,7 +6828,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <Select value={eventType} onValueChange={setEventType}>
                     <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {EVENT_TYPES.map((t) => (
+                      {eventTypeOptions.map((t) => (
                         <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -6840,7 +6840,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <Select value={eligibilityScope} onValueChange={setEligibilityScope}>
                     <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {ELIGIBILITY_SCOPES.map((t) => (
+                      {eligibilityOptions.map((t) => (
                         <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -6850,7 +6850,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <strong>Entry &amp; fees / Players</strong>.
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    {ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.hint}
+                    {eligibilityOptions.find((s) => s.value === eligibilityScope)?.hint}
                   </p>
                   {eligibility && (
                     <p className="text-[11px] font-medium text-primary mt-1">Eligible: {eligibility.summary}</p>
@@ -8924,7 +8924,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                 <Label className="text-sm">Invite audience — who gets invited (choosing here never sends)</Label>
                 <p className="text-[11px] text-muted-foreground">
-                  Who gets invited, within the “{ELIGIBILITY_SCOPES.find((s) => s.value === eligibilityScope)?.label || "Club members"}” eligibility you chose in Step 1.
+                  Who gets invited, within the “{eligibilityOptions.find((s) => s.value === eligibilityScope)?.label || "Club members"}” eligibility you chose in Step 1.
                   This is separate from the Structure step — the league/team selection there only decides how accepted entrants are grouped and seeded.
                 </p>
                 <div className="flex flex-wrap items-center gap-4 text-sm">

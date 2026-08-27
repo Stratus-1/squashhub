@@ -315,18 +315,52 @@ export default function ClubLanding({ hostClub, hostSubdomain }: ClubLandingProp
                 </div>
               )}
 
-
-              <div className="pt-4">
-
+              <div className="pt-4 space-y-3">
                 <Button
                   size="lg"
                   className="w-full gap-2 bg-landing-navy hover:bg-landing-navy/90 text-white rounded-full h-12"
                   onClick={() => { window.location.href = signInUrl; }}
                 >
-                  Sign in, register, apply for membership
+                  Log in / register
                   <ArrowRight className="w-4 h-4" />
                 </Button>
+
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full gap-2 rounded-full h-12 border-white/30 bg-white/5 text-white hover:bg-white/15 hover:text-white"
+                  onClick={() => { window.location.href = applyUrl; }}
+                >
+                  Sign up as a new member
+                  <UserPlus className="w-4 h-4" />
+                </Button>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  {[
+                    { label: "Log in / register", url: signInUrl },
+                    { label: "New member sign-up", url: applyUrl },
+                  ].map((q) => (
+                    <div key={q.label} className="flex flex-col items-center gap-2">
+                      <div className="rounded-xl bg-white p-2 shadow-sm">
+                        <QRCodeSVG
+                          value={q.url}
+                          size={104}
+                          bgColor="#ffffff"
+                          fgColor="#1E3A5F"
+                          level="M"
+                        />
+                      </div>
+                      <span className="text-[11px] font-medium text-white/70 text-center leading-tight">
+                        {q.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-white/50 text-center">
+                  Scan a code with your phone camera to go straight there.
+                </p>
               </div>
+
             </div>
 
             <div className="mt-4 flex justify-center">

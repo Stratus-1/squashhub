@@ -126,30 +126,46 @@ export function TenantSwitcher() {
           <ChevronDown className="w-3 h-3 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
+      <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="text-xs">Switch workspace</DropdownMenuLabel>
+        {tenants.length > 6 && (
+          <div className="px-2 pb-1">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search clubs..."
+              className="h-7 text-xs"
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
         <DropdownMenuSeparator />
-        {tenants.map((t) => {
-          const isActive = t.subdomain === currentSubdomain;
-          return (
-            <DropdownMenuItem
-              key={t.id}
-              onClick={() => t.subdomain && goToTenant(t.subdomain)}
-              className="cursor-pointer"
-            >
-              {t.tenant_type === "association" ? (
-                <Trophy className="w-3.5 h-3.5 mr-2 text-primary" />
-              ) : (
-                <Building2 className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm truncate">{t.name}</p>
-                <p className="text-[10px] text-muted-foreground capitalize">{t.tenant_type}</p>
-              </div>
-              {isActive && <Check className="w-3.5 h-3.5 text-primary" />}
-            </DropdownMenuItem>
-          );
-        })}
+        <div className="max-h-72 overflow-y-auto">
+          {filtered.map((t) => {
+            const isActive = t.subdomain === currentSubdomain;
+            return (
+              <DropdownMenuItem
+                key={t.id}
+                onClick={() => t.subdomain && goToTenant(t.subdomain)}
+                className="cursor-pointer"
+              >
+                {t.tenant_type === "association" ? (
+                  <Trophy className="w-3.5 h-3.5 mr-2 text-primary" />
+                ) : (
+                  <Building2 className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">{t.name}</p>
+                  <p className="text-[10px] text-muted-foreground capitalize">{t.tenant_type}</p>
+                </div>
+                {isActive && <Check className="w-3.5 h-3.5 text-primary" />}
+              </DropdownMenuItem>
+            );
+          })}
+          {filtered.length === 0 && (
+            <p className="px-3 py-2 text-xs text-muted-foreground">No matches.</p>
+          )}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

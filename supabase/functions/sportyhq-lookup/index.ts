@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
 
       const { data: people, error: peopleErr } = await supabase
         .from("people")
-        .select("id, full_name, club_members(clubs(name))")
+        .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
         .eq("status", "active")
         .order("full_name")
         .range(offset, offset + limit * 3);

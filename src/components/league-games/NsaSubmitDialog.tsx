@@ -219,10 +219,34 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
 
       // mode === "commit"
       if (!okFlag) {
+        // NSA sometimes returns a page that trips the error scan even though the
+        // result posted. Confirm against the public feed before alarming the user.
+        const { data: vData } = await supabase.functions.invoke("nsa-submit-result", {
+          body: { action: "verify_committed", fixture_id: fixtureId, league: NSA_CURRENT_SEASON },
+        });
+        if ((vData as any)?.ok) {
+          setResult({ ok: true, errors: [], notes: ["Confirmed completed on the NSA fixtures feed"], mode, title: r.title });
+          setVerification({ ok: true, message: "Confirmed on NSA (status: completed)" });
+          if (fixtureRowId) {
+            await supabase
+              .from("platform_league_fixtures")
+              .update({
+                nsa_fixture_id: fixtureId,
+                nsa_submitted_at: new Date().toISOString(),
+                nsa_submitted_by: clubMemberId,
+                nsa_submission_notes: "Confirmed completed on the NSA fixtures feed",
+              })
+              .eq("id", fixtureRowId);
+            qc.invalidateQueries({ queryKey: ["nsa-receipt", fixtureRowId] });
+          }
+          toast.success("Submitted to NSA ✓ — confirmed on the NSA feed");
+          return;
+        }
         toast.error(`Commit rejected by NSA (${r.errors?.length || 0} issue(s))`);
         return;
       }
       toast.success("Submitted to NSA ✓ — verifying…");
+
 
       // Step 2: re-fetch fixture from NSA public feed to confirm it shows as completed.
       setVerifying(true);

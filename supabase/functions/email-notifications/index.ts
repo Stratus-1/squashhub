@@ -774,17 +774,32 @@ Deno.serve(async (req) => {
       clubName: clubMail?.clubName || "",
     };
     let fallbackWarning: string | null = null;
+    let usedPlatform = false;
     if (clubMail) {
-      result = await sendViaClubSmtp(clubMail, { to: email, subject, html, text });
+      result = await sendViaClubSmtp(clubMail, { to: email, cc: ccEmails, subject, html, text });
       if (!result.ok) {
         // Try the club's own settings first, then fall back to the platform
         // sender so the message still goes out — always logged/reported.
         fallbackWarning = describeSmtpError(result.reason || "", clubMail);
         console.error("[email-notifications] club SMTP failed, using platform sender", fallbackWarning);
         result = await sendViaPlatform(platformArgs);
+        usedPlatform = true;
       }
     } else {
       result = await sendViaPlatform(platformArgs);
+      usedPlatform = true;
+    }
+
+    // The platform sender has no CC field: send the admin their own copy so the
+    // club still sees what went out.
+    if (usedPlatform && result.ok && ccEmails.length) {
+      for (const cc of ccEmails) {
+        try {
+          await sendViaPlatform({ ...platformArgs, to: cc, subject: `[copy] ${subject}` });
+        } catch (e) {
+          console.error("[email-notifications] cc copy failed", cc, (e as Error).message);
+        }
+      }
     }
 
 

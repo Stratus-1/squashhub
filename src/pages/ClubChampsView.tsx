@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { CollapsibleCard, CollapsibleSection } from "@/components/ui/collapsible-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
@@ -596,26 +597,31 @@ export default function ClubChampsView() {
           const out = pool.eliminated.length;
           const title = pool.section === 0 ? "Finals" : multi ? `Pool ${pool.letter}` : "Draw";
           return (
-            <div key={pool.section} className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="text-xs font-semibold">{title}</Badge>
-                <span className="text-xs text-muted-foreground">
-                  {active.length} still in · {pool.matchesDone}/{pool.matchesTotal} matches played
-                </span>
-                {pool.complete && (
-                  <Badge className="text-[10px]">
-                    {pool.qualifierIds.length === 1 ? "Pool decided" : "Pool complete"}
-                  </Badge>
-                )}
-                {pool.complete && pool.qualifierIds.length > 0 && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {pool.qualifierIds.length === 1 ? "Winner" : "Qualified"}:{" "}
-                    {pool.qualifierIds
-                      .map((id) => all.find((r: any) => r.club_member_id === id)?.name || "—")
-                      .join(", ")}
-                  </Badge>
-                )}
-              </div>
+            <CollapsibleSection
+              key={pool.section}
+              className="space-y-2"
+              header={
+                <>
+                  <Badge variant="outline" className="text-xs font-semibold">{title}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {active.length} still in · {pool.matchesDone}/{pool.matchesTotal} matches played
+                  </span>
+                  {pool.complete && (
+                    <Badge className="text-[10px]">
+                      {pool.qualifierIds.length === 1 ? "Pool decided" : "Pool complete"}
+                    </Badge>
+                  )}
+                  {pool.complete && pool.qualifierIds.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      {pool.qualifierIds.length === 1 ? "Winner" : "Qualified"}:{" "}
+                      {pool.qualifierIds
+                        .map((id) => all.find((r: any) => r.club_member_id === id)?.name || "—")
+                        .join(", ")}
+                    </Badge>
+                  )}
+                </>
+              }
+            >
               {active.length > 0 ? renderStandingsTable(active) : (
                 <p className="text-xs text-muted-foreground italic">No active players left in this pool.</p>
               )}
@@ -624,7 +630,7 @@ export default function ClubChampsView() {
                   {out} eliminated — results kept in the draw and Results.
                 </p>
               )}
-            </div>
+            </CollapsibleSection>
           );
         })}
       </div>
@@ -661,17 +667,22 @@ export default function ClubChampsView() {
           const poolNumber = i + 1;
           const s = getGroupStandings(gn, poolNumber);
           return (
-            <div key={poolNumber} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
-                <span className="text-xs text-muted-foreground">
-                  {s.length} {isDoubles ? (s.length === 1 ? "pair" : "pairs") : (s.length === 1 ? "player" : "players")}
-                </span>
-              </div>
+            <CollapsibleSection
+              key={poolNumber}
+              className="space-y-2"
+              header={
+                <>
+                  <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {s.length} {isDoubles ? (s.length === 1 ? "pair" : "pairs") : (s.length === 1 ? "player" : "players")}
+                  </span>
+                </>
+              }
+            >
               {s.length > 0 ? renderStandingsTable(s) : (
                 <p className="text-xs text-muted-foreground italic">No entries in this pool yet.</p>
               )}
-            </div>
+            </CollapsibleSection>
           );
         })}
       </div>
@@ -2251,14 +2262,14 @@ export default function ClubChampsView() {
       overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
 
     const winnersCard = !koRunning && leagueWinners.length > 0 ? (
-      <Card key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
+      <CollapsibleCard key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5"
+        title={
+          <span className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-amber-600" />
             {winnersTitle}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </span>
+        }
+      >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -2336,8 +2347,7 @@ export default function ClubChampsView() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
     ) : null;
 
     // Wooden spoons table — bottom of each league/pool plus the overall tournament loser.
@@ -2353,14 +2363,14 @@ export default function ClubChampsView() {
       overallRows[overallRows.length - 1] ||
       null;
     const woodenSpoonsCard = !koRunning && leagueLosers.length > 0 ? (
-      <Card key="wooden-spoons" className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
+      <CollapsibleCard key="wooden-spoons" className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10" defaultOpen={false}
+        title={
+          <span className="flex items-center gap-2">
             <span className="text-amber-700 dark:text-amber-300">🥄</span>
             <span className="text-amber-800 dark:text-amber-300">{spoonsTitle}</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </span>
+        }
+      >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -2437,8 +2447,7 @@ export default function ClubChampsView() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
     ) : null;
 
 
@@ -2473,7 +2482,7 @@ export default function ClubChampsView() {
 
 
       const titleNode = (
-        <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
+        <span className="flex items-center gap-2 flex-wrap">
           <span>{getGroupLabel(champ, gn)}</span>
           {leagueTotal && leagueTotal.gp > 0 && (
             <>
@@ -2485,7 +2494,7 @@ export default function ClubChampsView() {
               </span>
             </>
           )}
-        </CardTitle>
+        </span>
       );
 
       if (multipleGroups && !isCrossLeague) {
@@ -2518,42 +2527,39 @@ export default function ClubChampsView() {
         if (summaryFirst) {
           // Summary tables first, fixtures for each league below them.
           standingsCards.push(
-            <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
-              <CardHeader>{titleNode}</CardHeader>
-              <CardContent className="space-y-4">
-                {swissControlsFor(gn)}
-                {standingsTable}
-              </CardContent>
-            </Card>
+            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}
+              title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
+            >
+              {swissControlsFor(gn)}
+              {standingsTable}
+            </CollapsibleCard>
           );
           if (groupMatches.length > 0) {
             fixtureCards.push(
-              <Card key={`f-${gn}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{getGroupLabel(champ, gn)} — Fixtures &amp; Results</CardTitle>
-                </CardHeader>
-                <CardContent>{fixtureBody}</CardContent>
-              </Card>
+              <CollapsibleCard key={`f-${gn}`} headerClassName="pb-3" defaultOpen={false}
+                title={`${getGroupLabel(champ, gn)} — Fixtures & Results`}
+              >
+                {fixtureBody}
+              </CollapsibleCard>
             );
           }
         } else {
           standingsCards.push(
-            <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
-              <CardHeader>{titleNode}</CardHeader>
-              <CardContent className="space-y-4">
-                {swissControlsFor(gn)}
-                {standingsTable}
-                {groupMatches.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h4 className="font-medium text-sm mb-2">Fixtures &amp; Results</h4>
-                      {fixtureBody}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}
+              title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
+            >
+              {swissControlsFor(gn)}
+              {standingsTable}
+              {groupMatches.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Fixtures &amp; Results</h4>
+                    {fixtureBody}
+                  </div>
+                </>
+              )}
+            </CollapsibleCard>
           );
         }
 
@@ -2561,40 +2567,34 @@ export default function ClubChampsView() {
 
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(
-          <Card key={gn} className={cn(isLeading && "border-primary/40")}>
-            <CardHeader>{titleNode}</CardHeader>
-            <CardContent className="space-y-4">
-              {swissControlsFor(gn)}
-              {standingsTable}
-              {!isCrossLeague && groupMatches.length > 0 && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
-                    <div className="space-y-1.5">
-                      {groupMatches.map((m: any) => renderMatchRow(m))}
-                    </div>
+          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")}
+            title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
+          >
+            {swissControlsFor(gn)}
+            {standingsTable}
+            {!isCrossLeague && groupMatches.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
+                  <div className="space-y-1.5">
+                    {groupMatches.map((m: any) => renderMatchRow(m))}
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                </div>
+              </>
+            )}
+          </CollapsibleCard>
         );
       }
     });
 
     // Cross-league: single combined Fixtures & Results card (matches shared across leagues).
     const combinedFixtures = isCrossLeague ? (
-      <Card key="cross-fixtures">
-        <CardHeader>
-          <CardTitle className="text-lg">Fixtures & Results</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1.5">
-            {matches.map((m: any) => renderMatchRow(m))}
-          </div>
-        </CardContent>
-      </Card>
+      <CollapsibleCard key="cross-fixtures" title="Fixtures & Results" titleClassName="text-lg">
+        <div className="space-y-1.5">
+          {matches.map((m: any) => renderMatchRow(m))}
+        </div>
+      </CollapsibleCard>
     ) : null;
     const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
 

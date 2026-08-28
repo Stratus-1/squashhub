@@ -221,7 +221,10 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; cc?: string[];
     const accepted: string[] = Array.isArray(info?.accepted) ? info.accepted.map(String) : [];
     const rejected: string[] = Array.isArray(info?.rejected) ? info.rejected.map(String) : [];
     const serverResponse = String(info?.response || "").trim();
-    if (rejected.length > 0 || (accepted.length === 0 && Array.isArray(info?.accepted))) {
+    // A rejected CC address must not fail the whole send — only the primary
+    // recipient decides success.
+    const primaryRejected = rejected.some((r) => r.toLowerCase().includes(args.to.toLowerCase()));
+    if (primaryRejected || (accepted.length === 0 && Array.isArray(info?.accepted))) {
       const reason = `Recipient rejected by ${cfg.smtpHost}: ${rejected.join(", ") || args.to}. ${serverResponse}`.trim();
       await logEmailAttempt({ to: args.to, template: "club-smtp", status: "failed", error: reason, clubId: cfg.clubId });
       return { ok: false as const, skipped: false, reason };

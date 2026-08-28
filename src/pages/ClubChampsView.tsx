@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { CollapsibleCard, CollapsibleSection } from "@/components/ui/collapsible-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
@@ -596,26 +597,31 @@ export default function ClubChampsView() {
           const out = pool.eliminated.length;
           const title = pool.section === 0 ? "Finals" : multi ? `Pool ${pool.letter}` : "Draw";
           return (
-            <div key={pool.section} className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="text-xs font-semibold">{title}</Badge>
-                <span className="text-xs text-muted-foreground">
-                  {active.length} still in · {pool.matchesDone}/{pool.matchesTotal} matches played
-                </span>
-                {pool.complete && (
-                  <Badge className="text-[10px]">
-                    {pool.qualifierIds.length === 1 ? "Pool decided" : "Pool complete"}
-                  </Badge>
-                )}
-                {pool.complete && pool.qualifierIds.length > 0 && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {pool.qualifierIds.length === 1 ? "Winner" : "Qualified"}:{" "}
-                    {pool.qualifierIds
-                      .map((id) => all.find((r: any) => r.club_member_id === id)?.name || "—")
-                      .join(", ")}
-                  </Badge>
-                )}
-              </div>
+            <CollapsibleSection
+              key={pool.section}
+              className="space-y-2"
+              header={
+                <>
+                  <Badge variant="outline" className="text-xs font-semibold">{title}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {active.length} still in · {pool.matchesDone}/{pool.matchesTotal} matches played
+                  </span>
+                  {pool.complete && (
+                    <Badge className="text-[10px]">
+                      {pool.qualifierIds.length === 1 ? "Pool decided" : "Pool complete"}
+                    </Badge>
+                  )}
+                  {pool.complete && pool.qualifierIds.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      {pool.qualifierIds.length === 1 ? "Winner" : "Qualified"}:{" "}
+                      {pool.qualifierIds
+                        .map((id) => all.find((r: any) => r.club_member_id === id)?.name || "—")
+                        .join(", ")}
+                    </Badge>
+                  )}
+                </>
+              }
+            >
               {active.length > 0 ? renderStandingsTable(active) : (
                 <p className="text-xs text-muted-foreground italic">No active players left in this pool.</p>
               )}
@@ -624,7 +630,7 @@ export default function ClubChampsView() {
                   {out} eliminated — results kept in the draw and Results.
                 </p>
               )}
-            </div>
+            </CollapsibleSection>
           );
         })}
       </div>
@@ -661,17 +667,22 @@ export default function ClubChampsView() {
           const poolNumber = i + 1;
           const s = getGroupStandings(gn, poolNumber);
           return (
-            <div key={poolNumber} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
-                <span className="text-xs text-muted-foreground">
-                  {s.length} {isDoubles ? (s.length === 1 ? "pair" : "pairs") : (s.length === 1 ? "player" : "players")}
-                </span>
-              </div>
+            <CollapsibleSection
+              key={poolNumber}
+              className="space-y-2"
+              header={
+                <>
+                  <Badge variant="outline" className="text-xs font-semibold">Pool {poolLabel(poolNumber)}</Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {s.length} {isDoubles ? (s.length === 1 ? "pair" : "pairs") : (s.length === 1 ? "player" : "players")}
+                  </span>
+                </>
+              }
+            >
               {s.length > 0 ? renderStandingsTable(s) : (
                 <p className="text-xs text-muted-foreground italic">No entries in this pool yet.</p>
               )}
-            </div>
+            </CollapsibleSection>
           );
         })}
       </div>

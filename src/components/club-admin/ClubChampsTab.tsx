@@ -4767,13 +4767,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       // Carry each protected court/date/time onto its new row so the rebuild
       // never blanks a player's confirmed slot, even in self-scheduled mode.
+      // Already-played matches also carry their result across — a rebuild must
+      // never turn a completed match back into an unplayed fixture.
       for (const { protectedSchedule: p, match } of reconciled.matched) {
+        Object.assign(match as any, resultCarryOver(p, match as any));
         if (!p.bookingId && !p.scheduledDate) continue;
         (match as any).court_id = p.courtId;
         (match as any).scheduled_date = p.scheduledDate;
         (match as any).scheduled_time = p.scheduledTime;
         (match as any).booking_id = p.bookingId;
       }
+
 
       // Destructive rebuild happens only now: the draft is saved, the schedule
       // is valid and every protected fixture has a home in the new draw.

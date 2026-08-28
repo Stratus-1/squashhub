@@ -84,6 +84,7 @@ import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
 import SuperAdminClubs from "./pages/admin/SuperAdminClubs";
 import SuperAdminFederation from "./pages/admin/SuperAdminFederation";
 import SuperAdminTournaments from "./pages/admin/SuperAdminTournaments";
+const SuperAdminRankings = lazy(() => import("./pages/admin/SuperAdminRankings"));
 import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
 import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
 import SuperAdminSettings from "./pages/admin/SuperAdminSettings";
@@ -504,6 +505,7 @@ function AppRoutes() {
           <Route path="federation" element={<SuperAdminFederation />} />
           <Route path="tournaments" element={<SuperAdminTournaments />} />
           <Route path="users" element={<SuperAdminUsers />} />
+          <Route path="rankings" element={<SuperAdminRankings />} />
           <Route path="affiliations" element={<SuperAdminLeagues />} />
           <Route path="leagues" element={<Navigate to="/admin/affiliations" replace />} />
           <Route path="outreach" element={<SuperAdminOutreach />} />

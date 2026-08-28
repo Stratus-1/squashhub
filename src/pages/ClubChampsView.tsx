@@ -2673,7 +2673,28 @@ export default function ClubChampsView() {
             document.getElementById("tournament-fixtures")?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
         />
+        <DailyDigestCard
+          champId={champId!}
+          matches={matches as any[]}
+          getName={(memberId: string) => {
+            const e = (entries as any[]).find(
+              (x) => x.club_member_id === memberId || x.partner_member_id === memberId,
+            );
+            if (e) {
+              return e.club_member_id === memberId
+                ? getPlayerName(e.club_members)
+                : getPlayerName(e.partner);
+            }
+            for (const m of matches as any[]) {
+              for (const k of ["player_a", "player_b", "partner_a", "partner_b"]) {
+                if (m[`${k}_member_id`] === memberId) return getPlayerName(m[k]);
+              }
+            }
+            return "Unknown";
+          }}
+        />
         <TournamentProgressCard
+
 
           champId={champId!}
           canManage={canManage}

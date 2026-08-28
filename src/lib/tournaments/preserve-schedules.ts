@@ -44,9 +44,20 @@ export type ProtectedSchedule = {
   scheduledDate: string | null;
   scheduledTime: string | null;
   bookingId: string | null;
+  /** Already-played outcome, carried across so a rebuild never wipes a result. */
+  status: string | null;
+  score: string | null;
+  gameScores: any;
+  winnerMemberId: string | null;
+  sideAPoints: number | null;
+  sideBPoints: number | null;
+  /** True when side A/B are swapped relative to the old row (scores must flip). */
   /** Why the row is protected — drives the abort message. */
   reason: "booking" | "result";
+  /** Old row's side A member, used to detect an A/B flip in the new draw. */
+  playerAMemberId: string | null;
 };
+
 
 const DECIDED = new Set(["completed", "forfeited", "walkover"]);
 

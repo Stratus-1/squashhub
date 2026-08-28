@@ -279,13 +279,16 @@ export function TournamentProgressCard({
   if (compact) return <div className={cn("space-y-2", className)}>{body}</div>;
 
   return (
-    <Card className={cn("border-primary/40", className)}>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
+    <CollapsibleCard
+      className={cn("border-primary/40", className)}
+      headerClassName="pb-3"
+      title={
+        <span className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" /> Tournament progress — what's next
-        </CardTitle>
-      </CardHeader>
-      <CardContent>{body}</CardContent>
-    </Card>
+        </span>
+      }
+    >
+      {body}
+    </CollapsibleCard>
   );
 }

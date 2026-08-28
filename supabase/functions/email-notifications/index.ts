@@ -661,6 +661,15 @@ Deno.serve(async (req) => {
     const notifUrl = String(payload?.url || "/notifications");
     const type = String(payload?.type || "");
     const data = payload?.data ?? null;
+    const ccEmails: string[] = Array.isArray(payload?.ccEmails)
+      ? Array.from(
+          new Set(
+            payload.ccEmails
+              .map((c: unknown) => String(c || "").trim().toLowerCase())
+              .filter((c: string) => c.length > 3 && c.includes("@")),
+          ),
+        ).slice(0, 3)
+      : [];
 
     if (!targetUserId && !payloadEmail) {
       return new Response(JSON.stringify({ error: "Missing recipient" }), {

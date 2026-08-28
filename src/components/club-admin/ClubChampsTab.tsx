@@ -81,6 +81,8 @@ import {
   reconcileProtectedSchedules,
   resultCarryOver,
 } from "@/lib/tournaments/preserve-schedules";
+import { describeRebuildImpact, type RebuildImpactRow } from "@/lib/tournaments/rebuild-guard";
+
 
 import { describeSectionSizes, totalByes } from "@/lib/tournaments/knockout-sections";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";

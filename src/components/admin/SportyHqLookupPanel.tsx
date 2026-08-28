@@ -366,7 +366,16 @@ export function SportyHqLookupPanel() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Saved SportyHQ ratings ({saved.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              className="pl-7 h-9"
+              placeholder="Search saved players or clubs…"
+              value={savedQuery}
+              onChange={(e) => setSavedQuery(e.target.value)}
+            />
+          </div>
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>

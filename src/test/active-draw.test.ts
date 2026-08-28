@@ -58,14 +58,14 @@ describe("progression driven by active entrants", () => {
     expect(s.complete).toBe(true);
     const [pre] = sectionProgression(r1);
     expect(pre.activeCount).toBe(2);
-    expect(pre.nextRound?.label).toBe("Final");
+    expect(pre.nextRound?.label).toBe("Round 2");
   });
 
   it("4 remaining ⇒ semi-finals then final", () => {
     const [s] = sectionProgression(play(round(8)));
     expect(s.activeCount).toBe(4);
-    expect(s.nextRound?.label).toBe("Semi-final");
-    expect(generateActionLabel(s)).toBe("Generate Semi-finals");
+    expect(s.nextRound?.label).toBe("Round 2");
+    expect(generateActionLabel(s)).toBe("Generate Next Round");
   });
 
   it("3 remaining ⇒ semi-final with a bye, never a bogus label", () => {
@@ -73,7 +73,7 @@ describe("progression driven by active entrants", () => {
     const r1 = rows.map((r) => (r.is_bye ? r : { ...r, status: "completed", winner_member_id: r.player_a_member_id }));
     const [s] = sectionProgression(r1);
     expect(s.activeCount).toBeGreaterThanOrEqual(3);
-    expect(["Semi-final", "Quarter-final"]).toContain(s.nextRound?.label);
+    expect(s.nextRound?.label).toBe("Round 2");
   });
 
   it("uses a neutral label for a normal knockout round", () => {

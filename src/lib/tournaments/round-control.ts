@@ -17,7 +17,6 @@ import {
   type ChampRound,
   type SectionProgression,
 } from "./knockout-progression";
-import { labelForActive } from "./active-draw";
 
 /** The single next thing an admin can do with a draw. */
 export type RoundAction = "generate" | "schedule" | "await_results" | "none";
@@ -57,13 +56,10 @@ export function isScheduled(m: KnockoutMatchLike): boolean {
 }
 
 function currentStageLabel(s: SectionProgression): string {
-  const planned = s.plan.find((r) => r.round_number === s.currentRound)?.label;
+  // Only the organiser names a round. Until they do it is "Round N".
+  const planned = String(s.plan.find((r) => r.round_number === s.currentRound)?.label || "").trim();
   if (planned) return planned;
-  const contestants = new Set<string>();
-  for (const m of s.currentRoundMatches) {
-    for (const id of [m.player_a_member_id, m.player_b_member_id]) if (id) contestants.add(id);
-  }
-  return labelForActive(Math.max(2, contestants.size));
+  return `Round ${Math.max(1, s.currentRound)}`;
 }
 
 function plural(n: number, one: string, many = `${one}s`) {

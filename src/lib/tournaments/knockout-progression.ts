@@ -16,7 +16,7 @@
  */
 import type { KnockoutMatchLike } from "./knockout";
 import { winnerOf } from "./knockout";
-import { isResolved, labelForActive, typeForActive } from "./active-draw";
+import { isResolved, typeForActive } from "./active-draw";
 
 export { isResolved };
 
@@ -78,7 +78,9 @@ export function suggestRoundPlan(
       section_number: opts.sectionNumber ?? 1,
       round_number: i + 1,
       round_type: typeForPlayers(players),
-      label: labelForPlayers(players),
+      // Neutral by default — organisers rename a round when they decide it is
+      // the quarter-final / semi-final / final.
+      label: `Round ${i + 1}`,
       play_by: null,
       scheduling_mode: opts.schedulingMode ?? "self",
       status: "pending" as const,
@@ -244,25 +246,27 @@ export function sectionProgression(
 
     const nextRoundNumber = currentRound + 1;
     const planned = plan.find((r) => r.round_number === nextRoundNumber) || null;
-    // The stage name always comes from how many entrants are still alive —
-    // never from the number of match rows — so a 3-player round becomes a
-    // semi-final (with a bye) instead of a bogus "Round of 3".
-    const activeLabel = labelForActive(activeCount);
+    // Stage names are the ORGANISER's call. We never guess "Quarter-final" or
+    // "Semi-final" from the bracket maths — until an admin names the round in
+    // the round plan / setup dialog it stays the neutral "Round N".
+    const plannedLabel = String(planned?.label || "").trim();
+    const neutralLabel = `Round ${nextRoundNumber}`;
     const activeType = typeForActive(activeCount);
     const derivedNext: ChampRound | null =
       activeCount > 1
         ? planned
-          ? { ...planned, label: activeLabel, round_type: activeType }
+          ? { ...planned, label: plannedLabel || neutralLabel, round_type: planned.round_type || activeType }
           : {
               group_number: groupNumber,
               section_number: section,
               round_number: nextRoundNumber,
               round_type: activeType,
-              label: activeLabel,
+              label: neutralLabel,
               play_by: null,
               status: "pending" as const,
             }
         : null;
+
 
     const nextRoundGenerated = rows.some((m) => (Number(m.round_number) || 0) === nextRoundNumber);
     const complete = currentRoundComplete && currentRoundMatches.length === 1;
@@ -307,26 +311,23 @@ export function advancingMembers(section: SectionProgression): string[] {
 
 /**
  * Action label for the organiser's single context-aware button. Only ever
- * says "Semi-finals"/"Final" when that is genuinely the next stage; anything
- * else is the neutral "Generate Next Round".
+ * says "Semi-finals"/"Final" when the ORGANISER has named the round that way;
+ * anything else is the neutral "Generate Next Round".
  */
 export function generateActionLabel(section: SectionProgression): string {
-  const label = section.nextRound?.label || labelForActive(Math.max(2, section.activeCount));
+  const label = String(section.nextRound?.label || "").trim();
   if (/^final$/i.test(label)) return "Generate Final";
   if (/^semi/i.test(label)) return "Generate Semi-finals";
   return "Generate Next Round";
 }
 
 
-/** Status line: "Semi-final · 2/4 complete · Next: Final". */
+/** Status line: "Round 3 · 2/4 complete · Next: Round 4". */
 export function progressSummary(section: SectionProgression): string {
-  const contestants = new Set<string>();
-  for (const m of section.currentRoundMatches) {
-    for (const id of [m.player_a_member_id, m.player_b_member_id]) if (id) contestants.add(id);
-  }
   const current =
-    section.plan.find((r) => r.round_number === section.currentRound)?.label ||
-    labelForActive(Math.max(2, contestants.size));
+    String(section.plan.find((r) => r.round_number === section.currentRound)?.label || "").trim() ||
+    `Round ${Math.max(1, section.currentRound)}`;
+
 
   const parts = [`${current} · ${section.completed}/${section.total} complete`];
   if (section.complete) parts.push("Section decided");

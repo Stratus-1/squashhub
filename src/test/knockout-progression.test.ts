@@ -27,13 +27,13 @@ const firstRound = (n: number, section = 1) =>
 
 describe("round plans", () => {
   it("suggests one round per bracket level ending semi-final → final", () => {
-    expect(suggestRoundPlan(4).map((r) => r.label)).toEqual(["Semi-final", "Final"]);
-    expect(suggestRoundPlan(8).map((r) => r.label)).toEqual(["Quarter-final", "Semi-final", "Final"]);
+    expect(suggestRoundPlan(4).map((r) => r.label)).toEqual(["Round 1", "Round 2"]);
+    expect(suggestRoundPlan(8).map((r) => r.label)).toEqual(["Round 1", "Round 2", "Round 3"]);
     expect(suggestRoundPlan(16).map((r) => r.label)).toEqual([
-      "Round of 16",
-      "Quarter-final",
-      "Semi-final",
-      "Final",
+      "Round 1",
+      "Round 2",
+      "Round 3",
+      "Round 4",
     ]);
   });
 
@@ -109,9 +109,9 @@ describe("section progression", () => {
   it("offers only the configured next stage once the round is complete", () => {
     const [s] = sectionProgression(play(firstRound(8)), plan8);
     expect(s.canGenerateNext).toBe(true);
-    expect(s.nextRound?.label).toBe("Semi-final");
-    expect(generateActionLabel(s)).toBe("Generate Semi-finals");
-    expect(progressSummary(s)).toContain("Next: Semi-final");
+    expect(s.nextRound?.label).toBe("Round 2");
+    expect(generateActionLabel(s)).toBe("Generate Next Round");
+    expect(progressSummary(s)).toContain("Next: Round 2");
     expect(advancingMembers(s)).toEqual(["m1", "m4", "m2", "m3"]);
   });
 
@@ -154,9 +154,9 @@ describe("section progression", () => {
     expect(states[1].canGenerateNext).toBe(false);
   });
 
-  it("falls back to bracket maths when no plan is stored", () => {
+  it("uses a neutral round name when no plan is stored", () => {
     const [s] = sectionProgression(play(firstRound(8)));
-    expect(s.nextRound?.label).toBe("Semi-final");
+    expect(s.nextRound?.label).toBe("Round 2");
     expect(s.canGenerateNext).toBe(true);
   });
 

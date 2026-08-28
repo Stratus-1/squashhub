@@ -2222,9 +2222,8 @@ export default function ClubChampsView() {
     const groupPlayable = matches.filter((m: any) => (m.stage || "group") === "group" && !m.is_bye);
     const isComplete = groupPlayable.length > 0 && groupPlayable.every((m: any) => m.status === "completed");
     // Knockout championships have no meaningful "bottom" — a player is either
-    // still in it or out — so the wooden spoons stay hidden. The Leaders card
-    // is also hidden while a knockout runs: the main log already shows who is
-    // still in (struck-through names are out), so a separate list is noise.
+    // still in it or out — so the wooden spoons stay hidden. While a knockout
+    // runs we show a compact "Survivors" short-list instead of the full leaders.
     const koRunning = hasKnockoutStage(matches) && !isComplete;
     const winnersTitle = isComplete ? "Winners" : "Current Standings — Leaders";
     const spoonsTitle = isComplete ? "Wooden Spoons" : "Current Standings — Bottom";

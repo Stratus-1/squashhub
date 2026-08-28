@@ -97,21 +97,44 @@ export function SportyHqLookupPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sportyhq_profiles")
-        .select("id, name, club_label, rating, rating_confidence, matches_all_time, verified_at")
+        .select("id, name, person_id, club_label, rating, rating_confidence, matches_all_time, verified_at")
         .order("rating", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return data ?? [];
     },
   });
 
+  // SquashHub club is authoritative — SportyHQ's club label must never override it.
+  const { data: hubClubs = {} } = useQuery({
+    queryKey: ["sportyhq-hub-clubs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("club_members")
+        .select("person_id, status, clubs!club_members_club_id_fkey(name)")
+        .not("person_id", "is", null);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of (data ?? []) as any[]) {
+        const name = row.clubs?.name;
+        if (!name || !row.person_id) continue;
+        if (!map[row.person_id] || row.status === "active") map[row.person_id] = name;
+      }
+      return map;
+    },
+  });
+
+  const hubClubFor = (s: any) => (s.person_id ? hubClubs[s.person_id] : null) ?? null;
+
   const norm = savedQuery.trim().toLowerCase();
   const filteredSaved = norm
     ? saved.filter(
         (s: any) =>
           s.name?.toLowerCase().includes(norm) ||
+          hubClubFor(s)?.toLowerCase().includes(norm) ||
           s.club_label?.toLowerCase().includes(norm),
       )
     : saved;
+
 
   const searchMut = useMutation({
     mutationFn: () => callLookup<{ results: Candidate[] }>({ action: "search", q: q.trim() }),

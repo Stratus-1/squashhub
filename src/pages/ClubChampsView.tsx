@@ -2250,8 +2250,10 @@ export default function ClubChampsView() {
         getGroupStandings(gn).map((s: any) => ({ ...s, _groupNumber: gn }))
       )
       .sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
+    const overallPool = koRunning ? survivorRows(overallRows as any[], koOut) : overallRows;
     const overallWinner =
-      overallRows.find((s: any) => (s.played || 0) > 0) || overallRows[0] || null;
+      overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
+
     const winnersCard = leagueWinners.length > 0 ? (
       <Card key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5">
         <CardHeader className="pb-2">

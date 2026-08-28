@@ -94,11 +94,8 @@ async function fetchProfile(path: string) {
     }
   }
 
-  const bodies = (t.match(/Affiliated Governing Bodies (.*?)(?:Affiliated Clubs|Tournament History|$)/i)?.[1] ?? "")
-    .split(/(?=Squash |Northerns |Western |Eastern |KwaZulu|Free State|Boland|Border)/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .slice(0, 6);
+  const bodiesRaw = (t.match(/Affiliated Governing Bodies (.*?)(?:Affiliated Clubs|Tournament History|$)/i)?.[1] ?? "").trim();
+  const bodies = bodiesRaw ? [bodiesRaw] : [];
   const clubs = (t.match(/Affiliated Clubs (.*?)(?:Tournament History|\d+ people have viewed|$)/i)?.[1] ?? "")
     .trim();
 

@@ -2582,7 +2582,7 @@ export default function ClubChampsView() {
           }
         } else {
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}
+            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")} defaultOpen={false}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}

@@ -71,6 +71,13 @@ export function winnersOn(matches: KoMatchLike[], date: string, opts: { knockout
   return set;
 }
 
+/** Every member who has won at least one knockout match so far. */
+export function winnerMemberIds(matches: KoMatchLike[], opts: { knockout?: boolean } = {}): Set<string> {
+  const set = new Set<string>();
+  for (const e of koResultEvents(matches, opts)) e.winnerIds.forEach((id) => set.add(id));
+  return set;
+}
+
 /** Members knocked out on a given day (yyyy-MM-dd). */
 export function eliminatedOn(matches: KoMatchLike[], date: string, opts: { knockout?: boolean } = {}): Set<string> {
   const set = new Set<string>();

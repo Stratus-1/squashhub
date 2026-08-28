@@ -38,12 +38,47 @@ async function callLookup<T>(body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
+interface BulkResult {
+  person_id: string;
+  name: string;
+  status: "saved" | "no_match" | "ambiguous" | "error";
+  rating?: number | null;
+  message?: string;
+}
+
 export function SportyHqLookupPanel() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkLog, setBulkLog] = useState<BulkResult[]>([]);
+
+  const runBulk = async () => {
+    setBulkRunning(true);
+    setBulkLog([]);
+    let offset = 0;
+    try {
+      for (let batch = 0; batch < 60; batch++) {
+        const d = await callLookup<{ results: BulkResult[]; next_offset: number; done: boolean }>({
+          action: "bulk_match",
+          limit: 20,
+          offset,
+        });
+        setBulkLog((prev) => [...prev, ...d.results]);
+        offset = d.next_offset;
+        if (d.done || d.results.length === 0) break;
+      }
+      toast.success("SportyHQ matching run finished");
+      qc.invalidateQueries({ queryKey: ["sportyhq-profiles"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBulkRunning(false);
+    }
+  };
+
 
   const { data: saved = [] } = useQuery({
     queryKey: ["sportyhq-profiles"],

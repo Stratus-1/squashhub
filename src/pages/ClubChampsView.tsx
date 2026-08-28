@@ -2251,14 +2251,14 @@ export default function ClubChampsView() {
       overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
 
     const winnersCard = !koRunning && leagueWinners.length > 0 ? (
-      <Card key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
+      <CollapsibleCard key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5"
+        title={
+          <span className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-amber-600" />
             {winnersTitle}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </span>
+        }
+      >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

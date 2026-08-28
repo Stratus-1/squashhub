@@ -115,12 +115,39 @@ async function fetchProfile(path: string) {
   };
 }
 
+function norm(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function clubScore(candidate: string | null, hint: string | null) {
+  if (!candidate || !hint) return 0;
+  const a = new Set(norm(candidate).split(" ").filter((w) => w.length > 3 && w !== "squash" && w !== "club"));
+  const b = norm(hint).split(" ").filter((w) => w.length > 3 && w !== "squash" && w !== "club");
+  return b.some((w) => a.has(w)) ? 1 : 0;
+}
+
+function pickBest(name: string, clubHint: string | null, cands: Candidate[]) {
+  const target = norm(name);
+  const exact = cands.filter((c) => norm(c.name) === target);
+  const pool = exact.length ? exact : [];
+  if (!pool.length) return null;
+  if (pool.length === 1) return { candidate: pool[0], confident: true };
+  const scored = pool
+    .map((c) => ({ c, s: clubScore(c.club_label, clubHint) + clubScore(c.location_label, clubHint) }))
+    .sort((x, y) => y.s - x.s);
+  if (scored[0].s > 0 && (scored.length === 1 || scored[0].s > scored[1].s)) {
+    return { candidate: scored[0].c, confident: true };
+  }
+  return { candidate: scored[0].c, confident: false };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action ?? "search");
+
 
     if (action === "search") {
       const q = String(body.q ?? "").trim();
@@ -178,7 +205,88 @@ Deno.serve(async (req) => {
       return json({ profile: data });
     }
 
+    if (action === "bulk_match") {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const { data: userData } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      const uid = userData?.user?.id;
+      if (!uid) return json({ error: "Not signed in" }, 401);
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
+      if (!isAdmin) return json({ error: "Platform admin only" }, 403);
+
+      const limit = Math.min(Math.max(Number(body.limit ?? 20), 1), 40);
+      const offset = Math.max(Number(body.offset ?? 0), 0);
+
+      // People with no SportyHQ profile yet
+      const { data: linked } = await supabase.from("sportyhq_profiles").select("person_id").not("person_id", "is", null);
+      const linkedIds = new Set((linked ?? []).map((r: any) => r.person_id));
+
+      const { data: people, error: peopleErr } = await supabase
+        .from("people")
+        .select("id, full_name, club_members(clubs(name))")
+        .eq("status", "active")
+        .order("full_name")
+        .range(offset, offset + limit * 3);
+      if (peopleErr) throw peopleErr;
+
+      const queue = (people ?? []).filter((p: any) => !linkedIds.has(p.id)).slice(0, limit);
+      const results: Array<Record<string, unknown>> = [];
+
+      for (const p of queue) {
+        const clubHint =
+          (p.club_members ?? []).map((a: any) => a?.clubs?.name).filter(Boolean)[0] ?? null;
+        try {
+          const cands = await search(String(p.full_name));
+          const best = pickBest(String(p.full_name), clubHint, cands);
+          if (!best) {
+            results.push({ person_id: p.id, name: p.full_name, status: "no_match" });
+          } else if (!best.confident) {
+            results.push({ person_id: p.id, name: p.full_name, status: "ambiguous", candidates: cands.length });
+          } else {
+            const prof = await fetchProfile(best.candidate.profile_path);
+            const { error } = await supabase.from("sportyhq_profiles").upsert(
+              {
+                sportyhq_user_id: best.candidate.sportyhq_user_id,
+                name: best.candidate.name,
+                profile_path: best.candidate.profile_path,
+                club_label: best.candidate.club_label,
+                location_label: best.candidate.location_label,
+                rating: prof.rating,
+                rating_confidence: prof.rating_confidence,
+                matches_ytd: prof.matches_ytd,
+                matches_all_time: prof.matches_all_time,
+                rankings: prof.rankings,
+                governing_bodies: prof.governing_bodies,
+                clubs: prof.clubs,
+                person_id: p.id,
+                verified_by: uid,
+                verified_at: new Date().toISOString(),
+                fetched_at: new Date().toISOString(),
+              },
+              { onConflict: "sportyhq_user_id" },
+            );
+            if (error) throw error;
+            results.push({ person_id: p.id, name: p.full_name, status: "saved", rating: prof.rating });
+          }
+        } catch (err) {
+          results.push({ person_id: p.id, name: p.full_name, status: "error", message: (err as Error).message });
+        }
+        await new Promise((r) => setTimeout(r, 350)); // be gentle on SportyHQ
+      }
+
+      return json({
+        processed: results.length,
+        next_offset: offset + (people ?? []).length,
+        done: (people ?? []).length <= limit * 3 && queue.length < limit,
+        results,
+      });
+    }
+
     throw new Error(`Unknown action: ${action}`);
+
   } catch (e) {
     console.error("sportyhq-lookup error:", e);
     return json({ error: (e as Error).message }, 400);

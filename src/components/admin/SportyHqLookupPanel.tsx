@@ -38,12 +38,47 @@ async function callLookup<T>(body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
+interface BulkResult {
+  person_id: string;
+  name: string;
+  status: "saved" | "no_match" | "ambiguous" | "error";
+  rating?: number | null;
+  message?: string;
+}
+
 export function SportyHqLookupPanel() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selected, setSelected] = useState<Candidate | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkLog, setBulkLog] = useState<BulkResult[]>([]);
+
+  const runBulk = async () => {
+    setBulkRunning(true);
+    setBulkLog([]);
+    let offset = 0;
+    try {
+      for (let batch = 0; batch < 60; batch++) {
+        const d = await callLookup<{ results: BulkResult[]; next_offset: number; done: boolean }>({
+          action: "bulk_match",
+          limit: 20,
+          offset,
+        });
+        setBulkLog((prev) => [...prev, ...d.results]);
+        offset = d.next_offset;
+        if (d.done || d.results.length === 0) break;
+      }
+      toast.success("SportyHQ matching run finished");
+      qc.invalidateQueries({ queryKey: ["sportyhq-profiles"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBulkRunning(false);
+    }
+  };
+
 
   const { data: saved = [] } = useQuery({
     queryKey: ["sportyhq-profiles"],
@@ -160,6 +195,60 @@ export function SportyHqLookupPanel() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Bulk match SquashHub people</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-muted-foreground">
+            Walks the national player directory, searches SportyHQ by name, and saves the rating only
+            when there is an exact name match (club name used to break ties). Ambiguous names are
+            skipped for manual lookup above.
+          </p>
+          <Button size="sm" onClick={runBulk} disabled={bulkRunning}>
+            {bulkRunning ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+            {bulkRunning ? `Matching… (${bulkLog.length} checked)` : "Search SportyHQ for all people"}
+          </Button>
+
+          {bulkLog.length > 0 && (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {(["saved", "ambiguous", "no_match", "error"] as const).map((s) => (
+                  <Badge key={s} variant={s === "saved" ? "default" : "secondary"}>
+                    {s.replace("_", " ")}: {bulkLog.filter((r) => r.status === s).length}
+                  </Badge>
+                ))}
+              </div>
+              <div className="rounded-md border max-h-72 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Player</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Rating</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bulkLog.map((r, i) => (
+                      <TableRow key={`${r.person_id}-${i}`}>
+                        <TableCell className="font-medium">{r.name}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {r.status.replace("_", " ")}
+                          {r.message ? ` — ${r.message}` : ""}
+                        </TableCell>
+                        <TableCell className="text-right">{r.rating ?? "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+
 
       {selected && (
         <Card>

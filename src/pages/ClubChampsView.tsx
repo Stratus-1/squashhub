@@ -2482,7 +2482,7 @@ export default function ClubChampsView() {
 
 
       const titleNode = (
-        <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
+        <span className="flex items-center gap-2 flex-wrap">
           <span>{getGroupLabel(champ, gn)}</span>
           {leagueTotal && leagueTotal.gp > 0 && (
             <>
@@ -2494,7 +2494,7 @@ export default function ClubChampsView() {
               </span>
             </>
           )}
-        </CardTitle>
+        </span>
       );
 
       if (multipleGroups && !isCrossLeague) {
@@ -2545,22 +2545,21 @@ export default function ClubChampsView() {
           }
         } else {
           standingsCards.push(
-            <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
-              <CardHeader>{titleNode}</CardHeader>
-              <CardContent className="space-y-4">
-                {swissControlsFor(gn)}
-                {standingsTable}
-                {groupMatches.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h4 className="font-medium text-sm mb-2">Fixtures &amp; Results</h4>
-                      {fixtureBody}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}
+              title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
+            >
+              {swissControlsFor(gn)}
+              {standingsTable}
+              {groupMatches.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Fixtures &amp; Results</h4>
+                    {fixtureBody}
+                  </div>
+                </>
+              )}
+            </CollapsibleCard>
           );
         }
 

@@ -314,7 +314,9 @@ Deno.serve(async (req) => {
         if (ids.length) {
           const { data: people, error: peopleErr } = await supabase
             .from("people")
-            .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
+            .select(
+              "id, full_name, club_members(clubs!club_members_club_id_fkey(name), member_association_affiliations(league_associations(name)))",
+            )
             .in("id", ids);
           if (peopleErr) throw peopleErr;
           queue = people ?? [];
@@ -322,7 +324,9 @@ Deno.serve(async (req) => {
       } else {
         const { data: people, error: peopleErr } = await supabase
           .from("people")
-          .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
+          .select(
+            "id, full_name, club_members(clubs!club_members_club_id_fkey(name), member_association_affiliations(league_associations(name)))",
+          )
           .eq("status", "active")
           .order("full_name")
           .range(offset, offset + limit * 3);
@@ -335,12 +339,17 @@ Deno.serve(async (req) => {
 
 
       for (const p of queue) {
-        const clubHints: string[] = (p.club_members ?? [])
-          .map((a: any) => a?.clubs?.name)
-          .filter(Boolean);
+        const memberships: any[] = p.club_members ?? [];
+        const clubHints: string[] = [
+          ...memberships.map((a: any) => a?.clubs?.name),
+          ...memberships.flatMap((a: any) =>
+            (a?.member_association_affiliations ?? []).map((x: any) => x?.league_associations?.name),
+          ),
+        ].filter(Boolean);
         try {
           const cands = await search(String(p.full_name));
-          const best = pickBest(String(p.full_name), clubHints, cands);
+          const best = await deepPickBest(String(p.full_name), clubHints, cands);
+
           if (!best) {
             results.push({ person_id: p.id, name: p.full_name, status: "no_match" });
           } else if (!best.confident) {

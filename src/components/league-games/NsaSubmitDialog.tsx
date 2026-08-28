@@ -282,8 +282,9 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
           }
         }
 
-        if (verifiedOk) toast.success("Confirmed saved on NSA ✓");
-        else toast.message("Committed — NSA verification pending", { description: "The result was accepted; the public feed may take a moment to refresh." });
+        if (verifiedOk) toast.success("Result posted to NSA successfully ✓", { description: "Confirmed on the NSA system." });
+        else toast.success("Result posted to NSA successfully ✓", { description: "NSA accepted the scorecard; its public feed may take a few minutes to update." });
+
       } finally {
         setVerifying(false);
       }

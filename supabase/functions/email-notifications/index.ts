@@ -181,7 +181,7 @@ async function resolveClubMail(userId: string, explicitClubId?: string | null): 
   }
 }
 
-async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; subject: string; html: string; text: string }) {
+async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; cc?: string[]; subject: string; html: string; text: string }) {
   const ALLOWED_SMTP_PORTS = new Set([25, 465, 587, 2525]);
   if (!ALLOWED_SMTP_PORTS.has(cfg.smtpPort)) {
     return { ok: false as const, skipped: false, reason: `SMTP port ${cfg.smtpPort} not allowed` };

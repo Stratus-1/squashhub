@@ -4911,6 +4911,7 @@ export type Database = {
         Row: {
           attempts: number
           body: string
+          cc_emails: string[] | null
           club_id: string
           club_member_id: string | null
           created_at: string
@@ -4932,6 +4933,7 @@ export type Database = {
         Insert: {
           attempts?: number
           body?: string
+          cc_emails?: string[] | null
           club_id: string
           club_member_id?: string | null
           created_at?: string
@@ -4953,6 +4955,7 @@ export type Database = {
         Update: {
           attempts?: number
           body?: string
+          cc_emails?: string[] | null
           club_id?: string
           club_member_id?: string | null
           created_at?: string
@@ -11625,6 +11628,7 @@ export type Database = {
         Returns: {
           attempts: number
           body: string
+          cc_emails: string[] | null
           club_id: string
           club_member_id: string | null
           created_at: string

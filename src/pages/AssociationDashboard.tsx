@@ -34,6 +34,7 @@ import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { EmailLogTab } from "@/components/club-admin/EmailLogTab";
+import { AssociationRankingsTab } from "@/components/association-admin/AssociationRankingsTab";
 
 interface TabDef {
   value: string;
@@ -49,6 +50,7 @@ const ADMIN_TABS: TabDef[] = [
   { value: "affiliated", label: "Affiliated Clubs", icon: Network, permission: "club" },
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues" },
   { value: "champs", label: "Tournaments", icon: Medal, permission: "champs" },
+  { value: "rankings", label: "Rankings", icon: BarChart3, permission: "leagues" },
   { value: "members", label: "Members", icon: Users, permission: "members" },
   { value: "users", label: "Users", icon: UserCheck, permission: "users" },
   { value: "fees", label: "Fees", icon: Receipt, permission: "fees" },
@@ -77,6 +79,7 @@ const ADMIN_TAB_STYLES: Record<string, string> = {
   setup: "border-slate-500/50 bg-slate-50 text-slate-800 hover:bg-slate-100 dark:bg-slate-500/15 dark:text-slate-200 dark:hover:bg-slate-500/25",
   affiliated: "border-sky-500/50 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-200 dark:hover:bg-sky-500/25",
   leagues: "border-amber-500/50 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-200 dark:hover:bg-amber-500/25",
+  rankings: "border-violet-500/50 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:bg-violet-500/15 dark:text-violet-200 dark:hover:bg-violet-500/25",
   champs: "border-purple-500/50 bg-purple-50 text-purple-800 hover:bg-purple-100 dark:bg-purple-500/15 dark:text-purple-200 dark:hover:bg-purple-500/25",
   members: "border-emerald-500/50 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25",
   users: "border-cyan-500/50 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:bg-cyan-500/15 dark:text-cyan-200 dark:hover:bg-cyan-500/25",
@@ -140,6 +143,7 @@ export default function AssociationDashboard() {
     { value: "affiliated", label: "Affiliated Clubs", description: "Clubs in this association", icon: Network, color: "text-sky-600", gradient: "from-sky-400 to-blue-600", border: "border-sky-200 dark:border-sky-800", shadow: "shadow-sky-500/10" },
     { value: "leagues", label: "Leagues", description: "Seasons, teams & fixtures", icon: Trophy, color: "text-amber-600", gradient: "from-amber-400 to-orange-500", border: "border-amber-200 dark:border-amber-800", shadow: "shadow-amber-500/10" },
     { value: "champs", label: "Tournaments", description: "Draws, entries & results", icon: Medal, color: "text-purple-600", gradient: "from-purple-400 to-fuchsia-600", border: "border-purple-200 dark:border-purple-800", shadow: "shadow-purple-500/10" },
+    { value: "rankings", label: "Rankings", description: "Player rankings & data sync", icon: BarChart3, color: "text-violet-600", gradient: "from-violet-400 to-indigo-600", border: "border-violet-200 dark:border-violet-800", shadow: "shadow-violet-500/10" },
     { value: "members", label: "Members", description: "League members across clubs", icon: Users, color: "text-emerald-600", gradient: "from-emerald-400 to-teal-600", border: "border-emerald-200 dark:border-emerald-800", shadow: "shadow-emerald-500/10" },
     { value: "users", label: "Users", description: "Logins & access", icon: UserCheck, color: "text-cyan-600", gradient: "from-cyan-400 to-blue-500", border: "border-cyan-200 dark:border-cyan-800", shadow: "shadow-cyan-500/10" },
     { value: "comms", label: "Comms", description: "Templates & campaigns", icon: MessageCircle, color: "text-rose-600", gradient: "from-rose-400 to-pink-600", border: "border-rose-200 dark:border-rose-800", shadow: "shadow-rose-500/10" },
@@ -202,6 +206,7 @@ export default function AssociationDashboard() {
       case "affiliated": return <AffiliatedClubsTab clubId={association.id} />;
       case "leagues": return <AssociationLeaguesTab clubId={association.id} />;
       case "champs": return <ClubChampsTab clubId={association.id} />;
+      case "rankings": return <AssociationRankingsTab clubId={association.id} />;
       case "members": return <AssociationMembersTab clubId={association.id} />;
       case "users": return <UsersTab clubId={association.id} />;
       case "fees": return <AssociationFeesTab clubId={association.id} />;

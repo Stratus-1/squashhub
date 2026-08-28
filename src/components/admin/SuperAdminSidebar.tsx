@@ -1,4 +1,4 @@
-import { Building2, LayoutDashboard, Users, CreditCard, Settings, LogOut, ChevronLeft, Trophy, Download, LifeBuoy, GraduationCap, Megaphone, Flag, Swords } from "lucide-react";
+import { BarChart3, Building2, LayoutDashboard, Users, CreditCard, Settings, LogOut, ChevronLeft, Trophy, Download, LifeBuoy, GraduationCap, Megaphone, Flag, Swords } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +22,7 @@ const navItems = [
   { title: "Federation", url: "/admin/federation", icon: Flag },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Affiliations", url: "/admin/affiliations", icon: Trophy },
+  { title: "Rankings", url: "/admin/rankings", icon: BarChart3 },
   { title: "Tournaments", url: "/admin/tournaments", icon: Swords },
   { title: "Outreach", url: "/admin/outreach", icon: Megaphone },
   { title: "Subscriptions", url: "/admin/subscriptions", icon: CreditCard },

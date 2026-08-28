@@ -81,6 +81,8 @@ import {
   reconcileProtectedSchedules,
   resultCarryOver,
 } from "@/lib/tournaments/preserve-schedules";
+import { describeRebuildImpact, type RebuildImpactRow } from "@/lib/tournaments/rebuild-guard";
+
 
 import { describeSectionSizes, totalByes } from "@/lib/tournaments/knockout-sections";
 import { allTreeLeagueIds, buildLeagueTree, filterTreeBySeason } from "@/lib/tournaments/league-tree";
@@ -897,6 +899,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [step, setStep] = useState<WizardStep>("category");
   const [showWizard, setShowWizard] = useState(false);
   const [editingChampId, setEditingChampId] = useState<string | null>(null);
+  const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
+
   // Governance record for the tournament being edited — read-only in the wizard
   // (fee shares and refunds are owned by the Governance dialog).
   const { data: wizardGovernance } = useTournamentGovernance(editingChampId);
@@ -1067,6 +1071,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     },
     enabled: !!editingChampId,
   });
+
+  /**
+   * What a "Rebuild Schedule" would disturb on a tournament that is already
+   * under way. Drives the confirmation gate on the review step.
+   */
+  const { data: rebuildRows = [] } = useQuery({
+    queryKey: ["champ-rebuild-impact", editingChampId],
+    queryFn: async (): Promise<RebuildImpactRow[]> => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("status, is_bye, winner_member_id, score, booking_id")
+        .eq("champ_id", editingChampId as string);
+      if (error) throw error;
+      return (data || []) as RebuildImpactRow[];
+    },
+    enabled: !!editingChampId,
+  });
+  const rebuildImpact = useMemo(() => describeRebuildImpact(rebuildRows), [rebuildRows]);
+
   const knockoutProgress = useMemo(() => computeRoundProgress(roundMatchRows), [roundMatchRows]);
   const knockoutCurrentRound = currentRoundNumber(knockoutProgress);
   /**
@@ -10747,11 +10769,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             <Save className="w-4 h-4 mr-1" /> Save Progress
           </Button>
           {step === "review" ? (
-            <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
+            <Button
+              onClick={() => {
+                // A rebuild on a live tournament deletes and re-creates every
+                // fixture — never let that happen on a single click.
+                if (editingChampId && rebuildImpact.requiresConfirmation) {
+                  setRebuildConfirmOpen(true);
+                  return;
+                }
+                createChamp.mutate();
+              }}
+              disabled={createChamp.isPending}
+            >
               {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
             </Button>
           ) : (
+
             <Button
               onClick={handleNext}
               // Basics has only two visible choices — keep the button disabled
@@ -10764,6 +10798,42 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           )}
         </div>
       )}
+
+      {/* Rebuild confirmation — a live tournament must never be reshuffled by accident */}
+      <Dialog open={rebuildConfirmOpen} onOpenChange={setRebuildConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rebuild this tournament's schedule?</DialogTitle>
+            <DialogDescription>{rebuildImpact.summary}</DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-1 text-xs text-muted-foreground">
+            {rebuildImpact.played > 0 && <li>· {rebuildImpact.played} played result(s) will be carried across</li>}
+            {rebuildImpact.inProgress > 0 && (
+              <li className="text-destructive">
+                · {rebuildImpact.inProgress} match(es) are being marked right now — wait until they finish
+              </li>
+            )}
+            {rebuildImpact.booked > 0 && <li>· {rebuildImpact.booked} player court booking(s) will be kept</li>}
+            <li>· {rebuildImpact.pending} unplayed fixture(s) may be re-drawn</li>
+          </ul>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRebuildConfirmOpen(false)}>
+              Keep current schedule
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={createChamp.isPending || rebuildImpact.inProgress > 0}
+              onClick={() => {
+                setRebuildConfirmOpen(false);
+                createChamp.mutate();
+              }}
+            >
+              Rebuild anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
 
 

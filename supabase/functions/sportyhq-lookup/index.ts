@@ -143,14 +143,22 @@ function norm(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function clubScore(candidate: string | null, hint: string | null) {
-  if (!candidate || !hint) return 0;
-  const a = new Set(norm(candidate).split(" ").filter((w) => w.length > 3 && w !== "squash" && w !== "club"));
-  const b = norm(hint).split(" ").filter((w) => w.length > 3 && w !== "squash" && w !== "club");
-  return b.some((w) => a.has(w)) ? 1 : 0;
+function clubScore(candidate: string | null, hints: string[]) {
+  if (!candidate || !hints.length) return 0;
+  const a = new Set(
+    norm(candidate).split(" ").filter((w) => w.length > 2 && w !== "squash" && w !== "club"),
+  );
+  return hints.some((h) =>
+    norm(h)
+      .split(" ")
+      .filter((w) => w.length > 2 && w !== "squash" && w !== "club")
+      .some((w) => a.has(w)),
+  )
+    ? 1
+    : 0;
 }
 
-function pickBest(name: string, clubHint: string | null, cands: Candidate[]) {
+function pickBest(name: string, clubHints: string[], cands: Candidate[]) {
   const target = norm(name);
   const exact = cands.filter((c) => norm(c.name) === target);
   const pool = exact.length ? exact : [];
@@ -160,8 +168,8 @@ function pickBest(name: string, clubHint: string | null, cands: Candidate[]) {
     .map((c) => ({
       c,
       s:
-        clubScore(c.club_label, clubHint) * 2 +
-        clubScore(c.location_label, clubHint) * 2 +
+        clubScore(c.club_label, clubHints) * 2 +
+        clubScore(c.location_label, clubHints) * 2 +
         // prefer real profiles over empty shells with no club/location at all
         (c.club_label || c.location_label ? 1 : 0),
     }))
@@ -259,34 +267,67 @@ Deno.serve(async (req) => {
 
       const limit = Math.min(Math.max(Number(body.limit ?? 20), 1), 40);
       const offset = Math.max(Number(body.offset ?? 0), 0);
+      const mode = String(body.mode ?? "new"); // "new" = unlinked people, "refresh" = weak/empty existing links
 
-      // People with no SportyHQ profile yet
-      const { data: linked } = await supabase.from("sportyhq_profiles").select("person_id").not("person_id", "is", null);
+      // Existing links (person_id -> profile row)
+      const { data: linked } = await supabase
+        .from("sportyhq_profiles")
+        .select("id, person_id, sportyhq_user_id, rating, club_label, location_label")
+        .not("person_id", "is", null);
       const linkedIds = new Set((linked ?? []).map((r: any) => r.person_id));
+      const weak = new Map<string, any>();
+      for (const r of linked ?? []) {
+        const isWeak = r.rating == null && !r.club_label && !r.location_label;
+        if (isWeak) weak.set(r.person_id, r);
+      }
 
-      const { data: people, error: peopleErr } = await supabase
-        .from("people")
-        .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
-        .eq("status", "active")
-        .order("full_name")
-        .range(offset, offset + limit * 3);
-      if (peopleErr) throw peopleErr;
+      let queue: any[] = [];
+      let scanned = 0;
 
-      const queue = (people ?? []).filter((p: any) => !linkedIds.has(p.id)).slice(0, limit);
+      if (mode === "refresh") {
+        const ids = [...weak.keys()].slice(offset, offset + limit);
+        scanned = ids.length;
+        if (ids.length) {
+          const { data: people, error: peopleErr } = await supabase
+            .from("people")
+            .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
+            .in("id", ids);
+          if (peopleErr) throw peopleErr;
+          queue = people ?? [];
+        }
+      } else {
+        const { data: people, error: peopleErr } = await supabase
+          .from("people")
+          .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
+          .eq("status", "active")
+          .order("full_name")
+          .range(offset, offset + limit * 3);
+        if (peopleErr) throw peopleErr;
+        scanned = (people ?? []).length;
+        queue = (people ?? []).filter((p: any) => !linkedIds.has(p.id)).slice(0, limit);
+      }
+
       const results: Array<Record<string, unknown>> = [];
 
+
       for (const p of queue) {
-        const clubHint =
-          (p.club_members ?? []).map((a: any) => a?.clubs?.name).filter(Boolean)[0] ?? null;
+        const clubHints: string[] = (p.club_members ?? [])
+          .map((a: any) => a?.clubs?.name)
+          .filter(Boolean);
         try {
           const cands = await search(String(p.full_name));
-          const best = pickBest(String(p.full_name), clubHint, cands);
+          const best = pickBest(String(p.full_name), clubHints, cands);
           if (!best) {
             results.push({ person_id: p.id, name: p.full_name, status: "no_match" });
           } else if (!best.confident) {
             results.push({ person_id: p.id, name: p.full_name, status: "ambiguous", candidates: cands.length });
           } else {
             const prof = await fetchProfile(best.candidate.profile_path);
+            // In refresh mode, drop the stale/empty link if it pointed at another SportyHQ profile
+            const previous = weak.get(p.id);
+            if (previous && previous.sportyhq_user_id !== best.candidate.sportyhq_user_id) {
+              await supabase.from("sportyhq_profiles").delete().eq("id", previous.id);
+            }
             const { error } = await supabase.from("sportyhq_profiles").upsert(
               {
                 sportyhq_user_id: best.candidate.sportyhq_user_id,
@@ -327,10 +368,11 @@ Deno.serve(async (req) => {
 
       return json({
         processed: results.length,
-        next_offset: offset + (people ?? []).length,
-        done: (people ?? []).length <= limit * 3 && queue.length < limit,
+        next_offset: mode === "refresh" ? offset + scanned : offset + scanned,
+        done: mode === "refresh" ? scanned < limit : scanned <= limit * 3 && queue.length < limit,
         results,
       });
+
     }
 
     throw new Error(`Unknown action: ${action}`);

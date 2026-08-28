@@ -379,7 +379,7 @@ export default function LeagueGameDetail() {
     enabled: !!fixtureId,
   });
 
-  const { data: existingMatches } = useQuery({
+  const { data: existingMatches, isFetched: existingMatchesFetched } = useQuery({
     queryKey: ["league-match-results", fixtureId],
     queryFn: async () => {
       const { data, error } = await supabase.from("league_match_results" as any).select("*").eq("fixture_id", fixtureId!).order("position");

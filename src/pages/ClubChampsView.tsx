@@ -2356,7 +2356,7 @@ export default function ClubChampsView() {
       overallRows.slice().reverse().find((s: any) => (s.played || 0) > 0) ||
       overallRows[overallRows.length - 1] ||
       null;
-    const woodenSpoonsCard = leagueLosers.length > 0 ? (
+    const woodenSpoonsCard = !koRunning && leagueLosers.length > 0 ? (
       <Card key="wooden-spoons" className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">

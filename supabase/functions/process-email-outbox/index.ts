@@ -119,6 +119,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           targetEmail: row.recipient_email,
           targetName: row.recipient_name || "",
+          ccEmails: Array.isArray(row.cc_emails) ? row.cc_emails : [],
           clubId: row.club_id,
           title: row.subject,
           body: row.body,

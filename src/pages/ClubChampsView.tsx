@@ -2352,14 +2352,14 @@ export default function ClubChampsView() {
       overallRows[overallRows.length - 1] ||
       null;
     const woodenSpoonsCard = !koRunning && leagueLosers.length > 0 ? (
-      <Card key="wooden-spoons" className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
+      <CollapsibleCard key="wooden-spoons" className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10" defaultOpen={false}
+        title={
+          <span className="flex items-center gap-2">
             <span className="text-amber-700 dark:text-amber-300">🥄</span>
             <span className="text-amber-800 dark:text-amber-300">{spoonsTitle}</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </span>
+        }
+      >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

@@ -38,7 +38,7 @@ import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrect
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { looksLikePhone } from "@/lib/member-display";
-import { hasKnockoutStage } from "@/lib/tournaments/survivors";
+import { hasKnockoutStage, winnerMemberIds, winnerRows } from "@/lib/tournaments/survivors";
 
 
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";

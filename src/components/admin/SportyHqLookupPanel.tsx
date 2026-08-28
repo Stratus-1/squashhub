@@ -64,7 +64,7 @@ export function SportyHqLookupPanel() {
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkLog, setBulkLog] = useState<BulkResult[]>([]);
 
-  const runBulk = async () => {
+  const runBulk = async (mode: "new" | "refresh" = "new") => {
     setBulkRunning(true);
     setBulkLog([]);
     let offset = 0;
@@ -72,6 +72,7 @@ export function SportyHqLookupPanel() {
       for (let batch = 0; batch < 60; batch++) {
         const d = await callLookup<{ results: BulkResult[]; next_offset: number; done: boolean }>({
           action: "bulk_match",
+          mode,
           limit: 20,
           offset,
         });
@@ -87,6 +88,7 @@ export function SportyHqLookupPanel() {
       setBulkRunning(false);
     }
   };
+
 
 
   const { data: saved = [] } = useQuery({

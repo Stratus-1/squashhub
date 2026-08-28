@@ -2336,8 +2336,7 @@ export default function ClubChampsView() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
     ) : null;
 
     // Wooden spoons table — bottom of each league/pool plus the overall tournament loser.

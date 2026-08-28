@@ -115,12 +115,39 @@ async function fetchProfile(path: string) {
   };
 }
 
+function norm(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function clubScore(candidate: string | null, hint: string | null) {
+  if (!candidate || !hint) return 0;
+  const a = new Set(norm(candidate).split(" ").filter((w) => w.length > 3 && w !== "squash" && w !== "club"));
+  const b = norm(hint).split(" ").filter((w) => w.length > 3 && w !== "squash" && w !== "club");
+  return b.some((w) => a.has(w)) ? 1 : 0;
+}
+
+function pickBest(name: string, clubHint: string | null, cands: Candidate[]) {
+  const target = norm(name);
+  const exact = cands.filter((c) => norm(c.name) === target);
+  const pool = exact.length ? exact : [];
+  if (!pool.length) return null;
+  if (pool.length === 1) return { candidate: pool[0], confident: true };
+  const scored = pool
+    .map((c) => ({ c, s: clubScore(c.club_label, clubHint) + clubScore(c.location_label, clubHint) }))
+    .sort((x, y) => y.s - x.s);
+  if (scored[0].s > 0 && (scored.length === 1 || scored[0].s > scored[1].s)) {
+    return { candidate: scored[0].c, confident: true };
+  }
+  return { candidate: scored[0].c, confident: false };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action ?? "search");
+
 
     if (action === "search") {
       const q = String(body.q ?? "").trim();

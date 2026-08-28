@@ -101,19 +101,43 @@ async function fetchProfile(path: string) {
 
   const name = t.match(/Create account (.*?) (?:Add Friend|Following|Fans|Overview)/i)?.[1]?.trim() ?? null;
 
+  // Biographical block (same labels as the public compare view)
+  const pick = (re: RegExp) => {
+    const v = t.match(re)?.[1]?.trim() ?? null;
+    if (!v || /^n\/?a$/i.test(v)) return null;
+    return v;
+  };
+  const winsMatch = t.match(/([\d,]+)\s*\/\s*([\d,]+)\s*wins/i);
+  const birthday = pick(/Birthday\s+(.*?)(?:\s*\(Age:|\s+Gender\b)/i);
+  const age = num(t.match(/\(Age:\s*(\d+)\)/i)?.[1] ?? undefined);
+  const gender = pick(/Gender\s+(Male|Female|Other)\b/i);
+  const nationality = pick(/Nationality\s+(.*?)\s+(?:Left \/ Right Handed|Nickname|Occupation|Sporting Idol)/i);
+  const handedness = pick(/Left \/ Right Handed\s+(Left|Right|Both|Ambidextrous)\b/i);
+  const nickname = pick(/Nickname\(s\)\s+(.*?)\s+(?:Occupation|Sporting Idol|Common Ranking|Rankings)/i);
+  const occupation = pick(/Occupation\s+(.*?)\s+(?:Sporting Idol|Common Ranking|Rankings|Nickname)/i);
+
   return {
     profile_path: path,
     name,
     rating,
     rating_confidence: confidence,
     matches_ytd: ytd,
-    matches_all_time: allTime,
+    matches_all_time: allTime ?? num(winsMatch?.[1] ?? undefined),
+    wins_all_time: num(winsMatch?.[2] ?? undefined),
+    birthday,
+    age,
+    gender,
+    nationality,
+    handedness,
+    nickname,
+    occupation,
     rankings,
     governing_bodies: bodies,
     clubs: clubs ? [clubs] : [],
     fetched_at: new Date().toISOString(),
   };
 }
+
 
 function norm(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
@@ -185,6 +209,14 @@ Deno.serve(async (req) => {
         rating_confidence: p.rating_confidence ?? null,
         matches_ytd: p.matches_ytd ?? null,
         matches_all_time: p.matches_all_time ?? null,
+        wins_all_time: p.wins_all_time ?? null,
+        birthday: p.birthday ?? null,
+        age: p.age ?? null,
+        gender: p.gender ?? null,
+        nationality: p.nationality ?? null,
+        handedness: p.handedness ?? null,
+        nickname: p.nickname ?? null,
+        occupation: p.occupation ?? null,
         rankings: p.rankings ?? [],
         governing_bodies: p.governing_bodies ?? [],
         clubs: p.clubs ?? [],
@@ -258,6 +290,14 @@ Deno.serve(async (req) => {
                 rating_confidence: prof.rating_confidence,
                 matches_ytd: prof.matches_ytd,
                 matches_all_time: prof.matches_all_time,
+                wins_all_time: prof.wins_all_time,
+                birthday: prof.birthday,
+                age: prof.age,
+                gender: prof.gender,
+                nationality: prof.nationality,
+                handedness: prof.handedness,
+                nickname: prof.nickname,
+                occupation: prof.occupation,
                 rankings: prof.rankings,
                 governing_bodies: prof.governing_bodies,
                 clubs: prof.clubs,

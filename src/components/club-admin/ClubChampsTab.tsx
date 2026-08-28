@@ -5025,8 +5025,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (bookErr) console.warn("Some bookings could not be created:", bookErr.message);
       }
 
+      // Leave a permanent, attributable trace of every (re)generation — a
+      // rebuild reshuffles live fixtures, so "who pressed it" must be answerable.
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const { data: lastVersion } = await fromExt("tournament_draw_versions")
+          .select("version")
+          .eq("tournament_id", champId)
+          .order("version", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const { count: builtCount } = await fromExt("club_champs_matches")
+          .select("id", { count: "exact", head: true })
+          .eq("champ_id", champId);
+        await fromExt("tournament_draw_versions").insert({
+          tournament_id: champId,
+          version: Number((lastVersion as any)?.version || 0) + 1,
+          note: editingChampId ? "Schedule rebuilt from tournament wizard" : "Initial schedule generated",
+          match_count: builtCount || 0,
+          created_by: authData?.user?.id ?? null,
+        });
+      } catch (auditErr) {
+        console.warn("Draw version audit could not be written:", auditErr);
+      }
+
       return { id: champId };
     },
+
     onSuccess: async (data: any) => {
       const savedShellMsg = partnerMode === "admin"
         ? "Tournament saved — open registrations, then edit the tournament to form pairs & generate the schedule."

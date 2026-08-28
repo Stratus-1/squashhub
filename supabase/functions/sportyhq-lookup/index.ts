@@ -259,21 +259,48 @@ Deno.serve(async (req) => {
 
       const limit = Math.min(Math.max(Number(body.limit ?? 20), 1), 40);
       const offset = Math.max(Number(body.offset ?? 0), 0);
+      const mode = String(body.mode ?? "new"); // "new" = unlinked people, "refresh" = weak/empty existing links
 
-      // People with no SportyHQ profile yet
-      const { data: linked } = await supabase.from("sportyhq_profiles").select("person_id").not("person_id", "is", null);
+      // Existing links (person_id -> profile row)
+      const { data: linked } = await supabase
+        .from("sportyhq_profiles")
+        .select("id, person_id, sportyhq_user_id, rating, club_label, location_label")
+        .not("person_id", "is", null);
       const linkedIds = new Set((linked ?? []).map((r: any) => r.person_id));
+      const weak = new Map<string, any>();
+      for (const r of linked ?? []) {
+        const isWeak = r.rating == null && !r.club_label && !r.location_label;
+        if (isWeak) weak.set(r.person_id, r);
+      }
 
-      const { data: people, error: peopleErr } = await supabase
-        .from("people")
-        .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
-        .eq("status", "active")
-        .order("full_name")
-        .range(offset, offset + limit * 3);
-      if (peopleErr) throw peopleErr;
+      let queue: any[] = [];
+      let scanned = 0;
 
-      const queue = (people ?? []).filter((p: any) => !linkedIds.has(p.id)).slice(0, limit);
+      if (mode === "refresh") {
+        const ids = [...weak.keys()].slice(offset, offset + limit);
+        scanned = ids.length;
+        if (ids.length) {
+          const { data: people, error: peopleErr } = await supabase
+            .from("people")
+            .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
+            .in("id", ids);
+          if (peopleErr) throw peopleErr;
+          queue = people ?? [];
+        }
+      } else {
+        const { data: people, error: peopleErr } = await supabase
+          .from("people")
+          .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
+          .eq("status", "active")
+          .order("full_name")
+          .range(offset, offset + limit * 3);
+        if (peopleErr) throw peopleErr;
+        scanned = (people ?? []).length;
+        queue = (people ?? []).filter((p: any) => !linkedIds.has(p.id)).slice(0, limit);
+      }
+
       const results: Array<Record<string, unknown>> = [];
+
 
       for (const p of queue) {
         const clubHint =

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.queue_champ_result_emails() FROM PUBLIC, anon, authenticated;

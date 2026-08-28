@@ -6,6 +6,7 @@ import {
   orphanedScheduleMessage,
   participantsKey,
   reconcileProtectedSchedules,
+  resultCarryOver,
 } from "@/lib/tournaments/preserve-schedules";
 import { isUnscheduled } from "@/lib/tournaments/self-schedule";
 

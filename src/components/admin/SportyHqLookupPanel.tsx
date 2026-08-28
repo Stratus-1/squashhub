@@ -388,12 +388,14 @@ export function SportyHqLookupPanel() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {saved.length === 0 && (
+                {filteredSaved.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">Nothing saved yet</TableCell>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      {saved.length === 0 ? "Nothing saved yet" : `No players match “${savedQuery}”`}
+                    </TableCell>
                   </TableRow>
                 )}
-                {saved.map((s: any) => (
+                {filteredSaved.map((s: any) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.name}</TableCell>
                     <TableCell className="text-muted-foreground">{s.club_label ?? "—"}</TableCell>

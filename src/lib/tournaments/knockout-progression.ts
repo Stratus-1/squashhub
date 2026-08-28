@@ -309,26 +309,23 @@ export function advancingMembers(section: SectionProgression): string[] {
 
 /**
  * Action label for the organiser's single context-aware button. Only ever
- * says "Semi-finals"/"Final" when that is genuinely the next stage; anything
- * else is the neutral "Generate Next Round".
+ * says "Semi-finals"/"Final" when the ORGANISER has named the round that way;
+ * anything else is the neutral "Generate Next Round".
  */
 export function generateActionLabel(section: SectionProgression): string {
-  const label = section.nextRound?.label || labelForActive(Math.max(2, section.activeCount));
+  const label = String(section.nextRound?.label || "").trim();
   if (/^final$/i.test(label)) return "Generate Final";
   if (/^semi/i.test(label)) return "Generate Semi-finals";
   return "Generate Next Round";
 }
 
 
-/** Status line: "Semi-final · 2/4 complete · Next: Final". */
+/** Status line: "Round 3 · 2/4 complete · Next: Round 4". */
 export function progressSummary(section: SectionProgression): string {
-  const contestants = new Set<string>();
-  for (const m of section.currentRoundMatches) {
-    for (const id of [m.player_a_member_id, m.player_b_member_id]) if (id) contestants.add(id);
-  }
   const current =
-    section.plan.find((r) => r.round_number === section.currentRound)?.label ||
-    labelForActive(Math.max(2, contestants.size));
+    String(section.plan.find((r) => r.round_number === section.currentRound)?.label || "").trim() ||
+    `Round ${Math.max(1, section.currentRound)}`;
+
 
   const parts = [`${current} · ${section.completed}/${section.total} complete`];
   if (section.complete) parts.push("Section decided");

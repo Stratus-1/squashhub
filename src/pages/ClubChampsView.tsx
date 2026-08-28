@@ -2527,22 +2527,20 @@ export default function ClubChampsView() {
         if (summaryFirst) {
           // Summary tables first, fixtures for each league below them.
           standingsCards.push(
-            <Card key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}>
-              <CardHeader>{titleNode}</CardHeader>
-              <CardContent className="space-y-4">
-                {swissControlsFor(gn)}
-                {standingsTable}
-              </CardContent>
-            </Card>
+            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}
+              title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
+            >
+              {swissControlsFor(gn)}
+              {standingsTable}
+            </CollapsibleCard>
           );
           if (groupMatches.length > 0) {
             fixtureCards.push(
-              <Card key={`f-${gn}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{getGroupLabel(champ, gn)} — Fixtures &amp; Results</CardTitle>
-                </CardHeader>
-                <CardContent>{fixtureBody}</CardContent>
-              </Card>
+              <CollapsibleCard key={`f-${gn}`} headerClassName="pb-3" defaultOpen={false}
+                title={`${getGroupLabel(champ, gn)} — Fixtures & Results`}
+              >
+                {fixtureBody}
+              </CollapsibleCard>
             );
           }
         } else {

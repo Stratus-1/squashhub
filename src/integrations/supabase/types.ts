@@ -4207,6 +4207,7 @@ export type Database = {
           booking_slot_minutes: number
           chairman_member_id: string | null
           challenge_levels_up: number | null
+          champ_result_emails: boolean
           club_captain_member_id: string | null
           contact_person_name: string | null
           created_at: string
@@ -4322,6 +4323,7 @@ export type Database = {
           booking_slot_minutes?: number
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
+          champ_result_emails?: boolean
           club_captain_member_id?: string | null
           contact_person_name?: string | null
           created_at?: string
@@ -4437,6 +4439,7 @@ export type Database = {
           booking_slot_minutes?: number
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
+          champ_result_emails?: boolean
           club_captain_member_id?: string | null
           contact_person_name?: string | null
           created_at?: string

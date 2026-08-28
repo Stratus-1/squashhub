@@ -98,8 +98,7 @@ export function SportyHqLookupPanel() {
       const { data, error } = await supabase
         .from("sportyhq_profiles")
         .select("id, name, club_label, rating, rating_confidence, matches_all_time, verified_at")
-        .order("rating", { ascending: false, nullsFirst: false })
-        .limit(500);
+        .order("rating", { ascending: false, nullsFirst: false });
       if (error) throw error;
       return data ?? [];
     },

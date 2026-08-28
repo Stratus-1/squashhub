@@ -244,25 +244,27 @@ export function sectionProgression(
 
     const nextRoundNumber = currentRound + 1;
     const planned = plan.find((r) => r.round_number === nextRoundNumber) || null;
-    // The stage name always comes from how many entrants are still alive —
-    // never from the number of match rows — so a 3-player round becomes a
-    // semi-final (with a bye) instead of a bogus "Round of 3".
-    const activeLabel = labelForActive(activeCount);
+    // Stage names are the ORGANISER's call. We never guess "Quarter-final" or
+    // "Semi-final" from the bracket maths — until an admin names the round in
+    // the round plan / setup dialog it stays the neutral "Round N".
+    const plannedLabel = String(planned?.label || "").trim();
+    const neutralLabel = `Round ${nextRoundNumber}`;
     const activeType = typeForActive(activeCount);
     const derivedNext: ChampRound | null =
       activeCount > 1
         ? planned
-          ? { ...planned, label: activeLabel, round_type: activeType }
+          ? { ...planned, label: plannedLabel || neutralLabel, round_type: planned.round_type || activeType }
           : {
               group_number: groupNumber,
               section_number: section,
               round_number: nextRoundNumber,
               round_type: activeType,
-              label: activeLabel,
+              label: neutralLabel,
               play_by: null,
               status: "pending" as const,
             }
         : null;
+
 
     const nextRoundGenerated = rows.some((m) => (Number(m.round_number) || 0) === nextRoundNumber);
     const complete = currentRoundComplete && currentRoundMatches.length === 1;

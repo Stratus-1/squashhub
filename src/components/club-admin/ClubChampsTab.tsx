@@ -10797,6 +10797,42 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         </div>
       )}
 
+      {/* Rebuild confirmation — a live tournament must never be reshuffled by accident */}
+      <Dialog open={rebuildConfirmOpen} onOpenChange={setRebuildConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rebuild this tournament's schedule?</DialogTitle>
+            <DialogDescription>{rebuildImpact.summary}</DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-1 text-xs text-muted-foreground">
+            {rebuildImpact.played > 0 && <li>· {rebuildImpact.played} played result(s) will be carried across</li>}
+            {rebuildImpact.inProgress > 0 && (
+              <li className="text-destructive">
+                · {rebuildImpact.inProgress} match(es) are being marked right now — wait until they finish
+              </li>
+            )}
+            {rebuildImpact.booked > 0 && <li>· {rebuildImpact.booked} player court booking(s) will be kept</li>}
+            <li>· {rebuildImpact.pending} unplayed fixture(s) may be re-drawn</li>
+          </ul>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRebuildConfirmOpen(false)}>
+              Keep current schedule
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={createChamp.isPending || rebuildImpact.inProgress > 0}
+              onClick={() => {
+                setRebuildConfirmOpen(false);
+                createChamp.mutate();
+              }}
+            >
+              Rebuild anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
 
 

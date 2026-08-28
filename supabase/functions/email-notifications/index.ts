@@ -205,9 +205,13 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; cc?: string[];
       requireTLS: cfg.smtpPort === 587,
       auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
     });
+    const ccList = (args.cc || [])
+      .map((c) => String(c || "").trim())
+      .filter((c) => c.length > 3 && c.toLowerCase() !== args.to.toLowerCase());
     const info: any = await transporter.sendMail({
       from: `${cfg.senderName} <${cfg.senderEmail}>`,
       to: args.to,
+      ...(ccList.length ? { cc: ccList } : {}),
       subject: args.subject,
       text: fullText,
       html: fullHtml,

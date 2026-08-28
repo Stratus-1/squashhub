@@ -2567,40 +2567,34 @@ export default function ClubChampsView() {
 
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(
-          <Card key={gn} className={cn(isLeading && "border-primary/40")}>
-            <CardHeader>{titleNode}</CardHeader>
-            <CardContent className="space-y-4">
-              {swissControlsFor(gn)}
-              {standingsTable}
-              {!isCrossLeague && groupMatches.length > 0 && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
-                    <div className="space-y-1.5">
-                      {groupMatches.map((m: any) => renderMatchRow(m))}
-                    </div>
+          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")}
+            title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
+          >
+            {swissControlsFor(gn)}
+            {standingsTable}
+            {!isCrossLeague && groupMatches.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
+                  <div className="space-y-1.5">
+                    {groupMatches.map((m: any) => renderMatchRow(m))}
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                </div>
+              </>
+            )}
+          </CollapsibleCard>
         );
       }
     });
 
     // Cross-league: single combined Fixtures & Results card (matches shared across leagues).
     const combinedFixtures = isCrossLeague ? (
-      <Card key="cross-fixtures">
-        <CardHeader>
-          <CardTitle className="text-lg">Fixtures & Results</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1.5">
-            {matches.map((m: any) => renderMatchRow(m))}
-          </div>
-        </CardContent>
-      </Card>
+      <CollapsibleCard key="cross-fixtures" title="Fixtures & Results" titleClassName="text-lg">
+        <div className="space-y-1.5">
+          {matches.map((m: any) => renderMatchRow(m))}
+        </div>
+      </CollapsibleCard>
     ) : null;
     const isHandicapChamp = ((champ as any)?.handicap_mode || "none") !== "none";
 

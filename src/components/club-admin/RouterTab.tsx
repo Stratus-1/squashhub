@@ -29,6 +29,7 @@ import {
   useRecentPolls,
   useRouterConfig,
 } from "@/hooks/use-router-monitor";
+import { ClubWifiSettingsCard } from "./ClubWifiSettingsCard";
 
 export function RouterTab({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
@@ -297,6 +298,9 @@ export function RouterTab({ clubId }: { clubId: string }) {
           {last?.error && <p className="text-[11px] text-destructive">{last.error}</p>}
         </CardContent>
       </Card>
+
+      {/* Club Wi-Fi sharing settings */}
+      <ClubWifiSettingsCard clubId={clubId} />
 
       {/* Router configuration */}
       <Card>

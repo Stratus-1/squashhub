@@ -143,8 +143,8 @@ export function DailyDigestCard({ champId, matches, getName, getGroupLabel, now 
             </div>
           </div>
         )}
-        {getGroupLabel ? null : null}
       </CardContent>
+
     </Card>
   );
 }

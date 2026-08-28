@@ -157,13 +157,21 @@ function pickBest(name: string, clubHint: string | null, cands: Candidate[]) {
   if (!pool.length) return null;
   if (pool.length === 1) return { candidate: pool[0], confident: true };
   const scored = pool
-    .map((c) => ({ c, s: clubScore(c.club_label, clubHint) + clubScore(c.location_label, clubHint) }))
+    .map((c) => ({
+      c,
+      s:
+        clubScore(c.club_label, clubHint) * 2 +
+        clubScore(c.location_label, clubHint) * 2 +
+        // prefer real profiles over empty shells with no club/location at all
+        (c.club_label || c.location_label ? 1 : 0),
+    }))
     .sort((x, y) => y.s - x.s);
-  if (scored[0].s > 0 && (scored.length === 1 || scored[0].s > scored[1].s)) {
+  if (scored[0].s > 0 && scored[0].s > (scored[1]?.s ?? -1)) {
     return { candidate: scored[0].c, confident: true };
   }
   return { candidate: scored[0].c, confident: false };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

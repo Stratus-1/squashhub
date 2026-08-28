@@ -63,6 +63,7 @@ export function SportyHqLookupPanel() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkLog, setBulkLog] = useState<BulkResult[]>([]);
+  const [savedQuery, setSavedQuery] = useState("");
 
   const runBulk = async (mode: "new" | "refresh" = "new") => {
     setBulkRunning(true);

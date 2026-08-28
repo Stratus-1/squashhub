@@ -37,7 +37,7 @@ import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrect
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { looksLikePhone } from "@/lib/member-display";
-import { hasKnockoutStage, eliminatedMemberIds, survivorRows } from "@/lib/tournaments/survivors";
+import { hasKnockoutStage, winnerMemberIds, winnerRows } from "@/lib/tournaments/survivors";
 import { DailyDigestCard } from "@/components/tournaments/DailyDigestCard";
 
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
@@ -2243,7 +2243,7 @@ export default function ClubChampsView() {
       .flatMap((sl) => {
         const s = getGroupStandings(sl.gn, sl.poolNumber);
         if (koRunning) {
-          return survivorRows(s as any[], koWinners).map((w: any) => ({ slice: sl, winner: w }));
+          return winnerRows(s as any[], koWinners).map((w: any) => ({ slice: sl, winner: w }));
         }
         const w = s.find((r: any) => (r.played || 0) > 0) || s[0] || null;
         return [{ slice: sl, winner: w }];

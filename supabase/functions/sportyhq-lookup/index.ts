@@ -101,19 +101,43 @@ async function fetchProfile(path: string) {
 
   const name = t.match(/Create account (.*?) (?:Add Friend|Following|Fans|Overview)/i)?.[1]?.trim() ?? null;
 
+  // Biographical block (same labels as the public compare view)
+  const pick = (re: RegExp) => {
+    const v = t.match(re)?.[1]?.trim() ?? null;
+    if (!v || /^n\/?a$/i.test(v)) return null;
+    return v;
+  };
+  const winsMatch = t.match(/([\d,]+)\s*\/\s*([\d,]+)\s*wins/i);
+  const birthday = pick(/Birthday\s+(.*?)(?:\s*\(Age:|\s+Gender\b)/i);
+  const age = num(t.match(/\(Age:\s*(\d+)\)/i)?.[1] ?? undefined);
+  const gender = pick(/Gender\s+(Male|Female|Other)\b/i);
+  const nationality = pick(/Nationality\s+(.*?)\s+(?:Left \/ Right Handed|Nickname|Occupation|Sporting Idol)/i);
+  const handedness = pick(/Left \/ Right Handed\s+(Left|Right|Both|Ambidextrous)\b/i);
+  const nickname = pick(/Nickname\(s\)\s+(.*?)\s+(?:Occupation|Sporting Idol|Common Ranking|Rankings)/i);
+  const occupation = pick(/Occupation\s+(.*?)\s+(?:Sporting Idol|Common Ranking|Rankings|Nickname)/i);
+
   return {
     profile_path: path,
     name,
     rating,
     rating_confidence: confidence,
     matches_ytd: ytd,
-    matches_all_time: allTime,
+    matches_all_time: allTime ?? num(winsMatch?.[1] ?? undefined),
+    wins_all_time: num(winsMatch?.[2] ?? undefined),
+    birthday,
+    age,
+    gender,
+    nationality,
+    handedness,
+    nickname,
+    occupation,
     rankings,
     governing_bodies: bodies,
     clubs: clubs ? [clubs] : [],
     fetched_at: new Date().toISOString(),
   };
 }
+
 
 function norm(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();

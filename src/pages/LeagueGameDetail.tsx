@@ -2214,14 +2214,28 @@ export default function LeagueGameDetail() {
   // intermediate grid/format/complete-setup page is redundant and hidden.
   const nsaPreSetup = nsaLive && !setupDone && !isSubmitted;
 
-  // Auto-open the lineup wizard on fresh fixtures so the marker starts with
-  // selecting players instead of showing the intermediate setup screen.
+  // Auto-open the lineup wizard ONLY on genuinely fresh fixtures.
+  //
+  // Gap fixed (Aug 2026): the effect fired on first render while the saved
+  // rubber rows were still loading, so a second captain joining a match that
+  // was already set up and being marked was prompted to re-pick both teams.
+  // We now wait for the saved state to land and never prompt when a lineup,
+  // a scorecard row or a live rally already exists.
+  const hasSavedLineupRows = Array.isArray(existingMatches)
+    && existingMatches.some((m: any) => m?.home_player_code || m?.home_player_name || m?.away_player_code || m?.away_player_name);
+  const hasLiveOrSavedPlay = positions.some((p) => !!p.currentGame || p.completed || (p.scores?.length ?? 0) > 0);
   useEffect(() => {
     if (!nsaLive || setupDone || isSubmitted || autoOpenWizardRef.current) return;
+    // Wait until both saved-state queries have resolved.
+    if (!existingMatchesFetched || !existingResultFetched) return;
+    if (hasSavedLineupRows || hasLiveOrSavedPlay || markerLocksFresh.size > 0) {
+      autoOpenWizardRef.current = true; // never auto-prompt for this fixture
+      return;
+    }
     autoOpenWizardRef.current = true;
     setWizardStartEmpty(true);
     setSelectWizardOpen(true);
-  }, [nsaLive, setupDone, isSubmitted]);
+  }, [nsaLive, setupDone, isSubmitted, existingMatchesFetched, existingResultFetched, hasSavedLineupRows, hasLiveOrSavedPlay, markerLocksFresh]);
 
   // Keep every hook above the loading return. The fixture is undefined on the
   // first render; conditionally reaching this effect only after it loads makes

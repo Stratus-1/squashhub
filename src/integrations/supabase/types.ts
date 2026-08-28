@@ -471,6 +471,57 @@ export type Database = {
           },
         ]
       }
+      association_ranking_settings: {
+        Row: {
+          association_id: string
+          best_n: number
+          clean_sweep_bonus: number
+          close_loss_bonus: number
+          created_at: string
+          league_step: number
+          loss_points: number
+          opponent_scale: number
+          position_step: number
+          position_top_weight: number
+          reserve_factor: number
+          season_decay: Json
+          updated_at: string
+          win_points: number
+        }
+        Insert: {
+          association_id: string
+          best_n?: number
+          clean_sweep_bonus?: number
+          close_loss_bonus?: number
+          created_at?: string
+          league_step?: number
+          loss_points?: number
+          opponent_scale?: number
+          position_step?: number
+          position_top_weight?: number
+          reserve_factor?: number
+          season_decay?: Json
+          updated_at?: string
+          win_points?: number
+        }
+        Update: {
+          association_id?: string
+          best_n?: number
+          clean_sweep_bonus?: number
+          close_loss_bonus?: number
+          created_at?: string
+          league_step?: number
+          loss_points?: number
+          opponent_scale?: number
+          position_step?: number
+          position_top_weight?: number
+          reserve_factor?: number
+          season_decay?: Json
+          updated_at?: string
+          win_points?: number
+        }
+        Relationships: []
+      }
       audit_events: {
         Row: {
           action: string
@@ -7860,6 +7911,8 @@ export type Database = {
           league_label: string | null
           nsa_fixture_id: number
           nsa_league_id: number | null
+          opponent_code: string | null
+          opponent_name: string | null
           player_code: string
           player_name: string | null
           points_against: number | null
@@ -7869,6 +7922,8 @@ export type Database = {
           rubbers_against: number | null
           rubbers_for: number | null
           scraped_at: string
+          season_code: string | null
+          season_year: number | null
           team_code: string
           won: boolean | null
         }
@@ -7883,6 +7938,8 @@ export type Database = {
           league_label?: string | null
           nsa_fixture_id: number
           nsa_league_id?: number | null
+          opponent_code?: string | null
+          opponent_name?: string | null
           player_code: string
           player_name?: string | null
           points_against?: number | null
@@ -7892,6 +7949,8 @@ export type Database = {
           rubbers_against?: number | null
           rubbers_for?: number | null
           scraped_at?: string
+          season_code?: string | null
+          season_year?: number | null
           team_code: string
           won?: boolean | null
         }
@@ -7906,6 +7965,8 @@ export type Database = {
           league_label?: string | null
           nsa_fixture_id?: number
           nsa_league_id?: number | null
+          opponent_code?: string | null
+          opponent_name?: string | null
           player_code?: string
           player_name?: string | null
           points_against?: number | null
@@ -7915,8 +7976,120 @@ export type Database = {
           rubbers_against?: number | null
           rubbers_for?: number | null
           scraped_at?: string
+          season_code?: string | null
+          season_year?: number | null
           team_code?: string
           won?: boolean | null
+        }
+        Relationships: []
+      }
+      nsa_sync_issues: {
+        Row: {
+          created_at: string
+          external_ref: string | null
+          id: string
+          issue_type: string
+          label: string | null
+          payload: Json
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          run_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_ref?: string | null
+          id?: string
+          issue_type: string
+          label?: string | null
+          payload?: Json
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_ref?: string | null
+          id?: string
+          issue_type?: string
+          label?: string | null
+          payload?: Json
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nsa_sync_issues_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "nsa_sync_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nsa_sync_runs: {
+        Row: {
+          association_id: string | null
+          created_at: string
+          created_count: number
+          details: Json
+          error_count: number
+          finished_at: string | null
+          id: string
+          kind: string
+          season_code: string | null
+          season_year: number | null
+          seen_count: number
+          skipped_count: number
+          started_at: string
+          status: string
+          triggered_by: string | null
+          updated_at: string
+          updated_count: number
+        }
+        Insert: {
+          association_id?: string | null
+          created_at?: string
+          created_count?: number
+          details?: Json
+          error_count?: number
+          finished_at?: string | null
+          id?: string
+          kind: string
+          season_code?: string | null
+          season_year?: number | null
+          seen_count?: number
+          skipped_count?: number
+          started_at?: string
+          status?: string
+          triggered_by?: string | null
+          updated_at?: string
+          updated_count?: number
+        }
+        Update: {
+          association_id?: string | null
+          created_at?: string
+          created_count?: number
+          details?: Json
+          error_count?: number
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          season_code?: string | null
+          season_year?: number | null
+          seen_count?: number
+          skipped_count?: number
+          started_at?: string
+          status?: string
+          triggered_by?: string | null
+          updated_at?: string
+          updated_count?: number
         }
         Relationships: []
       }
@@ -9467,6 +9640,167 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ranking_rubber_points: {
+        Row: {
+          association_id: string | null
+          base_points: number
+          category: string | null
+          created_at: string
+          fixture_date: string
+          games_against: number | null
+          games_for: number | null
+          id: string
+          league_label: string | null
+          league_weight: number
+          nsa_fixture_id: number | null
+          opponent_factor: number
+          person_id: string | null
+          player_code: string
+          player_name: string | null
+          points: number
+          position: number | null
+          position_weight: number
+          season_year: number
+          team_code: string | null
+          won: boolean | null
+        }
+        Insert: {
+          association_id?: string | null
+          base_points?: number
+          category?: string | null
+          created_at?: string
+          fixture_date: string
+          games_against?: number | null
+          games_for?: number | null
+          id?: string
+          league_label?: string | null
+          league_weight?: number
+          nsa_fixture_id?: number | null
+          opponent_factor?: number
+          person_id?: string | null
+          player_code: string
+          player_name?: string | null
+          points?: number
+          position?: number | null
+          position_weight?: number
+          season_year: number
+          team_code?: string | null
+          won?: boolean | null
+        }
+        Update: {
+          association_id?: string | null
+          base_points?: number
+          category?: string | null
+          created_at?: string
+          fixture_date?: string
+          games_against?: number | null
+          games_for?: number | null
+          id?: string
+          league_label?: string | null
+          league_weight?: number
+          nsa_fixture_id?: number | null
+          opponent_factor?: number
+          person_id?: string | null
+          player_code?: string
+          player_name?: string | null
+          points?: number
+          position?: number | null
+          position_weight?: number
+          season_year?: number
+          team_code?: string | null
+          won?: boolean | null
+        }
+        Relationships: []
+      }
+      ranking_snapshot_entries: {
+        Row: {
+          association_id: string | null
+          category: string | null
+          club_label: string | null
+          created_at: string
+          id: string
+          person_id: string | null
+          player_code: string
+          player_name: string | null
+          previous_rank: number | null
+          rank: number
+          rubbers_counted: number
+          score: number
+          season_breakdown: Json
+          snapshot_id: string
+        }
+        Insert: {
+          association_id?: string | null
+          category?: string | null
+          club_label?: string | null
+          created_at?: string
+          id?: string
+          person_id?: string | null
+          player_code: string
+          player_name?: string | null
+          previous_rank?: number | null
+          rank: number
+          rubbers_counted?: number
+          score?: number
+          season_breakdown?: Json
+          snapshot_id: string
+        }
+        Update: {
+          association_id?: string | null
+          category?: string | null
+          club_label?: string | null
+          created_at?: string
+          id?: string
+          person_id?: string | null
+          player_code?: string
+          player_name?: string | null
+          previous_rank?: number | null
+          rank?: number
+          rubbers_counted?: number
+          score?: number
+          season_breakdown?: Json
+          snapshot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranking_snapshot_entries_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "ranking_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ranking_snapshots: {
+        Row: {
+          association_id: string | null
+          basis_seasons: number[]
+          computed_at: string
+          created_at: string
+          id: string
+          player_count: number
+          settings: Json
+        }
+        Insert: {
+          association_id?: string | null
+          basis_seasons?: number[]
+          computed_at?: string
+          created_at?: string
+          id?: string
+          player_count?: number
+          settings?: Json
+        }
+        Update: {
+          association_id?: string | null
+          basis_seasons?: number[]
+          computed_at?: string
+          created_at?: string
+          id?: string
+          player_count?: number
+          settings?: Json
+        }
+        Relationships: []
       }
       recurring_bookings: {
         Row: {

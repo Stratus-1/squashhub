@@ -2247,7 +2247,7 @@ export default function ClubChampsView() {
         title={
           <span className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-emerald-600" />
-            Survivors — still in it
+            Survivors winning their games
           </span>
         }
       >

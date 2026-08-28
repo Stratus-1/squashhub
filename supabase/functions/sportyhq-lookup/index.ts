@@ -143,14 +143,22 @@ function norm(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function clubScore(candidate: string | null, hint: string | null) {
-  if (!candidate || !hint) return 0;
-  const a = new Set(norm(candidate).split(" ").filter((w) => w.length > 3 && w !== "squash" && w !== "club"));
-  const b = norm(hint).split(" ").filter((w) => w.length > 3 && w !== "squash" && w !== "club");
-  return b.some((w) => a.has(w)) ? 1 : 0;
+function clubScore(candidate: string | null, hints: string[]) {
+  if (!candidate || !hints.length) return 0;
+  const a = new Set(
+    norm(candidate).split(" ").filter((w) => w.length > 2 && w !== "squash" && w !== "club"),
+  );
+  return hints.some((h) =>
+    norm(h)
+      .split(" ")
+      .filter((w) => w.length > 2 && w !== "squash" && w !== "club")
+      .some((w) => a.has(w)),
+  )
+    ? 1
+    : 0;
 }
 
-function pickBest(name: string, clubHint: string | null, cands: Candidate[]) {
+function pickBest(name: string, clubHints: string[], cands: Candidate[]) {
   const target = norm(name);
   const exact = cands.filter((c) => norm(c.name) === target);
   const pool = exact.length ? exact : [];
@@ -160,8 +168,8 @@ function pickBest(name: string, clubHint: string | null, cands: Candidate[]) {
     .map((c) => ({
       c,
       s:
-        clubScore(c.club_label, clubHint) * 2 +
-        clubScore(c.location_label, clubHint) * 2 +
+        clubScore(c.club_label, clubHints) * 2 +
+        clubScore(c.location_label, clubHints) * 2 +
         // prefer real profiles over empty shells with no club/location at all
         (c.club_label || c.location_label ? 1 : 0),
     }))
@@ -303,11 +311,12 @@ Deno.serve(async (req) => {
 
 
       for (const p of queue) {
-        const clubHint =
-          (p.club_members ?? []).map((a: any) => a?.clubs?.name).filter(Boolean)[0] ?? null;
+        const clubHints: string[] = (p.club_members ?? [])
+          .map((a: any) => a?.clubs?.name)
+          .filter(Boolean);
         try {
           const cands = await search(String(p.full_name));
-          const best = pickBest(String(p.full_name), clubHint, cands);
+          const best = pickBest(String(p.full_name), clubHints, cands);
           if (!best) {
             results.push({ person_id: p.id, name: p.full_name, status: "no_match" });
           } else if (!best.confident) {

@@ -10767,11 +10767,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             <Save className="w-4 h-4 mr-1" /> Save Progress
           </Button>
           {step === "review" ? (
-            <Button onClick={() => createChamp.mutate()} disabled={createChamp.isPending}>
+            <Button
+              onClick={() => {
+                // A rebuild on a live tournament deletes and re-creates every
+                // fixture — never let that happen on a single click.
+                if (editingChampId && rebuildImpact.requiresConfirmation) {
+                  setRebuildConfirmOpen(true);
+                  return;
+                }
+                createChamp.mutate();
+              }}
+              disabled={createChamp.isPending}
+            >
               {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
               {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
             </Button>
           ) : (
+
             <Button
               onClick={handleNext}
               // Basics has only two visible choices — keep the button disabled

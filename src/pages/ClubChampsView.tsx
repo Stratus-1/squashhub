@@ -2211,16 +2211,11 @@ export default function ClubChampsView() {
     const groupPlayable = matches.filter((m: any) => (m.stage || "group") === "group" && !m.is_bye);
     const isComplete = groupPlayable.length > 0 && groupPlayable.every((m: any) => m.status === "completed");
     // Knockout championships have no meaningful "bottom" — a player is either
-    // still in it or out — so we list survivors and hide the wooden spoons.
+    // still in it or out — so the wooden spoons stay hidden. The Leaders card
+    // is also hidden while a knockout runs: the main log already shows who is
+    // still in (struck-through names are out), so a separate list is noise.
     const koRunning = hasKnockoutStage(matches) && !isComplete;
-    // Survivors = players who have actually WON a knockout match so far
-    // (not merely "not yet played/eliminated").
-    const koWinners = koRunning ? winnerMemberIds(matches) : new Set<string>();
-    const winnersTitle = isComplete
-      ? "Winners"
-      : koRunning
-        ? "Survivors — still in it"
-        : "Current Standings — Leaders";
+    const winnersTitle = isComplete ? "Winners" : "Current Standings — Leaders";
     const spoonsTitle = isComplete ? "Wooden Spoons" : "Current Standings — Bottom";
     const overallWinnerLabel = isComplete ? "Overall" : "Overall (current)";
 
@@ -2238,15 +2233,11 @@ export default function ClubChampsView() {
         : `${getGroupLabel(champ, s.gn)} · Pool ${poolLabel(s.poolNumber)}`;
 
     // Winners table — top of each league/pool plus the overall tournament winner.
-    // In a running knockout every survivor of the league is listed instead.
     const leagueWinners = slices
-      .flatMap((sl) => {
+      .map((sl) => {
         const s = getGroupStandings(sl.gn, sl.poolNumber);
-        if (koRunning) {
-          return winnerRows(s as any[], koWinners).map((w: any) => ({ slice: sl, winner: w }));
-        }
         const w = s.find((r: any) => (r.played || 0) > 0) || s[0] || null;
-        return [{ slice: sl, winner: w }];
+        return { slice: sl, winner: w };
       })
       .filter((w) => w.winner);
 
@@ -2255,7 +2246,7 @@ export default function ClubChampsView() {
         getGroupStandings(gn).map((s: any) => ({ ...s, _groupNumber: gn }))
       )
       .sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
-    const overallPool = koRunning ? winnerRows(overallRows as any[], koWinners) : overallRows;
+    const overallPool = overallRows;
     const overallWinner =
       overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
 

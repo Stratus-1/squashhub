@@ -275,8 +275,23 @@ export function SportyHqLookupPanel() {
                   <Stat label="SportyHQ rating" value={profile.rating ?? "—"} />
                   <Stat label="Confidence" value={profile.rating_confidence != null ? `${profile.rating_confidence}%` : "—"} />
                   <Stat label="Matches this year" value={profile.matches_ytd ?? "—"} />
-                  <Stat label="Matches all time" value={profile.matches_all_time ?? "—"} />
+                  <Stat
+                    label="Played / won"
+                    value={
+                      profile.matches_all_time != null
+                        ? `${profile.matches_all_time}${profile.wins_all_time != null ? ` / ${profile.wins_all_time}` : ""}`
+                        : "—"
+                    }
+                  />
                 </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Stat label="Birthday" value={profile.birthday ? `${profile.birthday}${profile.age ? ` (${profile.age})` : ""}` : "—"} />
+                  <Stat label="Handedness" value={profile.handedness ?? "—"} />
+                  <Stat label="Occupation" value={profile.occupation ?? "—"} />
+                  <Stat label="Nationality" value={profile.nationality ?? "—"} />
+                </div>
+
 
                 {profile.rankings.length > 0 && (
                   <div className="rounded-md border overflow-x-auto">

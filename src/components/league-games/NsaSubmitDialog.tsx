@@ -259,11 +259,10 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
         setVerification({
           ok: verifiedOk,
           message: verifiedOk
-            ? `Confirmed on NSA (status: ${v.status})`
-            : v?.found
-              ? `NSA still shows status "${v.status}" — refresh in a moment`
-              : (v?.message || "NSA hasn't published the result yet"),
+            ? "Post successful — confirmed on NSA (status: completed)"
+            : "Post successful — NSA accepted the scorecard. Its public feed may take a few minutes to show the result.",
         });
+
 
         // Step 3: persist receipt locally regardless — NSA accepted the commit.
         if (fixtureRowId) {

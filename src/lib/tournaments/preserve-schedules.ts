@@ -99,9 +99,62 @@ export function collectProtectedSchedules(oldMatches: ScheduleMatchRow[]): Prote
     scheduledDate: m.scheduled_date ?? null,
     scheduledTime: m.scheduled_time ?? null,
     bookingId: m.booking_id ?? null,
+    status: m.status ?? null,
+    score: m.score ?? null,
+    gameScores: m.game_scores ?? null,
+    winnerMemberId: m.winner_member_id ?? null,
+    sideAPoints: m.side_a_points ?? null,
+    sideBPoints: m.side_b_points ?? null,
+    playerAMemberId: m.player_a_member_id ?? null,
     reason: m.booking_id ? "booking" : "result",
   }));
 }
+
+/** Does this protected row carry a real, played outcome? */
+export function hasPlayedResult(p: ProtectedSchedule): boolean {
+  return !!(p.winnerMemberId || p.score || DECIDED.has(String(p.status || "")));
+}
+
+const flipScore = (s: string | null): string | null =>
+  s
+    ? s
+        .split(",")
+        .map((g) => {
+          const m = g.trim().match(/^(\d+)\s*-\s*(\d+)$/);
+          return m ? `${m[2]}-${m[1]}` : g.trim();
+        })
+        .join(", ")
+    : s;
+
+const flipGameScores = (raw: any): any => {
+  try {
+    const parsed = typeof raw === "string" && raw.trim() ? JSON.parse(raw) : raw;
+    const sets = Array.isArray(parsed?.sets) ? parsed.sets : null;
+    if (!sets) return raw;
+    const flipped = { ...parsed, sets: sets.map((s: any) => ({ ...s, a: s?.b, b: s?.a })) };
+    return typeof raw === "string" ? JSON.stringify(flipped) : flipped;
+  } catch {
+    return raw;
+  }
+};
+
+/**
+ * Fields to copy onto the equivalent row in the new draw so an already-played
+ * match keeps its result. Flips side A/B when the new row reversed the pair.
+ */
+export function resultCarryOver(p: ProtectedSchedule, match: ScheduleMatchRow): Record<string, any> {
+  if (!hasPlayedResult(p)) return {};
+  const flipped = !!p.playerAMemberId && !!match.player_a_member_id && p.playerAMemberId !== match.player_a_member_id;
+  return {
+    status: p.status,
+    score: flipped ? flipScore(p.score) : p.score,
+    game_scores: flipped ? flipGameScores(p.gameScores) : p.gameScores,
+    winner_member_id: p.winnerMemberId,
+    side_a_points: flipped ? p.sideBPoints : p.sideAPoints,
+    side_b_points: flipped ? p.sideAPoints : p.sideBPoints,
+  };
+}
+
 
 export type ReconcileResult = {
   /** Protected schedules that found their fixture again in the new draw. */

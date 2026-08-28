@@ -2255,7 +2255,7 @@ export default function ClubChampsView() {
         getGroupStandings(gn).map((s: any) => ({ ...s, _groupNumber: gn }))
       )
       .sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
-    const overallPool = koRunning ? survivorRows(overallRows as any[], koOut) : overallRows;
+    const overallPool = koRunning ? winnerRows(overallRows as any[], koWinners) : overallRows;
     const overallWinner =
       overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
 

@@ -39,7 +39,7 @@ describe("round control", () => {
     rows[1] = ko({ round_number: 1, scheduled_date: "2026-03-01", player_a_member_id: "c", player_b_member_id: "d", status: "completed", winner_member_id: "c" });
     const s = divisionControls(rows as any)[0].sections[0];
     expect(s.action).toBe("generate");
-    expect(s.actionLabel).toBe("Generate Final");
+    expect(s.actionLabel).toBe("Generate Next Round");
     expect(s.headline).toMatch(/2 players remain/);
   });
 

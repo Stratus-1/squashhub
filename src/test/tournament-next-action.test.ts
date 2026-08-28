@@ -61,7 +61,7 @@ describe("tournament next action", () => {
     const na = tournamentNextAction(rows as any);
     expect(na.stage).toBe("round_complete");
     expect(na.action).toBe("generate");
-    expect(na.ctaLabel).toBe("Generate Final");
+    expect(na.ctaLabel).toBe("Generate Next Round");
     expect(na.section).toBe(1);
   });
 

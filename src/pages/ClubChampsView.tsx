@@ -2287,7 +2287,8 @@ export default function ClubChampsView() {
               </thead>
               <tbody>
                 {leagueWinners.map(({ slice, winner: w }) => (
-                  <tr key={`${slice.gn}-${slice.poolNumber ?? "x"}`} className="border-b border-border/30">
+                  <tr key={`${slice.gn}-${slice.poolNumber ?? "x"}-${w.club_member_id || w.id || w.name}`} className="border-b border-border/30">
+
                     <td className="py-1.5 font-medium">{sliceLabel(slice)}</td>
                     <td className="py-1.5">{w.name}</td>
                     {isBells ? (

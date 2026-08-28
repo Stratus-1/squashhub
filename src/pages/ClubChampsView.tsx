@@ -2436,8 +2436,7 @@ export default function ClubChampsView() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+      </CollapsibleCard>
     ) : null;
 
 

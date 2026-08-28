@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { koResultEvents, hasKnockoutStage, type KoMatchLike } from "@/lib/tournaments/survivors";
 import { digestDate } from "@/components/tournaments/DailyDigestCard";
+import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -29,11 +30,10 @@ export function useChampDailyToast(clubId?: string | null, enabled: boolean = tr
     queryKey: ["champ-daily-toast-matches", clubId],
     queryFn: async () => {
       const { data: champs, error: cErr } = await fromExt("club_champs")
-        .select("id")
-        .eq("club_id", clubId!)
-        .in("status", ["in_progress", "active", "published"]);
+        .select("id, status, start_date, end_date")
+        .eq("club_id", clubId!);
       if (cErr) throw cErr;
-      const ids = (champs || []).map((c: any) => c.id);
+      const ids = splitTournamentsByLifecycle((champs || []) as any[]).current.map((c: any) => c.id);
       if (!ids.length) return [] as any[];
       const { data, error } = await fromExt("club_champs_matches")
         .select(

@@ -2243,7 +2243,7 @@ export default function ClubChampsView() {
       : [];
 
     const survivorsCard = koRunning && survivorsByLeague.length > 0 ? (
-      <CollapsibleCard key="survivors" className="border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-500/5"
+      <CollapsibleCard key="survivors" className="border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-500/5" defaultOpen={false}
         title={
           <span className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-emerald-600" />

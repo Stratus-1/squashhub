@@ -63,6 +63,7 @@ export function SportyHqLookupPanel() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkLog, setBulkLog] = useState<BulkResult[]>([]);
+  const [savedQuery, setSavedQuery] = useState("");
 
   const runBulk = async (mode: "new" | "refresh" = "new") => {
     setBulkRunning(true);
@@ -98,11 +99,20 @@ export function SportyHqLookupPanel() {
         .from("sportyhq_profiles")
         .select("id, name, club_label, rating, rating_confidence, matches_all_time, verified_at")
         .order("rating", { ascending: false, nullsFirst: false })
-        .limit(200);
+        .limit(500);
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const norm = savedQuery.trim().toLowerCase();
+  const filteredSaved = norm
+    ? saved.filter(
+        (s: any) =>
+          s.name?.toLowerCase().includes(norm) ||
+          s.club_label?.toLowerCase().includes(norm),
+      )
+    : saved;
 
   const searchMut = useMutation({
     mutationFn: () => callLookup<{ results: Candidate[] }>({ action: "search", q: q.trim() }),
@@ -356,7 +366,16 @@ export function SportyHqLookupPanel() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Saved SportyHQ ratings ({saved.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              className="pl-7 h-9"
+              placeholder="Search saved players or clubs…"
+              value={savedQuery}
+              onChange={(e) => setSavedQuery(e.target.value)}
+            />
+          </div>
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
@@ -369,12 +388,14 @@ export function SportyHqLookupPanel() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {saved.length === 0 && (
+                {filteredSaved.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">Nothing saved yet</TableCell>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      {saved.length === 0 ? "Nothing saved yet" : `No players match “${savedQuery}”`}
+                    </TableCell>
                   </TableRow>
                 )}
-                {saved.map((s: any) => (
+                {filteredSaved.map((s: any) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.name}</TableCell>
                     <TableCell className="text-muted-foreground">{s.club_label ?? "—"}</TableCell>

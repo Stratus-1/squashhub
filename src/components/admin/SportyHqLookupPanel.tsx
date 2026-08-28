@@ -420,7 +420,12 @@ export function SportyHqLookupPanel() {
                 {filteredSaved.map((s: any) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{s.club_label ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {hubClubFor(s) ?? (
+                        <span className="italic">{s.club_label ? `${s.club_label} (SportyHQ)` : "—"}</span>
+                      )}
+                    </TableCell>
+
                     <TableCell className="text-right">{s.rating ?? "—"}</TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {s.rating_confidence != null ? `${s.rating_confidence}%` : "—"}

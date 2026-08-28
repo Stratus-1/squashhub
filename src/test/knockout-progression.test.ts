@@ -30,10 +30,10 @@ describe("round plans", () => {
     expect(suggestRoundPlan(4).map((r) => r.label)).toEqual(["Round 1", "Round 2"]);
     expect(suggestRoundPlan(8).map((r) => r.label)).toEqual(["Round 1", "Round 2", "Round 3"]);
     expect(suggestRoundPlan(16).map((r) => r.label)).toEqual([
-      "Round of 16",
-      "Quarter-final",
-      "Semi-final",
-      "Final",
+      "Round 1",
+      "Round 2",
+      "Round 3",
+      "Round 4",
     ]);
   });
 

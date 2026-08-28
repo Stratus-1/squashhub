@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
 
       const { data: people, error: peopleErr } = await supabase
         .from("people")
-        .select("id, full_name, person_affiliations(club_id, clubs(name))")
+        .select("id, full_name, club_members(clubs(name))")
         .eq("status", "active")
         .order("full_name")
         .range(offset, offset + limit * 3);
@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
 
       for (const p of queue) {
         const clubHint =
-          (p.person_affiliations ?? []).map((a: any) => a?.clubs?.name).filter(Boolean)[0] ?? null;
+          (p.club_members ?? []).map((a: any) => a?.clubs?.name).filter(Boolean)[0] ?? null;
         try {
           const cands = await search(String(p.full_name));
           const best = pickBest(String(p.full_name), clubHint, cands);

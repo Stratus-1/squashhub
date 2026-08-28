@@ -24,6 +24,7 @@ import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { DashboardMyStatsCard } from "@/components/DashboardMyStatsCard";
+import { DashboardSportyhqCard } from "@/components/DashboardSportyhqCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
@@ -826,6 +827,10 @@ export default function Dashboard() {
             />
           );
         })()}
+        <DashboardSportyhqCard
+          memberId={myMemberId}
+          personId={(activeMember as any)?.person_id ?? (myClubMember as any)?.person_id ?? null}
+        />
       </div>
 
 

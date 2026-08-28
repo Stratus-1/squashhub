@@ -403,7 +403,8 @@ export function SportyHqLookupPanel() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Player</TableHead>
-                  <TableHead>Club</TableHead>
+                  <TableHead>Club (SquashHub)</TableHead>
+
                   <TableHead className="text-right">Rating</TableHead>
                   <TableHead className="text-right">Confidence</TableHead>
                   <TableHead className="text-right">Matches</TableHead>

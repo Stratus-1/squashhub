@@ -1067,6 +1067,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     },
     enabled: !!editingChampId,
   });
+
+  /**
+   * What a "Rebuild Schedule" would disturb on a tournament that is already
+   * under way. Drives the confirmation gate on the review step.
+   */
+  const { data: rebuildRows = [] } = useQuery({
+    queryKey: ["champ-rebuild-impact", editingChampId],
+    queryFn: async (): Promise<RebuildImpactRow[]> => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("status, is_bye, winner_member_id, score, booking_id")
+        .eq("champ_id", editingChampId as string);
+      if (error) throw error;
+      return (data || []) as RebuildImpactRow[];
+    },
+    enabled: !!editingChampId,
+  });
+  const rebuildImpact = useMemo(() => describeRebuildImpact(rebuildRows), [rebuildRows]);
+
   const knockoutProgress = useMemo(() => computeRoundProgress(roundMatchRows), [roundMatchRows]);
   const knockoutCurrentRound = currentRoundNumber(knockoutProgress);
   /**

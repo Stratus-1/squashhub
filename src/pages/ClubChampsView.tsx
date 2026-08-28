@@ -2213,7 +2213,9 @@ export default function ClubChampsView() {
     // Knockout championships have no meaningful "bottom" — a player is either
     // still in it or out — so we list survivors and hide the wooden spoons.
     const koRunning = hasKnockoutStage(matches) && !isComplete;
-    const koOut = koRunning ? eliminatedMemberIds(matches) : new Set<string>();
+    // Survivors = players who have actually WON a knockout match so far
+    // (not merely "not yet played/eliminated").
+    const koWinners = koRunning ? winnerMemberIds(matches) : new Set<string>();
     const winnersTitle = isComplete
       ? "Winners"
       : koRunning

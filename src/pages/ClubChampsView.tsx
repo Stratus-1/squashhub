@@ -2627,7 +2627,7 @@ export default function ClubChampsView() {
 
     // Cross-league: single combined Fixtures & Results card (matches shared across leagues).
     const combinedFixtures = isCrossLeague ? (
-      <CollapsibleCard key="cross-fixtures" title="Fixtures & Results" titleClassName="text-lg">
+      <CollapsibleCard key="cross-fixtures" title="Fixtures & Results" titleClassName="text-lg" defaultOpen={false}>
         <div className="space-y-1.5">
           {matches.map((m: any) => renderMatchRow(m))}
         </div>

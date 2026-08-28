@@ -37,7 +37,7 @@ import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrect
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { looksLikePhone } from "@/lib/member-display";
-import { hasKnockoutStage, winnerMemberIds, winnerRows } from "@/lib/tournaments/survivors";
+import { hasKnockoutStage } from "@/lib/tournaments/survivors";
 
 
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
@@ -2250,7 +2250,7 @@ export default function ClubChampsView() {
     const overallWinner =
       overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
 
-    const winnersCard = leagueWinners.length > 0 ? (
+    const winnersCard = !koRunning && leagueWinners.length > 0 ? (
       <Card key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">

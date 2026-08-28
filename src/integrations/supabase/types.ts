@@ -9920,6 +9920,100 @@ export type Database = {
         }
         Relationships: []
       }
+      sportyhq_profiles: {
+        Row: {
+          club_label: string | null
+          club_member_id: string | null
+          clubs: Json
+          created_at: string
+          fetched_at: string
+          governing_bodies: Json
+          id: string
+          location_label: string | null
+          matches_all_time: number | null
+          matches_ytd: number | null
+          name: string
+          person_id: string | null
+          profile_path: string
+          rankings: Json
+          rating: number | null
+          rating_confidence: number | null
+          sport: string
+          sportyhq_user_id: number
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          club_label?: string | null
+          club_member_id?: string | null
+          clubs?: Json
+          created_at?: string
+          fetched_at?: string
+          governing_bodies?: Json
+          id?: string
+          location_label?: string | null
+          matches_all_time?: number | null
+          matches_ytd?: number | null
+          name: string
+          person_id?: string | null
+          profile_path: string
+          rankings?: Json
+          rating?: number | null
+          rating_confidence?: number | null
+          sport?: string
+          sportyhq_user_id: number
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          club_label?: string | null
+          club_member_id?: string | null
+          clubs?: Json
+          created_at?: string
+          fetched_at?: string
+          governing_bodies?: Json
+          id?: string
+          location_label?: string | null
+          matches_all_time?: number | null
+          matches_ytd?: number | null
+          name?: string
+          person_id?: string | null
+          profile_path?: string
+          rankings?: Json
+          rating?: number | null
+          rating_confidence?: number | null
+          sport?: string
+          sportyhq_user_id?: number
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sportyhq_profiles_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sportyhq_profiles_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sportyhq_profiles_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stitch_collections: {
         Row: {
           amount_cents: number

@@ -314,6 +314,11 @@ Deno.serve(async (req) => {
             results.push({ person_id: p.id, name: p.full_name, status: "ambiguous", candidates: cands.length });
           } else {
             const prof = await fetchProfile(best.candidate.profile_path);
+            // In refresh mode, drop the stale/empty link if it pointed at another SportyHQ profile
+            const previous = weak.get(p.id);
+            if (previous && previous.sportyhq_user_id !== best.candidate.sportyhq_user_id) {
+              await supabase.from("sportyhq_profiles").delete().eq("id", previous.id);
+            }
             const { error } = await supabase.from("sportyhq_profiles").upsert(
               {
                 sportyhq_user_id: best.candidate.sportyhq_user_id,
@@ -354,10 +359,11 @@ Deno.serve(async (req) => {
 
       return json({
         processed: results.length,
-        next_offset: offset + (people ?? []).length,
-        done: (people ?? []).length <= limit * 3 && queue.length < limit,
+        next_offset: mode === "refresh" ? offset + scanned : offset + scanned,
+        done: mode === "refresh" ? scanned < limit : scanned <= limit * 3 && queue.length < limit,
         results,
       });
+
     }
 
     throw new Error(`Unknown action: ${action}`);

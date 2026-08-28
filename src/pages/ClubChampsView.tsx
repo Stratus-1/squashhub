@@ -37,7 +37,7 @@ import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrect
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { looksLikePhone } from "@/lib/member-display";
-import { hasKnockoutStage, eliminatedMemberIds, survivorRows } from "@/lib/tournaments/survivors";
+import { hasKnockoutStage, winnerMemberIds, winnerRows } from "@/lib/tournaments/survivors";
 import { DailyDigestCard } from "@/components/tournaments/DailyDigestCard";
 
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
@@ -2213,7 +2213,9 @@ export default function ClubChampsView() {
     // Knockout championships have no meaningful "bottom" — a player is either
     // still in it or out — so we list survivors and hide the wooden spoons.
     const koRunning = hasKnockoutStage(matches) && !isComplete;
-    const koOut = koRunning ? eliminatedMemberIds(matches) : new Set<string>();
+    // Survivors = players who have actually WON a knockout match so far
+    // (not merely "not yet played/eliminated").
+    const koWinners = koRunning ? winnerMemberIds(matches) : new Set<string>();
     const winnersTitle = isComplete
       ? "Winners"
       : koRunning
@@ -2241,7 +2243,7 @@ export default function ClubChampsView() {
       .flatMap((sl) => {
         const s = getGroupStandings(sl.gn, sl.poolNumber);
         if (koRunning) {
-          return survivorRows(s as any[], koOut).map((w: any) => ({ slice: sl, winner: w }));
+          return winnerRows(s as any[], koWinners).map((w: any) => ({ slice: sl, winner: w }));
         }
         const w = s.find((r: any) => (r.played || 0) > 0) || s[0] || null;
         return [{ slice: sl, winner: w }];
@@ -2253,7 +2255,7 @@ export default function ClubChampsView() {
         getGroupStandings(gn).map((s: any) => ({ ...s, _groupNumber: gn }))
       )
       .sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
-    const overallPool = koRunning ? survivorRows(overallRows as any[], koOut) : overallRows;
+    const overallPool = koRunning ? winnerRows(overallRows as any[], koWinners) : overallRows;
     const overallWinner =
       overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
 

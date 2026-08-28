@@ -100,6 +100,19 @@ export function survivorRows<T extends { club_member_id?: string | null; partner
   );
 }
 
+/**
+ * Filter standings-style rows down to the players who have actually WON a
+ * knockout match. A row qualifies when any of its member ids is in `winners`.
+ */
+export function winnerRows<T extends { club_member_id?: string | null; partner_member_id?: string | null }>(
+  rows: T[],
+  winners: Set<string>,
+): T[] {
+  return (rows || []).filter((r) =>
+    [r.club_member_id, r.partner_member_id].filter(Boolean).some((id) => winners.has(String(id))),
+  );
+}
+
 /** True when any match in the list belongs to a knockout / play-off bracket. */
 export function hasKnockoutStage(matches: KoMatchLike[]): boolean {
   return (matches || []).some((m) => isKnockoutStage(m));

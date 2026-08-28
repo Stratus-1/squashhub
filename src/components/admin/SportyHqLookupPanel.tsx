@@ -196,6 +196,60 @@ export function SportyHqLookupPanel() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Bulk match SquashHub people</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-muted-foreground">
+            Walks the national player directory, searches SportyHQ by name, and saves the rating only
+            when there is an exact name match (club name used to break ties). Ambiguous names are
+            skipped for manual lookup above.
+          </p>
+          <Button size="sm" onClick={runBulk} disabled={bulkRunning}>
+            {bulkRunning ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+            {bulkRunning ? `Matching… (${bulkLog.length} checked)` : "Search SportyHQ for all people"}
+          </Button>
+
+          {bulkLog.length > 0 && (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {(["saved", "ambiguous", "no_match", "error"] as const).map((s) => (
+                  <Badge key={s} variant={s === "saved" ? "default" : "secondary"}>
+                    {s.replace("_", " ")}: {bulkLog.filter((r) => r.status === s).length}
+                  </Badge>
+                ))}
+              </div>
+              <div className="rounded-md border max-h-72 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Player</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Rating</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bulkLog.map((r, i) => (
+                      <TableRow key={`${r.person_id}-${i}`}>
+                        <TableCell className="font-medium">{r.name}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {r.status.replace("_", " ")}
+                          {r.message ? ` — ${r.message}` : ""}
+                        </TableCell>
+                        <TableCell className="text-right">{r.rating ?? "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+
+
       {selected && (
         <Card>
           <CardHeader className="pb-3">

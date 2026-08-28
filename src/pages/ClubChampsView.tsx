@@ -2714,6 +2714,7 @@ export default function ClubChampsView() {
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
         />
+        {survivorsCard}
         {winnersCard}
 
         {woodenSpoonsCard}

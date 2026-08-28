@@ -37,6 +37,9 @@ import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrect
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { looksLikePhone } from "@/lib/member-display";
+import { hasKnockoutStage, eliminatedMemberIds, survivorRows } from "@/lib/tournaments/survivors";
+import { DailyDigestCard } from "@/components/tournaments/DailyDigestCard";
+
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import {
   canScheduleFixture,
@@ -2207,7 +2210,15 @@ export default function ClubChampsView() {
     // Completion detection: any non-bye group match exists AND all are completed.
     const groupPlayable = matches.filter((m: any) => (m.stage || "group") === "group" && !m.is_bye);
     const isComplete = groupPlayable.length > 0 && groupPlayable.every((m: any) => m.status === "completed");
-    const winnersTitle = isComplete ? "Winners" : "Current Standings — Leaders";
+    // Knockout championships have no meaningful "bottom" — a player is either
+    // still in it or out — so we list survivors and hide the wooden spoons.
+    const koRunning = hasKnockoutStage(matches) && !isComplete;
+    const koOut = koRunning ? eliminatedMemberIds(matches) : new Set<string>();
+    const winnersTitle = isComplete
+      ? "Winners"
+      : koRunning
+        ? "Survivors — still in it"
+        : "Current Standings — Leaders";
     const spoonsTitle = isComplete ? "Wooden Spoons" : "Current Standings — Bottom";
     const overallWinnerLabel = isComplete ? "Overall" : "Overall (current)";
 
@@ -2225,20 +2236,27 @@ export default function ClubChampsView() {
         : `${getGroupLabel(champ, s.gn)} · Pool ${poolLabel(s.poolNumber)}`;
 
     // Winners table — top of each league/pool plus the overall tournament winner.
+    // In a running knockout every survivor of the league is listed instead.
     const leagueWinners = slices
-      .map((sl) => {
+      .flatMap((sl) => {
         const s = getGroupStandings(sl.gn, sl.poolNumber);
+        if (koRunning) {
+          return survivorRows(s as any[], koOut).map((w: any) => ({ slice: sl, winner: w }));
+        }
         const w = s.find((r: any) => (r.played || 0) > 0) || s[0] || null;
-        return { slice: sl, winner: w };
+        return [{ slice: sl, winner: w }];
       })
       .filter((w) => w.winner);
+
     const overallRows = groupNumbers
       .flatMap((gn: number) =>
         getGroupStandings(gn).map((s: any) => ({ ...s, _groupNumber: gn }))
       )
       .sort((a: any, b: any) => tournamentFormat.rankStandings(a, b));
+    const overallPool = koRunning ? survivorRows(overallRows as any[], koOut) : overallRows;
     const overallWinner =
-      overallRows.find((s: any) => (s.played || 0) > 0) || overallRows[0] || null;
+      overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
+
     const winnersCard = leagueWinners.length > 0 ? (
       <Card key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5">
         <CardHeader className="pb-2">
@@ -2272,7 +2290,8 @@ export default function ClubChampsView() {
               </thead>
               <tbody>
                 {leagueWinners.map(({ slice, winner: w }) => (
-                  <tr key={`${slice.gn}-${slice.poolNumber ?? "x"}`} className="border-b border-border/30">
+                  <tr key={`${slice.gn}-${slice.poolNumber ?? "x"}-${w.club_member_id || w.id || w.name}`} className="border-b border-border/30">
+
                     <td className="py-1.5 font-medium">{sliceLabel(slice)}</td>
                     <td className="py-1.5">{w.name}</td>
                     {isBells ? (
@@ -2340,7 +2359,7 @@ export default function ClubChampsView() {
       overallRows.slice().reverse().find((s: any) => (s.played || 0) > 0) ||
       overallRows[overallRows.length - 1] ||
       null;
-    const woodenSpoonsCard = leagueLosers.length > 0 ? (
+    const woodenSpoonsCard = !koRunning && leagueLosers.length > 0 ? (
       <Card key="wooden-spoons" className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
@@ -2654,7 +2673,28 @@ export default function ClubChampsView() {
             document.getElementById("tournament-fixtures")?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
         />
+        <DailyDigestCard
+          champId={champId!}
+          matches={matches as any[]}
+          getName={(memberId: string) => {
+            const e = (entries as any[]).find(
+              (x) => x.club_member_id === memberId || x.partner_member_id === memberId,
+            );
+            if (e) {
+              return e.club_member_id === memberId
+                ? getPlayerName(e.club_members)
+                : getPlayerName(e.partner);
+            }
+            for (const m of matches as any[]) {
+              for (const k of ["player_a", "player_b", "partner_a", "partner_b"]) {
+                if (m[`${k}_member_id`] === memberId) return getPlayerName(m[k]);
+              }
+            }
+            return "Unknown";
+          }}
+        />
         <TournamentProgressCard
+
 
           champId={champId!}
           canManage={canManage}

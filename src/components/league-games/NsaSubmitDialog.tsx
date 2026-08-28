@@ -455,10 +455,21 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
 
 
             {result && (
-              <Alert variant={result.ok ? "default" : "destructive"}>
-                {result.ok ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+              <Alert variant={result.ok ? "default" : "destructive"} className={result.ok ? "border-green-600/40 bg-green-500/10" : undefined}>
+                {result.ok ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <AlertTriangle className="w-4 h-4" />}
                 <AlertDescription className="text-xs space-y-1">
-                  <div className="font-medium">{result.mode === "commit" ? "Commit" : "Validate"} response</div>
+                  <div className="font-medium">
+                    {result.ok
+                      ? result.mode === "commit"
+                        ? "Result posted to NSA successfully"
+                        : "Validated by NSA — no issues found"
+                      : result.mode === "commit"
+                        ? "NSA did not accept this scorecard"
+                        : "NSA found issues with this scorecard"}
+                  </div>
+                  {result.ok && result.mode === "commit" && (
+                    <div>The scorecard is now recorded on the NSA system. No further action needed.</div>
+                  )}
                   {result.notes.map((n, i) => <div key={`n${i}`}>✓ {n}</div>)}
                   {result.errors.map((e, i) => <div key={`e${i}`}>✗ {e}</div>)}
                   {result.title && <div className="text-[10px] text-muted-foreground">{result.title}</div>}
@@ -467,13 +478,14 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
             )}
 
             {verification && (
-              <Alert variant={verification.ok ? "default" : "destructive"}>
-                {verification.ok ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <AlertTriangle className="w-4 h-4" />}
+              <Alert variant="default" className={verification.ok ? "border-green-600/40 bg-green-500/10" : undefined}>
+                {verification.ok ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Loader2 className="w-4 h-4" />}
                 <AlertDescription className="text-xs">
                   {verifying ? "Verifying with NSA…" : verification.message}
                 </AlertDescription>
               </Alert>
             )}
+
 
             <div className="flex gap-2">
               <Button

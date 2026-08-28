@@ -2243,7 +2243,7 @@ export default function ClubChampsView() {
       .flatMap((sl) => {
         const s = getGroupStandings(sl.gn, sl.poolNumber);
         if (koRunning) {
-          return survivorRows(s as any[], koOut).map((w: any) => ({ slice: sl, winner: w }));
+          return survivorRows(s as any[], koWinners).map((w: any) => ({ slice: sl, winner: w }));
         }
         const w = s.find((r: any) => (r.played || 0) > 0) || s[0] || null;
         return [{ slice: sl, winner: w }];

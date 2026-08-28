@@ -33,12 +33,12 @@ describe("contextual stage suggestion", () => {
 
   it("prefers the label the organiser already configured", () => {
     expect(suggestStageName({ plannedLabel: "Plate final", roundNumber: 3, qualifiers: 2 })).toBe("Plate final");
-    expect(suggestStageName({ plannedLabel: "  ", roundNumber: 2, qualifiers: 8 })).toBe("Quarter-final");
+    expect(suggestStageName({ plannedLabel: "  ", roundNumber: 2, qualifiers: 8 })).toBe("Round 2");
   });
 
   it("offers alternatives without duplicates", () => {
     const opts = stageNameOptions(4, 3);
-    expect(opts[0]).toBe("Semi-final");
+    expect(opts[0]).toBe("Round 3");
     expect(new Set(opts).size).toBe(opts.length);
   });
 });

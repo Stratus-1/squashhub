@@ -78,7 +78,9 @@ export function suggestRoundPlan(
       section_number: opts.sectionNumber ?? 1,
       round_number: i + 1,
       round_type: typeForPlayers(players),
-      label: labelForPlayers(players),
+      // Neutral by default — organisers rename a round when they decide it is
+      // the quarter-final / semi-final / final.
+      label: `Round ${i + 1}`,
       play_by: null,
       scheduling_mode: opts.schedulingMode ?? "self",
       status: "pending" as const,

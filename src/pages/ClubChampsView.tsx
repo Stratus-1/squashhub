@@ -2230,6 +2230,44 @@ export default function ClubChampsView() {
     const spoonsTitle = isComplete ? "Wooden Spoons" : "Current Standings — Bottom";
     const overallWinnerLabel = isComplete ? "Overall" : "Overall (current)";
 
+    // Knockout-running short-list: every entrant that has actually won a knockout
+    // match, grouped by league. This is intentionally a compact list, not a table.
+    const koWinnerIds = koRunning ? winnerMemberIds(matches, { knockout: true }) : new Set<string>();
+    const survivorsByLeague = koRunning
+      ? orderedGroups
+          .map((gn: number) => {
+            const groupEntries = entries.filter((e: any) => e.group_number === gn);
+            const winners = winnerRows(groupEntries, koWinnerIds);
+            return { gn, winners };
+          })
+          .filter((g) => g.winners.length > 0)
+      : [];
+
+    const survivorsCard = koRunning && survivorsByLeague.length > 0 ? (
+      <CollapsibleCard key="survivors" className="border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-500/5"
+        title={
+          <span className="flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-emerald-600" />
+            Survivors — still in it
+          </span>
+        }
+      >
+        <div className="space-y-2 text-sm">
+          {survivorsByLeague.map(({ gn, winners }) => (
+            <div key={gn} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="font-medium text-foreground whitespace-nowrap">{getGroupLabel(champ, gn)}</span>
+              <span className="text-muted-foreground">—</span>
+              <span className="text-foreground">
+                {winners
+                  .map((e: any) => (isDoubles ? getTeamName(e.club_members, e.partner) : getPlayerName(e.club_members)))
+                  .join(", ")}
+              </span>
+            </div>
+          ))}
+        </div>
+      </CollapsibleCard>
+    ) : null;
+
     // Expand each league into (gn, poolNumber|null) rows so Swiss multi-pool
     // leagues show one winner/loser per pool.
     type Slice = { gn: number; poolNumber: number | null };

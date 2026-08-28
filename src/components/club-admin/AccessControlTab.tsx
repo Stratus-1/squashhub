@@ -75,16 +75,6 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
 
 
   const [faceEnrolmentRequired, setFaceEnrolmentRequired] = useState(false);
-  const [monthlyFees, setMonthlyFees] = useState<any[]>([]);
-  useEffect(() => {
-    if (!club?.id) return;
-    fromExt("national_body_fees")
-      .select("id, body_name, fee_annual, billing_period, active")
-      .eq("club_id", club.id)
-      .eq("billing_period", "monthly")
-      .eq("active", true)
-      .then(({ data }: any) => setMonthlyFees(data || []));
-  }, [club?.id]);
   const [geofence, setGeofence] = useState({
     enabled: false,
     lat: "",

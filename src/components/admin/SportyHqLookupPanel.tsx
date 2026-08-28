@@ -215,12 +215,19 @@ export function SportyHqLookupPanel() {
           <p className="text-muted-foreground">
             Walks the national player directory, searches SportyHQ by name, and saves the rating only
             when there is an exact name match (club name used to break ties). Ambiguous names are
-            skipped for manual lookup above.
+            skipped for manual lookup above. Re-check empty links re-runs only people whose saved
+            SportyHQ record is a blank shell (no rating, no club) against the improved matcher.
           </p>
-          <Button size="sm" onClick={runBulk} disabled={bulkRunning}>
-            {bulkRunning ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-            {bulkRunning ? `Matching… (${bulkLog.length} checked)` : "Search SportyHQ for all people"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => runBulk("new")} disabled={bulkRunning}>
+              {bulkRunning ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              {bulkRunning ? `Matching… (${bulkLog.length} checked)` : "Search SportyHQ for all people"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => runBulk("refresh")} disabled={bulkRunning}>
+              Re-check empty links
+            </Button>
+          </div>
+
 
           {bulkLog.length > 0 && (
             <>

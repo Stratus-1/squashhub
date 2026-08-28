@@ -142,3 +142,43 @@ describe("draw regeneration preserves player bookings", () => {
     expect(orphans).toHaveLength(1);
   });
 });
+
+describe("result carry-over across draw regeneration", () => {
+  const old = {
+    id: "m1",
+    group_number: 1,
+    player_a_member_id: "A",
+    player_b_member_id: "B",
+    status: "completed",
+    score: "11-9, 8-11, 11-5",
+    game_scores: { sets: [{ a: 11, b: 9 }, { a: 8, b: 11 }, { a: 11, b: 5 }] },
+    winner_member_id: "A",
+    side_a_points: 2,
+    side_b_points: 1,
+  };
+
+  it("copies the result onto the same-orientation new row", () => {
+    const [p] = collectProtectedSchedules([old as any]);
+    const carry = resultCarryOver(p, { player_a_member_id: "A", player_b_member_id: "B" } as any);
+    expect(carry.status).toBe("completed");
+    expect(carry.score).toBe("11-9, 8-11, 11-5");
+    expect(carry.winner_member_id).toBe("A");
+    expect(carry.side_a_points).toBe(2);
+  });
+
+  it("flips scores when the new row reverses the pair", () => {
+    const [p] = collectProtectedSchedules([old as any]);
+    const carry = resultCarryOver(p, { player_a_member_id: "B", player_b_member_id: "A" } as any);
+    expect(carry.score).toBe("9-11, 11-8, 5-11");
+    expect(carry.game_scores.sets[0]).toEqual({ a: 9, b: 11 });
+    expect(carry.side_a_points).toBe(1);
+    expect(carry.side_b_points).toBe(2);
+  });
+
+  it("leaves unplayed protected rows untouched", () => {
+    const [p] = collectProtectedSchedules([
+      { id: "m2", group_number: 1, player_a_member_id: "A", player_b_member_id: "B", booking_id: "bk1", status: "scheduled" } as any,
+    ]);
+    expect(resultCarryOver(p, { player_a_member_id: "A", player_b_member_id: "B" } as any)).toEqual({});
+  });
+});

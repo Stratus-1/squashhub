@@ -259,11 +259,10 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
         setVerification({
           ok: verifiedOk,
           message: verifiedOk
-            ? `Confirmed on NSA (status: ${v.status})`
-            : v?.found
-              ? `NSA still shows status "${v.status}" — refresh in a moment`
-              : (v?.message || "NSA hasn't published the result yet"),
+            ? "Post successful — confirmed on NSA (status: completed)"
+            : "Post successful — NSA accepted the scorecard. Its public feed may take a few minutes to show the result.",
         });
+
 
         // Step 3: persist receipt locally regardless — NSA accepted the commit.
         if (fixtureRowId) {
@@ -283,8 +282,9 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
           }
         }
 
-        if (verifiedOk) toast.success("Confirmed saved on NSA ✓");
-        else toast.message("Committed — NSA verification pending", { description: "The result was accepted; the public feed may take a moment to refresh." });
+        if (verifiedOk) toast.success("Result posted to NSA successfully ✓", { description: "Confirmed on the NSA system." });
+        else toast.success("Result posted to NSA successfully ✓", { description: "NSA accepted the scorecard; its public feed may take a few minutes to update." });
+
       } finally {
         setVerifying(false);
       }
@@ -455,10 +455,21 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
 
 
             {result && (
-              <Alert variant={result.ok ? "default" : "destructive"}>
-                {result.ok ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+              <Alert variant={result.ok ? "default" : "destructive"} className={result.ok ? "border-green-600/40 bg-green-500/10" : undefined}>
+                {result.ok ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <AlertTriangle className="w-4 h-4" />}
                 <AlertDescription className="text-xs space-y-1">
-                  <div className="font-medium">{result.mode === "commit" ? "Commit" : "Validate"} response</div>
+                  <div className="font-medium">
+                    {result.ok
+                      ? result.mode === "commit"
+                        ? "Result posted to NSA successfully"
+                        : "Validated by NSA — no issues found"
+                      : result.mode === "commit"
+                        ? "NSA did not accept this scorecard"
+                        : "NSA found issues with this scorecard"}
+                  </div>
+                  {result.ok && result.mode === "commit" && (
+                    <div>The scorecard is now recorded on the NSA system. No further action needed.</div>
+                  )}
                   {result.notes.map((n, i) => <div key={`n${i}`}>✓ {n}</div>)}
                   {result.errors.map((e, i) => <div key={`e${i}`}>✗ {e}</div>)}
                   {result.title && <div className="text-[10px] text-muted-foreground">{result.title}</div>}
@@ -467,13 +478,14 @@ export function NsaSubmitDialog({ open, onOpenChange, clubMemberId, fixtureRowId
             )}
 
             {verification && (
-              <Alert variant={verification.ok ? "default" : "destructive"}>
-                {verification.ok ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <AlertTriangle className="w-4 h-4" />}
+              <Alert variant="default" className={verification.ok ? "border-green-600/40 bg-green-500/10" : undefined}>
+                {verification.ok ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Loader2 className="w-4 h-4" />}
                 <AlertDescription className="text-xs">
                   {verifying ? "Verifying with NSA…" : verification.message}
                 </AlertDescription>
               </Alert>
             )}
+
 
             <div className="flex gap-2">
               <Button

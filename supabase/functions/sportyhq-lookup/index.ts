@@ -158,27 +158,51 @@ function clubScore(candidate: string | null, hints: string[]) {
     : 0;
 }
 
-function pickBest(name: string, clubHints: string[], cands: Candidate[]) {
+function shallowScore(c: Candidate, hints: string[]) {
+  return (
+    clubScore(c.club_label, hints) * 2 +
+    clubScore(c.location_label, hints) * 2 +
+    // prefer real profiles over empty shells with no club/location at all
+    (c.club_label || c.location_label ? 1 : 0)
+  );
+}
+
+// Deep verification: SportyHQ search only shows a player's *primary* club, which is
+// often stale (e.g. Samuel Van Sittert shows "Mossel Bay" but is affiliated to CSIR).
+// When the shallow pass can't decide, open the top candidates' profiles and match on
+// their full affiliated-club list and governing bodies (association names, e.g. NSA).
+async function deepPickBest(name: string, hints: string[], cands: Candidate[]) {
   const target = norm(name);
-  const exact = cands.filter((c) => norm(c.name) === target);
-  const pool = exact.length ? exact : [];
+  const pool = cands.filter((c) => norm(c.name) === target);
   if (!pool.length) return null;
   if (pool.length === 1) return { candidate: pool[0], confident: true };
+
   const scored = pool
-    .map((c) => ({
-      c,
-      s:
-        clubScore(c.club_label, clubHints) * 2 +
-        clubScore(c.location_label, clubHints) * 2 +
-        // prefer real profiles over empty shells with no club/location at all
-        (c.club_label || c.location_label ? 1 : 0),
-    }))
+    .map((c) => ({ c, s: shallowScore(c, hints) }))
     .sort((x, y) => y.s - x.s);
   if (scored[0].s > 0 && scored[0].s > (scored[1]?.s ?? -1)) {
     return { candidate: scored[0].c, confident: true };
   }
-  return { candidate: scored[0].c, confident: false };
+
+  if (!hints.length) return { candidate: scored[0].c, confident: false };
+
+  const deep: Array<{ c: Candidate; s: number }> = [];
+  for (const { c, s } of scored.slice(0, 4)) {
+    try {
+      const prof = await fetchProfile(c.profile_path);
+      const blob = [...(prof.clubs ?? []), ...(prof.governing_bodies ?? [])].join(" ");
+      const hit = clubScore(blob, hints);
+      deep.push({ c, s: s + hit * 5 + (prof.rating ? 1 : 0) });
+    } catch {
+      deep.push({ c, s });
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  deep.sort((x, y) => y.s - x.s);
+  if (deep[0].s > (deep[1]?.s ?? -1)) return { candidate: deep[0].c, confident: true };
+  return { candidate: deep[0].c, confident: false };
 }
+
 
 
 Deno.serve(async (req) => {
@@ -290,7 +314,9 @@ Deno.serve(async (req) => {
         if (ids.length) {
           const { data: people, error: peopleErr } = await supabase
             .from("people")
-            .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
+            .select(
+              "id, full_name, club_members(clubs!club_members_club_id_fkey(name), member_association_affiliations(league_associations(name)))",
+            )
             .in("id", ids);
           if (peopleErr) throw peopleErr;
           queue = people ?? [];
@@ -298,7 +324,9 @@ Deno.serve(async (req) => {
       } else {
         const { data: people, error: peopleErr } = await supabase
           .from("people")
-          .select("id, full_name, club_members(clubs!club_members_club_id_fkey(name))")
+          .select(
+            "id, full_name, club_members(clubs!club_members_club_id_fkey(name), member_association_affiliations(league_associations(name)))",
+          )
           .eq("status", "active")
           .order("full_name")
           .range(offset, offset + limit * 3);
@@ -311,12 +339,17 @@ Deno.serve(async (req) => {
 
 
       for (const p of queue) {
-        const clubHints: string[] = (p.club_members ?? [])
-          .map((a: any) => a?.clubs?.name)
-          .filter(Boolean);
+        const memberships: any[] = p.club_members ?? [];
+        const clubHints: string[] = [
+          ...memberships.map((a: any) => a?.clubs?.name),
+          ...memberships.flatMap((a: any) =>
+            (a?.member_association_affiliations ?? []).map((x: any) => x?.league_associations?.name),
+          ),
+        ].filter(Boolean);
         try {
           const cands = await search(String(p.full_name));
-          const best = pickBest(String(p.full_name), clubHints, cands);
+          const best = await deepPickBest(String(p.full_name), clubHints, cands);
+
           if (!best) {
             results.push({ person_id: p.id, name: p.full_name, status: "no_match" });
           } else if (!best.confident) {

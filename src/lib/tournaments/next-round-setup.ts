@@ -45,7 +45,8 @@ export function suggestStageName(opts: {
 }): string {
   const planned = String(opts.plannedLabel || "").trim();
   if (planned) return planned;
-  return stageNameForQualifiers(opts.qualifiers, opts.roundNumber);
+  // Neutral by default — the organiser decides if this is a quarter/semi/final.
+  return `Round ${opts.roundNumber}`;
 }
 
 /** Alternatives offered as one-click chips in the popup. */
@@ -96,7 +97,7 @@ export function readyNextRoundScopes(states: SectionProgression[]): NextRoundSco
         qualifierIds,
         qualifiers: qualifierIds.length,
         matchups: Math.ceil(qualifierIds.length / 2),
-        stageLabel: stageNameForQualifiers(qualifierIds.length, roundNumber),
+        stageLabel: `Round ${roundNumber}`,
       };
     })
     .sort((a, b) => a.groupNumber - b.groupNumber || a.section - b.section);

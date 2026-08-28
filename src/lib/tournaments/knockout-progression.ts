@@ -16,7 +16,7 @@
  */
 import type { KnockoutMatchLike } from "./knockout";
 import { winnerOf } from "./knockout";
-import { isResolved, labelForActive, typeForActive } from "./active-draw";
+import { isResolved, typeForActive } from "./active-draw";
 
 export { isResolved };
 

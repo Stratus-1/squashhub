@@ -99,11 +99,20 @@ export function SportyHqLookupPanel() {
         .from("sportyhq_profiles")
         .select("id, name, club_label, rating, rating_confidence, matches_all_time, verified_at")
         .order("rating", { ascending: false, nullsFirst: false })
-        .limit(200);
+        .limit(500);
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const norm = savedQuery.trim().toLowerCase();
+  const filteredSaved = norm
+    ? saved.filter(
+        (s: any) =>
+          s.name?.toLowerCase().includes(norm) ||
+          s.club_label?.toLowerCase().includes(norm),
+      )
+    : saved;
 
   const searchMut = useMutation({
     mutationFn: () => callLookup<{ results: Candidate[] }>({ action: "search", q: q.trim() }),

@@ -145,7 +145,7 @@ function buildScorecardBody(matches: Array<{
   return params.toString();
 }
 
-function summariseResponse(html: string): {
+function summariseResponse(html: string, mode: "check" | "commit"): {
   ok: boolean;
   errors: string[];
   notes: string[];
@@ -176,12 +176,33 @@ function summariseResponse(html: string): {
     const m = text.match(new RegExp(`[^.]{0,80}${re.source}[^.]{0,80}`, "i"));
     if (m) errors.push(m[0].trim());
   }
-  if (/successfully|saved|committed|uploaded/i.test(text)) {
-    const m = text.match(/[^.]{0,80}(successfully|saved|committed|uploaded)[^.]{0,80}/i);
+  // Drop benign boilerplate hits: NSA's confirmation page carries navigation and
+  // "no errors" style wording that used to be scraped as a failure.
+  const BENIGN = [
+    /\bno\s+errors?\b/i,
+    /\b0\s+errors?\b/i,
+    /without\s+errors?/i,
+    /error[_\s-]?log/i,
+    /if\s+(you|there)\s+.{0,40}error/i,
+    /report\s+(any\s+)?error/i,
+    /contact\s+.{0,40}error/i,
+  ];
+  const filtered = [...new Set(errors)].filter((e) => !BENIGN.some((b) => b.test(e)));
+
+  const successRe = /(successfully|has been (saved|committed|uploaded|updated)|results?\s+(saved|committed|uploaded|captured)|committed|uploaded)/i;
+  const succeeded = successRe.test(text);
+  if (succeeded) {
+    const m = text.match(new RegExp(`[^.]{0,80}${successRe.source}[^.]{0,80}`, "i"));
     if (m) notes.push(m[0].trim());
   }
-  return { ok: errors.length === 0, errors: [...new Set(errors)].slice(0, 5), notes, title };
+
+  // On commit, an explicit success confirmation from NSA outranks the fuzzy
+  // keyword scan — otherwise a stray "error" word in page furniture reported a
+  // failure for a submission NSA had actually accepted.
+  const ok = mode === "commit" && succeeded ? true : filtered.length === 0;
+  return { ok, errors: ok ? [] : filtered.slice(0, 5), notes, title };
 }
+
 
 // ---------- Edge function ----------
 Deno.serve(async (req) => {

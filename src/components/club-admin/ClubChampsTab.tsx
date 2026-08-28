@@ -899,6 +899,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [step, setStep] = useState<WizardStep>("category");
   const [showWizard, setShowWizard] = useState(false);
   const [editingChampId, setEditingChampId] = useState<string | null>(null);
+  const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
+
   // Governance record for the tournament being edited — read-only in the wizard
   // (fee shares and refunds are owned by the Governance dialog).
   const { data: wizardGovernance } = useTournamentGovernance(editingChampId);

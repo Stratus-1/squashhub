@@ -400,15 +400,38 @@ Deno.serve(async (req) => {
             },
           );
           const html = await submit.text();
-          const summary = summariseResponse(html);
+          const summary = summariseResponse(html, mode);
+
+          // Last-resort confirmation on commit: if the keyword scan flagged
+          // something, ask NSA's public feed whether the fixture is completed.
+          // NSA frequently accepts the post while the returned page still
+          // contains words the scanner treats as errors.
+          let confirmed = false;
+          if (mode === "commit" && !summary.ok) {
+            try {
+              const res = await fetch(
+                `${NSA_BASE}/fixtures.php?league=${encodeURIComponent(String(body.league || "s79"))}&status=completed&json`,
+                { headers: { Accept: "application/json" } },
+              );
+              const parsed = JSON.parse(await res.text());
+              const list: any[] = Array.isArray(parsed?.data) ? parsed.data : Array.isArray(parsed) ? parsed : [];
+              const found = list.find((f) => Number(f.id) === fixtureId);
+              confirmed = String(found?.status || "").toLowerCase() === "completed";
+            } catch (_) { /* ignore */ }
+          }
+
           return json({
-            ok: summary.ok,
+            ok: summary.ok || confirmed,
             mode,
             fixture_id: fixtureId,
-            errors: summary.errors,
-            notes: summary.notes,
+            errors: summary.ok || confirmed ? [] : summary.errors,
+            notes: confirmed
+              ? [...summary.notes, "Confirmed completed on the NSA fixtures feed"]
+              : summary.notes,
             title: summary.title,
+            confirmed_via_feed: confirmed,
           });
+
         } finally {
           await nsaLogout(cookie);
         }

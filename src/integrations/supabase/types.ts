@@ -9922,17 +9922,24 @@ export type Database = {
       }
       sportyhq_profiles: {
         Row: {
+          age: number | null
+          birthday: string | null
           club_label: string | null
           club_member_id: string | null
           clubs: Json
           created_at: string
           fetched_at: string
+          gender: string | null
           governing_bodies: Json
+          handedness: string | null
           id: string
           location_label: string | null
           matches_all_time: number | null
           matches_ytd: number | null
           name: string
+          nationality: string | null
+          nickname: string | null
+          occupation: string | null
           person_id: string | null
           profile_path: string
           rankings: Json
@@ -9943,19 +9950,27 @@ export type Database = {
           updated_at: string
           verified_at: string | null
           verified_by: string | null
+          wins_all_time: number | null
         }
         Insert: {
+          age?: number | null
+          birthday?: string | null
           club_label?: string | null
           club_member_id?: string | null
           clubs?: Json
           created_at?: string
           fetched_at?: string
+          gender?: string | null
           governing_bodies?: Json
+          handedness?: string | null
           id?: string
           location_label?: string | null
           matches_all_time?: number | null
           matches_ytd?: number | null
           name: string
+          nationality?: string | null
+          nickname?: string | null
+          occupation?: string | null
           person_id?: string | null
           profile_path: string
           rankings?: Json
@@ -9966,19 +9981,27 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
+          wins_all_time?: number | null
         }
         Update: {
+          age?: number | null
+          birthday?: string | null
           club_label?: string | null
           club_member_id?: string | null
           clubs?: Json
           created_at?: string
           fetched_at?: string
+          gender?: string | null
           governing_bodies?: Json
+          handedness?: string | null
           id?: string
           location_label?: string | null
           matches_all_time?: number | null
           matches_ytd?: number | null
           name?: string
+          nationality?: string | null
+          nickname?: string | null
+          occupation?: string | null
           person_id?: string | null
           profile_path?: string
           rankings?: Json
@@ -9989,6 +10012,7 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_by?: string | null
+          wins_all_time?: number | null
         }
         Relationships: [
           {

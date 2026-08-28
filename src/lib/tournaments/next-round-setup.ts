@@ -51,7 +51,7 @@ export function suggestStageName(opts: {
 
 /** Alternatives offered as one-click chips in the popup. */
 export function stageNameOptions(qualifiers: number, roundNumber: number): string[] {
-  const out = [stageNameForQualifiers(qualifiers, roundNumber), `Round ${roundNumber}`];
+  const out = [`Round ${roundNumber}`, stageNameForQualifiers(qualifiers, roundNumber)];
   for (const extra of ["Quarter-final", "Semi-final", "Final"]) {
     if (!out.includes(extra)) out.push(extra);
   }

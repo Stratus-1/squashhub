@@ -181,7 +181,7 @@ async function resolveClubMail(userId: string, explicitClubId?: string | null): 
   }
 }
 
-async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; subject: string; html: string; text: string }) {
+async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; cc?: string[]; subject: string; html: string; text: string }) {
   const ALLOWED_SMTP_PORTS = new Set([25, 465, 587, 2525]);
   if (!ALLOWED_SMTP_PORTS.has(cfg.smtpPort)) {
     return { ok: false as const, skipped: false, reason: `SMTP port ${cfg.smtpPort} not allowed` };
@@ -205,9 +205,13 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; subject: strin
       requireTLS: cfg.smtpPort === 587,
       auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
     });
+    const ccList = (args.cc || [])
+      .map((c) => String(c || "").trim())
+      .filter((c) => c.length > 3 && c.toLowerCase() !== args.to.toLowerCase());
     const info: any = await transporter.sendMail({
       from: `${cfg.senderName} <${cfg.senderEmail}>`,
       to: args.to,
+      ...(ccList.length ? { cc: ccList } : {}),
       subject: args.subject,
       text: fullText,
       html: fullHtml,
@@ -217,7 +221,10 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; subject: strin
     const accepted: string[] = Array.isArray(info?.accepted) ? info.accepted.map(String) : [];
     const rejected: string[] = Array.isArray(info?.rejected) ? info.rejected.map(String) : [];
     const serverResponse = String(info?.response || "").trim();
-    if (rejected.length > 0 || (accepted.length === 0 && Array.isArray(info?.accepted))) {
+    // A rejected CC address must not fail the whole send — only the primary
+    // recipient decides success.
+    const primaryRejected = rejected.some((r) => r.toLowerCase().includes(args.to.toLowerCase()));
+    if (primaryRejected || (accepted.length === 0 && Array.isArray(info?.accepted))) {
       const reason = `Recipient rejected by ${cfg.smtpHost}: ${rejected.join(", ") || args.to}. ${serverResponse}`.trim();
       await logEmailAttempt({ to: args.to, template: "club-smtp", status: "failed", error: reason, clubId: cfg.clubId });
       return { ok: false as const, skipped: false, reason };
@@ -654,6 +661,15 @@ Deno.serve(async (req) => {
     const notifUrl = String(payload?.url || "/notifications");
     const type = String(payload?.type || "");
     const data = payload?.data ?? null;
+    const ccEmails: string[] = Array.isArray(payload?.ccEmails)
+      ? Array.from(
+          new Set(
+            payload.ccEmails
+              .map((c: unknown) => String(c || "").trim().toLowerCase())
+              .filter((c: string) => c.length > 3 && c.includes("@")),
+          ),
+        ).slice(0, 3)
+      : [];
 
     if (!targetUserId && !payloadEmail) {
       return new Response(JSON.stringify({ error: "Missing recipient" }), {
@@ -767,17 +783,32 @@ Deno.serve(async (req) => {
       clubName: clubMail?.clubName || "",
     };
     let fallbackWarning: string | null = null;
+    let usedPlatform = false;
     if (clubMail) {
-      result = await sendViaClubSmtp(clubMail, { to: email, subject, html, text });
+      result = await sendViaClubSmtp(clubMail, { to: email, cc: ccEmails, subject, html, text });
       if (!result.ok) {
         // Try the club's own settings first, then fall back to the platform
         // sender so the message still goes out — always logged/reported.
         fallbackWarning = describeSmtpError(result.reason || "", clubMail);
         console.error("[email-notifications] club SMTP failed, using platform sender", fallbackWarning);
         result = await sendViaPlatform(platformArgs);
+        usedPlatform = true;
       }
     } else {
       result = await sendViaPlatform(platformArgs);
+      usedPlatform = true;
+    }
+
+    // The platform sender has no CC field: send the admin their own copy so the
+    // club still sees what went out.
+    if (usedPlatform && result.ok && ccEmails.length) {
+      for (const cc of ccEmails) {
+        try {
+          await sendViaPlatform({ ...platformArgs, to: cc, subject: `[copy] ${subject}` });
+        } catch (e) {
+          console.error("[email-notifications] cc copy failed", cc, (e as Error).message);
+        }
+      }
     }
 
 

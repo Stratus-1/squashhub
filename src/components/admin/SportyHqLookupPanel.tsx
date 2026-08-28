@@ -26,10 +26,19 @@ interface Profile {
   rating_confidence: number | null;
   matches_ytd: number | null;
   matches_all_time: number | null;
+  wins_all_time: number | null;
+  birthday: string | null;
+  age: number | null;
+  gender: string | null;
+  nationality: string | null;
+  handedness: string | null;
+  nickname: string | null;
+  occupation: string | null;
   rankings: { label: string; system: string; position: number; people: number; points: number }[];
   governing_bodies: string[];
   clubs: string[];
 }
+
 
 async function callLookup<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke("sportyhq-lookup", { body });

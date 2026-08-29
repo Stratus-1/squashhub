@@ -4213,7 +4213,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           first_name: string
-          home_club_name: string
+          home_club_name?: string
           id?: string
           last_name: string
           member_number?: string | null
@@ -4481,6 +4481,7 @@ export type Database = {
           uses_gobook: boolean
           variance_threshold_pct: number | null
           visitor_booking_fee: number
+          visitor_home_clubs_enabled: boolean
           visitors_access_control: boolean
           visitors_can_book: boolean
           whatsapp_enabled: boolean
@@ -4600,6 +4601,7 @@ export type Database = {
           uses_gobook?: boolean
           variance_threshold_pct?: number | null
           visitor_booking_fee?: number
+          visitor_home_clubs_enabled?: boolean
           visitors_access_control?: boolean
           visitors_can_book?: boolean
           whatsapp_enabled?: boolean
@@ -4719,6 +4721,7 @@ export type Database = {
           uses_gobook?: boolean
           variance_threshold_pct?: number | null
           visitor_booking_fee?: number
+          visitor_home_clubs_enabled?: boolean
           visitors_access_control?: boolean
           visitors_can_book?: boolean
           whatsapp_enabled?: boolean

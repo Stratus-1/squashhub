@@ -3,7 +3,6 @@ import { SEO } from "@/components/SEO";
 import { SportyHqLookupPanel } from "@/components/admin/SportyHqLookupPanel";
 import { AssociationRankingsTab } from "@/components/association-admin/AssociationRankingsTab";
 import { RankingRolloutPanel } from "@/components/admin/RankingRolloutPanel";
-import { FederationTreeTab } from "@/components/admin/FederationTreeTab";
 
 export default function SuperAdminRankings() {
   return (
@@ -21,7 +20,6 @@ export default function SuperAdminRankings() {
           <TabsTrigger value="sportyhq">SportyHQ ratings</TabsTrigger>
           <TabsTrigger value="league">League rankings</TabsTrigger>
           <TabsTrigger value="rollout">Club rollout</TabsTrigger>
-          <TabsTrigger value="fedtree">Federation tree</TabsTrigger>
         </TabsList>
         <TabsContent value="sportyhq" className="pt-3">
           <SportyHqLookupPanel />
@@ -31,9 +29,6 @@ export default function SuperAdminRankings() {
         </TabsContent>
         <TabsContent value="rollout" className="pt-3">
           <RankingRolloutPanel />
-        </TabsContent>
-        <TabsContent value="fedtree" className="pt-3">
-          <FederationTreeTab />
         </TabsContent>
       </Tabs>
     </div>

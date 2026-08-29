@@ -214,6 +214,9 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     reservesLeagueId: string | null;
   }>(null);
   const [step, setStep] = useState<string>("leagues");
+  const [teamsTab, setTeamsTab] = useState<string | null>(null);
+  const [createTeamsAssoc, setCreateTeamsAssoc] = useState<LeagueAssociation | null>(null);
+
   const { data: clubFillDefault } = useQuery({
     queryKey: ["club-fill-settings", clubId],
     queryFn: async () => {

@@ -18,6 +18,7 @@ Grow the federation tree (National → Association → Club → Player) by disco
 ## Phase B — Roster discovery per club
 
 - New staging table `sportyhq_org_members`: sportyhq org id, sportyhq user id, name, profile path, plus `matched_person_id` / `matched_club_member_id` and `status`.
+- Note on association numbers: SportyHQ public pages do not expose a member's association licence/membership number (e.g. NSA number) — that field lives behind SportyHQ's admin login for the governing body. The public profile only shows rankings rows (association ranking name, position, points) and affiliated bodies/clubs. So the scraper captures ranking positions/points per association instead, and association numbers keep coming from the association's own systems (the existing NSA sync and `member_association_affiliations`).
 - New action `scrape_org_roster`: walk a club's public member list (paged), upsert rows, and match each player against `people` and `club_members` using the existing deep-match scoring. Full profile fetch stays lazy — only on promote or explicit request — to keep request volume low.
 - Reuses `sportyhq_profiles` for anyone already linked; no duplicate profile rows.
 

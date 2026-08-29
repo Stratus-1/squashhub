@@ -25,6 +25,7 @@ function normalise(row: any): LadderConfig {
       row.ranking_sync_mode === "mirror" ? "mirror" : row.ranking_sync_mode === "none" ? "none" : "formula",
     ranking_mirror_margin: Number(row.ranking_mirror_margin ?? 1),
     ranking_auto_approve: !!row.ranking_auto_approve,
+    ladder_auto_apply: row.ladder_auto_apply !== false,
     ladder_from_leagues: row.ladder_from_leagues !== false,
     ladder_from_tournaments: row.ladder_from_tournaments !== false,
     league_movement_policy:

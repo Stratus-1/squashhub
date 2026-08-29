@@ -27,6 +27,8 @@ export interface LadderConfig {
   ranking_mirror_margin: number;
   /** Post challenge points immediately instead of queuing for admin approval. */
   ranking_auto_approve: boolean;
+  /** Apply ladder moves immediately; false = queue for admin approval. */
+  ladder_auto_apply: boolean;
   /** League rubbers between two ranked club members may move the ladder. */
   ladder_from_leagues: boolean;
   /** Championship / tournament results between two ranked club members may move the ladder. */
@@ -52,6 +54,7 @@ export const DEFAULT_LADDER_CONFIG: LadderConfig = {
   ranking_sync_mode: "formula",
   ranking_mirror_margin: 1,
   ranking_auto_approve: false,
+  ladder_auto_apply: true,
   ladder_from_leagues: true,
   ladder_from_tournaments: true,
   league_movement_policy: null,

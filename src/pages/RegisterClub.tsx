@@ -400,19 +400,77 @@ export default function RegisterClub() {
 
         {showCreate && (
           <Card className="p-6">
-            <div className="space-y-4 mb-4">
-              {!hideGoogleAuth ? (
-                <>
-                  <GoogleSignInButton label="Continue with Google to register" preserveClub={false} />
-                  <GoogleAuthDivider />
-                </>
-              ) : (
-                <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
-                  Local development auth is set to email/password only. Use the form below to register the club.
-                </div>
-              )}
-            </div>
+            {!user && (
+              <div className="space-y-4 mb-4">
+                {!hideGoogleAuth ? (
+                  <>
+                    <GoogleSignInButton label="Continue with Google to register" preserveClub={false} />
+                    <GoogleAuthDivider />
+                  </>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  Already have a SquashHub account?{" "}
+                  <button type="button" className="underline text-primary" onClick={goToSignIn}>
+                    Sign in first
+                  </button>{" "}
+                  — otherwise fill in your details below and we'll create your account and club together.
+                </p>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {!user && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="acc-name">Your Full Name *</Label>
+                    <Input
+                      id="acc-name"
+                      value={account.fullName}
+                      onChange={(e) => setAccount((p) => ({ ...p, fullName: e.target.value }))}
+                      placeholder="John Smith"
+                      maxLength={100}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="acc-email">Your Email *</Label>
+                    <Input
+                      id="acc-email"
+                      type="email"
+                      value={account.email}
+                      onChange={(e) => setAccount((p) => ({ ...p, email: e.target.value }))}
+                      placeholder="john@example.com"
+                      maxLength={255}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="acc-password">Password *</Label>
+                      <Input
+                        id="acc-password"
+                        type="password"
+                        value={account.password}
+                        onChange={(e) => setAccount((p) => ({ ...p, password: e.target.value }))}
+                        placeholder="Min 6 characters"
+                        minLength={6}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="acc-confirm">Confirm Password *</Label>
+                      <Input
+                        id="acc-confirm"
+                        type="password"
+                        value={account.confirm}
+                        onChange={(e) => setAccount((p) => ({ ...p, confirm: e.target.value }))}
+                        placeholder="Re-enter password"
+                        minLength={6}
+                        required
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="name">Club Name *</Label>
                 <Input

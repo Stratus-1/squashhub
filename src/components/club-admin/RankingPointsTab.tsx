@@ -275,6 +275,19 @@ export function RankingPointsTab({ clubId }: Props) {
             </Button>
           </Card>
 
+          <RankingSimulatorCard
+            settings={{
+              base_win: Number(baseWin) || 0,
+              upset_bonus_per_rank: Number(upset) || 0,
+              favourite_win_min: Number(favMin) || 0,
+              loser_deduction: Number(loserDed) || 0,
+            }}
+            members={leaderboard as any}
+            enabled={enabled}
+            dirty={settingsDirty}
+          />
+
+
           <Card className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-500" />

@@ -56,6 +56,7 @@ import { Settings2, Send } from "lucide-react";
 import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
 import { ExportTeamsToNsaDialog } from "@/components/club-admin/ExportTeamsToNsaDialog";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
+import { CompetitionRankingCard } from "./CompetitionRankingCard";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -3010,6 +3011,8 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
   const [year, setYear] = useState(new Date().getFullYear());
   const [associationId, setAssociationId] = useState("");
   const [affectsRanking, setAffectsRanking] = useState(false);
+  const [rankingWeight, setRankingWeight] = useState(1);
+
   const qc = useQueryClient();
 
   const handleToggle = (league: string, gender: "men" | "ladies" | "mixed" | "open") => {
@@ -3037,7 +3040,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const menEntries = sortedMen.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `Men's ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ...base(label) };
+      return { name: `Men's ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label) };
     });
 
     // Reset numbering for Ladies
@@ -3045,7 +3048,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const ladiesEntries = sortedLadies.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ...base(label) };
+      return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label) };
     });
 
     // Reset numbering for Mixed
@@ -3053,7 +3056,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
     const mixedEntries = sortedMixed.map(label => {
       const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
       codeNum++;
-      return { name: `Mixed ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ...base(label) };
+      return { name: `Mixed ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label) };
     });
 
     return [...menEntries, ...ladiesEntries, ...mixedEntries];
@@ -3192,15 +3195,15 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
             </div>
           </div>
 
-          <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
-            <div className="min-w-0">
-              <Label className="text-xs font-medium">Affects official ranking points?</Label>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                When on, league match results will queue point movements for admin approval.
-              </p>
-            </div>
-            <Switch checked={affectsRanking} onCheckedChange={setAffectsRanking} />
-          </div>
+          <CompetitionRankingCard
+            clubId={clubId}
+            source="league"
+            affects={affectsRanking}
+            onAffectsChange={setAffectsRanking}
+            weight={rankingWeight}
+            onWeightChange={setRankingWeight}
+          />
+
 
           {prefix && entries.length > 0 && (
             <div className="bg-muted/50 rounded-md p-3 text-xs space-y-0.5 max-h-32 overflow-y-auto">

@@ -1,3 +1,4 @@
+import { CompetitionRankingCard } from "./CompetitionRankingCard";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -1497,6 +1498,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
+  // Weight multiplier applied to ranking points earned in this competition.
+  const [rankingWeight, setRankingWeight] = useState<number>(1);
   // null = follow the club's ladder setting; true/false = override for this event only.
   const [ladderAffects, setLadderAffects] = useState<boolean | null>(null);
   // Tournament category / capacity / seeding — stored on the tournaments row.
@@ -2343,6 +2346,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
       affects_ranking_points: affectsRankingPoints,
+      ranking_weight: rankingWeight,
       ladder_affects: ladderAffects,
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
@@ -4532,6 +4536,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
             affects_ranking_points: affectsRankingPoints,
+      ranking_weight: rankingWeight,
             ladder_affects: ladderAffects,
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
@@ -4613,6 +4618,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
             affects_ranking_points: affectsRankingPoints,
+      ranking_weight: rankingWeight,
             ladder_affects: ladderAffects,
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
@@ -6167,6 +6173,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
+    setRankingWeight(Number((champ as any).ranking_weight ?? 1) || 1);
     setLadderAffects(
       (champ as any).ladder_affects === null || (champ as any).ladder_affects === undefined
         ? null
@@ -9541,15 +9548,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-              <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2 mt-2">
-                <div className="min-w-0">
-                  <Label className="text-xs font-medium">Affects official ranking points?</Label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    When on, completed tournament matches will queue point movements for admin approval.
-                  </p>
-                </div>
-                <Switch checked={affectsRankingPoints} onCheckedChange={setAffectsRankingPoints} />
-              </div>
+              <CompetitionRankingCard
+                className="mt-2"
+                clubId={clubId}
+                source="tournament"
+                affects={affectsRankingPoints}
+                onAffectsChange={setAffectsRankingPoints}
+                weight={rankingWeight}
+                onWeightChange={setRankingWeight}
+              />
+
 
               <div className="rounded-md border bg-muted/30 px-3 py-2 mt-2 space-y-1">
                 <Label className="text-xs font-medium">Do results move the club ladder?</Label>

@@ -76,7 +76,7 @@ export function FederationTreeTab() {
   const { data: clubs } = useQuery({
     queryKey: ["fed-live-clubs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name").order("name");
+      const { data, error } = await supabase.from("clubs").select("id, name, subdomain").order("name");
       if (error) throw error;
       return data;
     },
@@ -248,6 +248,14 @@ export function FederationTreeTab() {
     return map;
   }, [clubs]);
 
+  const clubSubdomain = useMemo(() => {
+    const map = new Map<string, string>();
+    (clubs ?? []).forEach((c: { id: string; subdomain?: string | null }) => {
+      if (c.subdomain) map.set(c.id, c.subdomain);
+    });
+    return map;
+  }, [clubs]);
+
   // Group staged orgs into national -> association -> clubs tree
   const tree = useMemo(() => {
     const orgs = (stagedOrgs ?? []).filter((o) => showIgnored || o.status !== "ignored");
@@ -415,7 +423,12 @@ export function FederationTreeTab() {
                 </button>
                 {statusBadge(org.status)}
                 {org.matched_club_id && (
-                  <span className="text-xs text-muted-foreground">→ {clubName.get(org.matched_club_id) ?? "linked club"}</span>
+                  <span className="text-xs text-muted-foreground">
+                    → {clubName.get(org.matched_club_id) ?? "linked club"}
+                    {clubSubdomain.get(org.matched_club_id) && (
+                      <span className="ml-1 font-mono">({clubSubdomain.get(org.matched_club_id)}.squashhub.co.za)</span>
+                    )}
+                  </span>
                 )}
                 <span className="flex-1" />
                 {!org.matched_club_id && org.status !== "ignored" && (

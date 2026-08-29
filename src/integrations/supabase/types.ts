@@ -13289,6 +13289,7 @@ export type Database = {
           masked_name: string
         }[]
       }
+      make_club_slug: { Args: { _name: string }; Returns: string }
       make_org_slug: {
         Args: { _abbrev?: string; _name: string }
         Returns: string

@@ -205,7 +205,10 @@ export function RankingPointsTab({ clubId }: Props) {
     },
   });
 
+  const [ledgerFor, setLedgerFor] = useState<{ id: string; name: string } | null>(null);
+
   const settingsDirty = !!club && (
+
     Number(baseWin) !== Number((club as any).points_base_win ?? 0.25) ||
     Number(upset) !== Number((club as any).points_upset_bonus_per_rank ?? 0.1) ||
     Number(favMin) !== Number((club as any).points_favourite_win_min ?? 0.1) ||

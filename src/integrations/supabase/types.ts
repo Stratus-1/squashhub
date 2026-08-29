@@ -10274,6 +10274,7 @@ export type Database = {
       }
       sportyhq_org_members: {
         Row: {
+          club_label: string | null
           created_at: string
           id: string
           last_seen_at: string
@@ -10283,11 +10284,16 @@ export type Database = {
           name: string
           org_id: string
           profile_path: string | null
-          sportyhq_user_id: number
+          rank_confidence: string | null
+          rank_points: number | null
+          rank_position: number | null
+          ranking_slug: string | null
+          sportyhq_user_id: number | null
           status: string
           updated_at: string
         }
         Insert: {
+          club_label?: string | null
           created_at?: string
           id?: string
           last_seen_at?: string
@@ -10297,11 +10303,16 @@ export type Database = {
           name: string
           org_id: string
           profile_path?: string | null
-          sportyhq_user_id: number
+          rank_confidence?: string | null
+          rank_points?: number | null
+          rank_position?: number | null
+          ranking_slug?: string | null
+          sportyhq_user_id?: number | null
           status?: string
           updated_at?: string
         }
         Update: {
+          club_label?: string | null
           created_at?: string
           id?: string
           last_seen_at?: string
@@ -10311,7 +10322,11 @@ export type Database = {
           name?: string
           org_id?: string
           profile_path?: string | null
-          sportyhq_user_id?: number
+          rank_confidence?: string | null
+          rank_points?: number | null
+          rank_position?: number | null
+          ranking_slug?: string | null
+          sportyhq_user_id?: number | null
           status?: string
           updated_at?: string
         }

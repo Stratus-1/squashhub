@@ -138,6 +138,23 @@ export function FederationTreeTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const scrapeNational = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("sportyhq-lookup", {
+        body: { action: "scrape_national_tree" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (d) => {
+      toast.success(`National tree refreshed: ${d.associations} associations, ${d.clubs_staged} clubs staged`);
+      qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+      qc.invalidateQueries({ queryKey: ["fed-tree-runs"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const updateOrg = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Record<string, unknown> }) => {
       const { error } = await (supabase as any).from("sportyhq_orgs").update(patch).eq("id", id);

@@ -899,6 +899,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "scrape_club_members") {
+
       // Roster pull straight off the club pages we already staged in the tree.
       // No manual ranking-group ID needed: every staged club row carries its
       // SportyHQ slug in sportyhq_org_key ("club:<slug>").
@@ -934,52 +935,83 @@ Deno.serve(async (req) => {
       let clubsScanned = 0;
       const errors: string[] = [];
 
+      type Found = { slug: string; name: string; rank: number | null; points: number | null };
+      const clubKey = (s: string) => norm(deslugify(String(s).replace(/\/+$/, "")));
+
+      // SportyHQ club pages only show a top-2 teaser. The real rosters live in the
+      // parent association's ranking groups, where every row carries its club link.
+      // So: pull each parent's groups once, bucket players by club, then attribute.
+      const rosterByClub = new Map<string, Map<string, Found>>();
+      const scannedParents = new Set<string>();
+
+      const parseGroupHtml = (html: string) => {
+        for (const row of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
+          const rowHtml = row[1];
+          const clubM = rowHtml.match(/href="\/club\/view\/([^"?]+)"/);
+          if (!clubM) continue;
+          const pM = rowHtml.match(/href="\/(?:ranking\/user|user\/view)\/([^/"?#]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/);
+          if (!pM) continue;
+          const name = textOf(pM[2]);
+          if (!name || name.length < 3) continue;
+          const nums = textOf(rowHtml).match(/^(\d+)\s+.*?([\d,]+)\s+\d+%\s*$/);
+          const key = clubKey(clubM[1]);
+          if (!rosterByClub.has(key)) rosterByClub.set(key, new Map());
+          rosterByClub.get(key)!.set(pM[1], {
+            slug: pM[1],
+            name,
+            rank: nums ? Number(nums[1]) : null,
+            points: nums ? num(nums[2]) : null,
+          });
+        }
+      };
+
+      const loadParentGroups = async (parentKey: string | null, orgName: string) => {
+        if (!parentKey || scannedParents.has(parentKey)) return;
+        scannedParents.add(parentKey);
+        const pSlug = parentKey.replace(/^org:/, "");
+        let orgHtml = "";
+        try {
+          orgHtml = await fetchHtml(
+            /^\d+$/.test(pSlug) ? `${BASE}/organization/view/${pSlug}` : `${BASE}/organization/view/${pSlug}`,
+          );
+        } catch (err) {
+          errors.push(`${orgName}: parent page — ${(err as Error).message}`);
+          return;
+        }
+        const gids = [...new Set([...orgHtml.matchAll(/href="\/ranking\/group\/(\d+)/g)].map((m) => m[1]))].slice(0, 6);
+        for (const gid of gids) {
+          try {
+            parseGroupHtml(await fetchHtml(`${BASE}/ranking/group/${gid}?iframe=true&list_only=true&show_all=true`));
+          } catch { /* keep whatever we have */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+      };
+
       for (const org of orgs) {
         const slug = String(org.sportyhq_org_key ?? "").startsWith("club:")
           ? String(org.sportyhq_org_key).slice(5)
           : null;
         if (!slug) { errors.push(`${org.name}: no SportyHQ slug`); continue; }
 
-        let pages: string[] = [];
-        try {
-          pages.push(await fetchHtml(`${BASE}/club/view/${slug}`));
-        } catch (err) {
-          errors.push(`${org.name}: ${(err as Error).message}`);
-          continue;
-        }
-        // Some clubs expose their roster only through their ranking group(s).
-        const gids = [...new Set([...pages[0].matchAll(/href="\/ranking\/group\/(\d+)/g)].map((m) => m[1]))].slice(0, 2);
-        for (const gid of gids) {
-          try {
-            pages.push(await fetchHtml(`${BASE}/ranking/group/${gid}?iframe=true&list_only=true&show_all=true`));
-          } catch { /* keep going with what we have */ }
-        }
+        await loadParentGroups(org.parent_key, org.name);
         clubsScanned++;
 
-        const found = new Map<string, { slug: string; name: string; rank: number | null; points: number | null }>();
-        for (const html of pages) {
-          for (const row of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
-            const rowHtml = row[1];
-            // Ranking-group rows list the club; only keep this club's players.
-            const clubM = rowHtml.match(/href="\/club\/view\/([^"]+)"/);
-            if (clubM && clubM[1].replace(/\/+$/, "") !== slug) continue;
-            const pM = rowHtml.match(/href="\/(?:ranking\/user|user\/view)\/([^/"?]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/);
-            if (!pM) continue;
-            const name = textOf(pM[2]);
-            if (!name || name.length < 3) continue;
-            const nums = textOf(rowHtml).match(/^(\d+)\s+.*?([\d,]+)\s+\d+%\s*$/);
-            found.set(pM[1], {
-              slug: pM[1],
-              name,
-              rank: nums ? Number(nums[1]) : null,
-              points: nums ? num(nums[2]) : null,
-            });
-          }
-          // Card/list layouts without tables.
-          for (const m of html.matchAll(/href="\/(?:ranking\/user|user\/view)\/([^/"?]+)[^"]*"[^>]*>([^<]{3,60})</g)) {
-            if (!found.has(m[1])) found.set(m[1], { slug: m[1], name: textOf(m[2]), rank: null, points: null });
+        const found = new Map<string, Found>(rosterByClub.get(clubKey(slug)) ?? new Map());
+        // Nothing in the group listings? Fall back to whatever the club page shows.
+        if (found.size === 0) {
+          try {
+            const html = await fetchHtml(`${BASE}/club/view/${slug}`);
+            for (const m of html.matchAll(/href="(?:https:\/\/www\.sportyhq\.com)?\/(?:ranking\/user|user\/view)\/([^/"?#]+)[^"]*"[^>]*>([\s\S]{0,120}?)<\/a>/g)) {
+              const name = textOf(m[2]);
+              if (name.length < 3) continue;
+              if (!found.has(m[1])) found.set(m[1], { slug: m[1], name, rank: null, points: null });
+            }
+          } catch (err) {
+            errors.push(`${org.name}: ${(err as Error).message}`);
           }
         }
+
+
 
         if (org.matched_club_id && !memberCache.has(org.matched_club_id)) {
           const { data: mem } = await supabase

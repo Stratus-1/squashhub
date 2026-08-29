@@ -12714,6 +12714,7 @@ export type Database = {
           subdomain: string
           tenant_type: string
           treasurer_member_id: string
+          visitor_home_clubs_enabled: boolean
         }[]
       }
       get_sla_prompt_state: { Args: { _club_id: string }; Returns: Json }

@@ -840,23 +840,40 @@ export default function Tournaments() {
         )}
 
 
-        {/* Self-scheduled knockout matches (players book their own court) only
-            offer result entry — point-by-point marking is hidden for them. */}
-        {!isPlaceholder && String((champ as any)?.scheduling_mode || "") !== "self" && (
-          <Button
-            size="sm"
-            className="h-7 px-2.5 gap-1 shrink-0 self-end sm:self-auto rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm animate-pulse-slow"
-            title={tournamentFormat.key === "time_capped_points" ? "Start the bell timer and score this game" : "Open the marker to score this match"}
-            onClick={(e) => {
-              e.stopPropagation();
-              openMarker(m, markRoute, `${teamA} vs ${teamB}`);
-            }}
-          >
-            {tournamentFormat.key === "time_capped_points"
-              ? <BellRing className="w-3 h-3" />
-              : <Gavel className="w-3 h-3" />} {tournamentFormat.markerLabel}
-          </Button>
-        )}
+        {/* Point-by-point marking. Club-scheduled matches always show the
+            format's marker button; self-scheduled knockout matches offer the
+            same thing to the two players as "Score it live". */}
+        {(() => {
+          if (isPlaceholder) return null;
+          const selfScheduled = String((champ as any)?.scheduling_mode || "") === "self";
+          if (selfScheduled) {
+            const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps });
+            if (!perm.allowed) return null;
+          }
+          return (
+            <Button
+              size="sm"
+              className="h-7 px-2.5 gap-1 shrink-0 self-end sm:self-auto rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm animate-pulse-slow"
+              title={
+                selfScheduled
+                  ? "Score this match point by point while you play"
+                  : tournamentFormat.key === "time_capped_points"
+                    ? "Start the bell timer and score this game"
+                    : "Open the marker to score this match"
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                openMarker(m, markRoute, `${teamA} vs ${teamB}`);
+              }}
+            >
+              {tournamentFormat.key === "time_capped_points"
+                ? <BellRing className="w-3 h-3" />
+                : <Gavel className="w-3 h-3" />}{" "}
+              {selfScheduled ? "Score it live" : tournamentFormat.markerLabel}
+            </Button>
+          );
+        })()}
+
 
         {(() => {
           // Set / move the court & time. Available to the two players in this

@@ -163,22 +163,26 @@ export function LadderConfigCard({ clubId }: Props) {
 
             {draft.ranking_sync_mode === "mirror" &&
               numberField("Mirror margin (points)", "ranking_mirror_margin", "Points added above the beaten player.", 0, 100)}
-
-            <div className="flex items-center gap-3 md:col-span-1">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium">Post automatically</p>
-                <p className="text-[10px] text-muted-foreground">
-                  Off = challenge points wait for admin approval.
-                </p>
-              </div>
-              <Switch
-                checked={draft.ranking_auto_approve}
-                onCheckedChange={(v) => set("ranking_auto_approve", v)}
-              />
-            </div>
           </div>
         </div>
       )}
+
+      <div className="flex items-center gap-3 rounded-md border p-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium">Apply results automatically</p>
+          <p className="text-[11px] text-muted-foreground">
+            Single setting for approvals: on = ladder moves and ranking points post straight away.
+            Off = both wait for admin approval in "Pending ladder moves" and "Pending ranking points".
+          </p>
+        </div>
+        <Switch
+          checked={draft.ladder_auto_apply}
+          onCheckedChange={(v) => {
+            set("ladder_auto_apply", v);
+            set("ranking_auto_approve", v);
+          }}
+        />
+      </div>
 
       <div className="rounded-md border p-3 space-y-3">
         <div>
@@ -189,18 +193,6 @@ export function LadderConfigCard({ clubId }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 rounded-md border p-2.5">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold">Apply moves automatically</p>
-            <p className="text-[10px] text-muted-foreground">
-              Off = ladder moves wait for admin approval in "Pending ladder moves".
-            </p>
-          </div>
-          <Switch
-            checked={draft.ladder_auto_apply}
-            onCheckedChange={(v) => set("ladder_auto_apply", v)}
-          />
-        </div>
 
 
         {([

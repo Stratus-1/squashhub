@@ -840,7 +840,9 @@ export default function Tournaments() {
         )}
 
 
-        {!isPlaceholder && (
+        {/* Self-scheduled knockout matches (players book their own court) only
+            offer result entry — point-by-point marking is hidden for them. */}
+        {!isPlaceholder && String((champ as any)?.scheduling_mode || "") !== "self" && (
           <Button
             size="sm"
             variant="default"

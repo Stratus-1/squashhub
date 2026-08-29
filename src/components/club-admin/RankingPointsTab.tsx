@@ -25,7 +25,7 @@ export function RankingPointsTab({ clubId }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, ranking_points_enabled, points_base_win, points_upset_bonus_per_rank, points_favourite_win_min, points_loser_deduction")
+        .select("id, ranking_points_enabled, points_base_win, points_upset_bonus_per_rank, points_favourite_win_min, points_loser_deduction, points_from_challenges, points_from_leagues, points_from_tournaments")
         .eq("id", clubId)
         .maybeSingle();
       if (error) throw error;
@@ -39,6 +39,9 @@ export function RankingPointsTab({ clubId }: Props) {
   const [favMin, setFavMin] = useState("0.10");
   const [loserDed, setLoserDed] = useState("0");
   const [saving, setSaving] = useState(false);
+  const [fromChallenges, setFromChallenges] = useState(true);
+  const [fromLeagues, setFromLeagues] = useState(true);
+  const [fromTournaments, setFromTournaments] = useState(true);
 
   useEffect(() => {
     if (!club) return;
@@ -47,6 +50,9 @@ export function RankingPointsTab({ clubId }: Props) {
     setUpset(String((club as any).points_upset_bonus_per_rank ?? "0.10"));
     setFavMin(String((club as any).points_favourite_win_min ?? "0.10"));
     setLoserDed(String((club as any).points_loser_deduction ?? "0"));
+    setFromChallenges((club as any).points_from_challenges !== false);
+    setFromLeagues((club as any).points_from_leagues !== false);
+    setFromTournaments((club as any).points_from_tournaments !== false);
   }, [club]);
 
   const saveSettings = async () => {
@@ -60,11 +66,15 @@ export function RankingPointsTab({ clubId }: Props) {
           points_upset_bonus_per_rank: Number(upset) || 0,
           points_favourite_win_min: Number(favMin) || 0,
           points_loser_deduction: Number(loserDed) || 0,
+          points_from_challenges: fromChallenges,
+          points_from_leagues: fromLeagues,
+          points_from_tournaments: fromTournaments,
         } as any)
         .eq("id", clubId);
       if (error) throw error;
       toast.success("Settings saved");
       queryClient.invalidateQueries({ queryKey: ["ranking-points-club", clubId] });
+      queryClient.invalidateQueries({ queryKey: ["ranking-rule-versions", clubId] });
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -155,6 +165,20 @@ export function RankingPointsTab({ clubId }: Props) {
     },
   });
 
+  // ===== Rule versions =====
+  const { data: versions = [] } = useQuery({
+    queryKey: ["ranking-rule-versions", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("club_ranking_rule_versions" as any)
+        .select("*")
+        .eq("club_id", clubId)
+        .order("version", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   if (clubLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   return (
@@ -166,6 +190,7 @@ export function RankingPointsTab({ clubId }: Props) {
             Pending {pending.length > 0 && <Badge variant="destructive" className="ml-1.5 h-4 px-1.5 text-[10px]">{pending.length}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="board">Leaderboard</TabsTrigger>
+          <TabsTrigger value="rules">Rule history</TabsTrigger>
         </TabsList>
 
         {/* SETTINGS */}
@@ -198,6 +223,23 @@ export function RankingPointsTab({ clubId }: Props) {
                 <Label className="text-xs">Loser deduction</Label>
                 <Input type="number" step="0.05" value={loserDed} onChange={(e) => setLoserDed(e.target.value)} className="h-8" />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium">Which results earn points</p>
+              {([
+                ["Ladder challenges", fromChallenges, setFromChallenges],
+                ["League matches", fromLeagues, setFromLeagues],
+                ["Tournament & championship matches", fromTournaments, setFromTournaments],
+              ] as const).map(([label, value, setter]) => (
+                <div key={label} className="flex items-center gap-3 rounded-md border p-2">
+                  <span className="flex-1 text-xs">{label}</span>
+                  <Switch checked={value} onCheckedChange={(v) => (setter as any)(v)} />
+                </div>
+              ))}
+              <p className="text-[10px] text-muted-foreground">
+                Club ranking points are separate from imported SportyHQ ratings — those are never changed here.
+              </p>
             </div>
 
             <div className="text-[11px] text-muted-foreground bg-muted/40 rounded p-2">
@@ -343,6 +385,45 @@ export function RankingPointsTab({ clubId }: Props) {
             </Table>
           </Card>
         </TabsContent>
+        {/* RULE HISTORY */}
+        <TabsContent value="rules" className="space-y-3 pt-3">
+          <p className="text-xs text-muted-foreground">
+            Every change to the points rules is versioned, so past results stay explainable.
+          </p>
+          {versions.length === 0 ? (
+            <Card className="p-6 text-center text-sm text-muted-foreground">
+              No rule changes recorded yet — the first version is saved next time you save settings.
+            </Card>
+          ) : (
+            <Card className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Version</TableHead>
+                    <TableHead>Effective from</TableHead>
+                    <TableHead>Rules</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {versions.map((v: any) => (
+                    <TableRow key={v.id}>
+                      <TableCell className="text-xs font-medium">v{v.version}</TableCell>
+                      <TableCell className="text-xs">
+                        {new Date(v.effective_from).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-[11px] text-muted-foreground">
+                        base {Number(v.settings?.base_win ?? 0).toFixed(2)} · upset {Number(v.settings?.upset_bonus_per_rank ?? 0).toFixed(2)} ·
+                        floor {Number(v.settings?.favourite_win_min ?? 0).toFixed(2)} · loser {Number(v.settings?.loser_deduction ?? 0).toFixed(2)}
+                        {v.settings?.ranking_points_enabled === false && " · disabled"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </TabsContent>
+
       </Tabs>
     </div>
   );

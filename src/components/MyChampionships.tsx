@@ -248,12 +248,6 @@ export function MyChampionships() {
 
                   const unscheduled = isUnscheduled(m);
                   const perm = canSelfScheduleMatch(m, memberId);
-                  // Self-scheduled matches may be played (and marked) even
-                  // before a court is booked — score capture is never blocked
-                  // just because court/date/time are still null.
-                  const markPerm = selfScheduled
-                    ? canMarkChampMatch(m, memberId)
-                    : { allowed: false as const };
                   // Entering an already-played score is independent of both the
                   // scheduling mode and any court booking.
                   const resultPerm = canEnterChampResult(m, memberId);

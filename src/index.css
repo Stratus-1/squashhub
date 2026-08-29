@@ -163,8 +163,11 @@
     }
   }
 
-  /* Prevent iOS rubber-band over-scroll in standalone mode */
-  @media (display-mode: standalone) {
+  /* Prevent iOS rubber-band over-scroll in standalone mode.
+     Touch devices only: on desktop PWAs this moves the scroller off the
+     document, and overlay scroll-locks (Select/Dropdown/Dialog) then reset
+     the page to the top when they open. */
+  @media (display-mode: standalone) and (pointer: coarse) {
     body {
       position: fixed;
       width: 100%;
@@ -178,6 +181,7 @@
       -webkit-overflow-scrolling: touch;
     }
   }
+
 
   /* Fix input zoom on iOS (font-size < 16px triggers zoom) */
   input, select, textarea {

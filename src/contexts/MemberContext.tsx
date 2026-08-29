@@ -12,6 +12,7 @@ export interface LinkedMember {
   club_member_number: string | null;
   gender: string | null;
   user_id: string | null;
+  person_id?: string | null;
 }
 
 interface MemberContextType {

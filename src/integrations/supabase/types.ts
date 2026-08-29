@@ -10152,6 +10152,50 @@ export type Database = {
         }
         Relationships: []
       }
+      sportyhq_lookup_attempts: {
+        Row: {
+          attempts: number
+          club_member_id: string
+          created_at: string
+          id: string
+          last_attempt_at: string | null
+          last_message: string | null
+          last_status: string | null
+          person_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          club_member_id: string
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_message?: string | null
+          last_status?: string | null
+          person_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_message?: string | null
+          last_status?: string | null
+          person_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sportyhq_lookup_attempts_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sportyhq_profiles: {
         Row: {
           age: number | null

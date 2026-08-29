@@ -731,3 +731,61 @@ function json(payload: unknown, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+// Fetch a SportyHQ page, retrying through intermittent Cloudflare challenges.
+async function fetchHtml(url: string): Promise<string> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!res.ok) throw new Error(`SportyHQ fetch failed [${res.status}]`);
+    const html = await res.text();
+    if (!/Just a moment/i.test(html)) return html;
+    await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+  }
+  throw new Error("SportyHQ blocked the request (Cloudflare challenge)");
+}
+
+function deslugify(slug: string): string {
+  return slug
+    .replace(/-\d+$/, "")
+    .split("-")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function matchLiveClub(label: string, slug: string, clubs: Array<{ id: string; name: string; suburb?: string | null; city?: string | null }>) {
+  const target = norm(label);
+  const slugName = norm(deslugify(slug));
+  let best: { id: string; score: number } | null = null;
+  for (const c of clubs) {
+    const cn = norm(c.name);
+    let score = 0;
+    if (cn === target || cn === slugName) score = 100;
+    else if (cn.includes(slugName) || slugName.includes(cn)) score = 80;
+    else score = clubScore(cn, [target, slugName]) * 10;
+    if (score > (best?.score ?? 0)) best = { id: c.id, score };
+  }
+  return best && best.score >= 20 ? { id: best.id } : null;
+}
+
+function matchMember(
+  playerName: string,
+  members: Array<{ id: string; first_name: string | null; last_name: string | null }>,
+): { id: string; confidence: string } | null {
+  const target = norm(playerName);
+  for (const m of members) {
+    const full = norm(`${m.first_name ?? ""} ${m.last_name ?? ""}`);
+    if (full && full === target) return { id: m.id, confidence: "confident" };
+  }
+  // Probable: same surname and same first initial
+  const parts = target.split(" ");
+  const surname = parts[parts.length - 1];
+  const initial = parts[0]?.[0];
+  const probable = members.filter((m) => {
+    const ln = norm(m.last_name ?? "");
+    const fn = norm(m.first_name ?? "");
+    return ln === surname && fn.startsWith(initial ?? " ");
+  });
+  if (probable.length === 1) return { id: probable[0].id, confidence: "probable" };
+  return null;
+}

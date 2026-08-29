@@ -898,7 +898,14 @@ Deno.serve(async (req) => {
       return json({ status: "ok", groups: summary, orgs_found: orgsFound, players_found: playersFound, errors: errors.slice(0, 10) });
     }
 
+    if (action === "debug_fetch") {
+      const html = await fetchHtml(String(body.url));
+      const links = [...new Set([...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]))].slice(0, 200);
+      return json({ length: html.length, links, snippet: html.slice(0, 4000) });
+    }
+
     if (action === "scrape_club_members") {
+
       // Roster pull straight off the club pages we already staged in the tree.
       // No manual ranking-group ID needed: every staged club row carries its
       // SportyHQ slug in sportyhq_org_key ("club:<slug>").

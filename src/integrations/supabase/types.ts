@@ -13289,7 +13289,10 @@ export type Database = {
           masked_name: string
         }[]
       }
-      make_org_slug: { Args: { _name: string }; Returns: string }
+      make_org_slug: {
+        Args: { _abbrev?: string; _name: string }
+        Returns: string
+      }
       member_has_permission: {
         Args: { _member_id: string; _permission: string }
         Returns: boolean

@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyClub, useCreateClub } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,8 +52,9 @@ function initialsSlug(name: string): string {
 }
 
 export default function RegisterClub() {
-  const { user } = useAuth();
+  const { user, signUp } = useAuth();
   const navigate = useNavigate();
+  const captchaRef = useRef<HCaptchaHandle>(null);
   const { data: existing, isLoading } = useMyClub();
   const createClub = useCreateClub();
   const hideGoogleAuth = isGoogleAuthDisabled();

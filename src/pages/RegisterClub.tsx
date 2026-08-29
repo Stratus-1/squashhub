@@ -72,6 +72,12 @@ export default function RegisterClub() {
   const [form, setForm] = useState({ name: "", subdomain: "", address: "", email: "", phone: "" });
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
 
+  // Account fields — only needed when the visitor has no SquashHub login yet.
+  const [account, setAccount] = useState({ fullName: "", email: "", password: "", confirm: "" });
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [signupDone, setSignupDone] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
+
   const normaliseSlug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
 
   // Debounced search across every club in the system.

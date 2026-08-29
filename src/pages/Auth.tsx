@@ -13,7 +13,6 @@ import { ArrowLeft } from "lucide-react";
 import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
 import shLogo from "@/assets/sh-logo.png";
 import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
-import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
 
 export default function Auth() {
   const { signIn, resetPassword } = useAuth();
@@ -173,8 +172,6 @@ export default function Auth() {
             </Link>
           </Button>
         </Card>
-
-        <LeaguePlayerSignupBanner />
       </motion.div>
     </div>
   );

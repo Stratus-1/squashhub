@@ -301,19 +301,6 @@ export function MyChampionships() {
                           ) : (
                             <p className="text-[11px] text-muted-foreground">{perm.reason}</p>
                           )}
-                          {markPerm.allowed && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-6 text-[11px]"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(markerRoute(m.id));
-                              }}
-                            >
-                              Mark game point by point
-                            </Button>
-                          )}
                           {resultPerm.allowed && (
                             <Button
                               size="sm"
@@ -353,19 +340,6 @@ export function MyChampionships() {
                           }}
                         >
                           Reschedule your court booking
-                        </Button>
-                      )}
-                      {markPerm.allowed && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 text-[10px] px-1.5 shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(markerRoute(m.id));
-                          }}
-                        >
-                          Mark game
                         </Button>
                       )}
                       {resultPerm.allowed && (

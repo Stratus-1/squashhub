@@ -3481,6 +3481,47 @@ export type Database = {
           },
         ]
       }
+      club_ranking_rule_versions: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          id: string
+          note: string | null
+          settings: Json
+          version: number
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          id?: string
+          note?: string | null
+          settings: Json
+          version: number
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          id?: string
+          note?: string | null
+          settings?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_ranking_rule_versions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_router_alert_settings: {
         Row: {
           club_id: string
@@ -4323,6 +4364,9 @@ export type Database = {
           phone: string | null
           points_base_win: number
           points_favourite_win_min: number
+          points_from_challenges: boolean
+          points_from_leagues: boolean
+          points_from_tournaments: boolean
           points_loser_deduction: number
           points_upset_bonus_per_rank: number
           public_applications_enabled: boolean
@@ -4439,6 +4483,9 @@ export type Database = {
           phone?: string | null
           points_base_win?: number
           points_favourite_win_min?: number
+          points_from_challenges?: boolean
+          points_from_leagues?: boolean
+          points_from_tournaments?: boolean
           points_loser_deduction?: number
           points_upset_bonus_per_rank?: number
           public_applications_enabled?: boolean
@@ -4555,6 +4602,9 @@ export type Database = {
           phone?: string | null
           points_base_win?: number
           points_favourite_win_min?: number
+          points_from_challenges?: boolean
+          points_from_leagues?: boolean
+          points_from_tournaments?: boolean
           points_loser_deduction?: number
           points_upset_bonus_per_rank?: number
           public_applications_enabled?: boolean
@@ -5578,6 +5628,9 @@ export type Database = {
           max_active_outgoing: number
           movement_policy: string
           pyramid_row_sizes: Json | null
+          ranking_auto_approve: boolean
+          ranking_mirror_margin: number
+          ranking_sync_mode: string
           rematch_cooldown_days: number
           updated_at: string
         }
@@ -5596,6 +5649,9 @@ export type Database = {
           max_active_outgoing?: number
           movement_policy?: string
           pyramid_row_sizes?: Json | null
+          ranking_auto_approve?: boolean
+          ranking_mirror_margin?: number
+          ranking_sync_mode?: string
           rematch_cooldown_days?: number
           updated_at?: string
         }
@@ -5614,6 +5670,9 @@ export type Database = {
           max_active_outgoing?: number
           movement_policy?: string
           pyramid_row_sizes?: Json | null
+          ranking_auto_approve?: boolean
+          ranking_mirror_margin?: number
+          ranking_sync_mode?: string
           rematch_cooldown_days?: number
           updated_at?: string
         }
@@ -12075,6 +12134,16 @@ export type Database = {
         Returns: number
       }
       auto_complete_past_tournaments: { Args: never; Returns: number }
+      award_ranking_points_for_result: {
+        Args: {
+          _club_id: string
+          _loser_member_id: string
+          _source_id: string
+          _source_type: string
+          _winner_member_id: string
+        }
+        Returns: string
+      }
       bill_wifi_monthly: { Args: never; Returns: Json }
       can_access_champ_match: {
         Args: { _match_id: string; _user_id: string }

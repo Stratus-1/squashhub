@@ -285,6 +285,10 @@ export function FederationTreeTab() {
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${scrape.isPending ? "animate-spin" : ""}`} />
               {scrape.isPending ? "Scraping…" : "Scrape clubs & players"}
             </Button>
+            <Button size="sm" variant="outline" onClick={() => scrapeNational.mutate()} disabled={scrapeNational.isPending}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${scrapeNational.isPending ? "animate-spin" : ""}`} />
+              {scrapeNational.isPending ? "Refreshing…" : "Refresh national tree (SSA)"}
+            </Button>
           </div>
           {(runs ?? []).length > 0 && (
             <div className="text-xs text-muted-foreground space-y-0.5">

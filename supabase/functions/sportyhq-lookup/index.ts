@@ -689,7 +689,7 @@ Deno.serve(async (req) => {
             personId = memberMatch ? members.find((m: any) => m.id === memberMatch!.id)?.person_id ?? null : null;
           }
 
-          const { error: memErr } = await supabase
+          const { data: memRow, error: memErr } = await supabase
             .from("sportyhq_org_members")
             .upsert(
               {
@@ -703,13 +703,21 @@ Deno.serve(async (req) => {
                 matched_club_member_id: memberMatch?.id ?? null,
                 matched_person_id: personId,
                 match_confidence: memberMatch?.confidence ?? null,
-                status: memberMatch ? "matched" : "new",
                 last_seen_at: new Date().toISOString(),
               },
               { onConflict: "org_id,ranking_slug" },
-            );
-          if (memErr) errors.push(`player ${slug}: ${memErr.message}`);
-          else playersFound++;
+            )
+            .select("id, status")
+            .single();
+          if (memErr) {
+            errors.push(`player ${slug}: ${memErr.message}`);
+          } else {
+            // Only advance new -> matched; never demote ignored/promoted
+            if (memRow.status === "new" && memberMatch) {
+              await supabase.from("sportyhq_org_members").update({ status: "matched" }).eq("id", memRow.id);
+            }
+            playersFound++;
+          }
         }
         summary.push({ group_id: gid, title: groupTitle });
         await new Promise((r) => setTimeout(r, 400)); // gentle pacing between groups

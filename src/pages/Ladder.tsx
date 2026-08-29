@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Swords, X, Layers, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, Swords, X, Layers, ArrowUp, ArrowDown, List, Triangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -271,6 +271,17 @@ export default function Ladder() {
   const [proposedTime, setProposedTime] = useState("18:00");
   const [courtId, setCourtId] = useState<string>("");
   const [sending, setSending] = useState(false);
+
+  // Pyramid vs list view (pyramid clubs only) — defaults to list on small screens
+  const [viewMode, setViewMode] = useState<"pyramid" | "list">(() => {
+    if (typeof window === "undefined") return "pyramid";
+    const stored = window.localStorage.getItem("sh.ladder.view");
+    if (stored === "pyramid" || stored === "list") return stored;
+    return window.innerWidth < 768 ? "list" : "pyramid";
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("sh.ladder.view", viewMode); } catch { /* ignore */ }
+  }, [viewMode]);
 
   // Blocked challenge dialog
   const [blockedChallenge, setBlockedChallenge] = useState<{
@@ -609,7 +620,7 @@ export default function Ladder() {
   };
 
   const renderColumn = (title: string, list: LadderPlayer[]) => {
-    if (config.format === "pyramid") return renderPyramid(title, list);
+    if (config.format === "pyramid" && viewMode === "pyramid") return renderPyramid(title, list);
     const filtered = applyFilter(list);
     return (
 
@@ -738,6 +749,31 @@ export default function Ladder() {
           </label>
         </div>
       )}
+
+      {/* Pyramid / list view switch (pyramid ladders only) */}
+      {config.format === "pyramid" && !isLoading && (
+        <div className="px-4 mt-3 flex items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground mr-1">View</span>
+          <div className="inline-flex rounded-full border bg-muted/40 p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <List className="w-3 h-3" /> List
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("pyramid")}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${viewMode === "pyramid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Triangle className="w-3 h-3" /> Pyramid
+            </button>
+          </div>
+        </div>
+      )}
+
+
 
       {isLoading ? (
         <div className="flex justify-center py-12">

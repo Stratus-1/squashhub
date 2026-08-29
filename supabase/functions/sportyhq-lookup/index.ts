@@ -703,10 +703,11 @@ Deno.serve(async (req) => {
 
       if (run?.id) {
         await supabase.from("sportyhq_tree_runs").update({
-          finished_at: now,
-          orgs_found: assocKeys.size + 1,
+          finished_at: new Date().toISOString(),
+          status: errors.length ? "completed_with_errors" : "completed",
+          orgs_found: assocKeys.size + 1 + clubsStaged,
           players_found: 0,
-          summary: { clubs_staged: clubsStaged, associations: assocKeys.size, matched_live: matched, errors: errors.slice(0, 10) },
+          message: `clubs_staged=${clubsStaged} associations=${assocKeys.size} matched_live=${matched} errors=${errors.slice(0, 5).join(" | ")}`,
         }).eq("id", run.id);
       }
 

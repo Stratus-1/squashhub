@@ -272,6 +272,17 @@ export default function Ladder() {
   const [courtId, setCourtId] = useState<string>("");
   const [sending, setSending] = useState(false);
 
+  // Pyramid vs list view (pyramid clubs only) — defaults to list on small screens
+  const [viewMode, setViewMode] = useState<"pyramid" | "list">(() => {
+    if (typeof window === "undefined") return "pyramid";
+    const stored = window.localStorage.getItem("sh.ladder.view");
+    if (stored === "pyramid" || stored === "list") return stored;
+    return window.innerWidth < 768 ? "list" : "pyramid";
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("sh.ladder.view", viewMode); } catch { /* ignore */ }
+  }, [viewMode]);
+
   // Blocked challenge dialog
   const [blockedChallenge, setBlockedChallenge] = useState<{
     open: boolean;

@@ -18,6 +18,6 @@ export const SwissFormat: TournamentFormat = {
   label: "Swiss pairing — fixed rounds, paired by score each round",
   description:
     "Players are re-paired every round against opponents on similar scores. Admin sets pools per league and rounds; pairings are done manually round-by-round.",
-  markerLabel: "Mark",
+  markerLabel: "Mark game",
   badge: { label: "Swiss", variant: "secondary" },
 };

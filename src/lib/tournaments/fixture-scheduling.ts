@@ -76,11 +76,11 @@ export function canUnscheduleFixture(
 
 /** Row action label — short form is for tight rows / menus. */
 export function scheduleActionLabel(m: FixtureLike): string {
-  return fixtureScheduleState(m) === "scheduled" ? "Reschedule" : "Set court & time";
+  return fixtureScheduleState(m) === "scheduled" ? "Reschedule your court booking" : "Make your court booking";
 }
 
 export function scheduleActionShortLabel(m: FixtureLike): string {
-  return fixtureScheduleState(m) === "scheduled" ? "Reschedule" : "Schedule";
+  return fixtureScheduleState(m) === "scheduled" ? "Reschedule" : "Book court";
 }
 
 /** What the date/time columns of a fixture row should read. */

@@ -24,7 +24,7 @@ export const StandardFormat: TournamentFormat = {
     return `/match-marker?source=tournament&matchId=${matchId}`;
   },
 
-  markerLabel: "Mark",
+  markerLabel: "Mark game",
 
   getTimeCapMinutes() {
     return null;

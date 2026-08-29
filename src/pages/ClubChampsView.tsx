@@ -2177,7 +2177,7 @@ export default function ClubChampsView() {
               onClick={() => setResultMatch(m)}
               title="Capture the score of a match that has already been played"
             >
-              Enter Result
+              Enter your result
             </Button>
           );
         })()}

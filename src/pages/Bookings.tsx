@@ -2000,7 +2000,7 @@ export default function Bookings() {
                         navigate(`/add-result?${params.toString()}`);
                       }}
                     >
-                      <Swords className="w-3.5 h-3.5" /> Enter Result
+                      <Swords className="w-3.5 h-3.5" /> Enter your result
                     </Button>
                   )}
                   {isBooker && (

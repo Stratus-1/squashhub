@@ -520,8 +520,28 @@ export function FederationTreeTab() {
               </div>
               {expandedOrg === org.id && (
                 <div className="border-t px-3 py-2 space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                     <Users className="h-3 w-3" /> Players discovered in this club
+                    <span className="flex-1" />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      disabled={enrichMembers.isPending}
+                      onClick={() => enrichMembers.mutate({ orgId: org.id })}
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${enrichMembers.isPending ? "animate-spin" : ""}`} />
+                      {enrichMembers.isPending ? "Fetching…" : "Fetch player details"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      disabled={enrichMembers.isPending}
+                      onClick={() => enrichMembers.mutate({ orgId: org.id, refresh: true })}
+                    >
+                      Refresh all
+                    </Button>
                   </div>
                   {(members ?? []).map((m) => (
                     <div key={m.id} className="flex flex-wrap items-center gap-2 text-[13px] py-1 border-b last:border-0">
@@ -530,7 +550,24 @@ export function FederationTreeTab() {
                       {m.rank_points != null && (
                         <span className="text-xs text-muted-foreground">{m.rank_points.toLocaleString()} pts</span>
                       )}
+                      {[
+                        m.gender,
+                        m.age != null ? `age ${m.age}` : m.birthday,
+                        m.nationality,
+                        m.handedness ? `${m.handedness}-handed` : null,
+                        m.rating != null ? `rating ${Math.round(Number(m.rating)).toLocaleString()}` : null,
+                        m.matches_all_time != null
+                          ? `${m.wins_all_time ?? 0}/${m.matches_all_time} wins`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .map((bit, i) => (
+                          <span key={i} className="text-xs text-muted-foreground">
+                            · {bit}
+                          </span>
+                        ))}
                       {statusBadge(m.status, m.match_confidence)}
+
                       <span className="flex-1" />
                       {m.status !== "promoted" && m.status !== "ignored" && (
                         <>

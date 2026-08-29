@@ -10,7 +10,40 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { buildLeagueFinals, buildNextRound, sectionLetter } from "@/lib/tournaments/knockout";
+import { buildGraduatedNextRound } from "@/lib/tournaments/graduated";
 import type { SectionProgression } from "@/lib/tournaments/knockout-progression";
+
+/**
+ * Strength order for a section, taken from its opening round: the earlier a
+ * player appears on the round-1 board, the stronger they were seeded. Used by
+ * the graduated draw so survivors are re-ranked by original strength.
+ */
+async function seedOrderForSection(champId: string, groupNumber: number, section: number) {
+  const { data } = await fromExt("club_champs_matches")
+    .select("bracket_position, player_a_member_id, player_b_member_id")
+    .eq("champ_id", champId)
+    .eq("group_number", groupNumber)
+    .eq("section_number", section)
+    .eq("round_number", 1)
+    .order("bracket_position", { ascending: true });
+  const order = new Map<string, number>();
+  for (const m of (data as any[]) || []) {
+    for (const id of [m.player_a_member_id, m.player_b_member_id]) {
+      if (id && !order.has(id)) order.set(id, order.size + 1);
+    }
+  }
+  return (memberId: string) => order.get(memberId) ?? order.size + 1;
+}
+
+/** Is this division set up as a graduated ("fair entry") knockout? */
+async function isGraduatedDivision(champId: string, groupNumber: number) {
+  const { data } = await fromExt("tournaments")
+    .select("league_draw_styles")
+    .eq("id", champId)
+    .maybeSingle();
+  const styles = ((data as any)?.league_draw_styles || {}) as Record<string, unknown>;
+  return styles[String(groupNumber)] === "graduated";
+}
 
 export type GenerateNextRoundVars = { groupNumber: number; section?: number };
 
@@ -53,15 +86,38 @@ export function useGenerateNextRound(opts: {
         }
 
         const multi = mine.filter((s) => s.section > 0).length > 1;
+        const sectionLabel = multi ? `Section ${sectionLetter(section)}` : undefined;
+        const playBy = selfScheduled
+          ? st.nextRound?.play_by ?? playByForRound?.(nextNumber) ?? null
+          : null;
+
+        if (await isGraduatedDivision(champId, groupNumber)) {
+          const seedOf = await seedOrderForSection(champId, groupNumber, section);
+          const gRows = buildGraduatedNextRound({
+            champId,
+            groupNumber,
+            section,
+            roundMatches: st.currentRoundMatches,
+            seedOf,
+            sectionLabel,
+            playBy,
+          });
+          if (gRows.length === 0) throw new Error("Nothing to generate");
+          const gWithRound = st.nextRound?.id
+            ? gRows.map((r) => ({ ...r, round_id: st.nextRound!.id }))
+            : gRows;
+          const { error: gErr } = await fromExt("club_champs_matches").insert(gWithRound as any);
+          if (gErr) throw gErr;
+          return gRows.length;
+        }
+
         const rows = buildNextRound({
           champId,
           groupNumber,
           section,
           roundMatches: st.currentRoundMatches,
-          sectionLabel: multi ? `Section ${sectionLetter(section)}` : undefined,
-          playBy: selfScheduled
-            ? st.nextRound?.play_by ?? playByForRound?.(nextNumber) ?? null
-            : null,
+          sectionLabel,
+          playBy,
         });
         if (rows.length === 0) throw new Error("Nothing to generate");
         const withRound = st.nextRound?.id ? rows.map((r) => ({ ...r, round_id: st.nextRound!.id })) : rows;

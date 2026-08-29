@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { Loader2, RefreshCw, Sparkles, CheckCircle2, XCircle, ShieldAlert, Camera } from "lucide-react";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { RankingSimulatorCard } from "./RankingSimulatorCard";
+import { RankingLedgerDialog } from "./RankingLedgerDialog";
+
 
 
 interface Props {

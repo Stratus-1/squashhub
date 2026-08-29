@@ -152,6 +152,19 @@ Deno.serve(async (req) => {
           collectionId: col.id,
           configuredSecretCount: uniqueSigningSecrets.length,
         });
+        // Never lose a genuine-looking payment confirmation: quarantine the
+        // event so it can be replayed once the signing secret is corrected.
+        await admin.from("stitch_webhook_quarantine").insert({
+          source: "stitch-collection-webhook",
+          collection_id: col.id,
+          club_id: col.club_id,
+          svix_id: svixId || null,
+          event_type: eventType || null,
+          payload,
+          error: `svix verify failed against ${uniqueSigningSecrets.length} configured secret(s)`,
+        }).then(({ error: qErr }) => {
+          if (qErr) console.error("quarantine insert failed", qErr.message);
+        });
         return json({ error: "invalid signature" }, 401);
       }
     } else if (uniqueSigningSecrets.length > 0 && signature) {

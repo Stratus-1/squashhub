@@ -10399,6 +10399,45 @@ export type Database = {
           },
         ]
       }
+      stitch_webhook_quarantine: {
+        Row: {
+          club_id: string | null
+          collection_id: string | null
+          created_at: string
+          error: string
+          event_type: string | null
+          id: string
+          payload: Json | null
+          resolved_at: string | null
+          source: string
+          svix_id: string | null
+        }
+        Insert: {
+          club_id?: string | null
+          collection_id?: string | null
+          created_at?: string
+          error: string
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          resolved_at?: string | null
+          source?: string
+          svix_id?: string | null
+        }
+        Update: {
+          club_id?: string | null
+          collection_id?: string | null
+          created_at?: string
+          error?: string
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          resolved_at?: string | null
+          source?: string
+          svix_id?: string | null
+        }
+        Relationships: []
+      }
       subscription_plans: {
         Row: {
           active: boolean

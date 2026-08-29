@@ -697,9 +697,9 @@ Deno.serve(async (req) => {
         clubsStaged++;
       }
 
-      // Re-parent clubs discovered earlier via ranking groups (parent group:<gid>)
-      // onto their canonical association now that the tree exists.
-      await supabase.rpc("reparent_sportyhq_group_clubs").maybeSingle?.() ?? null;
+      // Note: the upsert above already re-parents clubs discovered earlier via
+      // ranking groups (parent group:<gid>) onto their canonical association,
+      // because they share the same club:<slug> key.
 
       if (run?.id) {
         await supabase.from("sportyhq_tree_runs").update({

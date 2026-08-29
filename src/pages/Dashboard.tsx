@@ -47,6 +47,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useMyPermissions, useMemberHasAdminAccess } from "@/hooks/use-club-permissions";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useChampDailyToast } from "@/hooks/use-champ-daily-toast";
+import { useChampBookingReminder } from "@/hooks/use-champ-booking-reminder";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";
@@ -126,6 +127,8 @@ export default function Dashboard() {
   const hasLeagues = capOn("leagues") && (clubLeagueAssociations || []).length > 0;
   // Nightly knockout round-up toast ("Well done with your wins" / "Sorry to see you go").
   useChampDailyToast(clubId, tournamentsEnabled);
+  // "Please make your court booking for your next upcoming game" nudge.
+  useChampBookingReminder(clubId, myMemberId, tournamentsEnabled);
   // Recent match results for the active member
   const { data: recentMatches } = useQuery({
     queryKey: ["club-recent-matches", myMemberId || effectiveUserId],

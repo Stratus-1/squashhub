@@ -164,7 +164,7 @@ export default function ClubAuth() {
     if (payload.category) setVisitorCategory(payload.category);
     setActiveTab("visitor");
 
-    const hasAll = payload.first_name && payload.last_name && payload.home_club_name;
+    const hasAll = payload.first_name && payload.last_name;
     if (!hasAll) return; // user must complete the form manually
     (async () => {
       setLoading(true);
@@ -1796,6 +1796,7 @@ export default function ClubAuth() {
                 </div>
                 )}
 
+                {askVisitorHomeClub && (
                 <div>
                   <Label htmlFor="visitor-member-number">Member Number at Home Club</Label>
                   <Input
@@ -1807,6 +1808,7 @@ export default function ClubAuth() {
                     maxLength={20}
                   />
                 </div>
+                )}
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Registering..." : "Register & Sign In"}
                 </Button>

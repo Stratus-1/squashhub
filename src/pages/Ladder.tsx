@@ -614,7 +614,7 @@ export default function Ladder() {
       <SEO title="Player Ladder" description="See the latest squash ladder rankings." path="/ladder" noIndex />
       <PageHeader
         title="Player Ladder"
-        subtitle={`${(players || []).length} players ranked`}
+        subtitle={`${(players || []).length} players ranked · ${describeLadderRule(config)}`}
       />
 
       {/* Controls: filter chip + group toggle */}

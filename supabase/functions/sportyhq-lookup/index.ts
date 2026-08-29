@@ -898,27 +898,6 @@ Deno.serve(async (req) => {
       return json({ status: "ok", groups: summary, orgs_found: orgsFound, players_found: playersFound, errors: errors.slice(0, 10) });
     }
 
-    if (action === "debug_post") {
-      const pre = await fetch(String(body.page ?? body.url), { headers: { "User-Agent": UA } });
-      const preHtml = await pre.text();
-      const cookie = (pre.headers.get("set-cookie") ?? "").split(",").map((c) => c.split(";")[0].trim()).filter(Boolean).join("; ");
-      const tok = preHtml.match(/name="sportyhq_csrf_token" value="([^"]+)"/)?.[1] ?? "";
-      const res = await fetch(String(body.url), {
-        method: "POST",
-        headers: { "User-Agent": UA, "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/x-www-form-urlencoded", Cookie: cookie, Referer: String(body.page ?? body.url) },
-        body: new URLSearchParams({ ...(body.form ?? {}), sportyhq_csrf_token: tok }),
-      });
-      const html = await res.text();
-      return json({ status: res.status, length: html.length, snippet: html.slice(0, 5000) });
-    }
-
-    if (action === "debug_fetch") {
-      const html = await fetchHtml(String(body.url));
-      const links = [...new Set([...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]))].slice(0, 200);
-      const grep = body.grep ? [...html.matchAll(new RegExp(String(body.grep), "g"))].map((m) => html.slice(Math.max(0, m.index! - 300), m.index! + 700)).slice(0, 5) : [];
-      return json({ length: html.length, links, grep, snippet: html.slice(0, 4000) });
-    }
-
     if (action === "scrape_club_members") {
 
       // Roster pull straight off the club pages we already staged in the tree.

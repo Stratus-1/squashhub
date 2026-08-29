@@ -652,21 +652,37 @@ export default function ClubAuth() {
       toast.error("Please select your home club");
       return;
     }
-    // Soft duplicate warning — same name or phone already at this club.
-    // Not a hard block: families sometimes share a phone/name.
+    // Duplicate-player guard. The club roster already holds imported players
+    // (federation/SportyHQ data), so match on the strongest identifiers first
+    // and steer the person onto their existing record instead of a new one.
     if (club?.id) {
       try {
-        const { data: dupCount } = await supabase.rpc("count_member_duplicate_hints", {
+        const { data: matches } = await (supabase as any).rpc("find_existing_club_member", {
           _club_id: club.id,
           _name: name,
+          _email: email,
           _phone: phone || "",
+          _id_number: "",
+          _league_number: "",
         });
-        const n = Number(dupCount || 0);
-        if (n > 0) {
+        const hits = (matches || []) as Array<{
+          member_name: string; club_member_number: string | null; match_kind: string; is_claimed: boolean;
+        }>;
+        const unclaimed = hits.find((h) => !h.is_claimed);
+        if (unclaimed) {
           const ok = window.confirm(
-            `${club.name} already has ${n} member${n === 1 ? "" : "s"} with a matching name or phone number. ` +
-            `If that's you, please sign in instead — or ask the club admin to link your account. ` +
-            `\n\nContinue creating a brand new account anyway?`
+            `${club.name} already has a player record for ${unclaimed.member_name}` +
+            `${unclaimed.club_member_number ? ` (member no. ${unclaimed.club_member_number})` : ""}, ` +
+            `which nobody has signed in with yet.\n\n` +
+            `Click OK to create your login and link it to that existing record — your history and member number stay intact. ` +
+            `Click Cancel to stop.`,
+          );
+          if (!ok) return;
+        } else if (hits.length > 0) {
+          const ok = window.confirm(
+            `${club.name} already has ${hits.length} member${hits.length === 1 ? "" : "s"} matching your details ` +
+            `(${hits.map((h) => h.member_name).slice(0, 3).join(", ")}). If that's you, please sign in instead.\n\n` +
+            `Continue creating a brand new account anyway?`,
           );
           if (!ok) return;
         }
@@ -674,6 +690,7 @@ export default function ClubAuth() {
         console.warn("dup check failed", e);
       }
     }
+
 
     setLoading(true);
     const nowIso = new Date().toISOString();

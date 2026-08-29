@@ -273,6 +273,30 @@ export function FederationTreeTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const scrapeClubMembers = useMutation({
+    mutationFn: async (payload: { orgId?: string; parentKey?: string }) => {
+      const { data, error } = await supabase.functions.invoke("sportyhq-lookup", {
+        body: {
+          action: "scrape_club_members",
+          org_id: payload.orgId,
+          parent_key: payload.parentKey,
+          limit: payload.parentKey ? 15 : 1,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (d: any) => {
+      toast.success(`Scraped ${d.clubs_scanned} club(s): ${d.players_found} players staged`);
+      qc.invalidateQueries({ queryKey: ["fed-staged-members", expandedOrg] });
+      qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
+
 
   const clubName = useMemo(() => {
     const map = new Map<string, string>();

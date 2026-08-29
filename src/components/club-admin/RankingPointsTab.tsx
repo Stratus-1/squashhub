@@ -506,6 +506,14 @@ export function RankingPointsTab({ clubId }: Props) {
         </TabsContent>
 
       </Tabs>
+
+      <RankingLedgerDialog
+        open={!!ledgerFor}
+        onOpenChange={(v) => !v && setLedgerFor(null)}
+        clubId={clubId}
+        memberId={ledgerFor?.id ?? null}
+        memberName={ledgerFor?.name}
+      />
     </div>
   );
 }

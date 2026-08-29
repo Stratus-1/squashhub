@@ -64,51 +64,15 @@ export interface EnqueueParams {
  * delta. Safe no-op (returns null) if the club has ranking points disabled.
  */
 export async function enqueueRankingDelta(p: EnqueueParams) {
-  // Check club setting
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("ranking_points_enabled, points_base_win, points_upset_bonus_per_rank, points_favourite_win_min, points_loser_deduction")
-    .eq("id", p.clubId)
-    .maybeSingle();
-  if (!club || !(club as any).ranking_points_enabled) return null;
-
-  const settings: RankingFormulaSettings = p.settings ?? {
-    base_win: Number((club as any).points_base_win ?? DEFAULT_FORMULA.base_win),
-    upset_bonus_per_rank: Number((club as any).points_upset_bonus_per_rank ?? DEFAULT_FORMULA.upset_bonus_per_rank),
-    favourite_win_min: Number((club as any).points_favourite_win_min ?? DEFAULT_FORMULA.favourite_win_min),
-    loser_deduction: Number((club as any).points_loser_deduction ?? DEFAULT_FORMULA.loser_deduction),
-  };
-
-  // Get current point ranks for both players (1-based, by ranking_points desc)
-  const { data: members } = await supabase
-    .from("club_members")
-    .select("id, ranking_points")
-    .eq("club_id", p.clubId)
-    .order("ranking_points", { ascending: false });
-  const ranks = new Map<string, number>();
-  (members || []).forEach((m: any, i: number) => ranks.set(m.id, i + 1));
-  const winnerRank = ranks.get(p.winnerMemberId) ?? null;
-  const loserRank = ranks.get(p.loserMemberId) ?? null;
-
-  const { winnerDelta, loserDelta } = computeRankingDeltas(winnerRank, loserRank, settings);
-
-  const { data: userData } = await supabase.auth.getUser();
-  const { data, error } = await supabase
-    .from("ranking_points_pending" as any)
-    .insert({
-      club_id: p.clubId,
-      match_source_type: p.matchSourceType,
-      match_source_id: p.matchSourceId ?? null,
-      winner_member_id: p.winnerMemberId,
-      loser_member_id: p.loserMemberId,
-      winner_rank_at_match: winnerRank,
-      loser_rank_at_match: loserRank,
-      winner_delta: winnerDelta,
-      loser_delta: loserDelta,
-      submitted_by: userData.user?.id ?? null,
-    })
-    .select()
-    .maybeSingle();
+  // Server-side engine: applies the club's current rules (formula or ladder-mirror),
+  // enforces the per-competition switches and never counts a result twice.
+  const { data, error } = await supabase.rpc("award_ranking_points_for_result" as any, {
+    _club_id: p.clubId,
+    _winner_member_id: p.winnerMemberId,
+    _loser_member_id: p.loserMemberId,
+    _source_type: p.matchSourceType,
+    _source_id: p.matchSourceId ?? null,
+  });
   if (error) throw error;
-  return data;
+  return data ?? null;
 }

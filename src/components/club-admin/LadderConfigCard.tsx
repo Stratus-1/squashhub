@@ -135,6 +135,51 @@ export function LadderConfigCard({ clubId }: Props) {
         />
       </div>
 
+      {draft.affects_club_ranking && (
+        <div className="rounded-md border p-3 space-y-3">
+          <p className="text-sm font-medium">Ranking sync</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">How challenges award points</Label>
+              <Select
+                value={draft.ranking_sync_mode}
+                onValueChange={(v) => set("ranking_sync_mode", v as LadderConfig["ranking_sync_mode"])}
+              >
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="formula">Club points formula</SelectItem>
+                  <SelectItem value="mirror">Mirror the ladder</SelectItem>
+                  <SelectItem value="none">No points from challenges</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                {draft.ranking_sync_mode === "mirror"
+                  ? "Winner's points are lifted just above the beaten player, so points follow the ladder exactly."
+                  : draft.ranking_sync_mode === "none"
+                    ? "Challenges move the ladder only."
+                    : "Uses the club's base / upset / floor formula from Ranking Points."}
+              </p>
+            </div>
+
+            {draft.ranking_sync_mode === "mirror" &&
+              numberField("Mirror margin (points)", "ranking_mirror_margin", "Points added above the beaten player.", 0, 100)}
+
+            <div className="flex items-center gap-3 md:col-span-1">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium">Post automatically</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Off = challenge points wait for admin approval.
+                </p>
+              </div>
+              <Switch
+                checked={draft.ranking_auto_approve}
+                onCheckedChange={(v) => set("ranking_auto_approve", v)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3 rounded-md border p-3">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Challenges open</p>

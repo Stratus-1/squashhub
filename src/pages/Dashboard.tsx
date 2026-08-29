@@ -25,6 +25,7 @@ import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { DashboardMyStatsCard } from "@/components/DashboardMyStatsCard";
 import { DashboardSportyhqCard } from "@/components/DashboardSportyhqCard";
+import { DashboardRankingPointsCard } from "@/components/DashboardRankingPointsCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
@@ -686,6 +687,9 @@ export default function Dashboard() {
             </div>
           )}
 
+          <div className="mt-3">
+            <DashboardRankingPointsCard clubId={clubId} memberId={myMemberId} />
+          </div>
         </div>
 
 
@@ -834,6 +838,7 @@ export default function Dashboard() {
           memberId={myMemberId}
           personId={(activeMember as any)?.person_id ?? (myClubMember as any)?.person_id ?? null}
         />
+        <DashboardRankingPointsCard clubId={clubId} memberId={myMemberId} />
       </div>
 
 

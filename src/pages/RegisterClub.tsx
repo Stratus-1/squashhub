@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyClub, useCreateClub } from "@/hooks/use-club";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,8 +52,9 @@ function initialsSlug(name: string): string {
 }
 
 export default function RegisterClub() {
-  const { user } = useAuth();
+  const { user, signUp } = useAuth();
   const navigate = useNavigate();
+  const captchaRef = useRef<HCaptchaHandle>(null);
   const { data: existing, isLoading } = useMyClub();
   const createClub = useCreateClub();
   const hideGoogleAuth = isGoogleAuthDisabled();
@@ -68,6 +71,12 @@ export default function RegisterClub() {
 
   const [form, setForm] = useState({ name: "", subdomain: "", address: "", email: "", phone: "" });
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
+
+  // Account fields — only needed when the visitor has no SquashHub login yet.
+  const [account, setAccount] = useState({ fullName: "", email: "", password: "", confirm: "" });
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [signupDone, setSignupDone] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
 
   const normaliseSlug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5);
 
@@ -131,9 +140,11 @@ export default function RegisterClub() {
     return null;
   }
 
+  const goToSignIn = () => navigate(`/auth?redirectTo=${encodeURIComponent("/register-club")}`);
+
   const submitClaim = async () => {
     if (!claimTarget) return;
-    if (!user) { toast.error("Please sign in first so we can link the club to your account."); return; }
+    if (!user) { goToSignIn(); return; }
     try {
       const { error } = await (supabase.rpc as any)("request_club_claim", {
         _club_id: claimTarget.id,
@@ -212,10 +223,68 @@ export default function RegisterClub() {
       return;
     }
 
-    doCreate();
+    if (user) {
+      doCreate();
+      return;
+    }
+
+    // No login yet — create the account first; the club is provisioned after
+    // email verification (AuthCallback reads the club metadata).
+    const accName = account.fullName.trim();
+    const accEmail = account.email.trim();
+    if (accName.length < 2) { toast.error("Please enter your full name"); return; }
+    if (!accEmail) { toast.error("Please enter your email address"); return; }
+    if (account.password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (account.password !== account.confirm) { toast.error("Passwords do not match"); return; }
+    if (!acceptTerms) { toast.error("Please accept the Terms of Use and Privacy Policy"); return; }
+
+    setAuthBusy(true);
+    try {
+      const token = await captchaRef.current?.execute().catch(() => null);
+      if (!token) { toast.error("Please complete the captcha verification"); return; }
+      const valid = await verifyCaptchaToken(token);
+      if (!valid) { toast.error("Captcha verification failed"); return; }
+
+      const nowIso = new Date().toISOString();
+      const { error } = await signUp(accEmail, account.password, accName, undefined, {
+        termsAcceptedAt: nowIso,
+        privacyAcceptedAt: nowIso,
+      }, { clubName: form.name.trim(), subdomain: slug, registrationType: "club_owner" });
+      if (error) { toast.error(error.message); return; }
+      setSignupDone(true);
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  if (signupDone) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
+        <Card className="p-6 space-y-4 text-center max-w-md w-full">
+          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <svg className="w-7 h-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h1 className="text-lg font-bold font-heading">Verify Your Email</h1>
+          <p className="text-sm text-muted-foreground">
+            We've sent a verification link to <span className="font-medium text-foreground">{account.email}</span>.
+            Click the link to verify your email, create your club, and be redirected to your club's login page.
+          </p>
+          {form.subdomain && (
+            <p className="text-xs text-muted-foreground">
+              Your club URL will be: <span className="font-medium text-foreground">{form.subdomain}.squashhub.co.za</span>
+            </p>
+          )}
+          <Button variant="outline" className="w-full" onClick={() => setSignupDone(false)}>
+            Back
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   if (claimSubmitted) {
     return (
@@ -296,10 +365,10 @@ export default function RegisterClub() {
                   {c.claim_pending ? (
                     <Button size="sm" variant="ghost" disabled>Pending</Button>
                   ) : c.is_claimable ? (
-                    <Button size="sm" onClick={() => setClaimTarget(c)}>This is my club</Button>
+                    <Button size="sm" onClick={() => (user ? setClaimTarget(c) : goToSignIn())}>This is my club</Button>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => joinAsMember(c)}>
-                      <Users className="w-3.5 h-3.5 mr-1" />Join as a member
+                    <Button size="sm" onClick={() => joinAsMember(c)}>
+                      <Users className="w-3.5 h-3.5 mr-1" />Go to club
                     </Button>
                   )}
                 </div>
@@ -331,19 +400,77 @@ export default function RegisterClub() {
 
         {showCreate && (
           <Card className="p-6">
-            <div className="space-y-4 mb-4">
-              {!hideGoogleAuth ? (
-                <>
-                  <GoogleSignInButton label="Continue with Google to register" preserveClub={false} />
-                  <GoogleAuthDivider />
-                </>
-              ) : (
-                <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
-                  Local development auth is set to email/password only. Use the form below to register the club.
-                </div>
-              )}
-            </div>
+            {!user && (
+              <div className="space-y-4 mb-4">
+                {!hideGoogleAuth ? (
+                  <>
+                    <GoogleSignInButton label="Continue with Google to register" preserveClub={false} />
+                    <GoogleAuthDivider />
+                  </>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  Already have a SquashHub account?{" "}
+                  <button type="button" className="underline text-primary" onClick={goToSignIn}>
+                    Sign in first
+                  </button>{" "}
+                  — otherwise fill in your details below and we'll create your account and club together.
+                </p>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {!user && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="acc-name">Your Full Name *</Label>
+                    <Input
+                      id="acc-name"
+                      value={account.fullName}
+                      onChange={(e) => setAccount((p) => ({ ...p, fullName: e.target.value }))}
+                      placeholder="John Smith"
+                      maxLength={100}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="acc-email">Your Email *</Label>
+                    <Input
+                      id="acc-email"
+                      type="email"
+                      value={account.email}
+                      onChange={(e) => setAccount((p) => ({ ...p, email: e.target.value }))}
+                      placeholder="john@example.com"
+                      maxLength={255}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="acc-password">Password *</Label>
+                      <Input
+                        id="acc-password"
+                        type="password"
+                        value={account.password}
+                        onChange={(e) => setAccount((p) => ({ ...p, password: e.target.value }))}
+                        placeholder="Min 6 characters"
+                        minLength={6}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="acc-confirm">Confirm Password *</Label>
+                      <Input
+                        id="acc-confirm"
+                        type="password"
+                        value={account.confirm}
+                        onChange={(e) => setAccount((p) => ({ ...p, confirm: e.target.value }))}
+                        placeholder="Re-enter password"
+                        minLength={6}
+                        required
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="name">Club Name *</Label>
                 <Input
@@ -392,12 +519,35 @@ export default function RegisterClub() {
                 <Label htmlFor="phone">Club Phone</Label>
                 <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} placeholder="+27..." />
               </div>
+              {!user && (
+                <>
+                  <HCaptcha ref={captchaRef} />
+                  <div className="flex items-start gap-2 pt-1">
+                    <Checkbox
+                      checked={acceptTerms}
+                      onCheckedChange={(v) => setAcceptTerms(v === true)}
+                      aria-label="Accept Terms and Privacy Policy"
+                    />
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      I agree to the{" "}
+                      <Link to="/terms" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                        Terms of Use
+                      </Link>{" "}
+                      and{" "}
+                      <Link to="/privacy" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                </>
+              )}
               <Button
                 type="submit"
                 className="w-full"
-                disabled={createClub.isPending || slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "checking"}
+                disabled={createClub.isPending || authBusy || slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "checking"}
               >
-                {createClub.isPending ? "Registering..." : "Register Club"}
+                {createClub.isPending || authBusy ? "Registering..." : user ? "Register Club" : "Create Account & Register Club"}
               </Button>
             </form>
           </Card>

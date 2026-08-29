@@ -483,7 +483,7 @@ function AppRoutes() {
         <Route path="/availability" element={<ProtectedRoute><Availability /></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/seasons" element={<ProtectedRoute><Seasons /></ProtectedRoute>} />
-        <Route path="/register-club" element={<ProtectedRoute><RegisterClub /></ProtectedRoute>} />
+        <Route path="/register-club" element={<RegisterClub />} />
         <Route path="/settings" element={
           <ProtectedRoute>
             {(clubFromHost as any)?.tenant_type === "association"

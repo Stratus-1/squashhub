@@ -140,9 +140,11 @@ export default function RegisterClub() {
     return null;
   }
 
+  const goToSignIn = () => navigate(`/auth?redirectTo=${encodeURIComponent("/register-club")}`);
+
   const submitClaim = async () => {
     if (!claimTarget) return;
-    if (!user) { toast.error("Please sign in first so we can link the club to your account."); return; }
+    if (!user) { goToSignIn(); return; }
     try {
       const { error } = await (supabase.rpc as any)("request_club_claim", {
         _club_id: claimTarget.id,
@@ -221,7 +223,38 @@ export default function RegisterClub() {
       return;
     }
 
-    doCreate();
+    if (user) {
+      doCreate();
+      return;
+    }
+
+    // No login yet — create the account first; the club is provisioned after
+    // email verification (AuthCallback reads the club metadata).
+    const accName = account.fullName.trim();
+    const accEmail = account.email.trim();
+    if (accName.length < 2) { toast.error("Please enter your full name"); return; }
+    if (!accEmail) { toast.error("Please enter your email address"); return; }
+    if (account.password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (account.password !== account.confirm) { toast.error("Passwords do not match"); return; }
+    if (!acceptTerms) { toast.error("Please accept the Terms of Use and Privacy Policy"); return; }
+
+    setAuthBusy(true);
+    try {
+      const token = await captchaRef.current?.execute().catch(() => null);
+      if (!token) { toast.error("Please complete the captcha verification"); return; }
+      const valid = await verifyCaptchaToken(token);
+      if (!valid) { toast.error("Captcha verification failed"); return; }
+
+      const nowIso = new Date().toISOString();
+      const { error } = await signUp(accEmail, account.password, accName, undefined, {
+        termsAcceptedAt: nowIso,
+        privacyAcceptedAt: nowIso,
+      }, { clubName: form.name.trim(), subdomain: slug, registrationType: "club_owner" });
+      if (error) { toast.error(error.message); return; }
+      setSignupDone(true);
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((p) => ({ ...p, [k]: e.target.value }));

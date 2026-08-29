@@ -189,6 +189,20 @@ export function LadderConfigCard({ clubId }: Props) {
           </p>
         </div>
 
+        <div className="flex items-center gap-3 rounded-md border p-2.5">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold">Apply moves automatically</p>
+            <p className="text-[10px] text-muted-foreground">
+              Off = ladder moves wait for admin approval in "Pending ladder moves".
+            </p>
+          </div>
+          <Switch
+            checked={draft.ladder_auto_apply}
+            onCheckedChange={(v) => set("ladder_auto_apply", v)}
+          />
+        </div>
+
+
         {([
           {
             key: "ladder_from_leagues",

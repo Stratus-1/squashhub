@@ -323,14 +323,20 @@ export function FederationTreeTab() {
             />
             <Input
               className="w-56 h-9 text-[13px]"
-              placeholder="/organization/view/130"
+              placeholder="Org path e.g. /organization/view/130"
               value={orgPath}
               onChange={(e) => setOrgPath(e.target.value)}
             />
-            <Button size="sm" onClick={() => scrape.mutate()} disabled={scrape.isPending}>
+            <Button
+              size="sm"
+              onClick={() => scrape.mutate()}
+              disabled={scrape.isPending || (!groupId.trim() && !orgPath.trim())}
+              title={!groupId.trim() && !orgPath.trim() ? "Type a ranking group ID or an organization path first" : undefined}
+            >
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${scrape.isPending ? "animate-spin" : ""}`} />
               {scrape.isPending ? "Scraping…" : "Scrape clubs & players"}
             </Button>
+
             <Button size="sm" variant="outline" onClick={() => scrapeNational.mutate()} disabled={scrapeNational.isPending}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${scrapeNational.isPending ? "animate-spin" : ""}`} />
               {scrapeNational.isPending ? "Refreshing…" : "Refresh national tree (SSA)"}

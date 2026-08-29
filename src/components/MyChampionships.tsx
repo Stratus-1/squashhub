@@ -15,7 +15,7 @@ import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
-import { canSelfScheduleMatch, canMarkChampMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
+import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 
@@ -214,9 +214,8 @@ export function MyChampionships() {
         const champ = allChamps.find((c: any) => c.id === entry.champ_id);
         if (!champ) return null;
         const isDoubles = champ.match_type === "doubles";
-        const selfScheduled = String((champ as any).scheduling_mode || "") === "self";
-        const markerRoute = (matchId: string) =>
-          getTournamentFormat((champ as any).scoring_mode).markerRoute(matchId);
+        // Self-scheduled knockout matches (players book their own court) only
+        // offer result entry — no point-by-point marking from this list.
         const partnerName = entry.partner ? getName(entry.partner) : null;
         const champUpcoming = upcomingMatches.filter((m: any) => m.champ_id === champ.id);
         const champCompleted = completedMatches.filter((m: any) => m.champ_id === champ.id);

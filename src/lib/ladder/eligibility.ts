@@ -21,6 +21,12 @@ export interface LadderConfig {
   rematch_cooldown_days: number;
   movement_policy: "swap" | "insert";
   affects_club_ranking: boolean;
+  /** How challenge results feed the club ranking points leaderboard. */
+  ranking_sync_mode: "none" | "formula" | "mirror";
+  /** In mirror mode, how far above the beaten player the winner lands. */
+  ranking_mirror_margin: number;
+  /** Post challenge points immediately instead of queuing for admin approval. */
+  ranking_auto_approve: boolean;
   is_active: boolean;
 }
 
@@ -35,6 +41,9 @@ export const DEFAULT_LADDER_CONFIG: LadderConfig = {
   rematch_cooldown_days: 0,
   movement_policy: "swap",
   affects_club_ranking: false,
+  ranking_sync_mode: "formula",
+  ranking_mirror_margin: 1,
+  ranking_auto_approve: false,
   is_active: true,
 };
 

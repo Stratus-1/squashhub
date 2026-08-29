@@ -414,18 +414,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
     enabled: !!clubId,
   });
   const mixedEnabled = !!clubFlags?.mixed_ladder_enabled;
-  const [challengeLevelsUp, setChallengeLevelsUp] = useState<number>(2);
-  useEffect(() => {
-    if (clubFlags?.challenge_levels_up != null) setChallengeLevelsUp(clubFlags.challenge_levels_up);
-  }, [clubFlags?.challenge_levels_up]);
-  const saveChallengeLevels = async (value: number) => {
-    setChallengeLevelsUp(value);
-    const { error } = await supabase.from("clubs").update({ challenge_levels_up: value }).eq("id", clubId);
-    if (error) { toast.error(error.message); return; }
-    queryClient.invalidateQueries({ queryKey: ["club-ladder-flags", clubId] });
-    queryClient.invalidateQueries({ queryKey: ["my-club"] });
-    toast.success("Challenge rule saved");
-  };
+  // Challenge rules now live in ladder_configs (see LadderConfigCard).
+
 
   // Load club's league associations (LS, NIL, ...)
   const { data: leagues = [] } = useQuery({

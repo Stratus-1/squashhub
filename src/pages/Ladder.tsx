@@ -481,9 +481,37 @@ export default function Ladder() {
     );
   };
 
+  const renderPyramid = (title: string, list: LadderPlayer[]) => {
+    const filtered = applyFilter(list);
+    const entries: PyramidEntry[] = filtered.map((p, i) => ({
+      key: p.id,
+      position: i + 1,
+      name: p.name,
+      isMe: isMe(p),
+      challengeable: isChallengeable(p),
+    }));
+    const byKey = new Map(filtered.map((p) => [p.id, p]));
+    return (
+      <PyramidLadder
+        title={title}
+        entries={entries}
+        rowSizes={config.pyramid_row_sizes}
+        onSelect={(e) => {
+          const player = byKey.get(e.key);
+          if (!player) return;
+          if (isMe(player)) { navigate("/profile"); return; }
+          if (isChallengeable(player)) handleChallengeClick(player);
+          else navigate(`/players/${player.id}`);
+        }}
+      />
+    );
+  };
+
   const renderColumn = (title: string, list: LadderPlayer[]) => {
+    if (config.format === "pyramid") return renderPyramid(title, list);
     const filtered = applyFilter(list);
     return (
+
       <div>
         <h2 className="text-sm font-heading font-bold text-foreground mb-2 uppercase tracking-wide">
           {title}

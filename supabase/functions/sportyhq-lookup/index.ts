@@ -898,7 +898,94 @@ Deno.serve(async (req) => {
       return json({ status: "ok", groups: summary, orgs_found: orgsFound, players_found: playersFound, errors: errors.slice(0, 10) });
     }
 
+    if (action === "enrich_org_members") {
+      // Deep-enrich staged players: opens each player's public SportyHQ profile
+      // and stores gender, DOB/age, nationality, handedness, rating and match stats.
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const { data: userData } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      const uid = userData?.user?.id;
+      if (!uid) return json({ error: "Not signed in" }, 401);
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
+      if (!isAdmin) return json({ error: "Platform admin only" }, 403);
+
+      const limit = Math.min(Math.max(Number(body.limit ?? 25), 1), 60);
+      const refresh = body.refresh === true;
+
+      let q = supabase
+        .from("sportyhq_org_members")
+        .select("id, name, club_label, org_id")
+        .neq("status", "ignored")
+        .limit(limit);
+      if (body.org_id) q = q.eq("org_id", body.org_id);
+      if (!refresh) q = q.is("profile_fetched_at", null);
+      const { data: targets, error: tErr } = await q;
+      if (tErr) return json({ error: tErr.message }, 400);
+
+      let enriched = 0;
+      let missed = 0;
+      const errors: string[] = [];
+
+      for (const t of targets ?? []) {
+        try {
+          const hints = t.club_label ? [t.club_label] : [];
+          const cands = await search(t.name);
+          const best = await deepPickBest(t.name, hints, cands);
+          if (!best) {
+            missed++;
+            await supabase
+              .from("sportyhq_org_members")
+              .update({ profile_fetched_at: new Date().toISOString() })
+              .eq("id", t.id);
+            continue;
+          }
+          const prof = await fetchProfile(best.candidate.profile_path);
+          const dobMs = prof.birthday ? Date.parse(prof.birthday) : NaN;
+          const { error: uErr } = await supabase
+            .from("sportyhq_org_members")
+            .update({
+              gender: prof.gender,
+              birthday: prof.birthday,
+              date_of_birth: Number.isFinite(dobMs)
+                ? new Date(dobMs).toISOString().slice(0, 10)
+                : null,
+              age: prof.age,
+              nationality: prof.nationality,
+              handedness: prof.handedness,
+              nickname: prof.nickname,
+              rating: prof.rating,
+              rating_confidence: prof.rating_confidence,
+              matches_ytd: prof.matches_ytd,
+              matches_all_time: prof.matches_all_time,
+              wins_all_time: prof.wins_all_time,
+              rankings: prof.rankings ?? [],
+              sportyhq_user_id: best.candidate.sportyhq_user_id,
+              profile_path: best.candidate.profile_path,
+              profile_fetched_at: new Date().toISOString(),
+            })
+            .eq("id", t.id);
+          if (uErr) errors.push(`${t.name}: ${uErr.message}`);
+          else enriched++;
+        } catch (err) {
+          errors.push(`${t.name}: ${(err as Error).message}`);
+        }
+        await new Promise((r) => setTimeout(r, 350)); // gentle pacing
+      }
+
+      return json({
+        status: "ok",
+        considered: (targets ?? []).length,
+        enriched,
+        not_found: missed,
+        errors: errors.slice(0, 10),
+      });
+    }
+
     throw new Error(`Unknown action: ${action}`);
+
 
   } catch (e) {
     console.error("sportyhq-lookup error:", e);

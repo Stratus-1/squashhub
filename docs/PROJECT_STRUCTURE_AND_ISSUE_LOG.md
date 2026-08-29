@@ -1281,3 +1281,13 @@ Tests: `src/test/booking-label.test.ts`.
 
 ## 2026-08-27 — Tournament detail: per-league fixtures nested under league standings
 - src/pages/ClubChampsView.tsx: multi-league view no longer renders all standings cards first and all "— Fixtures & Results" cards afterwards. Each league is now one card: standings, then that league's fixtures (pool-grouped when pools exist). tournament-fixtures anchor moved to wrap the per-league cards; handicap suggestions moved below. Cross-league combined fixtures unchanged.
+
+## 2026-08-29 — Member-facing action labels clarified (mark vs enter result, court booking)
+- **Symptom:** Members found "Mark", "Enter Result", "Schedule", and "Reschedule" ambiguous; technologically inexperienced users did not know whether to mark point-by-point or just type a final score.
+- **Fix:** Renamed member-facing CTAs across championships, tournaments, league fixtures, challenges, and bookings:
+  - Marking: "Mark game" / "Mark game point by point" (instead of "Mark" / "Set Up & Mark Game").
+  - Result entry after play: "Enter your result" (instead of "Enter Result").
+  - Court scheduling: "Make your court booking" / "Book court" and "Reschedule your court booking" / "Reschedule" (instead of "Schedule match", "Set court & time", "Arrange your match").
+  - League admin result editing: "Enter your results" / "Edit your results".
+- **Files:** `src/lib/tournament-formats/standard.ts`, `src/lib/tournament-formats/swiss.ts`, `src/lib/tournaments/fixture-scheduling.ts`, `src/components/tournaments/ScheduleMatchDialog.tsx`, `src/components/MyChampionships.tsx`, `src/pages/Tournaments.tsx`, `src/pages/ClubChampsView.tsx`, `src/components/league-games/UpcomingFixturesTab.tsx`, `src/pages/Challenges.tsx`, `src/pages/Bookings.tsx`, `src/test/fixture-scheduling.test.ts`.
+- **Guard:** Labels are presentation-only; underlying permissions (`canScheduleFixture`, result-entry guards, marker routing) are unchanged. Tests updated to match new label strings.

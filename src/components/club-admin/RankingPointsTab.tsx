@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { Loader2, RefreshCw, Sparkles, CheckCircle2, XCircle, ShieldAlert, Camera } from "lucide-react";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { RankingSimulatorCard } from "./RankingSimulatorCard";
+import { RankingLedgerDialog } from "./RankingLedgerDialog";
+
 
 
 interface Props {
@@ -203,7 +205,10 @@ export function RankingPointsTab({ clubId }: Props) {
     },
   });
 
+  const [ledgerFor, setLedgerFor] = useState<{ id: string; name: string } | null>(null);
+
   const settingsDirty = !!club && (
+
     Number(baseWin) !== Number((club as any).points_base_win ?? 0.25) ||
     Number(upset) !== Number((club as any).points_upset_bonus_per_rank ?? 0.1) ||
     Number(favMin) !== Number((club as any).points_favourite_win_min ?? 0.1) ||
@@ -433,7 +438,12 @@ export function RankingPointsTab({ clubId }: Props) {
                 {leaderboard.map((m: any, i: number) => {
                   const delta = rankDelta(i + 1, movement?.byMember.get(m.id)?.previousRank ?? null);
                   return (
-                    <TableRow key={m.id}>
+                    <TableRow
+                      key={m.id}
+                      className="cursor-pointer"
+                      onClick={() => setLedgerFor({ id: m.id, name: m.name })}
+                      title="See where these points came from"
+                    >
                       <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
                       <TableCell className="text-center text-[11px] font-mono">
                         {delta == null || delta === 0 ? (
@@ -450,6 +460,7 @@ export function RankingPointsTab({ clubId }: Props) {
                     </TableRow>
                   );
                 })}
+
               </TableBody>
             </Table>
           </Card>
@@ -495,6 +506,14 @@ export function RankingPointsTab({ clubId }: Props) {
         </TabsContent>
 
       </Tabs>
+
+      <RankingLedgerDialog
+        open={!!ledgerFor}
+        onOpenChange={(v) => !v && setLedgerFor(null)}
+        clubId={clubId}
+        memberId={ledgerFor?.id ?? null}
+        memberName={ledgerFor?.name}
+      />
     </div>
   );
 }

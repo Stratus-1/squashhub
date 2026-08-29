@@ -29,6 +29,8 @@ import { useLadderConfig } from "@/hooks/use-ladder-config";
 import { DEFAULT_LADDER_CONFIG, describeLadderRule, evaluateChallenge } from "@/lib/ladder/eligibility";
 import { PyramidLadder, type PyramidEntry } from "@/components/ladder/PyramidLadder";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
+import { RankingLedgerDialog } from "@/components/club-admin/RankingLedgerDialog";
+import { History } from "lucide-react";
 
 
 function RankingTabs({
@@ -43,6 +45,7 @@ function RankingTabs({
   clubId?: string | null;
 }) {
   const { data: movement } = useRankingMovement(clubId);
+  const [ledgerFor, setLedgerFor] = useState<{ id: string; name: string } | null>(null);
 
   const withMovement = useMemo(
     () =>
@@ -138,6 +141,26 @@ function RankingTabs({
                     <span className="font-mono text-sm tabular-nums w-16 text-right">
                       {Number(m.ranking_points ?? 0).toFixed(2)}
                     </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Where ${m.name}'s points came from`}
+                      title="Where these points came from"
+                      className="p-1 rounded hover:bg-muted text-muted-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLedgerFor({ id: m.id, name: m.name });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setLedgerFor({ id: m.id, name: m.name });
+                        }
+                      }}
+                    >
+                      <History className="w-3.5 h-3.5" />
+                    </span>
                   </button>
                 ))
               )}
@@ -145,6 +168,16 @@ function RankingTabs({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {clubId && (
+        <RankingLedgerDialog
+          open={!!ledgerFor}
+          onOpenChange={(v) => !v && setLedgerFor(null)}
+          clubId={clubId}
+          memberId={ledgerFor?.id ?? null}
+          memberName={ledgerFor?.name}
+        />
+      )}
     </div>
   );
 }

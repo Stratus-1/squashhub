@@ -638,45 +638,55 @@ Deno.serve(async (req) => {
           // Upsert the club (staging org) keyed by its SportyHQ slug
           let orgId: string | null = null;
           if (clubSlug) {
-            const prettyName = clubLabel && clubLabel.length > 3 ? clubLabel : deslugify(clubSlug);
-            const match = matchLiveClub(prettyName, clubSlug, clubRows);
-            const { data: orgRow, error: orgErr } = await supabase
-              .from("sportyhq_orgs")
-              .upsert(
-                {
-                  sportyhq_org_key: `club:${clubSlug}`,
-                  name: prettyName,
-                  kind: "club",
-                  parent_key: `group:${gid}`,
-                  parent_org_id: associationOrgId,
-                  matched_club_id: match?.id ?? null,
-                  status: match ? "matched" : "new",
-                  last_scraped_at: new Date().toISOString(),
-                },
-                { onConflict: "sportyhq_org_key" },
-              )
-              .select("id")
-              .single();
-            if (orgErr) { errors.push(`club ${clubSlug}: ${orgErr.message}`); continue; }
-            orgId = orgRow.id;
-            orgsFound++;
+            if (orgIdCache.has(clubSlug)) {
+              orgId = orgIdCache.get(clubSlug)!;
+            } else {
+              const prettyName = clubLabel && clubLabel.length > 3 ? clubLabel : deslugify(clubSlug);
+              const match = matchLiveClub(prettyName, clubSlug, clubRows);
+              const { data: orgRow, error: orgErr } = await supabase
+                .from("sportyhq_orgs")
+                .upsert(
+                  {
+                    sportyhq_org_key: `club:${clubSlug}`,
+                    name: prettyName,
+                    kind: "club",
+                    parent_key: `group:${gid}`,
+                    parent_org_id: associationOrgId,
+                    matched_club_id: match?.id ?? null,
+                    last_scraped_at: new Date().toISOString(),
+                  },
+                  { onConflict: "sportyhq_org_key", ignoreDuplicates: false },
+                )
+                .select("id, status, matched_club_id")
+                .single();
+              if (orgErr) { errors.push(`club ${clubSlug}: ${orgErr.message}`); orgIdCache.set(clubSlug, null); continue; }
+              orgId = orgRow.id;
+              // Only flip status to matched on discovery; never demote ignored/promoted
+              if (orgRow.status === "new" && match) {
+                await supabase.from("sportyhq_orgs").update({ status: "matched" }).eq("id", orgId);
+              }
+              orgIdCache.set(clubSlug, orgId);
+              orgsFound++;
+            }
           }
           if (!orgId) continue;
 
-          // Match the player against the matched club's members
+          // Match the player against the matched club's members (cached per club)
           let memberMatch: { id: string; confidence: string } | null = null;
           let personId: string | null = null;
           const liveClubId = clubSlug ? matchLiveClub(clubLabel ?? deslugify(clubSlug), clubSlug, clubRows)?.id : null;
           if (liveClubId) {
-            const { data: members } = await supabase
-              .from("club_members")
-              .select("id, first_name, last_name, person_id")
-              .eq("club_id", liveClubId)
-              .neq("status", "resigned");
-            memberMatch = matchMember(playerName, members ?? []);
-            personId = memberMatch
-              ? (members ?? []).find((m: any) => m.id === memberMatch!.id)?.person_id ?? null
-              : null;
+            if (!memberCache.has(liveClubId)) {
+              const { data: members } = await supabase
+                .from("club_members")
+                .select("id, first_name, last_name, person_id")
+                .eq("club_id", liveClubId)
+                .neq("status", "resigned");
+              memberCache.set(liveClubId, members ?? []);
+            }
+            const members = memberCache.get(liveClubId)!;
+            memberMatch = matchMember(playerName, members);
+            personId = memberMatch ? members.find((m: any) => m.id === memberMatch!.id)?.person_id ?? null : null;
           }
 
           const { error: memErr } = await supabase

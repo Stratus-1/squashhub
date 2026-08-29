@@ -12106,6 +12106,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_adjust_ranking_points: {
+        Args: { _delta: number; _member_id: string; _reason: string }
+        Returns: number
+      }
       admin_bill_member_fee: {
         Args: {
           _amount: number
@@ -13091,6 +13095,16 @@ export type Database = {
           read_ct: number
         }[]
       }
+      recalc_club_ranking_points: {
+        Args: { _apply?: boolean; _club_id: string }
+        Returns: {
+          computed: number
+          drift: number
+          member_id: string
+          member_name: string
+          stored: number
+        }[]
+      }
       recalc_league_fixture_totals: {
         Args: { _fixture_id: string }
         Returns: undefined
@@ -13180,6 +13194,10 @@ export type Database = {
           p_verify?: string
         }
         Returns: Json
+      }
+      reverse_ranking_points_pending: {
+        Args: { _pending_id: string; _reason?: string }
+        Returns: undefined
       }
       review_membership_application: {
         Args: { _approve: boolean; _member_id: string }

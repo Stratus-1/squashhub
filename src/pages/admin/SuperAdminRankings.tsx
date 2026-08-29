@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SEO } from "@/components/SEO";
 import { SportyHqLookupPanel } from "@/components/admin/SportyHqLookupPanel";
 import { AssociationRankingsTab } from "@/components/association-admin/AssociationRankingsTab";
+import { RankingRolloutPanel } from "@/components/admin/RankingRolloutPanel";
 
 export default function SuperAdminRankings() {
   return (
@@ -18,12 +19,16 @@ export default function SuperAdminRankings() {
         <TabsList>
           <TabsTrigger value="sportyhq">SportyHQ ratings</TabsTrigger>
           <TabsTrigger value="league">League rankings</TabsTrigger>
+          <TabsTrigger value="rollout">Club rollout</TabsTrigger>
         </TabsList>
         <TabsContent value="sportyhq" className="pt-3">
           <SportyHqLookupPanel />
         </TabsContent>
         <TabsContent value="league" className="pt-3">
           <AssociationRankingsTab clubId="" />
+        </TabsContent>
+        <TabsContent value="rollout" className="pt-3">
+          <RankingRolloutPanel />
         </TabsContent>
       </Tabs>
     </div>

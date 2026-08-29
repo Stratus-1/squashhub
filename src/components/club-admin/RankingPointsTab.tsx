@@ -14,6 +14,7 @@ import { Loader2, RefreshCw, Sparkles, CheckCircle2, XCircle, ShieldAlert, Camer
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { RankingSimulatorCard } from "./RankingSimulatorCard";
 import { RankingLedgerDialog } from "./RankingLedgerDialog";
+import { RankingCorrectionsCard } from "./RankingCorrectionsCard";
 
 
 
@@ -302,6 +303,8 @@ export function RankingPointsTab({ clubId }: Props) {
             dirty={settingsDirty}
           />
 
+          <RankingCorrectionsCard clubId={clubId} members={leaderboard as any} />
+
 
           <Card className="p-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -513,6 +516,7 @@ export function RankingPointsTab({ clubId }: Props) {
         clubId={clubId}
         memberId={ledgerFor?.id ?? null}
         memberName={ledgerFor?.name}
+        canManage
       />
     </div>
   );

@@ -898,6 +898,142 @@ Deno.serve(async (req) => {
       return json({ status: "ok", groups: summary, orgs_found: orgsFound, players_found: playersFound, errors: errors.slice(0, 10) });
     }
 
+    if (action === "scrape_club_members") {
+      // Roster pull straight off the club pages we already staged in the tree.
+      // No manual ranking-group ID needed: every staged club row carries its
+      // SportyHQ slug in sportyhq_org_key ("club:<slug>").
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const { data: userData } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      const uid = userData?.user?.id;
+      if (!uid) return json({ error: "Not signed in" }, 401);
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
+      if (!isAdmin) return json({ error: "Platform admin only" }, 403);
+
+      let q = supabase
+        .from("sportyhq_orgs")
+        .select("id, name, sportyhq_org_key, parent_key, matched_club_id")
+        .eq("kind", "club")
+        .neq("status", "ignored");
+      if (body.org_id) q = q.eq("id", body.org_id);
+      else if (body.parent_key) q = q.eq("parent_key", body.parent_key);
+      else return json({ error: "Provide org_id or parent_key" }, 400);
+      const limit = Math.min(Math.max(Number(body.limit ?? 15), 1), 40);
+      const { data: orgs, error: orgErr } = await q.limit(limit);
+      if (orgErr) return json({ error: orgErr.message }, 400);
+      if (!orgs?.length) return json({ error: "No staged clubs to scrape" }, 404);
+
+      const { data: liveClubs } = await supabase.from("clubs").select("id, name");
+      const clubRows = liveClubs ?? [];
+      const memberCache = new Map<string, any[]>();
+
+      let playersFound = 0;
+      let clubsScanned = 0;
+      const errors: string[] = [];
+
+      for (const org of orgs) {
+        const slug = String(org.sportyhq_org_key ?? "").startsWith("club:")
+          ? String(org.sportyhq_org_key).slice(5)
+          : null;
+        if (!slug) { errors.push(`${org.name}: no SportyHQ slug`); continue; }
+
+        let pages: string[] = [];
+        try {
+          pages.push(await fetchHtml(`${BASE}/club/view/${slug}`));
+        } catch (err) {
+          errors.push(`${org.name}: ${(err as Error).message}`);
+          continue;
+        }
+        // Some clubs expose their roster only through their ranking group(s).
+        const gids = [...new Set([...pages[0].matchAll(/href="\/ranking\/group\/(\d+)/g)].map((m) => m[1]))].slice(0, 2);
+        for (const gid of gids) {
+          try {
+            pages.push(await fetchHtml(`${BASE}/ranking/group/${gid}?iframe=true&list_only=true&show_all=true`));
+          } catch { /* keep going with what we have */ }
+        }
+        clubsScanned++;
+
+        const found = new Map<string, { slug: string; name: string; rank: number | null; points: number | null }>();
+        for (const html of pages) {
+          for (const row of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
+            const rowHtml = row[1];
+            // Ranking-group rows list the club; only keep this club's players.
+            const clubM = rowHtml.match(/href="\/club\/view\/([^"]+)"/);
+            if (clubM && clubM[1].replace(/\/+$/, "") !== slug) continue;
+            const pM = rowHtml.match(/href="\/(?:ranking\/user|user\/view)\/([^/"?]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/);
+            if (!pM) continue;
+            const name = textOf(pM[2]);
+            if (!name || name.length < 3) continue;
+            const nums = textOf(rowHtml).match(/^(\d+)\s+.*?([\d,]+)\s+\d+%\s*$/);
+            found.set(pM[1], {
+              slug: pM[1],
+              name,
+              rank: nums ? Number(nums[1]) : null,
+              points: nums ? num(nums[2]) : null,
+            });
+          }
+          // Card/list layouts without tables.
+          for (const m of html.matchAll(/href="\/(?:ranking\/user|user\/view)\/([^/"?]+)[^"]*"[^>]*>([^<]{3,60})</g)) {
+            if (!found.has(m[1])) found.set(m[1], { slug: m[1], name: textOf(m[2]), rank: null, points: null });
+          }
+        }
+
+        if (org.matched_club_id && !memberCache.has(org.matched_club_id)) {
+          const { data: mem } = await supabase
+            .from("club_members")
+            .select("id, name, person_id")
+            .eq("club_id", org.matched_club_id)
+            .neq("status", "resigned");
+          memberCache.set(org.matched_club_id, mem ?? []);
+        }
+        const liveMembers = org.matched_club_id ? memberCache.get(org.matched_club_id)! : [];
+
+        for (const p of found.values()) {
+          const memberMatch = liveMembers.length ? matchMember(p.name, liveMembers) : null;
+          const personId = memberMatch
+            ? liveMembers.find((m: any) => m.id === memberMatch.id)?.person_id ?? null
+            : null;
+          const { data: memRow, error: memErr } = await supabase
+            .from("sportyhq_org_members")
+            .upsert(
+              {
+                org_id: org.id,
+                ranking_slug: p.slug,
+                name: p.name,
+                rank_position: p.rank,
+                rank_points: p.points,
+                club_label: org.name,
+                matched_club_member_id: memberMatch?.id ?? null,
+                matched_person_id: personId,
+                match_confidence: memberMatch?.confidence ?? null,
+                last_seen_at: new Date().toISOString(),
+              },
+              { onConflict: "org_id,ranking_slug" },
+            )
+            .select("id, status")
+            .single();
+          if (memErr) { errors.push(`${p.name}: ${memErr.message}`); continue; }
+          if (memRow.status === "new" && memberMatch) {
+            await supabase.from("sportyhq_org_members").update({ status: "matched" }).eq("id", memRow.id);
+          }
+          playersFound++;
+        }
+        await new Promise((r) => setTimeout(r, 350)); // gentle pacing
+      }
+
+      return json({
+        status: "ok",
+        clubs_scanned: clubsScanned,
+        players_found: playersFound,
+        errors: errors.slice(0, 10),
+      });
+    }
+
+
+
     if (action === "enrich_org_members") {
       // Deep-enrich staged players: opens each player's public SportyHQ profile
       // and stores gender, DOB/age, nationality, handedness, rating and match stats.

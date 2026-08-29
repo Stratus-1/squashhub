@@ -273,6 +273,30 @@ export function FederationTreeTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const scrapeClubMembers = useMutation({
+    mutationFn: async (payload: { orgId?: string; parentKey?: string }) => {
+      const { data, error } = await supabase.functions.invoke("sportyhq-lookup", {
+        body: {
+          action: "scrape_club_members",
+          org_id: payload.orgId,
+          parent_key: payload.parentKey,
+          limit: payload.parentKey ? 15 : 1,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (d: any) => {
+      toast.success(`Scraped ${d.clubs_scanned} club(s): ${d.players_found} players staged`);
+      qc.invalidateQueries({ queryKey: ["fed-staged-members", expandedOrg] });
+      qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
+
 
   const clubName = useMemo(() => {
     const map = new Map<string, string>();
@@ -431,6 +455,19 @@ export function FederationTreeTab() {
                   </Badge>
                   <span className="text-xs text-muted-foreground">{group.clubs.length} clubs</span>
                   <span className="flex-1" />
+                  {group.clubs.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      disabled={scrapeClubMembers.isPending}
+                      onClick={() => scrapeClubMembers.mutate({ parentKey: group.key })}
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${scrapeClubMembers.isPending ? "animate-spin" : ""}`} />
+                      Scrape players
+                    </Button>
+                  )}
+
                   {group.staged?.kind === "association" && (
                     group.staged.matched_org_id ? (
                       <Badge className="bg-green-600 text-white text-[10px]">In tree</Badge>
@@ -523,6 +560,17 @@ export function FederationTreeTab() {
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                     <Users className="h-3 w-3" /> Players discovered in this club
                     <span className="flex-1" />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      disabled={scrapeClubMembers.isPending}
+                      onClick={() => scrapeClubMembers.mutate({ orgId: org.id })}
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${scrapeClubMembers.isPending ? "animate-spin" : ""}`} />
+                      {scrapeClubMembers.isPending ? "Scraping…" : "Scrape players"}
+                    </Button>
+
                     <Button
                       size="sm"
                       variant="outline"

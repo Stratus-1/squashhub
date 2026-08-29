@@ -244,32 +244,17 @@ export function buildSectionFirstRound(opts: {
 /**
  * Whole first phase for a league: every section's opening round.
  *
- * `style` picks the shape of the opening round:
- *  - "straight"  — classic seeding, strongest meets weakest, everyone plays.
- *  - "graduated" — only the weakest slice of the field plays a play-in round
- *    (nearest ranks meet); stronger seeds rest and enter later.
+ * Graduated ("fair entry") draws are built by `buildGraduatedFirstRound` in
+ * ./graduated — kept in that module so this one stays cycle-free.
  */
 export function buildLeagueFirstRound(opts: {
   champId: string;
   groupNumber: number;
   assignments: SectionAssignment[];
   sectionLabels?: Record<number, string>;
-  style?: "straight" | "graduated";
 }): KnockoutMatchRow[] {
   const multi = opts.assignments.length > 1;
-  if (opts.style === "graduated") {
-    return opts.assignments.flatMap((a) =>
-      buildGraduatedFirstRound({
-        champId: opts.champId,
-        groupNumber: opts.groupNumber,
-        section: a.section,
-        seeds: a.seeds,
-        sectionLabel: multi
-          ? opts.sectionLabels?.[a.section] ?? `Section ${sectionLetter(a.section)}`
-          : undefined,
-      }),
-    );
-  }
+
   return opts.assignments.flatMap((a) =>
     buildSectionFirstRound({
       champId: opts.champId,

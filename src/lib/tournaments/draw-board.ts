@@ -123,11 +123,25 @@ export function suggestDrawBoard(opts: {
   groupNumber: number;
   assignments: SectionAssignment[];
   round?: number;
+  /**
+   * "graduated" staggers entry: only the weakest slice plays the opening round,
+   * paired with their nearest-ranked neighbour, and stronger seeds rest.
+   */
+  drawStyle?: DrawStyle;
 }): DrawBoard {
   const round = opts.round ?? 1;
+  const graduated = opts.drawStyle === "graduated";
   const matches: DrawMatchup[] = [];
   for (const a of opts.assignments) {
-    const rows = buildSectionFirstRound({
+    const rows = graduated
+      ? buildGraduatedFirstRound({
+          champId: "draft",
+          groupNumber: opts.groupNumber,
+          section: a.section,
+          seeds: a.seeds,
+          roundNumber: round,
+        })
+      : buildSectionFirstRound({
       champId: "draft",
       groupNumber: opts.groupNumber,
       section: a.section,

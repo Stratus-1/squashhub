@@ -901,7 +901,8 @@ Deno.serve(async (req) => {
     if (action === "debug_fetch") {
       const html = await fetchHtml(String(body.url));
       const links = [...new Set([...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]))].slice(0, 200);
-      return json({ length: html.length, links, snippet: html.slice(0, 4000) });
+      const grep = body.grep ? [...html.matchAll(new RegExp(String(body.grep), "g"))].map((m) => html.slice(Math.max(0, m.index! - 300), m.index! + 700)).slice(0, 5) : [];
+      return json({ length: html.length, links, grep, snippet: html.slice(0, 4000) });
     }
 
     if (action === "scrape_club_members") {

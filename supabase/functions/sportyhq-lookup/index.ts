@@ -581,6 +581,138 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "scrape_national_tree") {
+      // National tree discovery: the Squash South Africa facility registry
+      // lists every SA club with its governing body. Stages SSA (national),
+      // each association, and each club into sportyhq_orgs for review.
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const { data: userData } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      const uid = userData?.user?.id;
+      if (!uid) return json({ error: "Not signed in" }, 401);
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
+      if (!isAdmin) return json({ error: "Platform admin only" }, 403);
+
+      const CANON = [
+        "South African National Defence Force", "Mpumalanga West Junior Squash",
+        "Mpumalanga Lowveld Squash Association", "Mpumalanga Highveld Squash Association",
+        "Mpumalanga West Squash Association", "KZN Schools Squash Association",
+        "Western Province Junior Squash", "Griqualand West Squash Association",
+        "Eastern Gauteng Squash Association", "Northern Natal Squash Association",
+        "Lower South Coast Squash Association", "Free State East Squash Association",
+        "Vaal Triangle Squash Association", "Northerns Squash Association",
+        "Border Squash Association", "Limpopo Squash Association",
+        "Western Province Squash", "Midlands Squash Union", "Free State Northern Squash",
+        "Transkei Squash Association", "Joburg Squash", "Boland Squash",
+        "Eastern Cape Squash", "KZN Squash Union", "Free State Squash", "Eden Squash",
+        "Zululand Squash", "North West Squash", "Dolphin Coast Squash",
+        "Makana Districts", "SA Schools", "University Sport South Africa",
+      ];
+      const primaryAssoc = (raw: string): string => {
+        let a = raw.replace(/\s+/g, " ").trim();
+        a = a.replace(/(\w) n National Defence Force/g, "$1 South African National Defence Force");
+        a = a.replace("South AfricaSouth African National Defence Force", "South African National Defence Force");
+        const hits = CANON.filter((c) => a.includes(c));
+        if (!hits.length) return "Squash South Africa";
+        hits.sort((x, y) => a.indexOf(x) - a.indexOf(y));
+        return hits[0];
+      };
+      const slugify = (s: string) => s.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+      const html = await fetchHtml(`${BASE}/organization/clubs/3`);
+      const { data: liveClubs } = await supabase.from("clubs").select("id, name");
+      const clubRows = liveClubs ?? [];
+
+      const { data: run } = await supabase
+        .from("sportyhq_tree_runs")
+        .insert({ action: "scrape_national_tree", started_by: uid })
+        .select("id")
+        .single();
+
+      const now = new Date().toISOString();
+      await supabase.from("sportyhq_orgs").upsert(
+        { sportyhq_org_key: "org:Squash-South-Africa", name: "Squash South Africa", kind: "national", parent_key: null, last_scraped_at: now },
+        { onConflict: "sportyhq_org_key" },
+      );
+
+      const assocKeys = new Map<string, string>();
+      let clubsStaged = 0, matched = 0;
+      const errors: string[] = [];
+      const seen = new Set<string>();
+
+      const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
+      for (const row of rows) {
+        const rowHtml = row[1];
+        const clubM = rowHtml.match(/href="[^"]*\/club\/view\/([^"]+)"/);
+        if (!clubM) continue;
+        const clubSlug = clubM[1].replace(/\/+$/, "");
+        if (seen.has(clubSlug)) continue;
+        seen.add(clubSlug);
+
+        const tds = [...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => textOf(m[1]));
+        if (tds.length < 4) continue;
+        const name = tds[0].replace(/ Club Page$/, "").trim();
+        const location = tds[1] || null;
+        const assoc = primaryAssoc((tds[tds.length - 1] ?? "").replace("Squash South Africa", "").trim());
+
+        let parentKey = "org:Squash-South-Africa";
+        if (assoc !== "Squash South Africa") {
+          if (!assocKeys.has(assoc)) {
+            const key = `org:${slugify(assoc)}`;
+            assocKeys.set(assoc, key);
+            const { error } = await supabase.from("sportyhq_orgs").upsert(
+              { sportyhq_org_key: key, name: assoc, kind: "association", parent_key: "org:Squash-South-Africa", last_scraped_at: now },
+              { onConflict: "sportyhq_org_key" },
+            );
+            if (error) errors.push(`assoc ${assoc}: ${error.message}`);
+          }
+          parentKey = assocKeys.get(assoc)!;
+        }
+
+        const match = matchLiveClub(name, clubSlug, clubRows);
+        const { data: orgRow, error } = await supabase
+          .from("sportyhq_orgs")
+          .upsert(
+            {
+              sportyhq_org_key: `club:${clubSlug}`,
+              name,
+              kind: "club",
+              parent_key: parentKey,
+              location_label: location,
+              matched_club_id: match?.id ?? null,
+              last_scraped_at: now,
+            },
+            { onConflict: "sportyhq_org_key" },
+          )
+          .select("id, status")
+          .single();
+        if (error) { errors.push(`club ${clubSlug}: ${error.message}`); continue; }
+        if (orgRow.status === "new" && match) {
+          await supabase.from("sportyhq_orgs").update({ status: "matched" }).eq("id", orgRow.id);
+          matched++;
+        }
+        clubsStaged++;
+      }
+
+      // Re-parent clubs discovered earlier via ranking groups (parent group:<gid>)
+      // onto their canonical association now that the tree exists.
+      await supabase.rpc("reparent_sportyhq_group_clubs").maybeSingle?.() ?? null;
+
+      if (run?.id) {
+        await supabase.from("sportyhq_tree_runs").update({
+          finished_at: now,
+          orgs_found: assocKeys.size + 1,
+          players_found: 0,
+          summary: { clubs_staged: clubsStaged, associations: assocKeys.size, matched_live: matched, errors: errors.slice(0, 10) },
+        }).eq("id", run.id);
+      }
+
+      return json({ status: "ok", clubs_staged: clubsStaged, associations: assocKeys.size, matched_live: matched, errors: errors.slice(0, 10) });
+    }
+
     if (action === "scrape_ranking_group") {
       // Phase A+B discovery: one association ranking page yields both the club
       // list (unique /club/view links) and the player roster (rank, points,

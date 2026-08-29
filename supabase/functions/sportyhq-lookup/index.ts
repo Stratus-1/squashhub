@@ -558,6 +558,29 @@ Deno.serve(async (req) => {
 
     }
 
+    if (action === "debug_group_page") {
+      const gid = Number(body.group_id);
+      const html = await fetchHtml(`${BASE}/ranking/group/${gid}`);
+      const hrefs = [...html.matchAll(/href="([^"]*(ranking\/user|club\/view)[^"]*)"/g)].map((m) => m[1]);
+      const listHtml = await fetchHtml(`${BASE}/ranking/group/${gid}?iframe=true&list_only=true&show_all=true&show_title=true`);
+      const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      const listRows = [...listHtml.matchAll(rowRe)];
+      let sampleRow = "";
+      for (const r of listRows) {
+        if (r[1].includes("/ranking/user/")) { sampleRow = r[1].slice(0, 800); break; }
+      }
+      return json({
+        len: html.length,
+        list_len: listHtml.length,
+        tr_count: (html.match(/<tr/gi) ?? []).length,
+        list_tr_count: listRows.length,
+        sample_hrefs: [...new Set(hrefs)].slice(0, 8),
+        list_user_links: [...new Set([...listHtml.matchAll(/href="([^"]*\/ranking\/user\/[^"]*)"/g)].map((m) => m[1]))].slice(0, 5),
+        list_club_links: [...new Set([...listHtml.matchAll(/href="([^"]*\/club\/view\/[^"]*)"/g)].map((m) => m[1]))].slice(0, 5),
+        sample_row: sampleRow,
+      });
+    }
+
     if (action === "scrape_ranking_group") {
       // Phase A+B discovery: one association ranking page yields both the club
       // list (unique /club/view links) and the player roster (rank, points,
@@ -609,12 +632,17 @@ Deno.serve(async (req) => {
       for (const gid of groupIds) {
         let html: string;
         try {
-          html = await fetchHtml(`${BASE}/ranking/group/${gid}`);
+          // The ranking table is rendered by AJAX from the same URL with these
+          // params; the base page itself contains only the filter shell.
+          html = await fetchHtml(
+            `${BASE}/ranking/group/${gid}?iframe=true&list_only=true&show_all=true&show_title=true`,
+          );
         } catch (err) {
           errors.push(`group ${gid}: ${(err as Error).message}`);
           continue;
         }
-        const groupTitle = textOf(html.match(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/)?.[1] ?? "") || `Group ${gid}`;
+        const groupTitle =
+          textOf(html.match(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/)?.[1] ?? "") || `Group ${gid}`;
 
         const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
         for (const row of rows) {

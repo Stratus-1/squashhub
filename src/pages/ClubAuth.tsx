@@ -26,6 +26,12 @@ import { BackToHomeLink } from "@/components/BackToHomeLink";
 export default function ClubAuth() {
   const { signIn, signUp, resetPassword, user } = useAuth();
   const { club, subdomain } = useClubContext();
+  /**
+   * Visitors are local guests. Players from another club register with their
+   * own club and get invited to events, so the home-club field only shows for
+   * clubs that explicitly opted back in.
+   */
+  const askVisitorHomeClub = !!(club as any)?.visitor_home_clubs_enabled;
   const hideGoogleAuth = isGoogleAuthDisabled();
   const [loading, setLoading] = useState(false);
   const [showReset, setShowReset] = useState(false);
@@ -158,7 +164,7 @@ export default function ClubAuth() {
     if (payload.category) setVisitorCategory(payload.category);
     setActiveTab("visitor");
 
-    const hasAll = payload.first_name && payload.last_name && payload.home_club_name;
+    const hasAll = payload.first_name && payload.last_name;
     if (!hasAll) return; // user must complete the form manually
     (async () => {
       setLoading(true);
@@ -258,8 +264,8 @@ export default function ClubAuth() {
   // Sources: (1) curated `club_visitor_home_clubs` rows the admin maintains,
   // (2) names already in use by existing visitors at THIS club (backward compat).
   const { data: allClubsForVisitorPicker } = useQuery({
-    queryKey: ["visitor-home-clubs-picker", club?.id],
-    enabled: !!club?.id,
+    queryKey: ["visitor-home-clubs-picker", club?.id, askVisitorHomeClub],
+    enabled: !!club?.id && askVisitorHomeClub,
     queryFn: async () => {
       const [curatedRes, visitorsRes, memberVisitorsRes] = await Promise.all([
         fromExt("club_visitor_home_clubs").select("name").is("club_id", null),
@@ -708,7 +714,7 @@ export default function ClubAuth() {
     if (!lastName || lastName.length < 2) { toast.error("Please enter your last name"); return; }
     if (!visEmail || !visEmail.includes("@")) { toast.error("Please enter a valid email"); return; }
     if (!googleMode && visPass.length < 6) { toast.error("Password must be at least 6 characters"); return; }
-    if (!homeClub || homeClub.length < 2) { toast.error("Please enter your home club name"); return; }
+    if (askVisitorHomeClub && (!homeClub || homeClub.length < 2)) { toast.error("Please enter your home club name"); return; }
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
     if (!club?.id) { toast.error("Club not found"); return; }
 
@@ -722,7 +728,7 @@ export default function ClubAuth() {
           email: visEmail,
           password: googleMode ? "" : visPass,
           phone: phone || null,
-          home_club_name: homeClub,
+          home_club_name: askVisitorHomeClub ? homeClub : "Visitor",
           member_number: memNum || null,
           category: visitorCategory,
         },
@@ -762,7 +768,7 @@ export default function ClubAuth() {
     const phone = visitorPhone.trim();
     if (!firstName) { toast.error("Please enter your first name before continuing with Google"); return; }
     if (!lastName) { toast.error("Please enter your last name before continuing with Google"); return; }
-    if (!homeClub) { toast.error("Please select your home club before continuing with Google"); return; }
+    if (askVisitorHomeClub && !homeClub) { toast.error("Please select your home club before continuing with Google"); return; }
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
 
     // Persist details across the Google OAuth round-trip so we can auto-create
@@ -772,7 +778,7 @@ export default function ClubAuth() {
       first_name: firstName,
       last_name: lastName,
       phone: phone || null,
-      home_club_name: homeClub,
+      home_club_name: askVisitorHomeClub ? homeClub : "Visitor",
       member_number: visitorMemberNumber.trim() || null,
       category: visitorCategory,
       saved_at: Date.now(),
@@ -1746,6 +1752,7 @@ export default function ClubAuth() {
                     maxLength={20}
                   />
                 </div>
+                {askVisitorHomeClub && (
                 <div>
                   <Label htmlFor="visitor-home-club">Home Club <span className="text-destructive">*</span></Label>
                   <Select
@@ -1787,7 +1794,9 @@ export default function ClubAuth() {
                     Pick from the list to keep records consistent. Only use "Other" if your club isn't shown.
                   </p>
                 </div>
+                )}
 
+                {askVisitorHomeClub && (
                 <div>
                   <Label htmlFor="visitor-member-number">Member Number at Home Club</Label>
                   <Input
@@ -1799,6 +1808,7 @@ export default function ClubAuth() {
                     maxLength={20}
                   />
                 </div>
+                )}
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Registering..." : "Register & Sign In"}
                 </Button>

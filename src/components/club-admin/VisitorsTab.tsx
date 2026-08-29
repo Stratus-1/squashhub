@@ -34,6 +34,12 @@ interface HomeClubOption {
   name: string;
 }
 
+/** Display label for a visitor's home club, tolerating cleared values. */
+function visitorHomeLabel(v: Visitor): string {
+  const n = (v.home_club_name || "").trim();
+  return n && n.toLowerCase() !== "visitor" ? n : "Visitor";
+}
+
 export function VisitorsTab({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
   const { data: clubData } = useMyClub();
@@ -52,12 +58,21 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   const [visitorFee, setVisitorFee] = useState<string>(String(club?.visitor_booking_fee ?? 0));
   const [policySaving, setPolicySaving] = useState(false);
   const [policyDirty, setPolicyDirty] = useState(false);
+  /**
+   * A visitor is a LOCAL guest who plays a casual game here. A player from
+   * another club registers with their own club on SquashHub and is invited to
+   * regional/national events — so the home-club field is off by default and
+   * only re-appears for a club that explicitly switches it back on.
+   */
+  const [askHomeClub, setAskHomeClub] = useState<boolean>(!!club?.visitor_home_clubs_enabled);
+  const homeClubsEnabled = askHomeClub;
 
   // Sync when club loads
   useMemo(() => {
     if (club) {
       setCanBook(!!club.visitors_can_book);
       setAccessCtrl(!!club.visitors_access_control);
+      setAskHomeClub(!!club.visitor_home_clubs_enabled);
       setVisitorFee(String(club.visitor_booking_fee ?? 0));
       setPolicyDirty(false);
     }
@@ -73,6 +88,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           visitors_can_book: canBook,
           visitors_access_control: accessCtrl,
           visitor_booking_fee: fee,
+          visitor_home_clubs_enabled: askHomeClub,
         })
         .eq("id", clubId);
       if (error) throw error;
@@ -210,7 +226,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     return (
       v.first_name.toLowerCase().includes(term) ||
       v.last_name.toLowerCase().includes(term) ||
-      v.home_club_name.toLowerCase().includes(term) ||
+      (v.home_club_name || "").toLowerCase().includes(term) ||
       (v.email || "").toLowerCase().includes(term) ||
       (v.phone || "").toLowerCase().includes(term) ||
       (v.member_number || "").toLowerCase().includes(term)
@@ -325,7 +341,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       toast.error("First and last name are required");
       return;
     }
-    if (!home) {
+    if (homeClubsEnabled && !home) {
       toast.error("Select a home club (or 'No club')");
       return;
     }
@@ -337,13 +353,14 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         last_name: last,
         email: addEmail.trim() || null,
         phone: addPhone.trim() || null,
-        home_club_name: home,
+        home_club_name: homeClubsEnabled ? home : "Visitor",
         member_number: addMemberNumber.trim() || null,
         category: addCategory,
       });
       if (error) throw error;
       // If the typed home club isn't already in the curated list, add it
       if (
+        homeClubsEnabled &&
         addHomeClubMode === "other" &&
         home.toLowerCase() !== "no club" &&
         !homeClubRows.some((r) => r.name.toLowerCase() === home.toLowerCase())
@@ -484,9 +501,11 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
           Visitors registered for tournaments, competitions, and linked visitor accounts.
         </p>
         <div className="flex items-center gap-2 shrink-0">
-          <Button size="sm" variant="outline" onClick={() => setManageOpen(true)}>
-            <Settings2 className="w-4 h-4 mr-1.5" /> Home Clubs
-          </Button>
+          {homeClubsEnabled && (
+            <Button size="sm" variant="outline" onClick={() => setManageOpen(true)}>
+              <Settings2 className="w-4 h-4 mr-1.5" /> Home Clubs
+            </Button>
+          )}
           <Button size="sm" onClick={() => setAddOpen(true)}>
             <UserPlus className="w-4 h-4 mr-1.5" /> Add Visitor
           </Button>
@@ -536,6 +555,19 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
             />
           </label>
         </div>
+
+        <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2.5 cursor-pointer">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold">Ask visitors for a home club</div>
+            <div className="text-[10px] text-muted-foreground">
+              Off by default. A visitor is a local guest — a player from another club should register with their own club and be invited to events.
+            </div>
+          </div>
+          <Switch
+            checked={askHomeClub}
+            onCheckedChange={(v) => { setAskHomeClub(v); setPolicyDirty(true); }}
+          />
+        </label>
 
         {canBook && (
           <div className="flex items-center gap-3 rounded-md border border-border bg-card p-2.5">
@@ -594,7 +626,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
-                  {v.home_club_name}
+                  {homeClubsEnabled ? visitorHomeLabel(v) : "Visitor"}
                   {v.member_number ? ` · #${v.member_number}` : ""}
                 </p>
                 {(v.email || v.phone) && (
@@ -603,15 +635,17 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                   </p>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0"
-                onClick={() => openEdit(v)}
-                title="Edit home club"
-              >
-                <Pencil className="w-4 h-4" />
-              </Button>
+              {homeClubsEnabled && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => openEdit(v)}
+                  title="Edit home club"
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              )}
               {v.source === "member_record" && (
                 <Button
                   variant="ghost"
@@ -754,6 +788,12 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                 <Input id="av-membernum" value={addMemberNumber} onChange={(e) => setAddMemberNumber(e.target.value)} maxLength={20} />
               </div>
             </div>
+            {!homeClubsEnabled && (
+              <p className="text-[10px] text-muted-foreground">
+                Visitors are local guests. A player from another club should register with their own club on SquashHub and be invited to regional or national events.
+              </p>
+            )}
+            {homeClubsEnabled && (
             <div>
               <Label htmlFor="av-home-club" className="text-xs">Home club *</Label>
               <Select
@@ -790,6 +830,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
                 Manage the dropdown list via the <span className="font-medium">Home Clubs</span> button above. New "Other" entries are auto-added to the list.
               </p>
             </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)} disabled={addSaving}>Cancel</Button>

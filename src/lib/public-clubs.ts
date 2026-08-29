@@ -15,6 +15,8 @@ export interface PublicClub {
   club_captain_member_id: string | null;
   treasurer_member_id: string | null;
   show_delegates_on_landing: boolean | null;
+  /** When false (default) visitors are treated as local guests and never asked for a home club. */
+  visitor_home_clubs_enabled?: boolean | null;
   created_at: string;
 }
 

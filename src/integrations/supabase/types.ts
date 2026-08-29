@@ -8566,6 +8566,7 @@ export type Database = {
           metadata: Json
           name: string
           platform_association_id: string | null
+          slug: string | null
           updated_at: string
           website: string | null
         }
@@ -8585,6 +8586,7 @@ export type Database = {
           metadata?: Json
           name: string
           platform_association_id?: string | null
+          slug?: string | null
           updated_at?: string
           website?: string | null
         }
@@ -8604,6 +8606,7 @@ export type Database = {
           metadata?: Json
           name?: string
           platform_association_id?: string | null
+          slug?: string | null
           updated_at?: string
           website?: string | null
         }
@@ -13286,6 +13289,7 @@ export type Database = {
           masked_name: string
         }[]
       }
+      make_org_slug: { Args: { _name: string }; Returns: string }
       member_has_permission: {
         Args: { _member_id: string; _permission: string }
         Returns: boolean
@@ -13406,6 +13410,14 @@ export type Database = {
           p_lines: Json
           p_ref?: string
         }
+        Returns: string
+      }
+      promote_all_sportyhq_associations: {
+        Args: { _create_tenants?: boolean }
+        Returns: number
+      }
+      promote_sportyhq_association: {
+        Args: { _create_tenant?: boolean; _org_id: string }
         Returns: string
       }
       promote_sportyhq_org: {

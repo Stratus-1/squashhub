@@ -818,11 +818,11 @@ function matchLiveClub(label: string, slug: string, clubs: Array<{ id: string; n
 
 function matchMember(
   playerName: string,
-  members: Array<{ id: string; first_name: string | null; last_name: string | null }>,
+  members: Array<{ id: string; name: string | null }>,
 ): { id: string; confidence: string } | null {
   const target = norm(playerName);
   for (const m of members) {
-    const full = norm(`${m.first_name ?? ""} ${m.last_name ?? ""}`);
+    const full = norm(m.name ?? "");
     if (full && full === target) return { id: m.id, confidence: "confident" };
   }
   // Probable: same surname and same first initial
@@ -830,8 +830,9 @@ function matchMember(
   const surname = parts[parts.length - 1];
   const initial = parts[0]?.[0];
   const probable = members.filter((m) => {
-    const ln = norm(m.last_name ?? "");
-    const fn = norm(m.first_name ?? "");
+    const mparts = norm(m.name ?? "").split(" ");
+    const ln = mparts[mparts.length - 1] ?? "";
+    const fn = mparts[0] ?? "";
     return ln === surname && fn.startsWith(initial ?? " ");
   });
   if (probable.length === 1) return { id: probable[0].id, confidence: "probable" };

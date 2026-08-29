@@ -620,7 +620,7 @@ export default function Ladder() {
   };
 
   const renderColumn = (title: string, list: LadderPlayer[]) => {
-    if (config.format === "pyramid") return renderPyramid(title, list);
+    if (config.format === "pyramid" && viewMode === "pyramid") return renderPyramid(title, list);
     const filtered = applyFilter(list);
     return (
 

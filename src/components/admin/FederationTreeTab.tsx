@@ -15,6 +15,7 @@ type StagedOrg = {
   name: string;
   kind: string;
   parent_key: string | null;
+  location_label?: string | null;
   parent_org_id: string | null;
   matched_org_id: string | null;
   matched_club_id: string | null;
@@ -54,6 +55,9 @@ export function FederationTreeTab() {
   const [groupId, setGroupId] = useState("");
   const [associationId, setAssociationId] = useState<string>("");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [showIgnored, setShowIgnored] = useState(false);
   const [linkClubId, setLinkClubId] = useState<Record<string, string>>({});
 
   const { data: associations } = useQuery({
@@ -138,6 +142,23 @@ export function FederationTreeTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const scrapeNational = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("sportyhq-lookup", {
+        body: { action: "scrape_national_tree" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (d) => {
+      toast.success(`National tree refreshed: ${d.associations} associations, ${d.clubs_staged} clubs staged`);
+      qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+      qc.invalidateQueries({ queryKey: ["fed-tree-runs"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const updateOrg = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Record<string, unknown> }) => {
       const { error } = await (supabase as any).from("sportyhq_orgs").update(patch).eq("id", id);
@@ -195,6 +216,36 @@ export function FederationTreeTab() {
     return map;
   }, [clubs]);
 
+  // Group staged orgs into national -> association -> clubs tree
+  const tree = useMemo(() => {
+    const orgs = (stagedOrgs ?? []).filter((o) => showIgnored || o.status !== "ignored");
+    const q = search.trim().toLowerCase();
+    const clubVisible = (o: StagedOrg) =>
+      o.kind !== "club" || !q || o.name.toLowerCase().includes(q) || (o.location_label ?? "").toLowerCase().includes(q);
+    const groups = new Map<string, { key: string; name: string; kind: string; clubs: StagedOrg[] }>();
+    for (const o of orgs) {
+      if (o.kind !== "club") continue;
+      if (!clubVisible(o)) continue;
+      const pk = o.parent_key ?? "";
+      const parent = orgs.find((p) => p.sportyhq_org_key === pk) ??
+        (stagedOrgs ?? []).find((p) => p.sportyhq_org_key === pk);
+      const key = parent ? parent.sportyhq_org_key : pk || "ungrouped";
+      const name = parent ? parent.name : pk.startsWith("group:") ? `Ranking group ${pk.slice(6)}` : "Ungrouped discoveries";
+      const kind = parent?.kind ?? "group";
+      if (!groups.has(key)) groups.set(key, { key, name, kind, clubs: [] });
+      groups.get(key)!.clubs.push(o);
+    }
+    return [...groups.values()].sort((a, b) => b.clubs.length - a.clubs.length);
+  }, [stagedOrgs, search, showIgnored]);
+
+  const toggleGroup = (key: string) =>
+    setExpandedGroups((s) => {
+      const next = new Set(s);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   return (
     <div className="space-y-4">
       <Card>
@@ -234,6 +285,10 @@ export function FederationTreeTab() {
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${scrape.isPending ? "animate-spin" : ""}`} />
               {scrape.isPending ? "Scraping…" : "Scrape clubs & players"}
             </Button>
+            <Button size="sm" variant="outline" onClick={() => scrapeNational.mutate()} disabled={scrapeNational.isPending}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${scrapeNational.isPending ? "animate-spin" : ""}`} />
+              {scrapeNational.isPending ? "Refreshing…" : "Refresh national tree (SSA)"}
+            </Button>
           </div>
           {(runs ?? []).length > 0 && (
             <div className="text-xs text-muted-foreground space-y-0.5">
@@ -250,14 +305,43 @@ export function FederationTreeTab() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Discovered clubs ({stagedOrgs?.length ?? 0})</CardTitle>
+          <CardTitle className="text-sm">National federation tree ({stagedOrgs?.filter((o) => o.kind === "club").length ?? 0} clubs, {tree.length} groups)</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1.5">
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              className="w-64 h-8 text-xs"
+              placeholder="Filter clubs by name or town…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input type="checkbox" checked={showIgnored} onChange={(e) => setShowIgnored(e.target.checked)} />
+              Show ignored
+            </label>
+          </div>
           {isLoading && <p className="text-[13px] text-muted-foreground">Loading…</p>}
-          {!isLoading && (stagedOrgs ?? []).length === 0 && (
+          {!isLoading && tree.length === 0 && (
             <p className="text-[13px] text-muted-foreground">No scraped clubs yet — run a scrape above.</p>
           )}
-          {(stagedOrgs ?? []).map((org) => (
+          {tree.map((group) => {
+            const isOpen = expandedGroups.has(group.key) || !!search.trim();
+            return (
+              <div key={group.key} className="border rounded-md">
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left"
+                  onClick={() => toggleGroup(group.key)}
+                >
+                  {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  <span className="text-[13px] font-semibold">{group.name}</span>
+                  <Badge variant={group.kind === "national" ? "default" : "secondary"} className="text-[10px]">
+                    {group.kind === "national" ? "National body" : group.kind === "association" ? "Association" : "Ranking group"}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{group.clubs.length} clubs</span>
+                </button>
+                {isOpen && (
+                  <div className="border-t px-3 py-2 space-y-1.5">
+                    {group.clubs.map((org) => (
             <div key={org.id} className="border rounded-md">
               <div className="flex flex-wrap items-center gap-2 px-3 py-2">
                 <button
@@ -364,7 +448,12 @@ export function FederationTreeTab() {
                 </div>
               )}
             </div>
-          ))}
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     </div>

@@ -13424,7 +13424,7 @@ export type Database = {
         Returns: string
       }
       promote_sportyhq_org: {
-        Args: { _club_id?: string; _org_id: string; _parent_org_id: string }
+        Args: { _club_id?: string; _org_id: string; _parent_org_id?: string }
         Returns: string
       }
       promote_sportyhq_org_member: {

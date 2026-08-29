@@ -17,7 +17,7 @@ import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialo
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
-import { getTournamentFormat } from "@/lib/tournament-formats";
+
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 

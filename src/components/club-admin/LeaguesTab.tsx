@@ -486,140 +486,125 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       </div>
       )}
 
-      {/* Step 2 — Create League Teams */}
-      {step === "teams" && (
-      <div>
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <h3 className="font-semibold">Create teams for your {SYSTEM_LEAGUES} and {CLUB_LEAGUES}</h3>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>{SELECT_OR_CREATE_COPY} If your {SYSTEM_LEAGUE} is not listed yet, please contact SquashHub through a support ticket.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <LeagueDialog clubId={clubId} associations={associations} open={addLeagueOpen} onOpenChange={setAddLeagueOpen} />
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" onClick={() => setStepByStepOpen(true)}>
-                    <Plus className="w-4 h-4 mr-1" />Create {CLUB_LEAGUE} Teams
-                    <Info className="w-3.5 h-3.5 ml-1.5 opacity-70" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs space-y-2">
-                  <p>Typical for {CLUB_LEAGUES}, not inter-club {SYSTEM_LEAGUES}. You can also use tournaments and call them leagues instead of just teams.</p>
-                  <p>You can also create your league teams here and use them in tournaments.</p>
-                  <p>Players in each league (e.g. 1st League) will play against each other.</p>
-                  <p>For Doubles and Hybrid leagues, allocate pairs from the league's <strong>Pairs</strong> button in Step 1.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-
-
-        {/* Only render categories that actually have leagues so the populated
-            columns get the full width instead of being squeezed. */}
-        {(() => {
-          const filled = [menLeagues, ladiesLeagues, mixedLeagues, openLeagues].filter((l) => l.length > 0).length;
-          const cols = filled <= 1 ? "xl:grid-cols-1" : filled === 2 ? "xl:grid-cols-2" : filled === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4";
-          const mdCols = filled <= 1 ? "md:grid-cols-1" : "md:grid-cols-2";
+      {/* Step 2 — Create League Teams (one tab per league) */}
+      {step === "teams" && (() => {
+        const systemAssocs = associations.filter((a: any) => !isClubLeagueScope(a.scope));
+        const clubAssocs = associations.filter((a: any) => isClubLeagueScope(a.scope));
+        const tabs: { id: string; label: string; assoc: any | null }[] = [
+          ...systemAssocs.map((a: any) => ({ id: a.id, label: a.abbreviation || a.name, assoc: a })),
+          ...(clubAssocs.length > 0 || systemAssocs.length === 0
+            ? [{ id: "club", label: CLUB_LEAGUES, assoc: null }]
+            : []),
+        ];
+        const active = tabs.find((t) => t.id === teamsTab) ?? tabs[0];
+        if (!active) {
           return (
-        <div className={`grid grid-cols-1 ${mdCols} ${cols} gap-4`}>
-
-          {menLeagues.length > 0 && <GenderColumn
-            title="Men's"
-            gender="men"
-            leagues={menLeagues}
-            associations={associations}
-            members={members}
-            sortLeagues={sortLeagues}
-            onDelete={handleDeleteLeague}
-            onDeleteGroup={handleDeleteGroup}
-            onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "men", leagues: list })}
-            onManagePairs={(association) => setPairsAssoc(association)}
-            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "men", leagues: list })}
-            onEditSetup={(assocId, list) => openEditSetup(assocId, "men", list)}
-          />}
-          {ladiesLeagues.length > 0 && <GenderColumn
-            title="Ladies"
-            gender="ladies"
-            leagues={ladiesLeagues}
-            associations={associations}
-            members={members}
-            sortLeagues={sortLeagues}
-            onDelete={handleDeleteLeague}
-            onDeleteGroup={handleDeleteGroup}
-            onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "ladies", leagues: list })}
-            onManagePairs={(association) => setPairsAssoc(association)}
-            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "ladies", leagues: list })}
-            onEditSetup={(assocId, list) => openEditSetup(assocId, "ladies", list)}
-          />}
-          {mixedLeagues.length > 0 && <GenderColumn
-            title="Mixed"
-            gender="mixed"
-            leagues={mixedLeagues}
-            associations={associations}
-            members={members}
-            sortLeagues={sortLeagues}
-            onDelete={handleDeleteLeague}
-            onDeleteGroup={handleDeleteGroup}
-            onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
-            onManagePairs={(association) => setPairsAssoc(association)}
-            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
-            onEditSetup={(assocId, list) => openEditSetup(assocId, "mixed", list)}
-          />}
-          {openLeagues.length > 0 && <GenderColumn
-            title="Open"
-            gender="open"
-            leagues={openLeagues}
-            associations={associations}
-            members={members}
-            sortLeagues={sortLeagues}
-            onDelete={handleDeleteLeague}
-            onDeleteGroup={handleDeleteGroup}
-            onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "open", leagues: list })}
-            onManagePairs={(association) => setPairsAssoc(association)}
-            onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "open", leagues: list })}
-            onEditSetup={(assocId, list) => openEditSetup(assocId, "open", list)}
-          />}
-          {filled === 0 && (
-            <p className="text-xs text-muted-foreground">No league teams yet.</p>
-          )}
-        </div>
+            <div>
+              <p className="text-sm text-muted-foreground py-4">Add a league in Step 1 first.</p>
+              <SetupStepNav steps={steps} value={step} onChange={setStep} />
+            </div>
           );
-        })()}
+        }
+        const inScope = (l: any) =>
+          active.assoc
+            ? l.association_id === active.assoc.id
+            : !l.association_id || clubAssocs.some((c: any) => c.id === l.association_id);
 
+        const men = menLeagues.filter(inScope);
+        const ladies = ladiesLeagues.filter(inScope);
+        const mixed = mixedLeagues.filter(inScope);
+        const open = openLeagues.filter(inScope);
+        const other = otherLeagues.filter(inScope);
+        const filled = [men, ladies, mixed, open].filter((l) => l.length > 0).length;
+        const cols = filled <= 1 ? "xl:grid-cols-1" : filled === 2 ? "xl:grid-cols-2" : filled === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4";
+        const mdCols = filled <= 1 ? "md:grid-cols-1" : "md:grid-cols-2";
+        const columnProps = (title: string, gender: "men" | "ladies" | "mixed" | "open", list: League[]) => ({
+          title,
+          gender,
+          leagues: list,
+          associations,
+          members,
+          sortLeagues,
+          onDelete: handleDeleteLeague,
+          onDeleteGroup: handleDeleteGroup,
+          onAllocate: (assocId: string | null, l: League[]) => setAllocateGroup({ associationId: assocId, gender, leagues: l }),
+          onManagePairs: (association: any) => setPairsAssoc(association),
+          onAddReserves: (assocId: string | null, l: League[]) => setReservesGroup({ associationId: assocId, gender, leagues: l }),
+          onEditSetup: (assocId: string, l: League[]) => openEditSetup(assocId, gender, l),
+        });
 
-        <SeasonArchiveCard clubId={clubId} />
+        return (
+        <div>
+          {/* One tab per regional/system league, plus a single tab for club leagues */}
+          {tabs.length > 1 && (
+            <div className="flex items-center gap-1 flex-wrap mb-3">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTeamsTab(t.id)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                    active.id === t.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
 
-        {otherLeagues.length > 0 && (
-          <div className="mt-4">
-            <GenderColumn
-              title="Other"
-              gender="mixed"
-              leagues={otherLeagues}
-              associations={associations}
-              members={members}
-              sortLeagues={sortLeagues}
-              onDelete={handleDeleteLeague}
-              onDeleteGroup={handleDeleteGroup}
-              onAllocate={(assocId, list) => setAllocateGroup({ associationId: assocId, gender: "mixed", leagues: list })}
-              onManagePairs={(association) => setPairsAssoc(association)}
-              onAddReserves={(assocId, list) => setReservesGroup({ associationId: assocId, gender: "mixed", leagues: list })}
-              onEditSetup={(assocId, list) => openEditSetup(assocId, "mixed", list)}
-            />
+          <div className="flex items-start justify-between mb-3 gap-2 flex-wrap">
+            <div className="min-w-0">
+              <h3 className="font-semibold break-words">
+                {active.assoc ? `${active.assoc.name} teams` : `${CLUB_LEAGUES} teams`}
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-2xl">
+                {active.assoc
+                  ? `Teams you create here are registered with ${active.assoc.abbreviation || active.assoc.name} and their season fees are calculated automatically. ${active.assoc.abbreviation || active.assoc.name} then creates the rounds and fixtures for the new season.`
+                  : "Club leagues stay inside your club — you create the teams here and schedule the rounds and fixtures in Step 3."}
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap shrink-0">
+              <Button size="sm" variant="outline" onClick={() => setSeasonsAssoc(active.assoc ?? clubAssocs[0] ?? null)} disabled={!active.assoc && clubAssocs.length === 0}>
+                <CalendarRange className="w-4 h-4 mr-1" />Seasons
+              </Button>
+              {active.assoc ? (
+                <Button size="sm" onClick={() => { setCreateTeamsAssoc(active.assoc); setAddLeagueOpen(true); }}>
+                  <Plus className="w-4 h-4 mr-1" />Create teams for new season
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => setStepByStepOpen(true)}>
+                  <Plus className="w-4 h-4 mr-1" />Create teams for new season
+                </Button>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-      )}
+
+          <div className={`grid grid-cols-1 ${mdCols} ${cols} gap-4`}>
+            {men.length > 0 && <GenderColumn {...columnProps("Men's", "men", men)} />}
+            {ladies.length > 0 && <GenderColumn {...columnProps("Ladies", "ladies", ladies)} />}
+            {mixed.length > 0 && <GenderColumn {...columnProps("Mixed", "mixed", mixed)} />}
+            {open.length > 0 && <GenderColumn {...columnProps("Open", "open", open)} />}
+            {filled === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No teams yet for {active.assoc ? active.assoc.name : CLUB_LEAGUES} — use “Create teams for new season”.
+              </p>
+            )}
+          </div>
+
+          {other.length > 0 && (
+            <div className="mt-4">
+              <GenderColumn {...columnProps("Other", "mixed", other)} />
+            </div>
+          )}
+
+          <SeasonArchiveCard clubId={clubId} />
+        </div>
+        );
+      })()}
+
 
       {/* Step 3 — Create Rounds & Fixtures */}
       {step === "fixtures" && (

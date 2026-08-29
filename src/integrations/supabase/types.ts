@@ -10277,61 +10277,103 @@ export type Database = {
       }
       sportyhq_org_members: {
         Row: {
+          age: number | null
+          birthday: string | null
           club_label: string | null
           created_at: string
+          date_of_birth: string | null
+          gender: string | null
+          handedness: string | null
           id: string
           last_seen_at: string
           match_confidence: string | null
           matched_club_member_id: string | null
           matched_person_id: string | null
+          matches_all_time: number | null
+          matches_ytd: number | null
           name: string
+          nationality: string | null
+          nickname: string | null
           org_id: string
+          profile_fetched_at: string | null
           profile_path: string | null
           rank_confidence: string | null
           rank_points: number | null
           rank_position: number | null
           ranking_slug: string | null
+          rankings: Json | null
+          rating: number | null
+          rating_confidence: number | null
           sportyhq_user_id: number | null
           status: string
           updated_at: string
+          wins_all_time: number | null
         }
         Insert: {
+          age?: number | null
+          birthday?: string | null
           club_label?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          gender?: string | null
+          handedness?: string | null
           id?: string
           last_seen_at?: string
           match_confidence?: string | null
           matched_club_member_id?: string | null
           matched_person_id?: string | null
+          matches_all_time?: number | null
+          matches_ytd?: number | null
           name: string
+          nationality?: string | null
+          nickname?: string | null
           org_id: string
+          profile_fetched_at?: string | null
           profile_path?: string | null
           rank_confidence?: string | null
           rank_points?: number | null
           rank_position?: number | null
           ranking_slug?: string | null
+          rankings?: Json | null
+          rating?: number | null
+          rating_confidence?: number | null
           sportyhq_user_id?: number | null
           status?: string
           updated_at?: string
+          wins_all_time?: number | null
         }
         Update: {
+          age?: number | null
+          birthday?: string | null
           club_label?: string | null
           created_at?: string
+          date_of_birth?: string | null
+          gender?: string | null
+          handedness?: string | null
           id?: string
           last_seen_at?: string
           match_confidence?: string | null
           matched_club_member_id?: string | null
           matched_person_id?: string | null
+          matches_all_time?: number | null
+          matches_ytd?: number | null
           name?: string
+          nationality?: string | null
+          nickname?: string | null
           org_id?: string
+          profile_fetched_at?: string | null
           profile_path?: string | null
           rank_confidence?: string | null
           rank_points?: number | null
           rank_position?: number | null
           ranking_slug?: string | null
+          rankings?: Json | null
+          rating?: number | null
+          rating_confidence?: number | null
           sportyhq_user_id?: number | null
           status?: string
           updated_at?: string
+          wins_all_time?: number | null
         }
         Relationships: [
           {

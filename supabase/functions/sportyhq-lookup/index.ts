@@ -277,6 +277,156 @@ Deno.serve(async (req) => {
       return json({ profile: data });
     }
 
+    // auto_link — self-service: a signed-in member (or their club admin) triggers a
+    // one-off SportyHQ lookup for a member who has no linked profile yet
+    // (e.g. brand-new registrations that were never part of an NSA/association import).
+    if (action === "auto_link") {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const { data: userData } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      const uid = userData?.user?.id;
+      if (!uid) return json({ error: "Not signed in" }, 401);
+
+      const memberId = String(body.club_member_id ?? "");
+      if (!memberId) throw new Error("club_member_id is required");
+
+      const { data: member, error: memberErr } = await supabase
+        .from("club_members")
+        .select(
+          "id, user_id, club_id, person_id, full_name, status, clubs!club_members_club_id_fkey(name), member_association_affiliations(league_associations(name))",
+        )
+        .eq("id", memberId)
+        .maybeSingle();
+      if (memberErr) throw memberErr;
+      if (!member) return json({ error: "Member not found" }, 404);
+
+      if (member.user_id !== uid) {
+        const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
+        let isClubAdmin = false;
+        try {
+          const { data } = await supabase.rpc("is_club_admin_or_permitted", {
+            _club_id: (member as any).club_id,
+            _user_id: uid,
+            _permission: "manage_members",
+          });
+          isClubAdmin = data === true;
+        } catch {
+          isClubAdmin = false;
+        }
+        if (!isAdmin && !isClubAdmin) return json({ error: "Not allowed" }, 403);
+      }
+
+      // Already linked? Nothing to do.
+      const orFilter = (member as any).person_id
+        ? `person_id.eq.${(member as any).person_id},club_member_id.eq.${memberId}`
+        : `club_member_id.eq.${memberId}`;
+      const { data: existing } = await supabase
+        .from("sportyhq_profiles")
+        .select("id, sportyhq_user_id, rating")
+        .or(orFilter)
+        .limit(1)
+        .maybeSingle();
+      if (existing) return json({ status: "already_linked", profile: existing });
+
+      // Throttle: max 3 automatic attempts, at most one per 7 days.
+      const { data: attempt } = await supabase
+        .from("sportyhq_lookup_attempts")
+        .select("id, attempts, last_attempt_at")
+        .eq("club_member_id", memberId)
+        .maybeSingle();
+      const force = body.force === true;
+      if (!force && attempt) {
+        const ageMs = attempt.last_attempt_at
+          ? Date.now() - new Date(attempt.last_attempt_at).getTime()
+          : Infinity;
+        if (attempt.attempts >= 3 || ageMs < 7 * 24 * 60 * 60 * 1000) {
+          return json({ status: "throttled", attempts: attempt.attempts });
+        }
+      }
+
+      const clubHints: string[] = [
+        (member as any).clubs?.name,
+        ...(((member as any).member_association_affiliations ?? []) as any[]).map(
+          (a) => a?.league_associations?.name,
+        ),
+      ].filter(Boolean);
+
+      let status = "no_match";
+      let message: string | null = null;
+      let saved: unknown = null;
+
+      try {
+        const name = String((member as any).full_name ?? "").trim();
+        if (name.length < 3) throw new Error("Member has no usable name");
+        const cands = await search(name);
+        const best = await deepPickBest(name, clubHints, cands);
+        if (!best) {
+          status = "no_match";
+        } else if (!best.confident) {
+          status = "ambiguous";
+          message = `${cands.length} similar SportyHQ profiles`;
+        } else {
+          const prof = await fetchProfile(best.candidate.profile_path);
+          const { data, error } = await supabase
+            .from("sportyhq_profiles")
+            .upsert(
+              {
+                sportyhq_user_id: best.candidate.sportyhq_user_id,
+                name: best.candidate.name,
+                profile_path: best.candidate.profile_path,
+                club_label: best.candidate.club_label,
+                location_label: best.candidate.location_label,
+                rating: prof.rating,
+                rating_confidence: prof.rating_confidence,
+                matches_ytd: prof.matches_ytd,
+                matches_all_time: prof.matches_all_time,
+                wins_all_time: prof.wins_all_time,
+                birthday: prof.birthday,
+                age: prof.age,
+                gender: prof.gender,
+                nationality: prof.nationality,
+                handedness: prof.handedness,
+                nickname: prof.nickname,
+                occupation: prof.occupation,
+                rankings: prof.rankings,
+                governing_bodies: prof.governing_bodies,
+                clubs: prof.clubs,
+                person_id: (member as any).person_id ?? null,
+                club_member_id: memberId,
+                fetched_at: new Date().toISOString(),
+              },
+              { onConflict: "sportyhq_user_id" },
+            )
+            .select()
+            .single();
+          if (error) throw error;
+          saved = data;
+          status = "saved";
+        }
+      } catch (err) {
+        status = "error";
+        message = (err as Error).message;
+      }
+
+      await supabase.from("sportyhq_lookup_attempts").upsert(
+        {
+          club_member_id: memberId,
+          person_id: (member as any).person_id ?? null,
+          attempts: (attempt?.attempts ?? 0) + 1,
+          last_status: status,
+          last_message: message,
+          last_attempt_at: new Date().toISOString(),
+        },
+        { onConflict: "club_member_id" },
+      );
+
+      return json({ status, message, profile: saved });
+    }
+
+
     if (action === "bulk_match") {
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,

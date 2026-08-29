@@ -11949,6 +11949,8 @@ export type Database = {
           invite_source: string | null
           knockout_seeds: Json | null
           knockout_seeds_at: string | null
+          ladder_affects: boolean | null
+          league_draw_styles: Json | null
           league_formats: Json | null
           league_sections: Json | null
           league_win_conditions: Json | null

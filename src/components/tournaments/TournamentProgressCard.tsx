@@ -282,6 +282,7 @@ export function TournamentProgressCard({
     <CollapsibleCard
       className={cn("border-primary/40", className)}
       headerClassName="pb-3"
+      defaultOpen={false}
       title={
         <span className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" /> Tournament progress — what's next

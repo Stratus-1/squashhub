@@ -67,6 +67,7 @@ export interface TournamentRules {
   bye_handling: "no_match" | "walkover_win" | "neutral";
   play_all_games: boolean;
   affects_ranking_points: boolean;
+  ranking_weight?: number | null;
   no_show_opponent_points: number;
   no_show_player_points: number;
 }
@@ -86,7 +87,7 @@ const GOV_FIELDS =
   "tournament_id, sanction_status, sanctioning_org_id, sanction_reference, sanction_notes, competition_level, eligibility_min_age, eligibility_max_age, eligibility_requires_licence, eligibility_scope, eligibility_notes, registration_required, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, federation_fee_cents, federation_fee_pct, association_fee_cents, association_fee_pct, other_expenses_cents, other_expenses_label, payment_required, refund_policy, refund_cutoff_date";
 
 const RULES_FIELDS =
-  "tournament_id, scoring_mode, round_format, best_of, points_per_game, win_condition, handicap_mode, handicap_multiplier, handicap_divider, bye_handling, play_all_games, affects_ranking_points, no_show_opponent_points, no_show_player_points";
+  "tournament_id, scoring_mode, round_format, best_of, points_per_game, win_condition, handicap_mode, handicap_multiplier, handicap_divider, bye_handling, play_all_games, affects_ranking_points, ranking_weight, no_show_opponent_points, no_show_player_points";
 
 /** Tournaments owned by a given body (club, association or federation). */
 export function useTournamentsByOwner(ownerOrgId: string | null) {

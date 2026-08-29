@@ -34,10 +34,12 @@ export function MyChallenges() {
     if (!memberId || !ladder) return null;
     const me: any = ladder.find((p: any) => p.club_member_id === memberId);
     if (!me?.ladder_position) return null;
+    const mixedLadder = !!(clubData?.club as any)?.mixed_ladder_enabled;
     const myLadies = ["female", "ladies", "f"].includes((me.gender || "").toLowerCase());
     const pool = (ladder || []).filter((p: any) => {
       if (p.club_member_id === memberId) return false;
       if (typeof p.ladder_position !== "number") return false;
+      if (mixedLadder) return true;
       const isLadies = ["female", "ladies", "f"].includes((p.gender || "").toLowerCase());
       return isLadies === myLadies;
     });

@@ -215,6 +215,36 @@ export function FederationTreeTab() {
     return map;
   }, [clubs]);
 
+  // Group staged orgs into national -> association -> clubs tree
+  const tree = useMemo(() => {
+    const orgs = (stagedOrgs ?? []).filter((o) => showIgnored || o.status !== "ignored");
+    const q = search.trim().toLowerCase();
+    const clubVisible = (o: StagedOrg) =>
+      o.kind !== "club" || !q || o.name.toLowerCase().includes(q) || (o.location_label ?? "").toLowerCase().includes(q);
+    const groups = new Map<string, { key: string; name: string; kind: string; clubs: StagedOrg[] }>();
+    for (const o of orgs) {
+      if (o.kind !== "club") continue;
+      if (!clubVisible(o)) continue;
+      const pk = o.parent_key ?? "";
+      const parent = orgs.find((p) => p.sportyhq_org_key === pk) ??
+        (stagedOrgs ?? []).find((p) => p.sportyhq_org_key === pk);
+      const key = parent ? parent.sportyhq_org_key : pk || "ungrouped";
+      const name = parent ? parent.name : pk.startsWith("group:") ? `Ranking group ${pk.slice(6)}` : "Ungrouped discoveries";
+      const kind = parent?.kind ?? "group";
+      if (!groups.has(key)) groups.set(key, { key, name, kind, clubs: [] });
+      groups.get(key)!.clubs.push(o);
+    }
+    return [...groups.values()].sort((a, b) => b.clubs.length - a.clubs.length);
+  }, [stagedOrgs, search, showIgnored]);
+
+  const toggleGroup = (key: string) =>
+    setExpandedGroups((s) => {
+      const next = new Set(s);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   return (
     <div className="space-y-4">
       <Card>

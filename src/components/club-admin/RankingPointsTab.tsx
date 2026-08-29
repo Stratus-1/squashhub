@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Sparkles, CheckCircle2, XCircle, ShieldAlert, Camera } from "lucide-react";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
+import { RankingSimulatorCard } from "./RankingSimulatorCard";
+
 
 interface Props {
   clubId: string;
@@ -201,7 +203,15 @@ export function RankingPointsTab({ clubId }: Props) {
     },
   });
 
+  const settingsDirty = !!club && (
+    Number(baseWin) !== Number((club as any).points_base_win ?? 0.25) ||
+    Number(upset) !== Number((club as any).points_upset_bonus_per_rank ?? 0.1) ||
+    Number(favMin) !== Number((club as any).points_favourite_win_min ?? 0.1) ||
+    Number(loserDed) !== Number((club as any).points_loser_deduction ?? 0)
+  );
+
   if (clubLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+
 
   return (
     <div className="space-y-4">
@@ -274,6 +284,19 @@ export function RankingPointsTab({ clubId }: Props) {
               Save settings
             </Button>
           </Card>
+
+          <RankingSimulatorCard
+            settings={{
+              base_win: Number(baseWin) || 0,
+              upset_bonus_per_rank: Number(upset) || 0,
+              favourite_win_min: Number(favMin) || 0,
+              loser_deduction: Number(loserDed) || 0,
+            }}
+            members={leaderboard as any}
+            enabled={enabled}
+            dirty={settingsDirty}
+          />
+
 
           <Card className="p-4 space-y-3">
             <div className="flex items-center gap-2">

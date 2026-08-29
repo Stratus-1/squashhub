@@ -30,7 +30,7 @@ describe("generated knockout fixture scheduling", () => {
     const m = generatedSemi();
     expect(fixtureScheduleState(m)).toBe("unscheduled");
     expect(fixtureRowSchedule(m)).toEqual({ date: null, time: null, isTbd: true });
-    expect(scheduleActionLabel(m)).toBe("Set court & time");
+    expect(scheduleActionLabel(m)).toBe("Make your court booking");
   });
 
   it("lets an organiser schedule a generated semi-final and shows the row", () => {

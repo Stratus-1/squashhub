@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Sparkles, CheckCircle2, XCircle, ShieldAlert, Camera } from "lucide-react";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
+import { RankingSimulatorCard } from "./RankingSimulatorCard";
+
 
 interface Props {
   clubId: string;

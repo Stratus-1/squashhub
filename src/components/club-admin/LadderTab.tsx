@@ -29,6 +29,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { LadderConfigCard } from "@/components/club-admin/LadderConfigCard";
+
 
 interface LadderMember {
   id: string;

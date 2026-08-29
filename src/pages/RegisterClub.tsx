@@ -519,12 +519,35 @@ export default function RegisterClub() {
                 <Label htmlFor="phone">Club Phone</Label>
                 <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} placeholder="+27..." />
               </div>
+              {!user && (
+                <>
+                  <HCaptcha ref={captchaRef} />
+                  <div className="flex items-start gap-2 pt-1">
+                    <Checkbox
+                      checked={acceptTerms}
+                      onCheckedChange={(v) => setAcceptTerms(v === true)}
+                      aria-label="Accept Terms and Privacy Policy"
+                    />
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      I agree to the{" "}
+                      <Link to="/terms" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                        Terms of Use
+                      </Link>{" "}
+                      and{" "}
+                      <Link to="/privacy" className="underline decoration-muted-foreground/30 hover:decoration-muted-foreground">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                </>
+              )}
               <Button
                 type="submit"
                 className="w-full"
-                disabled={createClub.isPending || slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "checking"}
+                disabled={createClub.isPending || authBusy || slugStatus === "taken" || slugStatus === "invalid" || slugStatus === "checking"}
               >
-                {createClub.isPending ? "Registering..." : "Register Club"}
+                {createClub.isPending || authBusy ? "Registering..." : user ? "Register Club" : "Create Account & Register Club"}
               </Button>
             </form>
           </Card>

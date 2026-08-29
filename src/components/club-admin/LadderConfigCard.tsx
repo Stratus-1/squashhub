@@ -70,7 +70,22 @@ export function LadderConfigCard({ clubId }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">Ladder format</Label>
-          <Select value={draft.format} onValueChange={(v) => set("format", v as LadderConfig["format"])}>
+          <Select
+            value={draft.format}
+            onValueChange={(v) => {
+              const format = v as LadderConfig["format"];
+              setDraft((d) =>
+                d
+                  ? {
+                      ...d,
+                      format,
+                      // Pyramid default: winner takes the spot, everyone shifts down one (no swap).
+                      ...(format === "pyramid" ? { movement_policy: "insert" as const } : {}),
+                    }
+                  : d,
+              );
+            }}
+          >
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="standard">Positional (list)</SelectItem>

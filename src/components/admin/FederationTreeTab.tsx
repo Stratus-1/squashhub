@@ -448,7 +448,12 @@ export function FederationTreeTab() {
                 </div>
               )}
             </div>
-          ))}
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     </div>

@@ -558,6 +558,29 @@ Deno.serve(async (req) => {
 
     }
 
+    if (action === "debug_group_page") {
+      const gid = Number(body.group_id);
+      const html = await fetchHtml(`${BASE}/ranking/group/${gid}`);
+      const hrefs = [...html.matchAll(/href="([^"]*(ranking\/user|club\/view)[^"]*)"/g)].map((m) => m[1]);
+      const listHtml = await fetchHtml(`${BASE}/ranking/group/${gid}?iframe=true&list_only=true&show_all=true&show_title=true`);
+      const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+      const listRows = [...listHtml.matchAll(rowRe)];
+      let sampleRow = "";
+      for (const r of listRows) {
+        if (r[1].includes("/ranking/user/")) { sampleRow = r[1].slice(0, 800); break; }
+      }
+      return json({
+        len: html.length,
+        list_len: listHtml.length,
+        tr_count: (html.match(/<tr/gi) ?? []).length,
+        list_tr_count: listRows.length,
+        sample_hrefs: [...new Set(hrefs)].slice(0, 8),
+        list_user_links: [...new Set([...listHtml.matchAll(/href="([^"]*\/ranking\/user\/[^"]*)"/g)].map((m) => m[1]))].slice(0, 5),
+        list_club_links: [...new Set([...listHtml.matchAll(/href="([^"]*\/club\/view\/[^"]*)"/g)].map((m) => m[1]))].slice(0, 5),
+        sample_row: sampleRow,
+      });
+    }
+
     if (action === "scrape_ranking_group") {
       // Phase A+B discovery: one association ranking page yields both the club
       // list (unique /club/view links) and the player roster (rank, points,
@@ -596,7 +619,7 @@ Deno.serve(async (req) => {
         .single();
 
       // Existing SquashHub clubs for fuzzy matching
-      const { data: liveClubs } = await supabase.from("clubs").select("id, name, suburb, city");
+      const { data: liveClubs } = await supabase.from("clubs").select("id, name");
       const clubRows = liveClubs ?? [];
       const memberCache = new Map<string, any[]>();
       const orgIdCache = new Map<string, string | null>();
@@ -609,12 +632,17 @@ Deno.serve(async (req) => {
       for (const gid of groupIds) {
         let html: string;
         try {
-          html = await fetchHtml(`${BASE}/ranking/group/${gid}`);
+          // The ranking table is rendered by AJAX from the same URL with these
+          // params; the base page itself contains only the filter shell.
+          html = await fetchHtml(
+            `${BASE}/ranking/group/${gid}?iframe=true&list_only=true&show_all=true&show_title=true`,
+          );
         } catch (err) {
           errors.push(`group ${gid}: ${(err as Error).message}`);
           continue;
         }
-        const groupTitle = textOf(html.match(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/)?.[1] ?? "") || `Group ${gid}`;
+        const groupTitle =
+          textOf(html.match(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/)?.[1] ?? "") || `Group ${gid}`;
 
         const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
         for (const row of rows) {
@@ -679,7 +707,7 @@ Deno.serve(async (req) => {
             if (!memberCache.has(liveClubId)) {
               const { data: members } = await supabase
                 .from("club_members")
-                .select("id, first_name, last_name, person_id")
+                .select("id, name, person_id")
                 .eq("club_id", liveClubId)
                 .neq("status", "resigned");
               memberCache.set(liveClubId, members ?? []);
@@ -790,11 +818,11 @@ function matchLiveClub(label: string, slug: string, clubs: Array<{ id: string; n
 
 function matchMember(
   playerName: string,
-  members: Array<{ id: string; first_name: string | null; last_name: string | null }>,
+  members: Array<{ id: string; name: string | null }>,
 ): { id: string; confidence: string } | null {
   const target = norm(playerName);
   for (const m of members) {
-    const full = norm(`${m.first_name ?? ""} ${m.last_name ?? ""}`);
+    const full = norm(m.name ?? "");
     if (full && full === target) return { id: m.id, confidence: "confident" };
   }
   // Probable: same surname and same first initial
@@ -802,8 +830,9 @@ function matchMember(
   const surname = parts[parts.length - 1];
   const initial = parts[0]?.[0];
   const probable = members.filter((m) => {
-    const ln = norm(m.last_name ?? "");
-    const fn = norm(m.first_name ?? "");
+    const mparts = norm(m.name ?? "").split(" ");
+    const ln = mparts[mparts.length - 1] ?? "";
+    const fn = mparts[0] ?? "";
     return ln === surname && fn.startsWith(initial ?? " ");
   });
   if (probable.length === 1) return { id: probable[0].id, confidence: "probable" };

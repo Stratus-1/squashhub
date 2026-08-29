@@ -305,14 +305,43 @@ export function FederationTreeTab() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Discovered clubs ({stagedOrgs?.length ?? 0})</CardTitle>
+          <CardTitle className="text-sm">National federation tree ({stagedOrgs?.filter((o) => o.kind === "club").length ?? 0} clubs, {tree.length} groups)</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1.5">
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              className="w-64 h-8 text-xs"
+              placeholder="Filter clubs by name or town…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input type="checkbox" checked={showIgnored} onChange={(e) => setShowIgnored(e.target.checked)} />
+              Show ignored
+            </label>
+          </div>
           {isLoading && <p className="text-[13px] text-muted-foreground">Loading…</p>}
-          {!isLoading && (stagedOrgs ?? []).length === 0 && (
+          {!isLoading && tree.length === 0 && (
             <p className="text-[13px] text-muted-foreground">No scraped clubs yet — run a scrape above.</p>
           )}
-          {(stagedOrgs ?? []).map((org) => (
+          {tree.map((group) => {
+            const isOpen = expandedGroups.has(group.key) || !!search.trim();
+            return (
+              <div key={group.key} className="border rounded-md">
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left"
+                  onClick={() => toggleGroup(group.key)}
+                >
+                  {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  <span className="text-[13px] font-semibold">{group.name}</span>
+                  <Badge variant={group.kind === "national" ? "default" : "secondary"} className="text-[10px]">
+                    {group.kind === "national" ? "National body" : group.kind === "association" ? "Association" : "Ranking group"}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{group.clubs.length} clubs</span>
+                </button>
+                {isOpen && (
+                  <div className="border-t px-3 py-2 space-y-1.5">
+                    {group.clubs.map((org) => (
             <div key={org.id} className="border rounded-md">
               <div className="flex flex-wrap items-center gap-2 px-3 py-2">
                 <button

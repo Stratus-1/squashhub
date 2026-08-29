@@ -366,17 +366,32 @@ export function FederationTreeTab() {
             const isOpen = expandedGroups.has(group.key) || !!search.trim();
             return (
               <div key={group.key} className="border rounded-md">
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left"
-                  onClick={() => toggleGroup(group.key)}
-                >
-                  {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  <span className="text-[13px] font-semibold">{group.name}</span>
+                <div className="flex w-full items-center gap-2 px-3 py-2 text-left">
+                  <button className="flex items-center gap-2" onClick={() => toggleGroup(group.key)}>
+                    {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    <span className="text-[13px] font-semibold">{group.name}</span>
+                  </button>
                   <Badge variant={group.kind === "national" ? "default" : "secondary"} className="text-[10px]">
                     {group.kind === "national" ? "National body" : group.kind === "association" ? "Association" : "Ranking group"}
                   </Badge>
                   <span className="text-xs text-muted-foreground">{group.clubs.length} clubs</span>
-                </button>
+                  <span className="flex-1" />
+                  {group.staged?.kind === "association" && (
+                    group.staged.matched_org_id ? (
+                      <Badge className="bg-green-600 text-white text-[10px]">In tree</Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        disabled={promoteAssociation.isPending}
+                        onClick={() => promoteAssociation.mutate(group.staged!)}
+                      >
+                        <ArrowUpCircle className="h-3 w-3 mr-1" /> Add association
+                      </Button>
+                    )
+                  )}
+                </div>
                 {isOpen && (
                   <div className="border-t px-3 py-2 space-y-1.5">
                     {group.clubs.map((org) => (

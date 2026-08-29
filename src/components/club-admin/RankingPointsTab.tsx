@@ -356,35 +356,60 @@ export function RankingPointsTab({ clubId }: Props) {
 
         {/* LEADERBOARD */}
         <TabsContent value="board" className="space-y-3 pt-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Current ranking-points standings (top 200).</p>
-            <Button size="sm" variant="ghost" onClick={() => refetchBoard()}>
-              <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
-            </Button>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-muted-foreground">
+              Current ranking-points standings (top 200).
+              {movement?.periodStart
+                ? ` Movement is measured against the ${new Date(movement.periodStart).toLocaleDateString(undefined, { month: "short", year: "numeric" })} snapshot.`
+                : " Take a snapshot to start tracking monthly movement."}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="outline" onClick={takeSnapshot} disabled={snapshotting}>
+                {snapshotting ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Camera className="w-3.5 h-3.5 mr-1" />}
+                Take snapshot
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => refetchBoard()}>
+                <RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh
+              </Button>
+            </div>
           </div>
           <Card className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10 text-center">#</TableHead>
+                  <TableHead className="w-14 text-center text-[10px]">Move</TableHead>
                   <TableHead>Player</TableHead>
                   <TableHead className="text-right w-24">Points</TableHead>
                   <TableHead className="text-center w-20 text-[10px]">Ladder</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {leaderboard.map((m: any, i: number) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
-                    <TableCell className="text-xs font-medium">{m.name}</TableCell>
-                    <TableCell className="text-right font-mono text-xs">{Number(m.ranking_points ?? 0).toFixed(2)}</TableCell>
-                    <TableCell className="text-center text-[11px] text-muted-foreground">{m.ladder_position ?? "—"}</TableCell>
-                  </TableRow>
-                ))}
+                {leaderboard.map((m: any, i: number) => {
+                  const delta = rankDelta(i + 1, movement?.byMember.get(m.id)?.previousRank ?? null);
+                  return (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
+                      <TableCell className="text-center text-[11px] font-mono">
+                        {delta == null || delta === 0 ? (
+                          <span className="text-muted-foreground">–</span>
+                        ) : delta > 0 ? (
+                          <span className="text-emerald-600">▲{delta}</span>
+                        ) : (
+                          <span className="text-destructive">▼{Math.abs(delta)}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs font-medium">{m.name}</TableCell>
+                      <TableCell className="text-right font-mono text-xs">{Number(m.ranking_points ?? 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-center text-[11px] text-muted-foreground">{m.ladder_position ?? "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </Card>
         </TabsContent>
+
         {/* RULE HISTORY */}
         <TabsContent value="rules" className="space-y-3 pt-3">
           <p className="text-xs text-muted-foreground">

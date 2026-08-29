@@ -433,7 +433,12 @@ export function RankingPointsTab({ clubId }: Props) {
                 {leaderboard.map((m: any, i: number) => {
                   const delta = rankDelta(i + 1, movement?.byMember.get(m.id)?.previousRank ?? null);
                   return (
-                    <TableRow key={m.id}>
+                    <TableRow
+                      key={m.id}
+                      className="cursor-pointer"
+                      onClick={() => setLedgerFor({ id: m.id, name: m.name })}
+                      title="See where these points came from"
+                    >
                       <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
                       <TableCell className="text-center text-[11px] font-mono">
                         {delta == null || delta === 0 ? (
@@ -450,6 +455,7 @@ export function RankingPointsTab({ clubId }: Props) {
                     </TableRow>
                   );
                 })}
+
               </TableBody>
             </Table>
           </Card>

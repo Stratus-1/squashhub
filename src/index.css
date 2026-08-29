@@ -133,6 +133,12 @@
     scroll-behavior: smooth;
   }
 
+  /* Radix overlays lock body scroll while open; smooth scrolling makes their
+     internal scroll-into-view visible as a page lurch — force instant. */
+  html:has(body[data-scroll-locked]) {
+    scroll-behavior: auto;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);

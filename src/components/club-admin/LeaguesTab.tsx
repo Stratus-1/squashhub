@@ -2990,7 +2990,7 @@ function LinkedNationalBodiesSection({ associationId, clubId }: { associationId:
 }
 
 // ─── League Dialog (bulk add) ───
-function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void }) {
+function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, lockedAssociationId }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void; hideTrigger?: boolean; lockedAssociationId?: string | null }) {
   const [selectedMen, setSelectedMen] = useState<string[]>([]);
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
   const [selectedMixed, setSelectedMixed] = useState<string[]>([]);
@@ -2998,6 +2998,10 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
   const [startNum, setStartNum] = useState(1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [associationId, setAssociationId] = useState("");
+  useEffect(() => {
+    if (open && lockedAssociationId) setAssociationId(lockedAssociationId);
+  }, [open, lockedAssociationId]);
+
   const [affectsRanking, setAffectsRanking] = useState(false);
   const [rankingWeight, setRankingWeight] = useState(1);
 

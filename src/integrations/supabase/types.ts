@@ -5717,6 +5717,9 @@ export type Database = {
           format: string
           id: string
           is_active: boolean
+          ladder_from_leagues: boolean
+          ladder_from_tournaments: boolean
+          league_movement_policy: string | null
           max_active_incoming: number
           max_active_outgoing: number
           movement_policy: string
@@ -5725,6 +5728,7 @@ export type Database = {
           ranking_mirror_margin: number
           ranking_sync_mode: string
           rematch_cooldown_days: number
+          tournament_movement_policy: string | null
           updated_at: string
         }
         Insert: {
@@ -5738,6 +5742,9 @@ export type Database = {
           format?: string
           id?: string
           is_active?: boolean
+          ladder_from_leagues?: boolean
+          ladder_from_tournaments?: boolean
+          league_movement_policy?: string | null
           max_active_incoming?: number
           max_active_outgoing?: number
           movement_policy?: string
@@ -5746,6 +5753,7 @@ export type Database = {
           ranking_mirror_margin?: number
           ranking_sync_mode?: string
           rematch_cooldown_days?: number
+          tournament_movement_policy?: string | null
           updated_at?: string
         }
         Update: {
@@ -5759,6 +5767,9 @@ export type Database = {
           format?: string
           id?: string
           is_active?: boolean
+          ladder_from_leagues?: boolean
+          ladder_from_tournaments?: boolean
+          league_movement_policy?: string | null
           max_active_incoming?: number
           max_active_outgoing?: number
           movement_policy?: string
@@ -5767,6 +5778,7 @@ export type Database = {
           ranking_mirror_margin?: number
           ranking_sync_mode?: string
           rematch_cooldown_days?: number
+          tournament_movement_policy?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -11232,6 +11244,7 @@ export type Database = {
           invite_source: string
           knockout_seeds: Json | null
           knockout_seeds_at: string | null
+          ladder_affects: boolean | null
           league_best_of: Json | null
           league_bye_handling: Json | null
           league_draw_styles: Json
@@ -11317,6 +11330,7 @@ export type Database = {
           invite_source?: string
           knockout_seeds?: Json | null
           knockout_seeds_at?: string | null
+          ladder_affects?: boolean | null
           league_best_of?: Json | null
           league_bye_handling?: Json | null
           league_draw_styles?: Json
@@ -11402,6 +11416,7 @@ export type Database = {
           invite_source?: string
           knockout_seeds?: Json | null
           knockout_seeds_at?: string | null
+          ladder_affects?: boolean | null
           league_best_of?: Json | null
           league_bye_handling?: Json | null
           league_draw_styles?: Json
@@ -12147,6 +12162,15 @@ export type Database = {
           _summary?: string
         }
         Returns: string
+      }
+      apply_ladder_result: {
+        Args: {
+          _club_id: string
+          _loser_member_id: string
+          _movement?: string
+          _winner_member_id: string
+        }
+        Returns: boolean
       }
       apply_registration_division_choices: {
         Args: { p_registration_id: string }

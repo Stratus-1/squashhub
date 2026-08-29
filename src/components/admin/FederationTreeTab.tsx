@@ -451,7 +451,23 @@ export function FederationTreeTab() {
               <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
               {promoteAllAssociations.isPending ? "Adding…" : "Add all associations to the tree"}
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => promoteAllClubs.mutate(undefined)}
+              disabled={promoteAllClubs.isPending}
+            >
+              <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
+              {promoteAllClubs.isPending ? "Adding…" : "Add all clubs to the tree"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={scrapeEveryone} disabled={bulkScrape.running}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${bulkScrape.running ? "animate-spin" : ""}`} />
+              {bulkScrape.running
+                ? `Scraping players ${bulkScrape.done}/${bulkScrape.total}…`
+                : "Scrape players for every club"}
+            </Button>
           </div>
+
           {(runs ?? []).length > 0 && (
             <div className="text-xs text-muted-foreground space-y-0.5">
               {(runs ?? []).map((r) => (

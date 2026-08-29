@@ -598,6 +598,8 @@ Deno.serve(async (req) => {
       // Existing SquashHub clubs for fuzzy matching
       const { data: liveClubs } = await supabase.from("clubs").select("id, name, suburb, city");
       const clubRows = liveClubs ?? [];
+      const memberCache = new Map<string, any[]>();
+      const orgIdCache = new Map<string, string | null>();
 
       let orgsFound = 0;
       let playersFound = 0;

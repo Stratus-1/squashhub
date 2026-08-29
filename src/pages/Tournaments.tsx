@@ -868,8 +868,7 @@ export default function Tournaments() {
           return (
             <Button
               size="sm"
-              variant="outline"
-              className="h-7 px-2.5 gap-1 shrink-0 self-end sm:self-auto rounded-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary font-semibold"
+              className="h-7 px-2.5 gap-1 shrink-0 self-end sm:self-auto rounded-full bg-reschedule text-reschedule-foreground hover:bg-reschedule/90 font-semibold shadow-sm"
               title="Set or change the court, date and time for this match"
               onClick={(e) => { e.stopPropagation(); setScheduleMatch(m); }}
             >

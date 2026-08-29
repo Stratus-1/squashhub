@@ -61,6 +61,8 @@
     --court-line: 0 0% 95%;
     --win: 142 70% 45%;
     --loss: 0 72% 51%;
+    --reschedule: 142 70% 45%;
+    --reschedule-foreground: 220 40% 10%;
 
     /* Draw board seeding bands */
     --seed-top: 142 62% 38%;
@@ -114,6 +116,8 @@
     --seed-top: 142 55% 52%;
     --seed-lower: 205 75% 58%;
     --seed-out: 0 75% 62%;
+    --reschedule: 142 65% 58%;
+    --reschedule-foreground: 220 40% 10%;
   }
 }
 

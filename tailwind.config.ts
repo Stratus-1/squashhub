@@ -59,6 +59,10 @@ export default {
         "seed-lower": "hsl(var(--seed-lower))",
         "seed-out": "hsl(var(--seed-out))",
         loss: "hsl(var(--loss))",
+        reschedule: {
+          DEFAULT: "hsl(var(--reschedule))",
+          foreground: "hsl(var(--reschedule-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

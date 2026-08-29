@@ -3522,6 +3522,96 @@ export type Database = {
           },
         ]
       }
+      club_ranking_snapshot_entries: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          created_at: string
+          id: string
+          ladder_position: number | null
+          rank: number
+          ranking_points: number
+          snapshot_id: string
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          id?: string
+          ladder_position?: number | null
+          rank: number
+          ranking_points?: number
+          snapshot_id: string
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          id?: string
+          ladder_position?: number | null
+          rank?: number
+          ranking_points?: number
+          snapshot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_ranking_snapshot_entries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_ranking_snapshot_entries_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_ranking_snapshot_entries_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "club_ranking_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_ranking_snapshots: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          member_count: number
+          period_start: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          member_count?: number
+          period_start: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          member_count?: number
+          period_start?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_ranking_snapshots_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_router_alert_settings: {
         Row: {
           club_id: string
@@ -13217,6 +13307,11 @@ export type Database = {
       set_doubles_pairing_locked: {
         Args: { p_champ_id: string; p_locked: boolean }
         Returns: boolean
+      }
+      snapshot_all_club_rankings: { Args: never; Returns: number }
+      snapshot_club_rankings: {
+        Args: { _club_id: string; _period?: string }
+        Returns: string
       }
       submit_platform_invoice_eft_proof: {
         Args: { _invoice_id: string; _path: string }

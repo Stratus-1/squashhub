@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Swords, X, Layers } from "lucide-react";
+import { Loader2, Swords, X, Layers, ArrowUp, ArrowDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -28,17 +28,44 @@ import { Card } from "@/components/ui/card";
 import { useLadderConfig } from "@/hooks/use-ladder-config";
 import { DEFAULT_LADDER_CONFIG, describeLadderRule, evaluateChallenge } from "@/lib/ladder/eligibility";
 import { PyramidLadder, type PyramidEntry } from "@/components/ladder/PyramidLadder";
+import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 
 
 function RankingTabs({
   pyramidContent,
   rpBoard,
   onPlayerClick,
+  clubId,
 }: {
   pyramidContent: ReactNode;
   rpBoard: Array<{ id: string; name: string; ranking_points: number; ladder_position: number | null; avatar_url: string | null }>;
   onPlayerClick: (memberId: string) => void;
+  clubId?: string | null;
 }) {
+  const { data: movement } = useRankingMovement(clubId);
+
+  const withMovement = useMemo(
+    () =>
+      rpBoard.map((m, i) => {
+        const prev = movement?.byMember.get(m.id);
+        return { ...m, rank: i + 1, delta: rankDelta(i + 1, prev?.previousRank ?? null) };
+      }),
+    [rpBoard, movement],
+  );
+
+  const mostImproved = useMemo(
+    () =>
+      withMovement
+        .filter((m) => (m.delta ?? 0) > 0)
+        .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
+        .slice(0, 3),
+    [withMovement],
+  );
+
+  const sinceLabel = movement?.periodStart
+    ? format(new Date(movement.periodStart), "MMM yyyy")
+    : null;
+
   return (
     <div className="px-4 mt-3 mb-4">
       <Tabs defaultValue="pyramid" className="w-full">
@@ -50,23 +77,60 @@ function RankingTabs({
         </TabsList>
         <TabsContent value="pyramid">{pyramidContent}</TabsContent>
         <TabsContent value="points">
+          {mostImproved.length > 0 && (
+            <Card className="mb-3 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                Most improved{sinceLabel ? ` since ${sinceLabel}` : ""}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {mostImproved.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => onPlayerClick(m.id)}
+                    className="flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs hover:bg-muted"
+                  >
+                    <span className="font-medium truncate max-w-[9rem]">{m.name}</span>
+                    <span className="flex items-center gap-0.5 text-emerald-600 font-mono">
+                      <ArrowUp className="w-3 h-3" />
+                      {m.delta}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </Card>
+          )}
           <Card className="overflow-hidden">
             <div className="px-3 py-2 border-b bg-muted/30">
               <p className="text-[11px] text-muted-foreground">
-                Points are earned from official matches and applied after admin approval. Underdog wins earn bigger bonuses.
+                Points are earned from challenges, league rubbers and championship matches, and applied after admin approval. Underdog wins earn bigger bonuses.
               </p>
             </div>
             <div className="divide-y">
-              {rpBoard.length === 0 ? (
+              {withMovement.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-8">No ranking-points data yet.</p>
               ) : (
-                rpBoard.map((m, i) => (
+                withMovement.map((m) => (
                   <button
                     key={m.id}
                     onClick={() => onPlayerClick(m.id)}
                     className="w-full flex items-center gap-3 px-3 py-2 hover:bg-muted/40 transition-colors text-left"
                   >
-                    <span className="w-6 text-center text-xs font-mono text-muted-foreground">{i + 1}</span>
+                    <span className="w-6 text-center text-xs font-mono text-muted-foreground">{m.rank}</span>
+                    <span className="w-8 text-[10px] font-mono">
+                      {m.delta == null || m.delta === 0 ? (
+                        <span className="text-muted-foreground">–</span>
+                      ) : m.delta > 0 ? (
+                        <span className="text-emerald-600 inline-flex items-center gap-0.5">
+                          <ArrowUp className="w-3 h-3" />
+                          {m.delta}
+                        </span>
+                      ) : (
+                        <span className="text-destructive inline-flex items-center gap-0.5">
+                          <ArrowDown className="w-3 h-3" />
+                          {Math.abs(m.delta)}
+                        </span>
+                      )}
+                    </span>
                     <span className="flex-1 text-sm font-medium truncate">{m.name}</span>
                     {m.ladder_position != null && (
                       <span className="text-[10px] text-muted-foreground">Ladder #{m.ladder_position}</span>
@@ -84,6 +148,7 @@ function RankingTabs({
     </div>
   );
 }
+
 
 // Inline opponent stats for the challenge dialog
 function OpponentStatsInline({ memberId, myMemberId }: { memberId: string; myMemberId: string }) {
@@ -657,6 +722,7 @@ export default function Ladder() {
             )
           }
           rpBoard={rpBoard as any}
+          clubId={clubId}
           onPlayerClick={(memberId) => {
             if (memberId === myMemberId) navigate("/profile");
             else navigate(`/players/${memberId}`);

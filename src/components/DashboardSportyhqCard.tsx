@@ -1,7 +1,9 @@
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { TrendingUp, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+
 
 interface RankingEntry {
   label?: string;

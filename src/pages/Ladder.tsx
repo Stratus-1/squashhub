@@ -750,6 +750,31 @@ export default function Ladder() {
         </div>
       )}
 
+      {/* Pyramid / list view switch (pyramid ladders only) */}
+      {config.format === "pyramid" && !isLoading && (
+        <div className="px-4 mt-3 flex items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground mr-1">View</span>
+          <div className="inline-flex rounded-full border bg-muted/40 p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <List className="w-3 h-3" /> List
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("pyramid")}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${viewMode === "pyramid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Triangle className="w-3 h-3" /> Pyramid
+            </button>
+          </div>
+        </div>
+      )}
+
+
+
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />

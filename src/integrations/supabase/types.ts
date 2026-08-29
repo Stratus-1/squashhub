@@ -13537,6 +13537,10 @@ export type Database = {
         Returns: number
       }
       unschedule_champ_match: { Args: { p_match_id: string }; Returns: Json }
+      validate_challenge_gender_group: {
+        Args: { _a: string; _b: string; _club_id: string }
+        Returns: boolean
+      }
       viewer_is_opposing_captain_for_registration: {
         Args: {
           _reg_club_member_id: string

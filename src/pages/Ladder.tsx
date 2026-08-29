@@ -494,6 +494,8 @@ export default function Ladder() {
   }, [activeMember?.id, activeMember?.gender, myClubMember?.gender, myMemberId, players]);
 
   const getPlayerGenderGroup = (player: LadderPlayer): string => {
+    // One combined ladder → everyone is in the same challenge group.
+    if (mixedLadderEnabled) return myGenderGroup;
     const g = (player.gender || "").toLowerCase();
     return (g === "female" || g === "ladies" || g === "f") ? "ladies" : "men";
   };

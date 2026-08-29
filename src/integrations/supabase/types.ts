@@ -12832,6 +12832,19 @@ export type Database = {
           total_income: number
         }[]
       }
+      check_member_duplicate_hint: {
+        Args: {
+          _club_id: string
+          _email?: string
+          _name?: string
+          _phone?: string
+        }
+        Returns: {
+          is_claimed: boolean
+          masked_name: string
+          match_kind: string
+        }[]
+      }
       claim_email_outbox_batch: {
         Args: { p_lease_seconds?: number; p_limit?: number }
         Returns: {

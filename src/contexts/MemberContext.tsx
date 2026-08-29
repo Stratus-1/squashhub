@@ -74,7 +74,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
       try {
         const loadOwnMembers = async () =>
           fromExt("club_members")
-            .select("id, name, email, club_member_number, gender, user_id, role")
+            .select("id, name, email, club_member_number, gender, user_id, role, person_id")
             .eq("club_id", club.id)
             .eq("user_id", user.id)
             .order("joined_at", { ascending: true });

@@ -160,7 +160,7 @@ export default function RegisterClub() {
     if (user) setClaimTarget(match);
     else goToSignIn();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [results, user, claimSlug]);
+  }, [results, user, authLoading, claimSlug]);
 
   const submitClaim = async () => {
     if (!claimTarget) return;

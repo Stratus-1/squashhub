@@ -233,7 +233,7 @@ export function ScheduleMatchDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <CalendarClock className="w-4 h-4" />{" "}
-            {alreadyScheduled ? "Reschedule this match" : canManage ? "Set court & time" : "Arrange your match"}
+            {alreadyScheduled ? "Reschedule your court booking" : "Make your court booking"}
           </DialogTitle>
           <DialogDescription className="text-xs">
             {opponentName ? <>vs {opponentName}. </> : null}

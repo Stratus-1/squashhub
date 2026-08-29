@@ -305,10 +305,17 @@ Deno.serve(async (req) => {
 
       if (member.user_id !== uid) {
         const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
-        const { data: isClubAdmin } = await supabase.rpc("is_club_admin_or_permitted", {
-          _club_id: (member as any).club_id,
-          _user_id: uid,
-        }).catch(() => ({ data: false } as any));
+        let isClubAdmin = false;
+        try {
+          const { data } = await supabase.rpc("is_club_admin_or_permitted", {
+            _club_id: (member as any).club_id,
+            _user_id: uid,
+            _permission: "manage_members",
+          });
+          isClubAdmin = data === true;
+        } catch {
+          isClubAdmin = false;
+        }
         if (!isAdmin && !isClubAdmin) return json({ error: "Not allowed" }, 403);
       }
 

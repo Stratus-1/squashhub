@@ -405,10 +405,21 @@ export default function Ladder() {
 
 
   const isChallengeable = (player: LadderPlayer): boolean => {
-    if (!user?.id || isMe(player)) return false;
-    if (getPlayerGenderGroup(player) !== myGenderGroup) return false;
-    return canChallenge(player) === null;
+    if (!user?.id || isMe(player) || !myMemberId) return false;
+    const opponentPos =
+      positionMap.get(player.club_member_id) ??
+      positionMap.get(player.user_id || "") ??
+      positionMap.get(player.id) ??
+      null;
+    return evaluateChallenge({
+      config,
+      myPosition,
+      opponentPosition: opponentPos,
+      sameGenderGroup: getPlayerGenderGroup(player) === myGenderGroup,
+      myOpenOutgoing,
+    }).allowed;
   };
+
 
   const handleChallengeClick = (player: LadderPlayer) => {
     const reason = canChallenge(player);

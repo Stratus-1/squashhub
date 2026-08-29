@@ -177,6 +177,9 @@ export function RankingPointsTab({ clubId }: Props) {
         .from("club_members")
         .select("id, name, ranking_points, ladder_position")
         .eq("club_id", clubId)
+        // Members only: visitors and anyone off the club ladder are not ranked.
+        .neq("role", "visitor")
+        .not("ladder_position", "is", null)
         .order("ranking_points", { ascending: false })
         .limit(200);
       if (error) throw error;

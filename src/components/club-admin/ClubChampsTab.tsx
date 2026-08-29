@@ -40,6 +40,12 @@ import {
   type ForfeitRuleMap,
 } from "@/lib/tournaments/forfeit";
 import { buildLeagueFirstRound, suggestSectionCount } from "@/lib/tournaments/knockout";
+import {
+  describeGraduated,
+  graduatedPlayInMatches,
+  isDrawStyle,
+  type DrawStyle,
+} from "@/lib/tournaments/graduated";
 import { ConfirmDrawDialog } from "@/components/tournaments/ConfirmDrawDialog";
 import {
   drawToMatchRows,
@@ -937,6 +943,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
   // Swiss-only config: per-league pools & rounds (keyed by group_number string).
   const [swissPools, setSwissPools] = useState<Record<string, number>>({});
+  /** Knockout draw style per division: "straight" (default) or "graduated" (fair entry). */
+  const [leagueDrawStyles, setLeagueDrawStyles] = useState<Record<string, DrawStyle>>({});
   // Organiser-owned pool headcounts per division (group_number -> [n per pool]).
   // Written whenever an admin drags an entrant across a pool boundary, so the
   // uneven split they chose survives a reload instead of snapping back.
@@ -2285,6 +2293,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       match_duration_minutes: matchDuration,
       scoring_mode: scoringMode,
       swiss_pools: swissPools,
+      league_draw_styles: leagueDrawStyles,
       pool_sizes: poolSizeOverrides,
       pool_allocation: poolAllocation,
       swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
@@ -4474,6 +4483,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
             swiss_pools: swissPools,
+            league_draw_styles: leagueDrawStyles,
             pool_sizes: poolSizeOverrides,
             pool_allocation: poolAllocation,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
@@ -4554,6 +4564,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             match_duration_minutes: matchDuration,
             scoring_mode: scoringMode,
             swiss_pools: swissPools,
+            league_draw_styles: leagueDrawStyles,
             pool_sizes: poolSizeOverrides,
             pool_allocation: poolAllocation,
             swiss_rounds: (roundFormat === "swiss" || Object.values(leagueFormats).includes("swiss")) ? swissRounds : null,
@@ -5964,6 +5975,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPlayoffDate("");
     setScoringMode("");
     setSwissPools({});
+    setLeagueDrawStyles({});
     setPoolSizeOverrides({});
     setSwissRounds({});
     setExpectedPlayers({});
@@ -6059,6 +6071,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       Number(champ.num_groups) || 0,
     ));
     setSwissRounds(((champ as any).swiss_rounds as Record<string, number>) || {});
+    setLeagueDrawStyles(() => {
+      const raw = ((champ as any).league_draw_styles as Record<string, unknown>) || {};
+      const out: Record<string, DrawStyle> = {};
+      for (const [k, v] of Object.entries(raw)) if (isDrawStyle(v)) out[k] = v;
+      return out;
+    });
     setPoolSizeOverrides(((champ as any).pool_sizes as Record<string, number[]>) || {});
     // A confirmed manual draw and the hand-arranged divisions are part of the
     // saved tournament — never re-seed them automatically on reopen.
@@ -8045,6 +8063,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           Only the first round is scheduled up front — later rounds are created as each round finishes.
                                         </p>
                                       )}
+                                      {fmt === "knockout" && (() => {
+                                        const style: DrawStyle = leagueDrawStyles[key] === "graduated" ? "graduated" : "straight";
+                                        const perSection = pools > 0 ? Math.ceil(entrants / pools) : entrants;
+                                        return (
+                                          <div className="space-y-1 pt-1">
+                                            <SegRow
+                                              label="Entry style"
+                                              value={style}
+                                              color="violet"
+                                              options={[
+                                                { v: "straight", l: "Straight knockout" },
+                                                { v: "graduated", l: "Gradual fair entry" },
+                                              ]}
+                                              onChange={(v) =>
+                                                setLeagueDrawStyles((m) => ({
+                                                  ...m,
+                                                  [key]: v === "graduated" ? "graduated" : "straight",
+                                                }))
+                                              }
+                                            />
+                                            <p className="text-[11px] text-muted-foreground">
+                                              {style === "graduated"
+                                                ? perSection > 1
+                                                  ? `${describeGraduated(perSection, graduatedPlayInMatches(perSection))} Top seeds rest and enter once the field narrows.`
+                                                  : "Weakest players meet each other first; stronger seeds enter in later rounds."
+                                                : "Strongest plays weakest from round one — every entrant plays immediately."}
+                                            </p>
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   );
                                 })()}
@@ -10259,6 +10307,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   section: si + 1,
                   seeds: sIds.map((id, i) => ({ memberId: id, seed: i + 1 })),
                 })),
+                drawStyle: leagueDrawStyles[String(gn)] === "graduated" ? "graduated" : "straight",
               });
               const entrants: DrawEntrant[] = ids.map((id, i) => ({
                 id,

@@ -30,9 +30,6 @@ export default function SuperAdminRankings() {
         <TabsContent value="rollout" className="pt-3">
           <RankingRolloutPanel />
         </TabsContent>
-        <TabsContent value="fedtree" className="pt-3">
-          <FederationTreeTab />
-        </TabsContent>
       </Tabs>
     </div>
   );

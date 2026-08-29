@@ -142,6 +142,8 @@ export function ScheduleMatchDialog({
   );
 
   const alreadyScheduled = !!match && fixtureScheduleState(match) === "scheduled";
+  const pastPlayBy = !!match?.play_by && date > String(match.play_by).slice(0, 10);
+
 
   const freeSlots = useMemo(() => {
     if (!courtId) return [];
@@ -250,11 +252,17 @@ export function ScheduleMatchDialog({
               type="date"
               value={date}
               min={format(new Date(), "yyyy-MM-dd")}
-              max={match?.play_by || undefined}
               onChange={(e) => setDate(e.target.value)}
               className="h-8 text-sm"
             />
+            {pastPlayBy && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                This is after the round's play-by date ({match?.play_by}). You can still book, but let the organiser
+                know so the round isn't closed without your result.
+              </p>
+            )}
           </div>
+
 
           <div className="space-y-1">
             <Label className="text-xs">Court</Label>

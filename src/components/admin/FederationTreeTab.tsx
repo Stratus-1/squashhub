@@ -76,7 +76,7 @@ export function FederationTreeTab() {
   const { data: clubs } = useQuery({
     queryKey: ["fed-live-clubs"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("id, name").order("name");
+      const { data, error } = await supabase.from("clubs").select("id, name, subdomain").order("name");
       if (error) throw error;
       return data;
     },

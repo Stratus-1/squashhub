@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Sparkles, CheckCircle2, XCircle, ShieldAlert } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, CheckCircle2, XCircle, ShieldAlert, Camera } from "lucide-react";
+import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 
 interface Props {
   clubId: string;
@@ -54,6 +55,24 @@ export function RankingPointsTab({ clubId }: Props) {
     setFromLeagues((club as any).points_from_leagues !== false);
     setFromTournaments((club as any).points_from_tournaments !== false);
   }, [club]);
+
+  // ===== Monthly snapshots / movement =====
+  const { data: movement, refetch: refetchMovement } = useRankingMovement(clubId);
+  const [snapshotting, setSnapshotting] = useState(false);
+
+  const takeSnapshot = async () => {
+    setSnapshotting(true);
+    try {
+      const { error } = await (supabase as any).rpc("snapshot_club_rankings", { _club_id: clubId });
+      if (error) throw error;
+      toast.success("Snapshot saved — movement will be measured from here.");
+      await refetchMovement();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not take a snapshot");
+    } finally {
+      setSnapshotting(false);
+    }
+  };
 
   const saveSettings = async () => {
     setSaving(true);

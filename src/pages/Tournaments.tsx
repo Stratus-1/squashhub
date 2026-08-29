@@ -870,7 +870,7 @@ export default function Tournaments() {
             <Button
               size="sm"
               variant="outline"
-              className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto"
+              className="h-7 px-2.5 gap-1 shrink-0 self-end sm:self-auto rounded-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary font-semibold"
               title="Set or change the court, date and time for this match"
               onClick={(e) => { e.stopPropagation(); setScheduleMatch(m); }}
             >
@@ -889,8 +889,7 @@ export default function Tournaments() {
           return (
             <Button
               size="sm"
-              variant="secondary"
-              className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto"
+              className="h-7 px-2.5 gap-1 shrink-0 self-end sm:self-auto rounded-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold shadow-sm"
               title="Capture the score of a match that has already been played"
               onClick={(e) => { e.stopPropagation(); setResultMatch(m); }}
             >

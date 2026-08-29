@@ -56,7 +56,7 @@ describe("generated knockout fixture scheduling", () => {
     const scheduled = applyScheduleResult(generatedSemi(), {
       booking_id: "bk-1", court_id: 3, scheduled_date: "2026-09-01", scheduled_time: "18:00:00",
     });
-    expect(scheduleActionLabel(scheduled)).toBe("Reschedule");
+    expect(scheduleActionLabel(scheduled)).toBe("Reschedule your court booking");
 
     const moved = applyScheduleResult(scheduled, {
       booking_id: "bk-1", court_id: 1, scheduled_date: "2026-09-02", scheduled_time: "19:00:00",

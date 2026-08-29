@@ -423,7 +423,12 @@ export function FederationTreeTab() {
                 </button>
                 {statusBadge(org.status)}
                 {org.matched_club_id && (
-                  <span className="text-xs text-muted-foreground">→ {clubName.get(org.matched_club_id) ?? "linked club"}</span>
+                  <span className="text-xs text-muted-foreground">
+                    → {clubName.get(org.matched_club_id) ?? "linked club"}
+                    {clubSubdomain.get(org.matched_club_id) && (
+                      <span className="ml-1 font-mono">({clubSubdomain.get(org.matched_club_id)}.squashhub.co.za)</span>
+                    )}
+                  </span>
                 )}
                 <span className="flex-1" />
                 {!org.matched_club_id && org.status !== "ignored" && (

@@ -124,9 +124,14 @@ export function FederationTreeTab() {
   const scrape = useMutation({
     mutationFn: async () => {
       const payload: Record<string, unknown> = { action: "scrape_ranking_group" };
+      const rawPath = orgPath.trim();
       if (groupId.trim()) payload.group_id = Number(groupId.trim());
-      else if (orgPath.trim()) payload.organization_path = orgPath.trim();
-      else throw new Error("Enter a ranking group ID or an organization path");
+      else if (rawPath) {
+        // Accept a full URL, a path, or a bare organisation id
+        const id = rawPath.match(/(\d+)\s*$/)?.[1];
+        payload.organization_path = id ? `/organization/view/${id}` : rawPath;
+      } else throw new Error("Type a ranking group ID or an organization path in the fields first");
+
       if (associationId) payload.association_org_id = associationId;
       const { data, error } = await supabase.functions.invoke("sportyhq-lookup", { body: payload });
       if (error) throw error;

@@ -795,14 +795,33 @@ export function useLadder(clubId?: string) {
         return (a.name || "").localeCompare(b.name || "");
       });
 
-      // Assign ladder_position per gender group (index+1 within each gender)
-      const genderGroups = new Map<string, number>();
-      for (const entry of ladder) {
-        const gKey = (entry.gender?.toLowerCase() === "female" || entry.gender?.toLowerCase() === "ladies" || entry.gender?.toLowerCase() === "f") ? "ladies" : "men";
-        const pos = (genderGroups.get(gKey) ?? 0) + 1;
-        genderGroups.set(gKey, pos);
-        entry.ladder_position = pos;
+      // Display numbering. On a mixed (combined) club ladder everyone shares one
+      // sequence 1..N; only clubs running separate Men's / Ladies' ladders get
+      // per-gender numbering.
+      let mixedLadder = false;
+      if (clubId) {
+        const { data: clubRow } = await supabase
+          .from("clubs")
+          .select("mixed_ladder_enabled")
+          .eq("id", clubId)
+          .maybeSingle();
+        mixedLadder = !!(clubRow as any)?.mixed_ladder_enabled;
       }
+
+      if (mixedLadder) {
+        ladder.forEach((entry, index) => {
+          entry.ladder_position = index + 1;
+        });
+      } else {
+        const genderGroups = new Map<string, number>();
+        for (const entry of ladder) {
+          const gKey = (entry.gender?.toLowerCase() === "female" || entry.gender?.toLowerCase() === "ladies" || entry.gender?.toLowerCase() === "f") ? "ladies" : "men";
+          const pos = (genderGroups.get(gKey) ?? 0) + 1;
+          genderGroups.set(gKey, pos);
+          entry.ladder_position = pos;
+        }
+      }
+
 
       return ladder;
     },

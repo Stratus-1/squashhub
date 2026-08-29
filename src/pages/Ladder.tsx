@@ -323,9 +323,27 @@ export default function Ladder() {
     return null;
   }, [positionMap, myMemberId, user?.id]);
 
-  const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
+  const { data: ladderConfig } = useLadderConfig(clubId);
+  const config = ladderConfig || DEFAULT_LADDER_CONFIG;
+  const challengeLevelsUp = config.challenge_levels_up;
   const mixedLadderEnabled = !!(clubData?.club as any)?.mixed_ladder_enabled;
   const allPlayers = useMemo(() => (players || []) as LadderPlayer[], [players]);
+
+  // How many open challenges I already have (drives the same limit the DB enforces)
+  const { data: myOpenOutgoing = 0 } = useQuery({
+    queryKey: ["ladder-open-outgoing", myMemberId],
+    enabled: !!myMemberId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("challenges")
+        .select("id", { count: "exact", head: true })
+        .eq("challenger_member_id", myMemberId!)
+        .in("status", ["pending", "accepted"]);
+      return count || 0;
+    },
+  });
+
 
   const isMe = (player: LadderPlayer): boolean => {
     if (myMemberId && player.club_member_id === myMemberId) return true;

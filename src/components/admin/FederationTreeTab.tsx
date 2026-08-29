@@ -189,6 +189,38 @@ export function FederationTreeTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const promoteAssociation = useMutation({
+    mutationFn: async (org: StagedOrg) => {
+      const { error } = await (supabase as any).rpc("promote_sportyhq_association", {
+        _org_id: org.id,
+        _create_tenant: true,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+      qc.invalidateQueries({ queryKey: ["fed-associations"] });
+      toast.success("Association added to the tree with its own web address");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const promoteAllAssociations = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await (supabase as any).rpc("promote_all_sportyhq_associations", {
+        _create_tenants: true,
+      });
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+      qc.invalidateQueries({ queryKey: ["fed-associations"] });
+      toast.success(`${n} associations added to the tree, each with its own web address`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const promoteMember = useMutation({
     mutationFn: async (m: StagedMember) => {
       const { error } = await supabase.rpc("promote_sportyhq_org_member", { _member_id: m.id });
@@ -222,7 +254,13 @@ export function FederationTreeTab() {
     const q = search.trim().toLowerCase();
     const clubVisible = (o: StagedOrg) =>
       o.kind !== "club" || !q || o.name.toLowerCase().includes(q) || (o.location_label ?? "").toLowerCase().includes(q);
-    const groups = new Map<string, { key: string; name: string; kind: string; clubs: StagedOrg[] }>();
+    const groups = new Map<string, { key: string; name: string; kind: string; staged: StagedOrg | null; clubs: StagedOrg[] }>();
+    // Seed a group for every staged association so empty ones can still be promoted
+    for (const p of orgs) {
+      if (p.kind !== "association" && p.kind !== "national") continue;
+      if (q && !p.name.toLowerCase().includes(q)) continue;
+      groups.set(p.sportyhq_org_key, { key: p.sportyhq_org_key, name: p.name, kind: p.kind, staged: p, clubs: [] });
+    }
     for (const o of orgs) {
       if (o.kind !== "club") continue;
       if (!clubVisible(o)) continue;
@@ -232,7 +270,7 @@ export function FederationTreeTab() {
       const key = parent ? parent.sportyhq_org_key : pk || "ungrouped";
       const name = parent ? parent.name : pk.startsWith("group:") ? `Ranking group ${pk.slice(6)}` : "Ungrouped discoveries";
       const kind = parent?.kind ?? "group";
-      if (!groups.has(key)) groups.set(key, { key, name, kind, clubs: [] });
+      if (!groups.has(key)) groups.set(key, { key, name, kind, staged: parent ?? null, clubs: [] });
       groups.get(key)!.clubs.push(o);
     }
     return [...groups.values()].sort((a, b) => b.clubs.length - a.clubs.length);
@@ -289,6 +327,15 @@ export function FederationTreeTab() {
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${scrapeNational.isPending ? "animate-spin" : ""}`} />
               {scrapeNational.isPending ? "Refreshing…" : "Refresh national tree (SSA)"}
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => promoteAllAssociations.mutate()}
+              disabled={promoteAllAssociations.isPending}
+            >
+              <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
+              {promoteAllAssociations.isPending ? "Adding…" : "Add all associations to the tree"}
+            </Button>
           </div>
           {(runs ?? []).length > 0 && (
             <div className="text-xs text-muted-foreground space-y-0.5">
@@ -328,17 +375,32 @@ export function FederationTreeTab() {
             const isOpen = expandedGroups.has(group.key) || !!search.trim();
             return (
               <div key={group.key} className="border rounded-md">
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left"
-                  onClick={() => toggleGroup(group.key)}
-                >
-                  {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  <span className="text-[13px] font-semibold">{group.name}</span>
+                <div className="flex w-full items-center gap-2 px-3 py-2 text-left">
+                  <button className="flex items-center gap-2" onClick={() => toggleGroup(group.key)}>
+                    {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    <span className="text-[13px] font-semibold">{group.name}</span>
+                  </button>
                   <Badge variant={group.kind === "national" ? "default" : "secondary"} className="text-[10px]">
                     {group.kind === "national" ? "National body" : group.kind === "association" ? "Association" : "Ranking group"}
                   </Badge>
                   <span className="text-xs text-muted-foreground">{group.clubs.length} clubs</span>
-                </button>
+                  <span className="flex-1" />
+                  {group.staged?.kind === "association" && (
+                    group.staged.matched_org_id ? (
+                      <Badge className="bg-green-600 text-white text-[10px]">In tree</Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        disabled={promoteAssociation.isPending}
+                        onClick={() => promoteAssociation.mutate(group.staged!)}
+                      >
+                        <ArrowUpCircle className="h-3 w-3 mr-1" /> Add association
+                      </Button>
+                    )
+                  )}
+                </div>
                 {isOpen && (
                   <div className="border-t px-3 py-2 space-y-1.5">
                     {group.clubs.map((org) => (

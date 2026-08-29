@@ -283,7 +283,7 @@ export function MyChampionships() {
                           {perm.allowed ? (
                             <Button
                               size="sm"
-                              className="h-6 text-[11px] rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm"
+                              className="h-6 text-[11px] rounded-full bg-reschedule text-reschedule-foreground hover:bg-reschedule/90 font-semibold shadow-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setScheduling({ match: m, opponent, champ });
@@ -321,19 +321,18 @@ export function MyChampionships() {
                       <span className="font-medium truncate">vs {opponent}</span>
                       {m.court && <Badge variant="outline" className="text-[9px] ml-auto shrink-0">{m.court.name}</Badge>}
                       {today && <Badge className="text-[9px] shrink-0">Today</Badge>}
-                      {perm.allowed && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-[10px] px-2 shrink-0 rounded-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary font-semibold"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setScheduling({ match: m, opponent, champ });
-                          }}
-                        >
-                          Reschedule your court booking
-                        </Button>
-                      )}
+                        {perm.allowed && (
+                          <Button
+                            size="sm"
+                            className="h-6 text-[10px] px-2 shrink-0 rounded-full bg-reschedule text-reschedule-foreground hover:bg-reschedule/90 font-semibold shadow-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setScheduling({ match: m, opponent, champ });
+                            }}
+                          >
+                            Reschedule your court booking
+                          </Button>
+                        )}
                       {resultPerm.allowed && (
                         <Button
                           size="sm"

@@ -283,7 +283,7 @@ export function MyChampionships() {
                           {perm.allowed ? (
                             <Button
                               size="sm"
-                              className="h-6 text-[11px]"
+                              className="h-6 text-[11px] rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setScheduling({ match: m, opponent, champ });
@@ -297,8 +297,7 @@ export function MyChampionships() {
                           {resultPerm.allowed && (
                             <Button
                               size="sm"
-                              variant="secondary"
-                              className="h-6 text-[11px]"
+                              className="h-6 text-[11px] rounded-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold shadow-sm"
                               onClick={openResult}
                             >
                               Enter your result
@@ -325,8 +324,8 @@ export function MyChampionships() {
                       {perm.allowed && (
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="h-6 text-[10px] px-1.5 shrink-0"
+                          variant="outline"
+                          className="h-6 text-[10px] px-2 shrink-0 rounded-full border-primary/50 text-primary hover:bg-primary/10 hover:text-primary font-semibold"
                           onClick={(e) => {
                             e.stopPropagation();
                             setScheduling({ match: m, opponent, champ });
@@ -338,8 +337,7 @@ export function MyChampionships() {
                       {resultPerm.allowed && (
                         <Button
                           size="sm"
-                          variant="secondary"
-                          className="h-6 text-[10px] px-1.5 shrink-0"
+                          className="h-6 text-[10px] px-2 shrink-0 rounded-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold shadow-sm"
                           onClick={openResult}
                         >
                           Enter your result

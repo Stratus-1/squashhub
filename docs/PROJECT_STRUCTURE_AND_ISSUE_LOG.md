@@ -1,3 +1,10 @@
+# 2026-08-29 — Mixed ladder rendered as separate men's and ladies' ladders
+
+- **Symptom:** Nelspruit's combined club ladder still appeared as separate men's and ladies' lists and pyramids for some users.
+- **Finding:** Ladder numbering read `mixed_ladder_enabled` directly from the database, but the page layout read it from a club-context object that can omit restricted/non-public club fields, particularly during fallback or cross-tenant admin access.
+- **Fix:** The ladder page now loads `mixed_ladder_enabled` with its own club-scoped display-settings query and waits for that query before choosing the combined or split layout.
+- **Guard:** Ladder numbering, challenge grouping, and list/pyramid layout must all use the same authoritative mixed-ladder setting; never infer it from gender or a partial public club object.
+
 # 2026-08-29 — Reschedule / court-booking buttons were hard to see in dark mode
 
 - **Symptom:** On the member Tournaments list and My Championships dashboard cards, the "Reschedule" / "Make your court booking" button used a navy outline that blended into the dark card background.

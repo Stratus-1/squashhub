@@ -26,6 +26,7 @@ export interface Club {
   member_number_length?: number;
   member_number_start?: number;
   challenge_levels_up?: number;
+  mixed_ladder_enabled?: boolean;
   light_fee_per_hour?: number;
   lights_integration_enabled?: boolean;
   honesty_bar_enabled?: boolean;

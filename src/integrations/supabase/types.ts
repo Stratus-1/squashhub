@@ -2344,6 +2344,65 @@ export type Database = {
           },
         ]
       }
+      club_claim_requests: {
+        Row: {
+          claimed_role: string
+          club_id: string
+          created_at: string
+          id: string
+          note: string | null
+          requester_email: string | null
+          requester_name: string
+          requester_phone: string | null
+          requester_user_id: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          claimed_role?: string
+          club_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          requester_email?: string | null
+          requester_name?: string
+          requester_phone?: string | null
+          requester_user_id: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          claimed_role?: string
+          club_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          requester_email?: string | null
+          requester_name?: string
+          requester_phone?: string | null
+          requester_user_id?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_claim_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_data_bundles: {
         Row: {
           archived_at: string | null
@@ -12575,6 +12634,7 @@ export type Database = {
         Args: { p_registration_id: string }
         Returns: undefined
       }
+      approve_club_claim: { Args: { _request_id: string }; Returns: string }
       approve_ladder_move_pending: {
         Args: { _pending_id: string }
         Returns: boolean
@@ -12880,6 +12940,23 @@ export type Database = {
           club_member_id: string
           invite_token: string
           registration_id: string
+        }[]
+      }
+      find_existing_club_member: {
+        Args: {
+          _club_id: string
+          _email?: string
+          _id_number?: string
+          _league_number?: string
+          _name?: string
+          _phone?: string
+        }
+        Returns: {
+          club_member_number: string
+          is_claimed: boolean
+          match_kind: string
+          member_id: string
+          member_name: string
         }[]
       }
       find_unclaimed_memberships: {
@@ -13545,6 +13622,10 @@ export type Database = {
         }
         Returns: Json
       }
+      reject_club_claim: {
+        Args: { _reason: string; _request_id: string }
+        Returns: undefined
+      }
       reject_ladder_move_pending: {
         Args: { _pending_id: string }
         Returns: boolean
@@ -13581,6 +13662,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      request_club_claim: {
+        Args: {
+          _claimed_role: string
+          _club_id: string
+          _note: string
+          _phone: string
+        }
+        Returns: string
       }
       request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
@@ -13715,6 +13805,19 @@ export type Database = {
           masked_name: string
           member_id: string
           nsa_number: string
+        }[]
+      }
+      search_registerable_clubs: {
+        Args: { _q: string }
+        Returns: {
+          claim_pending: boolean
+          id: string
+          is_claimable: boolean
+          name: string
+          parent_association: string
+          region: string
+          subdomain: string
+          tenant_type: string
         }[]
       }
       seed_linked_national_body_fees: {

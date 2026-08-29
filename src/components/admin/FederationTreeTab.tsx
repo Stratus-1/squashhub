@@ -257,6 +257,23 @@ export function FederationTreeTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const enrichMembers = useMutation({
+    mutationFn: async ({ orgId, refresh }: { orgId: string; refresh?: boolean }) => {
+      const { data, error } = await supabase.functions.invoke("sportyhq-lookup", {
+        body: { action: "enrich_org_members", org_id: orgId, limit: 40, refresh: !!refresh },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (d: any) => {
+      toast.success(`Player details fetched: ${d.enriched} updated, ${d.not_found} not found`);
+      qc.invalidateQueries({ queryKey: ["fed-staged-members", expandedOrg] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const clubName = useMemo(() => {
     const map = new Map<string, string>();
     (clubs ?? []).forEach((c) => map.set(c.id, c.name));

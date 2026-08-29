@@ -8063,6 +8063,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                           Only the first round is scheduled up front — later rounds are created as each round finishes.
                                         </p>
                                       )}
+                                      {fmt === "knockout" && (() => {
+                                        const style: DrawStyle = leagueDrawStyles[key] === "graduated" ? "graduated" : "straight";
+                                        const perSection = pools > 0 ? Math.ceil(entrants / pools) : entrants;
+                                        return (
+                                          <div className="space-y-1 pt-1">
+                                            <SegRow
+                                              label="Entry style"
+                                              value={style}
+                                              color="violet"
+                                              options={[
+                                                { v: "straight", l: "Straight knockout" },
+                                                { v: "graduated", l: "Gradual fair entry" },
+                                              ]}
+                                              onChange={(v) =>
+                                                setLeagueDrawStyles((m) => ({
+                                                  ...m,
+                                                  [key]: v === "graduated" ? "graduated" : "straight",
+                                                }))
+                                              }
+                                            />
+                                            <p className="text-[11px] text-muted-foreground">
+                                              {style === "graduated"
+                                                ? perSection > 1
+                                                  ? `${describeGraduated(perSection, graduatedPlayInMatches(perSection))} Top seeds rest and enter once the field narrows.`
+                                                  : "Weakest players meet each other first; stronger seeds enter in later rounds."
+                                                : "Strongest plays weakest from round one — every entrant plays immediately."}
+                                            </p>
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   );
                                 })()}
@@ -10277,6 +10307,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   section: si + 1,
                   seeds: sIds.map((id, i) => ({ memberId: id, seed: i + 1 })),
                 })),
+                drawStyle: leagueDrawStyles[String(gn)] === "graduated" ? "graduated" : "straight",
               });
               const entrants: DrawEntrant[] = ids.map((id, i) => ({
                 id,

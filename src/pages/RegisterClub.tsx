@@ -140,7 +140,27 @@ export default function RegisterClub() {
     return null;
   }
 
-  const goToSignIn = () => navigate(`/auth?redirectTo=${encodeURIComponent("/register-club")}`);
+  const goToSignIn = () =>
+    navigate(`/auth?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+
+  // Deep link: /register-club?claim=<slug> → search the club and auto-open the claim flow.
+  const [claimSlug] = useState(() => new URLSearchParams(window.location.search).get("claim"));
+  const claimHandled = useRef(false);
+
+  useEffect(() => {
+    if (claimSlug && !query) setQuery(claimSlug);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claimSlug]);
+
+  useEffect(() => {
+    if (!claimSlug || claimHandled.current || user === undefined) return;
+    const match = results.find((r) => r.subdomain === claimSlug);
+    if (!match) return;
+    claimHandled.current = true;
+    if (user) setClaimTarget(match);
+    else goToSignIn();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, user, claimSlug]);
 
   const submitClaim = async () => {
     if (!claimTarget) return;
@@ -161,14 +181,15 @@ export default function RegisterClub() {
     }
   };
 
-  const joinAsMember = (club: ClubSearchResult) => {
+  const joinAsMember = (club: ClubSearchResult, claim = false) => {
     if (!club.subdomain) { toast.error("This club has no workspace yet — please contact support."); return; }
+    const path = claim ? `/register-club?claim=${club.subdomain}` : "/auth";
     if (window.location.hostname === "localhost") {
-      navigate(`/c/${club.subdomain}/auth`);
+      navigate(`/c/${club.subdomain}${path}`);
     } else {
       const parts = window.location.hostname.split(".");
       const baseHost = parts.slice(-3).join(".") === "squashhub.co.za" ? "squashhub.co.za" : parts.slice(-2).join(".");
-      window.location.href = `${window.location.protocol}//${club.subdomain}.${baseHost}/auth`;
+      window.location.href = `${window.location.protocol}//${club.subdomain}.${baseHost}${path}`;
     }
   };
 
@@ -365,7 +386,7 @@ export default function RegisterClub() {
                   {c.claim_pending ? (
                     <Button size="sm" variant="ghost" disabled>Pending</Button>
                   ) : c.is_claimable ? (
-                    <Button size="sm" onClick={() => (user ? setClaimTarget(c) : goToSignIn())}>This is my club</Button>
+                    <Button size="sm" onClick={() => joinAsMember(c, true)}>This is my club</Button>
                   ) : (
                     <Button size="sm" onClick={() => joinAsMember(c)}>
                       <Users className="w-3.5 h-3.5 mr-1" />Go to club

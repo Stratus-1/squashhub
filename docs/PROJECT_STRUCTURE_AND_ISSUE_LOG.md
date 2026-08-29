@@ -1,3 +1,9 @@
+# 2026-08-29 — Reschedule / court-booking buttons were hard to see in dark mode
+
+- **Symptom:** On the member Tournaments list and My Championships dashboard cards, the "Reschedule" / "Make your court booking" button used a navy outline that blended into the dark card background.
+- **Fix:** Introduced a semantic `--reschedule` colour token (light green) and applied a solid green pill style to all court-booking/reschedule actions in `src/pages/Tournaments.tsx` and `src/components/MyChampionships.tsx`.
+- **Guard:** Use the `reschedule` Tailwind token for any new scheduling action so it stays consistent across light and dark themes.
+
 # 2026-08-27 — Mobile Chrome PWA install prompt event was lost during auth loading
 
 - **Symptom:** Eligible Android Chrome users, including Vian at Nelspruit, did not receive the SquashHub install prompt even though the manifest and service worker were valid.

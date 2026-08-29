@@ -248,6 +248,14 @@ export function FederationTreeTab() {
     return map;
   }, [clubs]);
 
+  const clubSubdomain = useMemo(() => {
+    const map = new Map<string, string>();
+    (clubs ?? []).forEach((c: { id: string; subdomain?: string | null }) => {
+      if (c.subdomain) map.set(c.id, c.subdomain);
+    });
+    return map;
+  }, [clubs]);
+
   // Group staged orgs into national -> association -> clubs tree
   const tree = useMemo(() => {
     const orgs = (stagedOrgs ?? []).filter((o) => showIgnored || o.status !== "ignored");

@@ -845,8 +845,7 @@ export default function Tournaments() {
         {!isPlaceholder && String((champ as any)?.scheduling_mode || "") !== "self" && (
           <Button
             size="sm"
-            variant="default"
-            className="h-7 px-2 gap-1 shrink-0 self-end sm:self-auto animate-pulse-slow"
+            className="h-7 px-2.5 gap-1 shrink-0 self-end sm:self-auto rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm animate-pulse-slow"
             title={tournamentFormat.key === "time_capped_points" ? "Start the bell timer and score this game" : "Open the marker to score this match"}
             onClick={(e) => {
               e.stopPropagation();

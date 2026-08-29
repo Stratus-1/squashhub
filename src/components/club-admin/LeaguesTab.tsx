@@ -700,7 +700,17 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       )}
 
+      <LeagueDialog
+        clubId={clubId}
+        associations={associations}
+        open={addLeagueOpen}
+        onOpenChange={(o) => { setAddLeagueOpen(o); if (!o) setCreateTeamsAssoc(null); }}
+        hideTrigger
+        lockedAssociationId={createTeamsAssoc?.id ?? null}
+      />
+
       <StepByStepLeagueSetup
+
         clubId={clubId}
         open={stepByStepOpen || !!editSetup}
         onOpenChange={(o) => { if (!o) { setStepByStepOpen(false); setEditSetup(null); } else setStepByStepOpen(true); }}

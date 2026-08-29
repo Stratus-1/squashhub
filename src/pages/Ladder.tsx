@@ -232,15 +232,21 @@ export default function Ladder() {
   const createChallenge = useCreateChallenge();
 
   // Ranking-points system (parallel leaderboard, opt-in per club)
-  const { data: rpClub } = useQuery({
-    queryKey: ["ladder-rp-toggle", clubId],
+  const { data: ladderClubSettings, isLoading: isLadderSettingsLoading } = useQuery({
+    queryKey: ["ladder-club-settings", clubId],
     enabled: !!clubId,
     queryFn: async () => {
-      const { data } = await supabase.from("clubs").select("ranking_points_enabled").eq("id", clubId!).maybeSingle();
+      const { data, error } = await supabase
+        .from("clubs")
+        .select("ranking_points_enabled, mixed_ladder_enabled")
+        .eq("id", clubId!)
+        .maybeSingle();
+      if (error) throw error;
       return data;
     },
   });
-  const rpEnabled = !!(rpClub as any)?.ranking_points_enabled;
+  const rpEnabled = !!ladderClubSettings?.ranking_points_enabled;
+  const mixedLadderEnabled = !!ladderClubSettings?.mixed_ladder_enabled;
   const { data: rpBoard = [] } = useQuery({
     queryKey: ["ladder-rp-board", clubId],
     enabled: !!clubId && rpEnabled,
@@ -417,14 +423,14 @@ export default function Ladder() {
       });
     };
 
-    if ((clubData?.club as any)?.mixed_ladder_enabled) {
+    if (mixedLadderEnabled) {
       (players || []).forEach((player, index) => setPositionKeys(player as LadderPlayer, index + 1));
     } else {
       menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
       ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
     }
     return map;
-  }, [menPlayers, ladiesPlayers, players, clubData?.club]);
+  }, [menPlayers, ladiesPlayers, mixedLadderEnabled, players]);
 
   const myPosition = useMemo(() => {
     if (!myMemberId) return null;
@@ -442,7 +448,6 @@ export default function Ladder() {
   const { data: ladderConfig } = useLadderConfig(clubId);
   const config = ladderConfig || DEFAULT_LADDER_CONFIG;
   const challengeLevelsUp = config.challenge_levels_up;
-  const mixedLadderEnabled = !!(clubData?.club as any)?.mixed_ladder_enabled;
   const allPlayers = useMemo(() => (players || []) as LadderPlayer[], [players]);
 
   // How many open challenges I already have (drives the same limit the DB enforces)
@@ -732,7 +737,7 @@ export default function Ladder() {
       />
 
       {/* Controls: filter chip + group toggle */}
-      {leaguesList.length > 0 && !isLoading && (
+      {leaguesList.length > 0 && !isLoading && !isLadderSettingsLoading && (
         <div className="px-4 mt-3 flex flex-wrap items-center gap-3">
           {activeLeagueChip && (
             <button
@@ -753,7 +758,7 @@ export default function Ladder() {
       )}
 
       {/* Pyramid / list view switch (pyramid ladders only) */}
-      {config.format === "pyramid" && !isLoading && (
+      {config.format === "pyramid" && !isLoading && !isLadderSettingsLoading && (
         <div className="px-4 mt-3 flex items-center gap-1.5">
           <span className="text-[11px] text-muted-foreground mr-1">View</span>
           <div className="inline-flex rounded-full border bg-muted/40 p-0.5">
@@ -777,7 +782,7 @@ export default function Ladder() {
 
 
 
-      {isLoading ? (
+      {isLoading || isLadderSettingsLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>

@@ -138,7 +138,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 
         if (adminRole) {
           const { data: all, error: allErr } = await fromExt("club_members")
-            .select("id, name, email, club_member_number, gender, user_id")
+            .select("id, name, email, club_member_number, gender, user_id, person_id")
             .eq("club_id", club.id)
             .order("name", { ascending: true });
           if (allErr) throw allErr;

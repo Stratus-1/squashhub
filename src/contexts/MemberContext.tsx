@@ -12,6 +12,7 @@ export interface LinkedMember {
   club_member_number: string | null;
   gender: string | null;
   user_id: string | null;
+  person_id?: string | null;
 }
 
 interface MemberContextType {
@@ -73,7 +74,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
       try {
         const loadOwnMembers = async () =>
           fromExt("club_members")
-            .select("id, name, email, club_member_number, gender, user_id, role")
+            .select("id, name, email, club_member_number, gender, user_id, role, person_id")
             .eq("club_id", club.id)
             .eq("user_id", user.id)
             .order("joined_at", { ascending: true });
@@ -122,7 +123,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         // happens to match a row here.
         if (myMembership && user.email) {
           const { data: emailMembers, error: emailErr } = await fromExt("club_members")
-            .select("id, name, email, club_member_number, gender, user_id")
+            .select("id, name, email, club_member_number, gender, user_id, person_id")
             .eq("club_id", club.id)
             .eq("email", user.email.toLowerCase())
             .order("joined_at", { ascending: true });
@@ -137,7 +138,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
 
         if (adminRole) {
           const { data: all, error: allErr } = await fromExt("club_members")
-            .select("id, name, email, club_member_number, gender, user_id")
+            .select("id, name, email, club_member_number, gender, user_id, person_id")
             .eq("club_id", club.id)
             .order("name", { ascending: true });
           if (allErr) throw allErr;

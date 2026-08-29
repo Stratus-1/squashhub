@@ -1497,6 +1497,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
+  // Weight multiplier applied to ranking points earned in this competition.
+  const [rankingWeight, setRankingWeight] = useState<number>(1);
   // null = follow the club's ladder setting; true/false = override for this event only.
   const [ladderAffects, setLadderAffects] = useState<boolean | null>(null);
   // Tournament category / capacity / seeding — stored on the tournaments row.
@@ -2343,6 +2345,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
       affects_ranking_points: affectsRankingPoints,
+      ranking_weight: rankingWeight,
       ladder_affects: ladderAffects,
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
@@ -4532,6 +4535,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
             affects_ranking_points: affectsRankingPoints,
+      ranking_weight: rankingWeight,
             ladder_affects: ladderAffects,
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
@@ -4613,6 +4617,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
             affects_ranking_points: affectsRankingPoints,
+      ranking_weight: rankingWeight,
             ladder_affects: ladderAffects,
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
@@ -6167,6 +6172,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
+    setRankingWeight(Number((champ as any).ranking_weight ?? 1) || 1);
     setLadderAffects(
       (champ as any).ladder_affects === null || (champ as any).ladder_affects === undefined
         ? null

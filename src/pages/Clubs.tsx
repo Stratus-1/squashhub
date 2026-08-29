@@ -64,10 +64,10 @@ export default function Clubs() {
               </Button>
               <Button
                 size="sm"
-                onClick={() => navigate("/auth")}
+                onClick={() => navigate("/register-club")}
                 className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)]"
               >
-                Register Your Club
+                Register
               </Button>
             </div>
           </div>

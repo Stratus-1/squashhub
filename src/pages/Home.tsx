@@ -219,11 +219,8 @@ export default function Home() {
 
             {/* Desktop actions */}
             <div className="hidden md:flex items-center gap-2">
-              <Button size="sm" onClick={() => navigate("/clubs")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-                Find/Create My Association
-              </Button>
-              <Button size="sm" onClick={() => navigate("/auth")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-                Register Your Club
+              <Button size="sm" onClick={() => navigate("/register-club")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
+                Register
               </Button>
             </div>
 
@@ -261,11 +258,8 @@ export default function Home() {
                     <Button className="rounded-full w-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold" onClick={() => handleMobileNav(() => navigate("/league"))}>
                       <Trophy className="w-4 h-4 mr-1" /> NSA Player? Register Here
                     </Button>
-                    <Button className="rounded-full w-full" onClick={() => handleMobileNav(() => navigate("/clubs"))}>
-                      Find/Create My Association
-                    </Button>
-                    <Button className="rounded-full w-full" onClick={() => handleMobileNav(() => navigate("/auth"))}>
-                      Register Your Club
+                    <Button className="rounded-full w-full" onClick={() => handleMobileNav(() => navigate("/register-club"))}>
+                      Register
                     </Button>
                   </nav>
                 </SheetContent>
@@ -313,11 +307,8 @@ export default function Home() {
               className="space-y-2 pt-2"
             >
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button size="lg" onClick={() => navigate("/clubs")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-                  Find/Create My Association
-                </Button>
-                <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-                  Register Your Club
+                <Button size="lg" onClick={() => navigate("/register-club")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
+                  Register
                 </Button>
                 <Button size="lg" onClick={() => navigate("/league")} className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 border border-amber-300/40 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] font-semibold">
                   <Trophy className="w-4 h-4 mr-1.5" /> NSA Player? Register Here
@@ -575,11 +566,8 @@ export default function Home() {
 
               <div className="space-y-2 pt-4">
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button size="lg" onClick={() => navigate("/clubs")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-                    Find/Create My Association
-                  </Button>
-                  <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-                    Register Your Club
+                  <Button size="lg" onClick={() => navigate("/register-club")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
+                    Register
                   </Button>
                 </div>
                 <p className="text-xs text-white/80 drop-shadow">
@@ -802,8 +790,8 @@ export default function Home() {
             Run your club with less admin and more control.
           </p>
           <div className="space-y-2 pt-2 flex flex-col items-center">
-            <Button size="lg" onClick={() => navigate("/auth")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
-              Register Your Club
+            <Button size="lg" onClick={() => navigate("/register-club")} className="rounded-full bg-[hsl(220_45%_8%/0.85)] backdrop-blur-md border border-white/10 text-white hover:bg-[hsl(220_45%_12%/0.9)] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]">
+              Register
             </Button>
             <p className="text-xs text-muted-foreground">
               3-month free trial for new clubs · No credit card required

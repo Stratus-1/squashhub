@@ -3010,6 +3010,8 @@ function LeagueDialog({ clubId, associations, open, onOpenChange }: { clubId: st
   const [year, setYear] = useState(new Date().getFullYear());
   const [associationId, setAssociationId] = useState("");
   const [affectsRanking, setAffectsRanking] = useState(false);
+  const [rankingWeight, setRankingWeight] = useState(1);
+
   const qc = useQueryClient();
 
   const handleToggle = (league: string, gender: "men" | "ladies" | "mixed" | "open") => {

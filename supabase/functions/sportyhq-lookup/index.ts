@@ -899,10 +899,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === "debug_post") {
+      const pre = await fetch(String(body.page ?? body.url), { headers: { "User-Agent": UA } });
+      const preHtml = await pre.text();
+      const cookie = (pre.headers.get("set-cookie") ?? "").split(",").map((c) => c.split(";")[0].trim()).filter(Boolean).join("; ");
+      const tok = preHtml.match(/name="sportyhq_csrf_token" value="([^"]+)"/)?.[1] ?? "";
       const res = await fetch(String(body.url), {
         method: "POST",
-        headers: { "User-Agent": UA, "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(body.form ?? {}),
+        headers: { "User-Agent": UA, "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/x-www-form-urlencoded", Cookie: cookie, Referer: String(body.page ?? body.url) },
+        body: new URLSearchParams({ ...(body.form ?? {}), sportyhq_csrf_token: tok }),
       });
       const html = await res.text();
       return json({ status: res.status, length: html.length, snippet: html.slice(0, 5000) });

@@ -898,6 +898,16 @@ Deno.serve(async (req) => {
       return json({ status: "ok", groups: summary, orgs_found: orgsFound, players_found: playersFound, errors: errors.slice(0, 10) });
     }
 
+    if (action === "debug_post") {
+      const res = await fetch(String(body.url), {
+        method: "POST",
+        headers: { "User-Agent": UA, "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(body.form ?? {}),
+      });
+      const html = await res.text();
+      return json({ status: res.status, length: html.length, snippet: html.slice(0, 5000) });
+    }
+
     if (action === "debug_fetch") {
       const html = await fetchHtml(String(body.url));
       const links = [...new Set([...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]))].slice(0, 200);

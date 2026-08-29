@@ -34,6 +34,12 @@ interface HomeClubOption {
   name: string;
 }
 
+/** Display label for a visitor's home club, tolerating cleared values. */
+function visitorHomeLabel(v: Visitor): string {
+  const n = (v.home_club_name || "").trim();
+  return n && n.toLowerCase() !== "visitor" ? n : "Visitor";
+}
+
 export function VisitorsTab({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
   const { data: clubData } = useMyClub();

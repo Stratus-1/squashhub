@@ -657,22 +657,19 @@ export default function ClubAuth() {
     // and steer the person onto their existing record instead of a new one.
     if (club?.id) {
       try {
-        const { data: matches } = await (supabase as any).rpc("find_existing_club_member", {
+        const { data: matches } = await (supabase as any).rpc("check_member_duplicate_hint", {
           _club_id: club.id,
           _name: name,
           _email: email,
           _phone: phone || "",
-          _id_number: "",
-          _league_number: "",
         });
         const hits = (matches || []) as Array<{
-          member_name: string; club_member_number: string | null; match_kind: string; is_claimed: boolean;
+          masked_name: string; match_kind: string; is_claimed: boolean;
         }>;
         const unclaimed = hits.find((h) => !h.is_claimed);
         if (unclaimed) {
           const ok = window.confirm(
-            `${club.name} already has a player record for ${unclaimed.member_name}` +
-            `${unclaimed.club_member_number ? ` (member no. ${unclaimed.club_member_number})` : ""}, ` +
+            `${club.name} already has a player record for ${unclaimed.masked_name}, ` +
             `which nobody has signed in with yet.\n\n` +
             `Click OK to create your login and link it to that existing record — your history and member number stay intact. ` +
             `Click Cancel to stop.`,
@@ -681,7 +678,7 @@ export default function ClubAuth() {
         } else if (hits.length > 0) {
           const ok = window.confirm(
             `${club.name} already has ${hits.length} member${hits.length === 1 ? "" : "s"} matching your details ` +
-            `(${hits.map((h) => h.member_name).slice(0, 3).join(", ")}). If that's you, please sign in instead.\n\n` +
+            `(${hits.map((h) => h.masked_name).slice(0, 3).join(", ")}). If that's you, please sign in instead.\n\n` +
             `Continue creating a brand new account anyway?`,
           );
           if (!ok) return;

@@ -551,6 +551,17 @@ export function FederationTreeTab() {
                       size="sm"
                       variant="outline"
                       className="h-7 text-xs"
+                      disabled={scrapeClubMembers.isPending}
+                      onClick={() => scrapeClubMembers.mutate({ orgId: org.id })}
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${scrapeClubMembers.isPending ? "animate-spin" : ""}`} />
+                      {scrapeClubMembers.isPending ? "Scraping…" : "Scrape players"}
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
                       disabled={enrichMembers.isPending}
                       onClick={() => enrichMembers.mutate({ orgId: org.id })}
                     >

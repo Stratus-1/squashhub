@@ -451,6 +451,8 @@ export default function Bookings() {
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const { data: clubData } = useMyClub();
   const bookingClubId = clubData?.club?.id;
+  /** Visitors are local guests unless the club opted back into home clubs. */
+  const showVisitorHomeClub = !!(clubData?.club as any)?.visitor_home_clubs_enabled;
   const { data: bookings, isLoading } = useBookings(dateStr, bookingClubId);
   const [terminatingSession, setTerminatingSession] = useState(false);
   const [transferDialog, setTransferDialog] = useState<{ sessionId: string; currentCourtId: number } | null>(null);
@@ -2333,18 +2335,22 @@ export default function Bookings() {
                           <CommandEmpty>No visitors registered yet.</CommandEmpty>
                           <CommandGroup>
                             {clubVisitors.map((v) => {
-                              const val = `${v.first_name} ${v.last_name} (${v.home_club_name})`;
+                              const home = (v.home_club_name || "").trim();
+                              const showHome = showVisitorHomeClub && home && home.toLowerCase() !== "visitor";
+                              const val = showHome
+                                ? `${v.first_name} ${v.last_name} (${home})`
+                                : `${v.first_name} ${v.last_name}`;
                               return (
                                 <CommandItem
                                   key={v.id}
-                                  value={`${v.first_name} ${v.last_name} ${v.home_club_name}`}
+                                  value={`${v.first_name} ${v.last_name} ${showHome ? home : ""}`}
                                   onSelect={() => {
                                     setBookingDialog((s) => (s ? { ...s, guestName: val } : s));
                                     setVisitorSearchOpen(false);
                                   }}
                                 >
                                   <Check className={cn("mr-2 h-4 w-4", bookingDialog.guestName === val ? "opacity-100" : "opacity-0")} />
-                                  {v.first_name} {v.last_name} · {v.home_club_name}
+                                  {v.first_name} {v.last_name}{showHome ? ` · ${home}` : ""}
                                 </CommandItem>
                               );
                             })}

@@ -453,8 +453,8 @@ export default function Home() {
                 <Button size="lg" onClick={() => navigate("/lights")} className="rounded-full bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold">
                   <Zap className="w-4 h-4 mr-1.5" /> Explore Lights & Access
                 </Button>
-                <Button size="lg" onClick={() => navigate("/auth")} variant="outline" className="rounded-full border-slate-900/25 text-slate-900 hover:bg-slate-900/5 hover:text-slate-900 dark:border-white/30 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
-                  Register Your Club
+                <Button size="lg" onClick={() => navigate("/register-club")} variant="outline" className="rounded-full border-slate-900/25 text-slate-900 hover:bg-slate-900/5 hover:text-slate-900 dark:border-white/30 dark:text-white dark:hover:bg-white/10 dark:hover:text-white">
+                  Register
                 </Button>
               </div>
             </div>

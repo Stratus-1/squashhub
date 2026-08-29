@@ -496,7 +496,7 @@ export default function Challenges() {
           <div className="mt-3 flex gap-2">
             {showResult && isChallenger && (
               <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => handleEnterResult(c)}>
-                <Trophy className="w-3.5 h-3.5 mr-1" /> Enter Result
+                <Trophy className="w-3.5 h-3.5 mr-1" /> Enter your result
               </Button>
             )}
             {showResult && !isChallenger && (

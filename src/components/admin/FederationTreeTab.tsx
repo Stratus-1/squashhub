@@ -327,6 +327,15 @@ export function FederationTreeTab() {
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${scrapeNational.isPending ? "animate-spin" : ""}`} />
               {scrapeNational.isPending ? "Refreshing…" : "Refresh national tree (SSA)"}
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => promoteAllAssociations.mutate()}
+              disabled={promoteAllAssociations.isPending}
+            >
+              <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
+              {promoteAllAssociations.isPending ? "Adding…" : "Add all associations to the tree"}
+            </Button>
           </div>
           {(runs ?? []).length > 0 && (
             <div className="text-xs text-muted-foreground space-y-0.5">

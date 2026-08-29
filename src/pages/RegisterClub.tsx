@@ -52,7 +52,7 @@ function initialsSlug(name: string): string {
 }
 
 export default function RegisterClub() {
-  const { user, signUp } = useAuth();
+  const { user, loading: authLoading, signUp } = useAuth();
   const navigate = useNavigate();
   const captchaRef = useRef<HCaptchaHandle>(null);
   const { data: existing, isLoading } = useMyClub();
@@ -153,7 +153,7 @@ export default function RegisterClub() {
   }, [claimSlug]);
 
   useEffect(() => {
-    if (!claimSlug || claimHandled.current || user === undefined) return;
+    if (!claimSlug || claimHandled.current || authLoading) return;
     const match = results.find((r) => r.subdomain === claimSlug);
     if (!match) return;
     claimHandled.current = true;

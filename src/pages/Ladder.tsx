@@ -386,10 +386,6 @@ export default function Ladder() {
     if (!user?.id) return "You must be logged in.";
     if (isMe(player)) return null; // hide button for self
     if (!myMemberId) return "Your account is not linked to a club member.";
-    if (!myPosition) return "You are not ranked on the ladder yet.";
-
-    // Gender must match — men challenge men, ladies challenge ladies
-    if (getPlayerGenderGroup(player) !== myGenderGroup) return null; // hide button for other gender
 
     const opponentPos =
       positionMap.get(player.club_member_id) ??
@@ -397,14 +393,16 @@ export default function Ladder() {
       positionMap.get(player.id) ??
       null;
 
-    if (!opponentPos) return "This player is not ranked.";
-    if (myPosition <= opponentPos) return "You may only challenge players above you.";
-
-    const diff = myPosition - opponentPos;
-    if (diff > challengeLevelsUp) return `You can only challenge up to ${challengeLevelsUp} positions above you.`;
-
-    return null;
+    const result = evaluateChallenge({
+      config,
+      myPosition,
+      opponentPosition: opponentPos,
+      sameGenderGroup: getPlayerGenderGroup(player) === myGenderGroup,
+      myOpenOutgoing,
+    });
+    return result.allowed ? null : result.reason;
   };
+
 
   const isChallengeable = (player: LadderPlayer): boolean => {
     if (!user?.id || isMe(player)) return false;

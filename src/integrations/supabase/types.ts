@@ -11231,6 +11231,7 @@ export type Database = {
           knockout_seeds_at: string | null
           league_best_of: Json | null
           league_bye_handling: Json | null
+          league_draw_styles: Json
           league_forfeit_points: Json | null
           league_forfeit_rules: Json | null
           league_formats: Json | null
@@ -11315,6 +11316,7 @@ export type Database = {
           knockout_seeds_at?: string | null
           league_best_of?: Json | null
           league_bye_handling?: Json | null
+          league_draw_styles?: Json
           league_forfeit_points?: Json | null
           league_forfeit_rules?: Json | null
           league_formats?: Json | null
@@ -11399,6 +11401,7 @@ export type Database = {
           knockout_seeds_at?: string | null
           league_best_of?: Json | null
           league_bye_handling?: Json | null
+          league_draw_styles?: Json
           league_forfeit_points?: Json | null
           league_forfeit_rules?: Json | null
           league_formats?: Json | null
@@ -12814,6 +12817,7 @@ export type Database = {
         Returns: boolean
       }
       is_public_club_document: { Args: { _path: string }; Returns: boolean }
+      is_rankable_member: { Args: { _member_id: string }; Returns: boolean }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
       ladder_pyramid_row: {
         Args: { _position: number; _row_sizes?: Json }

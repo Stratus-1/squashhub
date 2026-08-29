@@ -32,6 +32,8 @@ import {
   type KnockoutSeed,
   type SectionAssignment,
 } from "./knockout";
+import { buildGraduatedFirstRound, type DrawStyle } from "./graduated";
+
 
 export interface DrawEntrant {
   id: string;

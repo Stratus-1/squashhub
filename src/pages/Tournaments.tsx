@@ -892,7 +892,7 @@ export default function Tournaments() {
               title="Capture the score of a match that has already been played"
               onClick={(e) => { e.stopPropagation(); setResultMatch(m); }}
             >
-              <ClipboardCheck className="w-3 h-3" /> Enter Result
+              <ClipboardCheck className="w-3 h-3" /> Enter your result
             </Button>
           );
         })()}

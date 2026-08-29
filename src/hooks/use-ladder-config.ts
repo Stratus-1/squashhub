@@ -25,6 +25,16 @@ function normalise(row: any): LadderConfig {
       row.ranking_sync_mode === "mirror" ? "mirror" : row.ranking_sync_mode === "none" ? "none" : "formula",
     ranking_mirror_margin: Number(row.ranking_mirror_margin ?? 1),
     ranking_auto_approve: !!row.ranking_auto_approve,
+    ladder_from_leagues: row.ladder_from_leagues !== false,
+    ladder_from_tournaments: row.ladder_from_tournaments !== false,
+    league_movement_policy:
+      row.league_movement_policy === "swap" || row.league_movement_policy === "insert"
+        ? row.league_movement_policy
+        : null,
+    tournament_movement_policy:
+      row.tournament_movement_policy === "swap" || row.tournament_movement_policy === "insert"
+        ? row.tournament_movement_policy
+        : null,
     is_active: row.is_active !== false,
   };
 }

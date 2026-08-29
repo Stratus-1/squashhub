@@ -13539,6 +13539,10 @@ export type Database = {
         Args: { _create_tenants?: boolean }
         Returns: number
       }
+      promote_all_sportyhq_clubs: {
+        Args: { _limit?: number; _parent_key?: string }
+        Returns: number
+      }
       promote_sportyhq_association: {
         Args: { _create_tenant?: boolean; _org_id: string }
         Returns: string

@@ -1,8 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, History } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Loader2, History, Undo2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -10,6 +12,8 @@ interface Props {
   clubId: string;
   memberId: string | null;
   memberName?: string | null;
+  /** Club admins may reverse an award straight from the history. */
+  canManage?: boolean;
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -19,17 +23,19 @@ const SOURCE_LABEL: Record<string, string> = {
   match: "Club match",
   manual: "Manual adjustment",
   seed: "Opening balance",
+  reversal: "Reversal",
 };
 
 /** "Where my points came from" — the full ranking transactions history for one member. */
-export function RankingLedgerDialog({ open, onOpenChange, clubId, memberId, memberName }: Props) {
-  const { data: rows = [], isLoading } = useQuery({
+export function RankingLedgerDialog({ open, onOpenChange, clubId, memberId, memberName, canManage }: Props) {
+  const queryClient = useQueryClient();
+  const { data: rows = [], isLoading, refetch } = useQuery({
     queryKey: ["ranking-ledger", clubId, memberId],
     enabled: open && !!memberId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ranking_points_ledger" as any)
-        .select("id, created_at, delta, balance_after, reason, source_type, source_id")
+        .select("id, created_at, delta, balance_after, reason, source_type, source_id, pending_id")
         .eq("club_id", clubId)
         .eq("member_id", memberId!)
         .order("created_at", { ascending: false })
@@ -38,6 +44,27 @@ export function RankingLedgerDialog({ open, onOpenChange, clubId, memberId, memb
       return (data || []) as any[];
     },
   });
+
+  const reversedPendingIds = new Set(
+    rows.filter((r) => r.source_type === "reversal" && r.pending_id).map((r) => r.pending_id as string),
+  );
+
+  const reverse = async (pendingId: string) => {
+    const why = prompt("Why is this award being reversed?");
+    if (why === null) return;
+    try {
+      const { error } = await (supabase as any).rpc("reverse_ranking_points_pending", {
+        _pending_id: pendingId,
+        _reason: why.trim() || null,
+      });
+      if (error) throw error;
+      toast.success("Award reversed — both players were corrected.");
+      await refetch();
+      queryClient.invalidateQueries({ queryKey: ["ranking-points-leaderboard", clubId] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not reverse this award");
+    }
+  };
 
   const earned = rows.filter((r) => Number(r.delta) > 0).reduce((s, r) => s + Number(r.delta), 0);
   const lost = rows.filter((r) => Number(r.delta) < 0).reduce((s, r) => s + Number(r.delta), 0);
@@ -84,6 +111,16 @@ export function RankingLedgerDialog({ open, onOpenChange, clubId, memberId, memb
                         </span>
                       </div>
                       <p className="text-xs mt-0.5 break-words">{r.reason}</p>
+                      {canManage && r.pending_id && r.source_type !== "reversal" && !reversedPendingIds.has(r.pending_id) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-1.5 mt-1 text-[11px] text-muted-foreground"
+                          onClick={() => reverse(r.pending_id as string)}
+                        >
+                          <Undo2 className="w-3 h-3 mr-1" /> Reverse
+                        </Button>
+                      )}
                     </div>
                     <div className="shrink-0 text-right tabular-nums">
                       <div className={`text-sm font-semibold ${delta > 0 ? "text-emerald-600" : delta < 0 ? "text-destructive" : "text-muted-foreground"}`}>

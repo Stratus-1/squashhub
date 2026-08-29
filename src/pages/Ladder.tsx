@@ -25,6 +25,10 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { BarChart3 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { useLadderConfig } from "@/hooks/use-ladder-config";
+import { DEFAULT_LADDER_CONFIG, describeLadderRule, evaluateChallenge } from "@/lib/ladder/eligibility";
+import { PyramidLadder, type PyramidEntry } from "@/components/ladder/PyramidLadder";
+
 
 function RankingTabs({
   pyramidContent,
@@ -323,9 +327,27 @@ export default function Ladder() {
     return null;
   }, [positionMap, myMemberId, user?.id]);
 
-  const challengeLevelsUp = (clubData?.club as any)?.challenge_levels_up ?? 2;
+  const { data: ladderConfig } = useLadderConfig(clubId);
+  const config = ladderConfig || DEFAULT_LADDER_CONFIG;
+  const challengeLevelsUp = config.challenge_levels_up;
   const mixedLadderEnabled = !!(clubData?.club as any)?.mixed_ladder_enabled;
   const allPlayers = useMemo(() => (players || []) as LadderPlayer[], [players]);
+
+  // How many open challenges I already have (drives the same limit the DB enforces)
+  const { data: myOpenOutgoing = 0 } = useQuery({
+    queryKey: ["ladder-open-outgoing", myMemberId],
+    enabled: !!myMemberId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("challenges")
+        .select("id", { count: "exact", head: true })
+        .eq("challenger_member_id", myMemberId!)
+        .in("status", ["pending", "accepted"]);
+      return count || 0;
+    },
+  });
+
 
   const isMe = (player: LadderPlayer): boolean => {
     if (myMemberId && player.club_member_id === myMemberId) return true;
@@ -368,10 +390,6 @@ export default function Ladder() {
     if (!user?.id) return "You must be logged in.";
     if (isMe(player)) return null; // hide button for self
     if (!myMemberId) return "Your account is not linked to a club member.";
-    if (!myPosition) return "You are not ranked on the ladder yet.";
-
-    // Gender must match — men challenge men, ladies challenge ladies
-    if (getPlayerGenderGroup(player) !== myGenderGroup) return null; // hide button for other gender
 
     const opponentPos =
       positionMap.get(player.club_member_id) ??
@@ -379,20 +397,33 @@ export default function Ladder() {
       positionMap.get(player.id) ??
       null;
 
-    if (!opponentPos) return "This player is not ranked.";
-    if (myPosition <= opponentPos) return "You may only challenge players above you.";
-
-    const diff = myPosition - opponentPos;
-    if (diff > challengeLevelsUp) return `You can only challenge up to ${challengeLevelsUp} positions above you.`;
-
-    return null;
+    const result = evaluateChallenge({
+      config,
+      myPosition,
+      opponentPosition: opponentPos,
+      sameGenderGroup: getPlayerGenderGroup(player) === myGenderGroup,
+      myOpenOutgoing,
+    });
+    return result.allowed ? null : result.reason;
   };
+
 
   const isChallengeable = (player: LadderPlayer): boolean => {
-    if (!user?.id || isMe(player)) return false;
-    if (getPlayerGenderGroup(player) !== myGenderGroup) return false;
-    return canChallenge(player) === null;
+    if (!user?.id || isMe(player) || !myMemberId) return false;
+    const opponentPos =
+      positionMap.get(player.club_member_id) ??
+      positionMap.get(player.user_id || "") ??
+      positionMap.get(player.id) ??
+      null;
+    return evaluateChallenge({
+      config,
+      myPosition,
+      opponentPosition: opponentPos,
+      sameGenderGroup: getPlayerGenderGroup(player) === myGenderGroup,
+      myOpenOutgoing,
+    }).allowed;
   };
+
 
   const handleChallengeClick = (player: LadderPlayer) => {
     const reason = canChallenge(player);
@@ -450,9 +481,37 @@ export default function Ladder() {
     );
   };
 
+  const renderPyramid = (title: string, list: LadderPlayer[]) => {
+    const filtered = applyFilter(list);
+    const entries: PyramidEntry[] = filtered.map((p, i) => ({
+      key: p.id,
+      position: i + 1,
+      name: p.name,
+      isMe: isMe(p),
+      challengeable: isChallengeable(p),
+    }));
+    const byKey = new Map(filtered.map((p) => [p.id, p]));
+    return (
+      <PyramidLadder
+        title={title}
+        entries={entries}
+        rowSizes={config.pyramid_row_sizes}
+        onSelect={(e) => {
+          const player = byKey.get(e.key);
+          if (!player) return;
+          if (isMe(player)) { navigate("/profile"); return; }
+          if (isChallengeable(player)) handleChallengeClick(player);
+          else navigate(`/players/${player.id}`);
+        }}
+      />
+    );
+  };
+
   const renderColumn = (title: string, list: LadderPlayer[]) => {
+    if (config.format === "pyramid") return renderPyramid(title, list);
     const filtered = applyFilter(list);
     return (
+
       <div>
         <h2 className="text-sm font-heading font-bold text-foreground mb-2 uppercase tracking-wide">
           {title}
@@ -555,7 +614,7 @@ export default function Ladder() {
       <SEO title="Player Ladder" description="See the latest squash ladder rankings." path="/ladder" noIndex />
       <PageHeader
         title="Player Ladder"
-        subtitle={`${(players || []).length} players ranked`}
+        subtitle={`${(players || []).length} players ranked · ${describeLadderRule(config)}`}
       />
 
       {/* Controls: filter chip + group toggle */}

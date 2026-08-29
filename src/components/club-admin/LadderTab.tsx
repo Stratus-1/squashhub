@@ -29,6 +29,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { LadderConfigCard } from "@/components/club-admin/LadderConfigCard";
+
 
 interface LadderMember {
   id: string;
@@ -412,18 +414,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
     enabled: !!clubId,
   });
   const mixedEnabled = !!clubFlags?.mixed_ladder_enabled;
-  const [challengeLevelsUp, setChallengeLevelsUp] = useState<number>(2);
-  useEffect(() => {
-    if (clubFlags?.challenge_levels_up != null) setChallengeLevelsUp(clubFlags.challenge_levels_up);
-  }, [clubFlags?.challenge_levels_up]);
-  const saveChallengeLevels = async (value: number) => {
-    setChallengeLevelsUp(value);
-    const { error } = await supabase.from("clubs").update({ challenge_levels_up: value }).eq("id", clubId);
-    if (error) { toast.error(error.message); return; }
-    queryClient.invalidateQueries({ queryKey: ["club-ladder-flags", clubId] });
-    queryClient.invalidateQueries({ queryKey: ["my-club"] });
-    toast.success("Challenge rule saved");
-  };
+  // Challenge rules now live in ladder_configs (see LadderConfigCard).
+
 
   // Load club's league associations (LS, NIL, ...)
   const { data: leagues = [] } = useQuery({
@@ -580,26 +572,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-6">
-      <Card className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold text-sm">Challenge Rules</h3>
-        </div>
-        <p className="text-xs text-muted-foreground">How many ladder positions up can a player challenge?</p>
-        <div className="flex items-center gap-3">
-          <Input
-            type="number"
-            min={1}
-            max={10}
-            value={challengeLevelsUp}
-            onChange={(e) => saveChallengeLevels(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
-            className="w-24 h-9"
-          />
-          <p className="text-xs text-muted-foreground">
-            Players can challenge up to <span className="font-semibold text-foreground">{challengeLevelsUp}</span> position{challengeLevelsUp !== 1 ? "s" : ""} above them.
-          </p>
-        </div>
-      </Card>
+      <LadderConfigCard clubId={clubId} />
+
 
       <Card className="p-3 flex items-center gap-3">
         <Users className="w-4 h-4 text-primary shrink-0" />

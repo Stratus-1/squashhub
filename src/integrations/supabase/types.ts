@@ -5562,6 +5562,71 @@ export type Database = {
           },
         ]
       }
+      ladder_configs: {
+        Row: {
+          accept_deadline_hours: number
+          activated_at: string | null
+          affects_club_ranking: boolean
+          challenge_levels_up: number
+          club_id: string
+          complete_deadline_days: number
+          created_at: string
+          format: string
+          id: string
+          is_active: boolean
+          max_active_incoming: number
+          max_active_outgoing: number
+          movement_policy: string
+          pyramid_row_sizes: Json | null
+          rematch_cooldown_days: number
+          updated_at: string
+        }
+        Insert: {
+          accept_deadline_hours?: number
+          activated_at?: string | null
+          affects_club_ranking?: boolean
+          challenge_levels_up?: number
+          club_id: string
+          complete_deadline_days?: number
+          created_at?: string
+          format?: string
+          id?: string
+          is_active?: boolean
+          max_active_incoming?: number
+          max_active_outgoing?: number
+          movement_policy?: string
+          pyramid_row_sizes?: Json | null
+          rematch_cooldown_days?: number
+          updated_at?: string
+        }
+        Update: {
+          accept_deadline_hours?: number
+          activated_at?: string | null
+          affects_club_ranking?: boolean
+          challenge_levels_up?: number
+          club_id?: string
+          complete_deadline_days?: number
+          created_at?: string
+          format?: string
+          id?: string
+          is_active?: boolean
+          max_active_incoming?: number
+          max_active_outgoing?: number
+          movement_policy?: string
+          pyramid_row_sizes?: Json | null
+          rematch_cooldown_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_configs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_association_national_bodies: {
         Row: {
           active: boolean
@@ -12552,6 +12617,10 @@ export type Database = {
       }
       is_public_club_document: { Args: { _path: string }; Returns: boolean }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
+      ladder_pyramid_row: {
+        Args: { _position: number; _row_sizes?: Json }
+        Returns: number
+      }
       list_doubles_partner_options: {
         Args: {
           p_champ_id: string

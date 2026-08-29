@@ -30,6 +30,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { LadderConfigCard } from "@/components/club-admin/LadderConfigCard";
+import { LadderPendingMovesCard } from "@/components/club-admin/LadderPendingMovesCard";
 
 
 interface LadderMember {
@@ -572,6 +573,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-6">
+      <LadderPendingMovesCard clubId={clubId} />
+
       <LadderConfigCard clubId={clubId} />
 
 

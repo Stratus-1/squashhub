@@ -189,6 +189,38 @@ export function FederationTreeTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const promoteAssociation = useMutation({
+    mutationFn: async (org: StagedOrg) => {
+      const { error } = await (supabase as any).rpc("promote_sportyhq_association", {
+        _org_id: org.id,
+        _create_tenant: true,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+      qc.invalidateQueries({ queryKey: ["fed-associations"] });
+      toast.success("Association added to the tree with its own web address");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const promoteAllAssociations = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await (supabase as any).rpc("promote_all_sportyhq_associations", {
+        _create_tenants: true,
+      });
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+      qc.invalidateQueries({ queryKey: ["fed-associations"] });
+      toast.success(`${n} associations added to the tree, each with its own web address`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const promoteMember = useMutation({
     mutationFn: async (m: StagedMember) => {
       const { error } = await supabase.rpc("promote_sportyhq_org_member", { _member_id: m.id });

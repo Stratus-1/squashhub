@@ -123,7 +123,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         // happens to match a row here.
         if (myMembership && user.email) {
           const { data: emailMembers, error: emailErr } = await fromExt("club_members")
-            .select("id, name, email, club_member_number, gender, user_id")
+            .select("id, name, email, club_member_number, gender, user_id, person_id")
             .eq("club_id", club.id)
             .eq("email", user.email.toLowerCase())
             .order("joined_at", { ascending: true });

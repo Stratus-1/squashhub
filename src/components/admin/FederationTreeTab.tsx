@@ -35,7 +35,17 @@ type StagedMember = {
   matched_club_member_id: string | null;
   match_confidence: string | null;
   status: string;
+  gender?: string | null;
+  birthday?: string | null;
+  age?: number | null;
+  nationality?: string | null;
+  handedness?: string | null;
+  rating?: number | null;
+  matches_all_time?: number | null;
+  wins_all_time?: number | null;
+  profile_fetched_at?: string | null;
 };
+
 
 const statusBadge = (status: string, confidence?: string | null) => {
   if (status === "promoted") return <Badge className="bg-green-600 text-white">Promoted</Badge>;

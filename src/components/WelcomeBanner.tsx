@@ -75,7 +75,7 @@ export function WelcomeBanner() {
     if (below.length > 0) return below[0];
 
     return null;
-  }, [dismissed, ladder, activeMemberId, challengeLevelsUp]);
+  }, [dismissed, ladder, activeMemberId, challengeLevelsUp, clubData?.club]);
 
   const handleDismiss = () => {
     setDismissed(true);

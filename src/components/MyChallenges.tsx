@@ -52,7 +52,7 @@ export function MyChallenges() {
       .filter((p: any) => p.ladder_position > me.ladder_position && p.ladder_position - me.ladder_position <= GAP)
       .sort((a: any, b: any) => a.ladder_position - b.ladder_position);
     return below[0] || null;
-  }, [ladder, memberId, challengeLevelsUp]);
+  }, [ladder, memberId, challengeLevelsUp, clubData?.club]);
 
   if (!memberId) return null;
   if (active.length === 0 && !suggested) return null;

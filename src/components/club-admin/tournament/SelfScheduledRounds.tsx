@@ -44,6 +44,13 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
 
   const patch = (p: Partial<RoundDeadline>) => onChange(patchRound(ensureRound(deadlines, current, stage), current, p));
 
+  const nextNumber = current + 1;
+  const nextRemaining = remaining !== null ? remaining - 1 : null;
+  const nextStage = roundStageLabel(nextNumber, nextRemaining);
+  const nextRow = deadlines[nextNumber - 1] || { label: "", date: "" };
+  const patchNext = (p: Partial<RoundDeadline>) =>
+    onChange(patchRound(ensureRound(deadlines, nextNumber, nextStage), nextNumber, p));
+
   return (
     <div className="space-y-3">
       {played.length > 0 && (

@@ -175,6 +175,7 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
           <span>Matchups for later rounds unlock as each round finishes — no need to plan the whole draw upfront.</span>
         </div>
       </div>
+      )}
     </div>
   );
 }

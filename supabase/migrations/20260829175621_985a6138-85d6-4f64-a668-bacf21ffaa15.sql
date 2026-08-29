@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.sportyhq_org_members_org_slug_key; ALTER TABLE public.sportyhq_org_members ADD CONSTRAINT sportyhq_org_members_org_slug_key UNIQUE (org_id, ranking_slug);

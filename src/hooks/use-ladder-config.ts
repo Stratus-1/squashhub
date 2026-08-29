@@ -21,6 +21,10 @@ function normalise(row: any): LadderConfig {
     rematch_cooldown_days: Number(row.rematch_cooldown_days ?? 0),
     movement_policy: row.movement_policy === "insert" ? "insert" : "swap",
     affects_club_ranking: !!row.affects_club_ranking,
+    ranking_sync_mode:
+      row.ranking_sync_mode === "mirror" ? "mirror" : row.ranking_sync_mode === "none" ? "none" : "formula",
+    ranking_mirror_margin: Number(row.ranking_mirror_margin ?? 1),
+    ranking_auto_approve: !!row.ranking_auto_approve,
     is_active: row.is_active !== false,
   };
 }

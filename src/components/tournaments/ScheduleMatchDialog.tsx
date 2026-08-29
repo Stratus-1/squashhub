@@ -142,6 +142,8 @@ export function ScheduleMatchDialog({
   );
 
   const alreadyScheduled = !!match && fixtureScheduleState(match) === "scheduled";
+  const pastPlayBy = !!match?.play_by && date > String(match.play_by).slice(0, 10);
+
 
   const freeSlots = useMemo(() => {
     if (!courtId) return [];

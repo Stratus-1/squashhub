@@ -54,6 +54,9 @@ export function FederationTreeTab() {
   const [groupId, setGroupId] = useState("");
   const [associationId, setAssociationId] = useState<string>("");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [showIgnored, setShowIgnored] = useState(false);
   const [linkClubId, setLinkClubId] = useState<Record<string, string>>({});
 
   const { data: associations } = useQuery({

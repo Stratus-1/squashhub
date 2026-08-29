@@ -1489,6 +1489,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
+  // null = follow the club's ladder setting; true/false = override for this event only.
+  const [ladderAffects, setLadderAffects] = useState<boolean | null>(null);
   // Tournament category / capacity / seeding — stored on the tournaments row.
   const [eventType, setEventType] = useState<string>(scope === "club" ? "club_championship" : "open_tournament");
   useEffect(() => {
@@ -2332,6 +2334,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
       affects_ranking_points: affectsRankingPoints,
+      ladder_affects: ladderAffects,
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
       schedule_mode: scheduleMode,
@@ -4519,6 +4522,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
             affects_ranking_points: affectsRankingPoints,
+            ladder_affects: ladderAffects,
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
             schedule_mode: scheduleMode,
@@ -4598,6 +4602,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
             affects_ranking_points: affectsRankingPoints,
+            ladder_affects: ladderAffects,
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
             schedule_mode: scheduleMode,
@@ -6015,6 +6020,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteScheduledAt("");
     setDescription("");
     setAffectsRankingPoints(false);
+    setLadderAffects(null);
     setEventType(scope === "club" ? "club_championship" : "open_tournament");
     setEligibilityScope(scope === "club" ? "club" : "open");
     setMaxEntrants("");
@@ -6143,6 +6149,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
+    setLadderAffects(
+      (champ as any).ladder_affects === null || (champ as any).ladder_affects === undefined
+        ? null
+        : !!(champ as any).ladder_affects,
+    );
     const ex = (tournamentExtras || {})[champ.id] || {};
     setEventType(normaliseEventType(ex.event_type, scope));
     setMaxEntrants(ex.max_entrants ? String(ex.max_entrants) : "");
@@ -9490,6 +9501,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   </p>
                 </div>
                 <Switch checked={affectsRankingPoints} onCheckedChange={setAffectsRankingPoints} />
+              </div>
+
+              <div className="rounded-md border bg-muted/30 px-3 py-2 mt-2 space-y-1">
+                <Label className="text-xs font-medium">Do results move the club ladder?</Label>
+                <Select
+                  value={ladderAffects === null ? "inherit" : ladderAffects ? "on" : "off"}
+                  onValueChange={(v) => setLadderAffects(v === "inherit" ? null : v === "on")}
+                >
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inherit">Use the club ladder setting</SelectItem>
+                    <SelectItem value="on">Yes — move the ladder</SelectItem>
+                    <SelectItem value="off">No — leave the ladder alone</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Only club-mate singles results between two ranked members can move the ladder.
+                </p>
               </div>
 
             </div>

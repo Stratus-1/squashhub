@@ -180,6 +180,64 @@ export function LadderConfigCard({ clubId }: Props) {
         </div>
       )}
 
+      <div className="rounded-md border p-3 space-y-3">
+        <div>
+          <p className="text-sm font-medium">Results that move the ladder</p>
+          <p className="text-[11px] text-muted-foreground">
+            Besides challenges, club-mate results from these competitions can move the ladder — only when the
+            lower-ranked player wins, and only between two ranked members of the same ladder group.
+          </p>
+        </div>
+
+        {([
+          {
+            key: "ladder_from_leagues",
+            move: "league_movement_policy",
+            title: "League games",
+            hint: "Club-mate rubbers only. Games against another club never move your ladder.",
+          },
+          {
+            key: "ladder_from_tournaments",
+            move: "tournament_movement_policy",
+            title: "Championships & tournaments",
+            hint: "Singles results only. Each event can still be switched off in its own settings.",
+          },
+        ] as const).map((row) => (
+          <div key={row.key} className="rounded-md border p-2.5 space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold">{row.title}</p>
+                <p className="text-[10px] text-muted-foreground">{row.hint}</p>
+              </div>
+              <Switch
+                checked={draft[row.key]}
+                onCheckedChange={(v) => set(row.key, v)}
+              />
+            </div>
+            {draft[row.key] && (
+              <div className="space-y-1">
+                <Label className="text-xs">When the lower-ranked player wins</Label>
+                <Select
+                  value={draft[row.move] ?? "inherit"}
+                  onValueChange={(v) =>
+                    set(row.move, (v === "inherit" ? null : v) as LadderConfig["league_movement_policy"])
+                  }
+                >
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inherit">
+                      Same as challenges ({draft.movement_policy === "swap" ? "swap" : "take the spot"})
+                    </SelectItem>
+                    <SelectItem value="swap">Swap the two positions</SelectItem>
+                    <SelectItem value="insert">Take the spot, others move down</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
       <div className="flex items-center gap-3 rounded-md border p-3">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Challenges open</p>
@@ -189,6 +247,7 @@ export function LadderConfigCard({ clubId }: Props) {
         </div>
         <Switch checked={draft.is_active} onCheckedChange={(v) => set("is_active", v)} />
       </div>
+
 
       <div className="flex justify-end gap-2">
         {dirty && (

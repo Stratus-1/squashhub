@@ -27,6 +27,14 @@ export interface LadderConfig {
   ranking_mirror_margin: number;
   /** Post challenge points immediately instead of queuing for admin approval. */
   ranking_auto_approve: boolean;
+  /** League rubbers between two ranked club members may move the ladder. */
+  ladder_from_leagues: boolean;
+  /** Championship / tournament results between two ranked club members may move the ladder. */
+  ladder_from_tournaments: boolean;
+  /** Movement style for league results. null = inherit `movement_policy`. */
+  league_movement_policy: "swap" | "insert" | null;
+  /** Movement style for championship / tournament results. null = inherit `movement_policy`. */
+  tournament_movement_policy: "swap" | "insert" | null;
   is_active: boolean;
 }
 
@@ -44,6 +52,10 @@ export const DEFAULT_LADDER_CONFIG: LadderConfig = {
   ranking_sync_mode: "formula",
   ranking_mirror_margin: 1,
   ranking_auto_approve: false,
+  ladder_from_leagues: true,
+  ladder_from_tournaments: true,
+  league_movement_policy: null,
+  tournament_movement_policy: null,
   is_active: true,
 };
 

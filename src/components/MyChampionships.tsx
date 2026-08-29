@@ -296,7 +296,7 @@ export function MyChampionships() {
                                 setScheduling({ match: m, opponent, champ });
                               }}
                             >
-                              Schedule match
+                              Make your court booking
                             </Button>
                           ) : (
                             <p className="text-[11px] text-muted-foreground">{perm.reason}</p>
@@ -311,7 +311,7 @@ export function MyChampionships() {
                                 navigate(markerRoute(m.id));
                               }}
                             >
-                              Set Up & Mark Game
+                              Mark game point by point
                             </Button>
                           )}
                           {resultPerm.allowed && (
@@ -321,7 +321,7 @@ export function MyChampionships() {
                               className="h-6 text-[11px]"
                               onClick={openResult}
                             >
-                              Enter Result
+                              Enter your result
                             </Button>
                           )}
                         </div>

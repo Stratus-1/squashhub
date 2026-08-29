@@ -13,10 +13,10 @@ describe("SelfScheduledRounds panel", () => {
       />,
     );
     expect(screen.getByText(/Current round: Round 1/)).toBeTruthy();
-    expect(screen.getByText(/Must be played by/)).toBeTruthy();
+    expect(screen.getAllByText(/Must be played by/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/court/i)?.textContent || "").not.toMatch(/Courts used/);
     // Later rounds are locked, not configurable.
-    expect(screen.getByText(/Later rounds are not set up yet/)).toBeTruthy();
+    expect(screen.getByText(/Plan ahead/)).toBeTruthy();
     // No club-scheduled switch this early in the draw.
     expect(screen.queryByText(/Club schedules this stage/)).toBeNull();
   });

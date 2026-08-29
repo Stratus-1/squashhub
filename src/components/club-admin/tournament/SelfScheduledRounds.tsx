@@ -44,6 +44,13 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
 
   const patch = (p: Partial<RoundDeadline>) => onChange(patchRound(ensureRound(deadlines, current, stage), current, p));
 
+  const nextNumber = current + 1;
+  const nextRemaining = remaining !== null ? remaining - 1 : null;
+  const nextStage = roundStageLabel(nextNumber, nextRemaining);
+  const nextRow = deadlines[nextNumber - 1] || { label: "", date: "" };
+  const patchNext = (p: Partial<RoundDeadline>) =>
+    onChange(patchRound(ensureRound(deadlines, nextNumber, nextStage), nextNumber, p));
+
   return (
     <div className="space-y-3">
       {played.length > 0 && (
@@ -134,14 +141,41 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
         )}
       </div>
 
-      <div className="flex items-start gap-2 rounded-lg border border-dashed p-3 text-[11px] text-muted-foreground">
-        <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-        <span>
-          Later rounds are not set up yet. Once{" "}
-          <strong>{row.label?.trim() || stage}</strong> is complete the next round is generated from the
-          winners and you can set its deadline here — no need to plan the whole draw upfront.
-        </span>
+      {remaining !== 1 && (
+      <div className="rounded-lg border border-dashed p-3 space-y-3">
+        <div className="text-sm font-medium">Plan ahead: {nextRow.label?.trim() || nextStage}</div>
+        <p className="text-[11px] text-muted-foreground">
+          Optional — you can already name the next round and set its play-by date while{" "}
+          <strong>{row.label?.trim() || stage}</strong> is still being played. The fixtures themselves are
+          only generated from the winners once this round is complete.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label className="text-xs">Next round name</Label>
+            <Input
+              value={nextRow.label ?? ""}
+              placeholder={nextStage}
+              onChange={(e) => patchNext({ label: e.target.value })}
+              className="h-9"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Must be played by</Label>
+            <Input
+              type="date"
+              value={nextRow.date ?? ""}
+              min={row.date || minDate || undefined}
+              onChange={(e) => patchNext({ date: e.target.value })}
+              className="h-9"
+            />
+          </div>
+        </div>
+        <div className="flex items-start gap-2 text-[11px] text-muted-foreground">
+          <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span>Matchups for later rounds unlock as each round finishes — no need to plan the whole draw upfront.</span>
+        </div>
       </div>
+      )}
     </div>
   );
 }

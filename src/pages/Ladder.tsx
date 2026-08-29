@@ -25,6 +25,10 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { BarChart3 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
+import { useLadderConfig } from "@/hooks/use-ladder-config";
+import { DEFAULT_LADDER_CONFIG, describeLadderRule, evaluateChallenge } from "@/lib/ladder/eligibility";
+import { PyramidLadder, type PyramidEntry } from "@/components/ladder/PyramidLadder";
+
 
 function RankingTabs({
   pyramidContent,

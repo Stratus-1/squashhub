@@ -2243,7 +2243,7 @@ export default function ClubChampsView() {
       : [];
 
     const survivorsCard = koRunning && survivorsByLeague.length > 0 ? (
-      <CollapsibleCard key="survivors" className="border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-500/5" defaultOpen={false}
+      <CollapsibleCard key="survivors" className="border-emerald-500/40 bg-emerald-50/40 dark:bg-emerald-500/5"
         title={
           <span className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-emerald-600" />
@@ -2299,7 +2299,7 @@ export default function ClubChampsView() {
       overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
 
     const winnersCard = !koRunning && leagueWinners.length > 0 ? (
-      <CollapsibleCard key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5" defaultOpen={false}
+      <CollapsibleCard key="winners" className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5"
         title={
           <span className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-amber-600" />
@@ -2400,7 +2400,7 @@ export default function ClubChampsView() {
       overallRows[overallRows.length - 1] ||
       null;
     const woodenSpoonsCard = !koRunning && leagueLosers.length > 0 ? (
-      <CollapsibleCard key="wooden-spoons" className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10" defaultOpen={false}
+      <CollapsibleCard key="wooden-spoons" className="border-amber-800/40 bg-amber-50/40 dark:bg-amber-900/10"
         title={
           <span className="flex items-center gap-2">
             <span className="text-amber-700 dark:text-amber-300">🥄</span>
@@ -2564,7 +2564,7 @@ export default function ClubChampsView() {
         if (summaryFirst) {
           // Summary tables first, fixtures for each league below them.
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")} defaultOpen={false}
+            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -2573,7 +2573,7 @@ export default function ClubChampsView() {
           );
           if (groupMatches.length > 0) {
             fixtureCards.push(
-              <CollapsibleCard key={`f-${gn}`} headerClassName="pb-3" defaultOpen={false}
+              <CollapsibleCard key={`f-${gn}`} headerClassName="pb-3"
                 title={`${getGroupLabel(champ, gn)} — Fixtures & Results`}
               >
                 {fixtureBody}
@@ -2582,7 +2582,7 @@ export default function ClubChampsView() {
           }
         } else {
           standingsCards.push(
-            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")} defaultOpen={false}
+            <CollapsibleCard key={`s-${gn}`} className={cn(isLeading && "border-primary/40")}
               title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
             >
               {swissControlsFor(gn)}
@@ -2604,7 +2604,7 @@ export default function ClubChampsView() {
 
         // Single group (or cross-league): keep combined card as before
         standingsCards.push(
-          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")} defaultOpen={false}
+          <CollapsibleCard key={gn} className={cn(isLeading && "border-primary/40")}
             title={titleNode} titleClassName="text-lg" contentClassName="space-y-4"
           >
             {swissControlsFor(gn)}
@@ -2627,7 +2627,7 @@ export default function ClubChampsView() {
 
     // Cross-league: single combined Fixtures & Results card (matches shared across leagues).
     const combinedFixtures = isCrossLeague ? (
-      <CollapsibleCard key="cross-fixtures" title="Fixtures & Results" titleClassName="text-lg" defaultOpen={false}>
+      <CollapsibleCard key="cross-fixtures" title="Fixtures & Results" titleClassName="text-lg">
         <div className="space-y-1.5">
           {matches.map((m: any) => renderMatchRow(m))}
         </div>

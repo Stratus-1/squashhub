@@ -707,7 +707,7 @@ Deno.serve(async (req) => {
             if (!memberCache.has(liveClubId)) {
               const { data: members } = await supabase
                 .from("club_members")
-                .select("id, first_name, last_name, person_id")
+                .select("id, name, person_id")
                 .eq("club_id", liveClubId)
                 .neq("status", "resigned");
               memberCache.set(liveClubId, members ?? []);

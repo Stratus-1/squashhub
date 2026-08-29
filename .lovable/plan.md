@@ -53,3 +53,26 @@ Register your club
 - `src/pages/RegisterClub.tsx` restructured into three states (search / claim / create); the current NSA seeded-match warning is absorbed into the search results.
 - `useCreateClub` keeps working for the create branch; the "user already belongs to a club" guard in `create-club` stays as-is.
 - Emails go through the existing transactional email queue (claim received, claim approved, claim rejected, plus the Super Admin alert).
+
+## 5. No duplicate players (SportyHQ data)
+
+Clubs promoted from the federation tree already carry scraped SportyHQ players, so a person signing up must attach to their existing record instead of creating a second one.
+
+- On member registration/import, match the incoming person against existing `club_members` / staged SportyHQ players for that club, in this order: national/association number, SA ID number, email, cell number, then name (normalised, initials-tolerant).
+- Exact match on number/ID/email/cell -> link the auth user to the existing member row (claim it), never insert.
+- Name-only match -> show "Is this you?" with the matched record; the user confirms to claim, or chooses "No, I'm someone else" to create a new record.
+- Same rule applies when promoting SportyHQ players into a club: skip any player already present, update missing fields instead of inserting.
+
+## 6. Club membership numbers
+
+- Every club gets a membership-number prefix defaulting to its slug in upper case (e.g. `ASC`), editable by the club admin in club settings.
+- Numbers are `PREFIX` + 4 digits, zero-padded and sequential per club (`ASC0001`, `ASC0002`, ...).
+- Auto-allocated on every new member creation (self-registration, admin add, import, promotion from SportyHQ) via a database trigger, so numbers stay unique per club and cannot be skipped or duplicated.
+- Existing members that already have a number (e.g. `NSC274`, `0001`) keep it — no renumbering; the sequence starts above the highest existing numeric value for that club.
+- Admins can still override a member's number manually, with uniqueness enforced per club.
+
+### Technical notes for 5 & 6
+
+- Add `member_number_prefix` and `member_number_seq` to `clubs`, backfilled from each club's slug.
+- Unique index on `(club_id, club_member_number)`; `BEFORE INSERT` trigger on `club_members` fills the number when blank by taking the next sequence value.
+- Dedup matching lives in one shared helper (DB function) used by registration, admin add and the SportyHQ promotion RPC so all three paths behave identically.

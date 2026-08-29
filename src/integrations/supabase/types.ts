@@ -6963,6 +6963,7 @@ export type Database = {
           name: string
           nsa_team_code: string | null
           nsa_team_id: string | null
+          ranking_weight: number
           reserves_per_team: number
           season_id: string | null
           season_source: string | null
@@ -6991,6 +6992,7 @@ export type Database = {
           name: string
           nsa_team_code?: string | null
           nsa_team_id?: string | null
+          ranking_weight?: number
           reserves_per_team?: number
           season_id?: string | null
           season_source?: string | null
@@ -7019,6 +7021,7 @@ export type Database = {
           name?: string
           nsa_team_code?: string | null
           nsa_team_id?: string | null
+          ranking_weight?: number
           reserves_per_team?: number
           season_id?: string | null
           season_source?: string | null
@@ -11080,6 +11083,7 @@ export type Database = {
           no_show_player_points: number
           play_all_games: boolean
           points_per_game: number
+          ranking_weight: number
           round_format: string
           scoring_mode: string
           standard_of_play: string
@@ -11100,6 +11104,7 @@ export type Database = {
           no_show_player_points?: number
           play_all_games?: boolean
           points_per_game?: number
+          ranking_weight?: number
           round_format?: string
           scoring_mode?: string
           standard_of_play?: string
@@ -11120,6 +11125,7 @@ export type Database = {
           no_show_player_points?: number
           play_all_games?: boolean
           points_per_game?: number
+          ranking_weight?: number
           round_format?: string
           scoring_mode?: string
           standard_of_play?: string
@@ -11972,6 +11978,7 @@ export type Database = {
           points_per_game: number | null
           pool_allocation: string | null
           pool_sizes: Json | null
+          ranking_weight: number | null
           refund_cutoff_date: string | null
           refund_policy: string | null
           registration_closes_at: string | null
@@ -12262,6 +12269,7 @@ export type Database = {
           _loser_member_id: string
           _source_id: string
           _source_type: string
+          _weight?: number
           _winner_member_id: string
         }
         Returns: string

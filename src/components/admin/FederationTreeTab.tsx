@@ -295,6 +295,51 @@ export function FederationTreeTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const promoteAllClubs = useMutation({
+    mutationFn: async (parentKey?: string) => {
+      const { data, error } = await (supabase as any).rpc("promote_all_sportyhq_clubs", {
+        _parent_key: parentKey ?? null,
+        _limit: 500,
+      });
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+      qc.invalidateQueries({ queryKey: ["fed-live-clubs"] });
+      toast.success(`${n} clubs added to the tree, each with its own short web address`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Walks every association group and pulls the full player roster, club by club.
+  const [bulkScrape, setBulkScrape] = useState<{ running: boolean; done: number; total: number }>({
+    running: false, done: 0, total: 0,
+  });
+
+  const scrapeEveryone = async () => {
+    const keys = [...new Set((stagedOrgs ?? [])
+      .filter((o) => o.kind === "club" && o.status !== "ignored" && o.parent_key)
+      .map((o) => o.parent_key as string))];
+    setBulkScrape({ running: true, done: 0, total: keys.length });
+    let players = 0;
+    for (const key of keys) {
+      try {
+        const { data } = await supabase.functions.invoke("sportyhq-lookup", {
+          body: { action: "scrape_club_members", parent_key: key, limit: 40 },
+        });
+        players += Number(data?.players_found ?? 0);
+      } catch { /* keep going through the rest of the country */ }
+      setBulkScrape((p) => ({ ...p, done: p.done + 1 }));
+    }
+    setBulkScrape({ running: false, done: 0, total: 0 });
+    qc.invalidateQueries({ queryKey: ["fed-staged-orgs"] });
+    qc.invalidateQueries({ queryKey: ["fed-staged-members"] });
+    toast.success(`Player scrape finished: ${players} players staged across ${keys.length} associations`);
+  };
+
+
+
 
 
 
@@ -406,7 +451,23 @@ export function FederationTreeTab() {
               <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
               {promoteAllAssociations.isPending ? "Adding…" : "Add all associations to the tree"}
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => promoteAllClubs.mutate(undefined)}
+              disabled={promoteAllClubs.isPending}
+            >
+              <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
+              {promoteAllClubs.isPending ? "Adding…" : "Add all clubs to the tree"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={scrapeEveryone} disabled={bulkScrape.running}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${bulkScrape.running ? "animate-spin" : ""}`} />
+              {bulkScrape.running
+                ? `Scraping players ${bulkScrape.done}/${bulkScrape.total}…`
+                : "Scrape players for every club"}
+            </Button>
           </div>
+
           {(runs ?? []).length > 0 && (
             <div className="text-xs text-muted-foreground space-y-0.5">
               {(runs ?? []).map((r) => (

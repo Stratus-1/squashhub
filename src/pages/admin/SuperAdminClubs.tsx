@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEO } from "@/components/SEO";
+import { ClubClaimsPanel } from "@/components/ClubClaimsPanel";
 import { Switch } from "@/components/ui/switch";
 import { Building2, Search, Users, Pencil, Trash2, ExternalLink, Globe } from "lucide-react";
 
@@ -143,6 +144,10 @@ export default function SuperAdminClubs() {
           </p>
         </div>
       </div>
+
+      <ClubClaimsPanel />
+
+
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

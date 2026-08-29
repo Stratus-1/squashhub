@@ -740,7 +740,7 @@ Deno.serve(async (req) => {
       } else {
         return json({ error: "Provide group_id or organization_path" }, 400);
       }
-      const maxGroups = Math.min(Math.max(Number(body.max_groups ?? 2), 1), 6);
+      const maxGroups = Math.min(Math.max(Number(body.max_groups ?? 30), 1), 30);
       groupIds = groupIds.slice(0, maxGroups);
       if (!groupIds.length) return json({ error: "No ranking groups found" }, 404);
 
@@ -978,7 +978,10 @@ Deno.serve(async (req) => {
           errors.push(`${orgName}: parent page — ${(err as Error).message}`);
           return;
         }
-        const gids = [...new Set([...orgHtml.matchAll(/href="\/ranking\/group\/(\d+)/g)].map((m) => m[1]))].slice(0, 6);
+        // Associations publish one ranking group per division (Men A/B, Ladies,
+        // Juniors, Masters...). Take them all — capping at 6 was why smaller
+        // unions like Boland only ever produced a handful of players.
+        const gids = [...new Set([...orgHtml.matchAll(/href="\/ranking\/group\/(\d+)/g)].map((m) => m[1]))].slice(0, 30);
         for (const gid of gids) {
           try {
             parseGroupHtml(await fetchHtml(`${BASE}/ranking/group/${gid}?iframe=true&list_only=true&show_all=true`));

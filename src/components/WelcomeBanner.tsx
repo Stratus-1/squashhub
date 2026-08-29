@@ -49,11 +49,13 @@ export function WelcomeBanner() {
     const me = ladder.find((p: any) => p.club_member_id === activeMemberId);
     if (!me?.ladder_position) return null;
 
+    const mixedLadder = !!(clubData?.club as any)?.mixed_ladder_enabled;
     const myGroupIsLadies = ["female", "ladies", "f"].includes((me.gender || "").toLowerCase());
 
     const sameGroupPlayers = (ladder || []).filter((p: any) => {
       if (p.club_member_id === activeMemberId) return false;
       if (typeof p.ladder_position !== "number") return false;
+      if (mixedLadder) return true;
       const isLadies = ["female", "ladies", "f"].includes((p.gender || "").toLowerCase());
       return isLadies === myGroupIsLadies;
     });

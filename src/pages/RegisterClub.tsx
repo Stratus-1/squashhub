@@ -259,6 +259,33 @@ export default function RegisterClub() {
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
+  if (signupDone) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
+        <Card className="p-6 space-y-4 text-center max-w-md w-full">
+          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <svg className="w-7 h-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h1 className="text-lg font-bold font-heading">Verify Your Email</h1>
+          <p className="text-sm text-muted-foreground">
+            We've sent a verification link to <span className="font-medium text-foreground">{account.email}</span>.
+            Click the link to verify your email, create your club, and be redirected to your club's login page.
+          </p>
+          {form.subdomain && (
+            <p className="text-xs text-muted-foreground">
+              Your club URL will be: <span className="font-medium text-foreground">{form.subdomain}.squashhub.co.za</span>
+            </p>
+          )}
+          <Button variant="outline" className="w-full" onClick={() => setSignupDone(false)}>
+            Back
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   if (claimSubmitted) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
@@ -338,10 +365,10 @@ export default function RegisterClub() {
                   {c.claim_pending ? (
                     <Button size="sm" variant="ghost" disabled>Pending</Button>
                   ) : c.is_claimable ? (
-                    <Button size="sm" onClick={() => setClaimTarget(c)}>This is my club</Button>
+                    <Button size="sm" onClick={() => (user ? setClaimTarget(c) : goToSignIn())}>This is my club</Button>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => joinAsMember(c)}>
-                      <Users className="w-3.5 h-3.5 mr-1" />Join as a member
+                    <Button size="sm" onClick={() => joinAsMember(c)}>
+                      <Users className="w-3.5 h-3.5 mr-1" />Go to club
                     </Button>
                   )}
                 </div>

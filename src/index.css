@@ -131,6 +131,9 @@
     text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
+    /* Keep the scrollbar gutter reserved so overlay scroll-locks (dropdowns,
+       dialogs) don't shift the page layout when the scrollbar disappears. */
+    scrollbar-gutter: stable;
   }
 
   /* Radix overlays lock body scroll while open; smooth scrolling makes their

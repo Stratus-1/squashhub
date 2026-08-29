@@ -15,6 +15,7 @@ type StagedOrg = {
   name: string;
   kind: string;
   parent_key: string | null;
+  location_label?: string | null;
   parent_org_id: string | null;
   matched_org_id: string | null;
   matched_club_id: string | null;

@@ -141,6 +141,7 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
         )}
       </div>
 
+      {remaining !== 1 && (
       <div className="rounded-lg border border-dashed p-3 space-y-3">
         <div className="text-sm font-medium">Plan ahead: {nextRow.label?.trim() || nextStage}</div>
         <p className="text-[11px] text-muted-foreground">

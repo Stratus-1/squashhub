@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Swords, X, Layers } from "lucide-react";
+import { Loader2, Swords, X, Layers, ArrowUp, ArrowDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
@@ -28,6 +28,7 @@ import { Card } from "@/components/ui/card";
 import { useLadderConfig } from "@/hooks/use-ladder-config";
 import { DEFAULT_LADDER_CONFIG, describeLadderRule, evaluateChallenge } from "@/lib/ladder/eligibility";
 import { PyramidLadder, type PyramidEntry } from "@/components/ladder/PyramidLadder";
+import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 
 
 function RankingTabs({
@@ -721,6 +722,7 @@ export default function Ladder() {
             )
           }
           rpBoard={rpBoard as any}
+          clubId={clubId}
           onPlayerClick={(memberId) => {
             if (memberId === myMemberId) navigate("/profile");
             else navigate(`/players/${memberId}`);

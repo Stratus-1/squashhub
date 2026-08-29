@@ -12296,27 +12296,17 @@ export type Database = {
         }
         Returns: string
       }
-      apply_ladder_result:
-        | {
-            Args: {
-              _club_id: string
-              _loser_member_id: string
-              _movement?: string
-              _winner_member_id: string
-            }
-            Returns: boolean
-          }
-        | {
-            Args: {
-              _club_id: string
-              _loser_member_id: string
-              _movement?: string
-              _source?: string
-              _source_id?: string
-              _winner_member_id: string
-            }
-            Returns: boolean
-          }
+      apply_ladder_result: {
+        Args: {
+          _club_id: string
+          _loser_member_id: string
+          _movement?: string
+          _source?: string
+          _source_id?: string
+          _winner_member_id: string
+        }
+        Returns: boolean
+      }
       apply_registration_division_choices: {
         Args: { p_registration_id: string }
         Returns: undefined

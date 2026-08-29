@@ -5717,6 +5717,7 @@ export type Database = {
           format: string
           id: string
           is_active: boolean
+          ladder_auto_apply: boolean
           ladder_from_leagues: boolean
           ladder_from_tournaments: boolean
           league_movement_policy: string | null
@@ -5742,6 +5743,7 @@ export type Database = {
           format?: string
           id?: string
           is_active?: boolean
+          ladder_auto_apply?: boolean
           ladder_from_leagues?: boolean
           ladder_from_tournaments?: boolean
           league_movement_policy?: string | null
@@ -5767,6 +5769,7 @@ export type Database = {
           format?: string
           id?: string
           is_active?: boolean
+          ladder_auto_apply?: boolean
           ladder_from_leagues?: boolean
           ladder_from_tournaments?: boolean
           league_movement_policy?: string | null
@@ -5787,6 +5790,79 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: true
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ladder_moves_pending: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          loser_member_id: string
+          loser_position: number | null
+          movement: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source: string | null
+          source_id: string | null
+          status: string
+          updated_at: string
+          winner_member_id: string
+          winner_position: number | null
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          loser_member_id: string
+          loser_position?: number | null
+          movement?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source?: string | null
+          source_id?: string | null
+          status?: string
+          updated_at?: string
+          winner_member_id: string
+          winner_position?: number | null
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          loser_member_id?: string
+          loser_position?: number | null
+          movement?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source?: string | null
+          source_id?: string | null
+          status?: string
+          updated_at?: string
+          winner_member_id?: string
+          winner_position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_moves_pending_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_moves_pending_loser_member_id_fkey"
+            columns: ["loser_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_moves_pending_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -12225,6 +12301,8 @@ export type Database = {
           _club_id: string
           _loser_member_id: string
           _movement?: string
+          _source?: string
+          _source_id?: string
           _winner_member_id: string
         }
         Returns: boolean
@@ -12232,6 +12310,10 @@ export type Database = {
       apply_registration_division_choices: {
         Args: { p_registration_id: string }
         Returns: undefined
+      }
+      approve_ladder_move_pending: {
+        Args: { _pending_id: string }
+        Returns: boolean
       }
       approve_ranking_points_pending: {
         Args: { _note?: string; _pending_id: string }
@@ -12905,6 +12987,15 @@ export type Database = {
       is_public_club_document: { Args: { _path: string }; Returns: boolean }
       is_rankable_member: { Args: { _member_id: string }; Returns: boolean }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
+      ladder_move_apply_now: {
+        Args: {
+          _club_id: string
+          _loser_member_id: string
+          _movement?: string
+          _winner_member_id: string
+        }
+        Returns: boolean
+      }
       ladder_pyramid_row: {
         Args: { _position: number; _row_sizes?: Json }
         Returns: number
@@ -13168,6 +13259,10 @@ export type Database = {
           _partner_member_id: string
         }
         Returns: Json
+      }
+      reject_ladder_move_pending: {
+        Args: { _pending_id: string }
+        Returns: boolean
       }
       release_email_outbox_lease: { Args: never; Returns: undefined }
       rename_internal_league_association: {

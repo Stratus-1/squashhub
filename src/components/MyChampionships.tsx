@@ -15,9 +15,9 @@ import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { splitTournamentsByLifecycle } from "@/lib/tournaments/lifecycle";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
-import { canSelfScheduleMatch, canMarkChampMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
+import { canSelfScheduleMatch, isUnscheduled } from "@/lib/tournaments/self-schedule";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
-import { getTournamentFormat } from "@/lib/tournament-formats";
+
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed" };
 
@@ -214,9 +214,8 @@ export function MyChampionships() {
         const champ = allChamps.find((c: any) => c.id === entry.champ_id);
         if (!champ) return null;
         const isDoubles = champ.match_type === "doubles";
-        const selfScheduled = String((champ as any).scheduling_mode || "") === "self";
-        const markerRoute = (matchId: string) =>
-          getTournamentFormat((champ as any).scoring_mode).markerRoute(matchId);
+        // Self-scheduled knockout matches (players book their own court) only
+        // offer result entry — no point-by-point marking from this list.
         const partnerName = entry.partner ? getName(entry.partner) : null;
         const champUpcoming = upcomingMatches.filter((m: any) => m.champ_id === champ.id);
         const champCompleted = completedMatches.filter((m: any) => m.champ_id === champ.id);
@@ -249,12 +248,6 @@ export function MyChampionships() {
 
                   const unscheduled = isUnscheduled(m);
                   const perm = canSelfScheduleMatch(m, memberId);
-                  // Self-scheduled matches may be played (and marked) even
-                  // before a court is booked — score capture is never blocked
-                  // just because court/date/time are still null.
-                  const markPerm = selfScheduled
-                    ? canMarkChampMatch(m, memberId)
-                    : { allowed: false as const };
                   // Entering an already-played score is independent of both the
                   // scheduling mode and any court booking.
                   const resultPerm = canEnterChampResult(m, memberId);
@@ -301,19 +294,6 @@ export function MyChampionships() {
                           ) : (
                             <p className="text-[11px] text-muted-foreground">{perm.reason}</p>
                           )}
-                          {markPerm.allowed && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-6 text-[11px]"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(markerRoute(m.id));
-                              }}
-                            >
-                              Mark game point by point
-                            </Button>
-                          )}
                           {resultPerm.allowed && (
                             <Button
                               size="sm"
@@ -353,19 +333,6 @@ export function MyChampionships() {
                           }}
                         >
                           Reschedule your court booking
-                        </Button>
-                      )}
-                      {markPerm.allowed && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 text-[10px] px-1.5 shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(markerRoute(m.id));
-                          }}
-                        >
-                          Mark game
                         </Button>
                       )}
                       {resultPerm.allowed && (

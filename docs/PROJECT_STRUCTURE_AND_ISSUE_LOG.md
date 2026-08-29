@@ -1291,3 +1291,7 @@ Tests: `src/test/booking-label.test.ts`.
   - League admin result editing: "Enter your results" / "Edit your results".
 - **Files:** `src/lib/tournament-formats/standard.ts`, `src/lib/tournament-formats/swiss.ts`, `src/lib/tournaments/fixture-scheduling.ts`, `src/components/tournaments/ScheduleMatchDialog.tsx`, `src/components/MyChampionships.tsx`, `src/pages/Tournaments.tsx`, `src/pages/ClubChampsView.tsx`, `src/components/league-games/UpcomingFixturesTab.tsx`, `src/pages/Challenges.tsx`, `src/pages/Bookings.tsx`, `src/test/fixture-scheduling.test.ts`.
 - **Guard:** Labels are presentation-only; underlying permissions (`canScheduleFixture`, result-entry guards, marker routing) are unchanged. Tests updated to match new label strings.
+
+## 2026-08-29 — Hide point-by-point marking on self-scheduled knockouts
+- Self-scheduled tournament matches (players book their own court, non-team events) no longer show "Mark game" buttons; players use "Enter your result" only.
+- Removed Mark buttons from MyChampionships.tsx match cards; hid the marker button in Tournaments.tsx when the championship scheduling_mode is "self". Admin "Redo score" correction path in ClubChampsView unchanged.

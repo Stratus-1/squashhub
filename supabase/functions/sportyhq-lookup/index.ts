@@ -558,6 +558,165 @@ Deno.serve(async (req) => {
 
     }
 
+    if (action === "scrape_ranking_group") {
+      // Phase A+B discovery: one association ranking page yields both the club
+      // list (unique /club/view links) and the player roster (rank, points,
+      // club affiliation). Everything lands in staging tables for review.
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const { data: userData } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+      const uid = userData?.user?.id;
+      if (!uid) return json({ error: "Not signed in" }, 401);
+      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
+      if (!isAdmin) return json({ error: "Platform admin only" }, 403);
+
+      const associationOrgId = body.association_org_id ?? null;
+      let groupIds: number[] = [];
+      if (body.group_id) {
+        groupIds = [Number(body.group_id)];
+      } else if (body.organization_path) {
+        const orgHtml = await fetchHtml(`${BASE}${body.organization_path}`);
+        groupIds = [...orgHtml.matchAll(/href="\/ranking\/group\/(\d+)"/g)].map((m) => Number(m[1]));
+        groupIds = [...new Set(groupIds)];
+      } else {
+        return json({ error: "Provide group_id or organization_path" }, 400);
+      }
+      const maxGroups = Math.min(Math.max(Number(body.max_groups ?? 2), 1), 6);
+      groupIds = groupIds.slice(0, maxGroups);
+      if (!groupIds.length) return json({ error: "No ranking groups found" }, 404);
+
+      // Record the run
+      const { data: run } = await supabase
+        .from("sportyhq_tree_runs")
+        .insert({ action: "scrape_ranking_group", association_org_id: associationOrgId, started_by: uid })
+        .select("id")
+        .single();
+
+      // Existing SquashHub clubs for fuzzy matching
+      const { data: liveClubs } = await supabase.from("clubs").select("id, name, suburb, city");
+      const clubRows = liveClubs ?? [];
+
+      let orgsFound = 0;
+      let playersFound = 0;
+      const errors: string[] = [];
+      const summary: Array<Record<string, unknown>> = [];
+
+      for (const gid of groupIds) {
+        let html: string;
+        try {
+          html = await fetchHtml(`${BASE}/ranking/group/${gid}`);
+        } catch (err) {
+          errors.push(`group ${gid}: ${(err as Error).message}`);
+          continue;
+        }
+        const groupTitle = textOf(html.match(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/)?.[1] ?? "") || `Group ${gid}`;
+
+        const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
+        for (const row of rows) {
+          const rowHtml = row[1];
+          const playerM = rowHtml.match(/href="\/ranking\/user\/([^/"]+)\/ranking_group_id,\d+[^"]*"[^>]*>([\s\S]*?)<\/a>/);
+          if (!playerM) continue;
+          const slug = playerM[1];
+          const playerName = textOf(playerM[2]);
+          if (!playerName) continue;
+
+          const clubM = rowHtml.match(/href="\/club\/view\/([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+          const clubSlug = clubM?.[1] ?? null;
+          const clubLabel = clubM ? textOf(clubM[2]) : null;
+
+          const rowText = textOf(rowHtml);
+          const nums = rowText.match(/^(\d+)\s+.*?([\d,]+)\s+(\d+)%\s*$/);
+          const rankPosition = nums ? Number(nums[1]) : null;
+          const rankPoints = nums ? num(nums[2]) : null;
+          const rankConfidence = nums ? `${nums[3]}%` : null;
+
+          // Upsert the club (staging org) keyed by its SportyHQ slug
+          let orgId: string | null = null;
+          if (clubSlug) {
+            const prettyName = clubLabel && clubLabel.length > 3 ? clubLabel : deslugify(clubSlug);
+            const match = matchLiveClub(prettyName, clubSlug, clubRows);
+            const { data: orgRow, error: orgErr } = await supabase
+              .from("sportyhq_orgs")
+              .upsert(
+                {
+                  sportyhq_org_key: `club:${clubSlug}`,
+                  name: prettyName,
+                  kind: "club",
+                  parent_key: `group:${gid}`,
+                  parent_org_id: associationOrgId,
+                  matched_club_id: match?.id ?? null,
+                  status: match ? "matched" : "new",
+                  last_scraped_at: new Date().toISOString(),
+                },
+                { onConflict: "sportyhq_org_key" },
+              )
+              .select("id")
+              .single();
+            if (orgErr) { errors.push(`club ${clubSlug}: ${orgErr.message}`); continue; }
+            orgId = orgRow.id;
+            orgsFound++;
+          }
+          if (!orgId) continue;
+
+          // Match the player against the matched club's members
+          let memberMatch: { id: string; confidence: string } | null = null;
+          let personId: string | null = null;
+          const liveClubId = clubSlug ? matchLiveClub(clubLabel ?? deslugify(clubSlug), clubSlug, clubRows)?.id : null;
+          if (liveClubId) {
+            const { data: members } = await supabase
+              .from("club_members")
+              .select("id, first_name, last_name, person_id")
+              .eq("club_id", liveClubId)
+              .neq("status", "resigned");
+            memberMatch = matchMember(playerName, members ?? []);
+            personId = memberMatch
+              ? (members ?? []).find((m: any) => m.id === memberMatch!.id)?.person_id ?? null
+              : null;
+          }
+
+          const { error: memErr } = await supabase
+            .from("sportyhq_org_members")
+            .upsert(
+              {
+                org_id: orgId,
+                ranking_slug: slug,
+                name: playerName,
+                rank_position: rankPosition,
+                rank_points: rankPoints,
+                rank_confidence: rankConfidence,
+                club_label: clubLabel,
+                matched_club_member_id: memberMatch?.id ?? null,
+                matched_person_id: personId,
+                match_confidence: memberMatch?.confidence ?? null,
+                status: memberMatch ? "matched" : "new",
+                last_seen_at: new Date().toISOString(),
+              },
+              { onConflict: "org_id,ranking_slug" },
+            );
+          if (memErr) errors.push(`player ${slug}: ${memErr.message}`);
+          else playersFound++;
+        }
+        summary.push({ group_id: gid, title: groupTitle });
+        await new Promise((r) => setTimeout(r, 400)); // gentle pacing between groups
+      }
+
+      await supabase
+        .from("sportyhq_tree_runs")
+        .update({
+          status: errors.length ? "done_with_errors" : "done",
+          orgs_found: orgsFound,
+          players_found: playersFound,
+          message: errors.slice(0, 5).join(" | ") || null,
+          finished_at: new Date().toISOString(),
+        })
+        .eq("id", run?.id);
+
+      return json({ status: "ok", groups: summary, orgs_found: orgsFound, players_found: playersFound, errors: errors.slice(0, 10) });
+    }
+
     throw new Error(`Unknown action: ${action}`);
 
   } catch (e) {

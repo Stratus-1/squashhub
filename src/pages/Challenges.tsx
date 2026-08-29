@@ -552,6 +552,14 @@ export default function Challenges() {
       <SEO title="Challenges" path="/challenges" noIndex />
       <PageHeader title="Challenges" subtitle="Manage your ladder challenges" />
 
+      <div className="px-4 mt-3">
+        <Button size="sm" className="w-full sm:w-auto gap-1.5" onClick={() => navigate("/ladder")}>
+          <Swords className="w-3.5 h-3.5" /> Challenge a player
+        </Button>
+      </div>
+
+
+
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />

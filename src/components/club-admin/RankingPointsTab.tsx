@@ -203,7 +203,15 @@ export function RankingPointsTab({ clubId }: Props) {
     },
   });
 
+  const settingsDirty = !!club && (
+    Number(baseWin) !== Number((club as any).points_base_win ?? 0.25) ||
+    Number(upset) !== Number((club as any).points_upset_bonus_per_rank ?? 0.1) ||
+    Number(favMin) !== Number((club as any).points_favourite_win_min ?? 0.1) ||
+    Number(loserDed) !== Number((club as any).points_loser_deduction ?? 0)
+  );
+
   if (clubLoading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+
 
   return (
     <div className="space-y-4">

@@ -10272,6 +10272,153 @@ export type Database = {
           },
         ]
       }
+      sportyhq_org_members: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          match_confidence: string | null
+          matched_club_member_id: string | null
+          matched_person_id: string | null
+          name: string
+          org_id: string
+          profile_path: string | null
+          sportyhq_user_id: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          match_confidence?: string | null
+          matched_club_member_id?: string | null
+          matched_person_id?: string | null
+          name: string
+          org_id: string
+          profile_path?: string | null
+          sportyhq_user_id: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          match_confidence?: string | null
+          matched_club_member_id?: string | null
+          matched_person_id?: string | null
+          name?: string
+          org_id?: string
+          profile_path?: string | null
+          sportyhq_user_id?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sportyhq_org_members_matched_club_member_id_fkey"
+            columns: ["matched_club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sportyhq_org_members_matched_person_id_fkey"
+            columns: ["matched_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sportyhq_org_members_matched_person_id_fkey"
+            columns: ["matched_person_id"]
+            isOneToOne: false
+            referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sportyhq_org_members_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "sportyhq_orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sportyhq_orgs: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          last_scraped_at: string
+          location_label: string | null
+          matched_club_id: string | null
+          matched_org_id: string | null
+          member_count: number | null
+          name: string
+          parent_key: string | null
+          parent_org_id: string | null
+          sportyhq_org_key: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          last_scraped_at?: string
+          location_label?: string | null
+          matched_club_id?: string | null
+          matched_org_id?: string | null
+          member_count?: number | null
+          name: string
+          parent_key?: string | null
+          parent_org_id?: string | null
+          sportyhq_org_key: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          last_scraped_at?: string
+          location_label?: string | null
+          matched_club_id?: string | null
+          matched_org_id?: string | null
+          member_count?: number | null
+          name?: string
+          parent_key?: string | null
+          parent_org_id?: string | null
+          sportyhq_org_key?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sportyhq_orgs_matched_club_id_fkey"
+            columns: ["matched_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sportyhq_orgs_matched_org_id_fkey"
+            columns: ["matched_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sportyhq_orgs_parent_org_id_fkey"
+            columns: ["parent_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sportyhq_profiles: {
         Row: {
           age: number | null
@@ -10386,6 +10533,63 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sportyhq_tree_runs: {
+        Row: {
+          action: string
+          association_org_id: string | null
+          created_at: string
+          finished_at: string | null
+          id: string
+          message: string | null
+          orgs_found: number
+          players_found: number
+          sportyhq_org_id: string | null
+          started_by: string | null
+          status: string
+        }
+        Insert: {
+          action: string
+          association_org_id?: string | null
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          message?: string | null
+          orgs_found?: number
+          players_found?: number
+          sportyhq_org_id?: string | null
+          started_by?: string | null
+          status?: string
+        }
+        Update: {
+          action?: string
+          association_org_id?: string | null
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          message?: string | null
+          orgs_found?: number
+          players_found?: number
+          sportyhq_org_id?: string | null
+          started_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sportyhq_tree_runs_association_org_id_fkey"
+            columns: ["association_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sportyhq_tree_runs_org_fk"
+            columns: ["sportyhq_org_id"]
+            isOneToOne: false
+            referencedRelation: "sportyhq_orgs"
             referencedColumns: ["id"]
           },
         ]
@@ -13187,6 +13391,14 @@ export type Database = {
           p_lines: Json
           p_ref?: string
         }
+        Returns: string
+      }
+      promote_sportyhq_org: {
+        Args: { _club_id?: string; _org_id: string; _parent_org_id: string }
+        Returns: string
+      }
+      promote_sportyhq_org_member: {
+        Args: { _member_id: string; _person_id?: string }
         Returns: string
       }
       propose_doubles_partner: {

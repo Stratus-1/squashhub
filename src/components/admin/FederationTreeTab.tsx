@@ -455,6 +455,19 @@ export function FederationTreeTab() {
                   </Badge>
                   <span className="text-xs text-muted-foreground">{group.clubs.length} clubs</span>
                   <span className="flex-1" />
+                  {group.clubs.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs"
+                      disabled={scrapeClubMembers.isPending}
+                      onClick={() => scrapeClubMembers.mutate({ parentKey: group.key })}
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${scrapeClubMembers.isPending ? "animate-spin" : ""}`} />
+                      Scrape players
+                    </Button>
+                  )}
+
                   {group.staged?.kind === "association" && (
                     group.staged.matched_org_id ? (
                       <Badge className="bg-green-600 text-white text-[10px]">In tree</Badge>

@@ -692,17 +692,31 @@ export default function ScanPay() {
         )}
       </main>
 
-      {/* Sticky cart bar */}
+      {/* Sticky cart bar — always visible while items are selected */}
       {!done && !checkingOut && count > 0 && (
-        <div className="fixed bottom-0 inset-x-0 border-t bg-background/95 backdrop-blur px-4 py-3">
-          <div className="max-w-md mx-auto flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground">{count} item{count > 1 ? "s" : ""} in cart</p>
-              <p className="text-base font-semibold">{formatMoney(total, currency)}</p>
+        <div className="fixed bottom-0 inset-x-0 border-t bg-background/95 backdrop-blur px-4 py-3 z-40">
+          <div className="max-w-md mx-auto space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-foreground">{count} item{count > 1 ? "s" : ""} selected</p>
+                <p className="text-base font-semibold">{formatMoney(total, currency)}</p>
+              </div>
+              {tab ? (
+                <Button className="gap-2 h-11" disabled={submitting} onClick={addToOpenTab}>
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                  Add to my open tab
+                </Button>
+              ) : (
+                <Button className="gap-2 h-11" onClick={() => setCheckingOut(true)}>
+                  <ShoppingCart className="w-4 h-4" /> Done — checkout
+                </Button>
+              )}
             </div>
-            <Button className="gap-2" onClick={() => setCheckingOut(true)}>
-              <ShoppingCart className="w-4 h-4" /> Done — checkout
-            </Button>
+            {tab && (
+              <Button variant="outline" className="w-full gap-2" onClick={() => setCheckingOut(true)}>
+                <CreditCard className="w-4 h-4" /> Pay now instead — card, swipe or cash
+              </Button>
+            )}
           </div>
         </div>
       )}

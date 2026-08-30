@@ -608,7 +608,7 @@ export default function ScanPay() {
                   <span>{formatMoney(total, currency)}</span>
                 </div>
 
-                {(!member || !club.account_tab_enabled) && (
+                {(!member || !club.account_tab_enabled) && !tab && (
                   <div className="space-y-1">
                     <Label htmlFor="visitor-name" className="text-xs">Your name</Label>
                     <Input
@@ -620,6 +620,11 @@ export default function ScanPay() {
                       className="h-9"
                     />
                   </div>
+                )}
+                {tab && !member && (
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    On your open tab as <span className="font-medium text-foreground">{tab.guest_name}</span>
+                  </p>
                 )}
 
                 <div className="space-y-2">

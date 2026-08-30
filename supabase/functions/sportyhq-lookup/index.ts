@@ -740,7 +740,7 @@ Deno.serve(async (req) => {
       } else {
         return json({ error: "Provide group_id or organization_path" }, 400);
       }
-      const maxGroups = Math.min(Math.max(Number(body.max_groups ?? 30), 1), 30);
+      const maxGroups = Math.min(Math.max(Number(body.max_groups ?? 60), 1), 60);
       groupIds = groupIds.slice(0, maxGroups);
       if (!groupIds.length) return json({ error: "No ranking groups found" }, 404);
 

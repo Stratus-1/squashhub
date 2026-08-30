@@ -127,23 +127,7 @@ export default function RegisterClub() {
     [results, form.name],
   );
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (existing?.club) {
-    navigate("/club-admin", { replace: true });
-    return null;
-  }
-
-  const goToSignIn = () =>
-    navigate(`/auth?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-
-  // Deep link: /register-club?claim=<slug> → search the club and auto-open the claim flow.
+  // Hooks must run unconditionally — early returns come after this block.
   const [claimSlug] = useState(() => new URLSearchParams(window.location.search).get("claim"));
   const claimHandled = useRef(false);
 
@@ -152,6 +136,15 @@ export default function RegisterClub() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claimSlug]);
 
+  // Redirect signed-in users who already have a club.
+  useEffect(() => {
+    if (existing?.club) navigate("/club-admin", { replace: true });
+  }, [existing?.club, navigate]);
+
+  const goToSignIn = () =>
+    navigate(`/auth?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+
+  // Deep link: /register-club?claim=<slug> → search the club and auto-open the claim flow.
   useEffect(() => {
     if (!claimSlug || claimHandled.current || authLoading) return;
     const match = results.find((r) => r.subdomain === claimSlug);
@@ -161,6 +154,18 @@ export default function RegisterClub() {
     else goToSignIn();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [results, user, authLoading, claimSlug]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (existing?.club) {
+    return null;
+  }
 
   const submitClaim = async () => {
     if (!claimTarget) return;

@@ -296,7 +296,7 @@ Deno.serve(async (req) => {
       const { data: member, error: memberErr } = await supabase
         .from("club_members")
         .select(
-          "id, user_id, club_id, person_id, full_name, status, clubs!club_members_club_id_fkey(name), member_association_affiliations(league_associations(name))",
+          "id, user_id, club_id, person_id, name, status, clubs!club_members_club_id_fkey(name), member_association_affiliations(league_associations(name))",
         )
         .eq("id", memberId)
         .maybeSingle();
@@ -359,7 +359,7 @@ Deno.serve(async (req) => {
       let saved: unknown = null;
 
       try {
-        const name = String((member as any).full_name ?? "").trim();
+        const name = String((member as any).name ?? "").trim();
         if (name.length < 3) throw new Error("Member has no usable name");
         const cands = await search(name);
         const best = await deepPickBest(name, clubHints, cands);

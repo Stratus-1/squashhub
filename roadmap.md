@@ -16,3 +16,5 @@
 
 ## Support question (answered)
 - [x] Riverside bar tile missing for hkftservices@gmail.com — Bar capability was off, enabled 30 Aug 12:35 UTC
+
+- [x] Fix visitor bar "Add to my open tab" failing on bar_visitor_sales payment_method/payment_status check constraints (widened to allow tab/on_tab/awaiting_* states).

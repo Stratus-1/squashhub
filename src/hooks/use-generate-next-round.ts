@@ -187,6 +187,7 @@ export function useGenerateNextRound(opts: {
       if (rows.length === 0) throw new Error("Nothing to generate");
       const { error } = await fromExt("club_champs_matches").insert(rows as any);
       if (error) throw error;
+      await announceRound(champId, deepest + 1, groupNumber, 0);
       return rows.length;
     },
     onSuccess: (n, vars) => {

@@ -50,19 +50,44 @@ Deno.serve(async (req) => {
       .eq("code", code).maybeSingle();
     if (!qr || !qr.active) return json({ error: "This QR code is no longer active" });
 
-    const { data: items } = await admin
-      .from("bar_items")
-      .select("id, name, price, club_id, active")
-      .eq("club_id", qr.club_id)
-      .in("id", lines.map((l) => l.bar_item_id));
-    const itemMap = new Map((items || []).filter((i: any) => i.active).map((i: any) => [i.id, i]));
-    if (itemMap.size !== new Set(lines.map((l) => l.bar_item_id)).size) {
-      return json({ error: "One or more items are not available" });
-    }
+    let amount = 0;
+    let saleIds: string[] = [];
+    let payerName = (buyer_name || "").trim();
+    let tabRow: any = null;
 
-    const amount = lines.reduce(
-      (sum, l) => sum + Number((itemMap.get(l.bar_item_id) as any).price) * l.quantity, 0,
-    );
+    if (tabMode) {
+      // Resolve the open tab and charge its outstanding lines.
+      const { data: t } = await admin
+        .from("bar_guest_tabs")
+        .select("id, club_id, guest_name, status")
+        .eq("id", tabId).eq("token", tabToken).maybeSingle();
+      if (!t || t.club_id !== qr.club_id) return json({ error: "Tab not found" });
+      if (t.status !== "open") return json({ error: "This tab has already been settled" });
+      tabRow = t;
+      const { data: tabSales } = await admin
+        .from("bar_visitor_sales")
+        .select("id, total")
+        .eq("guest_tab_id", t.id)
+        .eq("payment_status", "on_tab");
+      if (!tabSales?.length) return json({ error: "Your tab is empty" });
+      saleIds = tabSales.map((s: any) => s.id);
+      amount = tabSales.reduce((s: number, r: any) => s + Number(r.total), 0);
+      payerName = String(t.guest_name || "").trim();
+    } else {
+      const { data: items } = await admin
+        .from("bar_items")
+        .select("id, name, price, club_id, active")
+        .eq("club_id", qr.club_id)
+        .in("id", lines.map((l) => l.bar_item_id));
+      const itemMap = new Map((items || []).filter((i: any) => i.active).map((i: any) => [i.id, i]));
+      if (itemMap.size !== new Set(lines.map((l) => l.bar_item_id)).size) {
+        return json({ error: "One or more items are not available" });
+      }
+
+      amount = lines.reduce(
+        (sum, l) => sum + Number((itemMap.get(l.bar_item_id) as any).price) * l.quantity, 0,
+      );
+    }
     if (!(amount > 0)) return json({ error: "Invalid amount" });
     if (Math.round(amount * 100) < 100) {
       return json({ error: "Card payments must be at least R1.00 — please add another item or charge to your account." });

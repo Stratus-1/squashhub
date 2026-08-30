@@ -118,6 +118,29 @@ export default function HonestyBar() {
     enabled: !!clubId && !!memberId,
   });
 
+  // Venue-wide QR code — reused to start an online card payment from in-app.
+  const { data: venueCode } = useQuery({
+    queryKey: ["bar-venue-code", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("qr_short_codes")
+        .select("code")
+        .eq("club_id", clubId)
+        .eq("active", true)
+        .is("bar_item_id", null)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as any)?.code as string | undefined;
+    },
+    enabled: !!clubId,
+  });
+
+  const accountTabEnabled = (club as any)?.bar_account_tab_enabled !== false;
+  const payOnlineEnabled = (club as any)?.bar_pay_online_enabled !== false
+    && ["stitch", "yoco"].includes(String((club as any)?.payment_gateway || "").toLowerCase());
+  const cardSwipeEnabled = (club as any)?.bar_card_swipe_enabled !== false;
+
+
   const { data: visitorSales = [] } = useQuery({
     queryKey: ["bar-visitor-sales", clubId],
     queryFn: async () => {

@@ -546,15 +546,25 @@ export default function ScanPay() {
                 <p className="text-[11px] text-muted-foreground">
                   Keep ordering all evening, then settle the whole tab once.
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {club.card_swipe_enabled !== false && (
-                    <Button size="sm" className="gap-1.5" disabled={submitting} onClick={() => settleTab("terminal")}>
-                      <CreditCard className="w-3.5 h-3.5" /> Swipe at the club
+                <div className="space-y-2">
+                  {club.pay_online_enabled !== false && (
+                    <Button size="sm" className="w-full gap-1.5" disabled={submitting} onClick={payTabOnline}>
+                      {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+                      Pay tab online by card — {formatMoney(tab.total, currency)}
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" disabled={submitting} onClick={() => settleTab("cash")}>
-                    Pay cash at the bar
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    {club.card_swipe_enabled !== false && (
+                      <Button size="sm" variant={club.pay_online_enabled !== false ? "outline" : "default"} className="gap-1.5" disabled={submitting} onClick={() => settleTab("terminal")}>
+                        <CreditCard className="w-3.5 h-3.5" /> Swipe at the club
+                      </Button>
+                    )}
+                    {(club as any).cash_enabled === true && (
+                      <Button size="sm" variant="outline" disabled={submitting} onClick={() => settleTab("cash")}>
+                        Pay cash at the bar
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </Card>
             )}

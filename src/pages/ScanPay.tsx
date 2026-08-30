@@ -178,6 +178,10 @@ export default function ScanPay() {
       const status = (res as any)?.status;
       if (status === "paid") {
         localStorage.removeItem(PENDING_SALE_KEY);
+        if ((pending as any).tab) {
+          localStorage.removeItem(`sh.scanpay.tab.${code}`);
+          setTab(null);
+        }
         setVerifying(false);
         setDone({ total: pending!.total, itemName: pending!.itemName, onAccount: false, cardPaid: true });
         return;
@@ -269,6 +273,38 @@ export default function ScanPay() {
     } catch (err: any) {
       toast.error(err.message || "Could not add to your tab");
     } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Pay the whole open tab online by card via the club's hosted checkout. */
+  const payTabOnline = async () => {
+    if (!tab) return;
+    setSubmitting(true);
+    try {
+      rememberPayReturnTarget(`${window.location.origin}/s/${code}/success`);
+      const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
+        body: {
+          code,
+          tab_id: tab.tab_id,
+          tab_token: tab.token,
+          return_url: "https://squashhub.co.za/pay/return",
+        },
+      });
+      if (error) throw error;
+      if ((res as any)?.error) throw new Error((res as any).error);
+      const redirect = (res as any)?.redirect_url;
+      const saleId = (res as any)?.sale_id;
+      if (!redirect) throw new Error("Card payment could not be started");
+      if (saleId) {
+        localStorage.setItem(
+          PENDING_SALE_KEY,
+          JSON.stringify({ saleId, itemName: `Bar tab · ${tab.guest_name}`, total: tab.total, code, ts: Date.now(), tab: true }),
+        );
+      }
+      window.location.assign(String(redirect));
+    } catch (err: any) {
+      toast.error(err.message || "Could not start the card payment");
       setSubmitting(false);
     }
   };

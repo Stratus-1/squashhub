@@ -1,3 +1,10 @@
+# 2026-08-30 — Bar checkout controls remained at the bottom on mobile
+
+- **Symptom:** After selecting bar products, the account/card payment controls still rendered at the bottom of the product list instead of remaining visible.
+- **Finding:** The checkout used bottom-sticky positioning below the desktop breakpoint and remained inside the animated tab content, where ancestor layout behavior could keep it in normal flow.
+- **Fix:** The selected-cart checkout now renders through a document-level portal, stays fixed below the header on phones, and uses a fixed right rail from tablet widths upward.
+- **Guard:** Transaction controls for a non-empty bar cart must remain viewport-fixed and outside scroll/transform containers; never require scrolling to the end of the product catalogue.
+
 # 2026-08-29 — Mixed ladder rendered as separate men's and ladies' ladders
 
 - **Symptom:** Nelspruit's combined club ladder still appeared as separate men's and ladies' lists and pyramids for some users.

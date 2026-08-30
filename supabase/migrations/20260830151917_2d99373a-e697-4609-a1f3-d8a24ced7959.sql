@@ -1,0 +1,4 @@
+ALTER TABLE public.bar_visitor_sales DROP CONSTRAINT IF EXISTS bar_visitor_sales_payment_method_check;
+ALTER TABLE public.bar_visitor_sales ADD CONSTRAINT bar_visitor_sales_payment_method_check CHECK (payment_method = ANY (ARRAY['cash','card','eft','tab','online','terminal']));
+ALTER TABLE public.bar_visitor_sales DROP CONSTRAINT IF EXISTS bar_visitor_sales_payment_status_check;
+ALTER TABLE public.bar_visitor_sales ADD CONSTRAINT bar_visitor_sales_payment_status_check CHECK (payment_status = ANY (ARRAY['recorded','pending','paid','failed','on_tab','awaiting_cash','awaiting_terminal','settled']));

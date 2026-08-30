@@ -168,6 +168,15 @@ export function MyChampionships() {
   );
   const completedMatches = myMatches.filter((m: any) => m.status === "completed");
 
+  // Graduated knockouts intentionally place a player in several sections
+  // (one entry row per section). Render ONE card per tournament, not per entry.
+  const seenChamps = new Set<string>();
+  const uniqueEntries = myEntries.filter((e: any) => {
+    if (seenChamps.has(e.champ_id)) return false;
+    seenChamps.add(e.champ_id);
+    return true;
+  });
+
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -210,7 +219,7 @@ export function MyChampionships() {
 
 
 
-      {myEntries.map((entry: any) => {
+      {uniqueEntries.map((entry: any) => {
         const champ = allChamps.find((c: any) => c.id === entry.champ_id);
         if (!champ) return null;
         const isDoubles = champ.match_type === "doubles";

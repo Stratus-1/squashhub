@@ -387,14 +387,15 @@ export default function HonestyBar() {
               );
             })}
 
-            {/* Always-visible checkout panel — never scroll to find the pay button */}
+            {/* Always-visible checkout panel — floats on the right on wide screens,
+                sticks to the bottom on phones. Never scroll to find the pay button. */}
             <AnimatePresence>
               {cartCount > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
-                  className="sticky bottom-20 z-40"
+                  className="sticky bottom-20 z-40 lg:fixed lg:bottom-auto lg:top-28 lg:right-6 lg:w-72"
                 >
                   <Card className="p-3 space-y-2 shadow-lg border-primary/40 bg-background/95 backdrop-blur">
                     <div className="flex items-center justify-between">
@@ -408,7 +409,7 @@ export default function HonestyBar() {
                         <ShoppingCart className="w-4 h-4" /> Add to my account tab
                       </Button>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
                       {payOnlineEnabled && (
                         <Button variant="outline" className="h-10 text-xs gap-1.5" onClick={payOnline} disabled={submitting}>
                           <CreditCard className="w-3.5 h-3.5" /> Pay with card online
@@ -416,10 +417,11 @@ export default function HonestyBar() {
                       )}
                       {cardSwipeEnabled && (
                         <Button variant="outline" className="h-10 text-xs gap-1.5" onClick={swipeAtClub} disabled={submitting}>
-                          <Receipt className="w-3.5 h-3.5" /> Swipe card at the club
+                          <Receipt className="w-3.5 h-3.5" /> I swiped at the card machine
                         </Button>
                       )}
                     </div>
+
                     <Button
                       variant="ghost"
                       size="sm"

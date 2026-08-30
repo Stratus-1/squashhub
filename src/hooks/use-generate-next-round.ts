@@ -134,6 +134,7 @@ export function useGenerateNextRound(opts: {
             : gRows;
           const { error: gErr } = await fromExt("club_champs_matches").insert(gWithRound as any);
           if (gErr) throw gErr;
+          await announceRound(champId, nextNumber, groupNumber, section);
           return gRows.length;
         }
 

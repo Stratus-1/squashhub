@@ -368,8 +368,8 @@ export default function Notifications() {
                         setSelected(notif);
                         return;
                       }
-                      close();
-                      navigate(navigation.targetUrl);
+                      openTarget(navigation.targetUrl);
+
                     }}
                   >
                     <Card

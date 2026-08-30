@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart, X } from "lucide-react";
+import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 
@@ -41,9 +41,19 @@ interface ScanPayload {
   club?: {
     id: string; name: string; logo_url: string | null;
     subdomain: string | null; currency_code: string | null; bar_enabled: boolean;
+    account_tab_enabled?: boolean; pay_online_enabled?: boolean; card_swipe_enabled?: boolean;
   };
   item?: ScanItem | null;
   menu?: ScanItem[] | null;
+}
+
+interface GuestTab {
+  tab_id: string;
+  token: string;
+  guest_name: string;
+  status: string;
+  total: number;
+  lines: { id: string; name: string; quantity: number; total: number }[];
 }
 
 export default function ScanPay() {
@@ -54,8 +64,10 @@ export default function ScanPay() {
   const [visitorName, setVisitorName] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean } | null>(null);
+  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; terminal?: boolean; reference?: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [tab, setTab] = useState<GuestTab | null>(null);
+
 
   const [guestChosen, setGuestChosen] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem(GUEST_PREF_KEY) === "1",
@@ -181,6 +193,133 @@ export default function ScanPay() {
     poll();
     return () => { cancelled = true; };
   }, [code]);
+
+  /* ---------------- Open evening tab (visitors & members) ---------------- */
+
+  const tabKey = `sh.scanpay.tab.${code}`;
+
+  const applyTabPayload = (payload: any) => {
+    if (!payload?.found) {
+      localStorage.removeItem(tabKey);
+      setTab(null);
+      return null;
+    }
+    const stored = JSON.parse(localStorage.getItem(tabKey) || "{}");
+    const next: GuestTab = {
+      tab_id: payload.tab_id,
+      token: stored.token,
+      guest_name: payload.guest_name,
+      status: payload.status,
+      total: Number(payload.total || 0),
+      lines: payload.lines || [],
+    };
+    setTab(next);
+    return next;
+  };
+
+  // Restore a tab opened earlier this evening on this phone.
+  useEffect(() => {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(tabKey) : null;
+    if (!raw) return;
+    let saved: { tab_id: string; token: string } | null = null;
+    try { saved = JSON.parse(raw); } catch { localStorage.removeItem(tabKey); return; }
+    if (!saved?.tab_id || !saved?.token) return;
+    (async () => {
+      const { data } = await (supabase as any).rpc("get_bar_guest_tab", {
+        _tab_id: saved!.tab_id, _token: saved!.token,
+      });
+      const payload = data as any;
+      if (!payload?.found || payload.status !== "open") {
+        localStorage.removeItem(tabKey);
+        return;
+      }
+      applyTabPayload(payload);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
+  /** Start (or top up) an open tab for the evening with the current cart. */
+  const addToOpenTab = async () => {
+    if (cartLines.length === 0) return;
+    const name = member?.name || visitorName.trim();
+    if (!tab && !name) {
+      toast.error("Please give a name for the tab first.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      let current = tab;
+      if (!current) {
+        const { data, error } = await (supabase as any).rpc("open_bar_guest_tab", {
+          _code: code, _guest_name: name,
+        });
+        if (error) throw error;
+        localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));
+        current = { tab_id: data.tab_id, token: data.token, guest_name: data.guest_name, status: "open", total: 0, lines: [] };
+        setTab(current);
+      }
+      const { data: res, error: addErr } = await (supabase as any).rpc("add_to_bar_guest_tab", {
+        _tab_id: current.tab_id, _token: current.token, _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
+      });
+      if (addErr) throw addErr;
+      applyTabPayload(res);
+      setCart({});
+      setCheckingOut(false);
+      toast.success("Added to your tab — settle up when you're ready.");
+    } catch (err: any) {
+      toast.error(err.message || "Could not add to your tab");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Close the tab: swipe the total at the club's card machine, or pay cash. */
+  const settleTab = async (method: "terminal" | "cash") => {
+    if (!tab) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("settle_bar_guest_tab", {
+        _tab_id: tab.tab_id, _token: tab.token, _method: method,
+      });
+      if (error) throw error;
+      const total = Number((data as any)?.total || tab.total);
+      localStorage.removeItem(tabKey);
+      setTab(null);
+      setDone({
+        total,
+        itemName: `Bar tab · ${tab.guest_name}`,
+        onAccount: false,
+        terminal: method === "terminal",
+      });
+    } catch (err: any) {
+      toast.error(err.message || "Could not settle your tab");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Record a "swipe my card at the bar" order for the current cart. */
+  const swipeAtClub = async () => {
+    if (cartLines.length === 0) return;
+    const name = member?.name || visitorName.trim();
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("record_bar_terminal_sale", {
+        _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
+        _code: code,
+        _club_id: null,
+        _buyer_name: name || null,
+      });
+      if (error) throw error;
+      setDone({ total, itemName: cartLabel, onAccount: false, terminal: true, reference: (data as any)?.reference });
+      setCart({});
+      setCheckingOut(false);
+    } catch (err: any) {
+      toast.error(err.message || "Could not send your order to the bar");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
 
   const continueAsGuest = () => {
@@ -324,9 +463,11 @@ export default function ScanPay() {
             <p className="text-sm text-muted-foreground">
               {done.onAccount
                 ? "Charged to your member account."
-                : done.cardPaid
-                  ? "Paid by card — payment confirmed."
-                  : "Your purchase has been recorded."}
+                : done.terminal
+                  ? `Please swipe at the bar card machine.${done.reference ? ` Order ${done.reference}.` : ""}`
+                  : done.cardPaid
+                    ? "Paid by card — payment confirmed."
+                    : "Your purchase has been recorded."}
             </p>
             <Button variant="outline" className="w-full" onClick={() => { setDone(null); setCheckingOut(false); }}>
               Buy something else
@@ -351,7 +492,39 @@ export default function ScanPay() {
               </Card>
             )}
 
+            {tab && tab.status === "open" && (
+              <Card className="p-4 space-y-3 border-amber-500/50">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold">Your open tab · {tab.guest_name}</p>
+                  <span className="text-sm font-semibold">{formatMoney(tab.total, currency)}</span>
+                </div>
+                <div className="space-y-1">
+                  {tab.lines.map((l) => (
+                    <div key={l.id} className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span className="truncate">{l.quantity}× {l.name}</span>
+                      <span>{formatMoney(Number(l.total), currency)}</span>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <p className="text-[11px] text-muted-foreground">
+                  Keep ordering all evening, then settle the whole tab once.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {club.card_swipe_enabled !== false && (
+                    <Button size="sm" className="gap-1.5" disabled={submitting} onClick={() => settleTab("terminal")}>
+                      <CreditCard className="w-3.5 h-3.5" /> Swipe at the club
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" disabled={submitting} onClick={() => settleTab("cash")}>
+                    Pay cash at the bar
+                  </Button>
+                </div>
+              </Card>
+            )}
+
             {!checkingOut ? (
+
               <>
                 <h2 className="text-sm font-semibold">Tap items to add</h2>
                 <div className="grid grid-cols-3 gap-2">
@@ -435,49 +608,79 @@ export default function ScanPay() {
                   <span>{formatMoney(total, currency)}</span>
                 </div>
 
-                {member ? (
-                  <div className="space-y-2">
-                    <Button className="w-full gap-2" disabled={submitting} onClick={chargeToAccount}>
-                      <Wallet className="w-4 h-4" /> Charge to my account
-                    </Button>
-                    <Button variant="outline" className="w-full gap-2" disabled={submitting} onClick={payByCardNow}>
-                      <CreditCard className="w-4 h-4" /> Pay now by card
-                    </Button>
-                    <p className="text-[11px] text-muted-foreground text-center">
-                      Signed in as {member.name}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="visitor-name" className="text-xs">Your name</Label>
-                      <Input
-                        id="visitor-name"
-                        value={visitorName}
-                        onChange={(e) => setVisitorName(e.target.value)}
-                        placeholder="Name for the bar record"
-                        className="h-9"
-                      />
-                    </div>
-                    <Button className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={payByCardNow}>
-                      {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                      Pay {formatMoney(total, currency)} by card
-                    </Button>
-                    <p className="text-[11px] text-muted-foreground text-center">
-                      Card payments go through {club.name}&apos;s secure checkout.
-                    </p>
-                    {userId && !member && (
-                      <p className="text-[11px] text-muted-foreground text-center">
-                        You are signed in but not a member of {club.name}, so this is recorded as a visitor sale.
-                      </p>
-                    )}
-                    {!userId && (
-                      <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={goLogin}>
-                        <LogIn className="w-3.5 h-3.5" /> I&apos;m a member — log in instead
-                      </Button>
-                    )}
+                {(!member || !club.account_tab_enabled) && (
+                  <div className="space-y-1">
+                    <Label htmlFor="visitor-name" className="text-xs">Your name</Label>
+                    <Input
+                      id="visitor-name"
+                      value={member?.name || visitorName}
+                      disabled={!!member}
+                      onChange={(e) => setVisitorName(e.target.value)}
+                      placeholder="Name for the bar record"
+                      className="h-9"
+                    />
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground">How would you like to pay?</p>
+
+                  {member && club.account_tab_enabled !== false && (
+                    <Button className="w-full gap-2 h-11" disabled={submitting} onClick={chargeToAccount}>
+                      <Wallet className="w-4 h-4" /> Add to my member account
+                    </Button>
+                  )}
+
+                  {club.pay_online_enabled !== false && (
+                    <Button
+                      variant={member ? "outline" : "default"}
+                      className="w-full gap-2 h-11"
+                      disabled={submitting || (!member && !visitorName.trim())}
+                      onClick={payByCardNow}
+                    >
+                      {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                      Pay with card online — {formatMoney(total, currency)}
+                    </Button>
+                  )}
+
+                  {club.card_swipe_enabled !== false && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 h-11"
+                      disabled={submitting || (!member && !visitorName.trim())}
+                      onClick={swipeAtClub}
+                    >
+                      <CreditCard className="w-4 h-4" /> Swipe my card at the club
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="secondary"
+                    className="w-full gap-2 h-11"
+                    disabled={submitting || (!member && !tab && !visitorName.trim())}
+                    onClick={addToOpenTab}
+                  >
+                    <Receipt className="w-4 h-4" />
+                    {tab ? "Add to my open tab" : "Open a tab for the evening"}
+                  </Button>
+
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    {member
+                      ? `Signed in as ${member.name}`
+                      : `Card payments go through ${club.name}'s secure checkout.`}
+                  </p>
+                  {userId && !member && (
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      You are signed in but not a member of {club.name}, so this is recorded as a visitor sale.
+                    </p>
+                  )}
+                  {!userId && (
+                    <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={goLogin}>
+                      <LogIn className="w-3.5 h-3.5" /> I&apos;m a member — log in instead
+                    </Button>
+                  )}
+                </div>
+
               </Card>
             )}
           </>

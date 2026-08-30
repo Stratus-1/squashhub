@@ -10,6 +10,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { Beer, Wine, Coffee, Package, Plus, Minus, ShoppingCart, Receipt, Store, User, Users, CreditCard, QrCode } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin } from "@/hooks/use-club";
@@ -118,6 +119,29 @@ export default function HonestyBar() {
     enabled: !!clubId && !!memberId,
   });
 
+  // Venue-wide QR code — reused to start an online card payment from in-app.
+  const { data: venueCode } = useQuery({
+    queryKey: ["bar-venue-code", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("qr_short_codes")
+        .select("code")
+        .eq("club_id", clubId)
+        .eq("active", true)
+        .is("bar_item_id", null)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as any)?.code as string | undefined;
+    },
+    enabled: !!clubId,
+  });
+
+  const accountTabEnabled = (club as any)?.bar_account_tab_enabled !== false;
+  const payOnlineEnabled = (club as any)?.bar_pay_online_enabled !== false
+    && ["stitch", "yoco"].includes(String((club as any)?.payment_gateway || "").toLowerCase());
+  const cardSwipeEnabled = (club as any)?.bar_card_swipe_enabled !== false;
+
+
   const { data: visitorSales = [] } = useQuery({
     queryKey: ["bar-visitor-sales", clubId],
     queryFn: async () => {
@@ -178,6 +202,61 @@ export default function HonestyBar() {
       setSubmitting(false);
     }
   };
+
+  const cartLinePayload = () =>
+    Object.entries(cart)
+      .filter(([, qty]) => qty > 0)
+      .map(([itemId, qty]) => ({ bar_item_id: itemId, quantity: qty }));
+
+  /** Send the cart to the club's card machine — the member swipes at the bar. */
+  const swipeAtClub = async () => {
+    if (!clubId || cartCount === 0) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("record_bar_terminal_sale", {
+        _lines: cartLinePayload(),
+        _code: null,
+        _club_id: clubId,
+        _buyer_name: activeMember?.name || null,
+      });
+      if (error) throw error;
+      toast.success(`Order sent to the bar — swipe ${money(cartTotal)}${(data as any)?.reference ? ` (${(data as any).reference})` : ""}`);
+      setCart({});
+    } catch (err: any) {
+      toast.error(err.message || "Could not send your order to the bar");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Pay the cart online through the club's card checkout. */
+  const payOnline = async () => {
+    if (!clubId || cartCount === 0) return;
+    if (!venueCode) {
+      toast.error("Online card payments are not set up for this bar yet.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("bar-card-pay", {
+        body: {
+          code: venueCode,
+          lines: cartLinePayload(),
+          buyer_name: activeMember?.name || null,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const redirect = (data as any)?.redirect_url;
+      if (!redirect) throw new Error("Card payment could not be started");
+      window.location.assign(redirect);
+    } catch (err: any) {
+      toast.error(err.message || "Could not start the card payment");
+      setSubmitting(false);
+    }
+  };
+
+
 
   const inStock = items.filter(i => i.stock_qty > 0);
   const groupedByCategory = CATEGORIES.map(cat => ({
@@ -301,7 +380,7 @@ export default function HonestyBar() {
               );
             })}
 
-            {/* Sticky cart submit */}
+            {/* Always-visible checkout panel — never scroll to find the pay button */}
             <AnimatePresence>
               {cartCount > 0 && (
                 <motion.div
@@ -310,17 +389,43 @@ export default function HonestyBar() {
                   exit={{ opacity: 0, y: 20 }}
                   className="sticky bottom-20 z-40"
                 >
-                  <Button
-                    className="w-full h-12 text-sm gap-2"
-                    onClick={submitCart}
-                    disabled={submitting}
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    Add {cartCount} item{cartCount > 1 ? "s" : ""} to Tab — {money(cartTotal)}
-                  </Button>
+                  <Card className="p-3 space-y-2 shadow-lg border-primary/40 bg-background/95 backdrop-blur">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        {cartCount} item{cartCount > 1 ? "s" : ""} selected
+                      </p>
+                      <p className="text-base font-semibold">{money(cartTotal)}</p>
+                    </div>
+                    {accountTabEnabled && (
+                      <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting}>
+                        <ShoppingCart className="w-4 h-4" /> Add to my account tab
+                      </Button>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {payOnlineEnabled && (
+                        <Button variant="outline" className="h-10 text-xs gap-1.5" onClick={payOnline} disabled={submitting}>
+                          <CreditCard className="w-3.5 h-3.5" /> Pay with card online
+                        </Button>
+                      )}
+                      {cardSwipeEnabled && (
+                        <Button variant="outline" className="h-10 text-xs gap-1.5" onClick={swipeAtClub} disabled={submitting}>
+                          <Receipt className="w-3.5 h-3.5" /> Swipe card at the club
+                        </Button>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-7 text-[11px] text-muted-foreground"
+                      onClick={() => setCart({})}
+                    >
+                      Clear selection
+                    </Button>
+                  </Card>
                 </motion.div>
               )}
             </AnimatePresence>
+
           </TabsContent>
 
           <TabsContent value="my-tab" className="space-y-3 mt-4">

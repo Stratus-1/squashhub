@@ -301,7 +301,7 @@ export default function ScanPay() {
   /** Record a "swipe my card at the bar" order for the current cart. */
   const swipeAtClub = async () => {
     if (cartLines.length === 0) return;
-    const name = member?.name || visitorName.trim();
+    const name = member?.name || visitorName.trim() || tab?.guest_name?.trim() || "";
     setSubmitting(true);
     try {
       const { data, error } = await (supabase as any).rpc("record_bar_terminal_sale", {
@@ -339,7 +339,7 @@ export default function ScanPay() {
     setSubmitting(true);
     try {
       rememberPayReturnTarget(`${window.location.origin}/s/${code}/success`);
-      const buyerName = member?.name || visitorName.trim() || null;
+      const buyerName = member?.name || visitorName.trim() || tab?.guest_name?.trim() || null;
       const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
         body: {
           code,

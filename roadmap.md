@@ -6,7 +6,8 @@
 - [ ] ScanPay (QR) checkout: three payment options, always-visible cart/checkout panel
 - [x] In-app Bar page: same three options + always-visible cart panel
 - [x] Club admin: toggles for the three payment options
-- [ ] Club admin: settle "awaiting swipe" sales
+- [x] "I swiped at the card machine" records the sale as paid immediately (admin reconciles later)
+- [x] Checkout buttons float on the right on wide screens, sticky at the bottom on phones
 
 ## Visitor open tab for the evening (new)
 - [ ] Guest can open a named tab at the bar, add rounds through the evening

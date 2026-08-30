@@ -242,6 +242,29 @@ export default function ScanPay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
+  /** Open an empty evening tab up front — name only, no items needed. */
+  const openTabNow = async () => {
+    const name = member?.name || visitorName.trim();
+    if (!name) {
+      toast.error("Please give a name for the tab first.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("open_bar_guest_tab", {
+        _code: code, _guest_name: name,
+      });
+      if (error) throw error;
+      localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));
+      setTab({ tab_id: data.tab_id, token: data.token, guest_name: data.guest_name, status: "open", total: 0, lines: [] });
+      toast.success(`Tab opened for ${data.guest_name} — tap items to add them.`);
+    } catch (err: any) {
+      toast.error(err.message || "Could not open a tab");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   /** Start (or top up) an open tab for the evening with the current cart. */
   const addToOpenTab = async () => {
     if (cartLines.length === 0) return;
@@ -523,6 +546,34 @@ export default function ScanPay() {
                   </Button>
                   <Button variant="outline" className="flex-1" onClick={continueAsGuest}>
                     No, continue
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            {!tab && !member && count === 0 && (
+              <Card className="p-4 space-y-3 border-amber-500/40 bg-amber-500/5">
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-amber-600 shrink-0" />
+                  <p className="text-sm font-semibold">Staying for a while? Open a tab</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Enter your name once, then just tap drinks all evening. Pay the whole tab at the end.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    value={visitorName}
+                    onChange={(e) => setVisitorName(e.target.value)}
+                    placeholder="Your name"
+                    className="h-10"
+                  />
+                  <Button
+                    className="shrink-0 gap-1.5 h-10"
+                    disabled={submitting || !visitorName.trim()}
+                    onClick={openTabNow}
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                    Open my tab
                   </Button>
                 </div>
               </Card>

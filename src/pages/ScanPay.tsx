@@ -463,9 +463,11 @@ export default function ScanPay() {
             <p className="text-sm text-muted-foreground">
               {done.onAccount
                 ? "Charged to your member account."
-                : done.cardPaid
-                  ? "Paid by card — payment confirmed."
-                  : "Your purchase has been recorded."}
+                : done.terminal
+                  ? `Please swipe at the bar card machine.${done.reference ? ` Order ${done.reference}.` : ""}`
+                  : done.cardPaid
+                    ? "Paid by card — payment confirmed."
+                    : "Your purchase has been recorded."}
             </p>
             <Button variant="outline" className="w-full" onClick={() => { setDone(null); setCheckingOut(false); }}>
               Buy something else
@@ -490,7 +492,39 @@ export default function ScanPay() {
               </Card>
             )}
 
+            {tab && tab.status === "open" && (
+              <Card className="p-4 space-y-3 border-amber-500/50">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold">Your open tab · {tab.guest_name}</p>
+                  <span className="text-sm font-semibold">{formatMoney(tab.total, currency)}</span>
+                </div>
+                <div className="space-y-1">
+                  {tab.lines.map((l) => (
+                    <div key={l.id} className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span className="truncate">{l.quantity}× {l.name}</span>
+                      <span>{formatMoney(Number(l.total), currency)}</span>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <p className="text-[11px] text-muted-foreground">
+                  Keep ordering all evening, then settle the whole tab once.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {club.card_swipe_enabled !== false && (
+                    <Button size="sm" className="gap-1.5" disabled={submitting} onClick={() => settleTab("terminal")}>
+                      <CreditCard className="w-3.5 h-3.5" /> Swipe at the club
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" disabled={submitting} onClick={() => settleTab("cash")}>
+                    Pay cash at the bar
+                  </Button>
+                </div>
+              </Card>
+            )}
+
             {!checkingOut ? (
+
               <>
                 <h2 className="text-sm font-semibold">Tap items to add</h2>
                 <div className="grid grid-cols-3 gap-2">

@@ -49,6 +49,13 @@ export default function Notifications() {
     if (window.history.length > 1) navigate(-1);
     else navigate("/");
   };
+  /**
+   * Open the notification's target route. Never combine this with close():
+   * a history back() and a push() in the same tick race each other, and the
+   * pop wins — which left members stuck on the list ("can't open it again").
+   */
+  const openTarget = (url: string) => navigate(url, { replace: true });
+
   const linkedMemberIds = useMemo(
     () => Array.from(new Set(linkedMembers.map((member) => member.id).filter(Boolean))),
     [linkedMembers]

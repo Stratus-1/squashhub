@@ -175,9 +175,13 @@ export default function HonestyBar() {
   };
 
   const submitCart = async () => {
-    if (!memberId || !clubId || cartCount === 0) return;
+    if (cartCount === 0) return;
+    if (!memberId || !clubId) {
+      toast.error("We couldn't find your club membership — please reload and try again.");
+      return;
+    }
     setSubmitting(true);
-    try {
+
       const entries = Object.entries(cart)
         .filter(([, qty]) => qty > 0)
         .map(([itemId, qty]) => {

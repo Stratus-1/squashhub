@@ -640,7 +640,7 @@ export default function ScanPay() {
                     <Button
                       variant={member ? "outline" : "default"}
                       className="w-full gap-2 h-11"
-                      disabled={submitting || (!member && !visitorName.trim())}
+                      disabled={submitting || (!member && !visitorName.trim() && !tab)}
                       onClick={payByCardNow}
                     >
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
@@ -652,7 +652,7 @@ export default function ScanPay() {
                     <Button
                       variant="outline"
                       className="w-full gap-2 h-11"
-                      disabled={submitting || (!member && !visitorName.trim())}
+                      disabled={submitting || (!member && !visitorName.trim() && !tab)}
                       onClick={swipeAtClub}
                     >
                       <CreditCard className="w-4 h-4" /> Swipe my card at the club

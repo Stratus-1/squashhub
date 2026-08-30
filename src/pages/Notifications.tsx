@@ -54,7 +54,18 @@ export default function Notifications() {
    * a history back() and a push() in the same tick race each other, and the
    * pop wins — which left members stuck on the list ("can't open it again").
    */
-  const openTarget = (url: string) => navigate(url, { replace: true });
+  const openTarget = (url: string) => {
+    if (/^https?:\/\//i.test(url)) {
+      const target = new URL(url);
+      if (typeof window !== "undefined" && target.origin === window.location.origin) {
+        navigate(`${target.pathname}${target.search}${target.hash}`, { replace: true });
+      } else if (typeof window !== "undefined") {
+        window.location.assign(url);
+      }
+      return;
+    }
+    navigate(url, { replace: true });
+  };
 
   const linkedMemberIds = useMemo(
     () => Array.from(new Set(linkedMembers.map((member) => member.id).filter(Boolean))),

@@ -608,49 +608,79 @@ export default function ScanPay() {
                   <span>{formatMoney(total, currency)}</span>
                 </div>
 
-                {member ? (
-                  <div className="space-y-2">
-                    <Button className="w-full gap-2" disabled={submitting} onClick={chargeToAccount}>
-                      <Wallet className="w-4 h-4" /> Charge to my account
-                    </Button>
-                    <Button variant="outline" className="w-full gap-2" disabled={submitting} onClick={payByCardNow}>
-                      <CreditCard className="w-4 h-4" /> Pay now by card
-                    </Button>
-                    <p className="text-[11px] text-muted-foreground text-center">
-                      Signed in as {member.name}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="visitor-name" className="text-xs">Your name</Label>
-                      <Input
-                        id="visitor-name"
-                        value={visitorName}
-                        onChange={(e) => setVisitorName(e.target.value)}
-                        placeholder="Name for the bar record"
-                        className="h-9"
-                      />
-                    </div>
-                    <Button className="w-full gap-2" disabled={submitting || !visitorName.trim()} onClick={payByCardNow}>
-                      {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                      Pay {formatMoney(total, currency)} by card
-                    </Button>
-                    <p className="text-[11px] text-muted-foreground text-center">
-                      Card payments go through {club.name}&apos;s secure checkout.
-                    </p>
-                    {userId && !member && (
-                      <p className="text-[11px] text-muted-foreground text-center">
-                        You are signed in but not a member of {club.name}, so this is recorded as a visitor sale.
-                      </p>
-                    )}
-                    {!userId && (
-                      <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={goLogin}>
-                        <LogIn className="w-3.5 h-3.5" /> I&apos;m a member — log in instead
-                      </Button>
-                    )}
+                {(!member || !club.account_tab_enabled) && (
+                  <div className="space-y-1">
+                    <Label htmlFor="visitor-name" className="text-xs">Your name</Label>
+                    <Input
+                      id="visitor-name"
+                      value={member?.name || visitorName}
+                      disabled={!!member}
+                      onChange={(e) => setVisitorName(e.target.value)}
+                      placeholder="Name for the bar record"
+                      className="h-9"
+                    />
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground">How would you like to pay?</p>
+
+                  {member && club.account_tab_enabled !== false && (
+                    <Button className="w-full gap-2 h-11" disabled={submitting} onClick={chargeToAccount}>
+                      <Wallet className="w-4 h-4" /> Add to my member account
+                    </Button>
+                  )}
+
+                  {club.pay_online_enabled !== false && (
+                    <Button
+                      variant={member ? "outline" : "default"}
+                      className="w-full gap-2 h-11"
+                      disabled={submitting || (!member && !visitorName.trim())}
+                      onClick={payByCardNow}
+                    >
+                      {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                      Pay with card online — {formatMoney(total, currency)}
+                    </Button>
+                  )}
+
+                  {club.card_swipe_enabled !== false && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 h-11"
+                      disabled={submitting || (!member && !visitorName.trim())}
+                      onClick={swipeAtClub}
+                    >
+                      <CreditCard className="w-4 h-4" /> Swipe my card at the club
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="secondary"
+                    className="w-full gap-2 h-11"
+                    disabled={submitting || (!member && !tab && !visitorName.trim())}
+                    onClick={addToOpenTab}
+                  >
+                    <Receipt className="w-4 h-4" />
+                    {tab ? "Add to my open tab" : "Open a tab for the evening"}
+                  </Button>
+
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    {member
+                      ? `Signed in as ${member.name}`
+                      : `Card payments go through ${club.name}'s secure checkout.`}
+                  </p>
+                  {userId && !member && (
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      You are signed in but not a member of {club.name}, so this is recorded as a visitor sale.
+                    </p>
+                  )}
+                  {!userId && (
+                    <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={goLogin}>
+                      <LogIn className="w-3.5 h-3.5" /> I&apos;m a member — log in instead
+                    </Button>
+                  )}
+                </div>
+
               </Card>
             )}
           </>

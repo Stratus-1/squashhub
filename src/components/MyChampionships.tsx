@@ -219,7 +219,7 @@ export function MyChampionships() {
 
 
 
-      {myEntries.map((entry: any) => {
+      {uniqueEntries.map((entry: any) => {
         const champ = allChamps.find((c: any) => c.id === entry.champ_id);
         if (!champ) return null;
         const isDoubles = champ.match_type === "doubles";

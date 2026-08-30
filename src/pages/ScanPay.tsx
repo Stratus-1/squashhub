@@ -242,6 +242,29 @@ export default function ScanPay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
+  /** Open an empty evening tab up front — name only, no items needed. */
+  const openTabNow = async () => {
+    const name = member?.name || visitorName.trim();
+    if (!name) {
+      toast.error("Please give a name for the tab first.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("open_bar_guest_tab", {
+        _code: code, _guest_name: name,
+      });
+      if (error) throw error;
+      localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));
+      setTab({ tab_id: data.tab_id, token: data.token, guest_name: data.guest_name, status: "open", total: 0, lines: [] });
+      toast.success(`Tab opened for ${data.guest_name} — tap items to add them.`);
+    } catch (err: any) {
+      toast.error(err.message || "Could not open a tab");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   /** Start (or top up) an open tab for the evening with the current cart. */
   const addToOpenTab = async () => {
     if (cartLines.length === 0) return;

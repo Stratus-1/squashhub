@@ -180,7 +180,30 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
             />
           </div>
         </div>
+
+        {/* Which checkout options customers may use at this club */}
+        <div className="mt-3 pt-3 border-t grid gap-2 sm:grid-cols-3">
+          {[
+            { key: "bar_account_tab_enabled", label: "Add to member account", hint: "Members charge to their tab" },
+            { key: "bar_pay_online_enabled", label: "Pay with card online", hint: "Card checkout via your gateway" },
+            { key: "bar_card_swipe_enabled", label: "Swipe card at the club", hint: "Order sent to the club card machine" },
+          ].map((opt) => (
+            <div key={opt.key} className="flex items-start justify-between gap-2 rounded-md border p-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium leading-tight">{opt.label}</p>
+                <p className="text-[11px] text-muted-foreground leading-tight">{opt.hint}</p>
+              </div>
+              <Switch
+                checked={(club as any)?.[opt.key] !== false}
+                onCheckedChange={(v) =>
+                  updateClub.mutate({ id: club.id, [opt.key]: v } as any)
+                }
+              />
+            </div>
+          ))}
+        </div>
       </Card>
+
 
       <SetupSteps steps={barSteps} value={step} onChange={setStep} />
 

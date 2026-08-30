@@ -92,7 +92,7 @@ const FAQS = [
   { q: "Is it free?", a: "Every new club gets a 3-month free trial from the day it registers — time to load members, sort out your data and set the club up exactly how you want it. No credit card is needed, and billing only starts the day after the trial ends. After that, pricing is on a sliding scale — each band of active members is charged at its own rate, so the bigger your club, the lower your average cost per member. The current bands and minimum monthly charge are shown in the Pricing section above. Paying upfront earns a discount off the monthly scale — 5% for six months in advance, 10% for a full year — and international clubs are billed proportionally in USD or EUR." },
   { q: "How long does setup take?", a: "Setting up your club on the platform is quick and easy — usually under 2 minutes. Onboarding your existing members is the more involved part, but our team will assist you to migrate them across seamlessly. Depending on the size of your club, this may take a bit of time." },
   { q: "Do members need accounts?", a: "Members don't sign up to SquashHub directly — the club creates its own platform on SquashHub, and its members join under the club. Every member has an account with their club, where bookings, participation, and any outstanding fees or payments are reflected." },
-  { q: "Can associations use it?", a: "Yes. League associations in smaller or rural areas often don't have a dedicated administrative platform. SquashHub can provide a full association management platform at a small fee, and members affiliated to that league are automatically linked through to the clubs where they play." },
+  { q: "Can associations use it?", a: "Yes — several league associations already run on SquashHub, and members affiliated to those leagues are automatically linked through to the clubs where they play. Association onboarding is currently arranged directly with the SquashHub team while the association structure and pricing are being finalised — contact us if your league is interested." },
   { q: "Is my data secure?", a: "Yes. The platform runs on secure HTTPS pages and is fully POPIA-aligned, with hCaptcha protection on sign-in and registration to guard against bots and site crawling. Only authorised club admin personnel — such as the Captain, Chairman, Secretary, and Financial Manager — have full admin rights and access to member information." },
 ];
 
@@ -667,21 +667,13 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="max-w-md mx-auto">
             <PricingCard
               icon={Building2}
               title="Clubs"
               priceLabel={`From ${pricing.format(lowestRate)}`}
               intlLabel={scaleLabel}
               perks={["All features included", "Billed only on active members", "Save 5% paying 6-monthly, 10% annually", "3 months free to get set up"]}
-              onGetStarted={() => navigate("/auth")}
-            />
-            <PricingCard
-              icon={Landmark}
-              title="Associations"
-              priceLabel={`From ${pricing.format(lowestRate)}`}
-              intlLabel={scaleLabel}
-              perks={["Admin, fixtures & finance tools", "Oversight across affiliated clubs", "Save 5% paying 6-monthly, 10% annually", "3 months free to get set up"]}
               onGetStarted={() => navigate("/auth")}
             />
           </div>

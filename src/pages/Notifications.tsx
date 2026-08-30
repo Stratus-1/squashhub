@@ -366,7 +366,6 @@ export default function Notifications() {
             ) : notifications && notifications.length > 0 ? (
               notifications.map((notif, i) => {
                 const Icon = iconMap[notif.type] || Bell;
-                const navigation = getNotificationNavigation(notif as any);
                 return (
                   <motion.div
                     key={notif.id}

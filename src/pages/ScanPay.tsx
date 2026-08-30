@@ -439,7 +439,7 @@ export default function ScanPay() {
         </Button>
       </header>
 
-      <main className="px-4 py-4 max-w-md mx-auto space-y-4">
+      <main className={`px-4 py-4 max-w-md mx-auto space-y-4 ${!done && !checkingOut && count > 0 ? (tab ? "pb-40" : "pb-28") : ""}`}>
         {verifying && !done && (
           <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
@@ -534,8 +534,8 @@ export default function ScanPay() {
                     return (
                       <Card
                         key={m.id}
-                        className={`relative p-2 flex flex-col items-center gap-1 cursor-pointer hover:bg-accent/50 ${qty > 0 ? "ring-2 ring-primary" : ""} ${out ? "opacity-50" : ""}`}
-                        onClick={() => { if (!out) bump(m.id, 1); }}
+                        className={`relative p-2 flex flex-col items-center gap-1 cursor-pointer transition-all hover:bg-accent/50 active:scale-95 ${qty > 0 ? "ring-2 ring-primary bg-primary/10" : ""} ${out ? "opacity-50" : ""}`}
+                        onClick={() => { if (!out) { navigator.vibrate?.(15); bump(m.id, 1); } }}
                       >
                         <div className="w-full aspect-square rounded bg-muted overflow-hidden flex items-center justify-center">
                           {m.image_url ? (

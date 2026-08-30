@@ -819,7 +819,9 @@ Deno.serve(async (req) => {
           });
         }
 
-        // 2. Upsert every club in this group in one batch.
+        // 2. Stage every club in this group. Insert-only: clubs already in the
+        // tree keep their association parent (a national ranking group cannot
+        // tell us which province a club belongs to).
         const clubSlugs = [...new Set(parsed.map((p) => p.clubSlug).filter(Boolean) as string[])];
         const unknownSlugs = clubSlugs.filter((s) => !orgIdCache.has(s));
         if (unknownSlugs.length) {
@@ -837,25 +839,32 @@ Deno.serve(async (req) => {
               last_scraped_at: new Date().toISOString(),
             };
           });
-          const { data: orgRows, error: orgErr } = await supabase
+          const { error: insErr } = await supabase
             .from("sportyhq_orgs")
-            .upsert(payload, { onConflict: "sportyhq_org_key", ignoreDuplicates: false })
-            .select("id, sportyhq_org_key, status, matched_club_id");
-          if (orgErr) {
-            errors.push(`group ${gid} clubs: ${orgErr.message}`);
-          } else {
-            const toMatch: string[] = [];
+            .upsert(payload, { onConflict: "sportyhq_org_key", ignoreDuplicates: true });
+          if (insErr) errors.push(`group ${gid} clubs: ${insErr.message}`);
+
+          const keys = unknownSlugs.map((s) => `club:${s}`);
+          const KCHUNK = 200;
+          const toMatch: string[] = [];
+          for (let i = 0; i < keys.length; i += KCHUNK) {
+            const { data: orgRows, error: selErr } = await supabase
+              .from("sportyhq_orgs")
+              .select("id, sportyhq_org_key, status, matched_club_id")
+              .in("sportyhq_org_key", keys.slice(i, i + KCHUNK));
+            if (selErr) { errors.push(`group ${gid} club lookup: ${selErr.message}`); continue; }
             for (const r of orgRows ?? []) {
               const slug = String(r.sportyhq_org_key).slice(5);
               orgIdCache.set(slug, r.id);
               orgsFound++;
               if (r.status === "new" && r.matched_club_id) toMatch.push(r.id);
             }
-            if (toMatch.length) {
-              await supabase.from("sportyhq_orgs").update({ status: "matched" }).in("id", toMatch);
-            }
+          }
+          if (toMatch.length) {
+            await supabase.from("sportyhq_orgs").update({ status: "matched" }).in("id", toMatch);
           }
         }
+
 
         // 3. Pre-load the member rosters of every live club we matched.
         const liveClubIdBySlug = new Map<string, string | null>();

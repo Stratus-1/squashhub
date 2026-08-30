@@ -338,10 +338,10 @@ export default function Notifications() {
                       {navigation.canNavigate ? (
                         <Button
                           onClick={() => {
-                            close();
-                            navigate(navigation.targetUrl);
+                            openTarget(navigation.targetUrl);
                           }}
                         >
+
                           Open
                         </Button>
                       ) : null}

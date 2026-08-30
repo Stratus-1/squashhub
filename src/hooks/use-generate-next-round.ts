@@ -11,7 +11,33 @@ import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { buildLeagueFinals, buildNextRound, sectionLetter } from "@/lib/tournaments/knockout";
 import { buildGraduatedNextRound } from "@/lib/tournaments/graduated";
+import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import type { SectionProgression } from "@/lib/tournaments/knockout-progression";
+
+/**
+ * Every newly created round tells its players who they play, through exactly
+ * the channels the tournament enabled (in-app / email / WhatsApp). Never let a
+ * notification failure undo a round that was already saved.
+ */
+async function announceRound(
+  champId: string,
+  roundNumber: number,
+  groupNumber: number,
+  section?: number,
+) {
+  try {
+    const res = await notifyRoundDraw({
+      champId,
+      roundNumber,
+      groupNumber,
+      sections: typeof section === "number" ? [section] : null,
+    });
+    if (res.sent > 0) toast.success(roundNotifySummary(res));
+    if (res.whatsappFailed > 0) toast.warning(`${res.whatsappFailed} WhatsApp message(s) failed.`);
+  } catch (e: any) {
+    toast.warning(`Round created, but players could not be notified: ${e?.message || e}`);
+  }
+}
 
 /**
  * Strength order for a section, taken from its opening round: the earlier a

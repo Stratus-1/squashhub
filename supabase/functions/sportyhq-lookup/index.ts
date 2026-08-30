@@ -777,112 +777,152 @@ Deno.serve(async (req) => {
         const groupTitle =
           textOf(html.match(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/)?.[1] ?? "") || `Group ${gid}`;
 
-        const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
-        for (const row of rows) {
+        // 1. Parse every row first — national groups run to 1000+ players, so
+        // per-row round trips to the database are far too slow.
+        type ParsedRow = {
+          slug: string;
+          playerName: string;
+          clubSlug: string | null;
+          clubLabel: string | null;
+          rankPosition: number | null;
+          rankPoints: number | null;
+          rankConfidence: string | null;
+        };
+        const parsed: ParsedRow[] = [];
+        const seenSlugs = new Set<string>();
+        for (const row of html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
           const rowHtml = row[1];
           const playerM = rowHtml.match(/href="\/ranking\/user\/([^/"]+)\/ranking_group_id,\d+[^"]*"[^>]*>([\s\S]*?)<\/a>/);
           if (!playerM) continue;
           const slug = playerM[1];
           const playerName = textOf(playerM[2]);
-          if (!playerName) continue;
-
+          if (!playerName || seenSlugs.has(slug)) continue;
+          seenSlugs.add(slug);
           const clubM = rowHtml.match(/href="\/club\/view\/([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
-          const clubSlug = clubM?.[1] ?? null;
-          const clubLabel = clubM ? textOf(clubM[2]) : null;
-
           const rowText = textOf(rowHtml);
           const nums = rowText.match(/^(\d+)\s+.*?([\d,]+)\s+(\d+)%\s*$/);
-          const rankPosition = nums ? Number(nums[1]) : null;
-          const rankPoints = nums ? num(nums[2]) : null;
-          const rankConfidence = nums ? `${nums[3]}%` : null;
+          parsed.push({
+            slug,
+            playerName,
+            clubSlug: clubM?.[1] ?? null,
+            clubLabel: clubM ? textOf(clubM[2]) : null,
+            rankPosition: nums ? Number(nums[1]) : null,
+            rankPoints: nums ? num(nums[2]) : null,
+            rankConfidence: nums ? `${nums[3]}%` : null,
+          });
+        }
 
-          // Upsert the club (staging org) keyed by its SportyHQ slug
-          let orgId: string | null = null;
-          if (clubSlug) {
-            if (orgIdCache.has(clubSlug)) {
-              orgId = orgIdCache.get(clubSlug)!;
-            } else {
-              const prettyName = clubLabel && clubLabel.length > 3 ? clubLabel : deslugify(clubSlug);
-              const match = matchLiveClub(prettyName, clubSlug, clubRows);
-              const { data: orgRow, error: orgErr } = await supabase
-                .from("sportyhq_orgs")
-                .upsert(
-                  {
-                    sportyhq_org_key: `club:${clubSlug}`,
-                    name: prettyName,
-                    kind: "club",
-                    parent_key: `group:${gid}`,
-                    parent_org_id: associationOrgId,
-                    matched_club_id: match?.id ?? null,
-                    last_scraped_at: new Date().toISOString(),
-                  },
-                  { onConflict: "sportyhq_org_key", ignoreDuplicates: false },
-                )
-                .select("id, status, matched_club_id")
-                .single();
-              if (orgErr) { errors.push(`club ${clubSlug}: ${orgErr.message}`); orgIdCache.set(clubSlug, null); continue; }
-              orgId = orgRow.id;
-              // Only flip status to matched on discovery; never demote ignored/promoted
-              if (orgRow.status === "new" && match) {
-                await supabase.from("sportyhq_orgs").update({ status: "matched" }).eq("id", orgId);
-              }
-              orgIdCache.set(clubSlug, orgId);
-              orgsFound++;
-            }
-          }
-          if (!orgId) continue;
-
-          // Match the player against the matched club's members (cached per club)
-          let memberMatch: { id: string; confidence: string } | null = null;
-          let personId: string | null = null;
-          const liveClubId = clubSlug ? matchLiveClub(clubLabel ?? deslugify(clubSlug), clubSlug, clubRows)?.id : null;
-          if (liveClubId) {
-            if (!memberCache.has(liveClubId)) {
-              const { data: members } = await supabase
-                .from("club_members")
-                .select("id, name, person_id")
-                .eq("club_id", liveClubId)
-                .neq("status", "resigned");
-              memberCache.set(liveClubId, members ?? []);
-            }
-            const members = memberCache.get(liveClubId)!;
-            memberMatch = matchMember(playerName, members);
-            personId = memberMatch ? members.find((m: any) => m.id === memberMatch!.id)?.person_id ?? null : null;
-          }
-
-          const { data: memRow, error: memErr } = await supabase
-            .from("sportyhq_org_members")
-            .upsert(
-              {
-                org_id: orgId,
-                ranking_slug: slug,
-                name: playerName,
-                rank_position: rankPosition,
-                rank_points: rankPoints,
-                rank_confidence: rankConfidence,
-                club_label: clubLabel,
-                matched_club_member_id: memberMatch?.id ?? null,
-                matched_person_id: personId,
-                match_confidence: memberMatch?.confidence ?? null,
-                last_seen_at: new Date().toISOString(),
-              },
-              { onConflict: "org_id,ranking_slug" },
-            )
-            .select("id, status")
-            .single();
-          if (memErr) {
-            errors.push(`player ${slug}: ${memErr.message}`);
+        // 2. Upsert every club in this group in one batch.
+        const clubSlugs = [...new Set(parsed.map((p) => p.clubSlug).filter(Boolean) as string[])];
+        const unknownSlugs = clubSlugs.filter((s) => !orgIdCache.has(s));
+        if (unknownSlugs.length) {
+          const payload = unknownSlugs.map((clubSlug) => {
+            const label = parsed.find((p) => p.clubSlug === clubSlug)?.clubLabel ?? null;
+            const prettyName = label && label.length > 3 ? label : deslugify(clubSlug);
+            const match = matchLiveClub(prettyName, clubSlug, clubRows);
+            return {
+              sportyhq_org_key: `club:${clubSlug}`,
+              name: prettyName,
+              kind: "club",
+              parent_key: `group:${gid}`,
+              parent_org_id: associationOrgId,
+              matched_club_id: match?.id ?? null,
+              last_scraped_at: new Date().toISOString(),
+            };
+          });
+          const { data: orgRows, error: orgErr } = await supabase
+            .from("sportyhq_orgs")
+            .upsert(payload, { onConflict: "sportyhq_org_key", ignoreDuplicates: false })
+            .select("id, sportyhq_org_key, status, matched_club_id");
+          if (orgErr) {
+            errors.push(`group ${gid} clubs: ${orgErr.message}`);
           } else {
-            // Only advance new -> matched; never demote ignored/promoted
-            if (memRow.status === "new" && memberMatch) {
-              await supabase.from("sportyhq_org_members").update({ status: "matched" }).eq("id", memRow.id);
+            const toMatch: string[] = [];
+            for (const r of orgRows ?? []) {
+              const slug = String(r.sportyhq_org_key).slice(5);
+              orgIdCache.set(slug, r.id);
+              orgsFound++;
+              if (r.status === "new" && r.matched_club_id) toMatch.push(r.id);
             }
-            playersFound++;
+            if (toMatch.length) {
+              await supabase.from("sportyhq_orgs").update({ status: "matched" }).in("id", toMatch);
+            }
           }
         }
-        summary.push({ group_id: gid, title: groupTitle });
-        await new Promise((r) => setTimeout(r, 400)); // gentle pacing between groups
+
+        // 3. Pre-load the member rosters of every live club we matched.
+        const liveClubIdBySlug = new Map<string, string | null>();
+        for (const clubSlug of clubSlugs) {
+          const label = parsed.find((p) => p.clubSlug === clubSlug)?.clubLabel;
+          liveClubIdBySlug.set(
+            clubSlug,
+            matchLiveClub(label ?? deslugify(clubSlug), clubSlug, clubRows)?.id ?? null,
+          );
+        }
+        for (const liveClubId of new Set([...liveClubIdBySlug.values()].filter(Boolean) as string[])) {
+          if (memberCache.has(liveClubId)) continue;
+          const { data: members } = await supabase
+            .from("club_members")
+            .select("id, name, person_id")
+            .eq("club_id", liveClubId)
+            .neq("status", "resigned");
+          memberCache.set(liveClubId, members ?? []);
+        }
+
+        // 4. Batch-upsert the players.
+        const memberPayload: Record<string, unknown>[] = [];
+        for (const p of parsed) {
+          if (!p.clubSlug) continue;
+          const orgId = orgIdCache.get(p.clubSlug);
+          if (!orgId) continue;
+          const liveClubId = liveClubIdBySlug.get(p.clubSlug) ?? null;
+          let memberMatch: { id: string; confidence: string } | null = null;
+          let personId: string | null = null;
+          if (liveClubId) {
+            const members = memberCache.get(liveClubId) ?? [];
+            memberMatch = matchMember(p.playerName, members);
+            personId = memberMatch
+              ? members.find((m: any) => m.id === memberMatch!.id)?.person_id ?? null
+              : null;
+          }
+          memberPayload.push({
+            org_id: orgId,
+            ranking_slug: p.slug,
+            name: p.playerName,
+            rank_position: p.rankPosition,
+            rank_points: p.rankPoints,
+            rank_confidence: p.rankConfidence,
+            club_label: p.clubLabel,
+            matched_club_member_id: memberMatch?.id ?? null,
+            matched_person_id: personId,
+            match_confidence: memberMatch?.confidence ?? null,
+            last_seen_at: new Date().toISOString(),
+          });
+        }
+        const CHUNK = 300;
+        for (let i = 0; i < memberPayload.length; i += CHUNK) {
+          const chunk = memberPayload.slice(i, i + CHUNK);
+          const { data: memRows, error: memErr } = await supabase
+            .from("sportyhq_org_members")
+            .upsert(chunk, { onConflict: "org_id,ranking_slug" })
+            .select("id, status, matched_club_member_id");
+          if (memErr) {
+            errors.push(`group ${gid} players @${i}: ${memErr.message}`);
+            continue;
+          }
+          playersFound += chunk.length;
+          const promote = (memRows ?? [])
+            .filter((r: any) => r.status === "new" && r.matched_club_member_id)
+            .map((r: any) => r.id);
+          if (promote.length) {
+            await supabase.from("sportyhq_org_members").update({ status: "matched" }).in("id", promote);
+          }
+        }
+
+        summary.push({ group_id: gid, title: groupTitle, players: memberPayload.length });
+        await new Promise((r) => setTimeout(r, 250)); // gentle pacing between groups
       }
+
 
       await supabase
         .from("sportyhq_tree_runs")

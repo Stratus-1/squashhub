@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
     let saleIds: string[] = [];
     let payerName = (buyer_name || "").trim();
     let tabRow: any = null;
+    let itemMap = new Map<string, any>();
 
     if (tabMode) {
       // Resolve the open tab and charge its outstanding lines.

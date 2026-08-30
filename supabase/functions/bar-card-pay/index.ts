@@ -24,6 +24,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { code, bar_item_id, quantity = 1, buyer_name = null, return_url = null } = body || {};
 
+    // Tab-settlement mode: pay a whole open guest tab online by card.
+    const tabId = body?.tab_id ? String(body.tab_id) : null;
+    const tabToken = body?.tab_token ? String(body.tab_token) : null;
+    const tabMode = !!(tabId && tabToken);
+
     // Cart support: `lines: [{ bar_item_id, quantity }]`. Single-item callers
     // keep working via bar_item_id/quantity.
     const rawLines: Array<{ bar_item_id: string; quantity: number }> =
@@ -35,7 +40,7 @@ Deno.serve(async (req) => {
     const lines = rawLines
       .map((l) => ({ bar_item_id: String(l?.bar_item_id || ""), quantity: Number(l?.quantity) }))
       .filter((l) => l.bar_item_id && l.quantity >= 1 && l.quantity <= 50);
-    if (!code || lines.length === 0 || lines.length > 30) {
+    if (!code || (!tabMode && (lines.length === 0 || lines.length > 30))) {
       return json({ error: "Missing or invalid payment details" });
     }
 

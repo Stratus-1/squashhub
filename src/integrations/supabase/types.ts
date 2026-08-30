@@ -618,6 +618,60 @@ export type Database = {
         }
         Relationships: []
       }
+      bar_guest_tabs: {
+        Row: {
+          closed_at: string | null
+          club_id: string
+          club_member_id: string | null
+          created_at: string
+          guest_name: string
+          id: string
+          opened_at: string
+          settled_method: string | null
+          status: string
+          token: string
+        }
+        Insert: {
+          closed_at?: string | null
+          club_id: string
+          club_member_id?: string | null
+          created_at?: string
+          guest_name: string
+          id?: string
+          opened_at?: string
+          settled_method?: string | null
+          status?: string
+          token?: string
+        }
+        Update: {
+          closed_at?: string | null
+          club_id?: string
+          club_member_id?: string | null
+          created_at?: string
+          guest_name?: string
+          id?: string
+          opened_at?: string
+          settled_method?: string | null
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_guest_tabs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_guest_tabs_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_items: {
         Row: {
           active: boolean
@@ -823,6 +877,7 @@ export type Database = {
           bar_item_id: string
           club_id: string
           created_at: string
+          guest_tab_id: string | null
           id: string
           logged_by: string | null
           note: string | null
@@ -838,6 +893,7 @@ export type Database = {
           bar_item_id: string
           club_id: string
           created_at?: string
+          guest_tab_id?: string | null
           id?: string
           logged_by?: string | null
           note?: string | null
@@ -853,6 +909,7 @@ export type Database = {
           bar_item_id?: string
           club_id?: string
           created_at?: string
+          guest_tab_id?: string | null
           id?: string
           logged_by?: string | null
           note?: string | null
@@ -877,6 +934,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_visitor_sales_guest_tab_id_fkey"
+            columns: ["guest_tab_id"]
+            isOneToOne: false
+            referencedRelation: "bar_guest_tabs"
             referencedColumns: ["id"]
           },
           {
@@ -12558,6 +12622,10 @@ export type Database = {
         }
         Returns: Json
       }
+      add_to_bar_guest_tab: {
+        Args: { _lines: Json; _tab_id: string; _token: string }
+        Returns: Json
+      }
       admin_adjust_ranking_points: {
         Args: { _delta: number; _member_id: string; _reason: string }
         Returns: number
@@ -13006,6 +13074,10 @@ export type Database = {
           p_league_assoc_ids?: string[]
           p_national_body_ids?: string[]
         }
+        Returns: Json
+      }
+      get_bar_guest_tab: {
+        Args: { _tab_id: string; _token: string }
         Returns: Json
       }
       get_bells_participant_min: {
@@ -13514,6 +13586,10 @@ export type Database = {
         Returns: Json
       }
       notify_doubles_pair: { Args: { p_pair_id: string }; Returns: Json }
+      open_bar_guest_tab: {
+        Args: { _code: string; _guest_name: string }
+        Returns: Json
+      }
       org_descendants: {
         Args: { _org_id: string }
         Returns: {
@@ -13933,6 +14009,10 @@ export type Database = {
       set_doubles_pairing_locked: {
         Args: { p_champ_id: string; p_locked: boolean }
         Returns: boolean
+      }
+      settle_bar_guest_tab: {
+        Args: { _method: string; _tab_id: string; _token: string }
+        Returns: Json
       }
       snapshot_all_club_rankings: { Args: never; Returns: number }
       snapshot_club_rankings: {

@@ -194,6 +194,133 @@ export default function ScanPay() {
     return () => { cancelled = true; };
   }, [code]);
 
+  /* ---------------- Open evening tab (visitors & members) ---------------- */
+
+  const tabKey = `sh.scanpay.tab.${code}`;
+
+  const applyTabPayload = (payload: any) => {
+    if (!payload?.found) {
+      localStorage.removeItem(tabKey);
+      setTab(null);
+      return null;
+    }
+    const stored = JSON.parse(localStorage.getItem(tabKey) || "{}");
+    const next: GuestTab = {
+      tab_id: payload.tab_id,
+      token: stored.token,
+      guest_name: payload.guest_name,
+      status: payload.status,
+      total: Number(payload.total || 0),
+      lines: payload.lines || [],
+    };
+    setTab(next);
+    return next;
+  };
+
+  // Restore a tab opened earlier this evening on this phone.
+  useEffect(() => {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(tabKey) : null;
+    if (!raw) return;
+    let saved: { tab_id: string; token: string } | null = null;
+    try { saved = JSON.parse(raw); } catch { localStorage.removeItem(tabKey); return; }
+    if (!saved?.tab_id || !saved?.token) return;
+    (async () => {
+      const { data } = await (supabase as any).rpc("get_bar_guest_tab", {
+        _tab_id: saved!.tab_id, _token: saved!.token,
+      });
+      const payload = data as any;
+      if (!payload?.found || payload.status !== "open") {
+        localStorage.removeItem(tabKey);
+        return;
+      }
+      applyTabPayload(payload);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
+  /** Start (or top up) an open tab for the evening with the current cart. */
+  const addToOpenTab = async () => {
+    if (cartLines.length === 0) return;
+    const name = member?.name || visitorName.trim();
+    if (!tab && !name) {
+      toast.error("Please give a name for the tab first.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      let current = tab;
+      if (!current) {
+        const { data, error } = await (supabase as any).rpc("open_bar_guest_tab", {
+          _code: code, _guest_name: name,
+        });
+        if (error) throw error;
+        localStorage.setItem(tabKey, JSON.stringify({ tab_id: data.tab_id, token: data.token }));
+        current = { tab_id: data.tab_id, token: data.token, guest_name: data.guest_name, status: "open", total: 0, lines: [] };
+        setTab(current);
+      }
+      const { data: res, error: addErr } = await (supabase as any).rpc("add_to_bar_guest_tab", {
+        _tab_id: current.tab_id, _token: current.token, _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
+      });
+      if (addErr) throw addErr;
+      applyTabPayload(res);
+      setCart({});
+      setCheckingOut(false);
+      toast.success("Added to your tab — settle up when you're ready.");
+    } catch (err: any) {
+      toast.error(err.message || "Could not add to your tab");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Close the tab: swipe the total at the club's card machine, or pay cash. */
+  const settleTab = async (method: "terminal" | "cash") => {
+    if (!tab) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("settle_bar_guest_tab", {
+        _tab_id: tab.tab_id, _token: tab.token, _method: method,
+      });
+      if (error) throw error;
+      const total = Number((data as any)?.total || tab.total);
+      localStorage.removeItem(tabKey);
+      setTab(null);
+      setDone({
+        total,
+        itemName: `Bar tab · ${tab.guest_name}`,
+        onAccount: false,
+        terminal: method === "terminal",
+      });
+    } catch (err: any) {
+      toast.error(err.message || "Could not settle your tab");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Record a "swipe my card at the bar" order for the current cart. */
+  const swipeAtClub = async () => {
+    if (cartLines.length === 0) return;
+    const name = member?.name || visitorName.trim();
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("record_bar_terminal_sale", {
+        _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
+        _code: code,
+        _club_id: null,
+        _buyer_name: name || null,
+      });
+      if (error) throw error;
+      setDone({ total, itemName: cartLabel, onAccount: false, terminal: true, reference: (data as any)?.reference });
+      setCart({});
+      setCheckingOut(false);
+    } catch (err: any) {
+      toast.error(err.message || "Could not send your order to the bar");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
 
   const continueAsGuest = () => {
     localStorage.setItem(GUEST_PREF_KEY, "1");

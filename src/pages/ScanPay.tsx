@@ -178,6 +178,10 @@ export default function ScanPay() {
       const status = (res as any)?.status;
       if (status === "paid") {
         localStorage.removeItem(PENDING_SALE_KEY);
+        if ((pending as any).tab) {
+          localStorage.removeItem(`sh.scanpay.tab.${code}`);
+          setTab(null);
+        }
         setVerifying(false);
         setDone({ total: pending!.total, itemName: pending!.itemName, onAccount: false, cardPaid: true });
         return;
@@ -273,6 +277,38 @@ export default function ScanPay() {
     }
   };
 
+  /** Pay the whole open tab online by card via the club's hosted checkout. */
+  const payTabOnline = async () => {
+    if (!tab) return;
+    setSubmitting(true);
+    try {
+      rememberPayReturnTarget(`${window.location.origin}/s/${code}/success`);
+      const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
+        body: {
+          code,
+          tab_id: tab.tab_id,
+          tab_token: tab.token,
+          return_url: "https://squashhub.co.za/pay/return",
+        },
+      });
+      if (error) throw error;
+      if ((res as any)?.error) throw new Error((res as any).error);
+      const redirect = (res as any)?.redirect_url;
+      const saleId = (res as any)?.sale_id;
+      if (!redirect) throw new Error("Card payment could not be started");
+      if (saleId) {
+        localStorage.setItem(
+          PENDING_SALE_KEY,
+          JSON.stringify({ saleId, itemName: `Bar tab · ${tab.guest_name}`, total: tab.total, code, ts: Date.now(), tab: true }),
+        );
+      }
+      window.location.assign(String(redirect));
+    } catch (err: any) {
+      toast.error(err.message || "Could not start the card payment");
+      setSubmitting(false);
+    }
+  };
+
   /** Close the tab: swipe the total at the club's card machine, or pay cash. */
   const settleTab = async (method: "terminal" | "cash") => {
     if (!tab) return;
@@ -301,7 +337,7 @@ export default function ScanPay() {
   /** Record a "swipe my card at the bar" order for the current cart. */
   const swipeAtClub = async () => {
     if (cartLines.length === 0) return;
-    const name = member?.name || visitorName.trim();
+    const name = member?.name || visitorName.trim() || tab?.guest_name?.trim() || "";
     setSubmitting(true);
     try {
       const { data, error } = await (supabase as any).rpc("record_bar_terminal_sale", {
@@ -339,7 +375,7 @@ export default function ScanPay() {
     setSubmitting(true);
     try {
       rememberPayReturnTarget(`${window.location.origin}/s/${code}/success`);
-      const buyerName = member?.name || visitorName.trim() || null;
+      const buyerName = member?.name || visitorName.trim() || tab?.guest_name?.trim() || null;
       const { data: res, error } = await supabase.functions.invoke("bar-card-pay", {
         body: {
           code,
@@ -439,7 +475,7 @@ export default function ScanPay() {
         </Button>
       </header>
 
-      <main className="px-4 py-4 max-w-md mx-auto space-y-4">
+      <main className={`px-4 py-4 max-w-md mx-auto space-y-4 ${!done && !checkingOut && count > 0 ? (tab ? "pb-40" : "pb-28") : ""}`}>
         {verifying && !done && (
           <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
@@ -510,15 +546,25 @@ export default function ScanPay() {
                 <p className="text-[11px] text-muted-foreground">
                   Keep ordering all evening, then settle the whole tab once.
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {club.card_swipe_enabled !== false && (
-                    <Button size="sm" className="gap-1.5" disabled={submitting} onClick={() => settleTab("terminal")}>
-                      <CreditCard className="w-3.5 h-3.5" /> Swipe at the club
+                <div className="space-y-2">
+                  {club.pay_online_enabled !== false && (
+                    <Button size="sm" className="w-full gap-1.5" disabled={submitting} onClick={payTabOnline}>
+                      {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+                      Pay tab online by card — {formatMoney(tab.total, currency)}
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" disabled={submitting} onClick={() => settleTab("cash")}>
-                    Pay cash at the bar
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    {club.card_swipe_enabled !== false && (
+                      <Button size="sm" variant={club.pay_online_enabled !== false ? "outline" : "default"} className="gap-1.5" disabled={submitting} onClick={() => settleTab("terminal")}>
+                        <CreditCard className="w-3.5 h-3.5" /> Swipe at the club
+                      </Button>
+                    )}
+                    {(club as any).cash_enabled === true && (
+                      <Button size="sm" variant="outline" disabled={submitting} onClick={() => settleTab("cash")}>
+                        Pay cash at the bar
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </Card>
             )}
@@ -534,8 +580,8 @@ export default function ScanPay() {
                     return (
                       <Card
                         key={m.id}
-                        className={`relative p-2 flex flex-col items-center gap-1 cursor-pointer hover:bg-accent/50 ${qty > 0 ? "ring-2 ring-primary" : ""} ${out ? "opacity-50" : ""}`}
-                        onClick={() => { if (!out) bump(m.id, 1); }}
+                        className={`relative p-2 flex flex-col items-center gap-1 cursor-pointer transition-all hover:bg-accent/50 active:scale-95 ${qty > 0 ? "ring-2 ring-primary bg-primary/10" : ""} ${out ? "opacity-50" : ""}`}
+                        onClick={() => { if (!out) { navigator.vibrate?.(15); bump(m.id, 1); } }}
                       >
                         <div className="w-full aspect-square rounded bg-muted overflow-hidden flex items-center justify-center">
                           {m.image_url ? (
@@ -608,7 +654,7 @@ export default function ScanPay() {
                   <span>{formatMoney(total, currency)}</span>
                 </div>
 
-                {(!member || !club.account_tab_enabled) && (
+                {(!member || !club.account_tab_enabled) && !tab && (
                   <div className="space-y-1">
                     <Label htmlFor="visitor-name" className="text-xs">Your name</Label>
                     <Input
@@ -620,6 +666,11 @@ export default function ScanPay() {
                       className="h-9"
                     />
                   </div>
+                )}
+                {tab && !member && (
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    On your open tab as <span className="font-medium text-foreground">{tab.guest_name}</span>
+                  </p>
                 )}
 
                 <div className="space-y-2">
@@ -635,7 +686,7 @@ export default function ScanPay() {
                     <Button
                       variant={member ? "outline" : "default"}
                       className="w-full gap-2 h-11"
-                      disabled={submitting || (!member && !visitorName.trim())}
+                      disabled={submitting || (!member && !visitorName.trim() && !tab)}
                       onClick={payByCardNow}
                     >
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
@@ -647,7 +698,7 @@ export default function ScanPay() {
                     <Button
                       variant="outline"
                       className="w-full gap-2 h-11"
-                      disabled={submitting || (!member && !visitorName.trim())}
+                      disabled={submitting || (!member && !visitorName.trim() && !tab)}
                       onClick={swipeAtClub}
                     >
                       <CreditCard className="w-4 h-4" /> Swipe my card at the club
@@ -687,17 +738,31 @@ export default function ScanPay() {
         )}
       </main>
 
-      {/* Sticky cart bar */}
+      {/* Sticky cart bar — always visible while items are selected */}
       {!done && !checkingOut && count > 0 && (
-        <div className="fixed bottom-0 inset-x-0 border-t bg-background/95 backdrop-blur px-4 py-3">
-          <div className="max-w-md mx-auto flex items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground">{count} item{count > 1 ? "s" : ""} in cart</p>
-              <p className="text-base font-semibold">{formatMoney(total, currency)}</p>
+        <div className="fixed bottom-0 inset-x-0 border-t bg-background/95 backdrop-blur px-4 py-3 z-40">
+          <div className="max-w-md mx-auto space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-foreground">{count} item{count > 1 ? "s" : ""} selected</p>
+                <p className="text-base font-semibold">{formatMoney(total, currency)}</p>
+              </div>
+              {tab ? (
+                <Button className="gap-2 h-11" disabled={submitting} onClick={addToOpenTab}>
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                  Add to my open tab
+                </Button>
+              ) : (
+                <Button className="gap-2 h-11" onClick={() => setCheckingOut(true)}>
+                  <ShoppingCart className="w-4 h-4" /> Done — checkout
+                </Button>
+              )}
             </div>
-            <Button className="gap-2" onClick={() => setCheckingOut(true)}>
-              <ShoppingCart className="w-4 h-4" /> Done — checkout
-            </Button>
+            {tab && (
+              <Button variant="outline" className="w-full gap-2" onClick={() => setCheckingOut(true)}>
+                <CreditCard className="w-4 h-4" /> Pay now instead — card, swipe or cash
+              </Button>
+            )}
           </div>
         </div>
       )}

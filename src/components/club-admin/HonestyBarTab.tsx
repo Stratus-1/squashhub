@@ -182,11 +182,12 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         </div>
 
         {/* Which checkout options customers may use at this club */}
-        <div className="mt-3 pt-3 border-t grid gap-2 sm:grid-cols-3">
+        <div className="mt-3 pt-3 border-t grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { key: "bar_account_tab_enabled", label: "Add to member account", hint: "Members charge to their tab" },
-            { key: "bar_pay_online_enabled", label: "Pay with card online", hint: "Card checkout via your gateway" },
-            { key: "bar_card_swipe_enabled", label: "Swipe card at the club", hint: "Order sent to the club card machine" },
+            { key: "bar_account_tab_enabled", label: "Add to member account", hint: "Members charge to their tab", defaultOff: false },
+            { key: "bar_pay_online_enabled", label: "Pay with card online", hint: "Card checkout via your gateway", defaultOff: false },
+            { key: "bar_card_swipe_enabled", label: "Swipe card at the club", hint: "Order sent to the club card machine", defaultOff: false },
+            { key: "bar_cash_enabled", label: "Cash at the bar", hint: "Guests can settle their tab in cash", defaultOff: true },
           ].map((opt) => (
             <div key={opt.key} className="flex items-start justify-between gap-2 rounded-md border p-2">
               <div className="min-w-0">
@@ -194,7 +195,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                 <p className="text-[11px] text-muted-foreground leading-tight">{opt.hint}</p>
               </div>
               <Switch
-                checked={(club as any)?.[opt.key] !== false}
+                checked={opt.defaultOff ? (club as any)?.[opt.key] === true : (club as any)?.[opt.key] !== false}
                 onCheckedChange={(v) =>
                   updateClub.mutate({ id: club.id, [opt.key]: v } as any)
                 }

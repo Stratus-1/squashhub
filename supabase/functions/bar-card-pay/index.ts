@@ -24,6 +24,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { code, bar_item_id, quantity = 1, buyer_name = null, return_url = null } = body || {};
 
+    // Tab-settlement mode: pay a whole open guest tab online by card.
+    const tabId = body?.tab_id ? String(body.tab_id) : null;
+    const tabToken = body?.tab_token ? String(body.tab_token) : null;
+    const tabMode = !!(tabId && tabToken);
+
     // Cart support: `lines: [{ bar_item_id, quantity }]`. Single-item callers
     // keep working via bar_item_id/quantity.
     const rawLines: Array<{ bar_item_id: string; quantity: number }> =
@@ -35,7 +40,7 @@ Deno.serve(async (req) => {
     const lines = rawLines
       .map((l) => ({ bar_item_id: String(l?.bar_item_id || ""), quantity: Number(l?.quantity) }))
       .filter((l) => l.bar_item_id && l.quantity >= 1 && l.quantity <= 50);
-    if (!code || lines.length === 0 || lines.length > 30) {
+    if (!code || (!tabMode && (lines.length === 0 || lines.length > 30))) {
       return json({ error: "Missing or invalid payment details" });
     }
 
@@ -45,19 +50,45 @@ Deno.serve(async (req) => {
       .eq("code", code).maybeSingle();
     if (!qr || !qr.active) return json({ error: "This QR code is no longer active" });
 
-    const { data: items } = await admin
-      .from("bar_items")
-      .select("id, name, price, club_id, active")
-      .eq("club_id", qr.club_id)
-      .in("id", lines.map((l) => l.bar_item_id));
-    const itemMap = new Map((items || []).filter((i: any) => i.active).map((i: any) => [i.id, i]));
-    if (itemMap.size !== new Set(lines.map((l) => l.bar_item_id)).size) {
-      return json({ error: "One or more items are not available" });
-    }
+    let amount = 0;
+    let saleIds: string[] = [];
+    let payerName = (buyer_name || "").trim();
+    let tabRow: any = null;
+    let itemMap = new Map<string, any>();
 
-    const amount = lines.reduce(
-      (sum, l) => sum + Number((itemMap.get(l.bar_item_id) as any).price) * l.quantity, 0,
-    );
+    if (tabMode) {
+      // Resolve the open tab and charge its outstanding lines.
+      const { data: t } = await admin
+        .from("bar_guest_tabs")
+        .select("id, club_id, guest_name, status")
+        .eq("id", tabId).eq("token", tabToken).maybeSingle();
+      if (!t || t.club_id !== qr.club_id) return json({ error: "Tab not found" });
+      if (t.status !== "open") return json({ error: "This tab has already been settled" });
+      tabRow = t;
+      const { data: tabSales } = await admin
+        .from("bar_visitor_sales")
+        .select("id, total")
+        .eq("guest_tab_id", t.id)
+        .eq("payment_status", "on_tab");
+      if (!tabSales?.length) return json({ error: "Your tab is empty" });
+      saleIds = tabSales.map((s: any) => s.id);
+      amount = tabSales.reduce((s: number, r: any) => s + Number(r.total), 0);
+      payerName = String(t.guest_name || "").trim();
+    } else {
+      const { data: items } = await admin
+        .from("bar_items")
+        .select("id, name, price, club_id, active")
+        .eq("club_id", qr.club_id)
+        .in("id", lines.map((l) => l.bar_item_id));
+      const itemMap = new Map((items || []).filter((i: any) => i.active).map((i: any) => [i.id, i]));
+      if (itemMap.size !== new Set(lines.map((l) => l.bar_item_id)).size) {
+        return json({ error: "One or more items are not available" });
+      }
+
+      amount = lines.reduce(
+        (sum, l) => sum + Number((itemMap.get(l.bar_item_id) as any).price) * l.quantity, 0,
+      );
+    }
     if (!(amount > 0)) return json({ error: "Invalid amount" });
     if (Math.round(amount * 100) < 100) {
       return json({ error: "Card payments must be at least R1.00 — please add another item or charge to your account." });
@@ -85,29 +116,53 @@ Deno.serve(async (req) => {
       return json({ error: "This club has not finished its card payment setup" });
     }
 
-    // Record the sale lines up-front as pending so stock/admin views stay accurate.
-    const { data: sales, error: saleErr } = await admin
-      .from("bar_visitor_sales")
-      .insert(lines.map((l) => {
-        const it = itemMap.get(l.bar_item_id) as any;
-        return {
-          club_id: club.id,
-          bar_item_id: it.id,
-          quantity: l.quantity,
-          unit_price: Number(it.price),
-          total: Number(it.price) * l.quantity,
-          payment_method: "card",
-          visitor_name: (buyer_name || "").trim() || null,
-          note: "Scan-to-pay (QR) · card checkout",
-          payment_status: "pending",
-        };
-      }))
-      .select("id");
-    if (saleErr || !sales?.length) return json({ error: saleErr?.message || "Could not start the sale" });
-    const saleIds = sales.map((s: any) => s.id);
-    const sale = sales[0];
+    if (tabMode) {
+      // Move the tab's lines into a pending card payment and start closing the tab.
+      await admin.from("bar_visitor_sales")
+        .update({ payment_method: "card", payment_status: "pending", note: "Bar tab · paid online by card" })
+        .in("id", saleIds);
+      await admin.from("bar_guest_tabs")
+        .update({ status: "closing", settled_method: "online" })
+        .eq("id", tabRow.id);
+    } else {
+      // Record the sale lines up-front as pending so stock/admin views stay accurate.
+      const { data: sales, error: saleErr } = await admin
+        .from("bar_visitor_sales")
+        .insert(lines.map((l) => {
+          const it = itemMap.get(l.bar_item_id) as any;
+          return {
+            club_id: club.id,
+            bar_item_id: it.id,
+            quantity: l.quantity,
+            unit_price: Number(it.price),
+            total: Number(it.price) * l.quantity,
+            payment_method: "card",
+            visitor_name: payerName || null,
+            note: "Scan-to-pay (QR) · card checkout",
+            payment_status: "pending",
+          };
+        }))
+        .select("id");
+      if (saleErr || !sales?.length) return json({ error: saleErr?.message || "Could not start the sale" });
+      saleIds = sales.map((s: any) => s.id);
+    }
+    const sale = { id: saleIds[0] };
 
-    const reference = `BAR-${String(sale.id).slice(0, 8)}`;
+    // Revert helper: on gateway failure, tab lines go back onto the open tab.
+    const failSales = async () => {
+      if (tabMode) {
+        await admin.from("bar_visitor_sales")
+          .update({ payment_method: "tab", payment_status: "on_tab", note: "Open bar tab" })
+          .in("id", saleIds);
+        await admin.from("bar_guest_tabs")
+          .update({ status: "open", settled_method: null })
+          .eq("id", tabRow.id);
+      } else {
+        await admin.from("bar_visitor_sales").update({ payment_status: "failed" }).in("id", saleIds);
+      }
+    };
+
+    const reference = `${tabMode ? "TAB" : "BAR"}-${String(sale.id).slice(0, 8)}`;
     const redirectUri = `${PUBLIC_APP_ORIGIN}/pay/return`;
 
     // ---- Yoco tenants -------------------------------------------------

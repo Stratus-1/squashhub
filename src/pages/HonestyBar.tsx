@@ -179,6 +179,61 @@ export default function HonestyBar() {
     }
   };
 
+  const cartLinePayload = () =>
+    Object.entries(cart)
+      .filter(([, qty]) => qty > 0)
+      .map(([itemId, qty]) => ({ bar_item_id: itemId, quantity: qty }));
+
+  /** Send the cart to the club's card machine — the member swipes at the bar. */
+  const swipeAtClub = async () => {
+    if (!clubId || cartCount === 0) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("record_bar_terminal_sale", {
+        _lines: cartLinePayload(),
+        _code: null,
+        _club_id: clubId,
+        _buyer_name: activeMember?.name || null,
+      });
+      if (error) throw error;
+      toast.success(`Order sent to the bar — swipe ${money(cartTotal)}${(data as any)?.reference ? ` (${(data as any).reference})` : ""}`);
+      setCart({});
+    } catch (err: any) {
+      toast.error(err.message || "Could not send your order to the bar");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Pay the cart online through the club's card checkout. */
+  const payOnline = async () => {
+    if (!clubId || cartCount === 0) return;
+    if (!venueCode) {
+      toast.error("Online card payments are not set up for this bar yet.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("bar-card-pay", {
+        body: {
+          code: venueCode,
+          lines: cartLinePayload(),
+          buyer_name: activeMember?.name || null,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const redirect = (data as any)?.redirect_url;
+      if (!redirect) throw new Error("Card payment could not be started");
+      window.location.assign(redirect);
+    } catch (err: any) {
+      toast.error(err.message || "Could not start the card payment");
+      setSubmitting(false);
+    }
+  };
+
+
+
   const inStock = items.filter(i => i.stock_qty > 0);
   const groupedByCategory = CATEGORIES.map(cat => ({
     ...cat,

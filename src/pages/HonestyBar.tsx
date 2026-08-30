@@ -181,6 +181,8 @@ export default function HonestyBar() {
       return;
     }
     setSubmitting(true);
+    try {
+
 
       const entries = Object.entries(cart)
         .filter(([, qty]) => qty > 0)

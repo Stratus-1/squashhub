@@ -55,10 +55,33 @@ Deno.serve(async (req) => {
     const next = paid ? "paid" : failed ? "failed" : "pending";
     if (next !== sale.payment_status) {
       // Cart payments write one row per line sharing the same reference.
-      await admin.from("bar_visitor_sales")
-        .update({ payment_status: next })
+      const { data: refRows } = await admin.from("bar_visitor_sales")
+        .select("id, guest_tab_id")
         .eq("club_id", sale.club_id)
         .eq("payment_reference", sale.payment_reference);
+      const tabIds = [...new Set((refRows || []).map((r: any) => r.guest_tab_id).filter(Boolean))];
+
+      if (next === "failed" && tabIds.length) {
+        // A tab settlement that failed goes back onto the open tab so the
+        // guest can retry or choose another way to pay.
+        await admin.from("bar_visitor_sales")
+          .update({ payment_method: "tab", payment_status: "on_tab", note: "Open bar tab", payment_reference: null })
+          .eq("club_id", sale.club_id)
+          .eq("payment_reference", sale.payment_reference);
+        await admin.from("bar_guest_tabs")
+          .update({ status: "open", settled_method: null })
+          .in("id", tabIds);
+      } else {
+        await admin.from("bar_visitor_sales")
+          .update({ payment_status: next })
+          .eq("club_id", sale.club_id)
+          .eq("payment_reference", sale.payment_reference);
+        if (next === "paid" && tabIds.length) {
+          await admin.from("bar_guest_tabs")
+            .update({ status: "settled", closed_at: new Date().toISOString(), settled_method: "online" })
+            .in("id", tabIds);
+        }
+      }
     }
     return json({ status: next, gateway, provider_state: state, stitch_state: state, total: Number(sale.total) });
   } catch (e: any) {

@@ -380,7 +380,7 @@ export default function HonestyBar() {
               );
             })}
 
-            {/* Sticky cart submit */}
+            {/* Always-visible checkout panel — never scroll to find the pay button */}
             <AnimatePresence>
               {cartCount > 0 && (
                 <motion.div
@@ -389,17 +389,43 @@ export default function HonestyBar() {
                   exit={{ opacity: 0, y: 20 }}
                   className="sticky bottom-20 z-40"
                 >
-                  <Button
-                    className="w-full h-12 text-sm gap-2"
-                    onClick={submitCart}
-                    disabled={submitting}
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    Add {cartCount} item{cartCount > 1 ? "s" : ""} to Tab — {money(cartTotal)}
-                  </Button>
+                  <Card className="p-3 space-y-2 shadow-lg border-primary/40 bg-background/95 backdrop-blur">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        {cartCount} item{cartCount > 1 ? "s" : ""} selected
+                      </p>
+                      <p className="text-base font-semibold">{money(cartTotal)}</p>
+                    </div>
+                    {accountTabEnabled && (
+                      <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting}>
+                        <ShoppingCart className="w-4 h-4" /> Add to my account tab
+                      </Button>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {payOnlineEnabled && (
+                        <Button variant="outline" className="h-10 text-xs gap-1.5" onClick={payOnline} disabled={submitting}>
+                          <CreditCard className="w-3.5 h-3.5" /> Pay with card online
+                        </Button>
+                      )}
+                      {cardSwipeEnabled && (
+                        <Button variant="outline" className="h-10 text-xs gap-1.5" onClick={swipeAtClub} disabled={submitting}>
+                          <Receipt className="w-3.5 h-3.5" /> Swipe card at the club
+                        </Button>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-7 text-[11px] text-muted-foreground"
+                      onClick={() => setCart({})}
+                    >
+                      Clear selection
+                    </Button>
+                  </Card>
                 </motion.div>
               )}
             </AnimatePresence>
+
           </TabsContent>
 
           <TabsContent value="my-tab" className="space-y-3 mt-4">

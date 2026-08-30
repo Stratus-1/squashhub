@@ -4504,6 +4504,7 @@ export type Database = {
           auto_number_existing_onboarding: boolean
           bar_account_tab_enabled: boolean
           bar_card_swipe_enabled: boolean
+          bar_cash_enabled: boolean
           bar_pay_online_enabled: boolean
           baseline_amount: number | null
           baseline_currency: string | null
@@ -4627,6 +4628,7 @@ export type Database = {
           auto_number_existing_onboarding?: boolean
           bar_account_tab_enabled?: boolean
           bar_card_swipe_enabled?: boolean
+          bar_cash_enabled?: boolean
           bar_pay_online_enabled?: boolean
           baseline_amount?: number | null
           baseline_currency?: string | null
@@ -4750,6 +4752,7 @@ export type Database = {
           auto_number_existing_onboarding?: boolean
           bar_account_tab_enabled?: boolean
           bar_card_swipe_enabled?: boolean
+          bar_cash_enabled?: boolean
           bar_pay_online_enabled?: boolean
           baseline_amount?: number | null
           baseline_currency?: string | null

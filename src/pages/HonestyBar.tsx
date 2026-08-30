@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
@@ -387,53 +388,56 @@ export default function HonestyBar() {
               );
             })}
 
-            {/* Always-visible checkout panel — floats on the right on wide screens,
-                sticks to the bottom on phones. Never scroll to find the pay button. */}
-            <AnimatePresence>
-              {cartCount > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  className="sticky bottom-20 z-40 lg:fixed lg:bottom-auto lg:top-28 lg:right-6 lg:w-72"
-                >
-                  <Card className="p-3 space-y-2 shadow-lg border-primary/40 bg-background/95 backdrop-blur">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        {cartCount} item{cartCount > 1 ? "s" : ""} selected
-                      </p>
-                      <p className="text-base font-semibold">{money(cartTotal)}</p>
-                    </div>
-                    {accountTabEnabled && (
-                      <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting}>
-                        <ShoppingCart className="w-4 h-4" /> Add to my account tab
-                      </Button>
-                    )}
-                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-                      {payOnlineEnabled && (
-                        <Button variant="outline" className="h-10 text-xs gap-1.5" onClick={payOnline} disabled={submitting}>
-                          <CreditCard className="w-3.5 h-3.5" /> Pay with card online
+            {/* Render outside the tab/layout tree so ancestor overflow or transforms cannot
+                push the checkout controls back into the normal document flow. */}
+            {typeof document !== "undefined" && createPortal(
+              <AnimatePresence>
+                {cartCount > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    className="fixed inset-x-3 top-[calc(env(safe-area-inset-top,0px)+5rem)] z-[60] md:inset-x-auto md:right-4 md:top-24 md:w-80"
+                  >
+                    <Card className="p-3 space-y-2 shadow-lg border-primary/40 bg-background/95 backdrop-blur">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                          {cartCount} item{cartCount > 1 ? "s" : ""} selected
+                        </p>
+                        <p className="text-base font-semibold">{money(cartTotal)}</p>
+                      </div>
+                      {accountTabEnabled && (
+                        <Button className="w-full h-11 text-sm gap-2" onClick={submitCart} disabled={submitting}>
+                          <ShoppingCart className="w-4 h-4" /> Add to my account tab
                         </Button>
                       )}
-                      {cardSwipeEnabled && (
-                        <Button variant="outline" className="h-10 text-xs gap-1.5" onClick={swipeAtClub} disabled={submitting}>
-                          <Receipt className="w-3.5 h-3.5" /> I swiped at the card machine
-                        </Button>
-                      )}
-                    </div>
+                      <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
+                        {payOnlineEnabled && (
+                          <Button variant="outline" className="min-h-11 h-auto text-xs gap-1.5" onClick={payOnline} disabled={submitting}>
+                            <CreditCard className="w-3.5 h-3.5 shrink-0" /> Pay with card online
+                          </Button>
+                        )}
+                        {cardSwipeEnabled && (
+                          <Button variant="outline" className="min-h-11 h-auto text-xs gap-1.5 whitespace-normal" onClick={swipeAtClub} disabled={submitting}>
+                            <Receipt className="w-3.5 h-3.5 shrink-0" /> I swiped at the card machine
+                          </Button>
+                        )}
+                      </div>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full h-7 text-[11px] text-muted-foreground"
-                      onClick={() => setCart({})}
-                    >
-                      Clear selection
-                    </Button>
-                  </Card>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-7 text-[11px] text-muted-foreground"
+                        onClick={() => setCart({})}
+                      >
+                        Clear selection
+                      </Button>
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>,
+              document.body,
+            )}
 
           </TabsContent>
 

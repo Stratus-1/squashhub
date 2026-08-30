@@ -7,7 +7,7 @@
 - [x] In-app Bar page: same three options + always-visible cart panel
 - [x] Club admin: toggles for the three payment options
 - [x] "I swiped at the card machine" records the sale as paid immediately (admin reconciles later)
-- [x] Checkout buttons float on the right on wide screens, sticky at the bottom on phones
+- [x] Checkout buttons float on the right from tablet/desktop and stay fixed at the top on phones
 
 ## Visitor open tab for the evening (new)
 - [ ] Guest can open a named tab at the bar, add rounds through the evening

@@ -150,6 +150,7 @@ export function useGenerateNextRound(opts: {
         const withRound = st.nextRound?.id ? rows.map((r) => ({ ...r, round_id: st.nextRound!.id })) : rows;
         const { error } = await fromExt("club_champs_matches").insert(withRound as any);
         if (error) throw error;
+        await announceRound(champId, nextNumber, groupNumber, section);
         return rows.length;
       }
 

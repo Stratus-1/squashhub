@@ -359,7 +359,7 @@ Deno.serve(async (req) => {
       let saved: unknown = null;
 
       try {
-        const name = String((member as any).full_name ?? "").trim();
+        const name = String((member as any).name ?? "").trim();
         if (name.length < 3) throw new Error("Member has no usable name");
         const cands = await search(name);
         const best = await deepPickBest(name, clubHints, cands);

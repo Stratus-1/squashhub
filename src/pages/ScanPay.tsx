@@ -41,9 +41,19 @@ interface ScanPayload {
   club?: {
     id: string; name: string; logo_url: string | null;
     subdomain: string | null; currency_code: string | null; bar_enabled: boolean;
+    account_tab_enabled?: boolean; pay_online_enabled?: boolean; card_swipe_enabled?: boolean;
   };
   item?: ScanItem | null;
   menu?: ScanItem[] | null;
+}
+
+interface GuestTab {
+  tab_id: string;
+  token: string;
+  guest_name: string;
+  status: string;
+  total: number;
+  lines: { id: string; name: string; quantity: number; total: number }[];
 }
 
 export default function ScanPay() {
@@ -54,8 +64,10 @@ export default function ScanPay() {
   const [visitorName, setVisitorName] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean } | null>(null);
+  const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; terminal?: boolean; reference?: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [tab, setTab] = useState<GuestTab | null>(null);
+
 
   const [guestChosen, setGuestChosen] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem(GUEST_PREF_KEY) === "1",

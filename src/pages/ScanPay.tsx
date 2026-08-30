@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart, X } from "lucide-react";
+import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 

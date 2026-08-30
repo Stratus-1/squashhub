@@ -375,12 +375,9 @@ export default function Notifications() {
                     transition={{ delay: i * 0.03 }}
                     onClick={() => {
                       if (!notif.read && !isTournamentInviteNotification(notif as any)) markRead.mutate(notif.id);
-                      if (navigation.shouldOpenDetail) {
-                        setSelected(notif);
-                        return;
-                      }
-                      openTarget(navigation.targetUrl);
-
+                      // Always open the message to read first — navigation happens
+                      // only via the explicit "Open" button in the detail view.
+                      setSelected(notif);
                     }}
                   >
                     <Card

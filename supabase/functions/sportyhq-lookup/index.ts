@@ -723,11 +723,18 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       );
       const authHeader = req.headers.get("Authorization") ?? "";
-      const { data: userData } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-      const uid = userData?.user?.id;
-      if (!uid) return json({ error: "Not signed in" }, 401);
-      const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
-      if (!isAdmin) return json({ error: "Platform admin only" }, 403);
+      const bearer = authHeader.replace("Bearer ", "").trim();
+      // Server-to-server invocations (maintenance/backfill jobs) use the
+      // service-role key; browser calls must be a platform admin.
+      const isServiceRole = bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      let uid: string | null = null;
+      if (!isServiceRole) {
+        const { data: userData } = await supabase.auth.getUser(bearer);
+        uid = userData?.user?.id ?? null;
+        if (!uid) return json({ error: "Not signed in" }, 401);
+        const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: uid, _role: "admin" });
+        if (!isAdmin) return json({ error: "Platform admin only" }, 403);
+      }
 
       const associationOrgId = body.association_org_id ?? null;
       let groupIds: number[] = [];

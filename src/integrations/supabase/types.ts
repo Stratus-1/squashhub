@@ -4438,6 +4438,9 @@ export type Database = {
           annual_billing_requested_at: string | null
           annual_billing_requested_by: string | null
           auto_number_existing_onboarding: boolean
+          bar_account_tab_enabled: boolean
+          bar_card_swipe_enabled: boolean
+          bar_pay_online_enabled: boolean
           baseline_amount: number | null
           baseline_currency: string | null
           baseline_cycle: string | null
@@ -4558,6 +4561,9 @@ export type Database = {
           annual_billing_requested_at?: string | null
           annual_billing_requested_by?: string | null
           auto_number_existing_onboarding?: boolean
+          bar_account_tab_enabled?: boolean
+          bar_card_swipe_enabled?: boolean
+          bar_pay_online_enabled?: boolean
           baseline_amount?: number | null
           baseline_currency?: string | null
           baseline_cycle?: string | null
@@ -4678,6 +4684,9 @@ export type Database = {
           annual_billing_requested_at?: string | null
           annual_billing_requested_by?: string | null
           auto_number_existing_onboarding?: boolean
+          bar_account_tab_enabled?: boolean
+          bar_card_swipe_enabled?: boolean
+          bar_pay_online_enabled?: boolean
           baseline_amount?: number | null
           baseline_currency?: string | null
           baseline_cycle?: string | null
@@ -13626,6 +13635,15 @@ export type Database = {
       recalc_league_fixture_totals: {
         Args: { _fixture_id: string }
         Returns: undefined
+      }
+      record_bar_terminal_sale: {
+        Args: {
+          _buyer_name?: string
+          _club_id?: string
+          _code?: string
+          _lines: Json
+        }
+        Returns: Json
       }
       record_collection_payment: {
         Args: { _collection_id: string }

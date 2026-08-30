@@ -214,7 +214,7 @@ export default function HonestyBar() {
       .filter(([, qty]) => qty > 0)
       .map(([itemId, qty]) => ({ bar_item_id: itemId, quantity: qty }));
 
-  /** Send the cart to the club's card machine — the member swipes at the bar. */
+  /** Member confirms they already swiped at the club's card machine — recorded as paid. */
   const swipeAtClub = async () => {
     if (!clubId || cartCount === 0) return;
     setSubmitting(true);
@@ -226,14 +226,15 @@ export default function HonestyBar() {
         _buyer_name: activeMember?.name || null,
       });
       if (error) throw error;
-      toast.success(`Order sent to the bar — swipe ${money(cartTotal)}${(data as any)?.reference ? ` (${(data as any).reference})` : ""}`);
+      toast.success(`${money(cartTotal)} recorded as paid by card${(data as any)?.reference ? ` (${(data as any).reference})` : ""}`);
       setCart({});
     } catch (err: any) {
-      toast.error(err.message || "Could not send your order to the bar");
+      toast.error(err.message || "Could not record your card payment");
     } finally {
       setSubmitting(false);
     }
   };
+
 
   /** Pay the cart online through the club's card checkout. */
   const payOnline = async () => {

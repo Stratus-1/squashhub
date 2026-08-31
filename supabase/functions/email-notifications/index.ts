@@ -798,7 +798,6 @@ Deno.serve(async (req) => {
     }
 
 
-    const explicitClubId = String(payload?.clubId || (data as any)?.club_id || "") || null;
     const clubMail = await resolveClubMail(targetUserId, explicitClubId);
     let result: { ok: boolean; skipped?: boolean; reason?: string };
     const platformArgs = {
@@ -808,7 +807,8 @@ Deno.serve(async (req) => {
       url: link,
       ctaLabel: type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : "Open in SquashHub",
       recipientName: String((profile as any)?.name || payloadName || "").trim(),
-      clubName: clubMail?.clubName || "",
+      clubName: clubMail?.clubName || clubBrand.name || "",
+      clubLogoUrl: clubMail?.clubLogoUrl || clubBrand.logoUrl || "",
     };
     let fallbackWarning: string | null = null;
     let usedPlatform = false;

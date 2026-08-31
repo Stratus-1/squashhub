@@ -5307,9 +5307,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       tournamentName: champName, divisionFormats: inviteDivisionFormats(),
       selfScheduled: schedulingMode === "self", roundDeadlines,
     });
+    const extra = inviteExtraDetails.trim();
     return `You have been invited to ${champName || "a tournament"}.` +
       (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
-      (description.trim() ? `\n\n${description.trim()}` : "");
+      (description.trim() ? `\n\n${description.trim()}` : "") +
+      (extra ? `\n\n${extra}` : "");
   }
 
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.

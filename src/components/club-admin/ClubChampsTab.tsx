@@ -6175,6 +6175,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setDaySchedules(Array.isArray(loadedDay) ? loadedDay : []);
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
+    setInviteExtraDetails(String((champ as any).invite_extra_details || ""));
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
     setRankingWeight(Number((champ as any).ranking_weight ?? 1) || 1);
     setLadderAffects(

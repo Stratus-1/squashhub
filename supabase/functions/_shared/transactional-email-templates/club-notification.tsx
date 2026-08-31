@@ -79,3 +79,6 @@ const caption = { color: '#64748b', fontSize: '12px', fontWeight: '700' as const
 const heading = { color: '#1e3a5f', fontSize: '24px', margin: '4px 0 18px' }
 const bodyText = { color: '#1d2733', fontSize: '15px', lineHeight: '24px', margin: '0 0 14px' }
 const button = { backgroundColor: '#1e3a5f', color: '#ffffff', padding: '12px 18px', borderRadius: '4px', textDecoration: 'none' }
+const secondaryButton = { backgroundColor: '#ffffff', color: '#1e3a5f', padding: '12px 18px', borderRadius: '4px', textDecoration: 'none', border: '2px solid #1e3a5f' }
+const hintText = { color: '#475569', fontSize: '14px', lineHeight: '22px', margin: '0 0 12px' }
+const divider = { borderColor: '#e2e8f0', margin: '24px 0 18px' }

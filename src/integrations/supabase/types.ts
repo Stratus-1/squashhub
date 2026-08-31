@@ -14167,6 +14167,7 @@ export type Database = {
           association_name: string
           club_id: string
           club_name: string
+          email_reach_count: number
           is_own_club: boolean
           member_count: number
           registered_count: number

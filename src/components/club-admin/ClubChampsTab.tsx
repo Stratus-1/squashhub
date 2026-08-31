@@ -2761,12 +2761,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       tournamentName: champName, divisionFormats: inviteDivisionFormats(),
       selfScheduled: schedulingMode === "self", roundDeadlines,
     });
-    const extras = inviteExtraDetails?.trim()
-      ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n")
-      : "";
-    if (!lines.length) return extras;
-    const bulletBlock = `— Tournament details —\n${lines.map((l) => `• ${l}`).join("\n")}\n— End details —`;
-    return extras ? `${extras}\n\n${bulletBlock}` : bulletBlock;
+    // NOTE: the organiser's extra wording is NOT included here. It is stored on
+    // the tournament and added once by buildInviteBody(); including it in the
+    // description as well made it appear twice in the invitation email.
+    if (!lines.length) return "";
+    return `— Tournament details —\n${lines.map((l) => `• ${l}`).join("\n")}\n— End details —`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,

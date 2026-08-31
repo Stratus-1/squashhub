@@ -11193,11 +11193,13 @@ function InvitePreviewDialog({
   divisionFormats,
   selfScheduled,
   roundDeadlines,
+  inviteExtraDetails,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   tournamentName: string;
   description: string;
+  inviteExtraDetails?: string;
   methods: Set<"app" | "email" | "whatsapp">;
   gender: GenderCategory;
   matchType: "singles" | "doubles";

@@ -293,8 +293,8 @@ export function InviteScopeTree({
                                 className="flex items-center gap-2 text-[11px] cursor-pointer hover:bg-muted/20 rounded px-1 py-0.5"
                               >
                                 <Checkbox
-                                  checked={selectedMembers.has(p.member_id)}
-                                  onCheckedChange={() => toggleMember(p.member_id)}
+                                  checked={isMemberInvited(club.clubId, p.member_id)}
+                                  onCheckedChange={() => toggleMember(club.clubId, p.member_id)}
                                 />
                                 <span
                                   className={cn("truncate", p.is_user && "text-primary font-medium")}

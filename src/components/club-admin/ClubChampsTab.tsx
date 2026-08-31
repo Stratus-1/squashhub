@@ -1497,6 +1497,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteTiming, setInviteTiming] = useState<"manual" | "now" | "scheduled">("manual");
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
+  // Extra free-text details appended to every invite (co-hosting, food, prizes, etc.).
+  const [inviteExtraDetails, setInviteExtraDetails] = useState("");
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
   // Weight multiplier applied to ranking points earned in this competition.
   const [rankingWeight, setRankingWeight] = useState<number>(1);

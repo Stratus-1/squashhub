@@ -85,7 +85,7 @@ export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, erro
                 </CollapsibleTrigger>
                 <span className="text-[12px] text-muted-foreground flex items-center gap-1">
                   <Users className="h-3 w-3" />
-                  {group.memberCount}
+                  {group.clubs.reduce((n, c) => n + c.emailCount, 0)} of {group.memberCount} with email
                 </span>
               </div>
               <CollapsibleContent>
@@ -107,7 +107,9 @@ export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, erro
                       )}
                     </span>
                     <span className="text-[12px] text-muted-foreground">
-                      {club.memberCount} member{club.memberCount === 1 ? "" : "s"}
+                      <span className={club.emailCount === 0 ? "text-amber-600 dark:text-amber-500" : undefined}>
+                        {club.emailCount} of {club.memberCount} with email
+                      </span>
                       {club.registeredCount > 0 ? ` · ${club.registeredCount} entered` : ""}
                     </span>
                   </label>

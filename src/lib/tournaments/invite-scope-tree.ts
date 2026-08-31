@@ -21,6 +21,8 @@ export interface ScopeTreeClub {
   isOwnClub: boolean;
   memberCount: number;
   registeredCount: number;
+  /** Members who can actually receive an invite (email on file or a linked login). */
+  emailCount: number;
 }
 
 export interface ScopeTreeAssociation {
@@ -50,6 +52,7 @@ export function buildScopeTree(rows: Record<string, unknown>[]): ScopeTreeAssoci
       isOwnClub: (raw as any).is_own_club === true,
       memberCount: Number((raw as any).member_count || 0),
       registeredCount: Number((raw as any).registered_count || 0),
+      emailCount: Number((raw as any).email_count || 0),
     };
     g.clubs.push(club);
     g.memberCount += club.memberCount;
@@ -103,9 +106,11 @@ export function scopeSelectionSummary(tree: ScopeTreeAssociation[], selected: Se
   const clubs = tree.flatMap((g) => g.clubs).filter((c) => selected.has(c.clubId));
   if (clubs.length === 0) return "No clubs selected yet.";
   const members = clubs.reduce((n, c) => n + c.memberCount, 0);
+  const reachable = clubs.reduce((n, c) => n + c.emailCount, 0);
   const registered = clubs.reduce((n, c) => n + c.registeredCount, 0);
   return (
-    `${clubs.length} club${clubs.length === 1 ? "" : "s"} · ${members} member${members === 1 ? "" : "s"}` +
+    `${clubs.length} club${clubs.length === 1 ? "" : "s"} · ` +
+    `${reachable} of ${members} member${members === 1 ? "" : "s"} can be emailed` +
     (registered > 0 ? ` · ${registered} already registered` : "")
   );
 }

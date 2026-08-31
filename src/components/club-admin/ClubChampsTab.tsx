@@ -5802,10 +5802,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return m;
   }, [members]);
 
+  // Members who can actually receive an invite: email on file or a linked login.
+  const reachableMemberIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of members as any[]) {
+      const email = String(p.email || p.profiles?.email || "").trim();
+      if (p.user_id || email) s.add(p.id);
+    }
+    return s;
+  }, [members]);
+
   const inviteeList = useMemo(() => {
     const q = inviteeSearch.trim().toLowerCase();
     return (inviteeRows as any[])
-      .filter((r) => r.club_member_id)
+      .filter((r) => r.club_member_id && reachableMemberIds.has(r.club_member_id))
       .map((r) => ({
         id: r.id as string,
         memberId: r.club_member_id as string,
@@ -5816,7 +5826,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }))
       .filter((r) => !q || r.name.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [inviteeRows, inviteeSearch, memberNameById, paymentRequired, entryFeeAmount]);
+  }, [inviteeRows, inviteeSearch, memberNameById, reachableMemberIds, paymentRequired, entryFeeAmount]);
 
   function inviteeStatusLabel(r: { status: string; invited: boolean; category?: any }) {
     const category =
@@ -9179,9 +9189,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       className="h-8 text-xs"
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      {directoryScopeLabel(eligibilityScope)} — only name, club, category and ranking are shown. Contact
-                      details stay private; SquashHub delivers the invitation on your behalf.{" "}
-                      <span className="text-primary">*</span> indicates a player who already has a SquashHub login.
+                      {directoryScopeLabel(eligibilityScope)} — only players who can receive an invite (email on file
+                      or a SquashHub login) are listed. Contact details stay private; SquashHub delivers the
+                      invitation on your behalf. <span className="text-primary">*</span> (blue name) indicates a
+                      player who already has a SquashHub login.
                     </p>
                     {directoryError && (
                       <p className="text-[11px] text-destructive">
@@ -9446,7 +9457,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <DialogHeader>
                     <DialogTitle>Choose individual invitees</DialogTitle>
                     <DialogDescription>
-                      Picking members only builds the audience. Nothing is sent until you click “Send invites now”.
+                      Only members who can receive an invite (email on file or a SquashHub login) are listed.
+                      Picking members only builds the audience — nothing is sent until you click “Send invites now”.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-3">

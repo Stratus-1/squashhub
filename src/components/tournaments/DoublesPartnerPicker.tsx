@@ -11,6 +11,7 @@ import { Loader2, Users, Check, X, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import {
   PARTNER_MUST_REGISTER_MESSAGE,
+  canPickPartner,
   cancelPair,
   fetchPairingState,
   fetchPartnerOptions,
@@ -19,11 +20,14 @@ import {
   pairPaymentLabel,
   pairStatusLabel,
   partnerOptionSubtitle,
+  partnerReadinessBadge,
+  partnerReadinessNote,
   proposePartner,
   respondToPair,
   type MyPair,
   type PartnerOption,
 } from "@/lib/tournaments/doubles";
+
 import { notifyDoublesPair } from "@/lib/tournaments/pair-notify";
 import type { InviteDivision } from "@/lib/tournaments/invite-link";
 

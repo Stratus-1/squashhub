@@ -46,6 +46,13 @@ const ClubNotification = ({
             ))}
           </Text>
           {url ? <Button href={url} style={button}>{ctaLabel}</Button> : null}
+          {signupUrl ? (
+            <>
+              <Hr style={divider} />
+              <Text style={hintText}>{signupHint}</Text>
+              <Button href={signupUrl} style={secondaryButton}>{signupCtaLabel}</Button>
+            </>
+          ) : null}
         </Container>
       </Body>
     </Html>

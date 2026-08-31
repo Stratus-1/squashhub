@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,29 +90,21 @@ async function sendViaPlatform(args: {
   idempotencyKey?: string;
 }) {
   try {
-    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-transactional-email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+    const res = await sendAppEmail({
+      templateName: "club-notification",
+      recipientEmail: args.to,
+      idempotencyKey: args.idempotencyKey || crypto.randomUUID(),
+      templateData: {
+        title: args.subject,
+        messageBody: args.text,
+        url: args.url || "",
+        ctaLabel: args.ctaLabel || "Open in SquashHub",
+        recipientName: args.recipientName || "",
+        clubName: args.clubName || "",
       },
-      body: JSON.stringify({
-        templateName: "club-notification",
-        recipientEmail: args.to,
-        idempotencyKey: args.idempotencyKey || crypto.randomUUID(),
-        templateData: {
-          title: args.subject,
-          messageBody: args.text,
-          url: args.url || "",
-          ctaLabel: args.ctaLabel || "Open in SquashHub",
-          recipientName: args.recipientName || "",
-          clubName: args.clubName || "",
-        },
-      }),
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      return { ok: false, skipped: false, reason: body || `Platform email error ${res.status}` };
+      return { ok: false, skipped: false, reason: res.error || "Platform email error" };
     }
     return { ok: true };
   } catch (e) {

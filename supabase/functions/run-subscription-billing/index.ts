@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
 import { addBillingMonths, CYCLE_MONTHS, cycleDiscount, type BillingCycle } from './billing-cycle.ts'
 import {
+import { sendAppEmail } from '../_shared/send-app-email.ts'
   buildConsolidatedInvoice,
   monthStartIso,
   previousMonthRange,
@@ -780,15 +781,14 @@ Deno.serve(async (req) => {
         const failures: string[] = []
         for (const to of recipients) {
           const slug = to.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
-          const { error: sendErr } = await supabase.functions.invoke('send-transactional-email', {
-            body: {
-              templateName: 'subscription-invoice',
-              recipientEmail: to,
-              idempotencyKey: `sub-invoice-${inv.id}-${slug}`,
-              templateData,
-            },
+          const result = await sendAppEmail({
+            templateName: 'subscription-invoice',
+            recipientEmail: to,
+            clubId: (inv as any).club_id ?? null,
+            idempotencyKey: `sub-invoice-${inv.id}-${slug}`,
+            templateData,
           })
-          if (sendErr) failures.push(`${to}: ${sendErr.message}`)
+          if (!result.ok) failures.push(`${to}: ${result.error}`)
           else ok++
         }
         emailStatus = failures.length

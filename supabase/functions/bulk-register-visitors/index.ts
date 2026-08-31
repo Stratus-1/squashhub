@@ -13,6 +13,7 @@
 // Caller must be authenticated as a club admin of the target club.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -606,9 +607,10 @@ Deno.serve(async (req) => {
 
       // 8. Enqueue confirmation email.
       try {
-        const emailBody = {
+        const sendResult = await sendAppEmail({
           templateName: "tournament-entry-confirmation",
           recipientEmail: email,
+          clubId,
           idempotencyKey: `tournament-entry-${tournamentId || clubId}-${userId}`,
           templateData: {
             playerName: first || fullName,
@@ -622,20 +624,11 @@ Deno.serve(async (req) => {
             clubUrl,
             contactEmail: (club as any).email || undefined,
           },
-        };
-        const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceKey}`,
-          },
-          body: JSON.stringify(emailBody),
         });
-        row.email_queued = resp.ok;
-        if (!resp.ok) {
-          const txt = await resp.text();
-          console.error("[bulk-register-visitors] email send failed:", resp.status, txt);
-          row.message = `Email failed: ${resp.status}`;
+        row.email_queued = sendResult.ok;
+        if (!sendResult.ok) {
+          console.error("[bulk-register-visitors] email send failed:", sendResult.error);
+          row.message = `Email failed: ${sendResult.error}`;
         }
       } catch (err) {
         console.error("[bulk-register-visitors] email invoke error:", err);
@@ -782,26 +775,19 @@ Deno.serve(async (req) => {
       }));
 
       for (const to of recipients) {
-        const emailBody = {
-          templateName: "tournament-entry-import-summary",
-          recipientEmail: to,
-          idempotencyKey: `tournament-import-summary-${tournamentId || clubId}-${Date.now()}-${to}`,
-          templateData: {
-            clubName,
-            tournamentName: tournamentName || "the tournament",
-            importedBy: importerEmail || undefined,
-            summary,
-            entries: entriesPayload,
-          },
-        };
         try {
-          await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${serviceKey}`,
+          await sendAppEmail({
+            templateName: "tournament-entry-import-summary",
+            recipientEmail: to,
+            clubId,
+            idempotencyKey: `tournament-import-summary-${tournamentId || clubId}-${Date.now()}-${to}`,
+            templateData: {
+              clubName,
+              tournamentName: tournamentName || "the tournament",
+              importedBy: importerEmail || undefined,
+              summary,
+              entries: entriesPayload,
             },
-            body: JSON.stringify(emailBody),
           });
         } catch (err) {
           console.error("[bulk-register-visitors] admin summary send failed:", err);

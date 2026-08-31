@@ -9,6 +9,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -148,25 +149,24 @@ Deno.serve(async (req) => {
       const subscriptionUrl = `${base}/club-admin?tab=subscription`
 
       for (const [email, name] of recipients) {
-        const { error } = await admin.functions.invoke('send-transactional-email', {
-          body: {
-            templateName: 'trial-ending',
-            recipientEmail: email,
-            idempotencyKey: `trial-ending-${club.id}-${trialKey}-${email}${resendTag}`,
-            templateData: {
+        const result = await sendAppEmail({
+          templateName: 'trial-ending',
+          recipientEmail: email,
+          clubId: club.id,
+          idempotencyKey: `trial-ending-${club.id}-${trialKey}-${email}${resendTag}`,
+          templateData: {
               clubName: club.name,
               recipientName: name,
               trialEndDate: fmtDate(trialEnd),
               billingStartDate: fmtDate(billingStart),
               daysRemaining: leadDays,
               memberCount: memberCount ?? undefined,
-              subscriptionUrl,
-              clubLogoUrl: (club as any).logo_url || undefined,
-            },
+            subscriptionUrl,
+            clubLogoUrl: (club as any).logo_url || undefined,
           },
         })
-        if (error) {
-          console.error('trial-ending send failed', club.id, email, error.message)
+        if (!result.ok) {
+          console.error('trial-ending send failed', club.id, result.error)
         } else {
           sent++
         }

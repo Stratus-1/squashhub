@@ -6,6 +6,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -130,22 +131,21 @@ Deno.serve(async (req) => {
       const bucket = Math.floor(daysSince / intervalDays)
 
       for (const [email, name] of recipients) {
-        const { error } = await admin.functions.invoke('send-transactional-email', {
-          body: {
-            templateName: 'sla-outstanding',
-            recipientEmail: email,
-            idempotencyKey: `sla-outstanding-${club.id}-${bucket}-${email}`,
-            templateData: {
+        const result = await sendAppEmail({
+          templateName: 'sla-outstanding',
+          recipientEmail: email,
+          clubId: club.id,
+          idempotencyKey: `sla-outstanding-${club.id}-${bucket}-${email}`,
+          templateData: {
               clubName: club.name,
               recipientName: name,
               trialEndDate: fmtDate(trialEnd),
               daysSinceTrialEnd: daysSince,
-              invoicesPaid,
-              subscriptionUrl,
-            },
+            invoicesPaid,
+            subscriptionUrl,
           },
         })
-        if (error) console.error('sla-outstanding send failed', club.id, email, error.message)
+        if (!result.ok) console.error('sla-outstanding send failed', club.id, result.error)
         else sent++
       }
 

@@ -8,183 +8,90 @@ import {
   Container,
   Head,
   Heading,
-  Hr,
   Html,
-  Img,
   Link,
   Preview,
-  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-
-import { PLATFORM_BRAND, type TenantBrand } from './branding.ts'
 
 interface SignupEmailProps {
   siteName: string
   siteUrl: string
   recipient: string
   confirmationUrl: string
-  brand?: TenantBrand
 }
 
 export const SignupEmail = ({
+  siteName,
   siteUrl,
   recipient,
   confirmationUrl,
-  brand = PLATFORM_BRAND,
-}: SignupEmailProps) => {
-  const tenantName = brand.displayName
-  const isTenant = !brand.isPlatform
-  return (
+}: SignupEmailProps) => (
   <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>Confirm your email to activate your {tenantName} account</Preview>
+    <Head>
+      <style>{darkModeCss}</style>
+    </Head>
+    <Preview>Confirm your email for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={header}>
-          <Img
-            src={PLATFORM_BRAND.logoUrl}
-            alt="SquashHub"
-            width="140"
-            style={logo}
-          />
-          <Text style={tagline}>The home of South African squash</Text>
-        </Section>
-
-        <Section style={card}>
-          {isTenant && brand.logoUrl && brand.logoUrl !== PLATFORM_BRAND.logoUrl && (
-            <Section style={{ textAlign: 'center', margin: '0 0 20px' }}>
-              <Img
-                src={brand.logoUrl}
-                alt={tenantName}
-                height="64"
-                style={tenantLogo}
-              />
-            </Section>
-          )}
-          <Heading style={h1}>Welcome to the court 🎾</Heading>
-          <Text style={text}>
-            Thanks for signing up to{' '}
-            <Link href={brand.siteUrl || siteUrl} style={link}>
-              <strong>{tenantName}</strong>
-            </Link>
-            . You're one click away from joining your club, tracking your
-            ladder position, confirming league availability, and challenging
-            other players.
-          </Text>
-          <Text style={text}>
-            Please confirm your email address ({' '}
-            <Link href={`mailto:${recipient}`} style={link}>
-              {recipient}
-            </Link>
-            ) to activate your account:
-          </Text>
-          <Section style={{ textAlign: 'center', margin: '32px 0' }}>
-            <Button style={button} href={confirmationUrl}>
-              Confirm my email
-            </Button>
-          </Section>
-          <Text style={smallText}>
-            If the button doesn't work, copy and paste this link into your
-            browser:
-          </Text>
-          <Text style={urlText}>
-            <Link href={confirmationUrl} style={link}>
-              {confirmationUrl}
-            </Link>
-          </Text>
-        </Section>
-
-        <Hr style={hr} />
-
-        <Text style={footer}>
-          If you didn't create a {tenantName} account, you can safely ignore
-          this email — no account will be created.
+        <Heading style={h1}>Confirm your email</Heading>
+        <Text style={text}>
+          Thanks for signing up for{' '}
+          <Link href={siteUrl} style={link}>
+            <strong>{siteName}</strong>
+          </Link>
+          !
         </Text>
-        <Text style={footerSmall}>
-          {isTenant ? `${tenantName} · Powered by SquashHub` : 'SquashHub'} ·
-          Powered by Stratus Software Solutions (Pty) Ltd
+        <Text style={text}>
+          Please confirm your email address (
+          <Link href={`mailto:${recipient}`} style={link}>
+            {recipient}
+          </Link>
+          ) by clicking the button below:
+        </Text>
+        <Button className="dm-btn" style={button} href={confirmationUrl}>
+          Verify Email
+        </Button>
+        <Text style={footer}>
+          If you didn't create an account, you can safely ignore this email.
         </Text>
       </Container>
     </Body>
   </Html>
-  )
-}
+)
 
 export default SignupEmail
 
-const navy = '#1E3A5F'
-const amber = '#D4A24C'
-
-const main = {
-  backgroundColor: '#ffffff',
-  fontFamily:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-}
-const container = { padding: '24px 20px', maxWidth: '560px', margin: '0 auto' }
-const header = { textAlign: 'center' as const, padding: '8px 0 24px' }
-const logo = { margin: '0 auto', display: 'block' }
-const tenantLogo = { margin: '0 auto', display: 'block', maxHeight: '64px' }
-const tagline = {
-  fontSize: '12px',
-  color: '#7a8290',
-  textTransform: 'uppercase' as const,
-  letterSpacing: '1px',
-  margin: '10px 0 0',
-}
-const card = {
-  backgroundColor: '#f8fafc',
-  border: '1px solid #e5e9f0',
-  borderRadius: '12px',
-  padding: '32px 28px',
-}
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const container = { padding: '20px 25px' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: navy,
-  margin: '0 0 16px',
-  textAlign: 'center' as const,
+  color: '#000000',
+  margin: '0 0 20px',
 }
 const text = {
-  fontSize: '15px',
-  color: '#3d4756',
-  lineHeight: '1.6',
-  margin: '0 0 16px',
-}
-const smallText = {
-  fontSize: '12px',
-  color: '#7a8290',
+  fontSize: '14px',
+  color: '#55575d',
   lineHeight: '1.5',
-  margin: '24px 0 6px',
+  margin: '0 0 25px',
 }
-const urlText = {
-  fontSize: '12px',
-  color: navy,
-  wordBreak: 'break-all' as const,
-  margin: '0',
-}
-const link = { color: navy, textDecoration: 'underline' }
+const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: navy,
+  backgroundColor: '#000000',
   color: '#ffffff',
-  fontSize: '15px',
-  fontWeight: 'bold' as const,
+  fontSize: '14px',
+  border: '1px solid #000000',
   borderRadius: '8px',
-  padding: '14px 28px',
+  padding: '12px 20px',
   textDecoration: 'none',
-  borderBottom: `3px solid ${amber}`,
 }
-const hr = { borderColor: '#e5e9f0', margin: '28px 0 16px' }
-const footer = {
-  fontSize: '13px',
-  color: '#7a8290',
-  lineHeight: '1.5',
-  margin: '0 0 8px',
-  textAlign: 'center' as const,
-}
-const footerSmall = {
-  fontSize: '11px',
-  color: '#a0a8b4',
-  textAlign: 'center' as const,
-  margin: '0',
-}
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+// Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
+const darkModeCss = `
+  @media (prefers-color-scheme: dark) {
+    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  }
+  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+`

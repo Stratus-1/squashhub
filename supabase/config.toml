@@ -14,8 +14,6 @@ project_id = "bzbuppwzljadulwntjys"
     verify_jwt = false
   [functions.maintenance]
     verify_jwt = false
-  [functions.process-email-queue]
-    verify_jwt = true
   [functions.verify-captcha]
     verify_jwt = false
   [functions.nsa-scrape-positions]
@@ -23,16 +21,13 @@ project_id = "bzbuppwzljadulwntjys"
   [functions.access-zk-push]
     verify_jwt = false
 
-[functions.send-transactional-email]
-verify_jwt = true
-
 [functions.preview-transactional-email]
 verify_jwt = false
 
-[functions.handle-email-unsubscribe]
+[functions.send-support-email]
 verify_jwt = false
 
-[functions.handle-email-suppression]
+[functions.send-tournament-invite-email]
 verify_jwt = false
 
 [functions.generate-bar-item-image]

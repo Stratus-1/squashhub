@@ -5,6 +5,7 @@
 // Suspended members get a reminder every rules.suspended_reminder_days (default 7).
 // Uses `member_suspension_log` for per-day dedup on `automatic=true` rows.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -78,13 +79,11 @@ async function logAction(args: {
 
 async function sendEmail(recipient: string, data: Record<string, any>, key: string) {
   try {
-    await supa.functions.invoke("send-transactional-email", {
-      body: {
-        templateName: "arrears-warning",
-        recipientEmail: recipient,
-        idempotencyKey: key,
-        templateData: data,
-      },
+    await sendAppEmail({
+      templateName: "arrears-warning",
+      recipientEmail: recipient,
+      idempotencyKey: key,
+      templateData: data,
     });
   } catch (e) {
     console.warn("[arrears] email failed:", e);

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -233,22 +234,21 @@ Deno.serve(async (req) => {
 
         await Promise.all(
           recipients.map((email) =>
-            supabaseAdmin.functions.invoke("send-transactional-email", {
-              body: {
-                templateName: "new-club-registered",
-                recipientEmail: email,
-                idempotencyKey: `new-club-${newClub.id}-${email}`,
-                templateData: {
+            sendAppEmail({
+              templateName: "new-club-registered",
+              recipientEmail: email,
+              clubId: newClub.id,
+              idempotencyKey: `new-club-${newClub.id}-${email}`,
+              templateData: {
                   clubName: normalizedClubName,
                   subdomain: normalizedSubdomain,
                   tenantType: tenantLabel,
                   founderName: normalizedUserName,
                   founderEmail: normalizedUserEmail,
-                  registeredAt,
-                  adminUrl,
-                },
+                registeredAt,
+                adminUrl,
               },
-            }).catch((e) => console.error("send-transactional-email failed:", e))
+            }).catch((e) => console.error("new-club email failed:", e))
           )
         );
       }

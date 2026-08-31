@@ -1,7 +1,8 @@
 // Sends a Stitch bank-account onboarding application to Stitch (Beon Pienaar)
-// via the Lovable managed email pipeline (send-transactional-email). A copy is
+// via Lovable managed email delivery. A copy is
 // sent to the club's main contact and to admin@stratsol.co.za for record.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -79,7 +80,7 @@ Deno.serve(async (req) => {
       ? (board_members as string[]).filter(Boolean)
       : [];
 
-    // Send to Stitch + CC contact + Stratsol via send-transactional-email
+    // Send to Stitch + CC contact + Stratsol
     const recipients = [
       { email: STITCH_EMAIL, tag: "stitch" },
       { email: contact_email, tag: "contact" },
@@ -89,12 +90,12 @@ Deno.serve(async (req) => {
     const stamp = Date.now();
 
     const results = await Promise.all(recipients.map((r) =>
-      admin.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "stitch-onboarding-application",
-          recipientEmail: r.email,
-          idempotencyKey: `stitch-onboarding-${club.id}-${r.tag}-${stamp}`,
-          templateData: {
+      sendAppEmail({
+        templateName: "stitch-onboarding-application",
+        recipientEmail: r.email,
+        clubId: club.id,
+        idempotencyKey: `stitch-onboarding-${club.id}-${r.tag}-${stamp}`,
+        templateData: {
             clubName: club.name,
             clubUrl: club_url,
             contactName: contact_name || "",
@@ -102,11 +103,10 @@ Deno.serve(async (req) => {
             contactCell: contact_cell,
             boardMembers: boardList,
             files: signed,
-            stitchContactName: STITCH_NAME,
-            copiedTo,
-          },
+          stitchContactName: STITCH_NAME,
+          copiedTo,
         },
-      }).then((res) => ({ email: r.email, ok: !res.error, error: res.error?.message }))
+      }).then((res) => ({ email: r.email, ok: res.ok, error: res.ok ? undefined : res.error }))
         .catch((e) => ({ email: r.email, ok: false, error: (e as Error).message }))
     ));
 

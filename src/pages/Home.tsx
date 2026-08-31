@@ -1002,18 +1002,13 @@ function ContactForm() {
     if (sending) return;
     setSending(true);
     try {
-      const { error } = await supabase.functions.invoke("send-transactional-email", {
+      const { error } = await supabase.functions.invoke("send-support-email", {
         body: {
-          templateName: "support-new-message",
-          recipientEmail: "support@squashhub.co.za",
-          idempotencyKey: `web-contact-${email}-${Date.now()}`,
-          templateData: {
-            subject: `Website enquiry${company ? ` — ${company}` : ""}`,
-            message: `Club / Company: ${company || "—"}\n\n${message}`,
-            fromName: name,
-            fromEmail: email,
-            isNewThread: true,
-          },
+          kind: "contact",
+          name,
+          email,
+          company,
+          message,
         },
       });
       if (error) throw error;

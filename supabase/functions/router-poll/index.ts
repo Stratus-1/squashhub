@@ -11,6 +11,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { getDriver, DRIVERS, type RouterReading } from "./drivers.ts";
 import { clubHasCapability } from "../_shared/capabilities.ts";
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -252,17 +253,15 @@ async function deliver(
     for (const m of admins ?? []) if (m.email) emails.add(m.email);
     for (const r of settings?.recipients ?? []) if (r) emails.add(r);
     for (const to of emails) {
-      await admin.functions
-        .invoke("send-transactional-email", {
-          body: {
-            clubId,
-            to,
-            subject: title,
-            html: `<p>${message}</p><p>— SquashHub internet monitoring</p>`,
-            text: message,
-          },
-        })
-        .catch((e: unknown) => console.error("email failed", e));
+      await sendAppEmail({
+        templateName: "club-notification",
+        recipientEmail: to,
+        clubId,
+        templateData: {
+          title,
+          messageBody: `${message}\n\n— SquashHub internet monitoring`,
+        },
+      }).catch((e: unknown) => console.error("email failed", e));
     }
   }
 }

@@ -206,74 +206,17 @@ export function useSendSupportMessage() {
         .single();
       if (error) throw error;
 
-      // Fire-and-forget email notification (server-side delivery via send-transactional-email)
+      // Fire-and-forget email notification. The server derives the recipient
+      // from the thread — the browser never chooses an address.
       try {
         const messageRow = data as SupportMessageRow;
-        const { data: thread } = await fromAny("support_threads")
-          .select("id,user_id,subject")
-          .eq("id", threadId)
-          .maybeSingle();
-
-        // Is the sender a platform admin?
-        const { data: roleRows } = await fromAny("user_roles")
-          .select("role")
-          .eq("user_id", user.id);
-        const isAdminSender = (roleRows || []).some((r: any) =>
-          ["super_admin", "platform_admin", "admin"].includes(String(r.role))
-        );
-
-        const SUPPORT_INBOX = "support@squashhub.co.za";
         const origin =
           typeof window !== "undefined" ? window.location.origin : "https://squashhub.co.za";
-
-        if (thread && isAdminSender && thread.user_id !== user.id) {
-          // Admin replying to a member — notify the member
-          const { data: ownerProfile } = await fromAny("profiles")
-            .select("email,name")
-            .eq("id", thread.user_id)
-            .maybeSingle();
-          const recipientEmail = ownerProfile?.email;
-          if (recipientEmail) {
-            supabase.functions
-              .invoke("send-transactional-email", {
-                body: {
-                  templateName: "support-admin-reply",
-                  recipientEmail,
-                  idempotencyKey: `support-reply-${messageRow.id}`,
-                  templateData: {
-                    subject: thread.subject,
-                    message: messageRow.body,
-                    threadUrl: `${origin}/support?threadId=${thread.id}`,
-                    recipientName: ownerProfile?.name || "",
-                  },
-                },
-              })
-              .catch((e) => console.warn("support email (reply) failed:", e));
-          }
-        } else if (thread && !isAdminSender) {
-          // Member message — notify the support inbox
-          const { data: senderProfile } = await fromAny("profiles")
-            .select("email,name")
-            .eq("id", user.id)
-            .maybeSingle();
-          supabase.functions
-            .invoke("send-transactional-email", {
-              body: {
-                templateName: "support-new-message",
-                recipientEmail: SUPPORT_INBOX,
-                idempotencyKey: `support-msg-${messageRow.id}`,
-                templateData: {
-                  subject: thread.subject,
-                  message: messageRow.body,
-                  fromName: senderProfile?.name || "",
-                  fromEmail: senderProfile?.email || user.email || "",
-                  threadUrl: `${origin}/admin/support?threadId=${thread.id}`,
-                  isNewThread: false,
-                },
-              },
-            })
-            .catch((e) => console.warn("support email (new) failed:", e));
-        }
+        supabase.functions
+          .invoke("send-support-email", {
+            body: { kind: "thread_message", messageId: messageRow.id, origin },
+          })
+          .catch((e) => console.warn("support email failed:", e));
       } catch (e) {
         console.warn("support email dispatch error:", e);
       }

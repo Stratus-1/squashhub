@@ -10,6 +10,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -119,22 +120,13 @@ Deno.serve(async (req) => {
     const results = await Promise.all(
       toSend.map(async (email) => {
         try {
-          const res = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${SERVICE_KEY}`,
-            },
-            body: JSON.stringify({
-              templateName: 'pending-topup-approval',
-              recipientEmail: email,
-              idempotencyKey: `topup-pending-${tx.id}-${email}`,
-              templateData,
-            }),
+          const result = await sendAppEmail({
+            templateName: 'pending-topup-approval',
+            recipientEmail: email,
+            idempotencyKey: `topup-pending-${tx.id}-${email}`,
+            templateData,
           })
-          const ok = res.ok
-          const bodyTxt = ok ? '' : await res.text().catch(() => '')
-          return { email, ok, status: res.status, error: bodyTxt || undefined }
+          return { email, ok: result.ok, error: result.ok ? undefined : result.error }
         } catch (e) {
           return { email, ok: false, error: (e as Error).message }
         }

@@ -1,5 +1,6 @@
 // Resend an existing subscription invoice email (super-admin only).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,12 +84,12 @@ Deno.serve(async (req) => {
 
     let sendErr: { message: string } | null = null
     for (const to of recipients) {
-    const { error: err } = await supabase.functions.invoke('send-transactional-email', {
-      body: {
-        templateName: 'subscription-invoice',
-        recipientEmail: to,
-        idempotencyKey: `sub-invoice-${inv.id}-resend-${to}-${Date.now()}`,
-        templateData: {
+    const res = await sendAppEmail({
+      templateName: 'subscription-invoice',
+      recipientEmail: to,
+      clubId: (inv as any).club_id ?? null,
+      idempotencyKey: `sub-invoice-${inv.id}-resend-${to}-${Date.now()}`,
+      templateData: {
           clubName: club?.name,
           invoiceNumber: inv.invoice_number,
           planName: inv.plan_name,
@@ -121,12 +122,11 @@ Deno.serve(async (req) => {
           bankSwift: settings.bank_swift,
           logoUrl: settings.logo_url,
           invoiceFooter: settings.invoice_footer,
-          payLink: inv.stitch_payment_link || undefined,
-          manageUrl,
-        },
+        payLink: inv.stitch_payment_link || undefined,
+        manageUrl,
       },
     })
-      if (err) sendErr = err
+      if (!res.ok) sendErr = { message: res.error }
     }
 
     const emailStatus = sendErr ? `failed: ${sendErr.message}` : `resent to ${recipients.length} recipient${recipients.length === 1 ? '' : 's'}`

@@ -103,7 +103,6 @@ import { NoClubAccess } from "@/components/NoClubAccess";
 import { fromExt } from "@/lib/supabase-ext";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import Unsubscribe from "./pages/Unsubscribe";
 
 import Sla from "./pages/Sla";
 import LightsIntegration from "./pages/LightsIntegration";
@@ -452,7 +451,6 @@ function AppRoutes() {
         <Route path="/tournaments" element={<CapabilityRoute capability="tournaments"><Tournaments /></CapabilityRoute>} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/lights" element={<LightsIntegration />} />
-        <Route path="/unsubscribe" element={<Unsubscribe />} />
 
         <Route path="/sla" element={<Sla />} />
         <Route path="/lights" element={<LightsIntegration />} />

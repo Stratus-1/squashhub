@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -71,12 +72,12 @@ Deno.serve(async (req) => {
     }
 
     try {
-      const { error: sendErr } = await supabase.functions.invoke('send-transactional-email', {
-        body: {
-          templateName: 'membership-renewal-invoice',
-          recipientEmail: cm.email,
-          idempotencyKey: `renewal-invoice-${r.id}`,
-          templateData: {
+      const sendResult = await sendAppEmail({
+        templateName: 'membership-renewal-invoice',
+        recipientEmail: cm.email,
+        clubId: cm.club_id,
+        idempotencyKey: `renewal-invoice-${r.id}`,
+        templateData: {
             memberName: cm.name,
             clubName: club.name,
             invoiceNumber: r.invoice_number,
@@ -87,11 +88,10 @@ Deno.serve(async (req) => {
             bankAccountName: secrets.bank_account_name,
             bankAccountNumber: secrets.bank_account_number,
             bankBranchCode: secrets.bank_branch_code,
-            bankReference: secrets.bank_reference || r.invoice_number,
-          },
+          bankReference: secrets.bank_reference || r.invoice_number,
         },
       })
-      if (sendErr) throw sendErr
+      if (!sendResult.ok) throw new Error(sendResult.error)
 
       // Atomic: posts member sub-ledger debit AND triggers GL (Dr Debtors / Cr Income)
       const { error: issueErr } = await supabase.rpc('issue_member_invoice', {

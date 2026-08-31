@@ -46,6 +46,9 @@ export function InviteScopeTree({
   onChange,
   selectedMemberIds = [],
   onMemberChange,
+  excludedMemberIds = [],
+  onExcludedChange,
+  memberIdsByClub,
   tournamentId,
   scopeClubId,
   loading,
@@ -53,9 +56,20 @@ export function InviteScopeTree({
 }: Props) {
   const selectedClubs = useMemo(() => new Set(selectedClubIds), [selectedClubIds]);
   const selectedMembers = useMemo(() => new Set(selectedMemberIds), [selectedMemberIds]);
+  const excludedMembers = useMemo(() => new Set(excludedMemberIds), [excludedMemberIds]);
   const summary = useMemo(
     () => scopeSelectionSummary(tree, selectedClubs, selectedMembers),
     [tree, selectedClubs, selectedMembers],
+  );
+
+  const isMemberInvited = useCallback(
+    (clubId: string, memberId: string) => {
+      const clubSelected = selectedClubs.has(clubId);
+      const inSelectedClub = clubSelected && (memberIdsByClub?.get(clubId) || []).includes(memberId);
+      if (inSelectedClub && !excludedMembers.has(memberId)) return true;
+      return selectedMembers.has(memberId);
+    },
+    [selectedClubs, selectedMembers, excludedMembers, memberIdsByClub],
   );
 
   const [expandedClubs, setExpandedClubs] = useState<Set<string>>(new Set());

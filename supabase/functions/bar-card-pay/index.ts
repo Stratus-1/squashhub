@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
         .select("id, name, price, club_id, active")
         .eq("club_id", qr.club_id)
         .in("id", lines.map((l) => l.bar_item_id));
-      const itemMap = new Map((items || []).filter((i: any) => i.active).map((i: any) => [i.id, i]));
+      itemMap = new Map((items || []).filter((i: any) => i.active).map((i: any) => [i.id, i]));
       if (itemMap.size !== new Set(lines.map((l) => l.bar_item_id)).size) {
         return json({ error: "One or more items are not available" });
       }

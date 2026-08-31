@@ -8,6 +8,9 @@ interface Props {
   messageBody?: string
   url?: string
   ctaLabel?: string
+  signupUrl?: string
+  signupCtaLabel?: string
+  signupHint?: string
   recipientName?: string
 }
 
@@ -17,6 +20,9 @@ const ClubNotification = ({
   messageBody = '',
   url,
   ctaLabel = 'Open in SquashHub',
+  signupUrl,
+  signupCtaLabel = 'Register on SquashHub',
+  signupHint = "Haven't registered on SquashHub yet? Use the link below to create your account — we'll link it to this invitation automatically.",
   recipientName,
 }: Props) => {
   const lines = String(messageBody || '')

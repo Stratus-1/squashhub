@@ -2,6 +2,9 @@ import * as React from 'npm:react@18.3.1'
 import { Body, Button, Container, Head, Heading, Html, Preview, Text } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
+const SQUASHHUB_LOGO_URL =
+  'https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform/squashhub-logo.png'
+
 interface Props {
   clubName?: string
   title?: string
@@ -9,6 +12,7 @@ interface Props {
   url?: string
   ctaLabel?: string
   recipientName?: string
+  clubLogoUrl?: string
 }
 
 const ClubNotification = ({
@@ -18,6 +22,7 @@ const ClubNotification = ({
   url,
   ctaLabel = 'Open in SquashHub',
   recipientName,
+  clubLogoUrl,
 }: Props) => {
   const lines = String(messageBody || '')
     .replace(/\r\n|\r/g, '\n')
@@ -28,6 +33,18 @@ const ClubNotification = ({
       <Preview>{title}</Preview>
       <Body style={main}>
         <Container style={container}>
+          <table role="presentation" width="100%" cellPadding={0} cellSpacing={0} style={logoRow}>
+            <tr>
+              <td align="left" valign="middle">
+                {clubLogoUrl ? (
+                  <img src={clubLogoUrl} alt={clubName || 'Club logo'} height="36" style={clubLogoImg} />
+                ) : null}
+              </td>
+              <td align="right" valign="middle">
+                <img src={SQUASHHUB_LOGO_URL} alt="SquashHub" height="28" style={platformLogoImg} />
+              </td>
+            </tr>
+          </table>
           {clubName ? <Text style={caption}>{clubName}</Text> : null}
           <Heading style={heading}>{title}</Heading>
           {recipientName ? <Text style={bodyText}>Dear {recipientName},</Text> : null}
@@ -61,6 +78,9 @@ export const template = {
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif', padding: '24px 0' }
+const logoRow = { margin: '0 0 16px' }
+const clubLogoImg = { display: 'inline-block', maxHeight: '36px', maxWidth: '140px', borderRadius: '6px' }
+const platformLogoImg = { display: 'inline-block', maxHeight: '28px', maxWidth: '120px' }
 const container = { maxWidth: '580px', margin: '0 auto', padding: '28px', border: '1px solid #d9dee5', borderRadius: '6px' }
 const caption = { color: '#64748b', fontSize: '12px', fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: '0.04em', margin: '0 0 8px' }
 const heading = { color: '#1e3a5f', fontSize: '24px', margin: '4px 0 18px' }

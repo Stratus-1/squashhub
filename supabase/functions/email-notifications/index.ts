@@ -87,6 +87,7 @@ async function sendViaPlatform(args: {
   ctaLabel?: string;
   recipientName?: string;
   clubName?: string;
+  clubLogoUrl?: string;
   idempotencyKey?: string;
 }) {
   try {
@@ -101,6 +102,7 @@ async function sendViaPlatform(args: {
         ctaLabel: args.ctaLabel || "Open in SquashHub",
         recipientName: args.recipientName || "",
         clubName: args.clubName || "",
+        clubLogoUrl: args.clubLogoUrl || "",
       },
     });
     if (!res.ok) {
@@ -123,6 +125,7 @@ interface ClubMail {
   signatureHtml: string;
   disclaimer: string;
   clubName: string;
+  clubLogoUrl: string;
 }
 
 async function resolveClubMail(userId: string, explicitClubId?: string | null): Promise<ClubMail | null> {
@@ -148,7 +151,7 @@ async function resolveClubMail(userId: string, explicitClubId?: string | null): 
         .maybeSingle(),
       supabaseAdmin
         .from("clubs")
-        .select("name,email_signature_html,email_disclaimer")
+        .select("name,logo_url,email_signature_html,email_disclaimer")
         .eq("id", clubId)
         .maybeSingle(),
     ]);
@@ -167,6 +170,7 @@ async function resolveClubMail(userId: string, explicitClubId?: string | null): 
       signatureHtml: String(club?.email_signature_html || "").trim(),
       disclaimer: String(club?.email_disclaimer || "").trim(),
       clubName: String(club?.name || "").trim(),
+      clubLogoUrl: String(club?.logo_url || "").trim(),
     };
   } catch (err) {
     console.warn("[resolveClubMail] failed", err);
@@ -552,6 +556,25 @@ async function handleClubSend(body: any, authHeader: string) {
   const { data: isAdmin } = await supabaseAdmin.rpc("is_club_admin", { _user_id: user.id, _club_id: clubId });
   if (!isAdmin) return json({ error: "Not a club admin" }, 403);
 
+  let clubLogoUrl = "";
+  try {
+    const { data: clubRow } = await supabaseAdmin
+      .from("clubs")
+      .select("logo_url")
+      .eq("id", clubId)
+      .maybeSingle();
+    clubLogoUrl = String((clubRow as any)?.logo_url || "").trim();
+  } catch (err) {
+    console.warn("[handleClubSend] club logo lookup failed", err);
+  }
+  const logoHeaderHtml = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0">
+      <tr>
+        <td align="left" valign="middle">${clubLogoUrl ? `<img src="${escapeHtml(clubLogoUrl)}" alt="Club logo" height="36" style="display:inline-block;max-height:36px;max-width:140px;border-radius:6px" />` : ""}</td>
+        <td align="right" valign="middle"><img src="https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform/squashhub-logo.png" alt="SquashHub" height="28" style="display:inline-block;max-height:28px;max-width:120px" /></td>
+      </tr>
+    </table>`;
+
   const greetingHtml = recipientName
     ? `<p style="margin:0 0 12px 0; color:#334155">Dear ${escapeHtml(recipientName)},</p>`
     : "";
@@ -560,6 +583,7 @@ async function handleClubSend(body: any, authHeader: string) {
     : "";
   const html = `
     <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
+      ${logoHeaderHtml}
       <h2 style="margin:0 0 8px 0">${escapeHtml(subject)}</h2>
       ${greetingHtml}
       <div style="margin:0 0 14px 0; color:#334155">${renderBodyHtml(messageBody)}</div>
@@ -577,6 +601,7 @@ async function handleClubSend(body: any, authHeader: string) {
     ctaLabel,
     recipientName,
     clubName: clubMail?.clubName || "",
+    clubLogoUrl: clubMail?.clubLogoUrl || clubLogoUrl || "",
   };
   // The club's own email settings are tried FIRST. If they fail we still get the
   // message out via the platform sender, but we always report that the fallback
@@ -689,6 +714,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Club branding (logo + name) for the email header — resolved even when the
+    // club has no SMTP config, so platform-sent mail carries the same logos.
+    const explicitClubId = String(payload?.clubId || (data as any)?.club_id || "") || null;
+    let clubBrand: { name: string; logoUrl: string } = { name: "", logoUrl: "" };
+    if (explicitClubId) {
+      try {
+        const { data: clubRow } = await supabaseAdmin
+          .from("clubs")
+          .select("name,logo_url")
+          .eq("id", explicitClubId)
+          .maybeSingle();
+        clubBrand = {
+          name: String((clubRow as any)?.name || "").trim(),
+          logoUrl: String((clubRow as any)?.logo_url || "").trim(),
+        };
+      } catch (err) {
+        console.warn("[email-notifications] club branding lookup failed", err);
+      }
+    }
+
     const siteUrl = (Deno.env.get("SITE_URL") || "https://www.squashhub.co.za").trim();
     const link = absoluteUrl(siteUrl, notifUrl);
 
@@ -743,8 +788,19 @@ Deno.serve(async (req) => {
           ? "Accept / Register"
           : "Open in SquashHub";
 
+      const clubLogoUrl = clubBrand.logoUrl;
+      const clubNameForHeader = clubBrand.name || "Club logo";
+      const logoHeaderHtml = `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0">
+          <tr>
+            <td align="left" valign="middle">${clubLogoUrl ? `<img src="${escapeHtml(clubLogoUrl)}" alt="${escapeHtml(clubNameForHeader)}" height="36" style="display:inline-block;max-height:36px;max-width:140px;border-radius:6px" />` : ""}</td>
+            <td align="right" valign="middle"><img src="https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform/squashhub-logo.png" alt="SquashHub" height="28" style="display:inline-block;max-height:28px;max-width:120px" /></td>
+          </tr>
+        </table>`;
+
       html = `
         <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
+          ${logoHeaderHtml}
           <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
           ${greetingHtml}
           <div style="margin:0 0 14px 0; color:#334155">${safeBody}</div>
@@ -763,7 +819,6 @@ Deno.serve(async (req) => {
     }
 
 
-    const explicitClubId = String(payload?.clubId || (data as any)?.club_id || "") || null;
     const clubMail = await resolveClubMail(targetUserId, explicitClubId);
     let result: { ok: boolean; skipped?: boolean; reason?: string };
     const platformArgs = {
@@ -773,7 +828,8 @@ Deno.serve(async (req) => {
       url: link,
       ctaLabel: type === "tournament_invite" || type === "tournament_partner_invite" ? "Accept / Register" : "Open in SquashHub",
       recipientName: String((profile as any)?.name || payloadName || "").trim(),
-      clubName: clubMail?.clubName || "",
+      clubName: clubMail?.clubName || clubBrand.name || "",
+      clubLogoUrl: clubMail?.clubLogoUrl || clubBrand.logoUrl || "",
     };
     let fallbackWarning: string | null = null;
     let usedPlatform = false;

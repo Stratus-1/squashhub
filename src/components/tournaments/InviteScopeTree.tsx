@@ -29,6 +29,11 @@ interface Props {
   onChange: (nextClubs: string[]) => void;
   selectedMemberIds?: string[];
   onMemberChange?: (nextMembers: string[]) => void;
+  /** Members explicitly excluded from otherwise-selected clubs. */
+  excludedMemberIds?: string[];
+  onExcludedChange?: (nextExcluded: string[]) => void;
+  /** Server-resolved member ids for each selected club (used to derive effective selection). */
+  memberIdsByClub?: Map<string, string[]>;
   tournamentId?: string | null;
   scopeClubId?: string | null;
   loading?: boolean;

@@ -693,6 +693,26 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Club branding (logo + name) for the email header — resolved even when the
+    // club has no SMTP config, so platform-sent mail carries the same logos.
+    const explicitClubId = String(payload?.clubId || (data as any)?.club_id || "") || null;
+    let clubBrand: { name: string; logoUrl: string } = { name: "", logoUrl: "" };
+    if (explicitClubId) {
+      try {
+        const { data: clubRow } = await supabaseAdmin
+          .from("clubs")
+          .select("name,logo_url")
+          .eq("id", explicitClubId)
+          .maybeSingle();
+        clubBrand = {
+          name: String((clubRow as any)?.name || "").trim(),
+          logoUrl: String((clubRow as any)?.logo_url || "").trim(),
+        };
+      } catch (err) {
+        console.warn("[email-notifications] club branding lookup failed", err);
+      }
+    }
+
     const siteUrl = (Deno.env.get("SITE_URL") || "https://www.squashhub.co.za").trim();
     const link = absoluteUrl(siteUrl, notifUrl);
 
@@ -747,7 +767,8 @@ Deno.serve(async (req) => {
           ? "Accept / Register"
           : "Open in SquashHub";
 
-      const clubLogoUrl = String((club as any)?.logo_url || "").trim();
+      const clubLogoUrl = clubBrand.logoUrl;
+      const clubNameForHeader = clubBrand.name || "Club logo";
       const logoHeaderHtml = `
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0">
           <tr>

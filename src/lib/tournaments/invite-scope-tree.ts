@@ -107,9 +107,11 @@ export function scopeSelectionSummary(tree: ScopeTreeAssociation[], selected: Se
   if (clubs.length === 0) return "No clubs selected yet.";
   const members = clubs.reduce((n, c) => n + c.memberCount, 0);
   const registered = clubs.reduce((n, c) => n + c.registeredCount, 0);
+  const emailReach = clubs.reduce((n, c) => n + c.emailReachCount, 0);
   return (
     `${clubs.length} club${clubs.length === 1 ? "" : "s"} · ${members} member${members === 1 ? "" : "s"}` +
-    (registered > 0 ? ` · ${registered} already registered` : "")
+    (emailReach > 0 ? ` · ${emailReach} with email` : "") +
+    (registered > 0 ? ` · ${registered} entered` : "")
   );
 }
 

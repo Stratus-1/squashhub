@@ -1,8 +1,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
+import { sendAppEmail } from '../_shared/send-app-email.ts'
 import { addBillingMonths, CYCLE_MONTHS, cycleDiscount, type BillingCycle } from './billing-cycle.ts'
 import {
-import { sendAppEmail } from '../_shared/send-app-email.ts'
   buildConsolidatedInvoice,
   monthStartIso,
   previousMonthRange,

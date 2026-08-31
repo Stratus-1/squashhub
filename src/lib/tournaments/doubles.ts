@@ -176,6 +176,35 @@ export function partnerOptionSubtitle(option: PartnerOption): string {
   return bits.join(" · ");
 }
 
+/** Registration state of a possible partner, used to label and gate the list. */
+export type PartnerReadiness = "registered" | "invite_only" | "unreachable";
+
+export function partnerReadiness(option: PartnerOption): PartnerReadiness {
+  if (option.is_user) return "registered";
+  return option.has_email ? "invite_only" : "unreachable";
+}
+
+/** Can this player be chosen as a doubles partner right now? */
+export function canPickPartner(option: PartnerOption): boolean {
+  return partnerReadiness(option) !== "unreachable";
+}
+
+export function partnerReadinessBadge(option: PartnerOption): string | null {
+  const r = partnerReadiness(option);
+  if (r === "registered") return null;
+  return r === "invite_only" ? "Not registered yet" : "No email on file";
+}
+
+export function partnerReadinessNote(option: PartnerOption): string | null {
+  const r = partnerReadiness(option);
+  if (r === "registered") return null;
+  const who = option.display_name || "This player";
+  return r === "invite_only"
+    ? `${who} is not registered on SquashHub yet — we'll email them a link to register and confirm the pair.`
+    : `${who} is not registered on SquashHub and has no email on file. Ask the organiser to add their email before pairing.`;
+}
+
+
 // ── API wrappers ────────────────────────────────────────────────────────────
 
 type TokenAuth = { token?: string | null; verify?: string | null };

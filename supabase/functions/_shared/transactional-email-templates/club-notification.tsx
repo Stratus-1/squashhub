@@ -33,6 +33,18 @@ const ClubNotification = ({
       <Preview>{title}</Preview>
       <Body style={main}>
         <Container style={container}>
+          <table role="presentation" width="100%" cellPadding={0} cellSpacing={0} style={logoRow}>
+            <tr>
+              <td align="left" valign="middle">
+                {clubLogoUrl ? (
+                  <img src={clubLogoUrl} alt={clubName || 'Club logo'} height="36" style={clubLogoImg} />
+                ) : null}
+              </td>
+              <td align="right" valign="middle">
+                <img src={SQUASHHUB_LOGO_URL} alt="SquashHub" height="28" style={platformLogoImg} />
+              </td>
+            </tr>
+          </table>
           {clubName ? <Text style={caption}>{clubName}</Text> : null}
           <Heading style={heading}>{title}</Heading>
           {recipientName ? <Text style={bodyText}>Dear {recipientName},</Text> : null}

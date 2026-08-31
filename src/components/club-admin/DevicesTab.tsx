@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
+import { Eye, LayoutGrid, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ShellyDoorSetup } from "@/components/club-admin/ShellyDoorSetup";
 import { ShellyLightsSetup } from "@/components/club-admin/ShellyLightsSetup";
@@ -106,6 +106,30 @@ const toForm = (d: ClubDevice): DeviceForm => ({
   sort_order: String(d.sort_order ?? 0),
 });
 
+const ADD_OPTIONS: Array<{ category: DeviceCategory; title: string; description: string }> = [
+  {
+    category: "lights",
+    title: "Add a light",
+    description: "Clubhouse, outside or parking lights controlled from a relay.",
+  },
+  {
+    category: "access",
+    title: "Add access",
+    description: "Secondary doors, gates and turnstiles.",
+  },
+  {
+    category: "gadgets",
+    title: "Add a gadget",
+    description: "Geysers, pumps, heaters, signage and other equipment.",
+  },
+];
+
+const CATEGORY_THUMBNAIL_BG: Record<DeviceCategory, string> = {
+  lights: "from-amber-500/30 via-amber-400/20 to-transparent",
+  access: "from-emerald-500/30 via-emerald-400/20 to-transparent",
+  gadgets: "from-sky-500/30 via-sky-400/20 to-transparent",
+};
+
 /**
  * Admin surface for the club device registry.
  *
@@ -121,6 +145,8 @@ export function DevicesTab({ clubId }: { clubId: string }) {
 
   const [form, setForm] = useState<DeviceForm | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ClubDevice | null>(null);
+  const [selectedDevice, setSelectedDevice] = useState<ClubDevice | null>(null);
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
 
   const grouped = useMemo(() => groupDevices((devices || []) as ClubDevice[]), [devices]);
@@ -198,14 +224,21 @@ export function DevicesTab({ clubId }: { clubId: string }) {
     <div className="mt-4 space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="w-4 h-4 text-primary" /> IoT / Shelly Connections
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Shelly relays, gates, geysers, pumps, lights and other switched devices. The main
-            clubhouse door stays under <strong>Door Access</strong>, and court lights stay under{" "}
-            <strong>Courts &amp; Bookings</strong> because those flows carry booking and access rules.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Zap className="w-4 h-4 text-primary" /> IoT / Shelly Connections
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Shelly relays, gates, geysers, pumps, lights and other switched devices. The main
+                clubhouse door stays under <strong>Door Access</strong>, and court lights stay under{" "}
+                <strong>Courts &amp; Bookings</strong> because those flows carry booking and access rules.
+              </p>
+            </div>
+            <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setAddPickerOpen(true)}>
+              <Plus className="w-3.5 h-3.5" /> Add
+            </Button>
+          </div>
         </CardHeader>
       </Card>
 
@@ -239,17 +272,9 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   </CardTitle>
                   <p className="text-xs text-muted-foreground mt-1">{group.description}</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 shrink-0"
-                  onClick={() => setForm(emptyForm(group.slug))}
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add
-                </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {rows.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">{group.emptyHint}</p>
               ) : (
@@ -259,66 +284,107 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   return (
                     <div
                       key={device.id}
-                      className="flex items-center gap-3 rounded-lg border p-2.5"
+                      className="overflow-hidden rounded-xl border bg-card/80 shadow-sm"
                     >
-                      <DeviceIcon className={cn("w-4 h-4 shrink-0", group.accent)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate flex items-center gap-1.5">
-                          {device.name}
-                          {!device.enabled && (
-                            <Badge variant="secondary" className="h-4 px-1 text-[9px]">
-                              Hidden
-                            </Badge>
+                      <div className="grid grid-cols-[88px_1fr] gap-3 p-3">
+                        <div
+                          className={cn(
+                            "relative flex h-20 w-20 items-center justify-center rounded-2xl border overflow-hidden",
+                            "bg-gradient-to-br from-muted/80 to-muted/40",
                           )}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground truncate">
-                          {[
-                            device.location,
-                            device.control_mode === "pulse" ? "Momentary" : "On / off",
-                            behaviour,
-                            device.shelly_device_id
-                              ? `Shelly ${device.shelly_device_id}:${device.shelly_channel}`
-                              : "Not linked",
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </p>
-                        {device.last_error && (
-                          <p className="text-[11px] text-destructive truncate">
-                            {device.last_error}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2 text-xs"
-                          disabled={testing === device.id || device.provider !== "shelly"}
-                          onClick={() => handleTest(device)}
                         >
-                          {testing === device.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            "Test"
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setForm(toForm(device))}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-destructive"
-                          onClick={() => setConfirmDelete(device)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                          <div
+                            className={cn(
+                              "absolute inset-0 opacity-100 bg-gradient-to-br",
+                              CATEGORY_THUMBNAIL_BG[device.category],
+                            )}
+                          />
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.35),transparent_60%)]" />
+                          <div className="absolute inset-x-2 bottom-2 rounded-full bg-background/80 px-2 py-0.5 text-center text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                            {group.label}
+                          </div>
+                          <DeviceIcon className="relative z-10 h-8 w-8 text-foreground drop-shadow-sm" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+                                {device.name}
+                                {!device.enabled && (
+                                  <Badge variant="secondary" className="h-4 px-1 text-[9px]">
+                                    Hidden
+                                  </Badge>
+                                )}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                {[
+                                  device.location,
+                                  device.control_mode === "pulse" ? "Momentary" : "On / off",
+                                  behaviour,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {device.shelly_device_id
+                                  ? `Shelly ${device.shelly_device_id}:${device.shelly_channel}`
+                                  : "Not linked"}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={() => setSelectedDevice(device)}
+                                aria-label={`View ${device.name}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={() => setForm(toForm(device))}
+                                aria-label={`Edit ${device.name}`}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => setConfirmDelete(device)}
+                                aria-label={`Delete ${device.name}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 shrink-0"
+                              disabled={testing === device.id || device.provider !== "shelly"}
+                              onClick={() => handleTest(device)}
+                            >
+                              {testing === device.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                "Test"
+                              )}
+                            </Button>
+                            {device.last_error && (
+                              <p className="text-[11px] text-destructive truncate">
+                                {device.last_error}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -601,6 +667,142 @@ export function DevicesTab({ clubId }: { clubId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={addPickerOpen} onOpenChange={setAddPickerOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add device</DialogTitle>
+            <DialogDescription>
+              Pick the bucket that matches what you are wiring up.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {ADD_OPTIONS.map((option) => (
+              <button
+                key={option.category}
+                type="button"
+                className="rounded-xl border p-4 text-left hover:border-primary hover:bg-accent/30 transition-colors"
+                onClick={() => {
+                  setForm(emptyForm(option.category));
+                  setAddPickerOpen(false);
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <LayoutGrid className="w-4 h-4 text-primary" />
+                  <span className="font-semibold text-sm">{option.title}</span>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">{option.description}</p>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedDevice} onOpenChange={(open) => !open && setSelectedDevice(null)}>
+        <DialogContent className="max-w-xl">
+          {selectedDevice && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {(() => {
+                    const Icon = deviceIcon(selectedDevice);
+                    return <Icon className="w-5 h-5 text-primary" />;
+                  })()}
+                  {selectedDevice.name}
+                </DialogTitle>
+                <DialogDescription>
+                  {DEVICE_CATEGORY_META[selectedDevice.category].label} device details
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
+                <div
+                  className={cn(
+                    "flex items-center justify-center rounded-2xl border p-6",
+                    "bg-gradient-to-br from-muted/80 to-muted/40",
+                    "relative overflow-hidden",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "absolute inset-0 bg-gradient-to-br opacity-100",
+                      CATEGORY_THUMBNAIL_BG[selectedDevice.category],
+                    )}
+                  />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.35),transparent_60%)]" />
+                  <div className="absolute inset-x-4 bottom-3 rounded-full bg-background/80 px-2 py-1 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {DEVICE_CATEGORY_META[selectedDevice.category].label}
+                  </div>
+                  {(() => {
+                    const Icon = deviceIcon(selectedDevice);
+                    return <Icon className="relative z-10 w-12 h-12 text-foreground drop-shadow-sm" />;
+                  })()}
+                </div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Group</p>
+                      <p className="font-medium">{DEVICE_CATEGORY_META[selectedDevice.category].label}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Switching</p>
+                      <p className="font-medium">
+                        {selectedDevice.control_mode === "pulse" ? "Momentary" : "On / off"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Provider</p>
+                      <p className="font-medium capitalize">{selectedDevice.provider}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <p className="font-medium">{selectedDevice.enabled ? "Shown" : "Hidden"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs text-muted-foreground">Behaviour</p>
+                      <p className="font-medium">
+                        {describeDeviceBehaviour(selectedDevice) ??
+                          (selectedDevice.control_mode === "pulse" ? "Momentary" : "On / off")}
+                      </p>
+                    </div>
+                    {selectedDevice.provider === "shelly" && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground">Shelly device</p>
+                        <p className="font-medium">
+                          {selectedDevice.shelly_device_id
+                            ? `Device ${selectedDevice.shelly_device_id}, channel ${selectedDevice.shelly_channel}`
+                            : "Not linked"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Location</p>
+                    <p className="text-sm">{selectedDevice.location || "Not set"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Notes</p>
+                    <p className="text-sm whitespace-pre-wrap">{selectedDevice.notes || "No notes added"}</p>
+                  </div>
+                  {selectedDevice.last_error && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Last error</p>
+                      <p className="text-sm text-destructive whitespace-pre-wrap">
+                        {selectedDevice.last_error}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSelectedDevice(null)}>
+                  Close
+                </Button>
+                <Button onClick={() => setForm(toForm(selectedDevice))}>Edit device</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

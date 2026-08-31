@@ -78,6 +78,9 @@ export const template = {
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif', padding: '24px 0' }
+const logoRow = { margin: '0 0 16px' }
+const clubLogoImg = { display: 'inline-block', maxHeight: '36px', maxWidth: '140px', borderRadius: '6px' }
+const platformLogoImg = { display: 'inline-block', maxHeight: '28px', maxWidth: '120px' }
 const container = { maxWidth: '580px', margin: '0 auto', padding: '28px', border: '1px solid #d9dee5', borderRadius: '6px' }
 const caption = { color: '#64748b', fontSize: '12px', fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: '0.04em', margin: '0 0 8px' }
 const heading = { color: '#1e3a5f', fontSize: '24px', margin: '4px 0 18px' }

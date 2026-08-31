@@ -11238,7 +11238,8 @@ function InvitePreviewDialog({
   const appBody =
     `You have been invited to ${tournamentName}.` +
     (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
-    (description?.trim() ? `\n\n${description.trim()}` : "");
+    (description?.trim() ? `\n\n${description.trim()}` : "") +
+    (inviteExtraDetails?.trim() ? `\n\n${inviteExtraDetails.trim()}` : "");
 
 
 

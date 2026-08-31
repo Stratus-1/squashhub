@@ -87,6 +87,7 @@ async function sendViaPlatform(args: {
   ctaLabel?: string;
   recipientName?: string;
   clubName?: string;
+  clubLogoUrl?: string;
   idempotencyKey?: string;
 }) {
   try {
@@ -101,6 +102,7 @@ async function sendViaPlatform(args: {
         ctaLabel: args.ctaLabel || "Open in SquashHub",
         recipientName: args.recipientName || "",
         clubName: args.clubName || "",
+        clubLogoUrl: args.clubLogoUrl || "",
       },
     });
     if (!res.ok) {
@@ -123,6 +125,7 @@ interface ClubMail {
   signatureHtml: string;
   disclaimer: string;
   clubName: string;
+  clubLogoUrl: string;
 }
 
 async function resolveClubMail(userId: string, explicitClubId?: string | null): Promise<ClubMail | null> {
@@ -148,7 +151,7 @@ async function resolveClubMail(userId: string, explicitClubId?: string | null): 
         .maybeSingle(),
       supabaseAdmin
         .from("clubs")
-        .select("name,email_signature_html,email_disclaimer")
+        .select("name,logo_url,email_signature_html,email_disclaimer")
         .eq("id", clubId)
         .maybeSingle(),
     ]);
@@ -167,6 +170,7 @@ async function resolveClubMail(userId: string, explicitClubId?: string | null): 
       signatureHtml: String(club?.email_signature_html || "").trim(),
       disclaimer: String(club?.email_disclaimer || "").trim(),
       clubName: String(club?.name || "").trim(),
+      clubLogoUrl: String(club?.logo_url || "").trim(),
     };
   } catch (err) {
     console.warn("[resolveClubMail] failed", err);

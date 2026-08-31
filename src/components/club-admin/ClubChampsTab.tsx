@@ -6039,6 +6039,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");
+    setInviteExtraDetails("");
     setAffectsRankingPoints(false);
     setLadderAffects(null);
     setEventType(scope === "club" ? "club_championship" : "open_tournament");

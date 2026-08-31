@@ -1,5 +1,5 @@
 import * as React from 'npm:react@18.3.1'
-import { Body, Button, Container, Head, Heading, Hr, Html, Preview, Text } from 'npm:@react-email/components@0.0.22'
+import { Body, Button, Container, Head, Heading, Html, Preview, Text } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
 interface Props {
@@ -8,9 +8,6 @@ interface Props {
   messageBody?: string
   url?: string
   ctaLabel?: string
-  signupUrl?: string
-  signupCtaLabel?: string
-  signupHint?: string
   recipientName?: string
 }
 
@@ -20,9 +17,6 @@ const ClubNotification = ({
   messageBody = '',
   url,
   ctaLabel = 'Open in SquashHub',
-  signupUrl,
-  signupCtaLabel = 'Register on SquashHub',
-  signupHint = "Haven't registered on SquashHub yet? Use the link below to create your account — we'll link it to this invitation automatically.",
   recipientName,
 }: Props) => {
   const lines = String(messageBody || '')
@@ -46,13 +40,6 @@ const ClubNotification = ({
             ))}
           </Text>
           {url ? <Button href={url} style={button}>{ctaLabel}</Button> : null}
-          {signupUrl ? (
-            <>
-              <Hr style={divider} />
-              <Text style={hintText}>{signupHint}</Text>
-              <Button href={signupUrl} style={secondaryButton}>{signupCtaLabel}</Button>
-            </>
-          ) : null}
         </Container>
       </Body>
     </Html>
@@ -79,6 +66,3 @@ const caption = { color: '#64748b', fontSize: '12px', fontWeight: '700' as const
 const heading = { color: '#1e3a5f', fontSize: '24px', margin: '4px 0 18px' }
 const bodyText = { color: '#1d2733', fontSize: '15px', lineHeight: '24px', margin: '0 0 14px' }
 const button = { backgroundColor: '#1e3a5f', color: '#ffffff', padding: '12px 18px', borderRadius: '4px', textDecoration: 'none' }
-const secondaryButton = { backgroundColor: '#ffffff', color: '#1e3a5f', padding: '12px 18px', borderRadius: '4px', textDecoration: 'none', border: '2px solid #1e3a5f' }
-const hintText = { color: '#475569', fontSize: '14px', lineHeight: '22px', margin: '0 0 12px' }
-const divider = { borderColor: '#e2e8f0', margin: '24px 0 18px' }

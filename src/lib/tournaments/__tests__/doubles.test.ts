@@ -81,7 +81,7 @@ describe("pairing state machine", () => {
 
   it("shows the correct empty-list message", () => {
     expect(PARTNER_MUST_REGISTER_MESSAGE).toBe(
-      "Your partner must register first before you can select them.",
+      "Only players who were invited to this division can be picked as a partner.",
     );
   });
 
@@ -100,7 +100,7 @@ describe("pairing state machine", () => {
   it("confirmed pair can still be changed before the lock", () => {
     const p = pair({ status: "confirmed" });
     expect(pairAction(p, false)).toBe("confirmed");
-    expect(pairStatusLabel(p)).toBe("Paired with Ann Botha");
+    expect(pairStatusLabel(p)).toBe("Paired with Ann Botha — pair locked");
   });
 
   it("organiser lock blocks every change", () => {

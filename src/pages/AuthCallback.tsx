@@ -34,15 +34,6 @@ export default function AuthCallback() {
             return;
           }
 
-          // Tournament / membership claim deep link: return the newly verified
-          // user to the invitation or other claim context they started from.
-          const claimRedirectTo = meta.claim_redirect_to as string | undefined;
-          if (claimRedirectTo) {
-            await supabase.auth.updateUser({ data: { claim_redirect_to: null } });
-            navigate(claimRedirectTo, { replace: true });
-            return;
-          }
-
           const metadataClubSubdomain = meta.club_subdomain as string | undefined;
           const oauthReturnClub = getClubSubdomain();
           const registrationType = meta.club_registration_type as string | undefined;

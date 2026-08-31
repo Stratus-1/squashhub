@@ -1,3 +1,0 @@
-UPDATE public.tournaments
-SET invite_extra_details = E'Co-hosted by SquashApp and CSIR Squash Club.\n\nCome have fun on court — whether you\'re an intermediate/advanced player or a beginner, there\'s a group for you! CSIR is sponsoring balls, courts, lights and a league braai with chicken pregos and wors. Bring your own drinks, buns and sauces.\n\nYou will need the SquashHub app to score the Bells-format games. If you haven\'t registered yet, use the "Register on SquashHub" link in this email and we\'ll link your account to this invitation automatically.'
-WHERE id = '606bac95-fabe-4f49-936b-fed681a23f68';

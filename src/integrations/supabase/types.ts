@@ -12472,6 +12472,7 @@ export type Database = {
           invite_audience_league_ids: string[] | null
           invite_audience_member_ids: string[] | null
           invite_excluded_member_ids: string[] | null
+          invite_extra_details: string | null
           invite_include_reserves: boolean | null
           invite_methods: string[] | null
           invite_source: string | null
@@ -13009,10 +13010,6 @@ export type Database = {
         Returns: string
       }
       current_verified_email: { Args: never; Returns: string }
-      delete_email: {
-        Args: { message_id: number; queue_name: string }
-        Returns: boolean
-      }
       delete_league_round_cascade: {
         Args: { _round_id: string }
         Returns: Json
@@ -13020,11 +13017,6 @@ export type Database = {
       dismiss_duplicate_pair: {
         Args: { _a: string; _b: string; _reason?: string }
         Returns: undefined
-      }
-      email_queue_dispatch: { Args: never; Returns: undefined }
-      enqueue_email: {
-        Args: { payload: Json; queue_name: string }
-        Returns: number
       }
       ensure_platform_association_for_league: {
         Args: { _association_id: string }
@@ -13553,15 +13545,6 @@ export type Database = {
             }
             Returns: undefined
           }
-      move_to_dlq: {
-        Args: {
-          dlq_name: string
-          message_id: number
-          payload: Json
-          source_queue: string
-        }
-        Returns: number
-      }
       my_admin_tenants: {
         Args: never
         Returns: {
@@ -13695,14 +13678,6 @@ export type Database = {
           _visitor_name: string
         }
         Returns: Json
-      }
-      read_email_batch: {
-        Args: { batch_size: number; queue_name: string; vt: number }
-        Returns: {
-          message: Json
-          msg_id: number
-          read_ct: number
-        }[]
       }
       recalc_club_ranking_points: {
         Args: { _apply?: boolean; _club_id: string }
@@ -14167,7 +14142,7 @@ export type Database = {
           association_name: string
           club_id: string
           club_name: string
-          email_reach_count: number
+          email_count: number
           is_own_club: boolean
           member_count: number
           registered_count: number

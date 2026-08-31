@@ -798,17 +798,26 @@ Deno.serve(async (req) => {
           </tr>
         </table>`;
 
+      const isTournamentInvite = type === "tournament_invite" || type === "tournament_partner_invite";
+      const inviteExplainerHtml = isTournamentInvite
+        ? `<p style="margin:0 0 18px 0; font-size:12px; color:#64748b">
+            No SquashHub account yet? No problem — just tap the button above. You can accept or decline straight away,
+            and if you'd like an account you can create one from that page; it will be linked to your club membership automatically.
+          </p>`
+        : "";
+
       html = `
         <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
           ${logoHeaderHtml}
           <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
           ${greetingHtml}
           <div style="margin:0 0 14px 0; color:#334155">${safeBody}</div>
-          <p style="margin:0 0 18px 0">
+          <p style="margin:0 0 ${isTournamentInvite ? "6" : "18"}px 0">
             <a href="${safeLink}" style="display:inline-block; padding:10px 14px; background:#1a5c3a; color:#fff; text-decoration:none; border-radius:8px">
               ${escapeHtml(ctaLabel)}
             </a>
           </p>
+          ${inviteExplainerHtml}
           <p style="margin:0; font-size:12px; color:#64748b">
             If you prefer not to receive these emails, you’ll be able to disable transactional emails in your profile settings.
           </p>

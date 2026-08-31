@@ -556,6 +556,25 @@ async function handleClubSend(body: any, authHeader: string) {
   const { data: isAdmin } = await supabaseAdmin.rpc("is_club_admin", { _user_id: user.id, _club_id: clubId });
   if (!isAdmin) return json({ error: "Not a club admin" }, 403);
 
+  let clubLogoUrl = "";
+  try {
+    const { data: clubRow } = await supabaseAdmin
+      .from("clubs")
+      .select("logo_url")
+      .eq("id", clubId)
+      .maybeSingle();
+    clubLogoUrl = String((clubRow as any)?.logo_url || "").trim();
+  } catch (err) {
+    console.warn("[handleClubSend] club logo lookup failed", err);
+  }
+  const logoHeaderHtml = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0">
+      <tr>
+        <td align="left" valign="middle">${clubLogoUrl ? `<img src="${escapeHtml(clubLogoUrl)}" alt="Club logo" height="36" style="display:inline-block;max-height:36px;max-width:140px;border-radius:6px" />` : ""}</td>
+        <td align="right" valign="middle"><img src="https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform/squashhub-logo.png" alt="SquashHub" height="28" style="display:inline-block;max-height:28px;max-width:120px" /></td>
+      </tr>
+    </table>`;
+
   const greetingHtml = recipientName
     ? `<p style="margin:0 0 12px 0; color:#334155">Dear ${escapeHtml(recipientName)},</p>`
     : "";
@@ -564,6 +583,7 @@ async function handleClubSend(body: any, authHeader: string) {
     : "";
   const html = `
     <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
+      ${logoHeaderHtml}
       <h2 style="margin:0 0 8px 0">${escapeHtml(subject)}</h2>
       ${greetingHtml}
       <div style="margin:0 0 14px 0; color:#334155">${renderBodyHtml(messageBody)}</div>
@@ -581,6 +601,7 @@ async function handleClubSend(body: any, authHeader: string) {
     ctaLabel,
     recipientName,
     clubName: clubMail?.clubName || "",
+    clubLogoUrl: clubMail?.clubLogoUrl || clubLogoUrl || "",
   };
   // The club's own email settings are tried FIRST. If they fail we still get the
   // message out via the platform sender, but we always report that the fallback

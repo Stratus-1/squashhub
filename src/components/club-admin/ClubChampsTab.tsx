@@ -2393,6 +2393,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       manual_draws: Object.keys(manualDraws).length > 0 ? manualDraws : null,
       seed_order: playerOrder.length > 0 ? playerOrder : null,
       manual_seed_divisions: manualSeedGroups.size > 0 ? Array.from(manualSeedGroups) : null,
+      invite_extra_details: inviteExtraDetails.trim() || null,
     };
 
     const saveExtras = async (id: string) => {

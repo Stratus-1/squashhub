@@ -119,31 +119,52 @@ export function InviteScopeTree({
   );
 
   const toggleMember = useCallback(
-    (memberId: string) => {
+    (clubId: string, memberId: string) => {
+      const clubSelected = selectedClubs.has(clubId);
+      const currentlyInvited = isMemberInvited(clubId, memberId);
+
+      if (clubSelected) {
+        // Toggling a member inside a selected club flips its exclusion status.
+        if (!onExcludedChange) return;
+        const next = new Set(excludedMembers);
+        if (currentlyInvited) next.add(memberId);
+        else next.delete(memberId);
+        onExcludedChange(Array.from(next));
+        return;
+      }
+
+      // Toggling a member when its club is not selected adds/removes it from the explicit list.
       if (!onMemberChange) return;
       const next = new Set(selectedMembers);
-      if (next.has(memberId)) next.delete(memberId);
+      if (currentlyInvited) next.delete(memberId);
       else next.add(memberId);
       onMemberChange(Array.from(next));
     },
-    [onMemberChange, selectedMembers],
+    [selectedClubs, excludedMembers, selectedMembers, isMemberInvited, onExcludedChange, onMemberChange],
   );
 
   const toggleClubWithMembers = useCallback(
     (club: ScopeTreeClub) => {
       const clubSelected = selectedClubs.has(club.clubId);
       onChange(toggleClub(club.clubId, selectedClubs));
-      if (!onMemberChange) return;
-      // When a whole club is ticked/unticked, also tick/untick all of its loaded members.
+      if (!onMemberChange && !onExcludedChange) return;
+      // When a whole club is ticked, include all loaded members and clear their exclusions.
+      // When a whole club is unticked, remove loaded members from the explicit list.
       const members = clubMembers.get(club.clubId) || [];
-      const next = new Set(selectedMembers);
+      const nextSelected = new Set(selectedMembers);
+      const nextExcluded = new Set(excludedMembers);
       members.forEach((m) => {
-        if (!clubSelected) next.add(m.member_id);
-        else next.delete(m.member_id);
+        if (!clubSelected) {
+          nextExcluded.delete(m.member_id);
+        } else {
+          nextSelected.delete(m.member_id);
+          nextExcluded.delete(m.member_id);
+        }
       });
-      onMemberChange(Array.from(next));
+      onMemberChange?.(Array.from(nextSelected));
+      onExcludedChange?.(Array.from(nextExcluded));
     },
-    [onChange, onMemberChange, selectedClubs, selectedMembers, clubMembers],
+    [onChange, onMemberChange, onExcludedChange, selectedClubs, selectedMembers, excludedMembers, clubMembers],
   );
 
   if (loading) {

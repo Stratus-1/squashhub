@@ -2760,10 +2760,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registrationRequired, registrationMode: (registrationMode || "open") as any,
       tournamentName: champName, divisionFormats: inviteDivisionFormats(),
       selfScheduled: schedulingMode === "self", roundDeadlines,
-      inviteExtraDetails,
     });
-    if (!lines.length) return "";
-    return `— Tournament details —\n${lines.map((l) => `• ${l}`).join("\n")}\n— End details —`;
+    const extras = inviteExtraDetails?.trim()
+      ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n")
+      : "";
+    if (!lines.length) return extras;
+    const bulletBlock = `— Tournament details —\n${lines.map((l) => `• ${l}`).join("\n")}\n— End details —`;
+    return extras ? `${extras}\n\n${bulletBlock}` : bulletBlock;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,

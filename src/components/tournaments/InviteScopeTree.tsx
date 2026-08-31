@@ -106,8 +106,9 @@ export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, erro
                         </Badge>
                       )}
                     </span>
-                    <span className="text-[12px] text-muted-foreground">
+                    <span className="text-[12px] text-muted-foreground" title={`${club.emailReachCount} of ${club.memberCount} members have an email address (member record or linked user)`}>
                       {club.memberCount} member{club.memberCount === 1 ? "" : "s"}
+                      {club.emailReachCount > 0 ? ` · ${club.emailReachCount} with email` : ""}
                       {club.registeredCount > 0 ? ` · ${club.registeredCount} entered` : ""}
                     </span>
                   </label>

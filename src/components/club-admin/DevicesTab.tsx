@@ -197,13 +197,12 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="w-4 h-4 text-primary" /> Devices & Gadgets
+            <Zap className="w-4 h-4 text-primary" /> IoT / Shelly Connections
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Everything on a smart relay, grouped the way members see it on the dashboard. The main
-            clubhouse door is configured under <strong>Door Access</strong>, and court lights under{" "}
-            <strong>Courts &amp; Bookings</strong> — those keep their own screens because they carry
-            billing and access rules.
+            Shelly relays, gates, geysers, pumps, lights and other switched devices. The main
+            clubhouse door stays under <strong>Door Access</strong>, and court lights stay under{" "}
+            <strong>Courts &amp; Bookings</strong> because those flows carry booking and access rules.
           </p>
         </CardHeader>
       </Card>

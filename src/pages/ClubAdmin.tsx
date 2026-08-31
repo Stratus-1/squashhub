@@ -61,7 +61,7 @@ const SETUP_TABS: AdminTab[] = [
   { value: "fees", label: "Fees", icon: DollarSign, permission: "fees", color: "emerald", capability: "membership_fees" },
   { value: "banking", label: "Banking & Payments", icon: Banknote, permission: "banking", color: "green", capability: "payments" },
   { value: "access", label: "Door Access", icon: DoorOpen, permission: "access", color: "pink", capability: "access_control" },
-  { value: "devices", label: "Devices & Gadgets", icon: Zap, permission: "devices", color: "sky", noStatus: true, capability: "gadgets" },
+  { value: "devices", label: "IoT / Shelly", icon: Zap, permission: "devices", color: "sky", noStatus: true, capability: "gadgets" },
   { value: "ladder", label: "Ladder & Ranking", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true, capability: "ladder" },
   { value: "ranking-points", label: "Ranking Points", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true, capability: "ranking_points" },
 
@@ -188,7 +188,10 @@ export default function ClubAdmin() {
     return myPermissions.has(tab.permission);
   };
   // Capability filter — core tabs (no capability) are always visible.
-  const capFilter = (tab: AdminTab) => isTabVisible(tab, enabledCaps, hasCapRows);
+  const capFilter = (tab: AdminTab) => {
+    if (tab.value === "devices" && (isAdmin || myPermissions.has("devices"))) return true;
+    return isTabVisible(tab, enabledCaps, hasCapRows);
+  };
   const visibleSetup = SETUP_TABS.filter(permFilter).filter(capFilter);
   const visibleOps = OPERATIONS_TABS.filter(permFilter).filter(capFilter);
   const visibleTabs = [...visibleSetup, ...visibleOps];

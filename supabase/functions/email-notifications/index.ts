@@ -747,8 +747,18 @@ Deno.serve(async (req) => {
           ? "Accept / Register"
           : "Open in SquashHub";
 
+      const clubLogoUrl = String((club as any)?.logo_url || "").trim();
+      const logoHeaderHtml = `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0">
+          <tr>
+            <td align="left" valign="middle">${clubLogoUrl ? `<img src="${escapeHtml(clubLogoUrl)}" alt="${escapeHtml(clubNameForHeader)}" height="36" style="display:inline-block;max-height:36px;max-width:140px;border-radius:6px" />` : ""}</td>
+            <td align="right" valign="middle"><img src="https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform/squashhub-logo.png" alt="SquashHub" height="28" style="display:inline-block;max-height:28px;max-width:120px" /></td>
+          </tr>
+        </table>`;
+
       html = `
         <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; line-height:1.5; color:#0f172a">
+          ${logoHeaderHtml}
           <h2 style="margin:0 0 8px 0">${safeTitle}</h2>
           ${greetingHtml}
           <div style="margin:0 0 14px 0; color:#334155">${safeBody}</div>

@@ -5305,6 +5305,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Builds the invitation body shared by in-app / email / WhatsApp channels.
   function buildInviteBody() {
     const descHasDetails = /— Tournament details —/.test(description);
+    const extras = inviteExtraDetails?.trim()
+      ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
+      : "";
     const detailLines = descHasDetails ? [] : buildInviteDetailLines({
       gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
       startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
@@ -5314,8 +5317,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       tournamentName: champName, divisionFormats: inviteDivisionFormats(),
       selfScheduled: schedulingMode === "self", roundDeadlines,
     });
+    const detailsBlock = detailLines.length
+      ? `— Tournament details —\n${detailLines.map((l) => `• ${l}`).join("\n")}\n— End details —`
+      : "";
     return `You have been invited to ${champName || "a tournament"}.` +
-      (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
+      (extras ? `\n\n${extras}` : "") +
+      (detailsBlock ? `\n\n${detailsBlock}` : "") +
       (description.trim() ? `\n\n${description.trim()}` : "");
   }
 

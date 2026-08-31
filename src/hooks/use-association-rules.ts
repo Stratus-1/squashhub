@@ -131,7 +131,7 @@ export function useUpdateAssociationRules() {
       if (existing) {
         const { data: updated, error } = await supabase
           .from("league_rules")
-          .update(patch)
+          .update(patch as any)
           .eq("id", existing.id)
           .eq("association_id", associationId)
           .is("league_id", null)

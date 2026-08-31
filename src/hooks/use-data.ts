@@ -1279,7 +1279,7 @@ export function useUpdateChallengeStatus() {
       if (typeof proposedDate !== "undefined") patch.proposed_date = proposedDate;
       const { data, error } = await supabase
         .from("challenges")
-        .update(patch)
+        .update(patch as any)
         .eq("id", challengeId)
         .select()
         .maybeSingle();
@@ -1463,7 +1463,7 @@ export function useUpdateMatch() {
       if (typeof confirmed === "boolean") patch.confirmed = confirmed;
       if (typeof disputed === "boolean") patch.disputed = disputed;
 
-      const { data, error } = await supabase.from("matches").update(patch).eq("id", matchId).select().single();
+      const { data, error } = await supabase.from("matches").update(patch as any).eq("id", matchId).select().single();
       if (error) throw error;
       return data;
     },

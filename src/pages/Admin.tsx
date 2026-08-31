@@ -857,7 +857,7 @@ export default function Admin() {
 
   const updateStats = useMutation({
     mutationFn: async ({ userId, patch }: { userId: string; patch: Partial<ProfileRow> }) => {
-      const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+      const { error } = await supabase.from("profiles").update(patch as any).eq("id", userId);
       if (error) throw error;
     },
     onSuccess: async () => {

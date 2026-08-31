@@ -28,16 +28,7 @@ import {
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { EditLock, useEditLock } from "./setup/EditLock";
 
-const RELAY_DEVICES = [
-  { value: "shelly", label: "Shelly", description: "Shelly Cloud smart relays — fully supported" },
-  { value: "magnet", label: "Magnet", description: "Magnetic contactor / relay switch" },
-  { value: "sonoff", label: "Sonoff", description: "Sonoff eWeLink smart switches" },
-  { value: "tasmota", label: "Tasmota", description: "Tasmota-flashed devices (ESP-based)" },
-  { value: "home_assistant", label: "Home Assistant", description: "HA hub with relay automations" },
-  { value: "other", label: "Other", description: "Contact SquashHub for integration assistance" },
-] as const;
-
-type RelayDevice = typeof RELAY_DEVICES[number]["value"];
+type RelayDevice = string;
 
 function normalizeShellyServerInput(value: string) {
   const raw = value.trim();
@@ -150,35 +141,6 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       toast.error(err.message || "Failed to save");
     }
   };
-
-
-  const [lightsForm, setLightsForm] = useState({
-    lights_integration_enabled: club.lights_integration_enabled ?? false,
-    light_fee_per_hour: club.light_fee_per_hour ?? 0,
-    shelly_auth_key: "",
-    relay_device_type: "shelly" as RelayDevice,
-    min_booking_balance: ((club as any).min_booking_balance ?? null) as number | null,
-  });
-
-  useEffect(() => {
-    setLightsForm(p => ({
-      ...p,
-      lights_integration_enabled: club.lights_integration_enabled ?? false,
-      light_fee_per_hour: club.light_fee_per_hour ?? 0,
-      min_booking_balance: ((club as any).min_booking_balance ?? null) as number | null,
-    }));
-  }, [club.id, club.lights_integration_enabled, club.light_fee_per_hour, (club as any).min_booking_balance]);
-
-  useEffect(() => {
-    if (secrets) {
-      setLightsForm(p => ({
-        ...p,
-        shelly_auth_key: secrets.shelly_auth_key || "",
-        relay_device_type: (secrets as any).relay_device_type || "shelly",
-      }));
-    }
-  }, [secrets]);
-
   const resetRules = () => {
     setRulesForm({
       booking_slot_minutes: club.booking_slot_minutes ?? 30,
@@ -193,54 +155,32 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
       max_member_events_per_month: (club as any).max_member_events_per_month ?? 2,
     });
   };
-  const resetLights = () => {
-    setLightsForm({
-      lights_integration_enabled: club.lights_integration_enabled ?? false,
-      light_fee_per_hour: club.light_fee_per_hour ?? 0,
-      shelly_auth_key: secrets?.shelly_auth_key || "",
-      relay_device_type: ((secrets as any)?.relay_device_type || "shelly") as RelayDevice,
-      min_booking_balance: ((club as any).min_booking_balance ?? null) as number | null,
-    });
-  };
   const rulesLock = useEditLock(resetRules);
-  const lightsLock = useEditLock(resetLights);
-  const balanceLock = useEditLock(resetLights);
-
-  const handleSaveLights = async (onDone?: () => void) => {
-    try {
-      await updateClub.mutateAsync({
-        id: club.id,
-        lights_integration_enabled: lightsForm.lights_integration_enabled,
-        light_fee_per_hour: lightsForm.lights_integration_enabled ? lightsForm.light_fee_per_hour : 0,
-      } as any);
-
-      if (lightsForm.lights_integration_enabled) {
-        await updateSecrets.mutateAsync({
-          club_id: clubId,
-          shelly_auth_key: lightsForm.relay_device_type === "shelly" ? (lightsForm.shelly_auth_key || null) : null,
-          relay_device_type: lightsForm.relay_device_type,
-        } as any);
-      }
-      toast.success("Court light settings saved");
-      onDone?.();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save");
-    }
-  };
-
-  const selectedDevice = RELAY_DEVICES.find(d => d.value === lightsForm.relay_device_type);
-  const isSupported = lightsForm.relay_device_type === "shelly";
-  const isOther = lightsForm.relay_device_type === "other";
-  const isUnsupported = !isSupported && !isOther;
-  const lightsEnabled = lightsForm.lights_integration_enabled;
 
   const steps: SetupStep[] = [
     { id: "courts", label: "List courts", description: "Step one — name the courts your club plays on and choose which booking system those courts use.", complete: false },
     { id: "rules", label: "Booking rules", description: "Set slot length, opening hours, peak times and how many bookings a member may make.", complete: true },
-    { id: "lights", label: "Lights & relays", description: "Turn on smart light control, then pick each court from your list and enter its Shelly relay details.", complete: !!club.lights_integration_enabled },
+    { id: "lights", label: "Lights & relays", description: "Shelly court-light setup now lives in the IoT / Shelly tile.", complete: true },
     { id: "venues", label: "Other venues", description: "External tournament venues at other clubs.", complete: true },
 
   ];
+
+  const [balanceForm, setBalanceForm] = useState({
+    min_booking_balance: ((club as any).min_booking_balance ?? null) as number | null,
+  });
+
+  useEffect(() => {
+    setBalanceForm({
+      min_booking_balance: ((club as any).min_booking_balance ?? null) as number | null,
+    });
+  }, [(club as any).min_booking_balance]);
+
+  const resetBalance = () => {
+    setBalanceForm({
+      min_booking_balance: ((club as any).min_booking_balance ?? null) as number | null,
+    });
+  };
+  const balanceLock = useEditLock(resetBalance);
 
   return (
     <div className="space-y-4 mt-4">
@@ -248,7 +188,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
       {step === "courts" && (
         <div className="space-y-4">
-          <CourtsSection clubId={clubId} mode="list" relayDeviceType={lightsForm.relay_device_type} />
+          <CourtsSection clubId={clubId} mode="list" relayDeviceType={"shelly"} />
           <HostingFeesCard club={club} />
           <ExternalBookingSection club={club} clubId={clubId} />
         </div>
@@ -257,124 +197,16 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
 
 
       {step === "lights" && (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-
-
-        {/* Court Lights */}
-        <Card className="p-4 space-y-3">
-        <EditLock
-          editing={lightsLock.editing}
-          onEdit={lightsLock.edit}
-          onCancel={lightsLock.cancel}
-          onSave={() => handleSaveLights(lightsLock.done)}
-          saving={updateClub.isPending || updateSecrets.isPending}
-          title="light settings"
-        >
-
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h3 className="font-semibold text-sm">Court Lights</h3>
-              <p className="text-xs text-muted-foreground">
-                {lightsEnabled ? "Smart relay integration enabled." : "No light integration — booking dialog will not show light controls."}
-              </p>
-            </div>
-            <Switch
-              checked={lightsEnabled}
-              onCheckedChange={(checked) => setLightsForm(p => ({ ...p, lights_integration_enabled: checked }))}
-            />
-          </div>
-
-          {lightsEnabled && (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Relay Device Type</Label>
-                  <Select
-                    value={lightsForm.relay_device_type}
-                    onValueChange={(v: RelayDevice) => setLightsForm(p => ({ ...p, relay_device_type: v }))}
-                  >
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {RELAY_DEVICES.map(d => (
-                        <SelectItem key={d.value} value={d.value}>
-                          <span className="flex items-center gap-2">
-                            {d.label}
-                            {d.value === "shelly" && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Supported</span>}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs">Charge light fees</Label>
-                    <Switch
-                      checked={lightsForm.light_fee_per_hour > 0}
-                      onCheckedChange={(checked) =>
-                        setLightsForm(p => ({ ...p, light_fee_per_hour: checked ? 30 : 0 }))
-                      }
-                    />
-                  </div>
-                  {lightsForm.light_fee_per_hour > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{currencySymbol}</span>
-                      <Input
-                        type="number" min={1} step={1}
-                        className="h-8 text-xs"
-                        value={lightsForm.light_fee_per_hour}
-                        onChange={e => setLightsForm(p => ({ ...p, light_fee_per_hour: parseInt(e.target.value) || 0 }))}
-                        placeholder="Fee"
-                      />
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">per hour</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {isSupported && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Shelly Cloud Auth Key</Label>
-                  <Input
-                    type="password"
-                    className="h-8 text-xs"
-                    value={lightsForm.shelly_auth_key}
-                    onChange={e => setLightsForm(p => ({ ...p, shelly_auth_key: e.target.value }))}
-                    placeholder="Paste your Shelly Cloud auth key"
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Find in <a href="https://control.shelly.cloud" target="_blank" rel="noopener noreferrer" className="underline text-primary">Shelly Cloud</a> → Settings → Authorization Cloud Key.
-                  </p>
-                </div>
-              )}
-
-              {isUnsupported && (
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 flex gap-2">
-                  <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-muted-foreground">
-                    {selectedDevice?.label} integration coming soon. Contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support</a>.
-                  </p>
-                </div>
-              )}
-
-              {isOther && (
-                <div className="rounded-lg border border-primary/30 bg-primary/5 p-2 flex gap-2">
-                  <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-muted-foreground">
-                    Custom integration — contact <a href="mailto:support@squashhub.co.za" className="underline text-primary">support</a>.
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-
-        </EditLock>
+      <div className="space-y-4">
+        <Card className="p-4 space-y-2">
+          <h3 className="font-semibold text-sm">Shelly court lights moved</h3>
+          <p className="text-xs text-muted-foreground">
+            Court light relay setup now lives in the IoT / Shelly tile, together with the main door and other registered devices.
+          </p>
+          <a href="/club-admin?tab=devices" className="text-xs font-medium text-primary underline">
+            Open IoT / Shelly
+          </a>
         </Card>
-
-        {lightsEnabled && (
-          <CourtsSection clubId={clubId} mode="relays" relayDeviceType={lightsForm.relay_device_type} />
-        )}
       </div>
       )}
 
@@ -550,7 +382,7 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           onCancel={balanceLock.cancel}
           onSave={async () => {
             try {
-              await updateClub.mutateAsync({ id: club.id, min_booking_balance: lightsForm.min_booking_balance } as any);
+              await updateClub.mutateAsync({ id: club.id, min_booking_balance: balanceForm.min_booking_balance } as any);
               toast.success("Minimum balance saved");
               balanceLock.done();
             } catch (err: any) {
@@ -564,31 +396,31 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
             <div>
               <h3 className="font-semibold text-sm">Minimum balance required to book a court</h3>
               <p className="text-xs text-muted-foreground">
-                {lightsForm.min_booking_balance !== null
+                {balanceForm.min_booking_balance !== null
                   ? "Members need at least this credit on their account before booking."
                   : "Disabled — any active member can book regardless of account balance."}
               </p>
             </div>
             <Switch
-              checked={lightsForm.min_booking_balance !== null}
+              checked={balanceForm.min_booking_balance !== null}
               onCheckedChange={(checked) =>
-                setLightsForm(p => ({
+                setBalanceForm(p => ({
                   ...p,
-                  min_booking_balance: checked ? (p.light_fee_per_hour || 20) : null,
+                  min_booking_balance: checked ? (p.min_booking_balance ?? 20) : null,
                 }))
               }
             />
           </div>
 
-          {lightsForm.min_booking_balance !== null && (
+          {balanceForm.min_booking_balance !== null && (
             <>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{currencySymbol}</span>
                 <Input
                   type="number" min={0} step={1}
                   className="h-8 text-xs w-28"
-                  value={lightsForm.min_booking_balance}
-                  onChange={e => setLightsForm(p => ({ ...p, min_booking_balance: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                  value={balanceForm.min_booking_balance}
+                  onChange={e => setBalanceForm(p => ({ ...p, min_booking_balance: Math.max(0, parseFloat(e.target.value) || 0) }))}
                 />
                 <span className="text-[11px] text-muted-foreground">credit required</span>
               </div>
@@ -681,7 +513,7 @@ function HostingFeesCard({ club }: { club: Club }) {
 }
 
 
-function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; relayDeviceType: RelayDevice; mode: "list" | "relays" }) {
+export function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: string; relayDeviceType: RelayDevice; mode: "list" | "relays" }) {
 
   const showRelays = mode === "relays";
   const qc = useQueryClient();

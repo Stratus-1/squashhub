@@ -543,17 +543,6 @@ function buildInviteDetailLines(opts: {
   const fee = Number(opts.entryFeeRand) || 0;
   lines.push(fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free");
 
-  // Extra organiser-provided details (co-hosting, food, prizes, etc.) merged
-  // into the automatic block so they travel with the generated invite text.
-  const extras = opts.inviteExtraDetails?.trim();
-  if (extras) {
-    lines.push("");
-    for (const line of extras.split("\n")) {
-      const trimmed = line.trim();
-      if (trimmed) lines.push(trimmed);
-    }
-  }
-
   // Format-specific "how it works" note appended after the bullets.
   if (opts.scoringMode === "bells") {
     lines.push("");
@@ -2771,10 +2760,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registrationRequired, registrationMode: (registrationMode || "open") as any,
       tournamentName: champName, divisionFormats: inviteDivisionFormats(),
       selfScheduled: schedulingMode === "self", roundDeadlines,
-      inviteExtraDetails,
     });
-    if (!lines.length) return "";
-    return `— Tournament details —\n${lines.map((l) => `• ${l}`).join("\n")}\n— End details —`;
+    const extras = inviteExtraDetails?.trim()
+      ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n")
+      : "";
+    if (!lines.length) return extras;
+    const bulletBlock = `— Tournament details —\n${lines.map((l) => `• ${l}`).join("\n")}\n— End details —`;
+    return extras ? `${extras}\n\n${bulletBlock}` : bulletBlock;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
@@ -5313,6 +5305,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Builds the invitation body shared by in-app / email / WhatsApp channels.
   function buildInviteBody() {
     const descHasDetails = /— Tournament details —/.test(description);
+    const extras = inviteExtraDetails?.trim()
+      ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
+      : "";
     const detailLines = descHasDetails ? [] : buildInviteDetailLines({
       gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
       startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
@@ -5322,8 +5317,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       tournamentName: champName, divisionFormats: inviteDivisionFormats(),
       selfScheduled: schedulingMode === "self", roundDeadlines,
     });
+    const detailsBlock = detailLines.length
+      ? `— Tournament details —\n${detailLines.map((l) => `• ${l}`).join("\n")}\n— End details —`
+      : "";
     return `You have been invited to ${champName || "a tournament"}.` +
-      (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
+      (extras ? `\n\n${extras}` : "") +
+      (detailsBlock ? `\n\n${detailsBlock}` : "") +
       (description.trim() ? `\n\n${description.trim()}` : "");
   }
 
@@ -11252,6 +11251,9 @@ function InvitePreviewDialog({
   inviteExtraDetails?: string;
 }) {
   const descHasDetails = /— Tournament details —/.test(description || "");
+  const extras = inviteExtraDetails?.trim()
+    ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
+    : "";
   const detailLines = descHasDetails ? [] : buildInviteDetailLines({
     gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
     startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
@@ -11260,12 +11262,15 @@ function InvitePreviewDialog({
     registrationRequired, registrationMode,
     tournamentName, divisionFormats,
     selfScheduled, roundDeadlines,
-    inviteExtraDetails,
   });
+  const detailsBlock = detailLines.length
+    ? `— Tournament details —\n${detailLines.map((l) => `• ${l}`).join("\n")}\n— End details —`
+    : "";
 
   const appBody =
     `You have been invited to ${tournamentName}.` +
-    (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
+    (extras ? `\n\n${extras}` : "") +
+    (detailsBlock ? `\n\n${detailsBlock}` : "") +
     (description?.trim() ? `\n\n${description.trim()}` : "");
 
 
@@ -11313,14 +11318,17 @@ function InvitePreviewDialog({
                 <Separator />
                 <p>Hi there,</p>
                 <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
+                {extras && (
+                  <div className="text-sm whitespace-pre-wrap text-muted-foreground">
+                    {extras}
+                  </div>
+                )}
                 {detailLines.length > 0 && (
                   <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
                     {detailLines.map((l, i) => <li key={i}>{l}</li>)}
                   </ul>
                 )}
-
-
-                {description?.trim() && (
+                {description?.trim() && !descHasDetails && (
                   <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
                     {description.trim()}
                   </div>

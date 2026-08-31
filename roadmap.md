@@ -14,3 +14,5 @@
 ## Backlog
 - Bar / POS payment options (mostly complete)
 - Visitor open tab for the evening
+
+- [ ] Tournament save fails with tournaments_invite_audience_check when invite audience = "clubs" — allow the value in DB constraint.

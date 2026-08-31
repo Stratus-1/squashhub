@@ -197,7 +197,7 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; cc?: string[];
   const fullText = `${args.text}${cfg.disclaimer ? `\n\n${cfg.disclaimer}` : ""}`;
 
   try {
-    const nodemailer = await import("nodemailer");
+    const nodemailer = await import("npm:nodemailer@6.9.14");
     const transporter = nodemailer.default.createTransport({
       host: cfg.smtpHost,
       port: cfg.smtpPort,
@@ -486,7 +486,7 @@ async function handleTestEmail(payload: Record<string, unknown>, authHeader: str
     console.log(`[test-email] Attempting SMTP send to ${to} via ${smtpHost}:${smtpPort}`);
     
     const smtpPromise = (async () => {
-      const nodemailer = await import("nodemailer");
+      const nodemailer = await import("npm:nodemailer@6.9.14");
       const transporter = nodemailer.default.createTransport({
         host: smtpHost,
         port: smtpPort,
@@ -663,7 +663,7 @@ Deno.serve(async (req) => {
     const data = payload?.data ?? null;
     const ccEmails: string[] = Array.isArray(payload?.ccEmails)
       ? Array.from(
-          new Set<string>(
+          new Set(
             payload.ccEmails
               .map((c: unknown) => String(c || "").trim().toLowerCase())
               .filter((c: string) => c.length > 3 && c.includes("@")),

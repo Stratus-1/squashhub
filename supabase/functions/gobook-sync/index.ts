@@ -12,7 +12,7 @@
 //
 // Uses an opted-in (is_sync_source=true), verified credential for the club.
 
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,16 +45,16 @@ async function getKey(): Promise<CryptoKey> {
   if (keyBytes.length !== 32) {
     throw new Error("GOBOOK_CRED_KEY must be 32 bytes (base64)");
   }
-  return await crypto.subtle.importKey("raw", keyBytes as any, "AES-GCM", false, [
+  return await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, [
     "decrypt",
   ]);
 }
 async function decryptPassword(ciphertextB64: string, ivB64: string) {
   const key = await getKey();
   const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: b64ToBytes(ivB64) as any },
+    { name: "AES-GCM", iv: b64ToBytes(ivB64) },
     key,
-    b64ToBytes(ciphertextB64) as any,
+    b64ToBytes(ciphertextB64),
   );
   return new TextDecoder().decode(plain);
 }
@@ -234,7 +234,7 @@ function isoDate(d: Date): string {
 }
 
 async function syncClub(
-  admin: SupabaseClient<any>,
+  admin: ReturnType<typeof createClient>,
   clubId: string,
   days: number,
 ): Promise<SyncResult> {
@@ -255,12 +255,11 @@ async function syncClub(
     result.skipped_reason = "club_not_found";
     return result;
   }
-  const clubRow = club as { id: string; uses_gobook: boolean; booking_slot_minutes: number };
-  if (!clubRow.uses_gobook) {
+  if (!club.uses_gobook) {
     result.skipped_reason = "uses_gobook_false";
     return result;
   }
-  if (clubRow.booking_slot_minutes !== 60) {
+  if (club.booking_slot_minutes !== 60) {
     result.skipped_reason = "non_hourly_slots";
     return result;
   }
@@ -289,12 +288,7 @@ async function syncClub(
     .order("last_verified_at", { ascending: false })
     .limit(1);
   if (credErr) throw new Error(credErr.message);
-  const cred = creds?.[0] as {
-    club_member_id: string;
-    gobook_username: string;
-    gobook_password_ciphertext: string;
-    gobook_password_iv: string;
-  } | undefined;
+  const cred = creds?.[0];
   if (!cred) {
     result.skipped_reason = "no_sync_source";
     return result;
@@ -557,11 +551,12 @@ Deno.serve(async (req) => {
     const userClient = createClient(SUPABASE_URL, ANON, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user }, error: claimsErr } = await userClient.auth.getUser();
-    if (claimsErr || !user) {
+    const { data: claimsData, error: claimsErr } = await userClient.auth
+      .getClaims(authHeader.replace("Bearer ", ""));
+    if (claimsErr || !claimsData?.claims) {
       return json({ error: "Unauthorized" }, 401);
     }
-    const userId = user.id;
+    const userId = claimsData.claims.sub as string;
     const clubId = String(body.club_id || "");
     if (!clubId) return json({ error: "club_id required" }, 400);
 

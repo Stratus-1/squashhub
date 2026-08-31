@@ -8,7 +8,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { confirmBooking, proposeBooking, type BookingProposal } from "./booking.ts";
-import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const MODEL = "google/gemini-3.7-flash";
 
@@ -37,7 +36,7 @@ type Body = {
 
 /** The member row for this user in this club (used as the booking owner). */
 async function resolveMemberId(
-  supabase: any,
+  supabase: ReturnType<typeof createClient>,
   userId: string,
   clubId: string,
   preferred?: string | null,
@@ -47,13 +46,13 @@ async function resolveMemberId(
     .select("id")
     .eq("club_id", clubId)
     .eq("user_id", userId);
-  const ids = ((data ?? []) as { id: unknown }[]).map((r) => String(r.id));
+  const ids = (data ?? []).map((r) => String(r.id));
   if (preferred && ids.includes(preferred)) return preferred;
   return ids[0] ?? null;
 }
 
 async function bookingsEnabled(
-  supabase: any,
+  supabase: ReturnType<typeof createClient>,
   clubId: string,
 ): Promise<boolean> {
   const { data } = await supabase
@@ -62,7 +61,7 @@ async function bookingsEnabled(
     .eq("club_id", clubId)
     .eq("capability", "bookings")
     .maybeSingle();
-  return data ? !!(data as { enabled?: boolean }).enabled : true;
+  return data ? !!data.enabled : true;
 }
 
 

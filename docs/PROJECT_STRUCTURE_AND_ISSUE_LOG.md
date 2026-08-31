@@ -1,3 +1,17 @@
+# 2026-08-31 — Tournament invite audience did not show email reach
+
+- **Symptom:** When inviting clubs to a tournament, the organiser saw total member counts but could not tell how many of those members could actually receive an email invite.
+- **Finding:** `tournament_invite_scope_tree` counted active members and already-registered entrants, but did not surface members with an email address (member record or linked user profile).
+- **Fix:** The RPC now returns `email_reach_count`. `InviteScopeTree` displays "X with email" per club and in the selection summary, so organisers see e.g. "10 of 37 members" will receive emails.
+- **Guard:** Invite-reach counts must always reflect the union of member-level email and linked-profile email; never assume every member is reachable.
+
+# 2026-08-31 — Paying bar items by card failed for non-tab orders
+
+- **Symptom:** Scanning the bar QR code and choosing "Pay with card online" returned "Could not start the card payment" instead of opening the checkout.
+- **Finding:** `supabase/functions/bar-card-pay/index.ts` declared an outer `let itemMap` at function scope and then re-declared `const itemMap` inside the non-tab `else` block. The amount calculation used the populated inner map, but the sale-insert block outside the `else` read the always-empty outer map, causing an undefined-item crash.
+- **Fix:** Removed the inner `const` so the same `itemMap` is populated and consumed by the sale-insert block.
+- **Guard:** Avoid shadowing mutable state across branches in payment functions; single-source maps that are read after conditional blocks.
+
 # 2026-08-30 — Bar checkout controls remained at the bottom on mobile
 
 - **Symptom:** After selecting bar products, the account/card payment controls still rendered at the bottom of the product list instead of remaining visible.

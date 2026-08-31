@@ -23,7 +23,7 @@ const json = (body: unknown, status = 200) =>
 
 const MB = 1024 * 1024;
 
-type Admin = any;
+type Admin = ReturnType<typeof createClient>;
 
 async function pollClub(admin: Admin, clubId: string, opts: { persistAlerts: boolean }) {
   // Member Wi-Fi / internet monitoring switched off for this club → do nothing.
@@ -46,34 +46,21 @@ async function pollClub(admin: Admin, clubId: string, opts: { persistAlerts: boo
   ]);
 
   if (!config) throw new Error("No router configuration for this club");
-  const cfg = config as {
-    host: string;
-    port?: number | null;
-    use_https?: boolean | null;
-    driver: string;
-    model?: string | null;
-  };
-  if (!cfg.host) throw new Error("Router host / IP address is not set");
+  if (!config.host) throw new Error("Router host / IP address is not set");
 
-  const driver = getDriver(cfg.driver);
+  const driver = getDriver(config.driver);
   let reading: RouterReading | null = null;
   let error: string | null = null;
 
-  const secretsRow = secrets as {
-    router_username?: string | null;
-    router_password?: string | null;
-    router_api_token?: string | null;
-  } | null;
-
   try {
     reading = await driver.poll({
-      host: cfg.host,
-      port: cfg.port,
-      useHttps: !!cfg.use_https,
-      username: secretsRow?.router_username ?? null,
-      password: secretsRow?.router_password ?? null,
-      apiToken: secretsRow?.router_api_token ?? null,
-      model: cfg.model,
+      host: config.host,
+      port: config.port,
+      useHttps: config.use_https,
+      username: secrets?.router_username ?? null,
+      password: secrets?.router_password ?? null,
+      apiToken: secrets?.router_api_token ?? null,
+      model: config.model,
     });
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
@@ -185,8 +172,8 @@ async function maybeAlert(
   if (!bundle || percentUsed === null) return;
 
   const crossed = thresholds
-    .filter((t: number) => percentUsed >= t)
-    .sort((a: number, b: number) => b - a);
+    .filter((t) => percentUsed >= t)
+    .sort((a, b) => b - a);
   if (crossed.length === 0) return;
   const top = crossed[0];
 
@@ -273,7 +260,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const action: string = body.action || "poll";
-    const admin: Admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     if (action === "drivers") {
       return json({ drivers: Object.values(DRIVERS).map((d) => ({ id: d.id, label: d.label })) });
@@ -286,7 +273,7 @@ Deno.serve(async (req) => {
         .eq("enabled", true);
       const now = Date.now();
       const results: Record<string, string> = {};
-      for (const c of (configs as any[]) ?? []) {
+      for (const c of configs ?? []) {
         const due =
           !c.last_polled_at ||
           now - new Date(c.last_polled_at).getTime() >= (c.poll_interval_minutes || 15) * 60_000;

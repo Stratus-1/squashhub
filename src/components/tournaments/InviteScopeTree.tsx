@@ -229,7 +229,9 @@ export function InviteScopeTree({
                   const members = clubMembers.get(club.clubId) || [];
                   const isLoading = loadingClubs.has(club.clubId);
                   const err = clubErrors.get(club.clubId);
-                  const selectedMemberCount = members.filter((m) => selectedMembers.has(m.member_id)).length;
+                  const selectedMemberCount = members.filter((m) =>
+                    isMemberInvited(club.clubId, m.member_id),
+                  ).length;
                   return (
                     <div key={club.clubId} className="border-t first:border-t-0">
                       <div className="flex items-center gap-2 px-2 py-1.5 pl-8 text-[13px] hover:bg-muted/30">

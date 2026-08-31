@@ -67,7 +67,7 @@ export function DashboardAccountSettings() {
   const saveProfilePrefs = useMutation({
     mutationFn: async (patch: Record<string, any>) => {
       if (!user?.id) throw new Error("Not signed in");
-      let { error } = await supabase.from("profiles").update(patch).eq("id", user.id);
+      let { error } = await supabase.from("profiles").update(patch as any).eq("id", user.id);
       if (error?.code === "42703") {
         // DB may not have been migrated for some newer preference columns. Retry without blocking the UI.
         const fallback = { ...patch };
@@ -77,7 +77,7 @@ export function DashboardAccountSettings() {
         delete fallback.privacy_show_recent_matches;
         delete fallback.privacy_show_training;
         delete fallback.privacy_show_advanced_stats;
-        ({ error } = await supabase.from("profiles").update(fallback).eq("id", user.id));
+        ({ error } = await supabase.from("profiles").update(fallback as any).eq("id", user.id));
       }
       if (error) throw error;
     },

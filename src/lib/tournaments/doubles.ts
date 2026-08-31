@@ -20,6 +20,10 @@ export type PartnerOption = {
   club_name: string | null;
   gender: string | null;
   ladder_position: number | null;
+  /** Has a SquashHub login. */
+  is_user?: boolean;
+  /** Has an email on file, so a register/complete-entry link can reach them. */
+  has_email?: boolean;
 };
 
 export const PARTNER_OPTION_FIELDS = [
@@ -29,7 +33,10 @@ export const PARTNER_OPTION_FIELDS = [
   "club_name",
   "gender",
   "ladder_position",
+  "is_user",
+  "has_email",
 ] as const;
+
 
 export type PairStatus =
   | "pending"
@@ -85,8 +92,11 @@ export function sanitizePartnerOption(raw: any): PartnerOption | null {
       raw?.ladder_position === null || raw?.ladder_position === undefined
         ? null
         : Number(raw.ladder_position),
+    is_user: raw?.is_user === true,
+    has_email: raw?.has_email === true,
   };
 }
+
 
 export function sanitizePartnerOptions(rows: any): PartnerOption[] {
   if (!Array.isArray(rows)) return [];
@@ -165,6 +175,35 @@ export function partnerOptionSubtitle(option: PartnerOption): string {
   if (option.ladder_position) bits.push(`Ladder #${option.ladder_position}`);
   return bits.join(" · ");
 }
+
+/** Registration state of a possible partner, used to label and gate the list. */
+export type PartnerReadiness = "registered" | "invite_only" | "unreachable";
+
+export function partnerReadiness(option: PartnerOption): PartnerReadiness {
+  if (option.is_user) return "registered";
+  return option.has_email ? "invite_only" : "unreachable";
+}
+
+/** Can this player be chosen as a doubles partner right now? */
+export function canPickPartner(option: PartnerOption): boolean {
+  return partnerReadiness(option) !== "unreachable";
+}
+
+export function partnerReadinessBadge(option: PartnerOption): string | null {
+  const r = partnerReadiness(option);
+  if (r === "registered") return null;
+  return r === "invite_only" ? "Not registered yet" : "No email on file";
+}
+
+export function partnerReadinessNote(option: PartnerOption): string | null {
+  const r = partnerReadiness(option);
+  if (r === "registered") return null;
+  const who = option.display_name || "This player";
+  return r === "invite_only"
+    ? `${who} is not registered on SquashHub yet — we'll email them a link to register and confirm the pair.`
+    : `${who} is not registered on SquashHub and has no email on file. Ask the organiser to add their email before pairing.`;
+}
+
 
 // ── API wrappers ────────────────────────────────────────────────────────────
 

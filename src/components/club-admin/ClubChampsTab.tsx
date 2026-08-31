@@ -11251,6 +11251,9 @@ function InvitePreviewDialog({
   inviteExtraDetails?: string;
 }) {
   const descHasDetails = /— Tournament details —/.test(description || "");
+  const extras = inviteExtraDetails?.trim()
+    ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
+    : "";
   const detailLines = descHasDetails ? [] : buildInviteDetailLines({
     gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
     startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
@@ -11259,12 +11262,15 @@ function InvitePreviewDialog({
     registrationRequired, registrationMode,
     tournamentName, divisionFormats,
     selfScheduled, roundDeadlines,
-    inviteExtraDetails,
   });
+  const detailsBlock = detailLines.length
+    ? `— Tournament details —\n${detailLines.map((l) => `• ${l}`).join("\n")}\n— End details —`
+    : "";
 
   const appBody =
     `You have been invited to ${tournamentName}.` +
-    (detailLines.length ? `\n\n${detailLines.map((l) => `• ${l}`).join("\n")}` : "") +
+    (extras ? `\n\n${extras}` : "") +
+    (detailsBlock ? `\n\n${detailsBlock}` : "") +
     (description?.trim() ? `\n\n${description.trim()}` : "");
 
 

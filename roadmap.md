@@ -20,8 +20,8 @@
 - [x] Tournament save fails with tournaments_invite_audience_check when invite audience = "clubs" — allow the value in DB constraint.
 
 ## NEW: Tournament invite audience member tree
-- [ ] Expandable member tree under every audience option (regional league / selected clubs / selected teams).
-- [ ] Flat member list under each expanded node (no extra team grouping).
-- [ ] Only email-reachable members shown (user login OR manager email on file).
-- [ ] Individual select/unselect per member; selection persists with the audience choice.
-- [ ] When eligibility scope = "association" (regional league), hide unaffiliated clubs from the "Selected clubs" tree — only show clubs that belong to the regional league.
+- [x] Expandable member tree under every audience option (regional league / selected clubs / selected teams).
+- [x] Flat member list under each expanded node (no extra team grouping).
+- [x] Only email-reachable members shown (user login OR manager email on file).
+- [x] Individual select/unselect per member; selection persists with the audience choice.
+- [x] When eligibility scope = "association" (regional league), hide unaffiliated clubs from the "Selected clubs" tree — only show clubs that belong to the regional league.

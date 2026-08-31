@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { CapabilityRoute } from "@/components/CapabilityRoute";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -29,73 +29,73 @@ import { LiveSessionBanner } from "@/components/LiveSessionBanner";
 import { ViewingAsBanner } from "@/components/ViewingAsBanner";
 
 import { ClubBrandedBackground } from "@/components/ClubBrandedBackground";
-import Home from "./pages/Home";
-import Clubs from "./pages/Clubs";
-
-import Dashboard from "./pages/Dashboard";
-import Bookings from "./pages/Bookings";
-import Ladder from "./pages/Ladder";
-import Challenges from "./pages/Challenges";
-import Profile from "./pages/Profile";
-import Notifications from "./pages/Notifications";
-import Events from "./pages/Events";
-import Tournaments from "./pages/Tournaments";
-import EventDetail from "./pages/EventDetail";
-import Auth from "./pages/Auth";
-import AuthCallback from "./pages/AuthCallback";
-import ResetPassword from "./pages/ResetPassword";
-import SetPassword from "./pages/SetPassword";
-import OAuthConsent from "./pages/OAuthConsent";
-import PayReturn from "./pages/PayReturn";
-import ScanPay from "./pages/ScanPay";
-import BarPaymentSuccess from "./pages/BarPaymentSuccess";
-import StitchPaymentBridge from "./pages/StitchPaymentBridge";
-
-import StravaCallback from "./pages/StravaCallback";
-import MatchTracker from "./pages/MatchTracker";
-import MatchMarker from "./pages/MatchMarker";
-import BellsMarker from "./pages/BellsMarker";
-import MarkerTv from "./pages/MarkerTv";
-import TournamentMatchLive from "./pages/TournamentMatchLive";
-import AddMatchResult from "./pages/AddMatchResult";
-import PlayerProfile from "./pages/PlayerProfile";
-import RegisterClub from "./pages/RegisterClub";
-import LeagueSignup from "./pages/LeagueSignup";
-import ClubAdmin from "./pages/ClubAdmin";
-import ClubChampsView from "./pages/ClubChampsView";
-import ClubLanding from "./pages/ClubLanding";
-import ClubAuth from "./pages/ClubAuth";
-import BookingResponse from "./pages/BookingResponse";
-import TournamentInvite from "./pages/TournamentInvite";
-import Achievements from "./pages/Achievements";
-import Feed from "./pages/Feed";
-import Availability from "./pages/Availability";
-import Analytics from "./pages/Analytics";
-import Seasons from "./pages/Seasons";
-import AdminEventEditor from "./pages/AdminEventEditor";
-import Support from "./pages/Support";
-import Help from "./pages/Help";
-import SuperAdminHelpVideos from "./pages/admin/SuperAdminHelpVideos";
-import LeagueGames from "./pages/LeagueGames";
-import LeagueGameDetail from "./pages/LeagueGameDetail";
-import AdminSupport from "./pages/AdminSupport";
-import { SuperAdminLayout } from "./components/admin/SuperAdminLayout";
-import SuperAdminDashboard from "./pages/admin/SuperAdminDashboard";
-import SuperAdminClubs from "./pages/admin/SuperAdminClubs";
-import SuperAdminFederation from "./pages/admin/SuperAdminFederation";
-import SuperAdminTournaments from "./pages/admin/SuperAdminTournaments";
-import SuperAdminRankings from "./pages/admin/SuperAdminRankings";
-import SuperAdminUsers from "./pages/admin/SuperAdminUsers";
-import SuperAdminSubscriptions from "./pages/admin/SuperAdminSubscriptions";
-import SuperAdminSettings from "./pages/admin/SuperAdminSettings";
-import SuperAdminLeagues from "./pages/admin/SuperAdminLeagues";
-import SuperAdminOutreach from "./pages/admin/SuperAdminOutreach";
-import SuperAdminOutreachCampaigns from "./pages/admin/SuperAdminOutreachCampaigns";
-import SuperAdminOutreachCampaignEditor from "./pages/admin/SuperAdminOutreachCampaignEditor";
-import MyAccount from "./pages/MyAccount";
-import HonestyBar from "./pages/HonestyBar";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
+const Home = lazy(() => import("./pages/Home"));
+const Clubs = lazy(() => import("./pages/Clubs"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Bookings = lazy(() => import("./pages/Bookings"));
+const Ladder = lazy(() => import("./pages/Ladder"));
+const Challenges = lazy(() => import("./pages/Challenges"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Events = lazy(() => import("./pages/Events"));
+const Tournaments = lazy(() => import("./pages/Tournaments"));
+const EventDetail = lazy(() => import("./pages/EventDetail"));
+const Auth = lazy(() => import("./pages/Auth"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const SetPassword = lazy(() => import("./pages/SetPassword"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const PayReturn = lazy(() => import("./pages/PayReturn"));
+const ScanPay = lazy(() => import("./pages/ScanPay"));
+const BarPaymentSuccess = lazy(() => import("./pages/BarPaymentSuccess"));
+const StitchPaymentBridge = lazy(() => import("./pages/StitchPaymentBridge"));
+const StravaCallback = lazy(() => import("./pages/StravaCallback"));
+const MatchTracker = lazy(() => import("./pages/MatchTracker"));
+const MatchMarker = lazy(() => import("./pages/MatchMarker"));
+const BellsMarker = lazy(() => import("./pages/BellsMarker"));
+const MarkerTv = lazy(() => import("./pages/MarkerTv"));
+const TournamentMatchLive = lazy(() => import("./pages/TournamentMatchLive"));
+const AddMatchResult = lazy(() => import("./pages/AddMatchResult"));
+const PlayerProfile = lazy(() => import("./pages/PlayerProfile"));
+const RegisterClub = lazy(() => import("./pages/RegisterClub"));
+const LeagueSignup = lazy(() => import("./pages/LeagueSignup"));
+const ClubAdmin = lazy(() => import("./pages/ClubAdmin"));
+const ClubChampsView = lazy(() => import("./pages/ClubChampsView"));
+const ClubLanding = lazy(() => import("./pages/ClubLanding"));
+const ClubAuth = lazy(() => import("./pages/ClubAuth"));
+const BookingResponse = lazy(() => import("./pages/BookingResponse"));
+const TournamentInvite = lazy(() => import("./pages/TournamentInvite"));
+const Achievements = lazy(() => import("./pages/Achievements"));
+const Feed = lazy(() => import("./pages/Feed"));
+const Availability = lazy(() => import("./pages/Availability"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Seasons = lazy(() => import("./pages/Seasons"));
+const AdminEventEditor = lazy(() => import("./pages/AdminEventEditor"));
+const Support = lazy(() => import("./pages/Support"));
+const Help = lazy(() => import("./pages/Help"));
+const SuperAdminHelpVideos = lazy(() => import("./pages/admin/SuperAdminHelpVideos"));
+const LeagueGames = lazy(() => import("./pages/LeagueGames"));
+const LeagueGameDetail = lazy(() => import("./pages/LeagueGameDetail"));
+const AdminSupport = lazy(() => import("./pages/AdminSupport"));
+const SuperAdminLayout = lazy(() =>
+  import("./components/admin/SuperAdminLayout").then((m) => ({ default: m.SuperAdminLayout })),
+);
+const SuperAdminDashboard = lazy(() => import("./pages/admin/SuperAdminDashboard"));
+const SuperAdminClubs = lazy(() => import("./pages/admin/SuperAdminClubs"));
+const SuperAdminFederation = lazy(() => import("./pages/admin/SuperAdminFederation"));
+const SuperAdminTournaments = lazy(() => import("./pages/admin/SuperAdminTournaments"));
+const SuperAdminRankings = lazy(() => import("./pages/admin/SuperAdminRankings"));
+const SuperAdminUsers = lazy(() => import("./pages/admin/SuperAdminUsers"));
+const SuperAdminSubscriptions = lazy(() => import("./pages/admin/SuperAdminSubscriptions"));
+const SuperAdminSettings = lazy(() => import("./pages/admin/SuperAdminSettings"));
+const SuperAdminLeagues = lazy(() => import("./pages/admin/SuperAdminLeagues"));
+const SuperAdminOutreach = lazy(() => import("./pages/admin/SuperAdminOutreach"));
+const SuperAdminOutreachCampaigns = lazy(() => import("./pages/admin/SuperAdminOutreachCampaigns"));
+const SuperAdminOutreachCampaignEditor = lazy(() => import("./pages/admin/SuperAdminOutreachCampaignEditor"));
+const MyAccount = lazy(() => import("./pages/MyAccount"));
+const HonestyBar = lazy(() => import("./pages/HonestyBar"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 import { useMyRoles } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember, useIsSuperAdmin } from "@/hooks/use-club";
 import { useIsAssociationAdmin } from "@/hooks/use-association-admin";
@@ -423,12 +423,18 @@ function AppRoutes() {
 
   // Desktop sidebar shell only for authenticated, non-admin, non-TV routes
   const shellEnabled = !!user && !isAdminRoute && !isTvRoute;
+  const routeFallback = (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-background relative overflow-x-hidden">
       {user && !isAdminRoute && <ClubBrandedBackground />}
       <DesktopShell enabled={shellEnabled}>
-      <Routes location={routeLocation}>
+        <Suspense fallback={routeFallback}>
+          <Routes location={routeLocation}>
         <Route path="/" element={
           isClubSubdomain && !user
             ? <ClubLanding hostClub={clubFromHost} hostSubdomain={clubSubdomain} />
@@ -528,12 +534,13 @@ function AppRoutes() {
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
-      </Routes>
-      {backgroundLocation && (
-        <Routes location={location}>
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        </Routes>
-      )}
+          </Routes>
+          {backgroundLocation && (
+            <Routes location={location}>
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            </Routes>
+          )}
+        </Suspense>
       </DesktopShell>
       {showFooter && <SiteFooter compact={!!user} withBottomNav={!!user} />}
       {user && !isAdminRoute && !isTvRoute && <MobileOnlyBottomNav />}

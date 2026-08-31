@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+supabase/functions/mcp/index.ts
 
 # Editor directories and files
 .vscode/*

@@ -1315,3 +1315,9 @@ Tests: `src/test/booking-label.test.ts`.
 ## 2026-08-29 — Hide point-by-point marking on self-scheduled knockouts
 - Self-scheduled tournament matches (players book their own court, non-team events) no longer show "Mark game" buttons; players use "Enter your result" only.
 - Removed Mark buttons from MyChampionships.tsx match cards; hid the marker button in Tournaments.tsx when the championship scheduling_mode is "self". Admin "Redo score" correction path in ClubChampsView unchanged.
+
+## 2026-08-31 — Invite audience email-reach transparency + club_champs invite_extra_details fix
+- Fixed "Save failed: Could not find the 'invite_extra_details' column of 'club_champs' in the schema cache": re-created the club_champs compat view with t.invite_extra_details and patched club_champs_compat_insert/update triggers to carry it to tournaments.
+- tournament_invite_directory RPC now lists only members who can actually receive an invite (email on file OR linked login); tournament_invite_scope_tree RPC returns a new email_count per club.
+- InviteScopeTree shows "X of Y with email" per club/association; selection summary reads "X of Y members can be emailed". ClubChampsTab roster picker and hint text updated to match (blue/asterisk = has a SquashHub login).
+- Aligned two stale doubles-pairing wording tests with current copy.

@@ -52,6 +52,7 @@ export function buildScopeTree(rows: Record<string, unknown>[]): ScopeTreeAssoci
       isOwnClub: (raw as any).is_own_club === true,
       memberCount: Number((raw as any).member_count || 0),
       registeredCount: Number((raw as any).registered_count || 0),
+      emailReachCount: Number((raw as any).email_reach_count || 0),
     };
     g.clubs.push(club);
     g.memberCount += club.memberCount;

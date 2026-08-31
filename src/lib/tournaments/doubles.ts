@@ -92,8 +92,11 @@ export function sanitizePartnerOption(raw: any): PartnerOption | null {
       raw?.ladder_position === null || raw?.ladder_position === undefined
         ? null
         : Number(raw.ladder_position),
+    is_user: raw?.is_user === true,
+    has_email: raw?.has_email === true,
   };
 }
+
 
 export function sanitizePartnerOptions(rows: any): PartnerOption[] {
   if (!Array.isArray(rows)) return [];

@@ -9051,6 +9051,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 The details block at the top is generated automatically from this tournament's settings and refreshes on its own whenever you change the category, format, dates, registration window or fee — anything you type below it is kept. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
               </p>
 
+              <div className="space-y-2 pt-2">
+                <Label className="text-sm">Extra invite wording (food, co-hosting, prizes, venue notes)</Label>
+                <Textarea
+                  rows={4}
+                  placeholder={`e.g. CSIR is co-hosting this tournament with SquashApp.\nFood on the day: chicken pregos, wors rolls and a league braai.\nSponsored balls will be provided.`}
+                  value={inviteExtraDetails}
+                  onChange={(e) => setInviteExtraDetails(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This text is appended to every invite and appears in the preview above.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2">

@@ -543,17 +543,6 @@ function buildInviteDetailLines(opts: {
   const fee = Number(opts.entryFeeRand) || 0;
   lines.push(fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free");
 
-  // Extra organiser-provided details (co-hosting, food, prizes, etc.) merged
-  // into the automatic block so they travel with the generated invite text.
-  const extras = opts.inviteExtraDetails?.trim();
-  if (extras) {
-    lines.push("");
-    for (const line of extras.split("\n")) {
-      const trimmed = line.trim();
-      if (trimmed) lines.push(trimmed);
-    }
-  }
-
   // Format-specific "how it works" note appended after the bullets.
   if (opts.scoringMode === "bells") {
     lines.push("");

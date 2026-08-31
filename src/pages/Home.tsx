@@ -659,7 +659,7 @@ export default function Home() {
               Pricing
             </h2>
             <p className="text-base sm:text-lg text-primary font-semibold">
-              3 months free onboarding for every new club that registers
+              Up to 3 months free onboarding for every new club that registers to get you settled in
             </p>
             <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
               A sliding scale — like tax bands, each block of members is charged at its own rate, so the bigger your

@@ -20,6 +20,10 @@ export type PartnerOption = {
   club_name: string | null;
   gender: string | null;
   ladder_position: number | null;
+  /** Has a SquashHub login. */
+  is_user?: boolean;
+  /** Has an email on file, so a register/complete-entry link can reach them. */
+  has_email?: boolean;
 };
 
 export const PARTNER_OPTION_FIELDS = [
@@ -29,7 +33,10 @@ export const PARTNER_OPTION_FIELDS = [
   "club_name",
   "gender",
   "ladder_position",
+  "is_user",
+  "has_email",
 ] as const;
+
 
 export type PairStatus =
   | "pending"

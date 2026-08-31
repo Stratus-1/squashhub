@@ -11764,6 +11764,7 @@ export type Database = {
           invite_audience_league_ids: string[]
           invite_audience_member_ids: string[]
           invite_excluded_member_ids: string[]
+          invite_extra_details: string | null
           invite_include_reserves: boolean
           invite_methods: string[]
           invite_source: string
@@ -11850,6 +11851,7 @@ export type Database = {
           invite_audience_league_ids?: string[]
           invite_audience_member_ids?: string[]
           invite_excluded_member_ids?: string[]
+          invite_extra_details?: string | null
           invite_include_reserves?: boolean
           invite_methods?: string[]
           invite_source?: string
@@ -11936,6 +11938,7 @@ export type Database = {
           invite_audience_league_ids?: string[]
           invite_audience_member_ids?: string[]
           invite_excluded_member_ids?: string[]
+          invite_extra_details?: string | null
           invite_include_reserves?: boolean
           invite_methods?: string[]
           invite_source?: string

@@ -87,7 +87,7 @@ describe("scope tree", () => {
 
   it("summarises the selection with counts only", () => {
     const tree = buildScopeTree(rows as any);
-    expect(scopeSelectionSummary(tree, new Set())).toMatch(/no clubs selected/i);
+    expect(scopeSelectionSummary(tree, new Set())).toMatch(/no clubs or members selected/i);
     const s = scopeSelectionSummary(tree, new Set(["c1", "c3"]));
     expect(s).toContain("2 clubs");
     expect(s).toContain("47 members");
@@ -161,5 +161,17 @@ describe("clubs audience resolution", () => {
   it("resolves nothing when no club is ticked", () => {
     const res = resolveInviteAudience({ mode: "clubs", members: [], clubIds: [], memberIdsByClub: byClub });
     expect(res.memberIds).toEqual([]);
+  });
+
+  it("includes individually picked members even when their club is not fully selected", () => {
+    const res = resolveInviteAudience({
+      mode: "clubs",
+      members: [],
+      clubIds: ["c1"],
+      memberIdsByClub: byClub,
+      individualIds: ["m4"],
+    });
+    expect(res.memberIds.sort()).toEqual(["m1", "m2", "m4"]);
+    expect(res.summary).toContain("plus 1 individually picked");
   });
 });

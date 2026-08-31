@@ -1,10 +1,11 @@
 /**
- * Association → Club invitation picker.
+ * Association → Club invitation picker with expandable member lists.
  *
- * Shown when a tournament's scope reaches beyond the host club. Counts only —
- * no player names or contact details are loaded here.
+ * Shown when a tournament's scope reaches beyond the host club. Clubs can be
+ * expanded to reveal individual email-reachable members, who can then be
+ * selected or deselected one by one. Contact details stay server-side.
  */
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { ChevronDown, ChevronRight, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -13,23 +14,158 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import {
   allClubIds,
   associationTickState,
+  fetchScopeClubMembers,
   scopeSelectionSummary,
   toggleAssociation,
   toggleClub,
   type ScopeTreeAssociation,
+  type ScopeTreeClub,
 } from "@/lib/tournaments/invite-scope-tree";
+import type { DirectoryPlayer } from "@/lib/tournaments/invite-directory";
 
 interface Props {
   tree: ScopeTreeAssociation[];
   selectedClubIds: string[];
-  onChange: (next: string[]) => void;
+  onChange: (nextClubs: string[]) => void;
+  selectedMemberIds?: string[];
+  onMemberChange?: (nextMembers: string[]) => void;
+  /** Members explicitly excluded from otherwise-selected clubs. */
+  excludedMemberIds?: string[];
+  onExcludedChange?: (nextExcluded: string[]) => void;
+  /** Server-resolved member ids for each selected club (used to derive effective selection). */
+  memberIdsByClub?: Map<string, string[]>;
+  tournamentId?: string | null;
+  scopeClubId?: string | null;
   loading?: boolean;
   error?: string | null;
 }
 
-export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, error }: Props) {
-  const selected = useMemo(() => new Set(selectedClubIds), [selectedClubIds]);
-  const summary = useMemo(() => scopeSelectionSummary(tree, selected), [tree, selected]);
+export function InviteScopeTree({
+  tree,
+  selectedClubIds,
+  onChange,
+  selectedMemberIds = [],
+  onMemberChange,
+  excludedMemberIds = [],
+  onExcludedChange,
+  memberIdsByClub,
+  tournamentId,
+  scopeClubId,
+  loading,
+  error,
+}: Props) {
+  const selectedClubs = useMemo(() => new Set(selectedClubIds), [selectedClubIds]);
+  const selectedMembers = useMemo(() => new Set(selectedMemberIds), [selectedMemberIds]);
+  const excludedMembers = useMemo(() => new Set(excludedMemberIds), [excludedMemberIds]);
+  const summary = useMemo(
+    () => scopeSelectionSummary(tree, selectedClubs, selectedMembers),
+    [tree, selectedClubs, selectedMembers],
+  );
+
+  const isMemberInvited = useCallback(
+    (clubId: string, memberId: string) => {
+      const clubSelected = selectedClubs.has(clubId);
+      const inSelectedClub = clubSelected && (memberIdsByClub?.get(clubId) || []).includes(memberId);
+      if (inSelectedClub && !excludedMembers.has(memberId)) return true;
+      return selectedMembers.has(memberId);
+    },
+    [selectedClubs, selectedMembers, excludedMembers, memberIdsByClub],
+  );
+
+  const [expandedClubs, setExpandedClubs] = useState<Set<string>>(new Set());
+  const [clubMembers, setClubMembers] = useState<Map<string, DirectoryPlayer[]>>(new Map());
+  const [loadingClubs, setLoadingClubs] = useState<Set<string>>(new Set());
+  const [clubErrors, setClubErrors] = useState<Map<string, string>>(new Map());
+
+  const toggleExpand = useCallback(
+    async (club: ScopeTreeClub) => {
+      const id = club.clubId;
+      const next = new Set(expandedClubs);
+      if (next.has(id)) {
+        next.delete(id);
+        setExpandedClubs(next);
+        return;
+      }
+      next.add(id);
+      setExpandedClubs(next);
+      if (clubMembers.has(id) || loadingClubs.has(id)) return;
+      setLoadingClubs((prev) => new Set(prev).add(id));
+      try {
+        const members = await fetchScopeClubMembers({
+          tournamentId,
+          clubId: id,
+          scopeClubId,
+        });
+        setClubMembers((prev) => {
+          const copy = new Map(prev);
+          copy.set(id, members);
+          return copy;
+        });
+      } catch (e) {
+        setClubErrors((prev) => {
+          const copy = new Map(prev);
+          copy.set(id, (e as Error)?.message || "Could not load members");
+          return copy;
+        });
+      } finally {
+        setLoadingClubs((prev) => {
+          const copy = new Set(prev);
+          copy.delete(id);
+          return copy;
+        });
+      }
+    },
+    [expandedClubs, clubMembers, loadingClubs, tournamentId, scopeClubId],
+  );
+
+  const toggleMember = useCallback(
+    (clubId: string, memberId: string) => {
+      const clubSelected = selectedClubs.has(clubId);
+      const currentlyInvited = isMemberInvited(clubId, memberId);
+
+      if (clubSelected) {
+        // Toggling a member inside a selected club flips its exclusion status.
+        if (!onExcludedChange) return;
+        const next = new Set(excludedMembers);
+        if (currentlyInvited) next.add(memberId);
+        else next.delete(memberId);
+        onExcludedChange(Array.from(next));
+        return;
+      }
+
+      // Toggling a member when its club is not selected adds/removes it from the explicit list.
+      if (!onMemberChange) return;
+      const next = new Set(selectedMembers);
+      if (currentlyInvited) next.delete(memberId);
+      else next.add(memberId);
+      onMemberChange(Array.from(next));
+    },
+    [selectedClubs, excludedMembers, selectedMembers, isMemberInvited, onExcludedChange, onMemberChange],
+  );
+
+  const toggleClubWithMembers = useCallback(
+    (club: ScopeTreeClub) => {
+      const clubSelected = selectedClubs.has(club.clubId);
+      onChange(toggleClub(club.clubId, selectedClubs));
+      if (!onMemberChange && !onExcludedChange) return;
+      // When a whole club is ticked, include all loaded members and clear their exclusions.
+      // When a whole club is unticked, remove loaded members from the explicit list.
+      const members = clubMembers.get(club.clubId) || [];
+      const nextSelected = new Set(selectedMembers);
+      const nextExcluded = new Set(excludedMembers);
+      members.forEach((m) => {
+        if (!clubSelected) {
+          nextExcluded.delete(m.member_id);
+        } else {
+          nextSelected.delete(m.member_id);
+          nextExcluded.delete(m.member_id);
+        }
+      });
+      onMemberChange?.(Array.from(nextSelected));
+      onExcludedChange?.(Array.from(nextExcluded));
+    },
+    [onChange, onMemberChange, onExcludedChange, selectedClubs, selectedMembers, excludedMembers, clubMembers],
+  );
 
   if (loading) {
     return <p className="text-[13px] text-muted-foreground">Loading clubs…</p>;
@@ -49,7 +185,6 @@ export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, erro
     );
   }
 
-
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -62,15 +197,15 @@ export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, erro
         <span className="text-[13px] text-muted-foreground">{summary}</span>
       </div>
 
-      <div className="max-h-72 overflow-y-auto rounded-md border divide-y">
+      <div className="max-h-96 overflow-y-auto rounded-md border divide-y">
         {tree.map((group) => {
-          const state = associationTickState(group, selected);
+          const state = associationTickState(group, selectedClubs);
           return (
             <Collapsible key={group.associationId || group.associationName} defaultOpen>
               <div className="flex items-center gap-2 px-2 py-1.5 bg-muted/40">
                 <Checkbox
                   checked={state === "all" ? true : state === "some" ? "indeterminate" : false}
-                  onCheckedChange={() => onChange(toggleAssociation(group, selected))}
+                  onCheckedChange={() => onChange(toggleAssociation(group, selectedClubs))}
                   aria-label={`Select all clubs in ${group.associationName}`}
                 />
                 <CollapsibleTrigger asChild>
@@ -89,31 +224,113 @@ export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, erro
                 </span>
               </div>
               <CollapsibleContent>
-                {group.clubs.map((club) => (
-                  <label
-                    key={club.clubId}
-                    className="flex items-center gap-2 px-2 py-1.5 pl-8 text-[13px] hover:bg-muted/30 cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={selected.has(club.clubId)}
-                      onCheckedChange={() => onChange(toggleClub(club.clubId, selected))}
-                    />
-                    <span className="flex-1 truncate">
-                      {club.clubName}
-                      {club.isOwnClub && (
-                        <Badge variant="outline" className="ml-1.5 text-[10px]">
-                          Your club
-                        </Badge>
+                {group.clubs.map((club) => {
+                  const expanded = expandedClubs.has(club.clubId);
+                  const members = clubMembers.get(club.clubId) || [];
+                  const isLoading = loadingClubs.has(club.clubId);
+                  const err = clubErrors.get(club.clubId);
+                  const selectedMemberCount = members.filter((m) =>
+                    isMemberInvited(club.clubId, m.member_id),
+                  ).length;
+                  return (
+                    <div key={club.clubId} className="border-t first:border-t-0">
+                      <div className="flex items-center gap-2 px-2 py-1.5 pl-8 text-[13px] hover:bg-muted/30">
+                        <Checkbox
+                          checked={selectedClubs.has(club.clubId)}
+                          onCheckedChange={() => toggleClubWithMembers(club)}
+                          aria-label={`Select all members of ${club.clubName}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(club)}
+                          className="flex flex-1 items-center gap-1.5 text-left"
+                          disabled={!club.hasMembers}
+                        >
+                          {club.hasMembers ? (
+                            expanded ? (
+                              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            )
+                          ) : (
+                            <span className="w-3.5" />
+                          )}
+                          <span className="truncate">
+                            {club.clubName}
+                            {club.isOwnClub && (
+                              <Badge variant="outline" className="ml-1.5 text-[10px]">
+                                Your club
+                              </Badge>
+                            )}
+                          </span>
+                        </button>
+                        <span className="text-[12px] text-muted-foreground">
+                          <span className={club.emailCount === 0 ? "text-amber-600 dark:text-amber-500" : undefined}>
+                            {club.emailCount} of {club.memberCount} with email
+                          </span>
+                          {club.registeredCount > 0 ? ` · ${club.registeredCount} entered` : ""}
+                          {selectedMemberCount > 0 && (
+                            <span className="ml-1 text-primary">· {selectedMemberCount} picked</span>
+                          )}
+                        </span>
+                      </div>
+                      {expanded && (
+                        <div className="pl-14 pr-2 pb-1.5 space-y-0.5">
+                          {isLoading && (
+                            <p className="text-[11px] text-muted-foreground py-1">Loading members…</p>
+                          )}
+                          {err && (
+                            <p className="text-[11px] text-destructive py-1">{err}</p>
+                          )}
+                          {!isLoading && !err && members.length === 0 && (
+                            <p className="text-[11px] text-muted-foreground py-1">
+                              No email-reachable members in this club.
+                            </p>
+                          )}
+                          {!isLoading &&
+                            !err &&
+                            members.map((p) => (
+                              <label
+                                key={p.member_id}
+                                className="flex items-center gap-2 text-[11px] cursor-pointer hover:bg-muted/20 rounded px-1 py-0.5"
+                              >
+                                <Checkbox
+                                  checked={isMemberInvited(club.clubId, p.member_id)}
+                                  onCheckedChange={() => toggleMember(club.clubId, p.member_id)}
+                                />
+                                <span
+                                  className={cn("truncate", p.is_user && "text-primary font-medium")}
+                                >
+                                  {p.display_name}
+                                  {p.is_user && (
+                                    <span
+                                      className="text-primary ml-0.5"
+                                      title="Already has a SquashHub login"
+                                    >
+                                      *
+                                    </span>
+                                  )}
+                                </span>
+                                {p.gender && (
+                                  <span className="text-[10px] text-muted-foreground shrink-0">{p.gender}</span>
+                                )}
+                                {typeof p.ladder_position === "number" && (
+                                  <span className="text-[10px] text-muted-foreground shrink-0">
+                                    #{p.ladder_position}
+                                  </span>
+                                )}
+                                {p.invite_status && (
+                                  <span className="text-[10px] text-muted-foreground shrink-0">
+                                    ({p.invite_status})
+                                  </span>
+                                )}
+                              </label>
+                            ))}
+                        </div>
                       )}
-                    </span>
-                    <span className="text-[12px] text-muted-foreground">
-                      <span className={club.emailCount === 0 ? "text-amber-600 dark:text-amber-500" : undefined}>
-                        {club.emailCount} of {club.memberCount} with email
-                      </span>
-                      {club.registeredCount > 0 ? ` · ${club.registeredCount} entered` : ""}
-                    </span>
-                  </label>
-                ))}
+                    </div>
+                  );
+                })}
               </CollapsibleContent>
             </Collapsible>
           );
@@ -121,6 +338,11 @@ export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, erro
       </div>
     </div>
   );
+}
+
+// Simple cn helper to avoid an extra import for this component.
+function cn(...classes: (string | false | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
 }
 
 export default InviteScopeTree;

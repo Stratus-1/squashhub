@@ -2,6 +2,9 @@ import * as React from 'npm:react@18.3.1'
 import { Body, Button, Container, Head, Heading, Html, Preview, Text } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
+const SQUASHHUB_LOGO_URL =
+  'https://bzbuppwzljadulwntjys.supabase.co/storage/v1/object/public/club-logos/_platform/squashhub-logo.png'
+
 interface Props {
   clubName?: string
   title?: string
@@ -9,6 +12,7 @@ interface Props {
   url?: string
   ctaLabel?: string
   recipientName?: string
+  clubLogoUrl?: string
 }
 
 const ClubNotification = ({
@@ -18,6 +22,7 @@ const ClubNotification = ({
   url,
   ctaLabel = 'Open in SquashHub',
   recipientName,
+  clubLogoUrl,
 }: Props) => {
   const lines = String(messageBody || '')
     .replace(/\r\n|\r/g, '\n')

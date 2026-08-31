@@ -149,13 +149,13 @@ async function setShellyAutoOff(params: {
   authKey: string;
   deviceId: string;
   channel?: number | string | null;
-  delaySeconds: number;
+  delaySeconds?: number | null;
 }) {
   try {
     // Shelly Cloud v2 supports one-shot auto-off via `toggle_after` on the
     // same set/switch or set/light command. The old RPC tunnel is not exposed
     // on all cloud hosts, so this helper intentionally avoids a second call.
-    return params.delaySeconds > 0;
+    return (params.delaySeconds ?? 0) > 0;
   } catch (e) {
     console.warn("Shelly auto-off skipped:", (e as Error).message);
     return false;
@@ -651,10 +651,11 @@ Deno.serve(async (req) => {
     const [{ data: bookings, error: bookErr }, { data: champsMatches, error: champsErr }, { data: activeSessions, error: sessErr }] = await Promise.all([
       supabase
         .from("bookings")
-        .select("id, court_id, start_time, end_time, user_id, lights_requested")
+        .select("id, court_id, date, start_time, end_time, user_id, lights_requested")
         .eq("date", todayStr)
         .eq("status", "active")
-        .in("court_id", courtIds),
+        .in("court_id", courtIds)
+        .returns<{ id: string; court_id: string; date: string; start_time: string; end_time: string; user_id: string; lights_requested: boolean }[]>(),
       supabase
         .from("club_champs_matches")
         .select("id, court_id, scheduled_time")
@@ -724,7 +725,7 @@ Deno.serve(async (req) => {
             shellyResult = await setShellyRelay({ server: court.relay_server, authKey: authKey!, deviceId: deviceId!, channel: (court as any).relay_channel, turn: "on", toggleAfterSeconds: remainingSec });
             // Use the device's auto-off timer so the Shelly turns itself off at
             // the end of the booking even if our cron misses the turn-off window.
-            if (activeBooking) {
+            if (activeBooking && typeof remainingSec === "number") {
               await setShellyAutoOff({
                 server: court.relay_server,
                 authKey: authKey!,

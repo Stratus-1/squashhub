@@ -12,7 +12,7 @@
 //   { home_nsf: "NSF1234", away_nsf: "NSF5678", games: [[h,a],[h,a],[h,a],[h,a],[h,a]] }
 // (Empty/unplayed games -> [null,null] or omit; max 5 games, best of 5.)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,7 +46,7 @@ async function getKey(): Promise<CryptoKey> {
   if (!raw) throw new Error("NSA_CRED_KEY not configured");
   const keyBytes = b64ToBytes(raw);
   if (keyBytes.length !== 32) throw new Error("NSA_CRED_KEY must be 32 bytes (base64)");
-  return await crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, [
+  return await crypto.subtle.importKey("raw", keyBytes as any, "AES-GCM", false, [
     "encrypt",
     "decrypt",
   ]);
@@ -62,9 +62,9 @@ async function encryptPassword(plain: string) {
 async function decryptPassword(ciphertextB64: string, ivB64: string) {
   const key = await getKey();
   const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: b64ToBytes(ivB64) },
+    { name: "AES-GCM", iv: b64ToBytes(ivB64) as BufferSource },
     key,
-    b64ToBytes(ciphertextB64),
+    b64ToBytes(ciphertextB64) as any,
   );
   return new TextDecoder().decode(plain);
 }
@@ -221,11 +221,9 @@ Deno.serve(async (req) => {
     });
     const adminClient = createClient(SUPABASE_URL, SERVICE);
 
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(
-      authHeader.replace("Bearer ", ""),
-    );
-    if (claimsErr || !claimsData?.claims) return json({ error: "Unauthorized" }, 401);
-    const userId = claimsData.claims.sub as string;
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) return json({ error: "Unauthorized" }, 401);
+    const userId = user.id;
 
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "");

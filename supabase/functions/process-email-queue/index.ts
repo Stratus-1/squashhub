@@ -53,11 +53,18 @@ function parseJwtClaims(token: string): Record<string, unknown> | null {
   }
 }
 
+type QueueMessage = {
+  msg_id: number
+  read_ct: number
+  enqueued_at: string
+  message: Record<string, unknown>
+}
+
 // Move a message to the dead letter queue and log the reason.
 async function moveToDlq(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   queue: string,
-  msg: { msg_id: number; message: Record<string, unknown> },
+  msg: QueueMessage,
   reason: string
 ): Promise<void> {
   const payload = msg.message
@@ -73,7 +80,7 @@ async function moveToDlq(
     dlq_name: `${queue}_dlq`,
     message_id: msg.msg_id,
     payload,
-  })
+  } as any)
   if (error) {
     console.error('Failed to move message to DLQ', { queue, msg_id: msg.msg_id, reason, error })
   }
@@ -167,12 +174,13 @@ Deno.serve(async (req) => {
       ? Math.max(1, Math.min(batchSize, hourlyRemaining))
       : batchSize
 
-    const { data: messages, error: readError } = await supabase.rpc('read_email_batch', {
+    const { data: rawMessages, error: readError } = await supabase.rpc('read_email_batch', {
       queue_name: queue,
       batch_size: effectiveBatchSize,
       vt: 30,
     })
 
+    const messages = (rawMessages ?? []) as QueueMessage[]
 
     if (readError) {
       console.error('Failed to read email batch', { queue, error: readError })
@@ -239,7 +247,7 @@ Deno.serve(async (req) => {
       // which is always set by the queue.
       const queuedAt = payload.queued_at ?? msg.enqueued_at
       if (queuedAt) {
-        const ageMs = Date.now() - new Date(queuedAt).getTime()
+        const ageMs = Date.now() - new Date(String(queuedAt)).getTime()
         const maxAgeMs = ttlMinutes[queue] * 60 * 1000
         if (ageMs > maxAgeMs) {
           console.warn('Email expired (TTL exceeded)', {
@@ -330,18 +338,18 @@ Deno.serve(async (req) => {
       try {
         await sendLovableEmail(
           {
-            run_id: payload.run_id,
-            to: payload.to,
-            from: payload.from,
-            sender_domain: payload.sender_domain,
-            subject: payload.subject,
-            html: payload.html,
-            text: payload.text,
-            purpose: payload.purpose,
-            label: payload.label,
-            idempotency_key: payload.idempotency_key,
-            unsubscribe_token: payload.unsubscribe_token,
-            message_id: payload.message_id,
+            run_id: payload.run_id as string | undefined,
+            to: payload.to as string,
+            from: (payload.from as string | undefined) || 'SquashHub <noreply@squashhub.co.za>',
+            sender_domain: payload.sender_domain as string | undefined,
+            subject: payload.subject as string,
+            html: payload.html as string,
+            text: payload.text as string,
+            purpose: payload.purpose as string | undefined,
+            label: payload.label as string | undefined,
+            idempotency_key: payload.idempotency_key as string | undefined,
+            unsubscribe_token: payload.unsubscribe_token as string | undefined,
+            message_id: payload.message_id as string | undefined,
           },
           // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
           // falls back to the default Lovable API endpoint (https://api.lovable.dev).

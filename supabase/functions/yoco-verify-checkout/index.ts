@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
     // about an older pending session, also reconcile the user's latest recent
     // pending sessions and complete whichever Yoco now says is paid.
     const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-    const { data: recentSessions = [] } = await admin
+    const { data: recentSessions } = await admin
       .from("yoco_payment_sessions")
       .select("*")
       .eq("user_id", userId)
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(8);
 
-    const sessionsToCheck = [session, ...recentSessions.filter((s: any) => s.id !== session.id)];
+    const sessionsToCheck = [session, ...(recentSessions || []).filter((s: any) => s.id !== session.id)];
     let requestedStatus = "created";
     let completedSession: any | null = null;
 

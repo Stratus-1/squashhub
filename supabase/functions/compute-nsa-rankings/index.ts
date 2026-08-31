@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
           ...Object.fromEntries(
             Object.keys(DEFAULT_RANKING_SETTINGS).map((k) => [
               k,
-              (data as Record<string, unknown>)[k] ?? (DEFAULT_RANKING_SETTINGS as Record<string, unknown>)[k],
+              (data as Record<string, unknown>)[k] ?? (DEFAULT_RANKING_SETTINGS as unknown as Record<string, unknown>)[k],
             ]),
           ),
         } as RankingSettings;

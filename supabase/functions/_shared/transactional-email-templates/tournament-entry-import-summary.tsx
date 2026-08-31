@@ -57,7 +57,7 @@ const Email = ({
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Bulk import summary — {entries.length} entrant{entries.length === 1 ? '' : 's'} processed
+      Bulk import summary — {String(entries.length)} entrant{entries.length === 1 ? '' : 's'} processed
     </Preview>
     <Body style={main}>
       <Container style={container}>

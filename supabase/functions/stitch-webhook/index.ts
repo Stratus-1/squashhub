@@ -1,6 +1,7 @@
 // Public webhook endpoint for Stitch Express payment events.
 // Docs: events are delivered via Svix with headers svix-id / svix-timestamp / svix-signature.
 // Payload is flat: { id, amount, status, type: "LINK"|"CONSENT"|"SUBSCRIPTION", linkId, consentId, subscriptionId, terminalSessionId }
+import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Webhook } from "npm:svix@1.42.0";
 
@@ -113,7 +114,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function finalisePayment(admin: any, session: any) {
+async function finalisePayment(admin: SupabaseClient, session: any) {
   const amount = Number(session.amount);
   const methodLabel = session.method === "card" ? "card" : "eft";
   if (session.purpose !== "tournament") {

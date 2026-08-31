@@ -427,6 +427,8 @@ function buildInviteDetailLines(opts: {
   /** Self-scheduled tournaments: per-round "must be played by" deadlines. */
   selfScheduled?: boolean;
   roundDeadlines?: { label: string; date: string }[];
+  /** Free-text extras (co-hosting, food, prizes) merged into the auto block. */
+  inviteExtraDetails?: string;
 }): string[] {
   const lines: string[] = [];
   const isDoubles = opts.matchType === "doubles";
@@ -540,6 +542,17 @@ function buildInviteDetailLines(opts: {
 
   const fee = Number(opts.entryFeeRand) || 0;
   lines.push(fee > 0 ? `Entry fee: R${fee.toFixed(2)}` : "Entry fee: Free");
+
+  // Extra organiser-provided details (co-hosting, food, prizes, etc.) merged
+  // into the automatic block so they travel with the generated invite text.
+  const extras = opts.inviteExtraDetails?.trim();
+  if (extras) {
+    lines.push("");
+    for (const line of extras.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed) lines.push(trimmed);
+    }
+  }
 
   // Format-specific "how it works" note appended after the bullets.
   if (opts.scoringMode === "bells") {
@@ -1497,6 +1510,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteTiming, setInviteTiming] = useState<"manual" | "now" | "scheduled">("manual");
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
+  const [inviteExtraDetails, setInviteExtraDetails] = useState("");
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
   // Weight multiplier applied to ranking points earned in this competition.
   const [rankingWeight, setRankingWeight] = useState<number>(1);
@@ -2345,6 +2359,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       include_visitors: includeVisitors,
       visitor_clubs: Array.from(selectedVisitorClubs),
       description: description.trim() || null,
+      invite_extra_details: inviteExtraDetails.trim() || null,
       affects_ranking_points: affectsRankingPoints,
       ranking_weight: rankingWeight,
       ladder_affects: ladderAffects,
@@ -2756,6 +2771,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       registrationRequired, registrationMode: (registrationMode || "open") as any,
       tournamentName: champName, divisionFormats: inviteDivisionFormats(),
       selfScheduled: schedulingMode === "self", roundDeadlines,
+      inviteExtraDetails,
     });
     if (!lines.length) return "";
     return `— Tournament details —\n${lines.map((l) => `• ${l}`).join("\n")}\n— End details —`;
@@ -2765,7 +2781,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
     registrationOpensAt, registrationClosesAt, entryFeeRand, pointsPerGame, bestOf,
     registrationRequired, registrationMode, champName, schedulingMode, roundDeadlines,
-    divisionFormatsKey,
+    divisionFormatsKey, inviteExtraDetails,
   ]);
 
   useEffect(() => {
@@ -4535,6 +4551,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
+            invite_extra_details: inviteExtraDetails.trim() || null,
             affects_ranking_points: affectsRankingPoints,
       ranking_weight: rankingWeight,
             ladder_affects: ladderAffects,
@@ -4617,6 +4634,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             include_visitors: includeVisitors,
             visitor_clubs: Array.from(selectedVisitorClubs),
             description: description.trim() || null,
+            invite_extra_details: inviteExtraDetails.trim() || null,
             affects_ranking_points: affectsRankingPoints,
       ranking_weight: rankingWeight,
             ladder_affects: ladderAffects,
@@ -6037,6 +6055,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");
+    setInviteExtraDetails("");
     setAffectsRankingPoints(false);
     setLadderAffects(null);
     setEventType(scope === "club" ? "club_championship" : "open_tournament");
@@ -6172,6 +6191,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setDaySchedules(Array.isArray(loadedDay) ? loadedDay : []);
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
+    setInviteExtraDetails((champ as any).invite_extra_details || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
     setRankingWeight(Number((champ as any).ranking_weight ?? 1) || 1);
     setLadderAffects(
@@ -9044,6 +9064,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 The details block at the top is generated automatically from this tournament's settings and refreshes on its own whenever you change the category, format, dates, registration window or fee — anything you type below it is kept. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
               </p>
 
+              <div className="space-y-2 pt-2">
+                <Label className="text-sm">Extra invite details</Label>
+                <Textarea
+                  rows={4}
+                  placeholder={`Add extra details that should appear inside the automatic tournament details block, such as:\nCo-hosted by SquashApp and CSIR Squash Club.\nThe club sponsors balls, courts, lights and a league braai with chicken pregos and wors — a thank-you to league players for their season.\nFood and refreshments will be provided.`}
+                  value={inviteExtraDetails}
+                  onChange={(e) => setInviteExtraDetails(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  These lines are merged into the auto-generated details block and will appear in every invite. Keep it short and factual.
+                </p>
+              </div>
+
             </div>
 
             <div className="space-y-2">
@@ -10978,6 +11011,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         divisionFormats={inviteDivisionFormats()}
         selfScheduled={schedulingMode === "self"}
         roundDeadlines={roundDeadlines}
+        inviteExtraDetails={inviteExtraDetails}
       />
 
       <ShadowRankPromptDialog
@@ -11174,6 +11208,7 @@ function InvitePreviewDialog({
   divisionFormats,
   selfScheduled,
   roundDeadlines,
+  inviteExtraDetails,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -11202,6 +11237,7 @@ function InvitePreviewDialog({
   divisionFormats?: string[];
   selfScheduled?: boolean;
   roundDeadlines?: { label: string; date: string }[];
+  inviteExtraDetails?: string;
 }) {
   const descHasDetails = /— Tournament details —/.test(description || "");
   const detailLines = descHasDetails ? [] : buildInviteDetailLines({
@@ -11212,6 +11248,7 @@ function InvitePreviewDialog({
     registrationRequired, registrationMode,
     tournamentName, divisionFormats,
     selfScheduled, roundDeadlines,
+    inviteExtraDetails,
   });
 
   const appBody =

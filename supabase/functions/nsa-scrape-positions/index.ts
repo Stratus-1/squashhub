@@ -13,7 +13,7 @@
 // - full_season: ignore lookback and scrape every past fixture of the season
 //   (used for the 2024/2025 ranking backfill)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -211,7 +211,7 @@ async function scrapeOne(fx: FixtureLite, season: string): Promise<RubberRow[]> 
 }
 
 async function scoredFixtureSet(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   ids: number[],
 ): Promise<Set<number>> {
   const found = new Set<number>();

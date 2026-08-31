@@ -1,20 +1,18 @@
 # Roadmap
 
-## Bar / POS payment options (in progress)
-- [x] Club settings: charge to account / pay online by card / swipe card at the club
-- [x] `record_bar_terminal_sale` RPC for "swipe at the club" orders
-- [ ] ScanPay (QR) checkout: three payment options, always-visible cart/checkout panel
-- [x] In-app Bar page: same three options + always-visible cart panel
-- [x] Club admin: toggles for the three payment options
-- [x] "I swiped at the card machine" records the sale as paid immediately (admin reconciles later)
-- [x] Checkout buttons float on the right from tablet/desktop and stay fixed at the top on phones
+## Current: CSIR tournament invite extras + build fixes
+- [x] Add `invite_extra_details` column to `tournaments`
+- [x] Render extras inside auto-generated tournament details block in invites
+- [x] Textarea UI in "Invites & messaging" section
+- [x] Confirm saving tournament does NOT auto-send emails/invites
+- [ ] Fix remaining Supabase Edge Function build errors
+  - [x] court-lights, create-club, email-notifications, nsa-scrape-positions, process-email-queue
+  - [ ] ai-assistant, gobook-sync, league-player-signup, mcp, nsa-submit-result, router-poll, stitch-return-target, stitch-webhook, yoco-verify-checkout
+- [ ] Run full frontend typecheck and build
 
-## Visitor open tab for the evening (new)
-- [ ] Guest can open a named tab at the bar, add rounds through the evening
-- [ ] Pay the whole tab once at the end (card online or swipe at the club)
-- [ ] Club admin can see open guest tabs and settle/close them
+## Important user constraints
+- **Do NOT send out emails automatically** — tournament saves/updates must not trigger email sends. The existing "Send invites now" manual action remains the only send path.
 
-## Support question (answered)
-- [x] Riverside bar tile missing for hkftservices@gmail.com — Bar capability was off, enabled 30 Aug 12:35 UTC
-
-- [x] Fix visitor bar "Add to my open tab" failing on bar_visitor_sales payment_method/payment_status check constraints (widened to allow tab/on_tab/awaiting_* states).
+## Backlog
+- Bar / POS payment options (mostly complete)
+- Visitor open tab for the evening

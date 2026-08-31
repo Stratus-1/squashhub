@@ -58,7 +58,7 @@ async function getKey(): Promise<CryptoKey> {
   if (!raw) throw new Error("NSA_CRED_KEY not configured");
   const keyBytes = b64ToBytes(raw);
   if (keyBytes.length !== 32) throw new Error("NSA_CRED_KEY must be 32 bytes (base64)");
-  return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
+  return crypto.subtle.importKey("raw", keyBytes as unknown as ArrayBuffer, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
 async function encryptPassword(plain: string) {

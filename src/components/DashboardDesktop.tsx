@@ -14,7 +14,7 @@ import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { useClubAnalytics } from "@/hooks/use-analytics";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
-import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
+import { DashboardDeviceControls } from "@/components/DashboardDeviceControls";
 import { DashboardWifiCard } from "@/components/DashboardWifiCard";
 import { DashboardRouterCard } from "@/components/DashboardRouterCard";
 import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
@@ -111,9 +111,9 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
         </div>
 
 
-      {/* Open Door quick access (proximity-gated; admins always see it) */}
-      <div className="px-8">
-        <DashboardOpenDoorCard />
+      {/* Club Controls — same grouped section the mobile dashboard renders */}
+      <div className="px-8 space-y-3">
+        <DashboardDeviceControls />
         <DashboardWifiCard />
         <DashboardRouterCard />
       </div>

@@ -26,6 +26,7 @@ export const CAPABILITIES = [
   "visitors",
   "whatsapp",
   "lights",
+  "gadgets",
   "events",
   "skills",
 ] as const;
@@ -96,6 +97,18 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     worksWith: ["finance"],
     defaultOn: false,
     tabs: [],
+  },
+  gadgets: {
+    slug: "gadgets",
+    label: "Gadgets & Devices",
+    question: "Do you switch other equipment — a geyser, pump or heater — from the app?",
+    description:
+      "Smart-relay control for geysers, pumps, heaters, gates and club lights, grouped on the dashboard. Admin and staff only.",
+    group: "facilities",
+    requires: [],
+    worksWith: ["access_control", "lights"],
+    defaultOn: false,
+    tabs: ["devices"],
   },
   membership_fees: {
     slug: "membership_fees",

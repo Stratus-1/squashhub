@@ -20,6 +20,7 @@ export const PERMISSION_SLUGS = [
   { value: "events", label: "Events (create club events)" },
   { value: "bar", label: "Bar / POS" },
   { value: "access", label: "Access Control" },
+  { value: "devices", label: "Devices & Gadgets (lights, gates, geysers)" },
   { value: "communications", label: "Communications" },
   { value: "affiliation", label: "Affiliation (own tournaments for the club's association)" },
   { value: "federation", label: "Federation (own tournaments for any body)", superAdminOnly: true },

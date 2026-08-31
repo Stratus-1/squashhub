@@ -9,6 +9,7 @@ export const CLUB_ONLY_SLUGS = [
   "courts",
   "bar",
   "access",
+  "devices",
   "ladder",
   "visitors",
   "bookings_unlimited",

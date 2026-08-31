@@ -1,7 +1,7 @@
 /**
  * Tracks door-open activity so the LiveSessionBanner's "Open Door" prompt can
  * suppress itself when the member has already unlocked the door (from either
- * the banner itself or the always-visible DashboardOpenDoorCard).
+ * the banner itself or the Access group in DashboardDeviceControls).
  *
  * Two signals are stored in localStorage:
  *  - `door_opened_booking_<bookingId>` — set when the door is opened while a

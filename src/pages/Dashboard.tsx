@@ -40,7 +40,7 @@ import { DashboardTournamentInvitesCard } from "@/components/DashboardTournament
 import { LinkExistingMembershipCard } from "@/components/LinkExistingMembershipCard";
 
 import DebitOrderPromptCard from "@/components/DebitOrderPromptCard";
-import { DashboardOpenDoorCard } from "@/components/DashboardOpenDoorCard";
+import { DashboardDeviceControls } from "@/components/DashboardDeviceControls";
 import { DashboardWifiCard } from "@/components/DashboardWifiCard";
 import { DashboardRouterCard } from "@/components/DashboardRouterCard";
 import { MemberSuspensionBanner } from "@/components/MemberSuspensionBanner";
@@ -941,8 +941,10 @@ export default function Dashboard() {
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />
 
-      {/* Open Door quick access (shown when club uses SquashHub-controlled access) */}
-      <DashboardOpenDoorCard />
+      {/* Club Controls — lights, access and gadgets in one grouped section */}
+      <div className="px-4 mt-2">
+        <DashboardDeviceControls />
+      </div>
 
       {/* Club internet / data bundle status (club admins only) */}
       <div className="px-4 mt-2">

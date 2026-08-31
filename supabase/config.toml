@@ -65,3 +65,9 @@ verify_jwt = false
 
 [functions.bar-card-verify]
 verify_jwt = false
+
+# Generic IoT device control. Always requires a signed-in caller — the
+# function resolves the member from the JWT and asks the database whether
+# they may operate that device.
+[functions.device-control]
+verify_jwt = true

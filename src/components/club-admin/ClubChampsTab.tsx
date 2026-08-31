@@ -9116,13 +9116,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <div className="space-y-2 pt-1">
                     <Label className="text-xs text-muted-foreground">
                       {eligibilityScope === "open"
-                        ? "Pick associations or individual clubs to invite"
-                        : "Pick which clubs in your region to invite"}
+                        ? "Pick associations, clubs or individual members to invite"
+                        : "Pick which clubs and members in your region to invite"}
                     </Label>
                     <InviteScopeTree
                       tree={scopeTree}
                       selectedClubIds={audienceClubIds}
                       onChange={setAudienceClubIds}
+                      selectedMemberIds={Array.from(audienceMemberIds)}
+                      onMemberChange={(ids) => setAudienceMemberIds(new Set(ids))}
+                      tournamentId={editingChampId}
+                      scopeClubId={clubId}
                       loading={scopeTreeLoading}
                       error={scopeTreeError instanceof Error ? scopeTreeError.message : null}
                     />

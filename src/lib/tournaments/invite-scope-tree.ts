@@ -14,6 +14,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeDirectory, type DirectoryPlayer } from "./invite-directory";
 
 export interface ScopeTreeClub {
   clubId: string;
@@ -23,6 +24,8 @@ export interface ScopeTreeClub {
   registeredCount: number;
   /** Members who can actually receive an invite (email on file or a linked login). */
   emailCount: number;
+  /** Whether the club has any email-reachable members and can be expanded. */
+  hasMembers: boolean;
 }
 
 export interface ScopeTreeAssociation {
@@ -53,6 +56,7 @@ export function buildScopeTree(rows: Record<string, unknown>[]): ScopeTreeAssoci
       memberCount: Number((raw as any).member_count || 0),
       registeredCount: Number((raw as any).registered_count || 0),
       emailCount: Number((raw as any).email_count || 0),
+      hasMembers: (raw as any).has_members === true,
     };
     g.clubs.push(club);
     g.memberCount += club.memberCount;
@@ -102,17 +106,25 @@ export function allClubIds(tree: ScopeTreeAssociation[]): string[] {
 }
 
 /** Plain-English summary of the ticked branch, used above the send button. */
-export function scopeSelectionSummary(tree: ScopeTreeAssociation[], selected: Set<string>): string {
-  const clubs = tree.flatMap((g) => g.clubs).filter((c) => selected.has(c.clubId));
-  if (clubs.length === 0) return "No clubs selected yet.";
+export function scopeSelectionSummary(
+  tree: ScopeTreeAssociation[],
+  selectedClubs: Set<string>,
+  selectedMembers?: Set<string>,
+): string {
+  const clubs = tree.flatMap((g) => g.clubs).filter((c) => selectedClubs.has(c.clubId));
+  const memberCount = selectedMembers?.size ?? 0;
+  if (clubs.length === 0 && memberCount === 0) return "No clubs or members selected yet.";
   const members = clubs.reduce((n, c) => n + c.memberCount, 0);
   const reachable = clubs.reduce((n, c) => n + c.emailCount, 0);
   const registered = clubs.reduce((n, c) => n + c.registeredCount, 0);
-  return (
+  let summary =
     `${clubs.length} club${clubs.length === 1 ? "" : "s"} · ` +
     `${reachable} of ${members} member${members === 1 ? "" : "s"} can be emailed` +
-    (registered > 0 ? ` · ${registered} already registered` : "")
-  );
+    (registered > 0 ? ` · ${registered} already registered` : "");
+  if (memberCount > 0) {
+    summary += ` · ${memberCount} individual member${memberCount === 1 ? "" : "s"} selected`;
+  }
+  return summary;
 }
 
 export async function fetchScopeTree(input: {
@@ -127,6 +139,21 @@ export async function fetchScopeTree(input: {
   });
   if (error) throw error;
   return buildScopeTree((data as Record<string, unknown>[]) || []);
+}
+
+/** Fetch the email-reachable members of a single club for the expandable tree. */
+export async function fetchScopeClubMembers(input: {
+  tournamentId?: string | null;
+  clubId: string;
+  scopeClubId?: string | null;
+}): Promise<DirectoryPlayer[]> {
+  const { data, error } = await (supabase as any).rpc("tournament_invite_members_for_club", {
+    p_tournament_id: input.tournamentId || null,
+    p_club_id: input.clubId,
+    p_scope_club_id: input.scopeClubId || null,
+  });
+  if (error) throw error;
+  return sanitizeDirectory((data as Record<string, unknown>[]) || []);
 }
 
 /** Member references only — no names, no contact details. */

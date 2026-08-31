@@ -14135,6 +14135,25 @@ export type Database = {
           member_id: string
         }[]
       }
+      tournament_invite_members_for_club: {
+        Args: {
+          p_club_id: string
+          p_scope_club_id?: string
+          p_tournament_id: string
+        }
+        Returns: {
+          club_id: string
+          club_name: string
+          display_name: string
+          gender: string
+          invite_status: string
+          is_own_club: boolean
+          is_user: boolean
+          ladder_position: number
+          member_id: string
+          ranking_points: number
+        }[]
+      }
       tournament_invite_scope_tree: {
         Args: { p_club_id?: string; p_scope?: string; p_tournament_id?: string }
         Returns: {
@@ -14143,6 +14162,7 @@ export type Database = {
           club_id: string
           club_name: string
           email_count: number
+          has_members: boolean
           is_own_club: boolean
           member_count: number
           registered_count: number

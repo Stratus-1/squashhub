@@ -140,10 +140,23 @@ export function resolveInviteAudience(input: {
         ids.push(mid);
       });
     });
+    // Also include individually selected members from the expandable club tree.
+    (input.individualIds || []).forEach((mid) => {
+      if (!mid || seen.has(mid) || excluded.has(mid)) return;
+      const local = invitable.has(mid);
+      const known = (input.members || []).some((m) => m?.id === mid);
+      if (known && !local) return;
+      seen.add(mid);
+      ids.push(mid);
+    });
+    const individualCount = ids.length - (clubIds.length ? 0 : 0);
+    const fromIndividuals = (input.individualIds || []).filter((id) => seen.has(id)).length;
     return {
       memberIds: ids,
       excluded: excludedCounts,
-      summary: `${ids.length} member${ids.length === 1 ? "" : "s"} from ${clubIds.length} selected club${clubIds.length === 1 ? "" : "s"}.`,
+      summary:
+        `${ids.length} member${ids.length === 1 ? "" : "s"} from ${clubIds.length} selected club${clubIds.length === 1 ? "" : "s"}` +
+        (fromIndividuals > 0 ? ` plus ${fromIndividuals} individually picked.` : "."),
     };
   }
 

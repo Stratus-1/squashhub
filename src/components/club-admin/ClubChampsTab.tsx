@@ -9125,6 +9125,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       onChange={setAudienceClubIds}
                       selectedMemberIds={Array.from(audienceMemberIds)}
                       onMemberChange={(ids) => setAudienceMemberIds(new Set(ids))}
+                      excludedMemberIds={Array.from(inviteExcludedMemberIds)}
+                      onExcludedChange={(ids) => setInviteExcludedMemberIds(new Set(ids))}
+                      memberIdsByClub={scopeMemberIdsByClub as Map<string, string[]>}
                       tournamentId={editingChampId}
                       scopeClubId={clubId}
                       loading={scopeTreeLoading}

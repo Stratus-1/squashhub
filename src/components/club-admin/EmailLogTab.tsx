@@ -66,6 +66,10 @@ function fmt(ts: string) {
 
 const CLUB_ONLY_TEMPLATES = ["club-notification", "club-smtp"];
 
+// A "sent" row keeps the provider's acceptance reply (e.g. "250 2.0.0 OK") in the
+// same column as real failures — only colour it red when the send actually failed.
+const PROBLEM_STATUSES = ["failed", "dlq", "bounced", "suppressed", "complained"];
+
 export function EmailLogTab({ clubId, mode = "club" }: { clubId: string; mode?: "club" | "association" }) {
   const qc = useQueryClient();
   const [range, setRange] = useState<RangeKey>("7d");
@@ -347,7 +351,7 @@ export function EmailLogTab({ clubId, mode = "club" }: { clubId: string; mode?: 
                 <th className="p-2">Recipient</th>
                 <th className="p-2">Status</th>
                 <th className="p-2">When</th>
-                <th className="p-2">Error</th>
+                <th className="p-2">Details</th>
               </tr>
             </thead>
             <tbody>
@@ -357,7 +361,13 @@ export function EmailLogTab({ clubId, mode = "club" }: { clubId: string; mode?: 
                   <td className="p-2">{l.recipient_email}</td>
                   <td className="p-2"><StatusBadge status={l.status} /></td>
                   <td className="p-2 whitespace-nowrap">{fmt(l.created_at)}</td>
-                  <td className="p-2 text-xs text-red-600">{l.error_message?.slice(0, 160) || ""}</td>
+                  <td
+                    className={`p-2 text-xs ${
+                      PROBLEM_STATUSES.includes(l.status) ? "text-red-600" : "text-muted-foreground"
+                    }`}
+                  >
+                    {l.error_message?.slice(0, 160) || ""}
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (

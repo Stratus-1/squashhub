@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
     idempotencyKey: str(body.idempotencyKey, 128) || undefined,
     templateData: {
       clubName: str(data.clubName, 160),
+      clubLogoUrl: str(data.clubLogoUrl, 500),
       title: str(data.title, 200),
       recipientName: str(data.recipientName, 160),
       messageBody: str(data.messageBody, 5000),

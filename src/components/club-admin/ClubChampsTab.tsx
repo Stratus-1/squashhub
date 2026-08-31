@@ -11298,6 +11298,11 @@ function InvitePreviewDialog({
                     {description.trim()}
                   </div>
                 )}
+                {inviteExtraDetails?.trim() && (
+                  <div className="text-sm whitespace-pre-wrap border-l-2 border-amber-500/40 pl-3 text-muted-foreground">
+                    {inviteExtraDetails.trim()}
+                  </div>
+                )}
                 <p>Tap the button below to register or decline.</p>
                 <span className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
                   Accept / Register

@@ -83,7 +83,7 @@ export function InviteScopeTree({ tree, selectedClubIds, onChange, loading, erro
                     </Badge>
                   </button>
                 </CollapsibleTrigger>
-                <span className="text-[12px] text-muted-foreground flex items-center gap-1">
+                <span className="text-[12px] text-muted-foreground flex items-center gap-1" title={`${group.memberCount} members · ${group.clubs.reduce((n, c) => n + c.emailReachCount, 0)} with email`}>
                   <Users className="h-3 w-3" />
                   {group.memberCount}
                 </span>

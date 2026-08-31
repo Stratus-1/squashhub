@@ -34,8 +34,6 @@ import {
 import { toast } from "sonner";
 import { Eye, LayoutGrid, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ShellyDoorSetup } from "@/components/club-admin/ShellyDoorSetup";
-import { ShellyLightsSetup } from "@/components/club-admin/ShellyLightsSetup";
 import {
   DEVICE_CATEGORY_LIST,
   DEVICE_CATEGORY_META,
@@ -241,11 +239,6 @@ export function DevicesTab({ clubId }: { clubId: string }) {
           </div>
         </CardHeader>
       </Card>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <ShellyDoorSetup clubId={clubId} />
-        <ShellyLightsSetup clubId={clubId} />
-      </div>
 
       {isLoading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

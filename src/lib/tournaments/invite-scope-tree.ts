@@ -21,6 +21,8 @@ export interface ScopeTreeClub {
   isOwnClub: boolean;
   memberCount: number;
   registeredCount: number;
+  /** Members with either a member-level email or a linked user email — the ones who can receive an email invite. */
+  emailReachCount: number;
 }
 
 export interface ScopeTreeAssociation {

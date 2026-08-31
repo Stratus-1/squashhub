@@ -241,21 +241,36 @@ function DivisionPartner({
             <p className="text-[11px] text-muted-foreground">{PARTNER_MUST_REGISTER_MESSAGE}</p>
           ) : (
             <div className="max-h-48 overflow-y-auto space-y-1">
-              {options.map((o) => (
-                <button
-                  key={o.member_id}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => choose(o)}
-                  className="w-full text-left rounded-md border p-2 hover:bg-muted transition-colors"
-                >
-                  <p className="text-sm font-medium">{o.display_name}</p>
-                  {partnerOptionSubtitle(o) && (
-                    <p className="text-[11px] text-muted-foreground">{partnerOptionSubtitle(o)}</p>
-                  )}
-                </button>
-              ))}
+              {options.map((o) => {
+                const pickable = canPickPartner(o);
+                const badge = partnerReadinessBadge(o);
+                return (
+                  <button
+                    key={o.member_id}
+                    type="button"
+                    disabled={busy || !pickable}
+                    onClick={() => pickable && choose(o)}
+                    className="w-full text-left rounded-md border p-2 hover:bg-muted transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium flex-1">{o.display_name}</p>
+                      {badge && (
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          {badge}
+                        </Badge>
+                      )}
+                    </div>
+                    {partnerOptionSubtitle(o) && (
+                      <p className="text-[11px] text-muted-foreground">{partnerOptionSubtitle(o)}</p>
+                    )}
+                    {partnerReadinessNote(o) && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{partnerReadinessNote(o)}</p>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+
           )}
         </div>
       )}

@@ -117,7 +117,7 @@ export default function ClubAdmin() {
 
 
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "club");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "devices");
   useEffect(() => {
     const t = searchParams.get("tab");
     if (t) setActiveTab(t);

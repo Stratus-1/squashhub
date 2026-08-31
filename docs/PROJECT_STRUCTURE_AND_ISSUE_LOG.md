@@ -1315,3 +1315,17 @@ Tests: `src/test/booking-label.test.ts`.
 ## 2026-08-29 — Hide point-by-point marking on self-scheduled knockouts
 - Self-scheduled tournament matches (players book their own court, non-team events) no longer show "Mark game" buttons; players use "Enter your result" only.
 - Removed Mark buttons from MyChampionships.tsx match cards; hid the marker button in Tournaments.tsx when the championship scheduling_mode is "self". Admin "Redo score" correction path in ClubChampsView unchanged.
+
+## 2026-08-31 — Tournament invite audience constraint blocked `clubs` value
+- **Symptom:** Saving a tournament in the wizard failed with `new row for relation 'tournaments' violates check constraint 'tournaments_invite_audience_check'` when the invite audience was set to `clubs`.
+- **Fix:** Widened the `tournaments_invite_audience_check` CHECK constraint to accept `clubs` alongside `all`, `league`, `association`, `federation`, and `none`.
+- **Guard:** Any new valid invite-audience values must be added to both the UI enum/validation and the database CHECK constraint before use.
+
+## 2026-08-31 — Quick-register magic link for unregistered tournament invitees
+- **Symptom:** Tournament invites reached members whose email/phone were known, but who had not yet created a SquashHub account; they had to manually find the club and register before they could accept.
+- **Fix:** The tournament invite email now includes a `signupUrl` when the recipient has no linked profile. The URL carries the invite token so `Auth.tsx` opens in sign-up mode with the club context pre-filled, and `AuthCallback.tsx` returns the newly verified user to the invitation.
+- **Files:** `supabase/migrations/20260831..._tournament_invite_magic_link.sql`, `supabase/functions/_shared/transactional-email-templates/club-notification.tsx`, `src/pages/Auth.tsx`, `src/pages/AuthCallback.tsx`.
+- **Guard:** Magic-link registration must preserve the original invitation context across sign-up, email verification, and callback redirect; never drop the `claim_redirect_to` metadata.
+
+## 2026-08-31 — CSIR Doubles Open invitation extra details updated
+- **Update:** Populated `tournaments.invite_extra_details` for the CSIR Squash Hub Doubles Open with co-hosting, beginner/intermediate group info, food sponsorship (chicken pregos, wors, league braai), and the app-registration nudge for Bells scoring.

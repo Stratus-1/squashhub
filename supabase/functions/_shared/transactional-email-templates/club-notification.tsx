@@ -24,9 +24,17 @@ const ClubNotification = ({
   recipientName,
   clubLogoUrl,
 }: Props) => {
-  const lines = String(messageBody || '')
+  const paragraphs = String(messageBody || '')
     .replace(/\r\n|\r/g, '\n')
-    .split('\n')
+    .split('\n\n')
+    .map((p) =>
+      p
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .join('\n')
+    )
+    .filter(Boolean)
   return (
     <Html lang="en" dir="ltr">
       <Head />
@@ -48,14 +56,16 @@ const ClubNotification = ({
           {clubName ? <Text style={caption}>{clubName}</Text> : null}
           <Heading style={heading}>{title}</Heading>
           {recipientName ? <Text style={bodyText}>Dear {recipientName},</Text> : null}
-          <Text style={bodyText}>
-            {lines.map((line, i) => (
-              <React.Fragment key={i}>
-                {i > 0 ? <br /> : null}
-                {line}
-              </React.Fragment>
-            ))}
-          </Text>
+          {paragraphs.map((paragraph, i) => (
+            <Text key={i} style={bodyText}>
+              {paragraph.split('\n').map((line, j) => (
+                <React.Fragment key={j}>
+                  {j > 0 ? <br /> : null}
+                  {line}
+                </React.Fragment>
+              ))}
+            </Text>
+          ))}
           {url ? <Button href={url} style={button}>{ctaLabel}</Button> : null}
         </Container>
       </Body>

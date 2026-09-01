@@ -98,7 +98,7 @@ export default function ClubAdmin() {
 
 
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "devices");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "features");
   useEffect(() => {
     const t = searchParams.get("tab");
     if (t) setActiveTab(t);
@@ -200,7 +200,14 @@ export default function ClubAdmin() {
       case "champs": return <TournamentPlanner mode="club" clubId={club.id} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
-      case "devices": return <DevicesTab clubId={club.id} />;
+      // IoT owns device registration; door access policy (system type, geofence)
+      // lives in the same tab so it stays reachable without a second tile.
+      case "devices": return (
+        <div className="space-y-6">
+          <DevicesTab clubId={club.id} />
+          <AccessControlTab club={club} clubId={club.id} />
+        </div>
+      );
       case "awards": return <LeagueAwardsTab clubId={club.id} />;
       case "comms": return <CommunicationsTab clubId={club.id} />;
       case "ai": return <AiAssistantTab clubId={club.id} />;

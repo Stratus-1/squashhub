@@ -1,0 +1,1 @@
+revoke execute on function public.stjohns_first_member_admin() from public, anon, authenticated;

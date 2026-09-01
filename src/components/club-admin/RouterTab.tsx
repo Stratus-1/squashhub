@@ -31,7 +31,7 @@ import {
 } from "@/hooks/use-router-monitor";
 import { ClubWifiSettingsCard } from "./ClubWifiSettingsCard";
 import type { Club } from "@/hooks/use-club";
-import { formatCurrency } from "@/lib/currency";
+import { formatMoney } from "@/lib/currency";
 
 export function RouterTab({ clubId, club }: { clubId: string; club?: Club }) {
   const qc = useQueryClient();

@@ -27,8 +27,8 @@
 - [x] When eligibility scope = "association" (regional league), hide unaffiliated clubs from the "Selected clubs" tree — only show clubs that belong to the regional league.
 
 ## Current: GBSQ member onboarding and recurring-payment recovery
-- [ ] Persist a server-assigned club number when an existing member completes onboarding.
-- [ ] Restore the affected Gordons Bay member as GBSQ0036 and verify the wizard stays complete.
-- [ ] Trace the captured Stitch mandate payment that was not credited in SquashHub.
-- [ ] Reconcile the real provider charge idempotently and prevent future captured-but-uncredited mandates.
-- [ ] Keep the pending EFT top-up separate from the recurring card mandate flow.
+- [x] Persist a server-assigned club number when an existing member completes onboarding.
+- [x] Restore the affected Gordons Bay member as GBSQ0036 and verify the wizard stays complete.
+- [ ] Verify the member's R1,000 Stitch top-up against the provider before crediting it.
+- [x] Route post-registration payment through the ordinary My Account top-up flow.
+- [x] Keep once-off top-ups separate from the recurring card mandate flow.

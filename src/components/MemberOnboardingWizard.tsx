@@ -318,16 +318,12 @@ export function MemberOnboardingWizard({
         if (member.gender) setGender(member.gender);
         if (member.address) setAddress(member.address);
         if (member.skill_level) setSkillLevel(member.skill_level);
-        // Only pre-fill the club member number if it's a real assigned club number,
-        // NOT a league/NSF code that was stored as a placeholder during signup.
+        // A club member number is authoritative here. Regional/federation systems
+        // can legitimately use the same code, so do not blank it merely because it
+        // also exists in platform_league_members — that caused completed members to
+        // be sent through onboarding on every login.
         if (member.club_member_number) {
-          const { data: isLeagueCode } = await fromExt("platform_league_members")
-            .select("user_code")
-            .ilike("user_code", member.club_member_number)
-            .maybeSingle();
-          if (!isLeagueCode) {
-            setMemberNumber(member.club_member_number);
-          }
+          setMemberNumber(member.club_member_number);
         }
         if (member.fee_category_id) {
           setFeeCategoryId(member.fee_category_id);
@@ -505,14 +501,9 @@ export function MemberOnboardingWizard({
           .maybeSingle();
 
         if (existing?.club_member_number) {
-          // Don't auto-fill if it's actually a league/NSF code placeholder
-          const { data: isLeagueCode } = await fromExt("platform_league_members")
-            .select("user_code")
-            .ilike("user_code", existing.club_member_number)
-            .maybeSingle();
-          if (!isLeagueCode) {
-            setMemberNumber(existing.club_member_number);
-          }
+          // Club membership is the source of truth for onboarding completion,
+          // even when this number also appears in a regional league directory.
+          setMemberNumber(existing.club_member_number);
           setIsExistingMember(true);
           return;
         }

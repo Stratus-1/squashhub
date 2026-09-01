@@ -508,6 +508,21 @@ bug, see §3):
 - `src/pages/MyAccount.tsx`, `src/components/TournamentRegisterCard.tsx`, `src/pages/PayReturn.tsx`
 - Tables: `stitch_payment_sessions`, `stitch_collections`
 
+### 2026-09-01 · New-member payment confused with recurring card setup
+- **Symptom:** after registration, a member reached My Account and attempted to set up card details,
+  which launched the separate Stitch recurring mandate/business-login journey instead of paying the
+  newly-created account balance as an ordinary top-up.
+- **Finding:** onboarding navigated to bare `/my-account`; the page displayed both the normal account
+  payment action and the optional recurring-payment card without identifying which flow onboarding
+  intended. Club numbers that also appeared in the regional league directory were also blanked in
+  the wizard, causing completed members to repeat onboarding.
+- **Fix:** registration now navigates to `/my-account?onboarding=payment`; after account data loads,
+  My Account opens its existing normal Pay Account/Top Up dialog, prefilled with the amount owing and
+  card selected. The wizard now treats `club_members.club_member_number` as authoritative even when
+  the same code exists in a regional directory.
+- **Guard:** onboarding payments are ordinary once-off top-ups through `startClubCheckout`; never
+  create a `stitch_mandates` row or invoke `stitch-create-mandate` from registration completion.
+
 **Guard:** before "fixing" a top-up, query
 `select stitch_redirect_url from stitch_payment_sessions where status='completed' order by created_at desc limit 5;`
 — that is the record of what works. Match it.

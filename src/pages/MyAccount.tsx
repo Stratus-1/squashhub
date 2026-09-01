@@ -247,6 +247,31 @@ export default function MyAccount() {
 
   const creditBalance = -netOwing;
 
+  // Registration completion lands here with `onboarding=payment`. Once the
+  // newly-created account charges have loaded, open the SAME normal top-up
+  // dialog used by the Top Up / Pay Account buttons. Never route onboarding
+  // through PaymentMethodsCard: that card creates a recurring Stitch mandate,
+  // which is a separate, optional flow.
+  const onboardingPaymentOpened = useRef(false);
+  useEffect(() => {
+    if (searchParams.get("onboarding") !== "payment") return;
+    if (onboardingPaymentOpened.current || txLoading || journalLoading || feesLoading) return;
+
+    onboardingPaymentOpened.current = true;
+    const amountOwing = Math.abs(Math.min(creditBalance, 0));
+    if (amountOwing > 0) {
+      setTopUpAmount(amountOwing.toFixed(2));
+      setTopUpMethod("card");
+      setTopUpOpen(true);
+    } else {
+      toast.success("Registration complete — your account has no amount owing yet.");
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("onboarding");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, txLoading, journalLoading, feesLoading, creditBalance]);
+
   // Available "cash" in wallet (top-ups minus confirmed account charges),
   // i.e. how much can still be spent paying outstanding fees via credit.
   const unpaidFeesTotal = (fees || [])

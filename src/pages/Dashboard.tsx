@@ -630,7 +630,7 @@ export default function Dashboard() {
           onComplete={() => {
             setShowOnboarding(false);
             setOnboardingDone(true);
-            setTimeout(() => { window.location.href = "/my-account"; }, 300);
+            setTimeout(() => { window.location.href = "/my-account?onboarding=payment"; }, 300);
           }}
         />
         <FaceEnrolmentDialog open={showFaceEnrolment} onClose={() => setShowFaceEnrolment(false)} />
@@ -742,9 +742,10 @@ export default function Dashboard() {
         onComplete={() => {
           setShowOnboarding(false);
           setOnboardingDone(true);
-          // Send the new member straight to My Account so they can settle fees
-          // and finish their profile. Hard reload ensures all queries refresh.
-          setTimeout(() => { window.location.href = "/my-account"; }, 300);
+          // Send the new member into the ordinary account top-up/payment flow.
+          // This is deliberately separate from recurring-card mandate setup.
+          // Hard reload ensures the newly-created fees and member number load.
+          setTimeout(() => { window.location.href = "/my-account?onboarding=payment"; }, 300);
         }}
       />
       

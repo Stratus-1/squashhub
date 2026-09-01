@@ -13,10 +13,29 @@ import {
 
 
 
-export type GatewayId = "yoco" | "stitch";
-export const SUPPORTED_GATEWAYS: GatewayId[] = ["yoco", "stitch"];
+export type GatewayId = "yoco" | "stitch" | "paynow";
+export const SUPPORTED_GATEWAYS: GatewayId[] = ["yoco", "stitch", "paynow"];
 export const isSupportedGateway = (g: string | null | undefined): g is GatewayId =>
   !!g && (SUPPORTED_GATEWAYS as string[]).includes(g);
+
+// Paynow pending-session helpers (localStorage, same pattern as Yoco/Stitch)
+const PAYNOW_PENDING_KEY = "sh.paynow.pending";
+export function rememberPendingPaynowSession(sessionId: string, returnPath: string) {
+  try { localStorage.setItem(PAYNOW_PENDING_KEY, JSON.stringify({ sessionId, returnPath })); } catch { /* noop */ }
+}
+export function getPendingPaynowSession(): { sessionId: string; returnPath: string } | null {
+  try {
+    const raw = localStorage.getItem(PAYNOW_PENDING_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+export function clearPendingPaynowSession(sid?: string) {
+  try {
+    if (!sid) { localStorage.removeItem(PAYNOW_PENDING_KEY); return; }
+    const cur = getPendingPaynowSession();
+    if (cur?.sessionId === sid) localStorage.removeItem(PAYNOW_PENDING_KEY);
+  } catch { /* noop */ }
+}
 
 export interface StartCheckoutOpts {
   clubId: string;
@@ -73,12 +92,35 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
     await openStitchCheckout(redirect, (data as any).session_id, opts.returnPath);
     return { session_id: (data as any).session_id as string, keptOpen: false };
   }
+  if (gateway === "paynow") {
+    // Paynow hosts the checkout and redirects the browser back to returnurl
+    // with our paynow_session param — simple full-page handover.
+    const return_url = buildStitchReturnUrl(opts.returnPath);
+    const { data, error } = await supabase.functions.invoke("paynow-create-checkout", {
+      body: {
+        club_id: opts.clubId, club_member_id: opts.clubMemberId,
+        amount: opts.amount, purpose: opts.purpose,
+        fee_ids: opts.fee_ids || [],
+        champ_registration_id: opts.champ_registration_id ?? null,
+        description: opts.description, return_url,
+      },
+    });
+    if (error) throw new Error(error.message || "Could not start Paynow checkout");
+    if ((data as any)?.error) throw new Error((data as any).error);
+    const redirect = (data as any)?.redirect_url;
+    if (!redirect) throw new Error("Paynow did not return a redirect URL");
+    rememberPendingPaynowSession((data as any).session_id, opts.returnPath);
+    window.location.assign(redirect);
+    return { session_id: (data as any).session_id as string };
+  }
 
   throw new Error(`Unsupported gateway: ${gateway}`);
 }
 
 export async function verifyClubCheckout(gateway: GatewayId, sessionId: string | null) {
-  const fnName = gateway === "stitch" ? "stitch-verify-payment" : "yoco-verify-checkout";
+  const fnName = gateway === "stitch" ? "stitch-verify-payment"
+    : gateway === "paynow" ? "paynow-verify-checkout"
+    : "yoco-verify-checkout";
   return supabase.functions.invoke(fnName, { body: sessionId ? { session_id: sessionId } : {} });
 }
 
@@ -136,6 +178,12 @@ export function readReturnSession(
     const sid = stitchSid || stitchPending!.sessionId;
     return { gateway: "stitch", sid, statusHint: stitchStatus || undefined };
   }
+  const paynowSid = searchParams.get("paynow_session");
+  const paynowPending = getPendingPaynowSession();
+  if (paynowSid || (paynowPending && paynowPending.returnPath === expectedReturnPath)) {
+    const sid = paynowSid || paynowPending!.sessionId;
+    return { gateway: "paynow", sid };
+  }
   return null;
 }
 
@@ -144,6 +192,7 @@ export function clearReturnParams(searchParams: URLSearchParams): URLSearchParam
   [
     "yoco_session", "yoco_cancelled", "yoco_status",
     "stitch_session", "stitch_status",
+    "paynow_session",
     // Stitch hosted checkout adds these on return — strip so back/refresh doesn't re-trigger
     "reference", "payment_id", "id",
   ].forEach(k => next.delete(k));
@@ -153,5 +202,6 @@ export function clearReturnParams(searchParams: URLSearchParams): URLSearchParam
 
 export function clearPendingClubSession(gateway: GatewayId, sid?: string) {
   if (gateway === "yoco") clearPendingYocoSession(sid);
+  else if (gateway === "paynow") clearPendingPaynowSession(sid);
   else clearPendingStitchSession(sid);
 }

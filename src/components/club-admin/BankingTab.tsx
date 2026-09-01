@@ -35,7 +35,7 @@ type GatewayDef = {
   fields: FieldDef[];
 };
 
-const DEFAULT_FEE_PCT: Record<string, number> = { yoco: 3.34, stitch: 3.39 };
+const DEFAULT_FEE_PCT: Record<string, number> = { yoco: 3.34, stitch: 3.39, paynow: 3.5 };
 
 // Per-method gateway rates (local SA market defaults, VAT-inclusive: list rate x 1.15)
 const METHOD_FEE_FIELDS = [
@@ -140,11 +140,12 @@ const GATEWAYS: GatewayDef[] = [
   {
     id: "paynow",
     name: "Paynow (Zimbabwe)",
-    description: "Zimbabwe payment aggregator. One integration for EcoCash, OneMoney, Zimswitch, Visa/Mastercard. Checkout wiring coming soon — credentials are stored securely now.",
+    description: "Zimbabwe payment aggregator. One integration covers EcoCash, OneMoney, InnBucks, Zimswitch and Visa/Mastercard.",
     website: "https://paynow.co.zw",
     fields: [
       { key: "integration_id", label: "Integration ID", placeholder: "12345", helperText: "Paynow Dashboard → Sellers → Integrations → copy the Integration ID." },
       { key: "integration_key", label: "Integration Key", placeholder: "Your Paynow integration key", sensitive: true, helperText: "Same screen → reveal & copy the Integration Key. Treat it like a password." },
+      { key: "test_mode", label: "Test mode (no real money)", placeholder: "", type: "checkbox", helperText: "Every new Paynow integration starts in test mode automatically. Keep this on until Paynow has reviewed and approved the integration for live payments, then switch it off." },
     ],
   },
   {
@@ -194,8 +195,8 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   }, [club, members]);
 
   const handleTestPayment = async () => {
-    if (gateway !== "yoco" && gateway !== "stitch") {
-      toast.error("Test payment is only wired up for Yoco and Stitch.");
+    if (gateway !== "yoco" && gateway !== "stitch" && gateway !== "paynow") {
+      toast.error("Test payment is only wired up for Yoco, Stitch and Paynow.");
       return;
     }
     if (!activeMember?.id) {

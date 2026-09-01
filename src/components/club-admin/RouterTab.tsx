@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Router, Wifi, WifiOff, RefreshCw, Signal, Clock, Database, Bell } from "lucide-react";
+import { Router, Wifi, WifiOff, RefreshCw, Signal, Clock, Database, Bell, Users } from "lucide-react";
 import {
   ROUTER_DRIVERS,
   computeUsage,
@@ -30,14 +30,41 @@ import {
   useRouterConfig,
 } from "@/hooks/use-router-monitor";
 import { ClubWifiSettingsCard } from "./ClubWifiSettingsCard";
+import type { Club } from "@/hooks/use-club";
+import { formatMoney } from "@/lib/currency";
 
-export function RouterTab({ clubId }: { clubId: string }) {
+export function RouterTab({ clubId, club }: { clubId: string; club?: Club }) {
   const qc = useQueryClient();
   const { data: config } = useRouterConfig(clubId);
   const { data: bundle } = useActiveBundle(clubId);
   const { data: history } = useBundleHistory(clubId);
   const { data: polls } = useRecentPolls(clubId);
   const [busy, setBusy] = useState(false);
+
+  const { data: wifiMembers } = useQuery({
+    enabled: !!clubId,
+    queryKey: ["club-wifi-subscriptions", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_wifi_subscriptions")
+        .select("*, member:club_member_id(id, name, club_member_number)")
+        .eq("club_id", clubId)
+        .eq("active", true)
+        .order("started_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as {
+        id: string;
+        club_member_id: string;
+        active: boolean;
+        auto_renew: boolean;
+        started_at: string;
+        current_period_end: string;
+        last_billed_period: string;
+        monthly_fee: number;
+        cancelled_at: string | null;
+        member: { id: string; name: string; club_member_number: string | null } | null;
+      }[];
+    },
+  });
 
   const [form, setForm] = useState({
     enabled: false,
@@ -301,6 +328,55 @@ export function RouterTab({ clubId }: { clubId: string }) {
 
       {/* Club Wi-Fi sharing settings */}
       <ClubWifiSettingsCard clubId={clubId} />
+
+      {/* Members paying for Wi-Fi */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" /> Members paying Wi-Fi
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {wifiMembers && wifiMembers.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead className="text-muted-foreground">
+                  <tr className="text-left">
+                    <th className="py-1">Member</th>
+                    <th>Number</th>
+                    <th>Started</th>
+                    <th>Period end</th>
+                    <th>Auto-renew</th>
+                    <th className="text-right">Monthly fee</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wifiMembers.map((sub) => (
+                    <tr key={sub.id} className="border-t border-border/60">
+                      <td className="py-1 font-medium">{sub.member?.name || "—"}</td>
+                      <td>{sub.member?.club_member_number || "—"}</td>
+                      <td>{sub.started_at ? new Date(sub.started_at).toLocaleDateString() : "—"}</td>
+                      <td>{sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "—"}</td>
+                      <td>
+                        {sub.auto_renew ? (
+                          <Badge variant="default" className="text-[10px]">Yes</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">No</span>
+                        )}
+                      </td>
+                      <td className="text-right">{formatMoney(sub.monthly_fee, club)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No members are currently paying for Wi-Fi access. Members can activate this from their dashboard once Wi-Fi billing is enabled.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Router configuration */}
       <Card>

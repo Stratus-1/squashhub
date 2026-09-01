@@ -67,6 +67,9 @@ export interface Club {
   sla_version?: string | null;
   sla_billing_option?: "monthly" | "biannual_upfront" | "annual_upfront" | null;
   show_delegates_on_landing?: boolean;
+  currency_code?: string | null;
+  currency_symbol?: string | null;
+  baseline_currency?: string | null;
 }
 
 

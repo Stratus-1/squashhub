@@ -349,25 +349,27 @@ export default function MyAccount() {
 
   useEffect(() => {
     if (!clubMemberId || !clubId) return;
-    const gw = club?.payment_gateway;
-    if (!isSupportedGateway(gw)) return;
+    const gateways = checkoutGateways(club as any);
+    if (gateways.length === 0) return;
     let stopped = false;
     let runs = 0;
     const reconcile = async () => {
       while (!stopped && runs < 12) {
         runs += 1;
-        try {
-          const { data } = await verifyClubCheckout(gw as GatewayId, null);
-          if ((data as any)?.status === "completed") {
-            clearPendingClubSession(gw as GatewayId);
-            toast.success("Payment received — thank you!");
-            queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
-            queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
-            queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
-            return;
+        for (const gw of gateways) {
+          try {
+            const { data } = await verifyClubCheckout(gw as GatewayId, null);
+            if ((data as any)?.status === "completed") {
+              clearPendingClubSession(gw as GatewayId);
+              toast.success("Payment received — thank you!");
+              queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+              queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+              queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
+              return;
+            }
+          } catch {
+            // No recent pending session for this gateway.
           }
-        } catch {
-          // No recent pending session or user not ready yet.
         }
         await new Promise((resolve) => setTimeout(resolve, 10000));
       }
@@ -376,7 +378,8 @@ export default function MyAccount() {
     return () => {
       stopped = true;
     };
-  }, [clubMemberId, clubId, queryClient, club?.payment_gateway]);
+  }, [clubMemberId, clubId, queryClient, club?.payment_gateway, (club as any)?.payment_gateways?.join(",")]);
+
 
   const pendingTopUps = (transactions || []).filter(
     (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"

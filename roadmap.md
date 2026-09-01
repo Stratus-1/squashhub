@@ -3,7 +3,7 @@
 ## Current: registration fee signup verification + Wi-Fi member list + audit fix
 - [ ] Verify once-off registration fee is billed to every genuinely new member at signup.
 - [ ] Add a "Members paying Wi-Fi" tab/list in club admin Wi-Fi settings.
-- [ ] Harden `audit_events` INSERT policy so only trusted server-side paths can write audit records.
+- [x] Harden `audit_events` INSERT policy so only trusted server-side paths can write audit records.
 
 ## Current: CSIR tournament invite extras + build fixes
 - [x] Add `invite_extra_details` column to `tournaments`

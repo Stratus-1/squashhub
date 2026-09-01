@@ -2507,15 +2507,23 @@ export default function Bookings() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Once your top-up reflects on your account you can come back and book.
+              Your slot is <span className="font-medium">not booked yet</span>. We'll keep it ready —
+              once the top-up reflects, come back to Court Bookings and tap Confirm Booking to finish.
             </p>
           </div>
 
 
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" onClick={() => setTopUpPrompt((s) => ({ ...s, open: false }))}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                try { localStorage.removeItem(PENDING_BOOKING_KEY); } catch { /* noop */ }
+                setTopUpPrompt((s) => ({ ...s, open: false }));
+              }}
+            >
               Not now
             </Button>
+
             <Button
               onClick={() => {
                 const amt = Math.max(topUpPrompt.shortfall, 0).toFixed(2);

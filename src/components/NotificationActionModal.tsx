@@ -209,7 +209,7 @@ export function NotificationActionModal() {
     const age = Date.now() - new Date(n.created_at).getTime();
     return age <= PERSISTENT_FRESH_MS;
   });
-  const nonPersistentNotifications = notifications.filter((n) => !isPersistentInvite(n));
+  
   const current = notifications[currentIndex] || null;
   const total = notifications.length;
   const isLast = currentIndex >= total - 1;

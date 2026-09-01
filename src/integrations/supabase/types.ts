@@ -4574,6 +4574,7 @@ export type Database = {
           payment_gateway: string | null
           payment_gateway_fee_percent: number | null
           payment_gateway_public_key: string | null
+          payment_gateways: string[]
           peak_weekday_end: string
           peak_weekday_start: string
           peak_weekend_end: string
@@ -4698,6 +4699,7 @@ export type Database = {
           payment_gateway?: string | null
           payment_gateway_fee_percent?: number | null
           payment_gateway_public_key?: string | null
+          payment_gateways?: string[]
           peak_weekday_end?: string
           peak_weekday_start?: string
           peak_weekend_end?: string
@@ -4822,6 +4824,7 @@ export type Database = {
           payment_gateway?: string | null
           payment_gateway_fee_percent?: number | null
           payment_gateway_public_key?: string | null
+          payment_gateways?: string[]
           peak_weekday_end?: string
           peak_weekday_start?: string
           peak_weekend_end?: string

@@ -76,20 +76,30 @@ export function TournamentInviteRegisterDialog({
   });
 
   const mustChooseDivision = divisionOptions.length > 1;
+  /**
+   * Bells is time-capped: every league plays simultaneously until the bell, so
+   * a player can only ever be in ONE league. Other formats allow multi-entry.
+   */
+  const singleDivisionOnly = champ?.scoring_mode === "time_capped_points";
 
   useEffect(() => {
     const existing = (registration?.division_choices || []).map((n: any) => Number(n))
       .filter((n: number) => divisionOptions.some((d: any) => d.group_number === n));
-    if (existing.length > 0) setChosenDivisions(existing);
+    if (existing.length > 0) setChosenDivisions(singleDivisionOnly ? [existing[0]] : existing);
     else if (divisionOptions.length === 1) setChosenDivisions([divisionOptions[0].group_number]);
-  }, [divisionOptions, registration?.division_choices]);
+  }, [divisionOptions, registration?.division_choices, singleDivisionOnly]);
 
   const toggleDivision = (gn: number) => {
     setDivisionError("");
+    if (singleDivisionOnly) {
+      setChosenDivisions([gn]);
+      return;
+    }
     setChosenDivisions((prev) =>
       prev.includes(gn) ? prev.filter((n) => n !== gn) : [...prev, gn].sort((a, b) => a - b),
     );
   };
+
 
 
   const entryFeeCents = Number(champ?.entry_fee_cents || 0);

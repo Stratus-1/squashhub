@@ -364,7 +364,7 @@ export function RouterTab({ clubId, club }: { clubId: string; club?: Club }) {
                           <span className="text-muted-foreground">No</span>
                         )}
                       </td>
-                      <td className="text-right">{formatCurrency(sub.monthly_fee, club)}</td>
+                      <td className="text-right">{formatMoney(sub.monthly_fee, club)}</td>
                     </tr>
                   ))}
                 </tbody>

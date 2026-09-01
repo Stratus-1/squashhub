@@ -329,6 +329,55 @@ export function RouterTab({ clubId, club }: { clubId: string; club?: Club }) {
       {/* Club Wi-Fi sharing settings */}
       <ClubWifiSettingsCard clubId={clubId} />
 
+      {/* Members paying for Wi-Fi */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" /> Members paying Wi-Fi
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {wifiMembers && wifiMembers.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead className="text-muted-foreground">
+                  <tr className="text-left">
+                    <th className="py-1">Member</th>
+                    <th>Number</th>
+                    <th>Started</th>
+                    <th>Period end</th>
+                    <th>Auto-renew</th>
+                    <th className="text-right">Monthly fee</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wifiMembers.map((sub) => (
+                    <tr key={sub.id} className="border-t border-border/60">
+                      <td className="py-1 font-medium">{sub.member?.name || "—"}</td>
+                      <td>{sub.member?.club_member_number || "—"}</td>
+                      <td>{sub.started_at ? new Date(sub.started_at).toLocaleDateString() : "—"}</td>
+                      <td>{sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : "—"}</td>
+                      <td>
+                        {sub.auto_renew ? (
+                          <Badge variant="default" className="text-[10px]">Yes</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">No</span>
+                        )}
+                      </td>
+                      <td className="text-right">{formatCurrency(sub.monthly_fee, club)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No members are currently paying for Wi-Fi access. Members can activate this from their dashboard once Wi-Fi billing is enabled.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Router configuration */}
       <Card>
         <CardHeader className="pb-2">

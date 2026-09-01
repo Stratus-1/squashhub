@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
@@ -449,6 +449,40 @@ export default function Bookings() {
   }, [courtCheckinsEnabled, selectedDate, user?.id]);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
+
+  // ── Resume a booking that was interrupted by a "top up to book" redirect ──
+  // Members were being sent to My Account to pay, and the booking they were in
+  // the middle of making was silently lost — they came back having paid with no
+  // slot reserved. We stash the intent and re-open it when they return.
+  const PENDING_BOOKING_KEY = "sh.pendingBooking";
+  const pendingRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (pendingRestoredRef.current) return;
+    if (!myClub?.id || !activeMember?.id) return;
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(PENDING_BOOKING_KEY);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    pendingRestoredRef.current = true;
+    try {
+      localStorage.removeItem(PENDING_BOOKING_KEY);
+      const p = JSON.parse(raw);
+      if (p?.clubId !== myClub.id || p?.memberId !== activeMember.id) return;
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      if (!p?.dateStr || p.dateStr < todayStr) return;
+      const parsed = new Date(`${p.dateStr}T00:00:00`);
+      if (!isNaN(parsed.getTime())) setSelectedDate(parsed);
+      setBookingDialog(p.dialog);
+      toast.info("Welcome back — tap Confirm Booking to finish reserving your slot.");
+    } catch {
+      /* ignore malformed intent */
+    }
+  }, [myClub?.id, activeMember?.id]);
+
   const { data: clubData } = useMyClub();
   const bookingClubId = clubData?.club?.id;
   /** Visitors are local guests unless the club opted back into home clubs. */
@@ -877,6 +911,21 @@ export default function Bookings() {
         });
         console.log("[booking-balance] gate result", check);
         if (!check.allowed) {
+          // Remember the slot so it can be resumed after the top-up.
+          try {
+            localStorage.setItem(
+              PENDING_BOOKING_KEY,
+              JSON.stringify({
+                clubId: myClub.id,
+                memberId: activeMember.id,
+                dateStr,
+                dialog: bookingDialog,
+                savedAt: Date.now(),
+              }),
+            );
+          } catch {
+            /* storage unavailable — prompt still shows */
+          }
           setTopUpPrompt({
             open: true,
             shortfall: check.shortfall,
@@ -886,6 +935,7 @@ export default function Bookings() {
           });
           return;
         }
+
       } catch (e) {
         console.error("[booking-balance] check failed, allowing booking:", e);
       }
@@ -2457,15 +2507,23 @@ export default function Bookings() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Once your top-up reflects on your account you can come back and book.
+              Your slot is <span className="font-medium">not booked yet</span>. We'll keep it ready —
+              once the top-up reflects, come back to Court Bookings and tap Confirm Booking to finish.
             </p>
           </div>
 
 
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" onClick={() => setTopUpPrompt((s) => ({ ...s, open: false }))}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                try { localStorage.removeItem(PENDING_BOOKING_KEY); } catch { /* noop */ }
+                setTopUpPrompt((s) => ({ ...s, open: false }));
+              }}
+            >
               Not now
             </Button>
+
             <Button
               onClick={() => {
                 const amt = Math.max(topUpPrompt.shortfall, 0).toFixed(2);

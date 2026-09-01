@@ -368,7 +368,10 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     setFeePercent((club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : "");
     setMethodFees(methodFeesFromClub(club));
     const saved = (secrets as any)?.payment_gateway_credentials;
-    setCredentials(saved && typeof saved === "object" ? saved : {});
+    const { __gateways, ...flat } = (saved && typeof saved === "object" ? saved : {}) as Record<string, any>;
+    setCredentials(flat as Record<string, string>);
+    setExtraCreds(__gateways && typeof __gateways === "object" ? __gateways : {});
+    setExtraGateways((((club as any).payment_gateways as string[]) || []).filter((g: string) => g && g !== club.payment_gateway));
   };
   const resetMethods = () =>
     setAcceptedMethods(new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"]));
@@ -383,6 +386,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       await updateClub.mutateAsync({
         id: club.id,
         payment_gateway: gateway || null,
+        payment_gateways: extraGateways.filter(g => g && g !== gateway),
         payment_gateway_public_key: null, // migrated to credentials JSON
         payment_gateway_fee_percent: feePercent.trim() === "" ? null : Number(feePercent),
         ...Object.fromEntries(
@@ -402,7 +406,12 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         bank_account_number: bankForm.bank_account_number || null,
         bank_branch_code: bankForm.bank_branch_code || null,
         bank_reference: bankForm.bank_reference || null,
-        payment_gateway_credentials: credentials,
+        payment_gateway_credentials: {
+          ...credentials,
+          __gateways: Object.fromEntries(
+            extraGateways.filter(g => g && g !== gateway).map(g => [g, extraCreds[g] || {}])
+          ),
+        },
       } as any);
 
       toast.success("Banking settings saved");

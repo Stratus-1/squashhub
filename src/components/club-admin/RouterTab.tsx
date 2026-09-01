@@ -33,13 +33,38 @@ import { ClubWifiSettingsCard } from "./ClubWifiSettingsCard";
 import type { Club } from "@/hooks/use-club";
 import { formatCurrency } from "@/lib/currency";
 
-export function RouterTab({ clubId }: { clubId: string }) {
+export function RouterTab({ clubId, club }: { clubId: string; club?: Club }) {
   const qc = useQueryClient();
   const { data: config } = useRouterConfig(clubId);
   const { data: bundle } = useActiveBundle(clubId);
   const { data: history } = useBundleHistory(clubId);
   const { data: polls } = useRecentPolls(clubId);
   const [busy, setBusy] = useState(false);
+
+  const { data: wifiMembers } = useQuery({
+    enabled: !!clubId,
+    queryKey: ["club-wifi-subscriptions", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_wifi_subscriptions")
+        .select("*, member:club_member_id(id, name, club_member_number)")
+        .eq("club_id", clubId)
+        .eq("active", true)
+        .order("started_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as {
+        id: string;
+        club_member_id: string;
+        active: boolean;
+        auto_renew: boolean;
+        started_at: string;
+        current_period_end: string;
+        last_billed_period: string;
+        monthly_fee: number;
+        cancelled_at: string | null;
+        member: { id: string; name: string; club_member_number: string | null } | null;
+      }[];
+    },
+  });
 
   const [form, setForm] = useState({
     enabled: false,

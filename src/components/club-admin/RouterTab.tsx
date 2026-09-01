@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Router, Wifi, WifiOff, RefreshCw, Signal, Clock, Database, Bell } from "lucide-react";
+import { Router, Wifi, WifiOff, RefreshCw, Signal, Clock, Database, Bell, Users } from "lucide-react";
 import {
   ROUTER_DRIVERS,
   computeUsage,
@@ -30,6 +30,8 @@ import {
   useRouterConfig,
 } from "@/hooks/use-router-monitor";
 import { ClubWifiSettingsCard } from "./ClubWifiSettingsCard";
+import type { Club } from "@/hooks/use-club";
+import { formatCurrency } from "@/lib/currency";
 
 export function RouterTab({ clubId }: { clubId: string }) {
   const qc = useQueryClient();

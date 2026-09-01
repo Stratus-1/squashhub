@@ -262,10 +262,25 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   );
   const [methodFees, setMethodFees] = useState<Record<string, string>>(() => methodFeesFromClub(club));
   const [credentials, setCredentials] = useState<Record<string, string>>({});
+  // Additional gateways the club also offers alongside the primary one.
+  const [extraGateways, setExtraGateways] = useState<string[]>(
+    () => (((club as any).payment_gateways as string[]) || []).filter(g => g && g !== club.payment_gateway)
+  );
+  const [extraCreds, setExtraCreds] = useState<Record<string, Record<string, string>>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
   const [acceptedMethods, setAcceptedMethods] = useState<Set<string>>(
     new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"])
   );
+
+  const setExtraCred = (gwId: string, key: string, value: string) =>
+    setExtraCreds(p => ({ ...p, [gwId]: { ...(p[gwId] || {}), [key]: value } }));
+  const addExtraGateway = (gwId: string) =>
+    setExtraGateways(p => (p.includes(gwId) || gwId === gateway ? p : [...p, gwId]));
+  const removeExtraGateway = (gwId: string) => {
+    setExtraGateways(p => p.filter(g => g !== gwId));
+    setExtraCreds(p => { const n = { ...p }; delete n[gwId]; return n; });
+  };
+
 
   const toggleMethod = (m: string) =>
     setAcceptedMethods(p => {

@@ -38,3 +38,9 @@
 - [x] Confirm all quarantined webhook events were already settled (nothing to replay).
 - [x] Shared settlement helpers (`_shared/stitch-settlement.ts`) used by verify + sweep.
 - [x] `stitch-sweep-pending-payments` cron (every 10 min) re-checks once-off sessions unverified after 15 min and settles them.
+
+## Gordons Bay: paid top-up but booking not saved (K Baderoen)
+- [x] Diagnose: booking blocked by minimum-balance gate, member redirected to top-up, slot never created.
+- [x] Restore Kouthar Baderoen's 01 Sep 17:00 booking (Court 1, lights on).
+- [x] Stash the in-progress booking before the top-up redirect and resume it on return.
+- [x] Clearer wording: "your slot is not booked yet" in the top-up prompt.

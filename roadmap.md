@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Current: registration fee signup verification + Wi-Fi member list + audit fix
-- [ ] Verify once-off registration fee is billed to every genuinely new member at signup.
+- [x] Verify once-off registration fee is billed to every genuinely new member at signup.
 - [x] Add a "Members paying Wi-Fi" tab/list in club admin Wi-Fi settings.
 - [x] Harden `audit_events` INSERT policy so only trusted server-side paths can write audit records.
 

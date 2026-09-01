@@ -379,6 +379,11 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const methodsLock = useEditLock(resetMethods);
   const bankLock = useEditLock(resetBank);
   const gatewayLock = useEditLock(resetGateway);
+  const extraLock = useEditLock(resetGateway);
+
+  // The Stitch Express partner offer only applies to South African clubs.
+  const isSouthAfrican =
+    String((club as any).currency_code || "ZAR").toUpperCase() === "ZAR";
 
   const handleSave = async (onDone?: () => void) => {
     try {

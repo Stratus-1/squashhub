@@ -243,7 +243,7 @@ export default function StitchOnboardingCard({
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold flex items-center gap-2 flex-wrap">
             Need a payment gateway for {clubName}?
-            <Badge variant="secondary" className="text-[10px] h-5">Partner offer</Badge>
+            <Badge variant="secondary" className="text-[10px] h-5">Partner offer (South African clubs)</Badge>
             {draftSavedAt && !sent && (
               <Badge variant="outline" className="text-[10px] h-5">Draft saved</Badge>
             )}
@@ -251,7 +251,8 @@ export default function StitchOnboardingCard({
           <p className="text-xs text-muted-foreground mt-0.5">
             SquashHub has an informal partnership with <strong>Stitch Express</strong> so we can
             help clubs quickly and easily open a Stitch payment gateway account for member fees
-            and online payments.
+            and online payments. Available to South African clubs only — clubs outside South
+            Africa should configure a local gateway instead.
           </p>
         </div>
         {!sent && (

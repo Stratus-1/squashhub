@@ -280,6 +280,14 @@ export default function ClubAdmin() {
                           : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
                       )}
                     >
+                      {tab.startHere && (
+                        <span className={cn(
+                          "absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold uppercase tracking-wide shadow-sm",
+                          isActive ? "bg-primary-foreground text-primary" : "bg-violet-600 text-white"
+                        )}>
+                          Start here
+                        </span>
+                      )}
                       {showStatus && (
                         isComplete ? (
                           <CheckCircle2 className="absolute top-1 right-1 w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-600 dark:text-emerald-400 fill-background" />

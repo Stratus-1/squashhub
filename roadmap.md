@@ -44,3 +44,7 @@
 - [x] Restore Kouthar Baderoen's 01 Sep 17:00 booking (Court 1, lights on).
 - [x] Stash the in-progress booking before the top-up redirect and resume it on return.
 - [x] Clearer wording: "your slot is not booked yet" in the top-up prompt.
+
+## St John's Squash Club (Zimbabwe)
+- [x] Create tenant with slug `stjohns`, currency USD ($).
+- [x] First person to register at stjohns becomes club admin automatically.

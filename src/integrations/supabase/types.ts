@@ -9124,6 +9124,81 @@ export type Database = {
           },
         ]
       }
+      paynow_payment_sessions: {
+        Row: {
+          amount: number
+          champ_registration_id: string | null
+          club_id: string
+          club_member_id: string
+          completed_at: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          fee_ids: string[]
+          id: string
+          paynow_poll_url: string | null
+          paynow_redirect_url: string | null
+          paynow_reference: string | null
+          purpose: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          champ_registration_id?: string | null
+          club_id: string
+          club_member_id: string
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          fee_ids?: string[]
+          id?: string
+          paynow_poll_url?: string | null
+          paynow_redirect_url?: string | null
+          paynow_reference?: string | null
+          purpose: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          champ_registration_id?: string | null
+          club_id?: string
+          club_member_id?: string
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          fee_ids?: string[]
+          id?: string
+          paynow_poll_url?: string | null
+          paynow_redirect_url?: string | null
+          paynow_reference?: string | null
+          purpose?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paynow_payment_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paynow_payment_sessions_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           auth_user_id: string | null

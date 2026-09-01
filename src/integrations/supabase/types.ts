@@ -12987,6 +12987,7 @@ export type Database = {
         Args: { _capability: string; _club_id: string }
         Returns: boolean
       }
+      club_has_no_admin: { Args: { _club_id: string }; Returns: boolean }
       count_member_duplicate_hints: {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number

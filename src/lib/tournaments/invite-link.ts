@@ -46,6 +46,9 @@ export type InvitePayload = {
   divisions?: InviteDivision[] | null;
   /** Divisions already chosen by this invitee. */
   selected_divisions?: number[] | null;
+  /** 'time_capped_points' = Bells: all leagues run at once, so only one entry. */
+  scoring_mode?: string | null;
+
   /** 'club' = courts booked by the club, 'self' = players arrange their own games. */
   scheduling_mode?: string | null;
   invitee_name?: string | null;
@@ -88,6 +91,16 @@ export function requiresDivisionChoice(payload: InvitePayload | null | undefined
 }
 
 /**
+ * Bells (time-capped) tournaments play every league simultaneously until the
+ * bell, so a player can only ever be entered in ONE league.
+ */
+export function allowsMultipleDivisions(payload: InvitePayload | null | undefined): boolean {
+  return payload?.scoring_mode !== "time_capped_points";
+}
+
+
+
+/**
  * What to pre-tick: whatever the invitee already chose, otherwise the single
  * division when there is only one to enter.
  */
@@ -96,9 +109,10 @@ export function defaultDivisionSelection(payload: InvitePayload | null | undefin
   const chosen = (payload?.selected_divisions || [])
     .map((n) => Number(n))
     .filter((n) => divisions.some((d) => d.group_number === n));
-  if (chosen.length > 0) return chosen;
+  if (chosen.length > 0) return allowsMultipleDivisions(payload) ? chosen : [chosen[0]];
   return divisions.length === 1 ? [divisions[0].group_number] : [];
 }
+
 
 
 export type InviteState =

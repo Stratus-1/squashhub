@@ -76,20 +76,30 @@ export function TournamentInviteRegisterDialog({
   });
 
   const mustChooseDivision = divisionOptions.length > 1;
+  /**
+   * Bells is time-capped: every league plays simultaneously until the bell, so
+   * a player can only ever be in ONE league. Other formats allow multi-entry.
+   */
+  const singleDivisionOnly = champ?.scoring_mode === "time_capped_points";
 
   useEffect(() => {
     const existing = (registration?.division_choices || []).map((n: any) => Number(n))
       .filter((n: number) => divisionOptions.some((d: any) => d.group_number === n));
-    if (existing.length > 0) setChosenDivisions(existing);
+    if (existing.length > 0) setChosenDivisions(singleDivisionOnly ? [existing[0]] : existing);
     else if (divisionOptions.length === 1) setChosenDivisions([divisionOptions[0].group_number]);
-  }, [divisionOptions, registration?.division_choices]);
+  }, [divisionOptions, registration?.division_choices, singleDivisionOnly]);
 
   const toggleDivision = (gn: number) => {
     setDivisionError("");
+    if (singleDivisionOnly) {
+      setChosenDivisions([gn]);
+      return;
+    }
     setChosenDivisions((prev) =>
       prev.includes(gn) ? prev.filter((n) => n !== gn) : [...prev, gn].sort((a, b) => a - b),
     );
   };
+
 
 
   const entryFeeCents = Number(champ?.entry_fee_cents || 0);
@@ -275,7 +285,9 @@ export function TournamentInviteRegisterDialog({
             <div className="space-y-1.5">
               <Label className="text-xs">Which do you want to play in?</Label>
               <p className="text-[11px] text-muted-foreground">
-                You may enter more than one — tick every division you want to play.
+                {singleDivisionOnly
+                  ? "All leagues play at the same time until the bell — choose one."
+                  : "You may enter more than one — tick every division you want to play."}
               </p>
               <div className="space-y-1">
                 {divisionOptions.map((d: any) => (
@@ -283,6 +295,7 @@ export function TournamentInviteRegisterDialog({
                     <Checkbox
                       checked={chosenDivisions.includes(d.group_number)}
                       disabled={accepted}
+                      className={singleDivisionOnly ? "rounded-full" : undefined}
                       onCheckedChange={() => toggleDivision(d.group_number)}
                     />
                     <span className="flex-1">{d.label}</span>
@@ -300,9 +313,12 @@ export function TournamentInviteRegisterDialog({
           {!accepted ? (
             <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => {
               if (mustChooseDivision && chosenDivisions.length === 0) {
-                setDivisionError("Please tick at least one division you want to play in.");
+                setDivisionError(singleDivisionOnly
+                  ? "Please choose the league you want to play in."
+                  : "Please tick at least one division you want to play in.");
                 return;
               }
+
               setDivisionError("");
               accept.mutate();
             }}>

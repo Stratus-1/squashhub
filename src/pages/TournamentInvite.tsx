@@ -24,6 +24,7 @@ import {
   inviteVerificationLabel,
   isInviteVerificationComplete,
   requiresDivisionChoice,
+  allowsMultipleDivisions,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
 import { doublesDivisions } from "@/lib/tournaments/doubles";
@@ -72,6 +73,8 @@ export default function TournamentInvite() {
   const verificationKind = inviteVerificationKind(data);
   const divisions = useMemo(() => inviteDivisions(data), [data]);
   const mustChooseDivision = requiresDivisionChoice(data);
+  // Bells runs every league at the same time, so only one entry is possible.
+  const multiDivisionAllowed = allowsMultipleDivisions(data);
   const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
   const [divisionError, setDivisionError] = useState("");
 
@@ -83,6 +86,10 @@ export default function TournamentInvite() {
 
   const toggleDivision = (gn: number) => {
     setDivisionError("");
+    if (!multiDivisionAllowed) {
+      setChosenDivisions([gn]);
+      return;
+    }
     setChosenDivisions((prev) => (prev.includes(gn) ? prev.filter((n) => n !== gn) : [...prev, gn].sort((a, b) => a - b)));
   };
 
@@ -339,7 +346,7 @@ export default function TournamentInvite() {
       return;
     }
     if (accept && mustChooseDivision && chosenDivisions.length === 0) {
-      setDivisionError("Please tick at least one division you want to play in.");
+      setDivisionError(multiDivisionAllowed ? "Please tick at least one division you want to play in." : "Please choose the league you want to play in.");
       return;
     }
     if (!verifyReady) {
@@ -358,7 +365,9 @@ export default function TournamentInvite() {
         <div className="space-y-1.5">
           <Label className="text-xs">Which do you want to play in?</Label>
           <p className="text-[11px] text-muted-foreground">
-            You may enter more than one — tick every division you want to play.
+            {multiDivisionAllowed
+              ? "You may enter more than one — tick every division you want to play."
+              : "All leagues play at the same time until the bell — choose one."}
           </p>
           <div className="space-y-1">
             {divisions.map((d) => (
@@ -368,6 +377,7 @@ export default function TournamentInvite() {
               >
                 <Checkbox
                   checked={chosenDivisions.includes(d.group_number)}
+                  className={multiDivisionAllowed ? undefined : "rounded-full"}
                   onCheckedChange={() => toggleDivision(d.group_number)}
                 />
                 <span className="flex-1">{d.label}</span>

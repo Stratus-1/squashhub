@@ -26,6 +26,7 @@ import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCar
 import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
+import { checkoutGateways, gatewayLabel } from "@/lib/club-gateways";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
@@ -382,6 +383,32 @@ export default function MyAccount() {
   );
 
   // Launch the configured club gateway for fee payment or account top-up.
+  // Clubs may offer more than one gateway (e.g. Paynow and EcoCash) — let the member pick.
+  const availableGateways = useMemo(() => checkoutGateways(club as any), [club]);
+  const [payGateway, setPayGateway] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    setPayGateway(prev => (prev && availableGateways.includes(prev as any) ? prev : availableGateways[0]));
+  }, [availableGateways.join(",")]);
+
+  const GatewayPicker = () =>
+    availableGateways.length > 1 ? (
+      <div className="space-y-1">
+        <p className="text-xs font-medium">Pay with</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {availableGateways.map(g => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setPayGateway(g)}
+              className={`rounded-md border p-2 text-left text-xs transition ${payGateway === g ? "border-primary bg-primary/10 font-medium" : "border-border hover:bg-muted/50"}`}
+            >
+              {gatewayLabel(g)}
+            </button>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
   const startYocoCheckout = async (opts: {
     amount: number;
     purpose: "fee" | "topup";
@@ -389,7 +416,7 @@ export default function MyAccount() {
     description?: string;
   }) => {
     if (!clubId || !clubMemberId) throw new Error("No club membership found.");
-    const gw = club?.payment_gateway;
+    const gw = payGateway;
     if (!isSupportedGateway(gw)) {
       throw new Error("No supported online payment gateway is configured for this club.");
     }
@@ -913,11 +940,12 @@ export default function MyAccount() {
               <>
                 <Card className="p-3 bg-muted/50">
                   <p className="text-xs text-muted-foreground">
-                    Card payments are processed via {club?.payment_gateway || "the club's payment gateway"}.
+                    Card payments are processed via {gatewayLabel(payGateway)}.
                     Your top-up will be confirmed by the admin after payment is verified.
                   </p>
                 </Card>
-                <FnbPaymentNotice gateway={club?.payment_gateway} />
+                <GatewayPicker />
+                <FnbPaymentNotice gateway={payGateway} />
               </>
             )}
 
@@ -1068,10 +1096,11 @@ export default function MyAccount() {
               <>
                 <Card className="p-3 bg-muted/50">
                   <p className="text-xs text-muted-foreground">
-                    Card payment via {club?.payment_gateway || "payment gateway"}. You will be redirected to complete the card payment before fees are marked as paid.
+                    Card payment via {gatewayLabel(payGateway)}. You will be redirected to complete the card payment before fees are marked as paid.
                   </p>
                 </Card>
-                <FnbPaymentNotice gateway={club?.payment_gateway} />
+                <GatewayPicker />
+                <FnbPaymentNotice gateway={payGateway} />
               </>
             )}
 

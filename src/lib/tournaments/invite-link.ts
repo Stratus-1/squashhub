@@ -46,6 +46,9 @@ export type InvitePayload = {
   divisions?: InviteDivision[] | null;
   /** Divisions already chosen by this invitee. */
   selected_divisions?: number[] | null;
+  /** 'time_capped_points' = Bells: all leagues run at once, so only one entry. */
+  scoring_mode?: string | null;
+
   /** 'club' = courts booked by the club, 'self' = players arrange their own games. */
   scheduling_mode?: string | null;
   invitee_name?: string | null;

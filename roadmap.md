@@ -32,3 +32,9 @@
 - [ ] Verify the member's R1,000 Stitch top-up against the provider before crediting it.
 - [x] Route post-registration payment through the ordinary My Account top-up flow.
 - [x] Keep once-off top-ups separate from the recurring card mandate flow.
+
+## Stitch once-off payment settlement (Capitec Pay style)
+- [x] Store the Stitch collection webhook signing secret (Svix) so recurring events verify.
+- [x] Confirm all quarantined webhook events were already settled (nothing to replay).
+- [x] Shared settlement helpers (`_shared/stitch-settlement.ts`) used by verify + sweep.
+- [x] `stitch-sweep-pending-payments` cron (every 10 min) re-checks once-off sessions unverified after 15 min and settles them.

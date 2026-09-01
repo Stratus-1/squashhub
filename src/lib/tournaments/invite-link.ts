@@ -91,6 +91,16 @@ export function requiresDivisionChoice(payload: InvitePayload | null | undefined
 }
 
 /**
+ * Bells (time-capped) tournaments play every league simultaneously until the
+ * bell, so a player can only ever be entered in ONE league.
+ */
+export function allowsMultipleDivisions(payload: InvitePayload | null | undefined): boolean {
+  return payload?.scoring_mode !== "time_capped_points";
+}
+
+
+
+/**
  * What to pre-tick: whatever the invitee already chose, otherwise the single
  * division when there is only one to enter.
  */

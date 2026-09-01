@@ -255,7 +255,15 @@ export default function MyAccount() {
   const onboardingPaymentOpened = useRef(false);
   useEffect(() => {
     if (searchParams.get("onboarding") !== "payment") return;
-    if (onboardingPaymentOpened.current || txLoading || journalLoading || feesLoading) return;
+    // Disabled React Query queries report `isLoading=false`, so identity must
+    // exist before treating the account data as ready. Otherwise the marker is
+    // consumed during the brief MemberContext hydration gap with a R0 balance.
+    if (
+      onboardingPaymentOpened.current ||
+      memberContextLoading || clubLoading || activeClubMemberLoading ||
+      !clubId || !clubMemberId ||
+      txLoading || journalLoading || feesLoading
+    ) return;
 
     onboardingPaymentOpened.current = true;
     const amountOwing = Math.abs(Math.min(creditBalance, 0));
@@ -270,7 +278,12 @@ export default function MyAccount() {
     const next = new URLSearchParams(searchParams);
     next.delete("onboarding");
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams, txLoading, journalLoading, feesLoading, creditBalance]);
+  }, [
+    searchParams, setSearchParams,
+    memberContextLoading, clubLoading, activeClubMemberLoading,
+    clubId, clubMemberId,
+    txLoading, journalLoading, feesLoading, creditBalance,
+  ]);
 
   // Available "cash" in wallet (top-ups minus confirmed account charges),
   // i.e. how much can still be spent paying outstanding fees via credit.

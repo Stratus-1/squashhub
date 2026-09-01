@@ -1,5 +1,5 @@
 import { useIsMobile } from "@/hooks/use-mobile";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useMyClub } from "@/hooks/use-club";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -39,12 +39,12 @@ export function DesktopShell({
   }
 
   return (
-    <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex w-full">
+    <SidebarProvider defaultOpen>
         {/* Sidebar is hidden on mobile so rotation between portrait/landscape
             doesn't remount the page tree and lose in-page state (active tabs etc.) */}
-        {!isMobile && <AppSidebar />}
-        <div className="flex-1 flex flex-col min-w-0 relative isolate">
+        {!isMobile && <AppSidebar variant="inset" />}
+        <SidebarInset className="min-w-0 overflow-hidden">
+          <div className="flex min-h-svh flex-col relative isolate">
           {!skipBg && !isMobile && (
             <>
               {/* Layer 1: photo background — confined to main content panel */}
@@ -73,8 +73,8 @@ export function DesktopShell({
             </>
           )}
           {!isMobile && (
-            <header className="relative z-10 h-10 flex items-center gap-1 border-b border-border/40 bg-background/40 backdrop-blur sticky top-0">
-              <SidebarTrigger className="ml-2" aria-label="Toggle menu" />
+            <header className="relative z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border/40 bg-background/70 px-4 backdrop-blur sticky top-0 md:px-6">
+              <SidebarTrigger aria-label="Toggle menu" />
               {!isHome && (
                 <Button
                   type="button"
@@ -94,9 +94,9 @@ export function DesktopShell({
               </div>
             </header>
           )}
-          <main className="relative z-10 flex-1 min-w-0">{children}</main>
-        </div>
-      </div>
+            <div className="relative z-10 flex-1 min-w-0">{children}</div>
+          </div>
+        </SidebarInset>
     </SidebarProvider>
   );
 }

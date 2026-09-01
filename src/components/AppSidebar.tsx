@@ -42,7 +42,7 @@ import AppVersionBadge from "@/components/AppVersionBadge";
 
 type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }> };
 
-export function AppSidebar() {
+export function AppSidebar({ variant = "sidebar" }: { variant?: "sidebar" | "floating" | "inset" }) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { pathname, search } = useLocation();
@@ -142,6 +142,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar
+      variant={variant}
       collapsible="icon"
       className="border-r border-sidebar-border bg-[hsl(220_45%_5%)]"
     >

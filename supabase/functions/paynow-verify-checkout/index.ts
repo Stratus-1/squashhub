@@ -3,6 +3,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isPaynowPaid } from "../_shared/paynow.ts";
 import { pollPaynow, mapStatus, settlePaynowSession } from "../_shared/paynow-settlement.ts";
+import { resolveGatewayCreds } from "../_shared/gateway-creds.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
       .select("payment_gateway_credentials")
       .eq("club_id", session.club_id)
       .maybeSingle();
-    const integrationKey = ((secrets?.payment_gateway_credentials as any)?.integration_key || "").trim();
+    const integrationKey = (resolveGatewayCreds(secrets?.payment_gateway_credentials, "paynow").integration_key || "").trim();
     if (!integrationKey) return json({ error: "Paynow key not configured" }, 400);
 
     // Reconcile recent pending sessions, same as Yoco verify does.

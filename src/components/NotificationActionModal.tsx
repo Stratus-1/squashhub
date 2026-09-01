@@ -209,7 +209,7 @@ export function NotificationActionModal() {
     const age = Date.now() - new Date(n.created_at).getTime();
     return age <= PERSISTENT_FRESH_MS;
   });
-  const nonPersistentNotifications = notifications.filter((n) => !isPersistentInvite(n));
+  
   const current = notifications[currentIndex] || null;
   const total = notifications.length;
   const isLast = currentIndex >= total - 1;
@@ -225,34 +225,37 @@ export function NotificationActionModal() {
 
   const handleAction = useCallback(() => {
     if (!current) return;
-    if (!isPersistentInvite(current)) markRead.mutate(current.id);
+    // Explicit acknowledgement always clears the popup — including invites,
+    // which stay available in the notification bell.
+    markRead.mutate(current.id);
     const url = current.url || "/notifications";
     const navigation = getNotificationNavigation(current);
     const shouldOpenDetail = navigation.shouldOpenDetail || current.type === "marketing" || url.startsWith("/notifications");
     setOpen(false);
     setDismissed(true);
     navigate(shouldOpenDetail ? navigation.targetUrl : url);
-  }, [current, isPersistentInvite, markRead, navigate]);
+  }, [current, markRead, navigate]);
 
   const handleDismiss = useCallback(() => {
     if (!current) return;
-    if (!isPersistentInvite(current)) markRead.mutate(current.id);
+    markRead.mutate(current.id);
     if (isLast) {
       setOpen(false);
       setDismissed(true);
     } else {
       setCurrentIndex((i) => i + 1);
     }
-  }, [current, isLast, isPersistentInvite, markRead]);
+  }, [current, isLast, markRead]);
 
   const handleDismissAll = useCallback(() => {
     // Mark all as read
-    for (const n of nonPersistentNotifications) {
+    for (const n of notifications) {
       if (!n.read) markRead.mutate(n.id);
     }
     setOpen(false);
     setDismissed(true);
-  }, [nonPersistentNotifications, markRead]);
+  }, [notifications, markRead]);
+
 
   if (!user || total === 0) return null;
 

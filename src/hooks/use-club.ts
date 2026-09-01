@@ -513,8 +513,22 @@ export function useNationalBodyFees(clubId?: string) {
     queryFn: async () => {
       const { data, error } = await fromExt("national_body_fees").select("*").eq("club_id", clubId!);
       if (error) throw error;
-      return (data || []) as NationalBodyFee[];
+      if ((data || []).length) return (data || []) as NationalBodyFee[];
+      // Prospective members have no membership row yet, so RLS hides these fees.
+      // Fall back to the read-only RPC so joining/registration fees still show at signup.
+      const { data: rpcData, error: rpcErr } = await (supabase.rpc as any)("get_club_join_fees", {
+        _club_id: clubId!,
+      });
+      if (rpcErr) {
+        console.warn("[useNationalBodyFees] join-fee fallback failed:", rpcErr);
+        return [] as NationalBodyFee[];
+      }
+      return ((rpcData || []) as any[]).map((r) => ({
+        ...r,
+        due_month: r.fee_due_month,
+      })) as NationalBodyFee[];
     },
+
     enabled: !!clubId,
   });
 }

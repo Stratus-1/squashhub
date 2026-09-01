@@ -13211,6 +13211,24 @@ export type Database = {
           phone: string
         }[]
       }
+      get_club_join_fees: {
+        Args: { _club_id: string }
+        Returns: {
+          abbreviation: string
+          active: boolean
+          billing_period: string
+          body_name: string
+          club_id: string
+          due_day: number
+          fee_annual: number
+          fee_class: string
+          fee_due_month: number
+          fee_payable_to: string
+          fee_type: string
+          id: string
+          pro_rate: boolean
+        }[]
+      }
       get_club_member_config: {
         Args: { _club_id: string }
         Returns: {

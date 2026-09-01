@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Eye, LayoutGrid, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
+import { LayoutGrid, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DEVICE_CATEGORY_LIST,
@@ -284,11 +284,16 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                       key={device.id}
                       className="overflow-hidden rounded-xl border bg-card/80 shadow-sm"
                     >
-                      <div className="grid grid-cols-[88px_1fr] gap-3 p-3">
-                        <div
+                      <div className="grid grid-cols-[64px_1fr] gap-3 p-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDevice(device)}
+                          aria-label={`View details for ${device.name}`}
+                          title={`View ${device.name}`}
                           className={cn(
-                            "relative flex h-20 w-20 items-center justify-center rounded-2xl border overflow-hidden",
+                            "relative flex h-14 w-14 items-center justify-center rounded-2xl border overflow-hidden",
                             "bg-gradient-to-br from-muted/80 to-muted/40",
+                            "transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           )}
                         >
                           <div
@@ -298,11 +303,11 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             )}
                           />
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.35),transparent_60%)]" />
-                          <div className="absolute inset-x-2 bottom-2 rounded-full bg-background/80 px-2 py-0.5 text-center text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <div className="absolute inset-x-1 bottom-1 rounded-full bg-background/80 px-1 py-0.5 text-center text-[8px] font-medium uppercase tracking-wide text-muted-foreground">
                             {group.label}
                           </div>
-                          <DeviceIcon className="relative z-10 h-8 w-8 text-foreground drop-shadow-sm" />
-                        </div>
+                          <DeviceIcon className="relative z-10 h-7 w-7 text-foreground drop-shadow-sm" />
+                        </button>
 
                         <div className="min-w-0">
                           <div className="flex items-start justify-between gap-2">
@@ -332,15 +337,6 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             </div>
 
                             <div className="flex items-center gap-1 shrink-0">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                onClick={() => setSelectedDevice(device)}
-                                aria-label={`View ${device.name}`}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -737,26 +733,26 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   })()}
                 </div>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-xl border bg-muted/25 p-3">
                       <p className="text-xs text-muted-foreground">Group</p>
                       <p className="font-medium">{DEVICE_CATEGORY_META[selectedDevice.category].label}</p>
                     </div>
-                    <div>
+                    <div className="rounded-xl border bg-muted/25 p-3">
                       <p className="text-xs text-muted-foreground">Switching</p>
                       <p className="font-medium">
                         {selectedDevice.control_mode === "pulse" ? "Momentary" : "On / off"}
                       </p>
                     </div>
-                    <div>
+                    <div className="rounded-xl border bg-muted/25 p-3">
                       <p className="text-xs text-muted-foreground">Provider</p>
                       <p className="font-medium capitalize">{selectedDevice.provider}</p>
                     </div>
-                    <div>
+                    <div className="rounded-xl border bg-muted/25 p-3">
                       <p className="text-xs text-muted-foreground">Status</p>
                       <p className="font-medium">{selectedDevice.enabled ? "Shown" : "Hidden"}</p>
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-2 rounded-xl border bg-muted/25 p-3">
                       <p className="text-xs text-muted-foreground">Behaviour</p>
                       <p className="font-medium">
                         {describeDeviceBehaviour(selectedDevice) ??
@@ -764,7 +760,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                       </p>
                     </div>
                     {selectedDevice.provider === "shelly" && (
-                      <div className="col-span-2">
+                      <div className="col-span-2 rounded-xl border bg-muted/25 p-3">
                         <p className="text-xs text-muted-foreground">Shelly device</p>
                         <p className="font-medium">
                           {selectedDevice.shelly_device_id

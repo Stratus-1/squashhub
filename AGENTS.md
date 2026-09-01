@@ -99,6 +99,7 @@ Do not run native open commands unless the task requires Android Studio or Xcode
 - Booking mutations affect availability, balances, visitors, invitations, reflow, lights, door access, and notifications.
 - Shelly BLE, Shelly HTTP, router polling, court lights, GoBook, and access provisioning are failure-prone external/device boundaries. Use timeouts, retries, idempotency, audit logs, and safe fallbacks.
 - Never expose club device credentials or router secrets to the browser.
+- IoT ownership is centralized: Shelly-connected lights, door relays, and gadgets are registered and managed from the `IoT / Shelly` admin tile under the `Lights`, `Access`, and `Gadgets` cards. Do not recreate parallel Shelly setup surfaces or a separate Shelly `Door Access` tile. See `docs/IOT_DEVICE_OWNERSHIP.md`.
 
 ### Payments and billing
 

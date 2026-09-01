@@ -8,8 +8,8 @@
  *   access  — secondary doors, gates, turnstiles
  *   gadgets — geysers, pumps, heaters, signage, anything else
  *
- * Court lights are deliberately NOT in this registry: they stay coupled to a
- * booking so the per-hour light fee still bills. See `lib/shelly-lights.ts`.
+ * Court booking logic may still use court records for billing and automation,
+ * but the Shelly device itself is managed through this registry.
  */
 import {
   DoorOpen,

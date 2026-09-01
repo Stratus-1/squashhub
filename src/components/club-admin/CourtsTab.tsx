@@ -160,7 +160,6 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
   const steps: SetupStep[] = [
     { id: "courts", label: "List courts", description: "Step one — name the courts your club plays on and choose which booking system those courts use.", complete: false },
     { id: "rules", label: "Booking rules", description: "Set slot length, opening hours, peak times and how many bookings a member may make.", complete: true },
-    { id: "lights", label: "Lights & relays", description: "Shelly court-light setup now lives in the IoT / Shelly tile.", complete: true },
     { id: "venues", label: "Other venues", description: "External tournament venues at other clubs.", complete: true },
 
   ];
@@ -192,22 +191,6 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           <HostingFeesCard club={club} />
           <ExternalBookingSection club={club} clubId={clubId} />
         </div>
-      )}
-
-
-
-      {step === "lights" && (
-      <div className="space-y-4">
-        <Card className="p-4 space-y-2">
-          <h3 className="font-semibold text-sm">Shelly court lights moved</h3>
-          <p className="text-xs text-muted-foreground">
-            Court light relay setup now lives in the IoT / Shelly tile, together with the main door and other registered devices.
-          </p>
-          <a href="/club-admin?tab=devices" className="text-xs font-medium text-primary underline">
-            Open IoT / Shelly
-          </a>
-        </Card>
-      </div>
       )}
 
       {step === "venues" && (
@@ -624,7 +607,7 @@ export function CourtsSection({ clubId, relayDeviceType, mode }: { clubId: strin
       <p className="text-[11px] text-muted-foreground">
         {showRelays
           ? "Each court from your list is shown below — enter its Shelly relay details here. Court names are managed on step 1."
-          : "Just the names of the courts members can book. Lighting and relay hardware is set up on the Lights & relays step."}
+          : "Just the names of the courts members can book. Shelly lighting hardware is managed from IoT / Shelly."}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {courts.map(c => {

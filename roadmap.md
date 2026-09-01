@@ -1,5 +1,10 @@
 # Roadmap
 
+## Current: registration fee signup verification + Wi-Fi member list + audit fix
+- [ ] Verify once-off registration fee is billed to every genuinely new member at signup.
+- [ ] Add a "Members paying Wi-Fi" tab/list in club admin Wi-Fi settings.
+- [ ] Harden `audit_events` INSERT policy so only trusted server-side paths can write audit records.
+
 ## Current: CSIR tournament invite extras + build fixes
 - [x] Add `invite_extra_details` column to `tournaments`
 - [x] Render extras inside auto-generated tournament details block in invites
@@ -40,7 +45,7 @@
 - [x] `stitch-sweep-pending-payments` cron (every 10 min) re-checks once-off sessions unverified after 15 min and settles them.
 
 ## Gordons Bay: paid top-up but booking not saved (K Baderoen)
-- [x] Diagnose: booking blocked by minimum-balance gate, member redirected to top-up, slot never created.
+- [x] Diagnose: booking blocked by minimum-balance gate, member redirected to top-top, slot never created.
 - [x] Restore Kouthar Baderoen's 01 Sep 17:00 booking (Court 1, lights on).
 - [x] Stash the in-progress booking before the top-up redirect and resume it on return.
 - [x] Clearer wording: "your slot is not booked yet" in the top-up prompt.

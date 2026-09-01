@@ -81,17 +81,22 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
     [displayedRate]
   );
 
+  // dashboard-01 style stat card: gradient surface, muted label, tabular value.
   const StatTile = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="rounded-xl bg-muted/40 border border-border backdrop-blur-md p-4 flex flex-col justify-between min-h-[110px]">
+    <div
+      data-slot="card"
+      className="rounded-xl border border-border bg-gradient-to-t from-primary/5 to-card shadow-xs backdrop-blur-md p-4 flex flex-col justify-between min-h-[110px]"
+    >
       <span className="text-xs text-muted-foreground uppercase tracking-wider">{label}</span>
       <span className="text-3xl font-heading font-bold text-foreground tabular-nums">{value}</span>
     </div>
   );
 
   return (
-    <div className="min-h-[calc(100vh-2.5rem)] relative font-sans">
+    <div className="@container/main min-h-[calc(100vh-2.5rem)] relative font-sans">
       {/* Soft tinted canvas — masks the global court photo and gives tiles real contrast. */}
       <div className="absolute inset-0 -z-10 bg-background" aria-hidden="true" />
+
 
       <div>
         <div className="px-8 pt-5 pb-4 flex items-end justify-between gap-4">

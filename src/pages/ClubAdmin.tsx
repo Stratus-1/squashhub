@@ -226,7 +226,7 @@ export default function ClubAdmin() {
       case "emails": return <EmailLogTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;
       case "whatsapp": return <div className="mt-4"><WhatsAppBillingCard clubId={club.id} /></div>;
-      case "router": return <RouterTab clubId={club.id} />;
+      case "router": return <RouterTab clubId={club.id} club={club} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
       case "rules": return <RulesTab clubId={club.id} club={club} />;
       case "skills": return <SkillsDirectoryTab clubId={club.id} />;

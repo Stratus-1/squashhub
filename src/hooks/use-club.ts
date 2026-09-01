@@ -14,6 +14,7 @@ export interface Club {
   email?: string;
   phone?: string;
   payment_gateway?: string;
+  payment_gateways?: string[] | null;
   payment_gateway_public_key?: string;
   member_fee_annual?: number;
   member_fee_due_month?: number;

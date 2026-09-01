@@ -13090,6 +13090,10 @@ export type Database = {
         Returns: string
       }
       current_verified_email: { Args: never; Returns: string }
+      default_member_number_prefix: {
+        Args: { _name: string; _subdomain: string }
+        Returns: string
+      }
       delete_league_round_cascade: {
         Args: { _round_id: string }
         Returns: Json

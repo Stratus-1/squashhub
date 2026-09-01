@@ -118,29 +118,22 @@ export default function SuperAdminDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <DashboardMain className="gap-6" constrained={false}>
       <SEO title="Super Admin Dashboard" noIndex />
       <div>
         <h2 className="text-2xl font-bold text-white">Dashboard</h2>
         <p className="text-sm text-white/60 mt-1">Platform overview</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <Card
-            key={s.label}
-            className="bg-[hsl(220_45%_8%/0.85)] border border-white/10 backdrop-blur-md rounded-2xl p-5 flex items-start gap-4 text-white"
-          >
-            <div className={`p-2.5 rounded-xl bg-white/[0.04] border border-white/10 ${s.color}`}>
-              <s.icon className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm text-white/60">{s.label}</p>
-              <p className="text-2xl font-bold text-white">{s.value}</p>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <DashboardStatCards
+        tone="dark"
+        stats={stats.map((s) => ({
+          label: s.label,
+          value: s.value,
+          icon: s.icon,
+        }))}
+      />
+
 
       <Card className="bg-[hsl(220_45%_8%/0.85)] border border-white/10 backdrop-blur-md rounded-2xl p-5 text-white">
         <div className="flex items-center justify-between mb-4">

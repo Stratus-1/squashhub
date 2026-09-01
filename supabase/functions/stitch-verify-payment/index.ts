@@ -1,12 +1,13 @@
 // Verifies a Stitch Express payment by session and finalises it in our DB.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import {
 import { resolveGatewayCreds } from "../_shared/gateway-creds.ts";
+import {
   finalisePayment,
   isCompletedState,
   isFailedState,
   lookupStitchStatus,
 } from "../_shared/stitch-settlement.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

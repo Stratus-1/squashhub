@@ -911,6 +911,21 @@ export default function Bookings() {
         });
         console.log("[booking-balance] gate result", check);
         if (!check.allowed) {
+          // Remember the slot so it can be resumed after the top-up.
+          try {
+            localStorage.setItem(
+              PENDING_BOOKING_KEY,
+              JSON.stringify({
+                clubId: myClub.id,
+                memberId: activeMember.id,
+                dateStr,
+                dialog: bookingDialog,
+                savedAt: Date.now(),
+              }),
+            );
+          } catch {
+            /* storage unavailable — prompt still shows */
+          }
           setTopUpPrompt({
             open: true,
             shortfall: check.shortfall,
@@ -920,6 +935,7 @@ export default function Bookings() {
           });
           return;
         }
+
       } catch (e) {
         console.error("[booking-balance] check failed, allowing booking:", e);
       }

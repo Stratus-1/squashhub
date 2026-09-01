@@ -294,8 +294,9 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     setGateway(club.payment_gateway || "");
     setFeePercent((club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : "");
     setMethodFees(methodFeesFromClub(club));
+    setExtraGateways((((club as any).payment_gateways as string[]) || []).filter(g => g && g !== club.payment_gateway));
     setAcceptedMethods(new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"]));
-  }, [club.payment_gateway, (club as any).accepted_payment_methods]);
+  }, [club.payment_gateway, (club as any).payment_gateways, (club as any).accepted_payment_methods]);
 
   const selectedGateway = useMemo(() => GATEWAYS.find(g => g.id === gateway), [gateway]);
 
@@ -312,8 +313,11 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       });
       const saved = (secrets as any).payment_gateway_credentials;
       if (saved && typeof saved === "object") {
-        setCredentials(saved);
+        const { __gateways, ...flat } = saved as Record<string, any>;
+        setCredentials(flat as Record<string, string>);
+        setExtraCreds(__gateways && typeof __gateways === "object" ? __gateways : {});
       }
+
       // Backward compat: if old payment_gateway_secret_key exists and gateway is set
       if (!saved && secrets.payment_gateway_secret_key && club.payment_gateway) {
         const compat: Record<string, string> = {};

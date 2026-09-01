@@ -12693,6 +12693,10 @@ export type Database = {
         Returns: Json
       }
       age_group_for_age: { Args: { _age: number }; Returns: string }
+      allocate_next_member_number: {
+        Args: { _club_id: string }
+        Returns: string
+      }
       apply_ladder_adjustments: {
         Args: {
           _adjustments: Json

@@ -358,7 +358,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         </div>
       )}
 
-      {devicesError && (
+      {devicesError && allDevices.length === 0 && (
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="p-4 text-sm">
             <p className="font-medium text-destructive">The IoT device registry could not be loaded.</p>

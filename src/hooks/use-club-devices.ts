@@ -22,7 +22,14 @@ export function useClubDevices(clubId?: string) {
         .order("category")
         .order("sort_order")
         .order("name");
-      if (error) throw error;
+      // Older deployments do not have the registry table yet. Let the admin
+      // page fall back to the legacy Shelly sources while the migration rolls
+      // out instead of replacing the whole IoT page with an error state.
+      if (error) {
+        const missingRegistry = error.code === "42P01" || error.code === "PGRST205";
+        if (missingRegistry) return [] as ClubDevice[];
+        throw error;
+      }
       return (data || []) as ClubDevice[];
     },
     enabled: !!clubId,

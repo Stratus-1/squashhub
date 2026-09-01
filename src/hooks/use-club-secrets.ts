@@ -14,6 +14,11 @@ export interface ClubSecrets {
   payment_gateway_secret_key?: string;
   payment_gateway_credentials?: Record<string, string>;
   shelly_auth_key?: string;
+  shelly_server_url?: string;
+  shelly_door_device_id?: string;
+  shelly_door_channel?: number;
+  shelly_door_pulse_ms?: number;
+  shelly_door_ble_mac?: string;
   bank_name?: string;
   bank_account_name?: string;
   bank_account_number?: string;

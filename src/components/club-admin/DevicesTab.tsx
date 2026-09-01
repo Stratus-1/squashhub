@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fromExt } from "@/lib/supabase-ext";
 import {
   DEVICE_CATEGORY_LIST,
   DEVICE_CATEGORY_META,
@@ -50,6 +52,7 @@ import {
   useDeviceControl,
   useSaveDevice,
 } from "@/hooks/use-club-devices";
+import { useClubSecrets } from "@/hooks/use-club-secrets";
 
 type DeviceForm = {
   id?: string;
@@ -154,7 +157,29 @@ const CATEGORY_THUMBNAIL_BG: Record<DeviceCategory, string> = {
  * its geyser under Lights just because it happens to be on a light circuit.
  */
 export function DevicesTab({ clubId }: { clubId: string }) {
-  const { data: devices, isLoading } = useClubDevices(clubId);
+  const { data: devices, isLoading, error: devicesError } = useClubDevices(clubId);
+  const { data: secrets, isLoading: secretsLoading } = useClubSecrets(clubId);
+  const { data: courts = [], isLoading: courtsLoading } = useQuery({
+    queryKey: ["iot-legacy-court-relays", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("courts")
+        .select("id, name, club_id, relay_device_id, relay_channel, relay_ble_mac")
+        .eq("club_id", clubId)
+        .eq("is_external", false)
+        .not("relay_device_id", "is", null)
+        .order("name");
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: number;
+        name: string;
+        club_id: string;
+        relay_device_id: string;
+        relay_channel?: number | null;
+        relay_ble_mac?: string | null;
+      }>;
+    },
+    enabled: !!clubId,
+  });
   const save = useSaveDevice();
   const del = useDeleteDevice(clubId);
   const control = useDeviceControl(clubId);
@@ -165,7 +190,72 @@ export function DevicesTab({ clubId }: { clubId: string }) {
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
 
-  const grouped = useMemo(() => groupDevices((devices || []) as ClubDevice[]), [devices]);
+  const allDevices = useMemo(() => {
+    const registered = (devices || []) as ClubDevice[];
+    const registeredKeys = new Set(
+      registered.map((device) => `${device.category}:${device.shelly_device_id || ""}`),
+    );
+    const legacy: ClubDevice[] = [];
+
+    const doorId = (secrets as any)?.shelly_door_device_id as string | undefined;
+    if (doorId && !registeredKeys.has(`access:${doorId}`)) {
+      legacy.push({
+        id: `legacy-door-${clubId}`,
+        club_id: clubId,
+        category: "access",
+        name: "Main door",
+        icon: "door",
+        location: "Main entrance",
+        notes: "Existing Shelly setup from the previous Door Access configuration.",
+        enabled: true,
+        sort_order: -100,
+        control_mode: "pulse",
+        provider: "shelly",
+        shelly_device_id: doorId,
+        shelly_channel: Number((secrets as any)?.shelly_door_channel ?? 0),
+        pulse_ms: Math.max(Number((secrets as any)?.shelly_door_pulse_ms ?? 3000), 200),
+        ble_mac: (secrets as any)?.shelly_door_ble_mac || null,
+        auto_off_minutes: null,
+        last_state: null,
+        last_state_at: null,
+        last_error: null,
+        created_at: "",
+        updated_at: "",
+      });
+    }
+
+    for (const court of courts) {
+      const deviceId = court.relay_device_id;
+      if (!deviceId || registeredKeys.has(`lights:${deviceId}`)) continue;
+      legacy.push({
+        id: `legacy-court-light-${court.id}`,
+        club_id: clubId,
+        category: "lights",
+        name: `${court.name} lights`,
+        icon: "lightbulb",
+        location: court.name,
+        notes: "Existing Shelly setup from the previous court relay configuration.",
+        enabled: true,
+        sort_order: court.id,
+        control_mode: "toggle",
+        provider: "shelly",
+        shelly_device_id: deviceId,
+        shelly_channel: Number(court.relay_channel ?? 0),
+        pulse_ms: 3000,
+        ble_mac: court.relay_ble_mac || null,
+        auto_off_minutes: null,
+        last_state: null,
+        last_state_at: null,
+        last_error: null,
+        created_at: "",
+        updated_at: "",
+      });
+    }
+
+    return [...registered, ...legacy];
+  }, [clubId, courts, devices, secrets]);
+
+  const grouped = useMemo(() => groupDevices(allDevices), [allDevices]);
 
   const set = <K extends keyof DeviceForm>(key: K, value: DeviceForm[K]) =>
     setForm((p) => (p ? { ...p, [key]: value } : p));
@@ -262,10 +352,22 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         </CardHeader>
       </Card>
 
-      {isLoading && (
+      {(isLoading || secretsLoading || courtsLoading) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading devices…
         </div>
+      )}
+
+      {devicesError && (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="p-4 text-sm">
+            <p className="font-medium text-destructive">The IoT device registry could not be loaded.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Existing Shelly setup is still being checked from the legacy configuration. If this
+              message remains, the database migration needs to be applied.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid items-start gap-4 md:grid-cols-3">

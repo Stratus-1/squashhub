@@ -45,6 +45,7 @@ import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { CORE_SETUP_KEYS, isTabVisible, type Capability } from "@/lib/capabilities";
 import { useClubCapabilityRows, useCapabilities } from "@/hooks/use-club-capabilities";
 import { FeaturesTab } from "@/components/club-admin/FeaturesTab";
+import { DashboardMain } from "@/components/dashboard/dashboard-layout";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 
 
@@ -247,7 +248,7 @@ export default function ClubAdmin() {
           title={club.name}
           subtitle="Club Administration"
         />
-        <div className="max-w-7xl mx-auto px-3 md:px-5 space-y-4">
+        <DashboardMain className="px-3 md:px-5 gap-4 md:gap-4 py-4 md:py-4">
           {/* Setup & Configuration tiles — with completion status */}
           {visibleSetup.length > 0 && (
             <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
@@ -345,7 +346,7 @@ export default function ClubAdmin() {
           <div className="[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
             {renderContent()}
           </div>
-        </div>
+        </DashboardMain>
         <QuickSetupWizard clubId={club.id} open={wizardOpen} onOpenChange={setWizardOpen} />
         <div className="pt-3 mt-2 border-t border-border/50 flex justify-end">
           <AppVersionBadge />

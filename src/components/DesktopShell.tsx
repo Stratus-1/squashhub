@@ -37,7 +37,7 @@ export function DesktopShell({
   }
 
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider defaultOpen={false}>
         {/* Sidebar is hidden on mobile so rotation between portrait/landscape
             doesn't remount the page tree and lose in-page state (active tabs etc.) */}
         {!isMobile && <AppSidebar variant="inset" />}

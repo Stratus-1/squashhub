@@ -11,7 +11,7 @@ import shLogo from "@/assets/sh-logo.png";
  */
 export function SuperAdminLayout() {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <SuperAdminSidebar />
       <SidebarInset
         className="admin-shell min-w-0"

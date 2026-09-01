@@ -109,9 +109,10 @@ export function defaultDivisionSelection(payload: InvitePayload | null | undefin
   const chosen = (payload?.selected_divisions || [])
     .map((n) => Number(n))
     .filter((n) => divisions.some((d) => d.group_number === n));
-  if (chosen.length > 0) return chosen;
+  if (chosen.length > 0) return allowsMultipleDivisions(payload) ? chosen : [chosen[0]];
   return divisions.length === 1 ? [divisions[0].group_number] : [];
 }
+
 
 
 export type InviteState =

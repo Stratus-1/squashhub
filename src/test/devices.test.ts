@@ -35,6 +35,10 @@ const device = (over: Partial<ClubDevice> = {}): ClubDevice => ({
 });
 
 describe("device categories", () => {
+  it("labels the lights category as Court lights", () => {
+    expect(DEVICE_CATEGORY_META.lights.label).toBe("Court lights");
+  });
+
   it("only gadgets is restricted to admins and staff", () => {
     const restricted = DEVICE_CATEGORIES.filter((c) => DEVICE_CATEGORY_META[c].restricted);
     expect(restricted).toEqual(["gadgets"]);
@@ -50,11 +54,11 @@ describe("device categories", () => {
 describe("groupDevices", () => {
   it("splits devices into the three groups", () => {
     const grouped = groupDevices([
-      device({ id: "a", category: "lights", name: "Patio" }),
+      device({ id: "a", category: "lights", name: "Court 1 court lights" }),
       device({ id: "b", category: "access", name: "Side gate" }),
       device({ id: "c", category: "gadgets", name: "Geyser" }),
     ]);
-    expect(grouped.lights.map((d) => d.name)).toEqual(["Patio"]);
+    expect(grouped.lights.map((d) => d.name)).toEqual(["Court 1 court lights"]);
     expect(grouped.access.map((d) => d.name)).toEqual(["Side gate"]);
     expect(grouped.gadgets.map((d) => d.name)).toEqual(["Geyser"]);
   });

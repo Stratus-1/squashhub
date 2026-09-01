@@ -24,7 +24,7 @@ import {
 
 /**
  * "Club Controls" — the single place every switchable thing at the club is
- * rendered, grouped by what a member calls it: Lights, Access, Gadgets.
+ * rendered, grouped by what a member calls it: Court lights, Access, Gadgets.
  *
  * Before this existed the door was a standalone card under the tile grid, the
  * court lights only appeared inside a live booking banner, and mobile and

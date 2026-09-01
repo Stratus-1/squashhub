@@ -22,6 +22,20 @@ type ShellyDeviceState = {
   raw: string;
 };
 
+type ControlDevice = {
+  id: string;
+  club_id: string;
+  category: "lights" | "access" | "gadgets";
+  name: string;
+  enabled: boolean;
+  control_mode: "toggle" | "pulse";
+  provider: "shelly" | "other";
+  shelly_device_id: string | null;
+  shelly_channel: number;
+  pulse_ms: number;
+  auto_off_minutes: number | null;
+};
+
 /** Read the relay's actual state — Shelly Cloud acknowledges delivery, not actuation. */
 async function getDeviceStatus(params: {
   server?: string | null;
@@ -167,22 +181,79 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Authorisation is decided in the database, not here, so the rule cannot
-    // drift from the RLS policy that hides gadgets from ordinary members.
-    const { data: allowed, error: permErr } = await admin.rpc("can_operate_device", {
-      _user_id: userId,
-      _device_id: device_id,
-    });
-    if (permErr) throw permErr;
-    if (!allowed) return json({ error: "You are not allowed to operate this device" }, 403);
-
-    const { data: device, error: devErr } = await admin
-      .from("club_devices")
-      .select("*")
-      .eq("id", device_id)
-      .maybeSingle();
-    if (devErr) throw devErr;
+    // The registry migration is still rolling out on some clubs. Resolve the
+    // old court-light IDs during that window so existing relays remain usable.
+    let device: ControlDevice | null = null;
+    let isLegacy = false;
+    if (/^\d{8}-\d{4}-[1-5]\d{3}-[89ab]\d{3}-[0-9a-f]{12}$/i.test(device_id)) {
+      const { data, error: devErr } = await admin
+        .from("club_devices")
+        .select("*")
+        .eq("id", device_id)
+        .maybeSingle();
+      if (devErr) throw devErr;
+      device = data as ControlDevice | null;
+    } else {
+      const courtMatch = device_id.match(/^legacy-court-light-(\d+)$/);
+      if (courtMatch) {
+        const { data: court, error: courtErr } = await admin
+          .from("courts")
+          .select("id, name, club_id, relay_device_id, relay_channel")
+          .eq("id", Number(courtMatch[1]))
+          .maybeSingle();
+        if (courtErr) throw courtErr;
+        if (court?.relay_device_id) {
+          device = {
+            id: device_id,
+            club_id: court.club_id,
+            category: "lights",
+            name: `${court.name} lights`,
+            enabled: true,
+            control_mode: "toggle",
+            provider: "shelly",
+            shelly_device_id: court.relay_device_id,
+            shelly_channel: Number(court.relay_channel ?? 0),
+            pulse_ms: 3000,
+            auto_off_minutes: null,
+          };
+          isLegacy = true;
+        }
+      }
+    }
     if (!device) return json({ error: "Device not found" }, 404);
+
+    // Prefer the database policy function. If the registry migration has not
+    // reached this project yet, use the same member-facing rule for legacy
+    // lights/access and admin membership for all other devices.
+    const { data: allowed, error: permErr } = isLegacy
+      ? { data: null, error: null }
+      : await admin.rpc("can_operate_device", {
+          _user_id: userId,
+          _device_id: device.id,
+        });
+    if (permErr) {
+      if (!permErr.message?.toLowerCase().includes("can_operate_device")) throw permErr;
+      const { data: membership, error: membershipErr } = await admin
+        .from("club_members")
+        .select("id, role")
+        .eq("club_id", device.club_id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (membershipErr) throw membershipErr;
+      const fallbackAllowed = !!membership && (device.category === "lights" || device.category === "access" || membership.role === "admin");
+      if (!fallbackAllowed) return json({ error: "You are not allowed to operate this device" }, 403);
+    } else if (!isLegacy && !allowed) {
+      return json({ error: "You are not allowed to operate this device" }, 403);
+    } else if (isLegacy) {
+      const { data: membership, error: membershipErr } = await admin
+        .from("club_members")
+        .select("id")
+        .eq("club_id", device.club_id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (membershipErr) throw membershipErr;
+      if (!membership) return json({ error: "You are not allowed to operate this device" }, 403);
+    }
 
     if (device.provider !== "shelly") {
       return json(
@@ -215,13 +286,15 @@ Deno.serve(async (req) => {
     // Read-only path — used by the dashboard to show real state on load.
     if (action === "status") {
       const state = await getDeviceStatus(shelly);
-      await admin
-        .from("club_devices")
-        .update({
-          last_state: state.output,
-          last_state_at: new Date().toISOString(),
-        })
-        .eq("id", device_id);
+      if (!isLegacy) {
+        await admin
+          .from("club_devices")
+          .update({
+            last_state: state.output,
+            last_state_at: new Date().toISOString(),
+          })
+          .eq("id", device_id);
+      }
       return json({ ok: true, online: state.online, state: state.output });
     }
 
@@ -281,14 +354,16 @@ Deno.serve(async (req) => {
         : `Shelly accepted the command but "${device.name}" did not switch ${turnOn ? "on" : "off"}. Check the configured channel.`
       : null;
 
-    await admin
-      .from("club_devices")
-      .update({
-        last_state: failed ? device.last_state : action === "pulse" ? false : turnOn,
-        last_state_at: new Date().toISOString(),
-        last_error: errorText,
-      })
-      .eq("id", device_id);
+    if (!isLegacy) {
+      await admin
+        .from("club_devices")
+        .update({
+          last_state: failed ? null : action === "pulse" ? false : turnOn,
+          last_state_at: new Date().toISOString(),
+          last_error: errorText,
+        })
+        .eq("id", device_id);
+    }
 
     if (failed) return json({ error: errorText }, 502);
 

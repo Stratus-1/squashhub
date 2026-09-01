@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
+import { CircleCheck, CircleDashed, Eye, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import {
@@ -44,7 +44,6 @@ import {
   type DeviceCategory,
   deviceIcon,
   describeDeviceBehaviour,
-  groupDevices,
 } from "@/lib/devices";
 import {
   useClubDevices,
@@ -52,10 +51,33 @@ import {
   useDeviceControl,
   useSaveDevice,
 } from "@/hooks/use-club-devices";
-import { useClubSecrets } from "@/hooks/use-club-secrets";
+import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
+import { triggerShellyDoor } from "@/lib/shelly-door";
+
+type DeviceSource = "registry" | "court" | "main-access";
+
+type IoTDevice = ClubDevice & {
+  source: DeviceSource;
+  configured: boolean;
+  court_id?: number;
+  server_url?: string | null;
+  auth_key?: string | null;
+};
+
+type CourtRow = {
+  id: number;
+  name: string;
+  club_id: string;
+  relay_device_id: string | null;
+  relay_channel?: number | null;
+  relay_ble_mac?: string | null;
+  relay_server?: string | null;
+};
 
 type DeviceForm = {
   id?: string;
+  source: DeviceSource;
+  court_id?: number;
   category: DeviceCategory;
   name: string;
   icon: string;
@@ -70,9 +92,12 @@ type DeviceForm = {
   ble_mac: string;
   auto_off_minutes: string;
   sort_order: string;
+  server_url: string;
+  auth_key: string;
 };
 
 const emptyForm = (category: DeviceCategory): DeviceForm => ({
+  source: "registry",
   category,
   name: "",
   icon: "",
@@ -87,10 +112,14 @@ const emptyForm = (category: DeviceCategory): DeviceForm => ({
   ble_mac: "",
   auto_off_minutes: "",
   sort_order: "0",
+  server_url: "",
+  auth_key: "",
 });
 
-const toForm = (d: ClubDevice): DeviceForm => ({
+const toForm = (d: IoTDevice): DeviceForm => ({
   id: d.id,
+  source: d.source,
+  court_id: d.court_id,
   category: d.category,
   name: d.name,
   icon: d.icon || "",
@@ -105,23 +134,25 @@ const toForm = (d: ClubDevice): DeviceForm => ({
   ble_mac: d.ble_mac || "",
   auto_off_minutes: d.auto_off_minutes == null ? "" : String(d.auto_off_minutes),
   sort_order: String(d.sort_order ?? 0),
+  server_url: d.server_url || "",
+  auth_key: d.auth_key || "",
 });
 
 const ADD_OPTIONS: Array<{ category: DeviceCategory; title: string; description: string }> = [
   {
     category: "lights",
-    title: "Add a light",
-    description: "Clubhouse, outside or parking lights controlled from a relay.",
+    title: "Set up court lights",
+    description: "Configure the next court from the club's existing court list.",
   },
   {
     category: "access",
-    title: "Add access",
-    description: "Secondary doors, gates and turnstiles.",
+    title: "Add access device",
+    description: "Add another door, gate or turnstile beyond the main entrance.",
   },
   {
     category: "gadgets",
     title: "Add a gadget",
-    description: "Geysers, pumps, heaters, signage and other equipment.",
+    description: "Geysers, air conditioners, pumps, heaters, signage and other equipment.",
   },
 ];
 
@@ -152,31 +183,25 @@ const CATEGORY_THUMBNAIL_BG: Record<DeviceCategory, string> = {
 /**
  * Admin surface for the club device registry.
  *
- * Devices are added under the group a member would look for them in, and each
- * group's own description explains what belongs there — so a club doesn't file
- * its geyser under Lights just because it happens to be on a light circuit.
+ * Devices are added under the group a member would look for them in.
+ * Court lights are generated from the court list; access and gadgets are
+ * managed alongside them without losing their separate operational meaning.
  */
 export function DevicesTab({ clubId }: { clubId: string }) {
+  const queryClient = useQueryClient();
   const { data: devices, isLoading, error: devicesError } = useClubDevices(clubId);
   const { data: secrets, isLoading: secretsLoading } = useClubSecrets(clubId);
+  const updateSecrets = useUpdateClubSecrets();
   const { data: courts = [], isLoading: courtsLoading } = useQuery({
-    queryKey: ["iot-legacy-court-relays", clubId],
+    queryKey: ["iot-courts", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("courts")
-        .select("id, name, club_id, relay_device_id, relay_channel, relay_ble_mac")
+        .select("id, name, club_id, relay_device_id, relay_channel, relay_ble_mac, relay_server")
         .eq("club_id", clubId)
         .eq("is_external", false)
-        .not("relay_device_id", "is", null)
         .order("name");
       if (error) throw error;
-      return (data || []) as Array<{
-        id: number;
-        name: string;
-        club_id: string;
-        relay_device_id: string;
-        relay_channel?: number | null;
-        relay_ble_mac?: string | null;
-      }>;
+      return (data || []) as CourtRow[];
     },
     enabled: !!clubId,
   });
@@ -185,56 +210,70 @@ export function DevicesTab({ clubId }: { clubId: string }) {
   const control = useDeviceControl(clubId);
 
   const [form, setForm] = useState<DeviceForm | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<ClubDevice | null>(null);
-  const [selectedDevice, setSelectedDevice] = useState<ClubDevice | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<IoTDevice | null>(null);
+  const [selectedDevice, setSelectedDevice] = useState<IoTDevice | null>(null);
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
+  const [savingForm, setSavingForm] = useState(false);
 
   const allDevices = useMemo(() => {
-    const registered = (devices || []) as ClubDevice[];
-    const registeredKeys = new Set(
-      registered.map((device) => `${device.category}:${device.shelly_device_id || ""}`),
-    );
-    const legacy: ClubDevice[] = [];
+    // Court lights belong to court records so bookings, billing and relay
+    // automation always refer to the same source of truth.
+    const doorId = secrets?.shelly_door_device_id || null;
+    const registered = ((devices || []) as ClubDevice[])
+      .filter((device) => device.category !== "lights")
+      .filter((device) => !(doorId && device.category === "access" && device.shelly_device_id === doorId))
+      .map((device): IoTDevice => ({
+        ...device,
+        source: "registry",
+        configured: device.provider !== "shelly" || !!device.shelly_device_id,
+        auth_key: secrets?.shelly_auth_key || null,
+        server_url: secrets?.shelly_server_url || null,
+      }));
+    const infrastructure: IoTDevice[] = [];
 
-    const doorId = (secrets as any)?.shelly_door_device_id as string | undefined;
-    if (doorId && !registeredKeys.has(`access:${doorId}`)) {
-      legacy.push({
+    infrastructure.push({
         id: `legacy-door-${clubId}`,
         club_id: clubId,
         category: "access",
         name: "Main door",
         icon: "door",
         location: "Main entrance",
-        notes: "Existing Shelly setup from the previous Door Access configuration.",
+        notes: doorId
+          ? "Main entrance Shelly relay."
+          : "Set up the Shelly relay used for the club's main entrance.",
         enabled: true,
         sort_order: -100,
         control_mode: "pulse",
         provider: "shelly",
         shelly_device_id: doorId,
-        shelly_channel: Number((secrets as any)?.shelly_door_channel ?? 0),
-        pulse_ms: Math.max(Number((secrets as any)?.shelly_door_pulse_ms ?? 3000), 200),
-        ble_mac: (secrets as any)?.shelly_door_ble_mac || null,
+        shelly_channel: Number(secrets?.shelly_door_channel ?? 0),
+        pulse_ms: Math.max(Number(secrets?.shelly_door_pulse_ms ?? 3000), 200),
+        ble_mac: secrets?.shelly_door_ble_mac || null,
         auto_off_minutes: null,
         last_state: null,
         last_state_at: null,
         last_error: null,
         created_at: "",
         updated_at: "",
-      });
-    }
+        source: "main-access",
+        configured: !!doorId,
+        server_url: secrets?.shelly_server_url || null,
+        auth_key: secrets?.shelly_auth_key || null,
+    });
 
     for (const court of courts) {
       const deviceId = court.relay_device_id;
-      if (!deviceId || registeredKeys.has(`lights:${deviceId}`)) continue;
-      legacy.push({
+      infrastructure.push({
         id: `legacy-court-light-${court.id}`,
         club_id: clubId,
         category: "lights",
-        name: `${court.name} lights`,
+        name: `${court.name} court lights`,
         icon: "lightbulb",
         location: court.name,
-        notes: "Existing Shelly setup from the previous court relay configuration.",
+        notes: deviceId
+          ? "Court light relay used by booking automation and light-fee billing."
+          : `Shelly court-light relay still needs to be configured for ${court.name}.`,
         enabled: true,
         sort_order: court.id,
         control_mode: "toggle",
@@ -249,16 +288,33 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         last_error: null,
         created_at: "",
         updated_at: "",
+        source: "court",
+        configured: !!deviceId,
+        court_id: court.id,
+        server_url: court.relay_server || null,
+        auth_key: secrets?.shelly_auth_key || null,
       });
     }
 
-    return [...registered, ...legacy];
+    return [...infrastructure, ...registered];
   }, [clubId, courts, devices, secrets]);
 
-  const grouped = useMemo(() => groupDevices(allDevices), [allDevices]);
+  const grouped = useMemo(() => {
+    const result: Record<DeviceCategory, IoTDevice[]> = { lights: [], access: [], gadgets: [] };
+    for (const device of allDevices) result[device.category].push(device);
+    for (const rows of Object.values(result)) {
+      rows.sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+    }
+    return result;
+  }, [allDevices]);
 
   const set = <K extends keyof DeviceForm>(key: K, value: DeviceForm[K]) =>
     setForm((p) => (p ? { ...p, [key]: value } : p));
+
+  const openEditor = (device: IoTDevice) => {
+    setSelectedDevice(null);
+    setForm(toForm(device));
+  };
 
   const handleSave = async () => {
     if (!form) return;
@@ -268,6 +324,10 @@ export function DevicesTab({ clubId }: { clubId: string }) {
     }
     if (form.provider === "shelly" && !form.shelly_device_id.trim()) {
       toast.error("A Shelly device needs its device ID, or SquashHub can't switch it.");
+      return;
+    }
+    if (form.provider === "shelly" && !form.auth_key.trim()) {
+      toast.error("Enter the club's Shelly Cloud auth key.");
       return;
     }
     const pulseMs = Number(form.pulse_ms);
@@ -281,7 +341,62 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       return;
     }
 
+    setSavingForm(true);
     try {
+      if (form.source === "court") {
+        if (!form.court_id) throw new Error("This court could not be identified.");
+        if (form.auth_key.trim() !== (secrets?.shelly_auth_key || "")) {
+          await updateSecrets.mutateAsync({
+            club_id: clubId,
+            shelly_auth_key: form.auth_key.trim(),
+          });
+        }
+        const { error } = await fromExt("courts")
+          .update({
+            relay_device_id: form.shelly_device_id.trim(),
+            relay_channel: Number(form.shelly_channel) || 0,
+            relay_ble_mac: form.ble_mac.trim().toUpperCase() || null,
+            relay_server: form.server_url.trim() || null,
+          })
+          .eq("id", form.court_id)
+          .eq("club_id", clubId);
+        if (error) throw error;
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["iot-courts", clubId] }),
+          queryClient.invalidateQueries({ queryKey: ["club-courts", clubId] }),
+        ]);
+        toast.success(`${form.name} setup saved`);
+        setForm(null);
+        return;
+      }
+
+      if (form.source === "main-access") {
+        await updateSecrets.mutateAsync({
+          club_id: clubId,
+          shelly_auth_key: form.auth_key.trim(),
+          shelly_door_device_id: form.shelly_device_id.trim(),
+          shelly_door_channel: Number(form.shelly_channel) || 0,
+          shelly_door_pulse_ms: Number.isFinite(pulseMs) ? pulseMs : 3000,
+          shelly_door_ble_mac: form.ble_mac.trim().toUpperCase() || undefined,
+          shelly_server_url: form.server_url.trim() || undefined,
+        });
+        toast.success("Main entrance setup saved");
+        setForm(null);
+        return;
+      }
+
+      if (
+        form.provider === "shelly" &&
+        (form.auth_key.trim() !== (secrets?.shelly_auth_key || "") ||
+          form.server_url.trim() !== (secrets?.shelly_server_url || ""))
+      ) {
+        await updateSecrets.mutateAsync({
+          club_id: clubId,
+          shelly_auth_key: form.auth_key.trim(),
+          shelly_server_url: form.server_url.trim() || undefined,
+        });
+      }
+
       await save.mutateAsync({
         id: form.id,
         club_id: clubId,
@@ -304,12 +419,19 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       setForm(null);
     } catch (e: any) {
       toast.error(e?.message || "Could not save the device");
+    } finally {
+      setSavingForm(false);
     }
   };
 
-  const handleTest = async (device: ClubDevice) => {
+  const handleTest = async (device: IoTDevice) => {
     setTesting(device.id);
     try {
+      if (device.source === "main-access") {
+        const result = await triggerShellyDoor({ clubId, doorName: "Admin test" });
+        toast.success(result.message);
+        return;
+      }
       const res = await control.mutateAsync({
         deviceId: device.id,
         action: device.control_mode === "pulse" ? "pulse" : "status",
@@ -336,8 +458,8 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                 <Zap className="w-4 h-4 text-primary" /> IoT / Shelly Connections
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Manage every Shelly-connected device in one place: door access, lights, gates,
-                geysers, pumps and other club equipment.
+                Configure one Shelly relay per court, manage club access, and add other connected
+                equipment such as geysers, air conditioners and pumps.
               </p>
             </div>
             <Button
@@ -374,6 +496,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         {DEVICE_CATEGORY_LIST.map((group) => {
         const Icon = group.icon;
         const rows = grouped[group.slug];
+        const configuredCount = rows.filter((device) => device.configured).length;
         return (
           <Card key={group.slug} className="h-full">
             <CardHeader className="pb-2">
@@ -390,6 +513,9 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   </CardTitle>
                   <p className="text-xs text-muted-foreground mt-1">{group.description}</p>
                 </div>
+                <Badge variant="secondary" className="shrink-0 text-[10px]">
+                  {rows.length === 0 ? "No devices" : `${configuredCount}/${rows.length} set up`}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -434,11 +560,18 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             <div className="min-w-0">
                               <p className="text-sm font-semibold truncate flex items-center gap-1.5">
                                 {device.name}
-                                {!device.enabled && (
-                                  <Badge variant="secondary" className="h-4 px-1 text-[9px]">
-                                    Hidden
-                                  </Badge>
-                                )}
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "h-5 gap-1 px-1.5 text-[9px]",
+                                    device.configured
+                                      ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                                      : "border-amber-500/30 text-amber-700 dark:text-amber-400",
+                                  )}
+                                >
+                                  {device.configured ? <CircleCheck className="size-3" /> : <CircleDashed className="size-3" />}
+                                  {device.configured ? "Ready" : "Not set up"}
+                                </Badge>
                               </p>
                               <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                                 {[
@@ -450,9 +583,9 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                                   .join(" · ")}
                               </p>
                               <p className="text-[11px] text-muted-foreground truncate">
-                                {device.shelly_device_id
+                                {device.configured && device.shelly_device_id
                                   ? `Shelly ${device.shelly_device_id}:${device.shelly_channel}`
-                                  : "Not linked"}
+                                  : "Shelly relay details required"}
                               </p>
                             </div>
 
@@ -461,25 +594,36 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                                 size="icon"
                                 variant="ghost"
                                 className="h-8 w-8"
-                                onClick={() => setForm(toForm(device))}
-                                aria-label={`Edit ${device.name}`}
+                                onClick={() => setSelectedDevice(device)}
+                                aria-label={`View ${device.name}`}
                               >
-                                <Pencil className="w-3.5 h-3.5" />
+                                <Eye className="w-3.5 h-3.5" />
                               </Button>
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => setConfirmDelete(device)}
-                                aria-label={`Delete ${device.name}`}
+                                className="h-8 w-8"
+                                onClick={() => openEditor(device)}
+                                aria-label={`Edit ${device.name}`}
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Pencil className="w-3.5 h-3.5" />
                               </Button>
+                              {device.source === "registry" && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => setConfirmDelete(device)}
+                                  aria-label={`Delete ${device.name}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
                             </div>
                           </div>
 
                           <div className="mt-3 flex items-center gap-2">
-                            <Button
+                            {device.configured ? <Button
                               size="sm"
                               variant="outline"
                               className="gap-1.5 shrink-0"
@@ -491,7 +635,9 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                               ) : (
                                 "Test"
                               )}
-                            </Button>
+                            </Button> : (
+                              <Button size="sm" onClick={() => openEditor(device)}>Set up</Button>
+                            )}
                             {device.last_error && (
                               <p className="text-[11px] text-destructive truncate">
                                 {device.last_error}
@@ -516,9 +662,17 @@ export function DevicesTab({ clubId }: { clubId: string }) {
           {form && (
             <>
               <DialogHeader>
-                <DialogTitle>{form.id ? "Edit device" : "Add device"}</DialogTitle>
+                <DialogTitle>
+                  {form.source === "court"
+                    ? `Set up ${form.name}`
+                    : form.source === "main-access"
+                      ? "Set up main entrance"
+                      : form.id ? "Edit device" : "Add device"}
+                </DialogTitle>
                 <DialogDescription>
-                  {DEVICE_CATEGORY_META[form.category].description}
+                  {form.source === "court"
+                    ? "This relay stays linked to the court for booking automation and light-fee billing."
+                    : DEVICE_CATEGORY_META[form.category].description}
                 </DialogDescription>
               </DialogHeader>
 
@@ -528,6 +682,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                     <Label>Group</Label>
                     <Select
                       value={form.category}
+                      disabled={form.source !== "registry"}
                       onValueChange={(v) => {
                         const category = v as DeviceCategory;
                         setForm((p) =>
@@ -558,7 +713,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
 
                   <div className="space-y-1.5">
                     <Label>Icon</Label>
-                    <Select value={form.icon} onValueChange={(v) => set("icon", v)}>
+                    <Select value={form.icon} onValueChange={(v) => set("icon", v)} disabled={form.source !== "registry"}>
                       <SelectTrigger>
                         <SelectValue placeholder="Group default" />
                       </SelectTrigger>
@@ -580,11 +735,16 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   <Label>Name</Label>
                   <Input
                     value={form.name}
+                    disabled={form.source !== "registry"}
                     placeholder="Clubhouse geyser"
                     onChange={(e) => set("name", e.target.value)}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    This is what appears on the dashboard — use the name members already say.
+                    {form.source === "court"
+                      ? "Court names are managed under Courts & Bookings."
+                      : form.source === "main-access"
+                        ? "The primary entrance is created automatically for every club."
+                        : "This is what appears on the dashboard — use the name members already say."}
                   </p>
                 </div>
 
@@ -592,6 +752,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   <Label>Location (optional)</Label>
                   <Input
                     value={form.location}
+                    disabled={form.source !== "registry"}
                     placeholder="Men's change room"
                     onChange={(e) => set("location", e.target.value)}
                   />
@@ -601,6 +762,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   <Label>How it switches</Label>
                   <Select
                     value={form.control_mode}
+                    disabled={form.source !== "registry"}
                     onValueChange={(v) => set("control_mode", v as "toggle" | "pulse")}
                   >
                     <SelectTrigger>
@@ -618,7 +780,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   <p className="text-[11px] text-muted-foreground">
                     {form.control_mode === "pulse"
                       ? "Shown as a button. Right for gates, door strikes and anything that self-closes."
-                      : "Shown as a switch. Right for lights, geysers, pumps and heaters."}
+                      : "Shown as a switch. Right for court lights and gadgets such as geysers, pumps and heaters."}
                   </p>
                 </div>
 
@@ -671,7 +833,17 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                 </div>
 
                 {form.provider === "shelly" ? (
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-3 rounded-xl border bg-muted/20 p-3">
+                    <div className="col-span-3 space-y-1.5">
+                      <Label>Shelly Cloud auth key</Label>
+                      <Input
+                        type="password"
+                        value={form.auth_key}
+                        placeholder="Paste the club's Shelly Cloud auth key"
+                        className="font-mono text-xs"
+                        onChange={(e) => set("auth_key", e.target.value)}
+                      />
+                    </div>
                     <div className="col-span-2 space-y-1.5">
                       <Label>Shelly device ID</Label>
                       <Input
@@ -692,9 +864,26 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                       />
                     </div>
                     <p className="col-span-3 text-[11px] text-muted-foreground">
-                      Uses the club's existing Shelly auth key from Door Access — you don't enter it
-                      again here.
+                      Uses the club's Shelly Cloud auth key. The key is stored once and is never shown in device details.
                     </p>
+                    <div className="col-span-3 space-y-1.5">
+                      <Label>Server URL (optional)</Label>
+                      <Input
+                        value={form.server_url}
+                        placeholder="https://shelly-44-eu.shelly.cloud"
+                        className="font-mono text-xs"
+                        onChange={(e) => set("server_url", e.target.value)}
+                      />
+                    </div>
+                    <div className="col-span-3 space-y-1.5">
+                      <Label>BLE MAC (optional)</Label>
+                      <Input
+                        value={form.ble_mac}
+                        placeholder="AA:BB:CC:DD:EE:FF"
+                        className="font-mono text-xs"
+                        onChange={(e) => set("ble_mac", e.target.value)}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">
@@ -713,7 +902,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 items-end">
+                {form.source === "registry" && <div className="grid grid-cols-2 gap-3 items-end">
                   <div className="space-y-1.5">
                     <Label>Order</Label>
                     <Input
@@ -733,16 +922,18 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                       onCheckedChange={(v) => set("enabled", v)}
                     />
                   </div>
-                </div>
+                </div>}
               </div>
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setForm(null)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={save.isPending}>
-                  {save.isPending && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
-                  {form.id ? "Save changes" : "Add device"}
+                <Button onClick={handleSave} disabled={savingForm}>
+                  {savingForm && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
+                  {form.source === "registry"
+                    ? (form.id ? "Save changes" : "Add device")
+                    : "Save setup"}
                 </Button>
               </DialogFooter>
             </>
@@ -793,7 +984,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
               Add an IoT device
             </DialogTitle>
             <DialogDescription>
-              Choose where this Shelly integration belongs. You can change the group later.
+              Court-light slots come from the court list. Access and gadgets can be added as needed.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 pt-2 sm:grid-cols-3">
@@ -810,7 +1001,25 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   ADD_OPTION_STYLES[option.category].ring,
                 )}
                 onClick={() => {
-                  setForm(emptyForm(option.category));
+                  if (option.category === "lights") {
+                    const nextCourt = grouped.lights.find((device) => !device.configured);
+                    if (!nextCourt) {
+                      toast.info(
+                        grouped.lights.length === 0
+                          ? "Add the club's courts under Courts & Bookings first."
+                          : "Every court light is already configured. Use Edit on a court to change it.",
+                      );
+                      setAddPickerOpen(false);
+                      return;
+                    }
+                    openEditor(nextCourt);
+                  } else {
+                    setForm({
+                      ...emptyForm(option.category),
+                      auth_key: secrets?.shelly_auth_key || "",
+                      server_url: secrets?.shelly_server_url || "",
+                    });
+                  }
                   setAddPickerOpen(false);
                 }}
               >
@@ -847,7 +1056,11 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   {selectedDevice.name}
                 </DialogTitle>
                 <DialogDescription>
-                  {DEVICE_CATEGORY_META[selectedDevice.category].label} device details
+                  {selectedDevice.source === "court"
+                    ? "Court-linked Shelly relay details"
+                    : selectedDevice.source === "main-access"
+                      ? "Main entrance Shelly relay details"
+                      : `${DEVICE_CATEGORY_META[selectedDevice.category].label} device details`}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
@@ -891,7 +1104,17 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                     </div>
                     <div className="rounded-xl border bg-muted/25 p-3">
                       <p className="text-xs text-muted-foreground">Status</p>
-                      <p className="font-medium">{selectedDevice.enabled ? "Shown" : "Hidden"}</p>
+                      <p className="font-medium">{selectedDevice.configured ? "Configured" : "Not set up"}</p>
+                    </div>
+                    <div className="col-span-2 rounded-xl border bg-muted/25 p-3">
+                      <p className="text-xs text-muted-foreground">Managed from</p>
+                      <p className="font-medium">
+                        {selectedDevice.source === "court"
+                          ? "Court configuration"
+                          : selectedDevice.source === "main-access"
+                            ? "Main entrance configuration"
+                            : "IoT device registry"}
+                      </p>
                     </div>
                     <div className="col-span-2 rounded-xl border bg-muted/25 p-3">
                       <p className="text-xs text-muted-foreground">Behaviour</p>
@@ -908,6 +1131,18 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             ? `Device ${selectedDevice.shelly_device_id}, channel ${selectedDevice.shelly_channel}`
                             : "Not linked"}
                         </p>
+                      </div>
+                    )}
+                    {selectedDevice.server_url && (
+                      <div className="col-span-2 rounded-xl border bg-muted/25 p-3">
+                        <p className="text-xs text-muted-foreground">Shelly server</p>
+                        <p className="break-all font-mono text-xs font-medium">{selectedDevice.server_url}</p>
+                      </div>
+                    )}
+                    {selectedDevice.ble_mac && (
+                      <div className="col-span-2 rounded-xl border bg-muted/25 p-3">
+                        <p className="text-xs text-muted-foreground">BLE fallback MAC</p>
+                        <p className="font-mono text-xs font-medium">{selectedDevice.ble_mac}</p>
                       </div>
                     )}
                   </div>
@@ -933,7 +1168,9 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                 <Button variant="outline" onClick={() => setSelectedDevice(null)}>
                   Close
                 </Button>
-                <Button onClick={() => setForm(toForm(selectedDevice))}>Edit device</Button>
+                <Button onClick={() => openEditor(selectedDevice)}>
+                  {selectedDevice.configured ? "Edit setup" : "Set up device"}
+                </Button>
               </DialogFooter>
             </>
           )}

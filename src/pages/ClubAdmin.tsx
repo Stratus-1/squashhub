@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, ChevronLeft, Mail, Sparkles, CheckCircle2, AlertCircle, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap } from "lucide-react";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 import { RulesTab } from "@/components/club-admin/RulesTab";
@@ -41,11 +41,9 @@ import { useMyPermissionsStatus, type PermissionSlug } from "@/hooks/use-club-pe
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
-import squashCourtBg from "@/assets/squash-court-bg.jpg";
 import { CORE_SETUP_KEYS, isTabVisible, type Capability } from "@/lib/capabilities";
 import { useClubCapabilityRows, useCapabilities } from "@/hooks/use-club-capabilities";
 import { FeaturesTab } from "@/components/club-admin/FeaturesTab";
-import { DashboardMain } from "@/components/dashboard/dashboard-layout";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 
 
@@ -87,24 +85,6 @@ const OPERATIONS_TABS: AdminTab[] = [
   // AI Assistant tab hidden while the feature is being reworked.
 ];
 
-const COLOR_STYLES: Record<string, string> = {
-  blue: "border-blue-500/50 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:hover:bg-blue-500/25",
-  slate: "border-slate-400/60 bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-500/15 dark:text-slate-200 dark:hover:bg-slate-500/25",
-  emerald: "border-emerald-500/50 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25",
-  cyan: "border-cyan-500/50 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 dark:bg-cyan-500/15 dark:text-cyan-200 dark:hover:bg-cyan-500/25",
-  green: "border-green-500/50 bg-green-50 text-green-800 hover:bg-green-100 dark:bg-green-500/15 dark:text-green-200 dark:hover:bg-green-500/25",
-  teal: "border-teal-500/50 bg-teal-50 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/15 dark:text-teal-200 dark:hover:bg-teal-500/25",
-  indigo: "border-indigo-500/50 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25",
-  violet: "border-violet-500/50 bg-violet-50 text-violet-800 hover:bg-violet-100 dark:bg-violet-500/15 dark:text-violet-200 dark:hover:bg-violet-500/25",
-  sky: "border-sky-500/50 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-200 dark:hover:bg-sky-500/25",
-  orange: "border-orange-500/50 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:bg-orange-500/15 dark:text-orange-200 dark:hover:bg-orange-500/25",
-  amber: "border-amber-500/50 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-200 dark:hover:bg-amber-500/25",
-  yellow: "border-yellow-500/50 bg-yellow-50 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-500/15 dark:text-yellow-200 dark:hover:bg-yellow-500/25",
-  rose: "border-rose-500/50 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25",
-  pink: "border-pink-500/50 bg-pink-50 text-pink-800 hover:bg-pink-100 dark:bg-pink-500/15 dark:text-pink-200 dark:hover:bg-pink-500/25",
-  red: "border-red-500/50 bg-red-50 text-red-800 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-200 dark:hover:bg-red-500/25",
-};
-
 export default function ClubAdmin() {
   const { user } = useAuth();
   const { data, isLoading } = useMyClub();
@@ -125,7 +105,7 @@ export default function ClubAdmin() {
   }, [searchParams]);
 
   const baseClub = data?.club;
-  const { data: adminClub, isFetching: isFetchingAdminClub } = useQuery({
+  const { data: adminClub } = useQuery({
     queryKey: ["admin-club", baseClub?.id],
     queryFn: async () => {
       const { data: row, error } = await fromExt("clubs")
@@ -242,126 +222,101 @@ export default function ClubAdmin() {
   const coreKeys = CORE_SETUP_KEYS.filter(k => visibleSetup.concat(visibleOps).some(t => t.value === k));
   const coreDone = coreKeys.filter(k => setupStatus[k as keyof SetupStatusMap] === "complete").length;
 
+  const renderTabRow = (tab: AdminTab, showStatus = false) => {
+    const Icon = tab.icon;
+    const status = showStatus ? setupStatus[tab.value as keyof SetupStatusMap] : undefined;
+    const isComplete = status === "complete";
+    return (
+      <button
+        key={tab.value}
+        type="button"
+        onClick={() => setActiveTab(tab.value)}
+        className={cn(
+          "group flex min-h-14 w-full items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/60",
+          activeTab === tab.value && "border-border bg-muted shadow-xs",
+        )}
+      >
+        <span className={cn(
+          "flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors",
+          activeTab === tab.value && "bg-primary text-primary-foreground",
+        )}>
+          <Icon className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{tab.label}</span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {showStatus ? (isComplete ? "Ready to use" : "Needs setup") : "Open workspace"}
+          </span>
+        </span>
+        {showStatus && (
+          <span className={cn(
+            "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+            isComplete ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+          )}>
+            {isComplete ? "Complete" : "Setup"}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <div className="min-h-screen pb-20 text-[13px]">
-      <div>
-        <PageHeader
-          title={club.name}
-          subtitle="Club Administration"
-        />
-        <DashboardMain className="px-3 md:px-5 gap-4 md:gap-4 py-4 md:py-4">
-          {/* Setup & Configuration tiles — with completion status */}
+      <PageHeader title={club.name} subtitle="Club Administration" />
+      <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 lg:px-6">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: "Core setup", value: `${coreDone}/${coreKeys.length}`, detail: "required areas complete" },
+            { label: "Setup modules", value: visibleSetup.length, detail: "available to configure" },
+            { label: "Operations", value: visibleOps.length, detail: "available to manage" },
+            { label: "Current workspace", value: activeTabMeta?.label || "Dashboard", detail: "selected section" },
+          ].map((metric) => (
+            <div key={metric.label} className="rounded-xl border bg-card p-5 shadow-xs">
+              <p className="text-sm text-muted-foreground">{metric.label}</p>
+              <p className="mt-2 truncate text-2xl font-semibold tracking-tight">{metric.value}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p>
+            </div>
+          ))}
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {visibleSetup.length > 0 && (
-            <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Setup &amp; Configuration</h3>
-                <span className="text-[10px] md:text-[11px] font-medium text-muted-foreground">
-                  Core setup: {coreDone}/{coreKeys.length} complete
-                </span>
+            <div className="rounded-xl border bg-card shadow-xs">
+              <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
+                <div><h2 className="font-semibold tracking-tight">Setup &amp; configuration</h2><p className="mt-1 text-sm text-muted-foreground">Core club settings and connected services.</p></div>
+                <span className="shrink-0 rounded-full border px-2.5 py-1 text-xs text-muted-foreground">{coreDone}/{coreKeys.length} complete</span>
               </div>
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2 md:gap-2.5">
-
-
-                {visibleSetup.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.value;
-                  const showStatus = !tab.noStatus;
-                  const status = showStatus ? setupStatus[tab.value as keyof SetupStatusMap] : undefined;
-                  const isComplete = status === "complete";
-                  return (
-                    <button
-                      key={tab.value}
-                      onClick={() => setActiveTab(tab.value)}
-                      title={tab.startHere ? "Start here — choose the features your club uses" : showStatus ? (isComplete ? "Complete" : "Please complete") : undefined}
-                      className={cn(
-                        "relative flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
-                        isActive
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                      )}
-                    >
-                      {tab.startHere && (
-                        <span className={cn(
-                          "absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[8px] md:text-[9px] font-bold uppercase tracking-wide shadow-sm",
-                          isActive ? "bg-primary-foreground text-primary" : "bg-violet-600 text-white"
-                        )}>
-                          Start here
-                        </span>
-                      )}
-                      {showStatus && (
-                        isComplete ? (
-                          <CheckCircle2 className="absolute top-1 right-1 w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-600 dark:text-emerald-400 fill-background" />
-                        ) : (
-                          <AlertCircle className="absolute top-1 right-1 w-3 h-3 md:w-3.5 md:h-3.5 text-amber-600 dark:text-amber-400 fill-background" />
-                        )
-                      )}
-                      <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                      <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
-
-
-                      {showStatus && (
-                        <span className={cn(
-                          "text-[8px] md:text-[9px] font-medium leading-none uppercase tracking-wide",
-                          isActive ? "opacity-90" : isComplete ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
-                        )}>
-                          {tab.capability
-                            ? (isComplete ? "On — ready" : "On — needs setup")
-                            : (isComplete ? "Complete" : "Please complete")}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              <div className="grid gap-1 p-3 sm:grid-cols-2">{visibleSetup.map((tab) => renderTabRow(tab, !tab.noStatus))}</div>
             </div>
           )}
-
-          {/* Operations tiles */}
           {visibleOps.length > 0 && (
-            <div className="rounded-xl border border-border bg-card/95 backdrop-blur p-3 md:p-4 shadow-sm space-y-2.5">
-              <h3 className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground">Operations &amp; Finance</h3>
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2 md:gap-2.5">
-                {visibleOps.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.value;
-                  return (
-                    <button
-                      key={tab.value}
-                      onClick={() => setActiveTab(tab.value)}
-                      className={cn(
-                        "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
-                        isActive
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : COLOR_STYLES[tab.color] || "bg-card text-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                      )}
-                    >
-                      <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                      <span className="text-[10px] md:text-[11px] font-semibold leading-tight">{tab.label}</span>
-                    </button>
-                  );
-                })}
+            <div className="rounded-xl border bg-card shadow-xs">
+              <div className="border-b px-5 py-4"><h2 className="font-semibold tracking-tight">Operations &amp; finance</h2><p className="mt-1 text-sm text-muted-foreground">Day-to-day club management tools.</p></div>
+              <div className="grid gap-1 p-3 sm:grid-cols-2">{visibleOps.map((tab) => renderTabRow(tab))}</div>
+            </div>
+          )}
+        </section>
+
+        {activeTabMeta && (
+          <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><activeTabMeta.icon className="size-4" /></span>
+                <div className="min-w-0"><h2 className="truncate font-semibold tracking-tight">{activeTabMeta.label}</h2><p className="text-sm text-muted-foreground">Manage this area of your club.</p></div>
               </div>
+              <span className="rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">Workspace</span>
             </div>
-          )}
-
-          {/* Active section header + content */}
-          {activeTabMeta && (
-            <div className="flex items-center gap-2 pt-1 border-t border-border/60">
-              <activeTabMeta.icon className="w-4 h-4 text-primary mt-2" />
-              <h2 className="text-sm font-semibold text-foreground mt-2">{activeTabMeta.label}</h2>
+            <div className="p-4 md:p-6 [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
+              {renderContent()}
             </div>
-          )}
-
-          <div className="[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
-            {renderContent()}
-          </div>
-        </DashboardMain>
+          </section>
+        )}
         <QuickSetupWizard clubId={club.id} open={wizardOpen} onOpenChange={setWizardOpen} />
-        <div className="pt-3 mt-2 border-t border-border/50 flex justify-end">
+        <div className="flex justify-end border-t border-border/50 pt-3">
           <AppVersionBadge />
         </div>
-        <BackToDashboard />
-      </div>
+      </main>
+      <BackToDashboard />
     </div>
   );
 }

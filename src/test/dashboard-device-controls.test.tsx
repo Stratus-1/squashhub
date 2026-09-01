@@ -75,19 +75,19 @@ describe("DashboardDeviceControls", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("groups devices under Lights, Access and Gadgets", () => {
+  it("groups devices under Court lights, Access and Gadgets", () => {
     mocks.devices = [
-      device({ id: "a", category: "lights", name: "Patio lights" }),
+      device({ id: "a", category: "lights", name: "Court 1 court lights" }),
       device({ id: "b", category: "access", name: "Side gate", control_mode: "pulse" }),
       device({ id: "c", category: "gadgets", name: "Clubhouse geyser" }),
     ];
     render(<DashboardDeviceControls />);
 
     expect(screen.getByText("Club Controls")).toBeTruthy();
-    expect(screen.getByText("Lights")).toBeTruthy();
+    expect(screen.getByText("Court lights")).toBeTruthy();
     expect(screen.getByText("Access")).toBeTruthy();
     expect(screen.getByText("Gadgets")).toBeTruthy();
-    expect(screen.getByText("Patio lights")).toBeTruthy();
+    expect(screen.getByText("Court 1 court lights")).toBeTruthy();
     expect(screen.getByText("Side gate")).toBeTruthy();
     expect(screen.getByText("Clubhouse geyser")).toBeTruthy();
   });
@@ -97,7 +97,7 @@ describe("DashboardDeviceControls", () => {
     render(<DashboardDeviceControls />);
 
     expect(screen.getByText("Gadgets")).toBeTruthy();
-    expect(screen.queryByText("Lights")).toBeNull();
+    expect(screen.queryByText("Court lights")).toBeNull();
     expect(screen.queryByText("Access")).toBeNull();
   });
 
@@ -130,7 +130,7 @@ describe("DashboardDeviceControls", () => {
   it("explains where court lights live instead of offering an unbilled switch", () => {
     mocks.courtLightsOn = true;
     render(<DashboardDeviceControls />);
-    expect(screen.getByText("Lights")).toBeTruthy();
+    expect(screen.getByText("Court lights")).toBeTruthy();
     expect(screen.getByText(/Court lights switch on from your booking/)).toBeTruthy();
     expect(screen.queryByRole("switch")).toBeNull();
   });

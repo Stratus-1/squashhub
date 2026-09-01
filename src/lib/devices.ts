@@ -4,8 +4,8 @@
  * Devices are grouped by *what a member calls them*, not by what hardware
  * happens to be behind them:
  *
- *   lights  — clubhouse, outside and parking lights
- *   access  — secondary doors, gates, turnstiles
+ *   lights  — one court-light relay per configured court
+ *   access  — the main entrance plus optional doors, gates and turnstiles
  *   gadgets — geysers, pumps, heaters, signage, anything else
  *
  * Court booking logic may still use court records for billing and automation,
@@ -77,31 +77,31 @@ export interface DeviceCategoryMeta {
 export const DEVICE_CATEGORY_META: Record<DeviceCategory, DeviceCategoryMeta> = {
   lights: {
     slug: "lights",
-    label: "Lights",
+    label: "Court lights",
     description:
-      "Clubhouse, outside and parking lights. Court lights are controlled from a booking so the light fee still bills.",
+      "One Shelly light relay for every court in the club's court list. Booking automation and light-fee billing stay attached to the court.",
     icon: Lightbulb,
     accent: "text-amber-600 dark:text-amber-400",
     restricted: false,
     defaultControlMode: "toggle",
-    emptyHint: "No club lights added yet.",
+    emptyHint: "Add courts under Courts & Bookings to create court-light setup slots.",
   },
   access: {
     slug: "access",
     label: "Access",
     description:
-      "Doors, gates and turnstiles controlled by a Shelly relay.",
+      "The main club entrance, plus any additional doors, gates or turnstiles controlled by a Shelly relay.",
     icon: DoorOpen,
     accent: "text-emerald-600 dark:text-emerald-400",
     restricted: false,
     defaultControlMode: "pulse",
-    emptyHint: "No extra doors or gates added yet.",
+    emptyHint: "No access devices added yet.",
   },
   gadgets: {
     slug: "gadgets",
     label: "Gadgets",
     description:
-      "Geysers, pumps, heaters, signage — anything else on a smart relay. Only admins and members with the Devices permission can see or switch these.",
+      "Geysers, air conditioners, pumps, heaters, signage and any other equipment on a smart relay. Only admins and members with the Devices permission can see or switch these.",
     icon: Plug,
     accent: "text-sky-600 dark:text-sky-400",
     restricted: true,

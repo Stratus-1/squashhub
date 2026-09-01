@@ -50,7 +50,7 @@ INSERT INTO public.club_devices (
 SELECT
   c.club_id,
   'lights',
-  c.name || ' lights',
+  c.name || ' court lights',
   'lightbulb',
   c.name,
   'Migrated from the previous court relay configuration.',

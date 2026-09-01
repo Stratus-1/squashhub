@@ -1,297 +1,63 @@
-import {
-  Home,
-  BarChart3,
-  Calendar,
-  Trophy,
-  Crosshair,
-  CalendarDays,
-  Wine,
-  Wallet,
-  ShieldCheck,
-  Settings as SettingsIcon,
-  Activity,
-  LayoutGrid,
-  ChevronDown,
-  User,
-  Network,
-  Users,
-  Receipt,
-} from "lucide-react";
+import type { ComponentType } from "react";
+import { BarChart3, Calendar, CalendarDays, Crosshair, Home, LayoutGrid, Network, Receipt, Settings as SettingsIcon, ShieldCheck, Trophy, User, Users, Wallet, Wine } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
-import { cn } from "@/lib/utils";
 import { useProfile } from "@/hooks/use-data";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import AppVersionBadge from "@/components/AppVersionBadge";
 
-type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }> };
+type Item = { title: string; url: string; icon: ComponentType<{ className?: string }> };
 
 export function AppSidebar({ variant = "sidebar" }: { variant?: "sidebar" | "floating" | "inset" }) {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
   const { pathname, search } = useLocation();
-  const {
-    hasLeagues,
-    honestyBarEnabled,
-    hasAnyAdminAccess,
-    isAssociation,
-    bookingsEnabled,
-    ladderEnabled,
-    tournamentsEnabled,
-    eventsEnabled,
-  } = useSidebarFlags();
+  const { hasLeagues, honestyBarEnabled, hasAnyAdminAccess, isAssociation, bookingsEnabled, ladderEnabled, tournamentsEnabled, eventsEnabled } = useSidebarFlags();
   const { data: profile } = useProfile();
   const { activeMember } = useMemberContext();
-
-  const isActive = (path: string) => {
-    if (path.includes("?")) return `${pathname}${search}` === path;
-    return pathname === path;
-  };
-
+  const isActive = (path: string) => path.includes("?") ? `${pathname}${search}` === path : pathname === path;
   const dashboardTabUrl = (tab: string) => {
     const params = new URLSearchParams(search);
     params.set("tab", tab);
-    const query = params.toString();
-    return query ? `/?${query}` : "/";
+    return `/?${params.toString()}`;
   };
-
-  const settingsUrl = isAssociation ? dashboardTabUrl("settings") : "/settings";
-
-  // Association tenants get a slimmed-down menu — no club-player items
   const homeItems: Item[] = isAssociation
-    ? [
-        { title: "Affiliated Clubs", url: dashboardTabUrl("affiliated"), icon: Network },
-        { title: "Members", url: dashboardTabUrl("members"), icon: Users },
-        { title: "Fees Owing", url: dashboardTabUrl("fees"), icon: Receipt },
-      ]
-    : [
-        { title: "Stats", url: "/analytics", icon: BarChart3 },
-        ...(bookingsEnabled ? [{ title: "Bookings", url: "/bookings", icon: Calendar }] : []),
-      ];
-
+    ? [{ title: "Affiliated Clubs", url: dashboardTabUrl("affiliated"), icon: Network }, { title: "Members", url: dashboardTabUrl("members"), icon: Users }, { title: "Fees Owing", url: dashboardTabUrl("fees"), icon: Receipt }]
+    : [{ title: "Stats", url: "/analytics", icon: BarChart3 }, ...(bookingsEnabled ? [{ title: "Bookings", url: "/bookings", icon: Calendar }] : [])];
   const activityItems: Item[] = isAssociation
-    ? [
-        { title: "Leagues", url: "/league-games", icon: Trophy },
-        { title: "Tournaments", url: "/tournaments", icon: Trophy },
-        { title: "Events", url: "/events", icon: CalendarDays },
-        { title: "My Account", url: "/my-account", icon: Wallet },
-      ]
-    : [
-        { title: "Score a Match", url: "/match-marker", icon: Crosshair },
-        ...(ladderEnabled ? [{ title: "Club Ladderboard", url: "/ladder", icon: Trophy }] : []),
-        ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []),
-        ...(tournamentsEnabled ? [{ title: "Tournaments", url: "/tournaments", icon: Trophy }] : []),
-        ...(eventsEnabled ? [{ title: "Events", url: "/events", icon: CalendarDays }] : []),
-        ...(honestyBarEnabled ? [{ title: "Bar / POS", url: "/honesty-bar", icon: Wine }] : []),
-        { title: "My Account", url: "/my-account", icon: Wallet },
-      ];
-
-  // Independent collapsible state per group — auto-open the group containing the active route
-  const homeAuto = homeItems.some((i) => isActive(i.url)) || pathname === "/";
-  const activitiesAuto = activityItems.some((i) => isActive(i.url));
-
-  const [homeOpen, setHomeOpen] = useState<boolean>(homeAuto);
-  const [activitiesOpen, setActivitiesOpen] = useState<boolean>(activitiesAuto);
-
-  // Re-open the group containing the active route when navigation changes
-  useEffect(() => { if (homeAuto) setHomeOpen(true); }, [homeAuto]);
-  useEffect(() => { if (activitiesAuto) setActivitiesOpen(true); }, [activitiesAuto]);
-
-  // Sakana display, uppercase, wider tracking — matches mockup
-  const groupHeaderClass =
-    "uppercase tracking-[0.22em] text-[11px] font-bold font-heading text-sidebar-foreground";
-
-  const renderSubItem = (item: Item) => (
-    <SidebarMenuSubItem key={item.title + item.url}>
-      <SidebarMenuSubButton asChild isActive={isActive(item.url)}>
-        <NavLink to={item.url} className="flex items-center gap-2">
-          <item.icon className="w-3.5 h-3.5 shrink-0" />
-          <span className="uppercase tracking-[0.14em] text-[10px] font-semibold font-heading">
-            {item.title}
-          </span>
-        </NavLink>
-      </SidebarMenuSubButton>
-    </SidebarMenuSubItem>
-  );
-
+    ? [{ title: "Leagues", url: "/league-games", icon: Trophy }, { title: "Tournaments", url: "/tournaments", icon: Trophy }, { title: "Events", url: "/events", icon: CalendarDays }, { title: "My Account", url: "/my-account", icon: Wallet }]
+    : [{ title: "Score a Match", url: "/match-marker", icon: Crosshair }, ...(ladderEnabled ? [{ title: "Club Ladderboard", url: "/ladder", icon: Trophy }] : []), ...(hasLeagues ? [{ title: "Leagues", url: "/league-games", icon: Trophy }] : []), ...(tournamentsEnabled ? [{ title: "Tournaments", url: "/tournaments", icon: Trophy }] : []), ...(eventsEnabled ? [{ title: "Events", url: "/events", icon: CalendarDays }] : []), ...(honestyBarEnabled ? [{ title: "Bar / POS", url: "/honesty-bar", icon: Wine }] : []), { title: "My Account", url: "/my-account", icon: Wallet }];
+  const settingsUrl = isAssociation ? dashboardTabUrl("settings") : "/settings";
   const memberName = activeMember?.name || profile?.name || "Player";
-  const initials = memberName
-    .split(" ")
-    .map((s) => s[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-  const avatarUrl = (activeMember as any)?.avatar_url || (profile as any)?.avatar_url || null;
+  const initials = memberName.split(" ").map((part) => part[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  const memberAvatar = (activeMember as unknown as { avatar_url?: string | null } | null)?.avatar_url;
+  const profileAvatar = (profile as unknown as { avatar_url?: string | null } | null)?.avatar_url;
+  const avatarUrl = memberAvatar || profileAvatar || null;
+  const renderItems = (items: Item[]) => items.map((item) => {
+    const Icon = item.icon;
+    return <SidebarMenuItem key={item.title + item.url}><SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}><NavLink to={item.url}><Icon className="size-4" /><span>{item.title}</span></NavLink></SidebarMenuButton></SidebarMenuItem>;
+  });
 
   return (
-    <Sidebar
-      variant={variant}
-      collapsible="icon"
-      className="border-r border-sidebar-border bg-[hsl(220_45%_5%)]"
-    >
-      <SidebarContent className="gap-0 pt-6 px-1 bg-[hsl(220_45%_5%)]">
-        {/* HOME group — label navigates to dashboard, chevron toggles */}
-        <SidebarGroup className="px-2">
-          <div
-            className={cn(
-              "flex items-center justify-between w-full py-2",
-              groupHeaderClass,
-              homeOpen && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
-            )}
-          >
-            <NavLink
-              to="/"
-              className="flex items-center gap-2 flex-1 hover:opacity-80"
-            >
-              <Home className="w-4 h-4" />
-              {!collapsed && <span>Home</span>}
-            </NavLink>
-            {!collapsed && (
-              <button
-                type="button"
-                onClick={() => setHomeOpen((v) => !v)}
-                aria-label={homeOpen ? "Collapse Home" : "Expand Home"}
-                className="p-1 -m-1 hover:opacity-80"
-              >
-                <ChevronDown
-                  className={cn("w-4 h-4 transition-transform", homeOpen && "rotate-180")}
-                />
-              </button>
-            )}
-          </div>
-          {!collapsed && homeOpen && (
-            <SidebarGroupContent className="mt-1.5">
-              <SidebarMenuSub className="border-l-0 ml-1.5 px-0">
-                {homeItems.map(renderSubItem)}
-              </SidebarMenuSub>
-            </SidebarGroupContent>
-          )}
-        </SidebarGroup>
-
-        {/* COURTS — hidden for association tenants */}
-        {!isAssociation && (
-          <SidebarGroup className="px-2 mt-3">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive("/bookings")}
-                    className="py-2"
-                  >
-                    <NavLink to="/bookings" className="flex items-center gap-2">
-                      <LayoutGrid className="w-4 h-4" />
-                      {!collapsed && (
-                        <span className={groupHeaderClass}>Courts</span>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-        {/* ACTIVITIES group — collapsible */}
-        <SidebarGroup className="px-2 mt-3">
-          <button
-            type="button"
-            onClick={() => setActivitiesOpen((v) => !v)}
-            className={cn(
-              "flex items-center justify-between w-full py-2 group",
-              groupHeaderClass,
-              activitiesOpen && "border-b-2 border-[hsl(var(--accent))] pb-1.5"
-            )}
-          >
-            <span className="flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              {!collapsed && <span>Activities</span>}
-            </span>
-            {!collapsed && (
-              <ChevronDown
-                className={cn("w-4 h-4 transition-transform", activitiesOpen && "rotate-180")}
-              />
-            )}
-          </button>
-          {!collapsed && activitiesOpen && (
-            <SidebarGroupContent className="mt-1.5">
-              <SidebarMenuSub className="border-l-0 ml-1.5 px-0">
-                {activityItems.map(renderSubItem)}
-              </SidebarMenuSub>
-            </SidebarGroupContent>
-          )}
-        </SidebarGroup>
-
-        {/* ADMIN — single link, only if user has admin access. Associations use the unified dashboard at "/". */}
-        {hasAnyAdminAccess && !isAssociation && (
-          <SidebarGroup className="px-2 mt-3">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive("/club-admin")}
-                    className="py-2"
-                  >
-                    <NavLink to="/club-admin" className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4" />
-                      {!collapsed && (
-                        <span className={groupHeaderClass}>Club Admin</span>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+    <Sidebar variant={variant} collapsible="offcanvas" className="border-sidebar-border bg-sidebar">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <SidebarMenu><SidebarMenuItem><SidebarMenuButton asChild size="lg" className="data-[slot=sidebar-menu-button]:!p-1.5"><NavLink to="/">
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"><Home className="size-4" /></div>
+          <div className="grid flex-1 text-left text-sm leading-tight"><span className="truncate font-semibold">SquashHub</span><span className="truncate text-xs text-sidebar-foreground/60">Club platform</span></div>
+        </NavLink></SidebarMenuButton></SidebarMenuItem></SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup><SidebarGroupLabel>Home</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>{renderItems(homeItems)}</SidebarMenu></SidebarGroupContent></SidebarGroup>
+        {!isAssociation && <SidebarGroup><SidebarGroupLabel>Courts</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>{renderItems([{ title: "Courts & Bookings", url: "/bookings", icon: LayoutGrid }])}</SidebarMenu></SidebarGroupContent></SidebarGroup>}
+        <SidebarGroup><SidebarGroupLabel>Activities</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>{renderItems(activityItems)}</SidebarMenu></SidebarGroupContent></SidebarGroup>
+        {hasAnyAdminAccess && !isAssociation && <SidebarGroup className="mt-auto"><SidebarGroupLabel>Administration</SidebarGroupLabel><SidebarGroupContent><SidebarMenu>{renderItems([{ title: "Club Admin", url: "/club-admin", icon: ShieldCheck }])}</SidebarMenu></SidebarGroupContent></SidebarGroup>}
       </SidebarContent>
-
-      {/* SETTINGS pinned at bottom with member avatar */}
-      <SidebarFooter className="border-t border-sidebar-border bg-[hsl(220_45%_5%)] px-2 py-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive(settingsUrl)} className="py-2 gap-3">
-              <NavLink to={settingsUrl} className="flex items-center gap-3">
-                <Avatar className="h-7 w-7 ring-1 ring-sidebar-border">
-                  {avatarUrl ? <AvatarImage src={avatarUrl} alt={memberName} /> : null}
-                  <AvatarFallback className="bg-sidebar-accent text-[10px] font-semibold">
-                    {initials || <User className="w-3.5 h-3.5" />}
-                  </AvatarFallback>
-                </Avatar>
-                {!collapsed && (
-                  <span className="uppercase tracking-[0.22em] text-[13px] font-bold font-heading">
-                    Settings
-                  </span>
-                )}
-                {!collapsed && (
-                  <SettingsIcon className="w-4 h-4 ml-auto opacity-70" />
-                )}
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        {!collapsed && (
-          <div className="px-2 pt-2">
-            <AppVersionBadge className="text-sidebar-foreground/50" />
-          </div>
-        )}
+      <SidebarFooter className="border-t border-sidebar-border">
+        <SidebarMenu><SidebarMenuItem><SidebarMenuButton asChild size="lg" isActive={isActive(settingsUrl)}><NavLink to={settingsUrl}>
+          <Avatar className="size-8 rounded-lg">{avatarUrl ? <AvatarImage src={avatarUrl} alt={memberName} /> : null}<AvatarFallback className="rounded-lg bg-sidebar-accent text-xs">{initials || <User className="size-4" />}</AvatarFallback></Avatar>
+          <div className="grid flex-1 text-left text-sm leading-tight"><span className="truncate font-semibold">{memberName}</span><span className="truncate text-xs text-sidebar-foreground/60">Account settings</span></div><SettingsIcon className="ml-auto size-4" />
+        </NavLink></SidebarMenuButton></SidebarMenuItem></SidebarMenu>
+        <AppVersionBadge className="px-2 text-sidebar-foreground/50" />
       </SidebarFooter>
     </Sidebar>
   );

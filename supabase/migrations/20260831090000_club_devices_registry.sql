@@ -6,8 +6,7 @@
 -- nowhere to go at all. This table is the open-ended home for devices, grouped
 -- by what a club member actually calls them:
 --
---   lights  — clubhouse / outside / parking lights (NOT court lights, which
---             stay coupled to bookings so the per-hour light fee still bills)
+--   lights  — court-light relay records linked to the club's configured courts
 --   access  — secondary doors, gates, turnstiles
 --   gadgets — geysers, pumps, heaters, signage, anything else
 --
@@ -29,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public.club_devices (
   sort_order integer NOT NULL DEFAULT 0,
 
   -- How the control renders and what the relay is asked to do:
-  --   toggle — a switch; stays on until switched off (geyser, outside lights)
+  --   toggle — a switch; stays on until switched off (court lights, geyser)
   --   pulse  — a momentary button; relay closes for pulse_ms (gate, door strike)
   control_mode text NOT NULL DEFAULT 'toggle'
     CHECK (control_mode IN ('toggle', 'pulse')),
@@ -64,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_club_devices_club_category
 
 ALTER TABLE public.club_devices ENABLE ROW LEVEL SECURITY;
 
--- Read: members see lights + access devices (the things they operate day to
+-- Read: members see court lights + access devices (the things they operate day to
 -- day). Gadgets are running-cost / safety items, so only club admins and
 -- members holding the 'devices' permission can even see they exist.
 DROP POLICY IF EXISTS "Members read member-facing devices" ON public.club_devices;
@@ -88,7 +87,7 @@ BEFORE UPDATE ON public.club_devices
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Server-side authority for the device-control edge function. Mirrors the RLS
--- read rule: gadgets require the elevated grant, lights/access need membership.
+-- read rule: gadgets require the elevated grant, court lights/access need membership.
 CREATE OR REPLACE FUNCTION public.can_operate_device(_user_id uuid, _device_id uuid)
 RETURNS boolean
 LANGUAGE sql

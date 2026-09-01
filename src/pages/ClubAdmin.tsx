@@ -272,7 +272,7 @@ export default function ClubAdmin() {
                     <button
                       key={tab.value}
                       onClick={() => setActiveTab(tab.value)}
-                      title={showStatus ? (isComplete ? "Complete" : "Please complete") : undefined}
+                      title={tab.startHere ? "Start here — choose the features your club uses" : showStatus ? (isComplete ? "Complete" : "Please complete") : undefined}
                       className={cn(
                         "relative flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
                         isActive

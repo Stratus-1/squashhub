@@ -49,13 +49,14 @@ import { DashboardMain } from "@/components/dashboard/dashboard-layout";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 
 
-type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability };
+type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability; startHere?: boolean };
 
 const SETUP_TABS: AdminTab[] = [
+  // Features first: a new club picks what it does before anything else.
+  { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true, startHere: true },
   { value: "club", label: "Club", icon: Building2, permission: "club", color: "blue" },
   { value: "settings", label: "Settings", icon: Settings, permission: "settings", color: "slate" },
   { value: "rules", label: "Rules & Constitution", icon: ScrollText, permission: "club", color: "amber", noStatus: true },
-  { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true },
   // Courts is core: admins must always be able to add courts, otherwise a club
   // with Court Bookings off could never set them up (circular dependency).
   { value: "courts", label: "Courts & Bookings", icon: LayoutGrid, permission: "courts", color: "cyan" },

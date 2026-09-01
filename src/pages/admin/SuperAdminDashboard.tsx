@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Building2, Users, CreditCard, Activity, Sparkles, ShieldAlert } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { DashboardMain, DashboardStatCards } from "@/components/dashboard/dashboard-layout";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 
@@ -221,7 +222,6 @@ export default function SuperAdminDashboard() {
           </p>
         )}
       </Card>
-    </div>
+    </DashboardMain>
   );
 }
-

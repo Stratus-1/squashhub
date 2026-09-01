@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { LayoutGrid, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
+import { Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DEVICE_CATEGORY_LIST,
@@ -121,6 +121,24 @@ const ADD_OPTIONS: Array<{ category: DeviceCategory; title: string; description:
     description: "Geysers, pumps, heaters, signage and other equipment.",
   },
 ];
+
+const ADD_OPTION_STYLES: Record<DeviceCategory, { icon: string; surface: string; ring: string }> = {
+  lights: {
+    icon: "bg-amber-500/15 text-amber-600 dark:text-amber-300",
+    surface: "hover:border-amber-400/70 hover:bg-amber-500/[0.06]",
+    ring: "group-focus-visible:ring-amber-400/60",
+  },
+  access: {
+    icon: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300",
+    surface: "hover:border-emerald-400/70 hover:bg-emerald-500/[0.06]",
+    ring: "group-focus-visible:ring-emerald-400/60",
+  },
+  gadgets: {
+    icon: "bg-sky-500/15 text-sky-600 dark:text-sky-300",
+    surface: "hover:border-sky-400/70 hover:bg-sky-500/[0.06]",
+    ring: "group-focus-visible:ring-sky-400/60",
+  },
+};
 
 const CATEGORY_THUMBNAIL_BG: Record<DeviceCategory, string> = {
   lights: "from-amber-500/30 via-amber-400/20 to-transparent",
@@ -664,31 +682,52 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       </AlertDialog>
 
       <Dialog open={addPickerOpen} onOpenChange={setAddPickerOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-3xl p-5 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Add device</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Plus className="h-5 w-5" />
+              </span>
+              Add an IoT device
+            </DialogTitle>
             <DialogDescription>
-              Pick the bucket that matches what you are wiring up.
+              Choose where this Shelly integration belongs. You can change the group later.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {ADD_OPTIONS.map((option) => (
-              <button
+          <div className="grid gap-3 pt-2 sm:grid-cols-3">
+            {ADD_OPTIONS.map((option) => {
+              const Icon = DEVICE_CATEGORY_META[option.category].icon;
+              return (
+                <button
                 key={option.category}
                 type="button"
-                className="rounded-xl border p-4 text-left hover:border-primary hover:bg-accent/30 transition-colors"
+                className={cn(
+                  "group min-h-40 rounded-2xl border bg-muted/15 p-4 text-left transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2",
+                  ADD_OPTION_STYLES[option.category].surface,
+                  ADD_OPTION_STYLES[option.category].ring,
+                )}
                 onClick={() => {
                   setForm(emptyForm(option.category));
                   setAddPickerOpen(false);
                 }}
               >
-                <div className="flex items-center gap-2">
-                  <LayoutGrid className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-sm">{option.title}</span>
+                <div
+                  className={cn(
+                    "mb-5 flex h-11 w-11 items-center justify-center rounded-2xl",
+                    ADD_OPTION_STYLES[option.category].icon,
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">{option.description}</p>
-              </button>
-            ))}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-sm">{option.title}</span>
+                  <span className="text-muted-foreground transition-transform group-hover:translate-x-0.5">→</span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{option.description}</p>
+                </button>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>

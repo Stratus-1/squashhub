@@ -449,6 +449,40 @@ export default function Bookings() {
   }, [courtCheckinsEnabled, selectedDate, user?.id]);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
+
+  // ── Resume a booking that was interrupted by a "top up to book" redirect ──
+  // Members were being sent to My Account to pay, and the booking they were in
+  // the middle of making was silently lost — they came back having paid with no
+  // slot reserved. We stash the intent and re-open it when they return.
+  const PENDING_BOOKING_KEY = "sh.pendingBooking";
+  const pendingRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (pendingRestoredRef.current) return;
+    if (!myClub?.id || !activeMember?.id) return;
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(PENDING_BOOKING_KEY);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    pendingRestoredRef.current = true;
+    try {
+      localStorage.removeItem(PENDING_BOOKING_KEY);
+      const p = JSON.parse(raw);
+      if (p?.clubId !== myClub.id || p?.memberId !== activeMember.id) return;
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      if (!p?.dateStr || p.dateStr < todayStr) return;
+      const parsed = new Date(`${p.dateStr}T00:00:00`);
+      if (!isNaN(parsed.getTime())) setSelectedDate(parsed);
+      setBookingDialog(p.dialog);
+      toast.info("Welcome back — tap Confirm Booking to finish reserving your slot.");
+    } catch {
+      /* ignore malformed intent */
+    }
+  }, [myClub?.id, activeMember?.id]);
+
   const { data: clubData } = useMyClub();
   const bookingClubId = clubData?.club?.id;
   /** Visitors are local guests unless the club opted back into home clubs. */

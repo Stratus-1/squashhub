@@ -228,12 +228,16 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                 <Zap className="w-4 h-4 text-primary" /> IoT / Shelly Connections
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Shelly relays, gates, geysers, pumps, lights and other switched devices. The main
-                clubhouse door stays under <strong>Door Access</strong>, and court lights stay under{" "}
-                <strong>Courts &amp; Bookings</strong> because those flows carry booking and access rules.
+                Manage every Shelly-connected device in one place: door access, lights, gates,
+                geysers, pumps and other club equipment.
               </p>
             </div>
-            <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setAddPickerOpen(true)}>
+            <Button
+              size="sm"
+              className="gap-1.5 shrink-0"
+              onClick={() => setAddPickerOpen(true)}
+              aria-label="Add an IoT device"
+            >
               <Plus className="w-3.5 h-3.5" /> Add
             </Button>
           </div>
@@ -246,11 +250,12 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         </div>
       )}
 
-      {DEVICE_CATEGORY_LIST.map((group) => {
+      <div className="grid items-start gap-4 md:grid-cols-3">
+        {DEVICE_CATEGORY_LIST.map((group) => {
         const Icon = group.icon;
         const rows = grouped[group.slug];
         return (
-          <Card key={group.slug}>
+          <Card key={group.slug} className="h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -386,7 +391,8 @@ export function DevicesTab({ clubId }: { clubId: string }) {
             </CardContent>
           </Card>
         );
-      })}
+        })}
+      </div>
 
       {/* ── Add / edit ─────────────────────────────────────────────── */}
       <Dialog open={!!form} onOpenChange={(open) => !open && setForm(null)}>

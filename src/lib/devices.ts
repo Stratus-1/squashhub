@@ -90,7 +90,7 @@ export const DEVICE_CATEGORY_META: Record<DeviceCategory, DeviceCategoryMeta> = 
     slug: "access",
     label: "Access",
     description:
-      "Secondary doors, gates and turnstiles. The main clubhouse door is configured under Door Access.",
+      "Doors, gates and turnstiles controlled by a Shelly relay.",
     icon: DoorOpen,
     accent: "text-emerald-600 dark:text-emerald-400",
     restricted: false,

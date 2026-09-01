@@ -3,6 +3,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { verifyPaynowMessage, isPaynowPaid } from "../_shared/paynow.ts";
 import { settlePaynowSession, mapStatus } from "../_shared/paynow-settlement.ts";
+import { resolveGatewayCreds } from "../_shared/gateway-creds.ts";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("ok");
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
       .select("payment_gateway_credentials")
       .eq("club_id", session.club_id)
       .maybeSingle();
-    const integrationKey = ((secrets?.payment_gateway_credentials as any)?.integration_key || "").trim();
+    const integrationKey = (resolveGatewayCreds(secrets?.payment_gateway_credentials, "paynow").integration_key || "").trim();
     if (!integrationKey) {
       console.error("paynow-webhook: no integration key for club", session.club_id);
       return new Response("ok");

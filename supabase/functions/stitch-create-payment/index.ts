@@ -3,6 +3,7 @@
 // This is a separate product from Stitch Enterprise (GraphQL). Most accounts
 // are provisioned as Express — Enterprise requires a separate contract.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { gatewayEnabled, resolveGatewayCreds } from "../_shared/gateway-creds.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,9 +58,9 @@ Deno.serve(async (req) => {
     }
 
     const { data: club } = await admin
-      .from("clubs").select("id, name, subdomain, payment_gateway")
+      .from("clubs").select("id, name, subdomain, payment_gateway, payment_gateways")
       .eq("id", club_id).maybeSingle();
-    if (!club || club.payment_gateway !== "stitch") {
+    if (!club || !gatewayEnabled(club, "stitch")) {
       return json({ error: "Stitch is not configured for this club" }, 200);
     }
 
@@ -67,7 +68,7 @@ Deno.serve(async (req) => {
       .from("club_secrets")
       .select("payment_gateway_credentials")
       .eq("club_id", club_id).maybeSingle();
-    const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
+    const creds = resolveGatewayCreds(secrets?.payment_gateway_credentials, "stitch");
     const clientId = (creds.client_id || "").trim();
     const clientSecret = (creds.client_secret || "").trim();
     const testMode = String(creds.test_mode || "") === "true";

@@ -1,5 +1,6 @@
 // Creates a Yoco checkout for a member: fee payment or wallet top-up.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { gatewayEnabled, resolveGatewayCreds } from "../_shared/gateway-creds.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,10 +67,10 @@ Deno.serve(async (req) => {
 
     const { data: club } = await admin
       .from("clubs")
-      .select("id, name, payment_gateway")
+      .select("id, name, payment_gateway, payment_gateways")
       .eq("id", club_id)
       .maybeSingle();
-    if (!club || club.payment_gateway !== "yoco") {
+    if (!club || !gatewayEnabled(club, "yoco")) {
       return json({ error: "Yoco is not configured for this club" }, 400);
     }
 
@@ -78,7 +79,7 @@ Deno.serve(async (req) => {
       .select("payment_gateway_credentials, payment_gateway_secret_key")
       .eq("club_id", club_id)
       .maybeSingle();
-    const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
+    const creds = resolveGatewayCreds(secrets?.payment_gateway_credentials, "yoco");
     const secretKey = creds.secret_key || (secrets as any)?.payment_gateway_secret_key;
     if (!secretKey) {
       return json({

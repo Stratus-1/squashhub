@@ -26,6 +26,7 @@ import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCar
 import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
+import { checkoutGateways, gatewayLabel } from "@/lib/club-gateways";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
@@ -348,25 +349,27 @@ export default function MyAccount() {
 
   useEffect(() => {
     if (!clubMemberId || !clubId) return;
-    const gw = club?.payment_gateway;
-    if (!isSupportedGateway(gw)) return;
+    const gateways = checkoutGateways(club as any);
+    if (gateways.length === 0) return;
     let stopped = false;
     let runs = 0;
     const reconcile = async () => {
       while (!stopped && runs < 12) {
         runs += 1;
-        try {
-          const { data } = await verifyClubCheckout(gw as GatewayId, null);
-          if ((data as any)?.status === "completed") {
-            clearPendingClubSession(gw as GatewayId);
-            toast.success("Payment received — thank you!");
-            queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
-            queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
-            queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
-            return;
+        for (const gw of gateways) {
+          try {
+            const { data } = await verifyClubCheckout(gw as GatewayId, null);
+            if ((data as any)?.status === "completed") {
+              clearPendingClubSession(gw as GatewayId);
+              toast.success("Payment received — thank you!");
+              queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
+              queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+              queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
+              return;
+            }
+          } catch {
+            // No recent pending session for this gateway.
           }
-        } catch {
-          // No recent pending session or user not ready yet.
         }
         await new Promise((resolve) => setTimeout(resolve, 10000));
       }
@@ -375,13 +378,40 @@ export default function MyAccount() {
     return () => {
       stopped = true;
     };
-  }, [clubMemberId, clubId, queryClient, club?.payment_gateway]);
+  }, [clubMemberId, clubId, queryClient, club?.payment_gateway, (club as any)?.payment_gateways?.join(",")]);
+
 
   const pendingTopUps = (transactions || []).filter(
     (tx: any) => tx.type === "debit" && tx.method === "eft" && tx.status === "pending"
   );
 
   // Launch the configured club gateway for fee payment or account top-up.
+  // Clubs may offer more than one gateway (e.g. Paynow and EcoCash) — let the member pick.
+  const availableGateways = useMemo(() => checkoutGateways(club as any), [club]);
+  const [payGateway, setPayGateway] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    setPayGateway(prev => (prev && availableGateways.includes(prev as any) ? prev : availableGateways[0]));
+  }, [availableGateways.join(",")]);
+
+  const GatewayPicker = () =>
+    availableGateways.length > 1 ? (
+      <div className="space-y-1">
+        <p className="text-xs font-medium">Pay with</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {availableGateways.map(g => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setPayGateway(g)}
+              className={`rounded-md border p-2 text-left text-xs transition ${payGateway === g ? "border-primary bg-primary/10 font-medium" : "border-border hover:bg-muted/50"}`}
+            >
+              {gatewayLabel(g)}
+            </button>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
   const startYocoCheckout = async (opts: {
     amount: number;
     purpose: "fee" | "topup";
@@ -389,7 +419,7 @@ export default function MyAccount() {
     description?: string;
   }) => {
     if (!clubId || !clubMemberId) throw new Error("No club membership found.");
-    const gw = club?.payment_gateway;
+    const gw = payGateway;
     if (!isSupportedGateway(gw)) {
       throw new Error("No supported online payment gateway is configured for this club.");
     }
@@ -913,11 +943,12 @@ export default function MyAccount() {
               <>
                 <Card className="p-3 bg-muted/50">
                   <p className="text-xs text-muted-foreground">
-                    Card payments are processed via {club?.payment_gateway || "the club's payment gateway"}.
+                    Card payments are processed via {gatewayLabel(payGateway)}.
                     Your top-up will be confirmed by the admin after payment is verified.
                   </p>
                 </Card>
-                <FnbPaymentNotice gateway={club?.payment_gateway} />
+                <GatewayPicker />
+                <FnbPaymentNotice gateway={payGateway} />
               </>
             )}
 
@@ -1068,10 +1099,11 @@ export default function MyAccount() {
               <>
                 <Card className="p-3 bg-muted/50">
                   <p className="text-xs text-muted-foreground">
-                    Card payment via {club?.payment_gateway || "payment gateway"}. You will be redirected to complete the card payment before fees are marked as paid.
+                    Card payment via {gatewayLabel(payGateway)}. You will be redirected to complete the card payment before fees are marked as paid.
                   </p>
                 </Card>
-                <FnbPaymentNotice gateway={club?.payment_gateway} />
+                <GatewayPicker />
+                <FnbPaymentNotice gateway={payGateway} />
               </>
             )}
 

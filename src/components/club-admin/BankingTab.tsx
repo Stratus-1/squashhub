@@ -262,10 +262,25 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   );
   const [methodFees, setMethodFees] = useState<Record<string, string>>(() => methodFeesFromClub(club));
   const [credentials, setCredentials] = useState<Record<string, string>>({});
+  // Additional gateways the club also offers alongside the primary one.
+  const [extraGateways, setExtraGateways] = useState<string[]>(
+    () => (((club as any).payment_gateways as string[]) || []).filter(g => g && g !== club.payment_gateway)
+  );
+  const [extraCreds, setExtraCreds] = useState<Record<string, Record<string, string>>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
   const [acceptedMethods, setAcceptedMethods] = useState<Set<string>>(
     new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"])
   );
+
+  const setExtraCred = (gwId: string, key: string, value: string) =>
+    setExtraCreds(p => ({ ...p, [gwId]: { ...(p[gwId] || {}), [key]: value } }));
+  const addExtraGateway = (gwId: string) =>
+    setExtraGateways(p => (p.includes(gwId) || gwId === gateway ? p : [...p, gwId]));
+  const removeExtraGateway = (gwId: string) => {
+    setExtraGateways(p => p.filter(g => g !== gwId));
+    setExtraCreds(p => { const n = { ...p }; delete n[gwId]; return n; });
+  };
+
 
   const toggleMethod = (m: string) =>
     setAcceptedMethods(p => {
@@ -279,8 +294,9 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     setGateway(club.payment_gateway || "");
     setFeePercent((club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : "");
     setMethodFees(methodFeesFromClub(club));
+    setExtraGateways((((club as any).payment_gateways as string[]) || []).filter(g => g && g !== club.payment_gateway));
     setAcceptedMethods(new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"]));
-  }, [club.payment_gateway, (club as any).accepted_payment_methods]);
+  }, [club.payment_gateway, (club as any).payment_gateways, (club as any).accepted_payment_methods]);
 
   const selectedGateway = useMemo(() => GATEWAYS.find(g => g.id === gateway), [gateway]);
 
@@ -297,8 +313,11 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       });
       const saved = (secrets as any).payment_gateway_credentials;
       if (saved && typeof saved === "object") {
-        setCredentials(saved);
+        const { __gateways, ...flat } = saved as Record<string, any>;
+        setCredentials(flat as Record<string, string>);
+        setExtraCreds(__gateways && typeof __gateways === "object" ? __gateways : {});
       }
+
       // Backward compat: if old payment_gateway_secret_key exists and gateway is set
       if (!saved && secrets.payment_gateway_secret_key && club.payment_gateway) {
         const compat: Record<string, string> = {};
@@ -349,7 +368,10 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
     setFeePercent((club as any).payment_gateway_fee_percent != null ? String((club as any).payment_gateway_fee_percent) : "");
     setMethodFees(methodFeesFromClub(club));
     const saved = (secrets as any)?.payment_gateway_credentials;
-    setCredentials(saved && typeof saved === "object" ? saved : {});
+    const { __gateways, ...flat } = (saved && typeof saved === "object" ? saved : {}) as Record<string, any>;
+    setCredentials(flat as Record<string, string>);
+    setExtraCreds(__gateways && typeof __gateways === "object" ? __gateways : {});
+    setExtraGateways((((club as any).payment_gateways as string[]) || []).filter((g: string) => g && g !== club.payment_gateway));
   };
   const resetMethods = () =>
     setAcceptedMethods(new Set(((club as any).accepted_payment_methods as string[]) || ["cash", "eft", "online"]));
@@ -357,6 +379,11 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
   const methodsLock = useEditLock(resetMethods);
   const bankLock = useEditLock(resetBank);
   const gatewayLock = useEditLock(resetGateway);
+  const extraLock = useEditLock(resetGateway);
+
+  // The Stitch Express partner offer only applies to South African clubs.
+  const isSouthAfrican =
+    String((club as any).currency_code || "ZAR").toUpperCase() === "ZAR";
 
   const handleSave = async (onDone?: () => void) => {
     try {
@@ -364,6 +391,7 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
       await updateClub.mutateAsync({
         id: club.id,
         payment_gateway: gateway || null,
+        payment_gateways: extraGateways.filter(g => g && g !== gateway),
         payment_gateway_public_key: null, // migrated to credentials JSON
         payment_gateway_fee_percent: feePercent.trim() === "" ? null : Number(feePercent),
         ...Object.fromEntries(
@@ -383,7 +411,12 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         bank_account_number: bankForm.bank_account_number || null,
         bank_branch_code: bankForm.bank_branch_code || null,
         bank_reference: bankForm.bank_reference || null,
-        payment_gateway_credentials: credentials,
+        payment_gateway_credentials: {
+          ...credentials,
+          __gateways: Object.fromEntries(
+            extraGateways.filter(g => g && g !== gateway).map(g => [g, extraCreds[g] || {}])
+          ),
+        },
       } as any);
 
       toast.success("Banking settings saved");
@@ -681,6 +714,115 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
         </EditLock>
       </Card>
 
+      {/* Additional gateways — members get to choose at checkout */}
+      <Card className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <CreditCard className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">Additional payment gateways</h3>
+          <Badge variant="secondary" className="text-[10px] h-5">Optional</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Offer more than one gateway — for example Paynow <em>and</em> EcoCash. Members then pick
+          which one to pay with at checkout. The gateway above stays the default.
+        </p>
+        <EditLock
+          editing={extraLock.editing}
+          onEdit={extraLock.edit}
+          onCancel={extraLock.cancel}
+          onSave={() => handleSave(extraLock.done)}
+          saving={isSaving}
+          locked={!acceptedMethods.has("online") || !gateway}
+          lockedHint="Choose a main gateway above first."
+          title="additional gateways"
+        >
+        <div className="space-y-3">
+          {extraGateways.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">No additional gateways yet.</p>
+          )}
+          {extraGateways.map(gwId => {
+            const def = GATEWAYS.find(g => g.id === gwId);
+            if (!def) return null;
+            return (
+              <div key={gwId} className="rounded-md border border-border p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium">{def.name}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{def.description}</div>
+                  </div>
+                  <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => removeExtraGateway(gwId)}>
+                    Remove
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {def.fields.map(field => {
+                    const fkey = `${gwId}.${field.key}`;
+                    const val = extraCreds[gwId]?.[field.key] || "";
+                    if (field.type === "checkbox") {
+                      const checked = val === "true";
+                      return (
+                        <label
+                          key={fkey}
+                          className={`md:col-span-2 flex items-start gap-2 rounded-md border p-2 cursor-pointer ${checked ? "border-amber-500 bg-amber-500/10" : "border-border"}`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={checked}
+                            onChange={(e) => setExtraCred(gwId, field.key, e.target.checked ? "true" : "false")}
+                          />
+                          <div className="space-y-0.5">
+                            <div className="text-xs font-medium">{field.label}</div>
+                            {field.helperText && <div className="text-[10px] text-muted-foreground">{field.helperText}</div>}
+                          </div>
+                        </label>
+                      );
+                    }
+                    return (
+                      <div key={fkey} className="space-y-1">
+                        <Label className="text-xs">{field.label}</Label>
+                        <div className="relative">
+                          <Input
+                            className="h-8 text-xs font-mono pr-8"
+                            type={field.sensitive && !visibleFields.has(fkey) ? "password" : "text"}
+                            value={val}
+                            onChange={(e) => setExtraCred(gwId, field.key, e.target.value)}
+                            placeholder={field.placeholder}
+                          />
+                          {field.sensitive && (
+                            <button
+                              type="button"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              onClick={() => toggleVisible(fkey)}
+                            >
+                              {visibleFields.has(fkey) ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            </button>
+                          )}
+                        </div>
+                        {field.helperText && <p className="text-[10px] text-muted-foreground">{field.helperText}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="space-y-1">
+            <Label className="text-xs">Add another gateway</Label>
+            <Select value="__add__" onValueChange={(v) => v !== "__add__" && addExtraGateway(v)}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select provider" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__add__">— Select a provider —</SelectItem>
+                {GATEWAYS.filter(g => g.id !== gateway && !extraGateways.includes(g.id)).map(g => (
+                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        </EditLock>
+      </Card>
+
       <div className="flex flex-wrap items-center gap-2">
         {(gateway === "yoco" || gateway === "stitch") && (
           <Button
@@ -703,15 +845,18 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
 
       
 
-      <StitchOnboardingCard
-        clubId={clubId}
-        clubName={club.name}
-        clubSubdomain={(club as any).subdomain ?? null}
-        defaultEmail={(club as any).email || (secrets as any)?.sender_email || null}
-        defaultCell={(club as any).phone || null}
-        defaultContactName={(club as any).contact_person_name || null}
-        defaultBoardMembers={boardMemberNames}
-      />
+      {isSouthAfrican && (
+        <StitchOnboardingCard
+          clubId={clubId}
+          clubName={club.name}
+          clubSubdomain={(club as any).subdomain ?? null}
+          defaultEmail={(club as any).email || (secrets as any)?.sender_email || null}
+          defaultCell={(club as any).phone || null}
+          defaultContactName={(club as any).contact_person_name || null}
+          defaultBoardMembers={boardMemberNames}
+        />
+      )}
+
       </>)}
       <SetupStepNav steps={steps} value={step} onChange={setStep} />
     </div>

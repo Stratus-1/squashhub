@@ -1,6 +1,7 @@
 // Verifies a Stitch Express payment by session and finalises it in our DB.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+import { resolveGatewayCreds } from "../_shared/gateway-creds.ts";
   finalisePayment,
   isCompletedState,
   isFailedState,
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
 
     const { data: secrets } = await admin.from("club_secrets")
       .select("payment_gateway_credentials").eq("club_id", session.club_id).maybeSingle();
-    const creds = (secrets?.payment_gateway_credentials || {}) as Record<string, string>;
+    const creds = resolveGatewayCreds(secrets?.payment_gateway_credentials, "stitch");
     const clientId = (creds.client_id || "").trim();
     const clientSecret = (creds.client_secret || "").trim();
     if (!clientId || !clientSecret) return json({ error: "Stitch Express keys missing" }, 400);

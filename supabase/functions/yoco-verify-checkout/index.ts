@@ -1,6 +1,7 @@
 // Verifies a Yoco checkout by ID and finalizes the payment in our DB.
 // Called from the frontend success-return page.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { resolveGatewayCreds } from "../_shared/gateway-creds.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,7 +70,7 @@ Deno.serve(async (req) => {
       .select("payment_gateway_credentials, payment_gateway_secret_key")
       .eq("club_id", session.club_id)
       .maybeSingle();
-    const secretKey = (secrets?.payment_gateway_credentials as any)?.secret_key || (secrets as any)?.payment_gateway_secret_key;
+    const secretKey = resolveGatewayCreds(secrets?.payment_gateway_credentials, "yoco").secret_key || (secrets as any)?.payment_gateway_secret_key;
     if (!secretKey) return json({ error: "Yoco key not configured" }, 400);
 
     // Yoco statuses: created, processing, completed, cancelled, failed, expired.

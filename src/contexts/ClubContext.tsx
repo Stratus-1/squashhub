@@ -18,6 +18,7 @@ interface ClubContextType {
     email: string | null;
     phone: string | null;
     payment_gateway?: string | null;
+    payment_gateways?: string[] | null;
     payment_gateway_public_key?: string | null;
     logo_url: string | null;
     chairman_member_id: string | null;
@@ -52,7 +53,7 @@ const ClubContext = createContext<ClubContextType>({
 // Restricted columns (payments, honesty bar, face enrolment) — only granted to
 // authenticated users. Fetched separately and merged into the club object.
 const RESTRICTED_CLUB_COLS =
-  "id, contact_person_name, currency_code, currency_symbol, participation_active, visitors_can_book, visitor_booking_fee, external_booking_provider, external_booking_url, external_booking_label, uses_gobook, gobook_url, payment_gateway, payment_gateway_public_key, payment_gateway_fee_percent, gateway_fee_pct_card_local, gateway_fee_pct_card_intl, gateway_fee_pct_wallet, gateway_fee_pct_capitec, honesty_bar_enabled, face_enrolment_required, booking_slot_minutes, booking_open_time, booking_last_slot_time, peak_weekday_start, peak_weekday_end, peak_weekend_start, peak_weekend_end, max_peak_bookings_per_day, max_bookings_per_day, lights_integration_enabled, light_fee_per_hour";
+  "id, contact_person_name, currency_code, currency_symbol, participation_active, visitors_can_book, visitor_booking_fee, external_booking_provider, external_booking_url, external_booking_label, uses_gobook, gobook_url, payment_gateway, payment_gateways, payment_gateway_public_key, payment_gateway_fee_percent, gateway_fee_pct_card_local, gateway_fee_pct_card_intl, gateway_fee_pct_wallet, gateway_fee_pct_capitec, honesty_bar_enabled, face_enrolment_required, booking_slot_minutes, booking_open_time, booking_last_slot_time, peak_weekday_start, peak_weekday_end, peak_weekend_start, peak_weekend_end, max_peak_bookings_per_day, max_bookings_per_day, lights_integration_enabled, light_fee_per_hour";
 
 export function ClubProvider({ children }: { children: ReactNode }) {
   const location = useLocation();

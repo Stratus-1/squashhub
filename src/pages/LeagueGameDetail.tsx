@@ -584,8 +584,13 @@ export default function LeagueGameDetail() {
           const k = String(r.team_code || "").toUpperCase();
           const c = String(r.captain_code || "").toUpperCase();
           if (k && c) captainCodeByCode[k] = c;
+          // The live is_captain flag on the registration wins over the (often
+          // unset) leagues.captain_member_id — otherwise a registration-flagged
+          // captain loses lineup rights on the scorecard.
+          if (k && r.captain_member_id) captainMemberIdByCode[k] = r.captain_member_id;
         }
       }
+
       return { nameByCode, clubIdByCode, captainCodeByCode, captainMemberIdByCode, logoByCode, associationIdByCode, ruleByCode };
     },
   });

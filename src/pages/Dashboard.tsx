@@ -456,6 +456,7 @@ export default function Dashboard() {
   }, [opponentProfiles]);
 
   // Onboarding
+  const [showAllMatches, setShowAllMatches] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [showFaceEnrolment, setShowFaceEnrolment] = useState(false);

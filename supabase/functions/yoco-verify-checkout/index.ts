@@ -2,6 +2,7 @@
 // Called from the frontend success-return page.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveGatewayCreds } from "../_shared/gateway-creds.ts";
+import { autoSettleFeesFromTopup } from "../_shared/wallet-auto-settle.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -172,6 +173,17 @@ Deno.serve(async (req) => {
       if (insErr && (insErr as any).code !== "23505") {
         console.error("member_credit_transactions insert failed:", insErr);
       }
+    }
+
+    // Wallet top-ups automatically settle outstanding club fees (oldest first)
+    // so a member who has paid is not left showing unpaid fees / nudges.
+    if (session.purpose === "topup" && session.club_member_id) {
+      await autoSettleFeesFromTopup(admin, {
+        clubId: session.club_id,
+        clubMemberId: session.club_member_id,
+        amount,
+        sourceTag: "Yoco",
+      });
     }
 
     // For fee purpose, mark linked fees paid

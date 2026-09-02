@@ -394,9 +394,16 @@ export function TournamentInviteActions({ notification, champId, registrationId,
 
           {/* Accepted but still owing / still needs a partner — reopen the sheet */}
           {isAccepted && !isPartnerInvite && (status === "pending_payment" || status === "pending_eft" || (champ?.match_type === "doubles" && champ?.partner_mode === "players" && !registration?.partner_member_id)) && (
-            <Button size="sm" variant="outline" className="h-8 text-xs mt-3 w-full" onClick={() => setRegisterOpen(true)}>
-              {status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Choose your partner"}
-            </Button>
+            <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
+              <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                {status === "pending_payment" || status === "pending_eft"
+                  ? "You're in — one more step: settle your entry fee."
+                  : "You're in — one more step: select your doubles partner. If you've agreed with someone, pick them now; otherwise come back and do it any time before the draw."}
+              </p>
+              <Button size="sm" className="h-8 text-xs w-full" onClick={() => setRegisterOpen(true)}>
+                {status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Select my doubles partner"}
+              </Button>
+            </div>
           )}
 
           {!isPartnerInvite && (

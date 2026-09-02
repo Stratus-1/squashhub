@@ -1060,10 +1060,15 @@ export default function Dashboard() {
           <h2 className="text-sm font-semibold font-heading flex items-center gap-1.5">
             <History className="w-4 h-4" /> Match Results
           </h2>
+          {(recentMatches?.length || 0) > 3 && (
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowAllMatches((v) => !v)}>
+              {showAllMatches ? "Show less" : `View all (${recentMatches.length})`} <ChevronRight className={cn("w-3 h-3 ml-1 transition-transform", showAllMatches && "rotate-90")} />
+            </Button>
+          )}
         </div>
         {recentMatches && recentMatches.length > 0 ? (
           <div className="space-y-1.5">
-            {recentMatches.slice(0, 10).map((m: any) => {
+            {(showAllMatches ? recentMatches : recentMatches.slice(0, 3)).map((m: any) => {
               const isPlayerA = m.player_a === effectiveUserId || (myMemberId && m.player_a_member_id === myMemberId);
               const isPlayerB = m.player_b === effectiveUserId || (myMemberId && m.player_b_member_id === myMemberId);
               const isParticipant = isPlayerA || isPlayerB;

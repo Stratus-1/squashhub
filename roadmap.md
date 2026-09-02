@@ -59,3 +59,8 @@
 - [x] Cap club-mailbox sends per hour (Gmail 20/h, Outlook 30/h) and spill overflow to the SquashHub sender.
 - [x] Keep club branding (name, logo, signature, disclaimer) on platform-sent fallback emails.
 - [ ] Re-send the invites that Gmail blocked (421) for CSIR.
+
+## Email sending (paused 2 Sep 2026)
+- [ ] Tournament invite platform cron jobs (nsc-champs-invites-platform-am/pm) are DISABLED after Gmail + platform rate-limit blocks. Re-enable only with strict pacing.
+- [ ] 24 CSIR Bells Doubles invites still unsent (rate_limited at 06:29 UTC 2 Sep) — resend slowly when clear.
+- [ ] Cron invite jobs pass the anon key; send-tournament-invite-email now also accepts the internal secret. Update the cron commands before re-enabling.

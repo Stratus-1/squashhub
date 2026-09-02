@@ -435,8 +435,8 @@ export function TournamentInviteRegisterDialog({
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     {paymentRequired
-                      ? "Only players who have already registered and paid can be selected. If your partner isn't listed yet, ask them to register first."
-                      : "Pick any eligible club member — they don't have to register first."}
+                      ? "Only players who have already registered and paid can be selected. If your partner isn't listed yet, ask them to register first — or come back and pick them later."
+                      : "Pick any eligible club member — they don't have to register first. Not ready yet? Close this and select your partner later from the tournament page or your invite."}
                   </p>
                 </>
               )}

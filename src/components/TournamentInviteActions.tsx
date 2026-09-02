@@ -397,7 +397,8 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                 <FnbPaymentNotice className="mt-2" gateway={clubInfo?.payment_gateway} />
               )}
             </>
-          )}
+            );
+          })()}
 
           {/* Accepted but still owing / still needs a partner — reopen the sheet */}
           {isAccepted && !isPartnerInvite && (status === "pending_payment" || status === "pending_eft" || (champ?.match_type === "doubles" && champ?.partner_mode === "players" && !registration?.partner_member_id)) && (

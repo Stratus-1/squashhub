@@ -2520,6 +2520,89 @@ export type Database = {
           },
         ]
       }
+      club_devices: {
+        Row: {
+          auto_off_minutes: number | null
+          ble_mac: string | null
+          category: string
+          club_id: string
+          control_mode: string
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          icon: string | null
+          id: string
+          last_error: string | null
+          last_state: boolean | null
+          last_state_at: string | null
+          location: string | null
+          name: string
+          notes: string | null
+          provider: string
+          pulse_ms: number
+          shelly_channel: number
+          shelly_device_id: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          auto_off_minutes?: number | null
+          ble_mac?: string | null
+          category: string
+          club_id: string
+          control_mode?: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          icon?: string | null
+          id?: string
+          last_error?: string | null
+          last_state?: boolean | null
+          last_state_at?: string | null
+          location?: string | null
+          name: string
+          notes?: string | null
+          provider?: string
+          pulse_ms?: number
+          shelly_channel?: number
+          shelly_device_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          auto_off_minutes?: number | null
+          ble_mac?: string | null
+          category?: string
+          club_id?: string
+          control_mode?: string
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          icon?: string | null
+          id?: string
+          last_error?: string | null
+          last_state?: boolean | null
+          last_state_at?: string | null
+          location?: string | null
+          name?: string
+          notes?: string | null
+          provider?: string
+          pulse_ms?: number
+          shelly_channel?: number
+          shelly_device_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_devices_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_email_campaign_recipients: {
         Row: {
           campaign_id: string
@@ -12915,6 +12998,10 @@ export type Database = {
           }
       can_mark_bells_match: {
         Args: { _match_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_operate_device: {
+        Args: { _device_id: string; _user_id: string }
         Returns: boolean
       }
       can_view_org: {

@@ -92,7 +92,7 @@ export function TournamentNextActionBar({
     [matches],
   );
   const states = useMemo(() => sectionProgression(koMatches, rounds as any), [koMatches, rounds]);
-  const generate = useGenerateNextRound({ champId, states, selfScheduled });
+  const generate = useGenerateNextRound({ champId, states, selfScheduled, playByForRound });
 
   const na = useMemo(
     () => tournamentNextAction(matches as any[], rounds as any, { selfScheduled, status, championScope }),

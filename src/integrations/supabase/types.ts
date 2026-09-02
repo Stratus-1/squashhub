@@ -13429,6 +13429,7 @@ export type Database = {
         Args: { _team_codes: string[] }
         Returns: {
           captain_code: string
+          captain_member_id: string
           team_code: string
         }[]
       }

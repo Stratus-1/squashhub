@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -33,7 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { CircleCheck, CircleDashed, Eye, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
+import { ChevronRight, CircleCheck, CircleDashed, Eye, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import {
@@ -215,6 +216,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
   const [addPickerOpen, setAddPickerOpen] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [savingForm, setSavingForm] = useState(false);
+  const [mobileCategory, setMobileCategory] = useState<DeviceCategory>("lights");
 
   const allDevices = useMemo(() => {
     // Court lights belong to court records so bookings, billing and relay
@@ -492,13 +494,38 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         </Card>
       )}
 
-      <div className="divide-y overflow-hidden rounded-xl border bg-card md:grid md:grid-cols-3 md:items-start md:gap-4 md:divide-y-0 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
+      <Tabs
+        value={mobileCategory}
+        onValueChange={(value) => setMobileCategory(value as DeviceCategory)}
+        className="md:hidden"
+      >
+        <TabsList className="grid h-auto w-full grid-cols-3 rounded-xl p-1">
+          {DEVICE_CATEGORY_LIST.map((group) => {
+            const Icon = group.icon;
+            return (
+              <TabsTrigger key={group.slug} value={group.slug} className="gap-1.5 px-2 py-2 text-xs">
+                <Icon className={cn("size-3.5", group.accent)} />
+                <span className="truncate">{group.label}</span>
+                <span className="text-[10px] text-muted-foreground">{grouped[group.slug].length}</span>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
+
+      <div className="overflow-hidden rounded-xl border bg-card md:grid md:grid-cols-3 md:items-start md:gap-4 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
         {DEVICE_CATEGORY_LIST.map((group) => {
         const Icon = group.icon;
         const rows = grouped[group.slug];
         const configuredCount = rows.filter((device) => device.configured).length;
         return (
-          <Card key={group.slug} className="h-full rounded-none border-0 shadow-none md:rounded-xl md:border md:shadow-sm">
+          <Card
+            key={group.slug}
+            className={cn(
+              "h-full rounded-none border-0 shadow-none md:block md:rounded-xl md:border md:shadow-sm",
+              mobileCategory !== group.slug && "hidden",
+            )}
+          >
             <CardHeader className="px-3 pb-2 pt-3 md:px-6 md:pt-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -528,16 +555,22 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   return (
                     <div
                       key={device.id}
-                      className="overflow-hidden rounded-lg border-0 bg-card/80 md:rounded-xl md:border md:shadow-sm"
+                      className="relative overflow-hidden rounded-lg border-0 bg-card/80 md:rounded-xl md:border md:shadow-sm"
                     >
-                      <div className="grid grid-cols-[44px_minmax(0,1fr)] gap-2.5 px-1 py-2.5 md:grid-cols-[64px_1fr] md:gap-3 md:p-3">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDevice(device)}
+                        className="absolute inset-0 z-10 md:hidden"
+                        aria-label={`Open ${device.name}`}
+                      />
+                      <div className="grid min-h-14 grid-cols-[40px_minmax(0,1fr)_16px] items-center gap-2.5 px-1 py-1.5 md:grid-cols-[64px_1fr] md:items-start md:gap-3 md:p-3">
                         <button
                           type="button"
                           onClick={() => setSelectedDevice(device)}
                           aria-label={`View details for ${device.name}`}
                           title={`View ${device.name}`}
                           className={cn(
-                            "relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border md:h-14 md:w-14 md:rounded-2xl",
+                            "relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border md:h-14 md:w-14 md:rounded-2xl",
                             "bg-gradient-to-br from-muted/80 to-muted/40",
                             "transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           )}
@@ -573,7 +606,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                                   {device.configured ? "Ready" : "Not set up"}
                                 </Badge>
                               </div>
-                              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                                 {[
                                   device.location,
                                   device.control_mode === "pulse" ? "Momentary" : "On / off",
@@ -622,36 +655,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             </div>
                           </div>
 
-                          <div className="mt-2 flex items-center gap-1.5 md:mt-3 md:gap-2">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 sm:hidden"
-                              onClick={() => setSelectedDevice(device)}
-                              aria-label={`View ${device.name}`}
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 sm:hidden"
-                              onClick={() => openEditor(device)}
-                              aria-label={`Edit ${device.name}`}
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </Button>
-                            {device.source === "registry" && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 text-destructive sm:hidden"
-                                onClick={() => setConfirmDelete(device)}
-                                aria-label={`Delete ${device.name}`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
+                          <div className="mt-3 hidden items-center gap-2 md:flex">
                             {device.configured ? <Button
                               size="sm"
                               variant="outline"
@@ -674,6 +678,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             )}
                           </div>
                         </div>
+                        <ChevronRight className="size-4 text-muted-foreground md:hidden" />
                       </div>
                     </div>
                   );
@@ -1195,13 +1200,40 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   )}
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setSelectedDevice(null)}>
-                  Close
-                </Button>
-                <Button onClick={() => openEditor(selectedDevice)}>
-                  {selectedDevice.configured ? "Edit setup" : "Set up device"}
-                </Button>
+              <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-between">
+                <div className="flex gap-2">
+                  {selectedDevice.source === "registry" && (
+                    <Button
+                      variant="ghost"
+                      className="flex-1 text-destructive hover:text-destructive sm:flex-none"
+                      onClick={() => {
+                        setSelectedDevice(null);
+                        setConfirmDelete(selectedDevice);
+                      }}
+                    >
+                      <Trash2 className="mr-1.5 size-4" /> Remove
+                    </Button>
+                  )}
+                  {selectedDevice.configured && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 sm:flex-none"
+                      disabled={testing === selectedDevice.id || selectedDevice.provider !== "shelly"}
+                      onClick={() => handleTest(selectedDevice)}
+                    >
+                      {testing === selectedDevice.id && <Loader2 className="mr-1.5 size-4 animate-spin" />}
+                      Test
+                    </Button>
+                  )}
+                </div>
+                <div className="col-span-2 flex gap-2 sm:col-auto">
+                  <Button className="flex-1 sm:flex-none" variant="outline" onClick={() => setSelectedDevice(null)}>
+                    Close
+                  </Button>
+                  <Button className="flex-1 sm:flex-none" onClick={() => openEditor(selectedDevice)}>
+                    {selectedDevice.configured ? "Edit setup" : "Set up device"}
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           )}

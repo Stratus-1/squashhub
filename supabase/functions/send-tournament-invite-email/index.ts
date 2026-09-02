@@ -33,9 +33,25 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
+  // Authorised callers: a service-role JWT, or the shared internal secret used
+  // by the database routine / cron jobs (which only have the anon key to hand).
   const auth = req.headers.get('Authorization') ?? ''
   const claims = auth.startsWith('Bearer ') ? parseJwtClaims(auth.slice(7).trim()) : null
-  if (claims?.role !== 'service_role') return json({ error: 'Forbidden' }, 403)
+  let authorised = claims?.role === 'service_role'
+  const internalHeader = req.headers.get('x-internal-secret') ?? ''
+  if (!authorised && internalHeader) {
+    const admin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    )
+    const { data } = await admin
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'email_private_internal_secret')
+      .maybeSingle()
+    authorised = !!data?.value && data.value === internalHeader
+  }
+  if (!authorised) return json({ error: 'Forbidden' }, 403)
 
   let body: Record<string, unknown>
   try {

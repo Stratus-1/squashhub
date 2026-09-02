@@ -449,22 +449,22 @@ export function DevicesTab({ clubId }: { clubId: string }) {
   };
 
   return (
-    <div className="mt-4 space-y-4">
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-3 md:mt-4 md:space-y-4">
+      <Card className="border-0 shadow-none md:border md:shadow-sm">
+        <CardHeader className="px-1 pb-2 pt-1 md:px-6 md:pb-3 md:pt-6">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <CardTitle className="text-base flex items-center gap-2">
                 <Zap className="w-4 h-4 text-primary" /> IoT / Shelly Connections
               </CardTitle>
-              <p className="text-sm text-muted-foreground">
+              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground md:text-sm">
                 Configure one Shelly relay per court, manage club access, and add other connected
                 equipment such as geysers, air conditioners and pumps.
               </p>
             </div>
             <Button
               size="sm"
-              className="gap-1.5 shrink-0"
+              className="h-9 shrink-0 gap-1.5 px-3"
               onClick={() => setAddPickerOpen(true)}
               aria-label="Add an IoT device"
             >
@@ -492,33 +492,33 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         </Card>
       )}
 
-      <div className="grid items-start gap-4 md:grid-cols-3">
+      <div className="divide-y overflow-hidden rounded-xl border bg-card md:grid md:grid-cols-3 md:items-start md:gap-4 md:divide-y-0 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
         {DEVICE_CATEGORY_LIST.map((group) => {
         const Icon = group.icon;
         const rows = grouped[group.slug];
         const configuredCount = rows.filter((device) => device.configured).length;
         return (
-          <Card key={group.slug} className="h-full">
-            <CardHeader className="pb-2">
+          <Card key={group.slug} className="h-full rounded-none border-0 shadow-none md:rounded-xl md:border md:shadow-sm">
+            <CardHeader className="px-3 pb-2 pt-3 md:px-6 md:pt-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Icon className={cn("w-4 h-4", group.accent)} />
                     {group.label}
                     {group.restricted && (
-                      <Badge variant="outline" className="h-5 gap-1 text-[10px] font-normal">
+                      <Badge variant="outline" className="hidden h-5 gap-1 text-[10px] font-normal sm:inline-flex">
                         <ShieldCheck className="w-3 h-3" /> Admin & staff only
                       </Badge>
                     )}
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">{group.description}</p>
+                  <p className="mt-1 hidden text-xs text-muted-foreground md:block">{group.description}</p>
                 </div>
                 <Badge variant="secondary" className="shrink-0 text-[10px]">
                   {rows.length === 0 ? "No devices" : `${configuredCount}/${rows.length} set up`}
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-1 px-2 pb-3 md:space-y-3 md:px-6 md:pb-6">
               {rows.length === 0 ? (
                 <p className="text-xs text-muted-foreground italic">{group.emptyHint}</p>
               ) : (
@@ -528,16 +528,16 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   return (
                     <div
                       key={device.id}
-                      className="overflow-hidden rounded-xl border bg-card/80 shadow-sm"
+                      className="overflow-hidden rounded-lg border-0 bg-card/80 md:rounded-xl md:border md:shadow-sm"
                     >
-                      <div className="grid grid-cols-[64px_1fr] gap-3 p-3">
+                      <div className="grid grid-cols-[44px_minmax(0,1fr)] gap-2.5 px-1 py-2.5 md:grid-cols-[64px_1fr] md:gap-3 md:p-3">
                         <button
                           type="button"
                           onClick={() => setSelectedDevice(device)}
                           aria-label={`View details for ${device.name}`}
                           title={`View ${device.name}`}
                           className={cn(
-                            "relative flex h-14 w-14 items-center justify-center rounded-2xl border overflow-hidden",
+                            "relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border md:h-14 md:w-14 md:rounded-2xl",
                             "bg-gradient-to-br from-muted/80 to-muted/40",
                             "transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           )}
@@ -549,21 +549,21 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             )}
                           />
                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.35),transparent_60%)]" />
-                          <div className="absolute inset-x-1 bottom-1 rounded-full bg-background/80 px-1 py-0.5 text-center text-[8px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <div className="absolute inset-x-1 bottom-1 hidden rounded-full bg-background/80 px-1 py-0.5 text-center text-[8px] font-medium uppercase tracking-wide text-muted-foreground md:block">
                             {group.label}
                           </div>
-                          <DeviceIcon className="relative z-10 h-7 w-7 text-foreground drop-shadow-sm" />
+                          <DeviceIcon className="relative z-10 h-5 w-5 text-foreground drop-shadow-sm md:h-7 md:w-7" />
                         </button>
 
                         <div className="min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold truncate flex items-center gap-1.5">
-                                {device.name}
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <p className="min-w-0 flex-1 truncate text-sm font-semibold">{device.name}</p>
                                 <Badge
                                   variant="outline"
                                   className={cn(
-                                    "h-5 gap-1 px-1.5 text-[9px]",
+                                    "h-5 shrink-0 gap-1 px-1.5 text-[9px]",
                                     device.configured
                                       ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
                                       : "border-amber-500/30 text-amber-700 dark:text-amber-400",
@@ -572,7 +572,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                                   {device.configured ? <CircleCheck className="size-3" /> : <CircleDashed className="size-3" />}
                                   {device.configured ? "Ready" : "Not set up"}
                                 </Badge>
-                              </p>
+                              </div>
                               <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                                 {[
                                   device.location,
@@ -582,14 +582,14 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                                   .filter(Boolean)
                                   .join(" · ")}
                               </p>
-                              <p className="text-[11px] text-muted-foreground truncate">
+                              <p className="hidden text-[11px] text-muted-foreground md:block md:truncate">
                                 {device.configured && device.shelly_device_id
                                   ? `Shelly ${device.shelly_device_id}:${device.shelly_channel}`
                                   : "Shelly relay details required"}
                               </p>
                             </div>
 
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="hidden shrink-0 items-center gap-1 sm:flex">
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -622,11 +622,40 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             </div>
                           </div>
 
-                          <div className="mt-3 flex items-center gap-2">
+                          <div className="mt-2 flex items-center gap-1.5 md:mt-3 md:gap-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 sm:hidden"
+                              onClick={() => setSelectedDevice(device)}
+                              aria-label={`View ${device.name}`}
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 sm:hidden"
+                              onClick={() => openEditor(device)}
+                              aria-label={`Edit ${device.name}`}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            {device.source === "registry" && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive sm:hidden"
+                                onClick={() => setConfirmDelete(device)}
+                                aria-label={`Delete ${device.name}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
                             {device.configured ? <Button
                               size="sm"
                               variant="outline"
-                              className="gap-1.5 shrink-0"
+                              className="h-8 shrink-0 gap-1.5 px-3"
                               disabled={testing === device.id || device.provider !== "shelly"}
                               onClick={() => handleTest(device)}
                             >
@@ -658,7 +687,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
 
       {/* ── Add / edit ─────────────────────────────────────────────── */}
       <Dialog open={!!form} onOpenChange={(open) => !open && setForm(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-lg overflow-y-auto p-4 sm:p-6">
           {form && (
             <>
               <DialogHeader>
@@ -677,7 +706,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
               </DialogHeader>
 
               <div className="space-y-4 py-2">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Group</Label>
                     <Select
@@ -833,8 +862,8 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                 </div>
 
                 {form.provider === "shelly" ? (
-                  <div className="grid grid-cols-3 gap-3 rounded-xl border bg-muted/20 p-3">
-                    <div className="col-span-3 space-y-1.5">
+                  <div className="grid gap-3 rounded-xl border bg-muted/20 p-3 sm:grid-cols-3">
+                    <div className="space-y-1.5 sm:col-span-3">
                       <Label>Shelly Cloud auth key</Label>
                       <Input
                         type="password"
@@ -844,7 +873,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                         onChange={(e) => set("auth_key", e.target.value)}
                       />
                     </div>
-                    <div className="col-span-2 space-y-1.5">
+                    <div className="space-y-1.5 sm:col-span-2">
                       <Label>Shelly device ID</Label>
                       <Input
                         value={form.shelly_device_id}
@@ -863,10 +892,10 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                         onChange={(e) => set("shelly_channel", e.target.value)}
                       />
                     </div>
-                    <p className="col-span-3 text-[11px] text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground sm:col-span-3">
                       Uses the club's Shelly Cloud auth key. The key is stored once and is never shown in device details.
                     </p>
-                    <div className="col-span-3 space-y-1.5">
+                    <div className="space-y-1.5 sm:col-span-3">
                       <Label>Server URL (optional)</Label>
                       <Input
                         value={form.server_url}
@@ -875,7 +904,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                         onChange={(e) => set("server_url", e.target.value)}
                       />
                     </div>
-                    <div className="col-span-3 space-y-1.5">
+                    <div className="space-y-1.5 sm:col-span-3">
                       <Label>BLE MAC (optional)</Label>
                       <Input
                         value={form.ble_mac}
@@ -902,7 +931,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   />
                 </div>
 
-                {form.source === "registry" && <div className="grid grid-cols-2 gap-3 items-end">
+                {form.source === "registry" && <div className="grid items-end gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Order</Label>
                     <Input
@@ -975,7 +1004,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       </AlertDialog>
 
       <Dialog open={addPickerOpen} onOpenChange={setAddPickerOpen}>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-3xl p-5 sm:p-6">
+        <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -987,7 +1016,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
               Court-light slots come from the court list. Access and gadgets can be added as needed.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 pt-2 sm:grid-cols-3">
+          <div className="grid gap-2 pt-2 sm:grid-cols-3 sm:gap-3">
             {ADD_OPTIONS.map((option) => {
               const Icon = DEVICE_CATEGORY_META[option.category].icon;
               return (
@@ -995,7 +1024,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                 key={option.category}
                 type="button"
                 className={cn(
-                  "group min-h-40 rounded-2xl border bg-muted/15 p-4 text-left transition-colors",
+                  "group grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border bg-muted/15 p-3 text-left transition-colors sm:block sm:min-h-40 sm:rounded-2xl sm:p-4",
                   "focus-visible:outline-none focus-visible:ring-2",
                   ADD_OPTION_STYLES[option.category].surface,
                   ADD_OPTION_STYLES[option.category].ring,
@@ -1025,17 +1054,19 @@ export function DevicesTab({ clubId }: { clubId: string }) {
               >
                 <div
                   className={cn(
-                    "mb-5 flex h-11 w-11 items-center justify-center rounded-2xl",
+                    "flex h-11 w-11 items-center justify-center rounded-xl sm:mb-5 sm:rounded-2xl",
                     ADD_OPTION_STYLES[option.category].icon,
                   )}
                 >
                   <Icon className="h-5 w-5" />
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-sm">{option.title}</span>
-                  <span className="text-muted-foreground transition-transform group-hover:translate-x-0.5">→</span>
+                <div className="min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-sm">{option.title}</span>
+                  </div>
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-muted-foreground sm:mt-2 sm:line-clamp-none">{option.description}</p>
                 </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">{option.description}</p>
+                <span className="text-muted-foreground transition-transform group-hover:translate-x-0.5">→</span>
                 </button>
               );
             })}
@@ -1044,7 +1075,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       </Dialog>
 
       <Dialog open={!!selectedDevice} onOpenChange={(open) => !open && setSelectedDevice(null)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-xl overflow-y-auto p-4 sm:p-6">
           {selectedDevice && (
             <>
               <DialogHeader>

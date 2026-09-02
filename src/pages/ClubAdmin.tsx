@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap, ChevronsUpDown } from "lucide-react";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 import { RulesTab } from "@/components/club-admin/RulesTab";
@@ -45,6 +45,8 @@ import { CORE_SETUP_KEYS, isTabVisible, type Capability } from "@/lib/capabiliti
 import { useClubCapabilityRows, useCapabilities } from "@/hooks/use-club-capabilities";
 import { FeaturesTab } from "@/components/club-admin/FeaturesTab";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability; startHere?: boolean };
@@ -123,6 +125,7 @@ export default function ClubAdmin() {
   const setupStatus = useSetupStatus(club?.id ?? "", club as any);
   const { enabled: enabledCaps, hasRows: hasCapRows, isLoading: capsLoading } = useCapabilities(club?.id);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const capsReady = !capsLoading && !!club?.id;
 
   // First-run: open Quick Setup once for a genuinely new club. New clubs get
@@ -229,7 +232,7 @@ export default function ClubAdmin() {
   const coreKeys = CORE_SETUP_KEYS.filter(k => visibleSetup.concat(visibleOps).some(t => t.value === k));
   const coreDone = coreKeys.filter(k => setupStatus[k as keyof SetupStatusMap] === "complete").length;
 
-  const renderTabRow = (tab: AdminTab, showStatus = false) => {
+  const renderTabRow = (tab: AdminTab, showStatus = false, closeMobileNav = false) => {
     const Icon = tab.icon;
     const status = showStatus ? setupStatus[tab.value as keyof SetupStatusMap] : undefined;
     const isComplete = status === "complete";
@@ -237,7 +240,10 @@ export default function ClubAdmin() {
       <button
         key={tab.value}
         type="button"
-        onClick={() => setActiveTab(tab.value)}
+        onClick={() => {
+          setActiveTab(tab.value);
+          if (closeMobileNav) setMobileNavOpen(false);
+        }}
         className={cn(
           "group flex min-h-14 w-full items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/60",
           activeTab === tab.value && "border-border bg-muted shadow-xs",
@@ -270,8 +276,8 @@ export default function ClubAdmin() {
   return (
     <div className="min-h-screen pb-20 text-[13px]">
       <PageHeader title={club.name} subtitle="Club Administration" />
-      <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 lg:px-6">
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <main className="mx-auto w-full max-w-7xl space-y-3 px-3 py-3 md:space-y-6 md:px-4 md:py-6 lg:px-6">
+        <section className="hidden gap-4 md:grid md:grid-cols-2 xl:grid-cols-4">
           {[
             { label: "Core setup", value: `${coreDone}/${coreKeys.length}`, detail: "required areas complete" },
             { label: "Setup modules", value: visibleSetup.length, detail: "available to configure" },
@@ -286,7 +292,27 @@ export default function ClubAdmin() {
           ))}
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        {activeTabMeta && (
+          <section className="sticky top-2 z-20 md:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              className="flex min-h-14 w-full items-center gap-3 rounded-xl border bg-card/95 px-3 py-2 text-left shadow-sm backdrop-blur"
+              aria-label="Choose admin workspace"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <activeTabMeta.icon className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Current workspace</span>
+                <span className="block truncate text-sm font-semibold">{activeTabMeta.label}</span>
+              </span>
+              <ChevronsUpDown className="size-4 text-muted-foreground" />
+            </button>
+          </section>
+        )}
+
+        <section className="hidden gap-6 md:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {visibleSetup.length > 0 && (
             <div className="rounded-xl border bg-card shadow-xs">
               <div className="flex items-start justify-between gap-4 border-b px-5 py-4">
@@ -306,18 +332,49 @@ export default function ClubAdmin() {
 
         {activeTabMeta && (
           <section className="overflow-hidden rounded-xl border bg-card shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+            <div className="hidden flex-wrap items-center justify-between gap-3 border-b px-5 py-4 md:flex">
               <div className="flex min-w-0 items-center gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><activeTabMeta.icon className="size-4" /></span>
                 <div className="min-w-0"><h2 className="truncate font-semibold tracking-tight">{activeTabMeta.label}</h2><p className="text-sm text-muted-foreground">Manage this area of your club.</p></div>
               </div>
               <span className="rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">Workspace</span>
             </div>
-            <div className="p-4 md:p-6 [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
+            <div className="p-2.5 md:p-6 [&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold md:[&_.p-4]:p-3 md:[&_.p-3]:p-2.5 md:[&_.gap-4]:gap-3 md:[&_.gap-3]:gap-2">
               {renderContent()}
             </div>
           </section>
         )}
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+          <SheetContent side="bottom" className="h-[85dvh] rounded-t-2xl p-0 md:hidden">
+            <SheetHeader className="border-b px-5 py-4 text-left">
+              <SheetTitle>Club administration</SheetTitle>
+              <SheetDescription>Choose the area you want to manage.</SheetDescription>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(85dvh-85px)]">
+              <div className="space-y-5 p-3 pb-8">
+                {visibleSetup.length > 0 && (
+                  <section>
+                    <div className="flex items-center justify-between px-2 pb-2">
+                      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Setup &amp; configuration</h2>
+                      <span className="text-[11px] text-muted-foreground">{coreDone}/{coreKeys.length}</span>
+                    </div>
+                    <div className="divide-y rounded-xl border bg-card">
+                      {visibleSetup.map((tab) => renderTabRow(tab, !tab.noStatus, true))}
+                    </div>
+                  </section>
+                )}
+                {visibleOps.length > 0 && (
+                  <section>
+                    <h2 className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Operations &amp; finance</h2>
+                    <div className="divide-y rounded-xl border bg-card">
+                      {visibleOps.map((tab) => renderTabRow(tab, false, true))}
+                    </div>
+                  </section>
+                )}
+              </div>
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
         <QuickSetupWizard clubId={club.id} open={wizardOpen} onOpenChange={setWizardOpen} />
         <div className="flex justify-end border-t border-border/50 pt-3">
           <AppVersionBadge />

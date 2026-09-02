@@ -80,6 +80,7 @@ export function AllNextRoundDrawsDialog({
   scopes,
   states,
   selfScheduled,
+  playByForRound,
   scopeLabel,
   onConfirmed,
 }: Props) {

@@ -593,10 +593,19 @@ async function handleClubSend(body: any, authHeader: string) {
   const text = `${subject}\n\n${recipientName ? `Dear ${recipientName},\n\n` : ""}${messageBody}${link ? `\n\nOpen: ${link}\n` : "\n"}`;
 
   const clubMail = await resolveClubMail(user.id, clubId);
+  // When we fall back to the SquashHub sender the club's own branding must
+  // survive: the club name and logo are already carried by the template, and
+  // the club's signature + disclaimer are appended to the body here so the
+  // recipient sees the same sign-off as a club-SMTP email.
+  const signatureText = htmlToPlainText(clubMail?.signatureHtml || "");
+  const brandedBody = [messageBody, signatureText, clubMail?.disclaimer || ""]
+    .map((s) => String(s || "").trim())
+    .filter(Boolean)
+    .join("\n\n");
   const platformArgs = {
     to,
     subject,
-    text: messageBody,
+    text: brandedBody,
     url: link,
     ctaLabel,
     recipientName,
@@ -607,6 +616,24 @@ async function handleClubSend(body: any, authHeader: string) {
   // message out via the platform sender, but we always report that the fallback
   // was used and why the club's own settings did not work.
   if (clubMail) {
+    // Gmail/Workspace mailboxes throttle hard (421 4.3.0) when a club blasts a
+    // tournament invite list. Once the club's own mailbox has sent its hourly
+    // allowance we route the rest through the SquashHub sender instead of
+    // burning the mailbox's reputation and losing the email entirely.
+    const overQuota = await clubSmtpHourlyQuotaReached(clubMail);
+    if (overQuota) {
+      const fb = await sendViaPlatform(platformArgs);
+      if (!fb.ok) {
+        return json({ ok: false, error: `Your club mailbox has reached its safe hourly sending limit and the SquashHub fallback sender also failed: ${fb.reason || "unknown error"}.` }, 502);
+      }
+      return json({
+        ok: true,
+        sender: "platform",
+        fallbackUsed: true,
+        warning: "Your club mailbox reached its safe hourly sending limit, so this email was sent from the SquashHub address (with your club branding and signature).",
+      });
+    }
+
     const result = await sendViaClubSmtp(clubMail, { to, subject, html, text });
     if (result.ok) return json({ ok: true, sender: clubMail.senderEmail });
 
@@ -623,6 +650,7 @@ async function handleClubSend(body: any, authHeader: string) {
       warning: `${message} The email was sent from the SquashHub address instead.`,
     });
   }
+
 
   const result = await sendViaPlatform(platformArgs);
   if (!result.ok) {

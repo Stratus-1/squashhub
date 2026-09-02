@@ -243,6 +243,49 @@ async function sendViaClubSmtp(cfg: ClubMail, args: { to: string; cc?: string[];
   }
 }
 
+/** Plain-text version of a club's stored HTML signature. */
+function htmlToPlainText(html: string): string {
+  return String(html || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Safe hourly send allowance for a club's own mailbox. Consumer Gmail and
+ * Google Workspace start returning "421 4.3.0 Temporary System Problem" long
+ * before their daily cap when messages are sent in a burst, so we pace club
+ * mailboxes and spill the overflow to the platform sender.
+ */
+function clubSmtpHourlyLimit(host: string): number {
+  const h = String(host || "").toLowerCase();
+  if (h.includes("gmail") || h.includes("google")) return 20;
+  if (h.includes("outlook") || h.includes("office365") || h.includes("hotmail")) return 30;
+  return 100;
+}
+
+async function clubSmtpHourlyQuotaReached(cfg: ClubMail): Promise<boolean> {
+  try {
+    const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count } = await supabaseAdmin
+      .from("email_send_log")
+      .select("id", { count: "exact", head: true })
+      .eq("club_id", cfg.clubId)
+      .eq("template_name", "club-smtp")
+      .gte("created_at", since);
+    return (count ?? 0) >= clubSmtpHourlyLimit(cfg.smtpHost);
+  } catch (e) {
+    console.warn("[email-notifications] hourly quota check failed", e);
+    return false;
+  }
+}
+
+
+
 /**
  * Append-only audit of club-SMTP delivery attempts. The platform sender already
  * writes to email_send_log; club SMTP sends were previously invisible, so an

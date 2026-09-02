@@ -5,6 +5,8 @@
 //  - stitch-sweep-pending-payments (cron safety net for payers who never
 //    return, e.g. Capitec Pay approved inside the banking app)
 
+import { autoSettleFeesFromTopup } from "./wallet-auto-settle.ts";
+
 const STITCH_BASE = "https://express.stitch.money/api/v1";
 const STITCH_TOKEN_URL = "https://secure.stitch.money/connect/token";
 const STITCH_API_BASE = "https://api.stitch.money/v2";
@@ -38,6 +40,17 @@ export async function finalisePayment(admin: any, session: any) {
       status: "confirmed", confirmed_at: new Date().toISOString(),
     });
     if (error && (error as any).code !== "23505") console.error("credit_tx insert:", error);
+  }
+
+  // Wallet top-ups automatically settle outstanding club fees (oldest first)
+  // so a member who has paid is not left showing unpaid fees / nudges.
+  if (session.purpose === "topup" && session.club_member_id) {
+    await autoSettleFeesFromTopup(admin, {
+      clubId: session.club_id,
+      clubMemberId: session.club_member_id,
+      amount,
+      sourceTag: "Stitch",
+    });
   }
 
   if (session.purpose === "fee" && Array.isArray(session.fee_ids) && session.fee_ids.length) {

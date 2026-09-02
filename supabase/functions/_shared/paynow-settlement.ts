@@ -1,5 +1,6 @@
 // Shared Paynow settlement logic — used by paynow-verify-checkout and paynow-webhook.
 import { verifyPaynowMessage, isPaynowPaid } from "./paynow.ts";
+import { autoSettleFeesFromTopup } from "./wallet-auto-settle.ts";
 
 export async function pollPaynow(pollUrl: string, integrationKey: string): Promise<string | null> {
   try {
@@ -55,6 +56,17 @@ export async function settlePaynowSession(admin: any, session: any) {
     if (insErr && (insErr as any).code !== "23505") {
       console.error("member_credit_transactions insert failed:", insErr);
     }
+  }
+
+  // Wallet top-ups automatically settle outstanding club fees (oldest first)
+  // so a member who has paid is not left showing unpaid fees / nudges.
+  if (session.purpose === "topup" && session.club_member_id) {
+    await autoSettleFeesFromTopup(admin, {
+      clubId: session.club_id,
+      clubMemberId: session.club_member_id,
+      amount,
+      sourceTag: "Paynow",
+    });
   }
 
   if (session.purpose === "fee" && Array.isArray(session.fee_ids) && session.fee_ids.length) {

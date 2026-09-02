@@ -376,17 +376,43 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
       // Mark linked unpaid fees as paid — the journal_fee_payment_received trigger
       // will automatically post Dr Bank / Cr Debtors for each fee.
       let postedFromFees = false;
+      let remainder = 0;
       if (tx.type === "debit" && tx.club_member_id) {
         const { data: unpaidFees } = await fromExt("club_member_fee_payments")
-          .select("id, fee_label")
+          .select("id, fee_label, amount, created_at")
           .eq("club_member_id", tx.club_member_id)
-          .eq("paid", false);
+          .eq("paid", false)
+          .order("created_at", { ascending: true });
         const descStr = (tx.description || "") as string;
-        const feesToMark = (unpaidFees || []).filter((f: any) => descStr.includes(f.fee_label));
+        let feesToMark = (unpaidFees || []).filter((f: any) => descStr.includes(f.fee_label));
+
+        // Top-up confirmations have no fee label in the description — auto-settle
+        // outstanding fees (oldest first) up to the confirmed amount, mirroring the
+        // gateway top-up auto-settlement. Any remainder stays as wallet credit.
+        if (feesToMark.length === 0 && /top[- ]?up/i.test(descStr)) {
+          let remaining = Math.abs(Number(tx.amount));
+          for (const fee of unpaidFees || []) {
+            if (remaining <= 0) break;
+            const feeAmt = Number(fee.amount);
+            if (feeAmt <= 0) continue;
+            const deduction = Math.min(remaining, feeAmt);
+            remaining -= deduction;
+            feesToMark.push({ ...fee, __deduction: deduction });
+          }
+          remainder = Math.max(0, remaining);
+        }
+
         for (const fee of feesToMark) {
-          await fromExt("club_member_fee_payments")
-            .update({ paid: true, paid_at: new Date().toISOString() })
-            .eq("id", fee.id);
+          const deduction = (fee as any).__deduction;
+          if (deduction != null && deduction < Number(fee.amount) - 0.001) {
+            await fromExt("club_member_fee_payments")
+              .update({ amount: Number(fee.amount) - deduction })
+              .eq("id", fee.id);
+          } else {
+            await fromExt("club_member_fee_payments")
+              .update({ paid: true, paid_at: new Date().toISOString() })
+              .eq("id", fee.id);
+          }
           postedFromFees = true;
         }
         queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
@@ -394,10 +420,11 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
 
       // Fallback: if no fee rows could be matched (e.g. ad-hoc top-ups, light fees),
       // still record the cash receipt directly so the bank balance reflects it.
-      if (!postedFromFees) {
+      // For top-ups that auto-settled fees, only the unspent remainder goes to wallet.
+      if (!postedFromFees || remainder > 0) {
         const memberName = getMemberName(tx.club_member_id);
         const desc = `Payment received: ${tx.description || "EFT"} — ${memberName}`;
-        const amt = Math.abs(Number(tx.amount));
+        const amt = remainder > 0 ? remainder : Math.abs(Number(tx.amount));
         await postJournal(clubId, [
           { account: "bank_current", debit: amt, description: desc, member_id: tx.club_member_id },
           { account: "member_credits", credit: amt, description: desc, member_id: tx.club_member_id },

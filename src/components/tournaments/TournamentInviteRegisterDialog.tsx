@@ -173,7 +173,12 @@ export function TournamentInviteRegisterDialog({
     },
     onSuccess: async (newStatus) => {
       await refresh();
-      if (newStatus === "pending_eft" || newStatus === "pending_payment") {
+      const needsPayment = newStatus === "pending_eft" || newStatus === "pending_payment";
+      if (playerPicksPartner) {
+        toast.success(needsPayment
+          ? "You're in! Next: settle your entry fee, then select your doubles partner below."
+          : "You're in! Next step: select your doubles partner below.");
+      } else if (needsPayment) {
         toast.success("Registered — please settle your entry fee below.");
       } else {
         toast.success("Invitation accepted.");
@@ -311,20 +316,30 @@ export function TournamentInviteRegisterDialog({
 
           {/* Step 1 — accept / register */}
           {!accepted ? (
-            <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => {
-              if (mustChooseDivision && chosenDivisions.length === 0) {
-                setDivisionError(singleDivisionOnly
-                  ? "Please choose the league you want to play in."
-                  : "Please tick at least one division you want to play in.");
-                return;
-              }
+            <div className="space-y-1.5">
+              {playerPicksPartner && (
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground">Step 1:</span> confirm your attendance.
+                  <span className="font-medium text-foreground"> Step 2:</span> select your doubles partner — you can do it right here if you've already agreed with someone, or come back later any time before the draw.
+                </p>
+              )}
+              <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => {
+                if (mustChooseDivision && chosenDivisions.length === 0) {
+                  setDivisionError(singleDivisionOnly
+                    ? "Please choose the league you want to play in."
+                    : "Please tick at least one division you want to play in.");
+                  return;
+                }
 
-              setDivisionError("");
-              accept.mutate();
-            }}>
-              {accept.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-              {paymentRequired ? `Register to accept · ${money(entryFeeCents)}` : "Accept and confirm I can play"}
-            </Button>
+                setDivisionError("");
+                accept.mutate();
+              }}>
+                {accept.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                {playerPicksPartner
+                  ? (paymentRequired ? `Confirm & select partner · ${money(entryFeeCents)}` : "Confirm attendance & select partner")
+                  : paymentRequired ? `Register to accept · ${money(entryFeeCents)}` : "Accept and confirm I can play"}
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-2 text-xs text-primary">
               <Check className="w-3 h-3" />
@@ -364,17 +379,23 @@ export function TournamentInviteRegisterDialog({
             </div>
           )}
 
-          {/* Step 3 — partner */}
+          {/* Step 2 — partner */}
           {playerPicksPartner && accepted && (
-            <div className="pt-2 border-t border-border/60 space-y-1.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Your partner</p>
+            <div className={registration.partner_member_id
+              ? "pt-2 border-t border-border/60 space-y-1.5"
+              : "rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-1.5"}>
+              <p className={registration.partner_member_id
+                ? "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                : "text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"}>
+                Step 2 — select your doubles partner
+              </p>
               {registration.partner_member_id ? (
                 <p className="text-xs flex items-center gap-1">
                   <Check className="w-3 h-3 text-primary" /> {getName(registration.partner) || "Partner selected"}
                 </p>
               ) : !canPickPartner ? (
-                <p className="text-[11px] text-muted-foreground">
-                  Settle your entry fee first — you can pick your partner as soon as your payment is confirmed.
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  Settle your entry fee first — you can select your partner as soon as your payment is confirmed.
                 </p>
               ) : (
                 <>
@@ -414,8 +435,8 @@ export function TournamentInviteRegisterDialog({
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     {paymentRequired
-                      ? "Only players who have already registered and paid can be selected. If your partner isn't listed yet, ask them to register first."
-                      : "Pick any eligible club member — they don't have to register first."}
+                      ? "Only players who have already registered and paid can be selected. If your partner isn't listed yet, ask them to register first — or come back and pick them later."
+                      : "Pick any eligible club member — they don't have to register first. Not ready yet? Close this and select your partner later from the tournament page or your invite."}
                   </p>
                 </>
               )}

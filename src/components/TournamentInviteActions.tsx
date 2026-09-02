@@ -370,8 +370,15 @@ export function TournamentInviteActions({ notification, champId, registrationId,
             ))}
           </div>
 
-          {!isAccepted && !isDeclined && (
+          {!isAccepted && !isDeclined && (() => {
+            const doublesPickPartner = !isPartnerInvite && champ?.match_type === "doubles" && champ?.partner_mode === "players";
+            return (
             <>
+              {doublesPickPartner && (
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  This is a doubles tournament — you'll confirm your attendance <span className="font-medium text-foreground">and select your partner</span> (if you've agreed with someone already) in the next step.
+                </p>
+              )}
               <div className="flex flex-col sm:flex-row gap-2 mt-3">
                 <Button
                   size="sm"
@@ -380,7 +387,7 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                   onClick={() => (isPartnerInvite ? respond.mutate(true) : setRegisterOpen(true))}
                 >
                   {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : paymentRequired ? <CreditCard className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-                  {isPartnerInvite ? "Accept Partner" : paymentRequired ? `Register to accept · ${formatMoney(entryFeeCents)}` : "Register to accept"}
+                  {isPartnerInvite ? "Accept Partner" : doublesPickPartner ? (paymentRequired ? `Confirm & select partner · ${formatMoney(entryFeeCents)}` : "Confirm attendance & select partner") : paymentRequired ? `Register to accept · ${formatMoney(entryFeeCents)}` : "Register to accept"}
                 </Button>
                 <Button size="sm" variant="outline" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(false)}>
                   <XCircle className="w-3 h-3 mr-1" /> Decline
@@ -390,13 +397,21 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                 <FnbPaymentNotice className="mt-2" gateway={clubInfo?.payment_gateway} />
               )}
             </>
-          )}
+            );
+          })()}
 
           {/* Accepted but still owing / still needs a partner — reopen the sheet */}
           {isAccepted && !isPartnerInvite && (status === "pending_payment" || status === "pending_eft" || (champ?.match_type === "doubles" && champ?.partner_mode === "players" && !registration?.partner_member_id)) && (
-            <Button size="sm" variant="outline" className="h-8 text-xs mt-3 w-full" onClick={() => setRegisterOpen(true)}>
-              {status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Choose your partner"}
-            </Button>
+            <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
+              <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                {status === "pending_payment" || status === "pending_eft"
+                  ? "You're in — one more step: settle your entry fee."
+                  : "You're in — one more step: select your doubles partner. If you've agreed with someone, pick them now; otherwise come back and do it any time before the draw."}
+              </p>
+              <Button size="sm" className="h-8 text-xs w-full" onClick={() => setRegisterOpen(true)}>
+                {status === "pending_payment" || status === "pending_eft" ? "Pay entry fee / upload proof" : "Select my doubles partner"}
+              </Button>
+            </div>
           )}
 
           {!isPartnerInvite && (

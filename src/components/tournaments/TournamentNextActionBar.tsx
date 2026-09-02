@@ -69,6 +69,7 @@ export function TournamentNextActionBar({
   onSetup,
   onFocusFixtures,
   groupLabel,
+  playByForRound,
   className,
 }: Props) {
   const navigate = useNavigate();
@@ -282,6 +283,7 @@ export function TournamentNextActionBar({
           scopes={outstanding}
           states={states}
           selfScheduled={selfScheduled}
+          playByForRound={playByForRound}
           scopeLabel={scopeLabel}
           onConfirmed={(keys) => {
             const nextPrepared = Array.from(new Set([...preparedKeys, ...keys]));

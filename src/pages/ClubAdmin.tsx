@@ -312,7 +312,7 @@ export default function ClubAdmin() {
           </section>
         )}
 
-        <section className="hidden gap-6 md:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <section className="grid gap-3 md:gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {visibleSetup.length > 0 && (
             <div className="rounded-xl border bg-card shadow-xs">
               <div className="flex items-start justify-between gap-4 border-b px-5 py-4">

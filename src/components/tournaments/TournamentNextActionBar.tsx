@@ -54,6 +54,8 @@ interface Props {
   onFocusFixtures?: () => void;
   /** Division label resolver for multi-division next-round selection. */
   groupLabel?: (groupNumber: number) => string;
+  /** Configured play-by date per round (`round_play_by`) — beats the +7-day guess. */
+  playByForRound?: (round: number) => string | null;
   className?: string;
 }
 

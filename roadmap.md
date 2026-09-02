@@ -54,3 +54,8 @@
 - [x] Create tenant with slug `stjohns`, currency USD ($).
 - [x] First person to register at stjohns becomes club admin automatically.
 - [x] Doubles invite UX: make partner selection explicit on accept button + post-accept callout (Grant missed it)
+
+## NEW: Gmail sending block (club SMTP throttling)
+- [x] Cap club-mailbox sends per hour (Gmail 20/h, Outlook 30/h) and spill overflow to the SquashHub sender.
+- [x] Keep club branding (name, logo, signature, disclaimer) on platform-sent fallback emails.
+- [ ] Re-send the invites that Gmail blocked (421) for CSIR.

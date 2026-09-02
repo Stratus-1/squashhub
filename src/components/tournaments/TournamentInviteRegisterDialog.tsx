@@ -311,20 +311,30 @@ export function TournamentInviteRegisterDialog({
 
           {/* Step 1 — accept / register */}
           {!accepted ? (
-            <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => {
-              if (mustChooseDivision && chosenDivisions.length === 0) {
-                setDivisionError(singleDivisionOnly
-                  ? "Please choose the league you want to play in."
-                  : "Please tick at least one division you want to play in.");
-                return;
-              }
+            <div className="space-y-1.5">
+              {playerPicksPartner && (
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground">Step 1:</span> confirm your attendance.
+                  <span className="font-medium text-foreground"> Step 2:</span> select your doubles partner — you can do it right here if you've already agreed with someone, or come back later any time before the draw.
+                </p>
+              )}
+              <Button className="w-full h-9 text-xs" disabled={accept.isPending} onClick={() => {
+                if (mustChooseDivision && chosenDivisions.length === 0) {
+                  setDivisionError(singleDivisionOnly
+                    ? "Please choose the league you want to play in."
+                    : "Please tick at least one division you want to play in.");
+                  return;
+                }
 
-              setDivisionError("");
-              accept.mutate();
-            }}>
-              {accept.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-              {paymentRequired ? `Register to accept · ${money(entryFeeCents)}` : "Accept and confirm I can play"}
-            </Button>
+                setDivisionError("");
+                accept.mutate();
+              }}>
+                {accept.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                {playerPicksPartner
+                  ? (paymentRequired ? `Confirm & select partner · ${money(entryFeeCents)}` : "Confirm attendance & select partner")
+                  : paymentRequired ? `Register to accept · ${money(entryFeeCents)}` : "Accept and confirm I can play"}
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-2 text-xs text-primary">
               <Check className="w-3 h-3" />

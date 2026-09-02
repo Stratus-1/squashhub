@@ -1342,3 +1342,8 @@ Tests: `src/test/booking-label.test.ts`.
 - Fix: new shared helper `supabase/functions/_shared/wallet-auto-settle.ts` (`autoSettleFeesFromTopup`) settles unpaid fees oldest-first from any confirmed top-up; wired into stitch-settlement, paynow-settlement, yoco-verify-checkout. FinanceTab EFT top-up confirmation now also auto-settles fees and posts only the remainder to member_credits.
 - Data: settled Megan Hunter (GB) R725 fee from her confirmed R1000 Stitch top-up; cancelled her stale duplicate R725 pending EFT top-up.
 - Deployed: stitch-verify-payment, stitch-sweep-pending-payments, yoco-verify-checkout, paynow-verify-checkout, paynow-webhook.
+
+## 2026-09-02 — Club device switches "Device not found" fix
+- Root causes (2): (1) device-control UUID regex used \d-only groups, rejecting ~98% of hex UUID device IDs before the registry lookup; (2) the club_devices registry migration was never applied to the database.
+- Fix: corrected regex to hex groups [0-9a-f]; applied club_devices table + RLS + can_operate_device() + GRANTs, and backfilled existing Shelly door/court-light configs into the registry (5 devices: Gordons Bay door + 2 courts, demo club 2 courts).
+- Verified: regex test against all real device IDs (old rejects, new accepts; legacy-court-light-N still routes to legacy branch). device-control redeployed.

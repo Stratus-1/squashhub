@@ -303,6 +303,9 @@ export function TournamentNextActionBar({
           state={reviewState}
           qualifiers={reviewState.activeCount}
           selfScheduled={selfScheduled}
+          plannedPlayBy={
+            playByForRound?.(reviewState.nextRound?.round_number ?? reviewState.currentRound + 1) ?? null
+          }
           divisionLabel={scopeLabel(reviewState.groupNumber, reviewState.section)}
           onReady={(v) => {
             setSetup(v);

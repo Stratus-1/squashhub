@@ -12,7 +12,7 @@ import { Users } from "lucide-react";
 import { MemberOnboardingWizard } from "@/components/MemberOnboardingWizard";
 import { MembershipIntroModal } from "@/components/MembershipIntroModal";
 import { MyChampionships } from "@/components/MyChampionships";
-import { MyChallenges } from "@/components/MyChallenges";
+
 
 import { WelcomeBanner } from "@/components/WelcomeBanner";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
@@ -1239,11 +1239,6 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-
-      {/* My Challenges */}
-      <div className="px-4 mt-4">
-        <MyChallenges />
-      </div>
 
       {/* My Tournaments */}
       <div className="px-4 mt-4">

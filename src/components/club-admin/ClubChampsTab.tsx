@@ -6787,6 +6787,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 selfScheduled={String(c.scheduling_mode || "") === "self"}
                 championScope={(c as any).champion_scope || undefined}
                 groupLabel={(gn) => (c as any)?.group_labels?.[String(gn)] || `Division ${gn}`}
+                playByForRound={(round) => parseRoundDeadlines((c as any).round_play_by)[round - 1]?.date ?? null}
                 mode="card"
                 onSetup={() => loadChampForEdit(c)}
               />

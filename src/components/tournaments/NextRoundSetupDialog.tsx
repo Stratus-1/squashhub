@@ -45,6 +45,11 @@ interface Props {
   divisionLabel?: string | null;
   /** Players arrange their own court/date — the play-by date then matters most. */
   selfScheduled?: boolean;
+  /**
+   * The tournament's configured play-by date for this round number
+   * (`round_play_by` from setup). Always preferred over the +7-day guess.
+   */
+  plannedPlayBy?: string | null;
   /** Metadata saved — open the visual draw for this round. */
   onReady: (v: NextRoundReady) => void;
 }
@@ -57,6 +62,7 @@ export function NextRoundSetupDialog({
   qualifiers,
   divisionLabel,
   selfScheduled,
+  plannedPlayBy,
   onReady,
 }: Props) {
   const qc = useQueryClient();
@@ -68,8 +74,10 @@ export function NextRoundSetupDialog({
   useEffect(() => {
     if (!open) return;
     setLabel(suggestStageName({ plannedLabel: state.nextRound?.label, roundNumber, qualifiers }));
-    setPlayBy(state.nextRound?.play_by ? String(state.nextRound.play_by).slice(0, 10) : defaultPlayBy());
-  }, [open, state.nextRound?.label, state.nextRound?.play_by, roundNumber, qualifiers]);
+    // Priority: saved round row → tournament's configured round deadline → +7d guess.
+    const planned = plannedPlayBy && /^\d{4}-\d{2}-\d{2}/.test(plannedPlayBy) ? plannedPlayBy.slice(0, 10) : null;
+    setPlayBy(state.nextRound?.play_by ? String(state.nextRound.play_by).slice(0, 10) : planned ?? defaultPlayBy());
+  }, [open, state.nextRound?.label, state.nextRound?.play_by, plannedPlayBy, roundNumber, qualifiers]);
 
   const today = new Date().toISOString().slice(0, 10);
   const setup: NextRoundSetup = { label: label.trim(), playBy: playBy || null };

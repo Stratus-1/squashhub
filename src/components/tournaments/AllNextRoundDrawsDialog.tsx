@@ -56,6 +56,11 @@ interface Props {
   /** Live progression for every section of the tournament. */
   states: SectionProgression[];
   selfScheduled?: boolean;
+  /**
+   * The tournament's configured play-by date per round number
+   * (`round_play_by` from setup). Always preferred over the +7-day guess.
+   */
+  playByForRound?: (round: number) => string | null;
   scopeLabel: (groupNumber: number, section: number) => string;
   /** Called once every board has been confirmed, with the keys that were done. */
   onConfirmed?: (keys: string[]) => void;
@@ -75,6 +80,7 @@ export function AllNextRoundDrawsDialog({
   scopes,
   states,
   selfScheduled,
+  playByForRound,
   scopeLabel,
   onConfirmed,
 }: Props) {
@@ -142,9 +148,10 @@ export function AllNextRoundDrawsDialog({
                 roundNumber: scope.roundNumber,
                 qualifiers: scope.qualifiers,
               }),
+              // Priority: saved round row → configured round deadline → +7d guess.
               playBy: state.nextRound?.play_by
                 ? String(state.nextRound.play_by).slice(0, 10)
-                : defaultPlayBy(),
+                : playByForRound?.(scope.roundNumber) ?? defaultPlayBy(),
               board: suggested,
               suggested,
             };

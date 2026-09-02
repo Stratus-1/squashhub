@@ -54,6 +54,8 @@ interface Props {
   onFocusFixtures?: () => void;
   /** Division label resolver for multi-division next-round selection. */
   groupLabel?: (groupNumber: number) => string;
+  /** Configured play-by date per round (`round_play_by`) — beats the +7-day guess. */
+  playByForRound?: (round: number) => string | null;
   className?: string;
 }
 
@@ -67,6 +69,7 @@ export function TournamentNextActionBar({
   onSetup,
   onFocusFixtures,
   groupLabel,
+  playByForRound,
   className,
 }: Props) {
   const navigate = useNavigate();
@@ -89,7 +92,7 @@ export function TournamentNextActionBar({
     [matches],
   );
   const states = useMemo(() => sectionProgression(koMatches, rounds as any), [koMatches, rounds]);
-  const generate = useGenerateNextRound({ champId, states, selfScheduled });
+  const generate = useGenerateNextRound({ champId, states, selfScheduled, playByForRound });
 
   const na = useMemo(
     () => tournamentNextAction(matches as any[], rounds as any, { selfScheduled, status, championScope }),
@@ -280,6 +283,7 @@ export function TournamentNextActionBar({
           scopes={outstanding}
           states={states}
           selfScheduled={selfScheduled}
+          playByForRound={playByForRound}
           scopeLabel={scopeLabel}
           onConfirmed={(keys) => {
             const nextPrepared = Array.from(new Set([...preparedKeys, ...keys]));
@@ -299,6 +303,9 @@ export function TournamentNextActionBar({
           state={reviewState}
           qualifiers={reviewState.activeCount}
           selfScheduled={selfScheduled}
+          plannedPlayBy={
+            playByForRound?.(reviewState.nextRound?.round_number ?? reviewState.currentRound + 1) ?? null
+          }
           divisionLabel={scopeLabel(reviewState.groupNumber, reviewState.section)}
           onReady={(v) => {
             setSetup(v);

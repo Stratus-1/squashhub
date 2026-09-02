@@ -173,7 +173,12 @@ export function TournamentInviteRegisterDialog({
     },
     onSuccess: async (newStatus) => {
       await refresh();
-      if (newStatus === "pending_eft" || newStatus === "pending_payment") {
+      const needsPayment = newStatus === "pending_eft" || newStatus === "pending_payment";
+      if (playerPicksPartner) {
+        toast.success(needsPayment
+          ? "You're in! Next: settle your entry fee, then select your doubles partner below."
+          : "You're in! Next step: select your doubles partner below.");
+      } else if (needsPayment) {
         toast.success("Registered — please settle your entry fee below.");
       } else {
         toast.success("Invitation accepted.");
@@ -374,17 +379,23 @@ export function TournamentInviteRegisterDialog({
             </div>
           )}
 
-          {/* Step 3 — partner */}
+          {/* Step 2 — partner */}
           {playerPicksPartner && accepted && (
-            <div className="pt-2 border-t border-border/60 space-y-1.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Your partner</p>
+            <div className={registration.partner_member_id
+              ? "pt-2 border-t border-border/60 space-y-1.5"
+              : "rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-1.5"}>
+              <p className={registration.partner_member_id
+                ? "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                : "text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"}>
+                Step 2 — select your doubles partner
+              </p>
               {registration.partner_member_id ? (
                 <p className="text-xs flex items-center gap-1">
                   <Check className="w-3 h-3 text-primary" /> {getName(registration.partner) || "Partner selected"}
                 </p>
               ) : !canPickPartner ? (
-                <p className="text-[11px] text-muted-foreground">
-                  Settle your entry fee first — you can pick your partner as soon as your payment is confirmed.
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  Settle your entry fee first — you can select your partner as soon as your payment is confirmed.
                 </p>
               ) : (
                 <>

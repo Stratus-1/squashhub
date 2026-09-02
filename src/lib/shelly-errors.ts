@@ -64,6 +64,12 @@ export function friendlyShellyMessage(raw: string, fallback: string): string {
   if (s.includes("device is offline") || s.includes("offline")) {
     return "The Shelly relay is offline. Check that it has power and WiFi, then try again.";
   }
+  if (s.includes("returned no status") || s.includes("unreadable status response")) {
+    return "Shelly Cloud could not read this relay. Check the Device ID and channel, then try again.";
+  }
+  if (s.includes("could not reach shelly cloud")) {
+    return "SquashHub could not reach Shelly Cloud. Check the club internet connection and try again.";
+  }
   if (s.includes("timeout") || s.includes("timed out")) {
     return "The relay didn't respond in time. It may be temporarily offline — try again in a moment.";
   }

@@ -441,7 +441,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       toast.success(
         device.control_mode === "pulse"
           ? `${device.name} pulsed`
-          : `${device.name} is ${res?.online === false ? "offline" : res?.state ? "on" : "off"}`,
+          : `${device.name} is ${res?.online === false ? "offline" : res?.state === true ? "on" : res?.state === false ? "off" : "unknown"}`,
       );
     } catch (e: any) {
       toast.error(e?.message || "Test failed");

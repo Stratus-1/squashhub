@@ -20,6 +20,7 @@ type ShellyDeviceState = {
   online: boolean | null;
   output: boolean | null;
   raw: string;
+  error: string | null;
 };
 
 type ControlDevice = {
@@ -58,6 +59,15 @@ async function getDeviceStatus(params: {
       },
     );
     const raw = (await res.text()).slice(0, 800);
+    if (!res.ok) {
+      return {
+        online: null,
+        output: null,
+        raw,
+        error: `Shelly status ${res.status}: ${raw || res.statusText}`,
+      };
+    }
+
     let online: boolean | null = null;
     let output: boolean | null = null;
     try {
@@ -67,11 +77,25 @@ async function getDeviceStatus(params: {
       const switchStatus = state?.status?.[`switch:${params.channel}`];
       if (typeof switchStatus?.output === "boolean") output = switchStatus.output;
     } catch {
-      /* non-JSON — leave unknown */
+      return {
+        online: null,
+        output: null,
+        raw,
+        error: "Shelly Cloud returned an unreadable status response.",
+      };
     }
-    return { online, output, raw };
+    const error = online === null && output === null
+      ? `Shelly Cloud returned no status for channel ${params.channel}. Check the Device ID and channel.`
+      : null;
+    return { online, output, raw, error };
   } catch (e: any) {
-    return { online: null, output: null, raw: String(e?.message || e) };
+    const message = String(e?.message || e);
+    return {
+      online: null,
+      output: null,
+      raw: message,
+      error: `Could not reach Shelly Cloud: ${message}`,
+    };
   }
 }
 
@@ -286,15 +310,18 @@ Deno.serve(async (req) => {
     // Read-only path — used by the dashboard to show real state on load.
     if (action === "status") {
       const state = await getDeviceStatus(shelly);
+      const statusError = state.error || (state.online === false ? `"${device.name}" is offline.` : null);
       if (!isLegacy) {
         await admin
           .from("club_devices")
           .update({
             last_state: state.output,
             last_state_at: new Date().toISOString(),
+            last_error: statusError,
           })
           .eq("id", device_id);
       }
+      if (statusError) return json({ error: statusError }, 502);
       return json({ ok: true, online: state.online, state: state.output });
     }
 

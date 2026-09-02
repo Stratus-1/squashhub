@@ -1336,3 +1336,9 @@ Tests: `src/test/booking-label.test.ts`.
 - tournament_invite_directory RPC now lists only members who can actually receive an invite (email on file OR linked login); tournament_invite_scope_tree RPC returns a new email_count per club.
 - InviteScopeTree shows "X of Y with email" per club/association; selection summary reads "X of Y members can be emailed". ClubChampsTab roster picker and hint text updated to match (blue/asterisk = has a SquashHub login).
 - Aligned two stale doubles-pairing wording tests with current copy.
+
+## 2026-09-02 — Wallet top-ups auto-settle outstanding fees
+- Problem: members who topped up their wallet (Stitch/Yoco/Paynow) were left with unpaid fee rows unless they manually did "Pay from credit", so the recurring-payment prompt kept showing (e.g. Megan, Gordons Bay, R725).
+- Fix: new shared helper `supabase/functions/_shared/wallet-auto-settle.ts` (`autoSettleFeesFromTopup`) settles unpaid fees oldest-first from any confirmed top-up; wired into stitch-settlement, paynow-settlement, yoco-verify-checkout. FinanceTab EFT top-up confirmation now also auto-settles fees and posts only the remainder to member_credits.
+- Data: settled Megan Hunter (GB) R725 fee from her confirmed R1000 Stitch top-up; cancelled her stale duplicate R725 pending EFT top-up.
+- Deployed: stitch-verify-payment, stitch-sweep-pending-payments, yoco-verify-checkout, paynow-verify-checkout, paynow-webhook.

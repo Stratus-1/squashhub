@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
     // old court-light IDs during that window so existing relays remain usable.
     let device: ControlDevice | null = null;
     let isLegacy = false;
-    if (/^\d{8}-\d{4}-[1-5]\d{3}-[89ab]\d{3}-[0-9a-f]{12}$/i.test(device_id)) {
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(device_id)) {
       const { data, error: devErr } = await admin
         .from("club_devices")
         .select("*")

@@ -53,3 +53,4 @@
 ## St John's Squash Club (Zimbabwe)
 - [x] Create tenant with slug `stjohns`, currency USD ($).
 - [x] First person to register at stjohns becomes club admin automatically.
+- [x] Doubles invite UX: make partner selection explicit on accept button + post-accept callout (Grant missed it)

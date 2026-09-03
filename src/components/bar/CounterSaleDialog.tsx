@@ -61,6 +61,10 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
   const [customer, setCustomer] = useState<"member" | "visitor">("member");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
+  const [idMode, setIdMode] = useState<"number" | "search">("number");
+  const [memberNumber, setMemberNumber] = useState("");
+  const [lookingUp, setLookingUp] = useState(false);
+
   const [selected, setSelected] = useState<MemberHit | null>(null);
   const [visitorName, setVisitorName] = useState("");
   const [visitorPhone, setVisitorPhone] = useState("");

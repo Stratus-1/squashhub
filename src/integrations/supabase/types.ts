@@ -3372,6 +3372,9 @@ export type Database = {
           face_provisioned_at: string | null
           fee_category_id: string | null
           gender: string | null
+          gobook_client_id: number | null
+          gobook_client_name: string | null
+          gobook_linked_at: string | null
           home_club_id: string | null
           home_club_name: string | null
           id: string
@@ -3421,6 +3424,9 @@ export type Database = {
           face_provisioned_at?: string | null
           fee_category_id?: string | null
           gender?: string | null
+          gobook_client_id?: number | null
+          gobook_client_name?: string | null
+          gobook_linked_at?: string | null
           home_club_id?: string | null
           home_club_name?: string | null
           id?: string
@@ -3470,6 +3476,9 @@ export type Database = {
           face_provisioned_at?: string | null
           fee_category_id?: string | null
           gender?: string | null
+          gobook_client_id?: number | null
+          gobook_client_name?: string | null
+          gobook_linked_at?: string | null
           home_club_id?: string | null
           home_club_name?: string | null
           id?: string

@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/select";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { GoBookApiBooking } from "@/components/GoBookApiBooking";
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
 import { useMyClub, useIsSuperAdmin, useIsClubAdmin } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -380,6 +381,9 @@ export default function Bookings() {
   const externalLabel = ((myClub as any)?.external_booking_label as string | undefined) ||
     (externalProvider === "gobook" ? "GoBook" : externalProvider === "courtmanager" ? "Court Manager" : "the booking system");
   const usesExternalBooking = !!externalProvider && externalProvider !== "none" && !!externalUrl;
+  // Official GoBook API mode: one club-level API account, no member logins.
+  const gobookApiMode = externalProvider === "gobook" && !!(myClub as any)?.gobook_api_enabled;
+
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
   const rawSlot = Number((myClub as any)?.booking_slot_minutes);
@@ -1380,7 +1384,13 @@ export default function Bookings() {
       </div>
 
       {/* External booking deep-link banner (GoBook, Court Manager, etc.) */}
-      {usesExternalBooking && externalProvider === "gobook" && (
+      {gobookApiMode && externalProvider === "gobook" && (
+        <div className="px-4 mt-3">
+          <GoBookApiBooking clubId={String((myClub as any)?.id || "")} clubMemberId={activeMember?.id} />
+        </div>
+      )}
+
+      {usesExternalBooking && !gobookApiMode && externalProvider === "gobook" && (
         <div className="px-4 mt-3">
           <Card className={hasGobookCreds ? "border-emerald-500/40 bg-emerald-500/10" : "border-amber-500/40 bg-amber-500/10"}>
             <CardContent className="p-3 flex items-start gap-3">
@@ -1465,7 +1475,7 @@ export default function Bookings() {
       )}
 
       {/* GoBook credentials invalid — last sync attempt failed for this member */}
-      {usesExternalBooking && externalProvider === "gobook" && gobookCredsInvalid && (
+      {usesExternalBooking && !gobookApiMode && externalProvider === "gobook" && gobookCredsInvalid && (
         <div className="px-4 mt-2">
           <Card className="border-destructive/50 bg-destructive/10">
             <CardContent className="p-3 flex items-start gap-3">
@@ -1491,7 +1501,7 @@ export default function Bookings() {
         </div>
       )}
 
-      {usesExternalBooking && externalProvider === "gobook" && gobookCaptchaBlocked && (
+      {usesExternalBooking && !gobookApiMode && externalProvider === "gobook" && gobookCaptchaBlocked && (
         <div className="px-4 mt-2">
           <Card className="border-amber-500/50 bg-amber-500/10">
             <CardContent className="p-3 flex items-start gap-3">

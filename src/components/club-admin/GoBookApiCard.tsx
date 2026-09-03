@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Loader2, PlugZap, ShieldCheck, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
+import { GoBookMemberLinkPanel } from "./GoBookMemberLinkPanel";
+
 
 type TestResult = {
   provider: {
@@ -164,14 +166,22 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
         </div>
       )}
 
+      {apiEnabled && (
+        <div className="rounded-lg border p-3">
+          <GoBookMemberLinkPanel clubId={clubId} />
+        </div>
+      )}
+
       <div className="rounded-lg border border-primary/30 bg-primary/5 p-2 flex gap-2">
         <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground">
           Request API credentials from GoBook (support@gobook.co.za). Court list, available
           dates, live slot grids, client lookup and booking all run through the official API —
-          members no longer need their own GoBook login.
+          members no longer need their own GoBook login. Cancellations must still be done on
+          gobook.co.za: the API has no cancel endpoint yet.
         </p>
       </div>
     </Card>
   );
 }
+

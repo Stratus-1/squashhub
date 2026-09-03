@@ -1003,6 +1003,12 @@ export default function ScanPay() {
         </div>
       )}
       {!member && identified && (
+        <ProductScanDialog
+          open={scanOpen}
+          onOpenChange={setScanOpen}
+          items={menu}
+          onItem={(item) => bump(item.id, 1)}
+        />
         <BarPinDialog
           open={pinOpen}
           onOpenChange={(o) => { setPinOpen(o); if (!o) setIdentified(null); }}

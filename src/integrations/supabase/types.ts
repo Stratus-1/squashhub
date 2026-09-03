@@ -618,6 +618,95 @@ export type Database = {
         }
         Relationships: []
       }
+      bar_counter_devices: {
+        Row: {
+          active: boolean
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string
+          pin_hash: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          pin_hash: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          pin_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_counter_devices_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_counter_sessions: {
+        Row: {
+          club_id: string
+          created_at: string
+          device_id: string
+          expires_at: string
+          id: string
+          last_seen_at: string
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          device_id: string
+          expires_at?: string
+          id?: string
+          last_seen_at?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          device_id?: string
+          expires_at?: string
+          id?: string
+          last_seen_at?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_counter_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_counter_sessions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_guest_tabs: {
         Row: {
           closed_at: string | null
@@ -13153,6 +13242,46 @@ export type Database = {
           _winner_member_id: string
         }
         Returns: string
+      }
+      bar_counter_add_to_tab: {
+        Args: {
+          _club_id?: string
+          _lines: Json
+          _tab_id: string
+          _token?: string
+        }
+        Returns: Json
+      }
+      bar_counter_board: {
+        Args: { _club_id?: string; _token?: string }
+        Returns: Json
+      }
+      bar_counter_context: {
+        Args: { _club_id: string; _token: string }
+        Returns: string
+      }
+      bar_counter_open_tab: {
+        Args: { _club_id?: string; _guest_name: string; _token?: string }
+        Returns: Json
+      }
+      bar_counter_revoke_devices: { Args: { _club_id: string }; Returns: Json }
+      bar_counter_set_pin: {
+        Args: { _club_id: string; _label?: string; _pin: string }
+        Returns: Json
+      }
+      bar_counter_settle_tab: {
+        Args: {
+          _club_id?: string
+          _method: string
+          _tab_id: string
+          _token?: string
+        }
+        Returns: Json
+      }
+      bar_counter_status: { Args: { _club_id: string }; Returns: Json }
+      bar_counter_unlock: {
+        Args: { _code: string; _pin: string }
+        Returns: Json
       }
       bar_resolve_member_by_number: {
         Args: { _club_id: string; _number: string }

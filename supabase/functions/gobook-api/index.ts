@@ -377,7 +377,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Live slot grid for one court on one date.
+    // Live slot grid. One court when provider_consultant_id is given, otherwise
+    // every active court for the club's service (so the UI can draw a grid).
     if (action === "list_slots") {
       const { data: club } = await admin
         .from("clubs")
@@ -385,41 +386,58 @@ Deno.serve(async (req) => {
         .eq("id", clubId)
         .maybeSingle();
       const providerServiceId = Number(payload.provider_service_id ?? club?.gobook_service_id ?? 0);
-      const consultantId = Number(payload.provider_consultant_id ?? 0);
-      const clientId = Number(payload.client_id ?? 0);
+      const clientId = Number(payload.client_id ?? (await resolveMyClient()).clientId ?? 0);
       const date = String(payload.booking_date ?? "").slice(0, 10);
       if (!providerServiceId) return json({ error: "No GoBook service configured for this club" }, 400);
-      if (!consultantId) return json({ error: "provider_consultant_id is required" }, 400);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "booking_date must be YYYY-MM-DD" }, 400);
 
-      const slots = (await apiGet(
-        token,
-        `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}` +
-          `&bookingDate=${date}&includeUnavailable=true` +
-          `&providerConsultantId=${consultantId}` +
-          (clientId ? `&clientId=${clientId}` : ""),
-      )) ?? [];
+      let courtIds: Array<{ id: number; name: string }> = [];
+      if (payload.provider_consultant_id) {
+        courtIds = [{ id: Number(payload.provider_consultant_id), name: "" }];
+      } else {
+        const fac = await apiGet(
+          token,
+          `/Facility/ListForProviderService?providerServiceId=${providerServiceId}` +
+            (clientId ? `&clientId=${clientId}` : "") +
+            `&includeInactive=false`,
+        );
+        courtIds = ((fac?.facilities ?? []) as any[])
+          .filter((f) => f.isActive)
+          .map((f) => ({ id: f.providerConsultantId, name: f.consultantName }));
+      }
 
       // GoBook returns times as HHMM integers (600 = 06:00).
       const hhmm = (n: number) =>
         `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
 
-      return json({
-        success: true,
-        slots: (slots as any[]).map((s) => ({
-          scheduleTimeId: s.providerServiceScheduleTimeId,
-          courtId: s.providerConsultantId,
-          courtName: s.consultantName,
-          startTime: hhmm(s.startTime),
-          endTime: hhmm(s.endTime),
-          label: s.timeText,
-          booked: !!s.bookingId,
-          ownBooking: !!s.ownBooking,
-          bookedBy: s.bookedText || null,
-          bookable: !s.excludedFromBooking && !s.bookingId,
-        })),
-      });
+      const all: any[] = [];
+      for (const court of courtIds) {
+        const slots = (await apiGet(
+          token,
+          `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}` +
+            `&bookingDate=${date}&includeUnavailable=true` +
+            `&providerConsultantId=${court.id}` +
+            (clientId ? `&clientId=${clientId}` : ""),
+        )) ?? [];
+        for (const s of slots as any[]) {
+          all.push({
+            scheduleTimeId: s.providerServiceScheduleTimeId,
+            courtId: s.providerConsultantId ?? court.id,
+            courtName: s.consultantName ?? court.name,
+            startTime: hhmm(s.startTime),
+            endTime: hhmm(s.endTime),
+            label: s.timeText,
+            booked: !!s.bookingId,
+            ownBooking: !!s.ownBooking,
+            bookedBy: s.bookedText || null,
+            bookable: !s.excludedFromBooking && !s.bookingId,
+          });
+        }
+      }
+
+      return json({ success: true, courts: courtIds, clientId: clientId || null, slots: all });
     }
+
 
     if (action === "book") {
       const ids = Array.isArray(payload.schedule_time_ids) ? payload.schedule_time_ids : [];

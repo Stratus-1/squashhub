@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
+import { BarPinDialog } from "@/components/bar/BarPinDialog";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -64,6 +65,7 @@ export default function ScanPay() {
   const [visitorName, setVisitorName] = useState("");
   const [checkingOut, setCheckingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
   const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; terminal?: boolean; reference?: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [tab, setTab] = useState<GuestTab | null>(null);
@@ -819,6 +821,16 @@ export default function ScanPay() {
             )}
           </div>
         </div>
+      )}
+      {member && (
+        <BarPinDialog
+          open={pinOpen}
+          onOpenChange={setPinOpen}
+          clubMemberId={member.id}
+          memberName={member.name}
+          amountLabel={formatMoney(total, currency)}
+          onVerified={confirmAccountCharge}
+        />
       )}
     </div>
   );

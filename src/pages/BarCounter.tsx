@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
-interface CounterItem { id: string; name: string; price: number; category?: string | null; barcode?: string | null }
+interface CounterItem { id: string; name: string; price: number; category?: string | null; barcode?: string | null; image_url?: string | null }
 interface CounterTab {
   tab_id: string;
   token: string;

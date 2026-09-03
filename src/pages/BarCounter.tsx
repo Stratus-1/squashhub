@@ -58,6 +58,12 @@ export default function BarCounter() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [memberOpen, setMemberOpen] = useState(false);
+  const [memberNumber, setMemberNumber] = useState("");
+  const [identifying, setIdentifying] = useState(false);
+  const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
+
 
   const clubId: string | null = code ? null : activeClub?.id ?? null;
   const enabled = Boolean(token || clubId);

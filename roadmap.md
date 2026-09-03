@@ -1,5 +1,12 @@
 # Roadmap
 
+## NEW: GoBook live API and cancellation support
+- [ ] Store CSIR live GoBook API credentials securely without exposing them to the client.
+- [ ] Enable the official API mode for CSIR only after connection verification.
+- [ ] Add authenticated booking cancellation through `POST /Booking/Action` with server-side validation.
+- [ ] Keep legacy scraper credentials and booking behavior unchanged for clubs not using API mode.
+- [ ] Verify live settings, booking lookup, and cancellation response; do not create an unrequested live booking.
+
 ## Current: registration fee signup verification + Wi-Fi member list + audit fix
 - [x] Verify once-off registration fee is billed to every genuinely new member at signup.
 - [x] Add a "Members paying Wi-Fi" tab/list in club admin Wi-Fi settings.

@@ -55,7 +55,7 @@ import {
 } from "@/components/ui/select";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { GoBookApiBooking } from "@/components/GoBookApiBooking";
+
 import { buildGoogleCalendarEventUrl, openExternalUrl } from "@/lib/google-calendar";
 import { useMyClub, useIsSuperAdmin, useIsClubAdmin } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
@@ -383,6 +383,7 @@ export default function Bookings() {
   const usesExternalBooking = !!externalProvider && externalProvider !== "none" && !!externalUrl;
   // Official GoBook API mode: one club-level API account, no member logins.
   const gobookApiMode = externalProvider === "gobook" && !!(myClub as any)?.gobook_api_enabled;
+  const bookingProviderActive = gobookApiMode || usesExternalBooking;
 
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
@@ -502,6 +503,10 @@ export default function Bookings() {
   const queryClient = useQueryClient();
 
   const handleSyncGobook = async () => {
+    if (gobookApiMode) {
+      await syncGobookApiDay(dateStr, { notify: true });
+      return;
+    }
     if (!myClub?.id) return;
     setSyncingGobook(true);
     try {
@@ -522,6 +527,43 @@ export default function Bookings() {
       setSyncingGobook(false);
     }
   };
+
+  /**
+   * Official GoBook API mode: mirror one day of GoBook occupancy into the core
+   * bookings grid. The native calendar stays the only booking surface — this
+   * only imports external rows (with the booker's name) so the grid is truthful.
+   */
+  const syncGobookApiDay = async (day: string, opts: { notify?: boolean } = {}) => {
+    if (!myClub?.id) return;
+    setSyncingGobook(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gobook-api", {
+        body: { action: "sync_core_day", club_id: myClub.id, booking_date: day },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      if (opts.notify) {
+        toast.success(`GoBook refreshed — ${(data as any)?.synced ?? 0} bookings on ${day}`);
+      }
+    } catch (e: any) {
+      if (opts.notify) toast.error(e?.message || "Could not refresh from GoBook");
+    } finally {
+      setSyncingGobook(false);
+    }
+  };
+
+  // Keep the visible day in step with GoBook while API mode is on.
+  const gobookSyncedDayRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!gobookApiMode || !myClub?.id) return;
+    const key = `${myClub.id}:${dateStr}`;
+    if (gobookSyncedDayRef.current === key) return;
+    gobookSyncedDayRef.current = key;
+    void syncGobookApiDay(dateStr);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gobookApiMode, myClub?.id, dateStr]);
+
 
   // Does the current member have GoBook credentials saved? Drives the banner.
   const { data: gobookCredInfo, isLoading: gobookCredInfoLoading } = useQuery({
@@ -568,6 +610,38 @@ export default function Bookings() {
   // gets its own (non-destructive) banner instead of "your login is invalid".
   const gobookCaptchaBlocked =
     !!gobookCredInfo && gobookCredInfo.last_verification_status === "captcha_blocked";
+
+  /**
+   * Who may move or cancel a GoBook-sourced booking from the core grid.
+   * Imported rows that could not be matched to a member belong to someone
+   * outside SquashHub, so only club admins may touch them. Both Move and
+   * Cancel share this so a "move" (cancel + rebook) can never bypass it.
+   */
+  const gobookRowPermission = (bd: any) => {
+    const rowMemberId = bd?.club_member_id ? String(bd.club_member_id) : "";
+    const isClubAdmin = !!(isMemberAdmin || isSuperAdmin);
+    const memberId = gobookApiMode
+      ? (isClubAdmin && rowMemberId ? rowMemberId : String(activeMember?.id || ""))
+      : String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+    const ownsBooking = !!memberId && !!rowMemberId && rowMemberId === memberId;
+    const externalBookingId = String(bd?.external_id || "").match(/^gobook:(\d+)$/)?.[1] || "";
+    const startMs = new Date(`${bd?.date}T${String(bd?.start_time || "00:00").slice(0, 5)}:00+02:00`).getTime();
+    const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
+
+    const reason = !gobookApiMode && !hasGobookCreds
+      ? "Save your GoBook login under Profile first."
+      : !ownsBooking && !isClubAdmin
+        ? rowMemberId
+          ? "Only the member who made this booking (or a club admin) can change it."
+          : "This booking was made outside SquashHub. Only a club admin can change it here."
+        : gobookApiMode && !externalBookingId
+          ? "This booking has no GoBook reference yet. Refresh from GoBook and try again."
+          : withinHour
+            ? "GoBook does not allow changes within 1 hour of the booking start time."
+            : null;
+
+    return { memberId, externalBookingId, allowed: !reason, reason };
+  };
 
 
 
@@ -954,8 +1028,9 @@ export default function Bookings() {
       !!(myClub as any)?.uses_gobook &&
       ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
       !!activeMember?.id;
+    const usingGobookApi = usingGobook && gobookApiMode;
     const progressToastId = usingGobook
-      ? toast.loading("Submitting booking to GoBook…", {
+      ? toast.loading(usingGobookApi ? "Submitting booking to GoBook…" : "Submitting booking to GoBook…", {
           description: "This can take 10–20 seconds. Please don't close this window.",
         })
       : null;
@@ -1027,63 +1102,48 @@ export default function Bookings() {
         : null;
       let gobookMirror: { court: number; externalId: string; externalBookerName: string | null } | null = null;
 
-      if (
-        (myClub as any)?.uses_gobook &&
-        ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
-        activeMember?.id
-      ) {
-        if (myClub?.id) {
-          const { error: syncError } = await supabase.functions.invoke("gobook-sync", {
-            body: { club_id: myClub.id, days: 2 },
-          });
-          if (syncError) throw syncError;
-          await queryClient.invalidateQueries({ queryKey: ["bookings"] });
-        }
+      if (usingGobook) {
+        if (!myClub?.id) throw new Error("No active club selected");
         const selectedCourt = courtsData?.find((c: any) => c.id === bookingDialog.courtId);
-        const courtNum = Number(
-          (String(selectedCourt?.name || ""))
-            .match(/(\d+)/)?.[1] || 0,
-        );
-        const startHour = Number(String(bookingDialog.time).split(":")[0]);
-        const { data: liveConflict } = await (supabase as any)
-          .from("bookings")
-          .select("id, external_booker_name, guest_name, club_member_id")
-          .eq("club_id", myClub.id)
-          .eq("court_id", bookingDialog.courtId)
-          .eq("date", dateStr)
-          .eq("start_time", `${bookingDialog.time}:00`)
-          .eq("status", "active")
-          .maybeSingle();
-        if (liveConflict) {
-          throw new Error("That slot is already booked on GoBook. I refreshed the schedule — please choose another open slot.");
-        }
+        if (usingGobookApi && !selectedCourt) throw new Error("The selected court is unavailable");
         const labelA = (activeMember as any)?.name || (activeMember as any)?.full_name || "";
         const labelB = (bookingDialog.opponentId
           ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId)?.name
           : null) || bookingDialog.guestName || "";
         const notes = [labelA, labelB].filter(Boolean).join(" v ").slice(0, 200);
-        const { data, error } = await supabase.functions.invoke("gobook-book", {
-          body: {
-            action: "book",
-            club_member_id: activeMember.id,
-            date: dateStr,
-            start_hour: startHour,
-            court: courtNum || "any",
-            notes,
-            sms: false,
-            email: false,
-          },
-        });
+        let data: any;
+        let error: any;
+        if (usingGobookApi) {
+          ({ data, error } = await supabase.functions.invoke("gobook-api", {
+            body: {
+              action: "book",
+              club_id: myClub.id,
+              club_member_id: activeMember.id,
+              booking_date: dateStr,
+              court_id: bookingDialog.courtId,
+              start_time: bookingDialog.time,
+              notes,
+            },
+          }));
+        } else {
+          const courtNum = Number(String(selectedCourt?.name || "").match(/(\d+)/)?.[1] || 0);
+          ({ data, error } = await supabase.functions.invoke("gobook-book", {
+            body: { action: "book", club_member_id: activeMember.id, date: dateStr, start_hour: Number(String(bookingDialog.time).split(":")[0]), court: courtNum || "any", notes, sms: false, email: false },
+          }));
+        }
         const msg = await extractFunctionError(data, error);
         if (msg) throw new Error(`GoBook booking failed: ${msg}`);
-        const bookedCourt = Number((data as any)?.court || courtNum || 0);
-        if (bookedCourt) {
-          gobookMirror = {
-            court: bookedCourt,
-            externalId: `${dateStr.replace(/-/g, "")}-${bookedCourt}-${String(startHour).padStart(2, "0")}`,
-            externalBookerName: labelA || null,
-          };
+        const bookedId = usingGobookApi ? (data as any)?.bookingId : null;
+        // In official API mode a booking without a provider id could never be
+        // cancelled or moved later, so we refuse to mirror it locally.
+        if (usingGobookApi && !bookedId) {
+          throw new Error("GoBook did not return a booking reference. Refresh the grid to check whether the slot was taken.");
         }
+        gobookMirror = {
+          court: Number((data as any)?.court || selectedCourt?.id || 0),
+          externalId: bookedId ? `gobook:${bookedId}` : `${dateStr.replace(/-/g, "")}-${String((data as any)?.court || 0)}-${String(bookingDialog.time).replace(":", "")}`,
+          externalBookerName: labelA || null,
+        };
       }
 
       const created = await createBooking.mutateAsync({
@@ -1214,54 +1274,60 @@ export default function Bookings() {
         toast.dismiss(progressToastId);
         if (usingGobook && bookingSucceeded) {
           toast.success("Booking confirmed on GoBook");
-          // Auto-sync immediately so the new booking gets its GoBook BookingId locally
           try {
-            setSyncingGobook(true);
-            await supabase.functions.invoke("gobook-sync", { body: { mode: "pull_today" } });
-            queryClient.invalidateQueries({ queryKey: ["bookings"] });
-            queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+            if (usingGobookApi) {
+              await syncGobookApiDay(dateStr);
+            } else {
+              setSyncingGobook(true);
+              await supabase.functions.invoke("gobook-sync", { body: { mode: "pull_today" } });
+              queryClient.invalidateQueries({ queryKey: ["bookings"] });
+              queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+            }
           } catch {
-            // non-fatal — user can click "Sync GoBook now" manually
+            // non-fatal — the manual refresh action remains available
           } finally {
-            setSyncingGobook(false);
+            if (!usingGobookApi) setSyncingGobook(false);
           }
         }
       }
-      // If this was a "move", cancel the source booking now that the new slot succeeded
+      // A "move" is always: reserve the new slot first, then release the old one.
+      // We only reach here once the replacement booking succeeded, so a failure
+      // below leaves the member with the new slot and a clear warning about the
+      // original — never a silently lost booking.
       if (bookingSucceeded && moveSource) {
         const src: any = moveSource;
         try {
           if (src.source === "gobook") {
-            const startHour = Number(String(src.start_time || "00").slice(0, 2));
-            const srcCourtName = String(
-              src.court?.name
-              || src.court_name
-              || (courtsData || []).find((c: any) => c.id === src.court_id)?.name
-              || getCourtName(src.court_id)
-              || ""
-            );
-            const srcCourtNum = Number((srcCourtName.match(/(\d+)/) || [])[1]);
-            const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+            const externalBookingId = String(src.external_id || "").match(/^gobook:(\d+)$/)?.[1] || "";
+            // Official API mode uses the club-level account, so the signed-in
+            // member identifies the booking owner. Legacy mode keeps the saved
+            // personal GoBook credentials.
+            const cancelMemberId = gobookApiMode
+              ? String(activeMember?.id || "")
+              : String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+            if (gobookApiMode && !externalBookingId) {
+              throw new Error("the original booking has no GoBook reference yet — refresh the grid and cancel it manually");
+            }
             const t = toast.loading("Cancelling original GoBook slot…");
-            const { data, error } = await supabase.functions.invoke("gobook-book", {
-              body: {
-                action: "cancel",
-                club_member_id: cancelMemberId,
-                booking_id: src.id,
-                client_notes: src.external_booker_name || src.player_name || "Moved via SquashHub",
-                date: String(src.date),
-                start_hour: startHour,
-                court: srcCourtNum,
-              },
+            const { data, error } = await supabase.functions.invoke(gobookApiMode ? "gobook-api" : "gobook-book", {
+              body: gobookApiMode
+                ? { action: "cancel", club_id: myClub?.id, club_member_id: cancelMemberId, booking_id: externalBookingId }
+                : { action: "cancel", club_member_id: cancelMemberId, booking_id: src.id },
             });
             toast.dismiss(t);
             const msg = await extractFunctionError(data, error);
             if (msg) throw new Error(msg);
+            if (gobookApiMode) {
+              // Release the local mirror straight away so the vacated slot is
+              // bookable again without waiting for the next provider sync.
+              await fromExt("bookings").update({ status: "cancelled" }).eq("id", src.id).eq("source", "gobook");
+            }
             toast.success("Booking moved — original GoBook slot cancelled");
           } else {
             await cancelBooking.mutateAsync(String(src.id));
             toast.success("Booking moved");
           }
+          if (gobookApiMode) await syncGobookApiDay(dateStr);
           queryClient.invalidateQueries({ queryKey: ["bookings"] });
           queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
         } catch (e: any) {
@@ -1383,12 +1449,36 @@ export default function Bookings() {
         </div>
       </div>
 
-      {/* External booking deep-link banner (GoBook, Court Manager, etc.) */}
+      {/* GoBook API mode: no separate calendar — the core grid below IS the
+          calendar. GoBook occupancy is mirrored into it, including booker names. */}
       {gobookApiMode && externalProvider === "gobook" && (
         <div className="px-4 mt-3">
-          <GoBookApiBooking clubId={String((myClub as any)?.id || "")} clubMemberId={activeMember?.id} />
+          <Card className="border-emerald-500/40 bg-emerald-500/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                {syncingGobook ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">GoBook courts are live in this grid</p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  Bookings made on GoBook show below with the booker's name, and booking here
+                  reserves the slot on GoBook too. No GoBook login needed.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" disabled={syncingGobook} onClick={() => syncGobookApiDay(dateStr, { notify: true })}>
+                    {syncingGobook ? "Refreshing…" : "Refresh from GoBook"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
+
 
       {usesExternalBooking && !gobookApiMode && externalProvider === "gobook" && (
         <div className="px-4 mt-3">
@@ -1577,7 +1667,7 @@ export default function Bookings() {
       )}
 
       {/* No courts configured yet */}
-      {!usesExternalBooking && courts.length === 0 && (
+      {!bookingProviderActive && courts.length === 0 && (
         <div className="px-4 mt-3">
           <Card className="border-amber-500/40 bg-amber-500/10">
             <CardContent className="p-3 flex items-start gap-3">
@@ -2089,13 +2179,7 @@ export default function Bookings() {
                   )}
                   {(isBooker || isGoBookBooking) && (() => {
                     const bd: any = bookingDetails;
-                    if (isGoBookBooking) {
-                      const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
-                      const ownsBooking = !!cancelMemberId && (!bd.club_member_id || bd.club_member_id === cancelMemberId || bd.club_member_id === activeMember?.id);
-                      const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
-                      const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
-                      if (!hasGobookCreds || !ownsBooking || withinHour) return null;
-                    }
+                    if (isGoBookBooking && !gobookRowPermission(bd).allowed) return null;
                     return (
                       <Button
                         variant="outline"
@@ -2115,17 +2199,9 @@ export default function Bookings() {
                     <>
                       {isGoBookBooking ? (() => {
                         const bd: any = bookingDetails;
-                        const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
-                        const ownsBooking = !!cancelMemberId && (!bd.club_member_id || bd.club_member_id === cancelMemberId || bd.club_member_id === activeMember?.id);
-                        const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
-                        const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
-                        const disabledReason = !hasGobookCreds
-                          ? "Save your GoBook login under Profile first."
-                          : !ownsBooking
-                            ? "Only the GoBook account owner of this booking can cancel it. Cancel it directly on gobook.co.za if it's not yours."
-                            : withinHour
-                              ? "GoBook does not allow cancellation within 1 hour of the booking start time."
-                              : null;
+                        const permission = gobookRowPermission(bd);
+                        const cancelMemberId = permission.memberId;
+                        const disabledReason = permission.reason;
                         if (disabledReason) {
                           return (
                             <Tooltip>
@@ -2147,57 +2223,77 @@ export default function Bookings() {
                             title="We'll auto-sync GoBook before cancelling. If it still fails, click 'Sync GoBook now' at the top of the page and try again."
                             disabled={cancellingGobook || syncingGobook}
                             onClick={async () => {
-                              if (!cancelMemberId) return;
-                              const startHour = Number(String(bd.start_time || "00").slice(0, 2));
-                              const courtName = String(
-                                bd.court?.name
-                                || bd.court_name
-                                || (courtsData || []).find((c: any) => c.id === bd.court_id)?.name
-                                || getCourtName(bd.court_id)
-                                || ""
-                              );
-                              const courtNum = Number((courtName.match(/(\d+)/) || [])[1]);
-                              if (!courtNum) {
-                                toast.error("Couldn't determine the GoBook court number for this booking.");
-                                return;
-                              }
-                              // Auto-sync first so we have the freshest GoBook BookingId
-                              try {
-                                setSyncingGobook(true);
-                                const ts = toast.loading("Syncing with GoBook before cancelling…");
-                                await supabase.functions.invoke("gobook-sync", { body: { mode: "pull_today" } });
-                                toast.dismiss(ts);
-                              } catch {
-                                // non-fatal — proceed with cancellation attempt anyway
-                              } finally {
-                                setSyncingGobook(false);
-                              }
-                              setCancellingGobook(true);
-                              const t = toast.loading("Cancelling on GoBook… 5–15 seconds");
-                              try {
-                                const { data, error } = await supabase.functions.invoke("gobook-book", {
-                                  body: {
-                                    action: "cancel",
-                                    club_member_id: cancelMemberId,
-                                     booking_id: bd.id,
-                                    client_notes: bd.external_booker_name || bd.player_name || "Cancelled via SquashHub",
-                                    date: String(bd.date),
-                                    start_hour: startHour,
-                                    court: courtNum,
-                                  },
-                                });
-                                toast.dismiss(t);
-                                const msg = await extractFunctionError(data, error);
-                                if (msg) throw new Error(`GoBook cancellation failed: ${msg}`);
-                                 toast.success((data as any)?.stale_local ? "Stale booking removed" : "Booking cancelled on GoBook");
-                                setBookingDetails(null);
-                                queryClient.invalidateQueries({ queryKey: ["bookings"] });
-                                queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
-                              } catch (e: any) {
-                                toast.dismiss(t);
-                                toast.error(e?.message || "Failed to cancel booking on GoBook");
-                              } finally {
-                                setCancellingGobook(false);
+                               if (!cancelMemberId) return;
+                               const startHour = Number(String(bd.start_time || "00").slice(0, 2));
+                               if (gobookApiMode) {
+                                const externalBookingId = String(bd.external_id || "").match(/^gobook:(\d+)$/)?.[1] || "";
+                                if (!externalBookingId) {
+                                  toast.error("This GoBook booking has no provider booking ID yet. Refresh the grid and try again.");
+                                  return;
+                                }
+                                setCancellingGobook(true);
+                                const t = toast.loading("Cancelling on GoBook…");
+                                try {
+                                  const { data, error } = await supabase.functions.invoke("gobook-api", {
+                                    body: { action: "cancel", club_id: myClub?.id, club_member_id: cancelMemberId, booking_id: externalBookingId },
+                                  });
+                                  toast.dismiss(t);
+                                  const msg = await extractFunctionError(data, error);
+                                  if (msg) throw new Error(`GoBook cancellation failed: ${msg}`);
+                                  await fromExt("bookings").update({ status: "cancelled" }).eq("id", bd.id).eq("source", "gobook");
+                                  toast.success("Booking cancelled on GoBook");
+                                  setBookingDetails(null);
+                                  queryClient.invalidateQueries({ queryKey: ["bookings"] });
+                                  queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+                                } catch (e: any) {
+                                  toast.dismiss(t);
+                                  toast.error(e?.message || "Failed to cancel booking on GoBook");
+                                } finally {
+                                  setCancellingGobook(false);
+                                }
+                               } else {
+                                 // Legacy scraper mode retains its existing cancellation flow.
+                                 const courtName = String(
+                                   bd.court?.name
+                                   || bd.court_name
+                                   || (courtsData || []).find((c: any) => c.id === bd.court_id)?.name
+                                   || getCourtName(bd.court_id)
+                                   || ""
+                                 );
+                                 const courtNum = Number((courtName.match(/(\d+)/) || [])[1]);
+                                 if (!courtNum) {
+                                   toast.error("Couldn't determine the GoBook court number for this booking.");
+                                   return;
+                                 }
+                                 try {
+                                   setSyncingGobook(true);
+                                   const ts = toast.loading("Syncing with GoBook before cancelling…");
+                                   await supabase.functions.invoke("gobook-sync", { body: { mode: "pull_today" } });
+                                   toast.dismiss(ts);
+                                 } catch {
+                                   // non-fatal — proceed with cancellation attempt anyway
+                                 } finally {
+                                   setSyncingGobook(false);
+                                 }
+                                 setCancellingGobook(true);
+                                const t = toast.loading("Cancelling on GoBook… 5–15 seconds");
+                                try {
+                                  const { data, error } = await supabase.functions.invoke("gobook-book", {
+                                    body: { action: "cancel", club_member_id: cancelMemberId, booking_id: bd.id, client_notes: bd.external_booker_name || bd.player_name || "Cancelled via SquashHub", date: String(bd.date), start_hour: startHour, court: courtNum },
+                                  });
+                                  toast.dismiss(t);
+                                  const msg = await extractFunctionError(data, error);
+                                  if (msg) throw new Error(`GoBook cancellation failed: ${msg}`);
+                                  toast.success((data as any)?.stale_local ? "Stale booking removed" : "Booking cancelled on GoBook");
+                                  setBookingDetails(null);
+                                  queryClient.invalidateQueries({ queryKey: ["bookings"] });
+                                  queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
+                                } catch (e: any) {
+                                  toast.dismiss(t);
+                                  toast.error(e?.message || "Failed to cancel booking on GoBook");
+                                } finally {
+                                  setCancellingGobook(false);
+                                }
                               }
                             }}
                           >

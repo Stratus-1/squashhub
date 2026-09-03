@@ -6,6 +6,7 @@
 - [x] Add public-holiday, school-break and manual exclusion handling with conflict checks.
 - [x] Save only through an association-admin guarded operation; preserve completed/played/scored fixtures.
 - [x] Keep fixture saves separate from tournament invitation/email dispatch.
+- [ ] Follow-on hardening: keep the one-screen builder, model true competition rounds, generate fair round robins with rotating byes, reverse home/away in round two, preload public and school holidays for the selected season, show full-week dates, shift whole rounds to the next eligible date, run association-wide clashes and venue-capacity warnings, preview conflicts, publish atomically, export fixtures, and add focused tests.
 
 ## Completed: GoBook live API and cancellation support
 - [x] Store CSIR live GoBook API credentials securely without exposing them to the client.
@@ -87,3 +88,16 @@
 - [x] Add an association member tree grouped by affiliated club with NSF, national ranking, and regional ranking fields.
 - [x] Replace repeated association admin tile rows with one compact section selector.
 - [x] Make Fee Schedule the canonical home for annual fee amount, renewal month, and payable day; propagate changes to affiliated clubs.
+
+## GoBook core-calendar integration hardening
+- [ ] Keep the native SquashHub booking grid as the only calendar; sync GoBook occupancy/names into core bookings.
+- [ ] Enforce signed-in member ownership for GoBook booking/cancellation; admins may act for a verified club member.
+- [ ] Preserve move-booking behavior: create the replacement slot first, then cancel the original provider booking, with an explicit partial-failure state.
+- [ ] Never create a local GoBook row without a provider booking ID that can be cancelled.
+
+## Completed: Payment and tournament self-settlement guards
+- [x] Prevent member-created bar entries from setting `settled` or `settled_at`; only admins/trusted backend routines may settle them.
+- [x] Prevent member-created credit transactions from choosing confirmed status or confirmation actor/timestamps; pending top-up amount selection remains available.
+- [x] Prevent member-created championship registrations from setting confirmed/paid/admin-invited/proof fields; preserve admin/service workflows.
+- [x] Add RLS-safe trigger migration and verify the guards were applied without changing legitimate payment flows.
+- [ ] Re-run the project-wide security linter remediation backlog separately; the migration linter still reports pre-existing project-wide findings unrelated to these three protections.

@@ -342,6 +342,8 @@ export default function HonestyBar() {
           Show / share Menu QR code
         </Button>
 
+        <BarPinSettingsCard />
+
         {canSeeVisitors && <CounterModeCard clubId={clubId} />}
 
 

@@ -75,7 +75,8 @@ async function apiPost(token: string, path: string, body: Record<string, unknown
 }
 
 const hhmm = (value: unknown) => {
-  const text = String(value ?? "").trim();
+  if (value === null || value === undefined || value === "") return "";
+  const text = String(value).trim();
   if (/^\d{1,2}:\d{2}/.test(text)) return text.slice(0, 5).padStart(5, "0");
   const number = Number(value);
   if (!Number.isFinite(number)) return "";
@@ -97,10 +98,16 @@ const rowsFrom = (value: any): any[] => {
   for (const key of ROW_KEYS) {
     if (Array.isArray(value?.[key])) return value[key];
   }
+  if (value?.data && typeof value.data === "object") return rowsFrom(value.data);
+  if (value?.result && typeof value.result === "object") return rowsFrom(value.result);
   return [];
 };
 
-const hasRowsEnvelope = (value: any) => Array.isArray(value) || ROW_KEYS.some((key) => Array.isArray(value?.[key]));
+const hasRowsEnvelope = (value: any): boolean =>
+  Array.isArray(value)
+  || ROW_KEYS.some((key) => Array.isArray(value?.[key]))
+  || (!!value?.data && typeof value.data === "object" && hasRowsEnvelope(value.data))
+  || (!!value?.result && typeof value.result === "object" && hasRowsEnvelope(value.result));
 
 const bookingIdFrom = (value: any): number | null => {
   const candidates = [
@@ -460,7 +467,13 @@ Deno.serve(async (req) => {
       // Never trust a client-supplied booking id alone. Confirm GoBook lists it
       // under the selected, server-verified member before sending the destructive action.
       const ownedBookings = rowsFrom((await apiGet(token, `/Booking/List?clientId=${target.clientId}`)) ?? []);
-      const owned = ownedBookings.some((b) => Number(b.bookingId ?? b.BookingId ?? b.id) === bookingId && !b.cancelled);
+      const owned = ownedBookings.some((b) => {
+        const status = String(b.status ?? b.bookingStatus ?? "").toLowerCase();
+        return Number(b.bookingId ?? b.BookingId ?? b.booking_id ?? b.id) === bookingId
+          && b.cancelled !== true
+          && status !== "c"
+          && status !== "cancelled";
+      });
       if (!owned) return json({ error: "That booking does not belong to the selected GoBook member" }, 403);
 
       const result = await apiPost(token, "/Booking/Action", { bookingId, action: "cancel" });
@@ -496,13 +509,15 @@ Deno.serve(async (req) => {
 
     // Dates GoBook will accept a booking for.
     if (action === "list_dates") {
-      const clientId = Number(payload.client_id ?? (await resolveMyClient()).clientId ?? 0);
+      const resolved = await resolveMyClient();
+      if (resolved.forbidden) return json({ error: "You may only use your own GoBook member profile" }, 403);
+      const clientId = Number(resolved.clientId ?? 0);
       if (!clientId) return json({ success: true, dates: [], needsLink: true });
 
-      const dates = (await apiGet(token, `/Schedule/ListAvailableBookingDates?clientId=${clientId}`)) ?? [];
+      const dates = rowsFrom((await apiGet(token, `/Schedule/ListAvailableBookingDates?clientId=${clientId}`)) ?? []);
       return json({
         success: true,
-        dates: (dates as any[]).map((d) => ({ date: d.dateFormatted, label: d.dateText })),
+        dates: dates.map((d) => ({ date: d.dateFormatted ?? d.date ?? null, label: d.dateText ?? d.label ?? null })),
       });
     }
 
@@ -638,6 +653,7 @@ Deno.serve(async (req) => {
     if (action === "book") {
       let ids = Array.isArray(payload.schedule_time_ids) ? payload.schedule_time_ids : [];
       const bookingDate = String(payload.booking_date ?? "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate)) return json({ error: "booking_date must be YYYY-MM-DD" }, 400);
       if (!ids.length && payload.court_id && /^\d{4}-\d{2}-\d{2}$/.test(bookingDate) && payload.start_time) {
         const { data: club } = await admin.from("clubs").select("gobook_service_id").eq("id", clubId).maybeSingle();
         const providerServiceId = Number(club?.gobook_service_id ?? 0);

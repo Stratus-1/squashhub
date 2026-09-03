@@ -2179,13 +2179,7 @@ export default function Bookings() {
                   )}
                   {(isBooker || isGoBookBooking) && (() => {
                     const bd: any = bookingDetails;
-                     if (isGoBookBooking) {
-                       const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
-                       const ownsBooking = !!cancelMemberId && (!bd.club_member_id || bd.club_member_id === cancelMemberId || bd.club_member_id === activeMember?.id);
-                       const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
-                       const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
-                       if ((!gobookApiMode && !hasGobookCreds) || !ownsBooking || withinHour) return null;
-                     }
+                    if (isGoBookBooking && !gobookRowPermission(bd).allowed) return null;
                     return (
                       <Button
                         variant="outline"
@@ -2205,17 +2199,9 @@ export default function Bookings() {
                     <>
                       {isGoBookBooking ? (() => {
                         const bd: any = bookingDetails;
-                        const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
-                        const ownsBooking = !!cancelMemberId && (!bd.club_member_id || bd.club_member_id === cancelMemberId || bd.club_member_id === activeMember?.id);
-                        const startMs = new Date(`${bd.date}T${String(bd.start_time || "00:00").slice(0,5)}:00+02:00`).getTime();
-                        const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
-                         const disabledReason = !gobookApiMode && !hasGobookCreds
-                           ? "Save your GoBook login under Profile first."
-                           : !ownsBooking
-                             ? "Only the GoBook account owner of this booking can cancel it. Cancel it directly on gobook.co.za if it's not yours."
-                             : withinHour
-                               ? "GoBook does not allow cancellation within 1 hour of the booking start time."
-                               : null;
+                        const permission = gobookRowPermission(bd);
+                        const cancelMemberId = permission.memberId;
+                        const disabledReason = permission.reason;
                         if (disabledReason) {
                           return (
                             <Tooltip>

@@ -3,8 +3,8 @@
  * camera (native BarcodeDetector) to add it to the current basket. Includes a
  * manual code-entry fallback for devices without BarcodeDetector support.
  *
- * The dialog keeps scanning after each match so staff can scan several items
- * in a row; a short cooldown prevents the same code firing twice instantly.
+ * A successful scan beeps, closes the dialog immediately, and stops the
+ * camera. Re-open the scanner to scan the next item.
  */
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";

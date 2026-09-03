@@ -27,7 +27,7 @@ import { DashboardMyStatsCard } from "@/components/DashboardMyStatsCard";
 import { DashboardSportyhqCard } from "@/components/DashboardSportyhqCard";
 import { DashboardRankingPointsCard } from "@/components/DashboardRankingPointsCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
-import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap } from "lucide-react";
+import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap, Hash } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -752,6 +752,20 @@ export default function Dashboard() {
       
 
       <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={((myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor") ? `Welcome back to visiting our club, ${firstName}` : `Welcome back, ${firstName}`} showNotifications showProfile />
+
+      {/* My member number (digits only) — used with the Bar PIN at the bar/shop */}
+      {activeMember?.club_member_number && (
+        <div className="px-4 mt-2">
+          <div className="inline-flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-1.5">
+            <Hash className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">My member number</span>
+            <span className="text-sm font-bold tracking-wider">
+              {(activeMember.club_member_number.match(/\d/g) || []).join("") || activeMember.club_member_number}
+            </span>
+          </div>
+        </div>
+      )}
+
 
       
 

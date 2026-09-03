@@ -106,10 +106,38 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
   const reset = () => {
     setCart({});
     setSearch("");
+    setMemberNumber("");
     setSelected(null);
     setVisitorName("");
     setVisitorPhone("");
   };
+
+  /**
+   * Member identifies himself: he types his own membership number, which
+   * resolves to exactly one member of this club. A PIN alone is never used to
+   * identify a person — two members could share the same digits — so the PIN
+   * only ever approves the charge once the number has named the account.
+   */
+  const lookupByNumber = async () => {
+    const num = memberNumber.trim();
+    if (num.length < 3) return toast.error("Enter the full membership number");
+    setLookingUp(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("bar_resolve_member_by_number", {
+        _club_id: clubId,
+        _number: num,
+      });
+      if (error) throw error;
+      const hit = (data || [])[0] as MemberHit | undefined;
+      if (!hit) throw new Error("No active member has that membership number");
+      setSelected(hit);
+    } catch (err: any) {
+      toast.error(err.message || "Could not find that member");
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["bar-items"] });

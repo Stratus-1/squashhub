@@ -68,3 +68,7 @@
 ## NEW: De-duplicate association settings UI
 - [x] Annual league fee removed from Setup + Association Info (Fees is the single source).
 - [x] Member numbering removed from Setup (Preferences → Member numbering is the single source).
+
+## NEW: Association member rankings directory and navigation clarity
+- [ ] Add an association member tree grouped by affiliated club with NSF, national ranking, and regional ranking fields.
+- [ ] Inspect and simplify duplicated association/setup tile navigation so the active workspace is clear without accumulating tiles.

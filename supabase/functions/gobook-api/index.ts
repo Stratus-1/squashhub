@@ -84,13 +84,23 @@ Deno.serve(async (req) => {
     const clubId = String(payload.club_id ?? "");
     if (!clubId) return json({ error: "club_id is required" }, 400);
 
-    // Authorisation: club admin for this club, or platform super admin.
+    // Authorisation: setup actions need a club admin (or platform super admin);
+    // read/booking actions only need club membership.
+    const SETUP_ACTIONS = ["test_connection", "sync_settings"];
     const { data: isAdmin } = await admin.rpc("is_club_admin", {
       _user_id: user.id,
       _club_id: clubId,
     });
     const { data: isSuper } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
-    if (!isAdmin && !isSuper) return json({ error: "Admin access required" }, 403);
+    if (SETUP_ACTIONS.includes(action)) {
+      if (!isAdmin && !isSuper) return json({ error: "Admin access required" }, 403);
+    } else if (!isAdmin && !isSuper) {
+      const { data: isMember } = await admin.rpc("is_club_member", {
+        _user_id: user.id,
+        _club_id: clubId,
+      });
+      if (!isMember) return json({ error: "Club membership required" }, 403);
+    }
 
     const { data: secrets } = await admin
       .from("club_secrets")

@@ -157,38 +157,6 @@ export function AssociationInfoTab({ club, clubId }: { club: Club; clubId: strin
         </div>
       </Card>
 
-      {/* Annual League Fee */}
-      <Card className="p-6 space-y-4">
-        <div>
-          <h3 className="font-semibold">Annual League Fee</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            This fee will automatically appear in every affiliated club's fee list and be billed to members who opt into this league.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label>Annual Fee per Member (R)</Label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.league_member_annual_fee}
-              onChange={(e) => setForm(p => ({ ...p, league_member_annual_fee: Number(e.target.value) }))}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>Fee Due Month (1=Jan, 12=Dec)</Label>
-            <Input
-              type="number"
-              min="1"
-              max="12"
-              step="1"
-              value={form.league_fee_due_month}
-              onChange={(e) => setForm(p => ({ ...p, league_fee_due_month: Number(e.target.value) }))}
-            />
-          </div>
-        </div>
-      </Card>
 
       {/* Office Bearers */}
       <Card className="p-6 space-y-4">

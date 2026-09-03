@@ -93,11 +93,11 @@ export function AssociationFeesTab({ clubId }: { clubId: string }) {
   const grandOutstanding = Math.max(grandOwed - grandPaid, 0);
 
   return (
-    <Tabs defaultValue="statement" className="mt-4">
+    <Tabs defaultValue="schedule" className="mt-4">
       <TabsList>
-        <TabsTrigger value="statement">Statement</TabsTrigger>
         <TabsTrigger value="schedule">Fee Schedule</TabsTrigger>
         <TabsTrigger value="billing">Club Billing</TabsTrigger>
+        <TabsTrigger value="statement">Statement</TabsTrigger>
       </TabsList>
 
       <TabsContent value="schedule" className="mt-4">

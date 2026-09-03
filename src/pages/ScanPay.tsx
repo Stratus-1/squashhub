@@ -428,29 +428,32 @@ export default function ScanPay() {
   };
 
 
-  const chargeToAccount = async () => {
+  /**
+   * Member account charge from the public QR page.
+   * Nothing is posted until the signed-in member approves it with their own
+   * Bar PIN (or a one-time code) — the order is always attached to that
+   * signed-in member, never to somebody they pick from a list.
+   */
+  const chargeToAccount = () => {
     if (cartLines.length === 0 || !member || !club) return;
-    setSubmitting(true);
-    try {
-      const { error } = await supabase.from("bar_tab_entries").insert(
-        cartLines.map((l) => ({
-          club_id: club.id,
-          club_member_id: member.id,
-          bar_item_id: l.item.id,
-          quantity: l.qty,
-          unit_price: Number(l.item.price),
-          total: l.line,
-        })),
-      );
-      if (error) throw error;
-      setDone({ total, itemName: cartLabel, onAccount: true });
-      setCart({});
-    } catch (err: any) {
-      toast.error(err.message || "Could not charge your account");
-    } finally {
-      setSubmitting(false);
-    }
+    setPinOpen(true);
   };
+
+  const confirmAccountCharge = async ({ secret, method }: { secret: string; method: "pin" | "otp" }) => {
+    const { error } = await (supabase as any).rpc("charge_bar_to_member", {
+      _club_member_id: member!.id,
+      _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
+      _secret: secret,
+      _method: method,
+      _source: "qr",
+      _signature: null,
+    });
+    if (error) throw error;
+    setPinOpen(false);
+    setDone({ total, itemName: cartLabel, onAccount: true });
+    setCart({});
+  };
+
 
   if (isLoading || !authReady) {
     return (

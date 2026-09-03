@@ -65,6 +65,8 @@ export default function BarCounter() {
   const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [scannedItem, setScannedItem] = useState<CounterItem | null>(null);
+  const [scanQty, setScanQty] = useState(1);
   const [settled, setSettled] = useState<{
     tab: CounterTab;
     method: "member_account" | "cash" | "terminal";
@@ -496,8 +498,53 @@ export default function BarCounter() {
             open={scanOpen}
             onOpenChange={setScanOpen}
             items={board?.items ?? []}
-            onItem={(item) => setCart((c) => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
+            onItem={(item) => { setScannedItem(item); setScanQty(1); }}
           />
+
+          <Dialog open={!!scannedItem} onOpenChange={(o) => { if (!o) setScannedItem(null); }}>
+            <DialogContent className="max-w-xs">
+              <DialogHeader>
+                <DialogTitle>{scannedItem?.name}</DialogTitle>
+                <DialogDescription>
+                  {scannedItem ? money(scannedItem.price) : ""} each — set the quantity to add to {activeTab.guest_name}'s tab.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center justify-center gap-3 py-2">
+                <Button
+                  size="icon" variant="outline" className="h-10 w-10"
+                  disabled={scanQty <= 1}
+                  onClick={() => setScanQty((q) => Math.max(1, q - 1))}
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <Input
+                  type="number"
+                  min={1}
+                  value={scanQty}
+                  onChange={(e) => setScanQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="w-20 h-12 text-center text-xl font-semibold"
+                />
+                <Button
+                  size="icon" variant="outline" className="h-10 w-10"
+                  onClick={() => setScanQty((q) => q + 1)}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <Button
+                className="w-full h-11"
+                onClick={() => {
+                  if (!scannedItem) return;
+                  setCart((c) => ({ ...c, [scannedItem.id]: (c[scannedItem.id] ?? 0) + scanQty }));
+                  toast.success(`Added ${scanQty} × ${scannedItem.name}`);
+                  setScannedItem(null);
+                }}
+              >
+                Add {scanQty > 1 ? `${scanQty} × ` : ""}{scannedItem?.name}
+                {scannedItem ? ` — ${money(scannedItem.price * scanQty)}` : ""}
+              </Button>
+            </DialogContent>
+          </Dialog>
 
           {identified && (
             <BarPinDialog

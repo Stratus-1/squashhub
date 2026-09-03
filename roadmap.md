@@ -90,6 +90,7 @@
 - [x] Make Fee Schedule the canonical home for annual fee amount, renewal month, and payable day; propagate changes to affiliated clubs.
 
 ## GoBook core-calendar integration hardening
+- [x] Recover provider booking IDs when GoBook accepts a booking without returning its reference; never retry a provider-accepted booking.
 - [ ] Keep the native SquashHub booking grid as the only calendar; sync GoBook occupancy/names into core bookings.
 - [ ] Enforce signed-in member ownership for GoBook booking/cancellation; admins may act for a verified club member.
 - [ ] Preserve move-booking behavior: create the replacement slot first, then cancel the original provider booking, with an explicit partial-failure state.

@@ -148,6 +148,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
   return (
     <div className="space-y-6 mt-4">
+      <CounterModeCard clubId={clubId} />
       <Card className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div>

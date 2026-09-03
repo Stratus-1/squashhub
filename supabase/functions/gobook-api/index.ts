@@ -131,6 +131,52 @@ const bookingIdFrom = (value: any): number | null => {
   return found ?? null;
 };
 
+const providerBookingIdFrom = (value: any): number | null => {
+  const direct = bookingIdFrom(value);
+  if (direct) return direct;
+  if (!value || typeof value !== "object") return null;
+  const queue: any[] = Array.isArray(value) ? [...value] : Object.values(value);
+  const seen = new Set<any>();
+  while (queue.length) {
+    const candidate = queue.shift();
+    if (!candidate || typeof candidate !== "object" || seen.has(candidate)) continue;
+    seen.add(candidate);
+    // Nested generic `id` values may be schedule-time ids. Only accept fields
+    // that explicitly identify a booking while walking unknown envelopes.
+    const nested = [candidate.bookingId, candidate.BookingId, candidate.booking_id]
+      .map(Number)
+      .find((id) => Number.isInteger(id) && id > 0) ?? null;
+    if (nested) return nested;
+    queue.push(...(Array.isArray(candidate) ? candidate : Object.values(candidate)));
+  }
+  return null;
+};
+
+const activeProviderBookings = (value: any): any[] => rowsFrom(value).filter((booking) => {
+  const status = String(booking?.status ?? booking?.bookingStatus ?? "").toLowerCase();
+  return booking?.cancelled !== true && status !== "c" && status !== "cancelled";
+});
+
+const matchingProviderBooking = (
+  bookings: any[],
+  expected: { date: string; courtId: number | null; startTime: string; endTime: string | null },
+  excludedIds: Set<number> = new Set(),
+): any | null => {
+  const matches = bookings.filter((booking) => {
+    const id = bookingIdFrom(booking);
+    if (!id || excludedIds.has(id)) return false;
+    const date = String(booking?.bookingDate ?? booking?.date ?? "").slice(0, 10);
+    const courtId = Number(booking?.providerConsultantId ?? booking?.consultantId ?? 0);
+    const start = hhmm(booking?.startTime ?? booking?.start_time);
+    const end = hhmm(booking?.endTime ?? booking?.end_time);
+    return date === expected.date
+      && (!expected.courtId || courtId === expected.courtId)
+      && start === expected.startTime
+      && (!expected.endTime || !end || end === expected.endTime);
+  });
+  return matches.length === 1 ? matches[0] : null;
+};
+
 // A schedule slot's generic `id` is often the schedule-time id, not the
 // provider booking id. Never use it to create a cancellation reference.
 const slotBookingIdFrom = (value: any): number | null => {
@@ -680,6 +726,7 @@ Deno.serve(async (req) => {
     if (action === "book") {
       let ids = Array.isArray(payload.schedule_time_ids) ? payload.schedule_time_ids : [];
       const bookingDate = String(payload.booking_date ?? "").slice(0, 10);
+      let providerConsultantId: number | null = null;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate)) return json({ error: "booking_date must be YYYY-MM-DD" }, 400);
       if (!ids.length && payload.court_id && /^\d{4}-\d{2}-\d{2}$/.test(bookingDate) && payload.start_time) {
         const { data: club } = await admin.from("clubs").select("gobook_service_id").eq("id", clubId).maybeSingle();
@@ -694,6 +741,7 @@ Deno.serve(async (req) => {
         const fac = await apiGet(token, `/Facility/ListForProviderService?providerServiceId=${providerServiceId}` + (lookupClientId ? `&clientId=${lookupClientId}` : "") + `&includeInactive=false`);
         const target = ((fac?.facilities ?? []) as any[]).find((f) => normalizeName(f.consultantName) === normalizeName(localCourt.name) || String(f.consultantName ?? "").match(/\d+/)?.[0] === String(localCourt.name).match(/\d+/)?.[0]);
         if (!target) return json({ error: `GoBook court mapping not found for ${localCourt.name}` }, 400);
+        providerConsultantId = Number(target.providerConsultantId) || null;
         const slots = rowsFrom((await apiGet(token, `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}&bookingDate=${bookingDate}&includeUnavailable=true&providerConsultantId=${target.providerConsultantId}` + (lookupClientId ? `&clientId=${lookupClientId}` : ""))) ?? []);
         const targetTime = String(payload.start_time).slice(0, 5);
         const endTime = payload.end_time ? String(payload.end_time).slice(0, 5) : null;
@@ -734,6 +782,27 @@ Deno.serve(async (req) => {
         );
       }
 
+      const expectedStart = String(payload.start_time ?? "").slice(0, 5);
+      const expectedEnd = payload.end_time ? String(payload.end_time).slice(0, 5) : null;
+      const beforeBookings = activeProviderBookings(
+        (await apiGet(token, `/Booking/List?clientId=${clientId}`)) ?? [],
+      );
+      const existing = expectedStart
+        ? matchingProviderBooking(beforeBookings, {
+            date: bookingDate,
+            courtId: providerConsultantId,
+            startTime: expectedStart,
+            endTime: expectedEnd,
+          })
+        : null;
+      const existingId = existing ? bookingIdFrom(existing) : null;
+      if (existingId) {
+        return json({ success: true, bookingId: existingId, recovered: true, alreadyBooked: true });
+      }
+      const beforeIds = new Set(
+        beforeBookings.map((booking) => bookingIdFrom(booking)).filter((id): id is number => id !== null),
+      );
+
       const res = await fetch(`${API_BASE}/Booking/Book`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -750,14 +819,39 @@ Deno.serve(async (req) => {
         const msg = body?.globalMessages?.join(", ") || "GoBook rejected the booking";
         return json({ error: msg, detail: body }, 400);
       }
-      const createdBookingId =
-        bookingIdFrom(body) ??
-        bookingIdFrom((Array.isArray(body?.bookings) ? body.bookings[0] : null)) ??
-        null;
-      if (!createdBookingId) {
-        return json({ error: "GoBook accepted the request but returned no booking ID; no local booking was created", providerAccepted: true }, 502);
+      let createdBookingId = providerBookingIdFrom(body);
+      if (!createdBookingId && expectedStart) {
+        // Some GoBook environments return success without the new booking id.
+        // Re-read the member's provider register and recover only one exact,
+        // newly-created match. Never repeat Booking/Book after provider success.
+        for (let attempt = 0; attempt < 3 && !createdBookingId; attempt++) {
+          if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 300));
+          const afterBookings = activeProviderBookings(
+            (await apiGet(token, `/Booking/List?clientId=${clientId}`)) ?? [],
+          );
+          const recovered = matchingProviderBooking(afterBookings, {
+            date: bookingDate,
+            courtId: providerConsultantId,
+            startTime: expectedStart,
+            endTime: expectedEnd,
+          }, beforeIds);
+          createdBookingId = recovered ? bookingIdFrom(recovered) : null;
+        }
       }
-      return json({ success: true, bookingId: createdBookingId, result: body });
+      if (!createdBookingId) {
+        console.error("GoBook accepted Booking/Book but its booking id could not be recovered", {
+          bookingDate,
+          providerConsultantId,
+          clientId,
+          scheduleTimeIds: ids,
+          responseKeys: body && typeof body === "object" ? Object.keys(body) : [],
+        });
+        return json({
+          error: "GoBook accepted the booking, but its reference is still being confirmed. Refresh the calendar before trying again.",
+          providerAccepted: true,
+        }, 202);
+      }
+      return json({ success: true, bookingId: createdBookingId, recovered: bookingIdFrom(body) === null, result: body });
     }
 
     return json({ error: `Unknown action "${action}"` }, 400);

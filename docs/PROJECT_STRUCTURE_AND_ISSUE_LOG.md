@@ -1,3 +1,10 @@
+# 2026-09-03 — GoBook accepted bookings without returning a booking ID
+
+- **Symptom:** A member could receive “GoBook accepted the request but returned no booking ID,” while the court was actually reserved in GoBook and no native calendar row appeared until a later refresh.
+- **Cause:** The official API sometimes returns a successful `Booking/Book` response without the new reference in the response shape expected by SquashHub.
+- **Fix:** `gobook-api` now checks for an existing exact booking before submission, recursively reads supported response envelopes, and after provider acceptance recovers the one newly-created booking from the member's GoBook booking register. It never repeats a provider-accepted booking. The native booking request now also passes its end time so multi-slot matches are exact.
+- **Recovery:** Confirmed the reported booking as GoBook `3598558` for Court 3, 12:00–13:00 on 4 Sep 2026; a core-day sync restores it to the SquashHub calendar.
+
 # 2026-08-30 — Bar checkout controls remained at the bottom on mobile
 
 - **Symptom:** After selecting bar products, the account/card payment controls still rendered at the bottom of the product list instead of remaining visible.

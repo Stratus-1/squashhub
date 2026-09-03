@@ -1122,6 +1122,7 @@ export default function Bookings() {
               booking_date: dateStr,
               court_id: bookingDialog.courtId,
               start_time: bookingDialog.time,
+              end_time: endTime,
               notes,
             },
           }));

@@ -107,21 +107,12 @@ export default function ScanPay() {
   const club = data?.club;
   const currency = club?.currency_code;
 
-  // Which club_member row (if any) belongs to the signed-in user at this club
-  const { data: member } = useQuery({
-    queryKey: ["scan-member", club?.id, userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("club_members")
-        .select("id, name")
-        .eq("club_id", club!.id)
-        .eq("user_id", userId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!club?.id && !!userId,
-  });
+  // The public QR page is deliberately identity-free: even if the phone is
+  // still signed in, a member must identify with their membership number and
+  // approve with their own Bar PIN. This stops a remembered phone from
+  // charging an account without verification.
+  const member: { id: string; name: string } | null = null;
+
 
   /** Everything the payer can tap — a single-item sticker still shows a menu of one. */
   const menu = useMemo<ScanItem[]>(() => {

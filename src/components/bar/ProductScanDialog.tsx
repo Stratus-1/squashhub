@@ -81,6 +81,7 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
     lastRef.current = { code, at: now };
     if (onCode) {
       // Raw capture: stop the camera immediately, hand the code back, and close.
+      playSuccessBeep();
       stopCamera();
       onOpenChange(false);
       onCode(code);
@@ -88,11 +89,13 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
     }
     const item = items.find((i) => (i.barcode ?? "").trim() === code);
     if (item) {
+      playSuccessBeep();
       onItem(item);
       toast.success(`Added ${item.name}`);
     } else {
       toast.error(`No item with barcode ${code}`);
     }
+
   };
 
   useEffect(() => {

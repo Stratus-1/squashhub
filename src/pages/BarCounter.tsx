@@ -178,7 +178,10 @@ export default function BarCounter() {
       toast.error(e.message ?? "Could not settle the tab");
     } finally {
       setBusy(false);
+    }
   }
+
+
 
   /** Staff picks the member by number; only the member can approve with their PIN. */
   async function identifyMember() {

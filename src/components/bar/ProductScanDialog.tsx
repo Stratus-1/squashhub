@@ -104,14 +104,21 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
   };
 
   useEffect(() => {
-    if (!open) return;
-    setCameraError(null);
-    setManualMode(false);
-    lastRef.current = { code: "", at: 0 };
+    if (open) {
+      setCameraError(null);
+      setManual("");
+      setManualMode(!supported);
+      lastRef.current = { code: "", at: 0 };
+    }
+  }, [open, supported]);
 
-    if (!supported) {
-      setManualMode(true);
-      return;
+  useEffect(() => {
+    if (!open || manualMode) {
+      return () => {
+        if (timerRef.current) window.clearTimeout(timerRef.current);
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      };
     }
 
     let cancelled = false;
@@ -147,7 +154,7 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
         tick();
       } catch {
         if (!cancelled) {
-          setCameraError("Camera not available — enter the barcode manually below.");
+          setCameraError("Camera not available — enter the barcode manually.");
           setManualMode(true);
         }
       }
@@ -160,8 +167,7 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, supported]);
+  }, [open, supported, manualMode]);
 
   const stopCamera = () => {
     if (timerRef.current) window.clearTimeout(timerRef.current);

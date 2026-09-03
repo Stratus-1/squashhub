@@ -65,7 +65,6 @@
 - [ ] 24 CSIR Bells Doubles invites still unsent (rate_limited at 06:29 UTC 2 Sep) — resend slowly when clear.
 - [ ] Cron invite jobs pass the anon key; send-tournament-invite-email now also accepts the internal secret. Update the cron commands before re-enabling.
 
-## NEW: Prevent repeated member numbers
-- [ ] Trace current member-number allocation and uniqueness enforcement.
-- [ ] Fix allocation so concurrent/new-member assignments cannot reuse an existing number.
-- [ ] Verify duplicate-number state and preserve existing member numbers.
+## NEW: De-duplicate association settings UI
+- [x] Annual league fee removed from Setup + Association Info (Fees is the single source).
+- [x] Member numbering removed from Setup (Preferences → Member numbering is the single source).

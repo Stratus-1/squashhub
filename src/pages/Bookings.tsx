@@ -1102,6 +1102,11 @@ export default function Bookings() {
         const msg = await extractFunctionError(data, error);
         if (msg) throw new Error(`GoBook booking failed: ${msg}`);
         const bookedId = usingGobookApi ? (data as any)?.bookingId : null;
+        // In official API mode a booking without a provider id could never be
+        // cancelled or moved later, so we refuse to mirror it locally.
+        if (usingGobookApi && !bookedId) {
+          throw new Error("GoBook did not return a booking reference. Refresh the grid to check whether the slot was taken.");
+        }
         gobookMirror = {
           court: Number((data as any)?.court || selectedCourt?.id || 0),
           externalId: bookedId ? `gobook:${bookedId}` : `${dateStr.replace(/-/g, "")}-${String((data as any)?.court || 0)}-${String(bookingDialog.time).replace(":", "")}`,

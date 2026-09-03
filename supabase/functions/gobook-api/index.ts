@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       _user_id: user.id,
       _club_id: clubId,
     });
-    const { data: isSuper } = await admin.rpc("is_super_admin", { _user_id: user.id });
+    const { data: isSuper } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
     if (!isAdmin && !isSuper) return json({ error: "Admin access required" }, 403);
 
     const { data: secrets } = await admin

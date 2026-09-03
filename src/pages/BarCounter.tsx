@@ -443,7 +443,7 @@ export default function BarCounter() {
             })}
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-3 space-y-2">
+          <div className="fixed bottom-16 left-0 right-0 z-40 border-t bg-background p-3 space-y-2">
             <Button className="w-full h-12 gap-2" disabled={cartTotal <= 0 || busy} onClick={addRound}>
               <Receipt className="w-4 h-4" />
               Add {money(cartTotal)} to {activeTab.guest_name}'s tab

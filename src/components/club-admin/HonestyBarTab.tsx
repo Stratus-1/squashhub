@@ -12,6 +12,7 @@ import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2, QrCode } from "lucide-react";
 import { BarQrLabelsDialog } from "./BarQrLabelsDialog";
+import { CounterModeCard } from "@/components/bar/CounterModeCard";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";

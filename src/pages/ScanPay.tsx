@@ -503,7 +503,39 @@ export default function ScanPay() {
         </Button>
       </header>
 
+      {/* Always-visible account strip so there is never a dead-end screen */}
+      <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-[11px]">
+        {member ? (
+          <>
+            <span className="truncate flex-1">
+              Signed in as <span className="font-medium text-foreground">{member.name}</span> — you can charge to your member account.
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[11px] shrink-0"
+              onClick={async () => { await supabase.auth.signOut(); setGuestChosen(true); localStorage.setItem(GUEST_PREF_KEY, "1"); }}
+            >
+              Sign out
+            </Button>
+          </>
+        ) : (
+          <>
+            <span className="truncate flex-1 text-muted-foreground">
+              {userId ? "Signed in, but not a member here — paying as a visitor." : "Paying as a guest."}
+            </span>
+            {!userId && (
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[11px] gap-1 shrink-0" onClick={goLogin}>
+                <LogIn className="w-3 h-3" /> Log in
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+
       <main className={`px-4 py-4 max-w-md mx-auto space-y-4 ${!done && !checkingOut && count > 0 ? (tab ? "pb-40" : "pb-28") : ""}`}>
+
         {verifying && !done && (
           <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
@@ -556,7 +588,7 @@ export default function ScanPay() {
               </Card>
             )}
 
-            {!tab && !member && count === 0 && (
+            {!tab && count === 0 && (
               <Card className="p-4 space-y-3 border-amber-500/40 bg-amber-500/5">
                 <div className="flex items-center gap-2">
                   <Receipt className="w-4 h-4 text-amber-600 shrink-0" />
@@ -584,7 +616,7 @@ export default function ScanPay() {
               </Card>
             )}
 
-            {tab && tab.status === "open" && (
+            {tab && tab.status !== "settled" && (
               <Card className="p-4 space-y-3 border-amber-500/50">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold">Your open tab · {tab.guest_name}</p>
@@ -600,7 +632,9 @@ export default function ScanPay() {
                 </div>
                 <Separator />
                 <p className="text-[11px] text-muted-foreground">
-                  Keep ordering all evening, then settle the whole tab once.
+                  {tab.status === "open"
+                    ? "Keep ordering all evening, then settle the whole tab once."
+                    : "This tab is awaiting payment — settle it below."}
                 </p>
                 <div className="space-y-2">
                   {club.pay_online_enabled !== false && (

@@ -809,11 +809,16 @@ export type Database = {
           created_at: string
           id: string
           logged_by: string | null
+          operator_member_id: string | null
           quantity: number
           settled: boolean
           settled_at: string | null
+          signature: string | null
+          source: string
           total: number
           unit_price: number
+          verification_method: string | null
+          verified_at: string | null
         }
         Insert: {
           bar_item_id: string
@@ -822,11 +827,16 @@ export type Database = {
           created_at?: string
           id?: string
           logged_by?: string | null
+          operator_member_id?: string | null
           quantity?: number
           settled?: boolean
           settled_at?: string | null
+          signature?: string | null
+          source?: string
           total: number
           unit_price: number
+          verification_method?: string | null
+          verified_at?: string | null
         }
         Update: {
           bar_item_id?: string
@@ -835,11 +845,16 @@ export type Database = {
           created_at?: string
           id?: string
           logged_by?: string | null
+          operator_member_id?: string | null
           quantity?: number
           settled?: boolean
           settled_at?: string | null
+          signature?: string | null
+          source?: string
           total?: number
           unit_price?: number
+          verification_method?: string | null
+          verified_at?: string | null
         }
         Relationships: [
           {
@@ -870,6 +885,13 @@ export type Database = {
             referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bar_tab_entries_operator_member_id_fkey"
+            columns: ["operator_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
         ]
       }
       bar_visitor_sales: {
@@ -877,49 +899,64 @@ export type Database = {
           bar_item_id: string
           club_id: string
           created_at: string
+          customer_type: string
           guest_tab_id: string | null
           id: string
           logged_by: string | null
           note: string | null
+          operator_member_id: string | null
           payment_method: string
           payment_reference: string | null
           payment_status: string
           quantity: number
+          signature: string | null
+          source: string
           total: number
           unit_price: number
           visitor_name: string | null
+          visitor_phone: string | null
         }
         Insert: {
           bar_item_id: string
           club_id: string
           created_at?: string
+          customer_type?: string
           guest_tab_id?: string | null
           id?: string
           logged_by?: string | null
           note?: string | null
+          operator_member_id?: string | null
           payment_method: string
           payment_reference?: string | null
           payment_status?: string
           quantity: number
+          signature?: string | null
+          source?: string
           total: number
           unit_price: number
           visitor_name?: string | null
+          visitor_phone?: string | null
         }
         Update: {
           bar_item_id?: string
           club_id?: string
           created_at?: string
+          customer_type?: string
           guest_tab_id?: string | null
           id?: string
           logged_by?: string | null
           note?: string | null
+          operator_member_id?: string | null
           payment_method?: string
           payment_reference?: string | null
           payment_status?: string
           quantity?: number
+          signature?: string | null
+          source?: string
           total?: number
           unit_price?: number
           visitor_name?: string | null
+          visitor_phone?: string | null
         }
         Relationships: [
           {
@@ -946,6 +983,13 @@ export type Database = {
           {
             foreignKeyName: "bar_visitor_sales_logged_by_fkey"
             columns: ["logged_by"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_visitor_sales_operator_member_id_fkey"
+            columns: ["operator_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
             referencedColumns: ["id"]
@@ -7883,6 +7927,102 @@ export type Database = {
           },
         ]
       }
+      member_bar_otps: {
+        Row: {
+          attempts: number
+          club_id: string
+          club_member_id: string
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          purpose: string
+        }
+        Insert: {
+          attempts?: number
+          club_id: string
+          club_member_id: string
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          purpose?: string
+        }
+        Update: {
+          attempts?: number
+          club_id?: string
+          club_member_id?: string
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_bar_otps_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_bar_otps_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_bar_pins: {
+        Row: {
+          club_id: string
+          club_member_id: string
+          created_at: string
+          failed_attempts: number
+          locked_until: string | null
+          pin_hash: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          failed_attempts?: number
+          locked_until?: string | null
+          pin_hash: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          failed_attempts?: number
+          locked_until?: string | null
+          pin_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_bar_pins_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_bar_pins_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: true
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_credit_transactions: {
         Row: {
           amount: number
@@ -13014,6 +13154,20 @@ export type Database = {
         }
         Returns: string
       }
+      bar_search_members: {
+        Args: { _club_id: string; _q: string }
+        Returns: {
+          club_member_number: string
+          has_pin: boolean
+          id: string
+          name: string
+          phone_hint: string
+        }[]
+      }
+      bar_staff_can_serve: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       bill_wifi_monthly: { Args: never; Returns: Json }
       can_access_champ_match: {
         Args: { _match_id: string; _user_id: string }
@@ -13107,6 +13261,17 @@ export type Database = {
           p_group_number: number
         }
         Returns: undefined
+      }
+      charge_bar_to_member: {
+        Args: {
+          _club_member_id: string
+          _lines: Json
+          _method?: string
+          _secret: string
+          _signature?: string
+          _source?: string
+        }
+        Returns: Json
       }
       check_ledger_integrity: {
         Args: { p_club_id?: string }
@@ -13289,6 +13454,7 @@ export type Database = {
         Args: { _tab_id: string; _token: string }
         Returns: Json
       }
+      get_bar_pin_status: { Args: { _club_member_id: string }; Returns: Json }
       get_bells_participant_min: {
         Args: { _member_ids: string[] }
         Returns: {
@@ -13923,6 +14089,16 @@ export type Database = {
         Args: { _fixture_id: string }
         Returns: undefined
       }
+      record_bar_counter_visitor_sale: {
+        Args: {
+          _club_id: string
+          _lines: Json
+          _payment_method?: string
+          _visitor_name: string
+          _visitor_phone?: string
+        }
+        Returns: Json
+      }
       record_bar_terminal_sale: {
         Args: {
           _buyer_name?: string
@@ -14224,6 +14400,15 @@ export type Database = {
       set_doubles_pairing_locked: {
         Args: { p_champ_id: string; p_locked: boolean }
         Returns: boolean
+      }
+      set_my_bar_pin: {
+        Args: {
+          _club_member_id: string
+          _current_pin?: string
+          _otp?: string
+          _pin: string
+        }
+        Returns: Json
       }
       settle_bar_guest_tab: {
         Args: { _method: string; _tab_id: string; _token: string }

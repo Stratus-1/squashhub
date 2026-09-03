@@ -347,7 +347,8 @@ Deno.serve(async (req) => {
         .maybeSingle();
       const providerServiceId = Number(payload.provider_service_id ?? club?.gobook_service_id ?? 0);
       if (!providerServiceId) return json({ error: "No GoBook service configured for this club" }, 400);
-      const clientId = Number(payload.client_id ?? 0);
+      const clientId = Number(payload.client_id ?? (await resolveMyClient()).clientId ?? 0);
+
       const data = await apiGet(
         token,
         `/Facility/ListForProviderService?providerServiceId=${providerServiceId}` +

@@ -85,6 +85,32 @@ export function SeasonFixtureBuilder({ tenantId, association, teams, open, onOpe
 
   const plan = useMemo<SeasonPlanResult>(() => generateSeasonFixtures({ divisions, startDate, exclusions, twoLegs, secondLegStart: secondLegStart || undefined }), [divisions, startDate, exclusions, twoLegs, secondLegStart]);
 
+  // Step 1 groups every submitted team under its league, e.g. "Men's 2nd League",
+  // so the association ticks whole leagues instead of hunting through a flat list.
+  const ORDINALS = ["", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th", "13th", "14th", "15th", "16th", "17th", "18th", "19th", "20th"];
+  const teamGroups = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; teams: AssocTeam[] }>();
+    for (const team of teams) {
+      const key = `${team.category || "League"} ${team.level ?? "Unassigned"}`;
+      const category = team.category || "League";
+      const label = team.level == null
+        ? `${category} · Needs league assignment`
+        : `${category} ${ORDINALS[team.level] ?? `${team.level}th`} League`;
+      const group = map.get(key) ?? { key, label, teams: [] };
+      group.teams.push(team);
+      map.set(key, group);
+    }
+    return [...map.values()]
+      .map((group) => ({ ...group, teams: [...group.teams].sort((a, b) => a.club_name.localeCompare(b.club_name) || a.team_name.localeCompare(b.team_name)) }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+  }, [teams]);
+  const groupSelected = (group: { teams: AssocTeam[] }) => group.teams.filter((team) => selected[team.team_id]).length;
+  const toggleGroup = (group: { teams: AssocTeam[] }, value: boolean) => setSelected((current) => {
+    const next = { ...current };
+    for (const team of group.teams) next[team.team_id] = value;
+    return next;
+  });
+
   const reset = () => { setStep(1); setSeasonId(""); setSelected({}); setManualDates(""); setExcludedHolidays({}); setExcludedBreaks({}); setSaving(false); };
   const close = (value: boolean) => { if (!value) reset(); onOpenChange(value); };
   const toggleAll = (value: boolean) => setSelected(Object.fromEntries(teams.map((team) => [team.team_id, value])));

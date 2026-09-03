@@ -629,17 +629,24 @@ Deno.serve(async (req) => {
         // clientName arrives as "1004; M 2nd LEAGUE"; pcMappingText is the readable part.
         const rawName = String(row.pcMappingText ?? row.clientName ?? "").trim();
         const rawBooker = (rawName.includes(";") ? rawName.split(";").slice(1).join(";") : rawName).trim() || null;
-        // GoBook stores clients as "Initial Surname" (e.g. "F Werner", "M Chiloane").
-        // Reorder to "Surname F." and, where a club member matches that surname +
-        // first initial, display the member's real full name (e.g. "Werner Fick").
-        const initialFirst = rawBooker?.match(/^([A-Za-z])\s+([A-Za-z' -]{2,})$/);
-        const bookerSurname = initialFirst ? initialFirst[2].trim() : null;
-        const bookerInitial = initialFirst ? initialFirst[1].toUpperCase() : null;
-        const exactMatches = rawBooker ? memberRows.filter((m: any) => normalizeName(m.name) === normalizeName(rawBooker)) : [];
-        const surnameMatches = bookerSurname
+        // GoBook stores clients as "Surname, First" (e.g. "Fick, Werner") or
+        // sometimes "Initial Surname" (e.g. "F Werner"). Normalise to natural
+        // "First Surname" order and, where a club member matches, display the
+        // member's real full name.
+        const commaSplit = rawBooker?.match(/^([A-Za-z' -]{2,}),\s*([A-Za-z' -]+)$/);
+        const initialFirst = !commaSplit && rawBooker?.match(/^([A-Za-z])\s+([A-Za-z' -]{2,})$/);
+        const naturalName = commaSplit
+          ? `${commaSplit[2].trim()} ${commaSplit[1].trim()}`
+          : initialFirst
+            ? `${initialFirst[2].trim()} ${initialFirst[1].toUpperCase()}.`
+            : rawBooker;
+        const bookerSurname = commaSplit ? commaSplit[1].trim() : initialFirst ? initialFirst[2].trim() : null;
+        const bookerInitial = naturalName?.trim().charAt(0).toUpperCase() ?? null;
+        const exactMatches = naturalName ? memberRows.filter((m: any) => normalizeName(m.name) === normalizeName(naturalName)) : [];
+        const surnameMatches = !exactMatches.length && bookerSurname
           ? memberRows.filter((m: any) => {
               const parts = String(m.name ?? "").trim().split(/\s+/);
-              const mSurname = parts[parts.length - 1] ?? "";
+              const mSurname = parts.slice(1).join(" ");
               return normalizeName(mSurname) === normalizeName(bookerSurname)
                 && (!bookerInitial || String(m.name ?? "").trim().charAt(0).toUpperCase() === bookerInitial);
             })
@@ -647,8 +654,7 @@ Deno.serve(async (req) => {
         const member = exactMatches.length === 1 ? exactMatches[0]
           : surnameMatches.length === 1 ? surnameMatches[0]
           : null;
-        const bookerName = member?.name
-          ?? (initialFirst ? `${bookerSurname} ${bookerInitial}.` : rawBooker);
+        const bookerName = member?.name ?? naturalName;
         const { error } = await admin.from("bookings").upsert({
           club_id: clubId, court_id: court.id, date,
           start_time: `${startTime}:00`, end_time: `${endTime}:00`,

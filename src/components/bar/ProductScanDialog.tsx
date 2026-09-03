@@ -57,7 +57,8 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
     if (lastRef.current.code === code && now - lastRef.current.at < 1500) return;
     lastRef.current = { code, at: now };
     if (onCode) {
-      // Raw capture: hand the code back and close (camera stopped via onOpenChange).
+      // Raw capture: stop the camera immediately, hand the code back, and close.
+      stopCamera();
       onOpenChange(false);
       onCode(code);
       return;

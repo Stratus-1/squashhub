@@ -104,6 +104,6 @@
 
 ## GoBook polish (in progress)
 - [x] Fix booker name format: GoBook stores "F Werner" -> reorder to "Werner F." and resolve full member names where surname+initial match
-- [ ] Move/booking failed: "No bookable GoBook slot matches the selected court and time" (Court 3, Fri 4 Sep 15:00-16:00, 60min) — debug slot lookup + support multi-slot (60min = 2x30min GoBook slots)
-- [ ] Auto-refresh GoBook sync when Bookings page opens / date changes
-- [ ] Refresh GoBook sync after a booking is made and after a cancellation
+- [x] Move/booking fixed (clientId-scoped slot lookup + multi-slot duration support): "No bookable GoBook slot matches the selected court and time" (Court 3, Fri 4 Sep 15:00-16:00, 60min) — debug slot lookup + support multi-slot (60min = 2x30min GoBook slots)
+- [x] Auto-sync on page open/date change (already wired, verified)
+- [x] Sync after booking, move, and cancellation

@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PlatformAssociation } from "@/hooks/use-platform-association";
 import { SeasonFixtureBuilder } from "@/components/association-admin/SeasonFixtureBuilder";
-import { useQuery as useTeamsQuery } from "@tanstack/react-query";
 import { type AssocTeam } from "@/lib/leagues/association-tree";
 
 const ALL = "__all__";
@@ -48,7 +47,7 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
   const [syncing, setSyncing] = useState<"fixtures" | "members" | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
 
-  const { data: teams = [] } = useTeamsQuery({
+  const { data: teams = [] } = useQuery({
     queryKey: ["assoc-league-teams", tenantId, "builder"],
     enabled: !!association?.id,
     queryFn: async () => {

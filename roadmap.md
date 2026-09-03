@@ -1,11 +1,18 @@
 # Roadmap
 
-## NEW: GoBook live API and cancellation support
-- [ ] Store CSIR live GoBook API credentials securely without exposing them to the client.
-- [ ] Enable the official API mode for CSIR only after connection verification.
-- [ ] Add authenticated booking cancellation through `POST /Booking/Action` with server-side validation.
-- [ ] Keep legacy scraper credentials and booking behavior unchanged for clubs not using API mode.
-- [ ] Verify live settings, booking lookup, and cancellation response; do not create an unrequested live booking.
+## Completed: Association season fixture builder
+- [x] Add a four-step season/team selection, play-night, calendar exclusion and preview flow.
+- [x] Generate multiple league divisions with home/away legs, reversed venues and mid-season return-leg gaps.
+- [x] Add public-holiday, school-break and manual exclusion handling with conflict checks.
+- [x] Save only through an association-admin guarded operation; preserve completed/played/scored fixtures.
+- [x] Keep fixture saves separate from tournament invitation/email dispatch.
+
+## Completed: GoBook live API and cancellation support
+- [x] Store CSIR live GoBook API credentials securely without exposing them to the client.
+- [x] Enable the official API mode for CSIR only after connection verification.
+- [x] Add authenticated booking cancellation through `POST /Booking/Action` with server-side validation.
+- [x] Keep legacy scraper credentials and booking behavior unchanged for clubs not using API mode.
+- [x] Verify live settings and booking lookup; do not create an unrequested live booking.
 
 ## Current: registration fee signup verification + Wi-Fi member list + audit fix
 - [x] Verify once-off registration fee is billed to every genuinely new member at signup.

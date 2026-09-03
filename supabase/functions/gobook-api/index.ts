@@ -74,6 +74,89 @@ async function apiPost(token: string, path: string, body: Record<string, unknown
   return parsed;
 }
 
+const hhmm = (value: unknown) => {
+  const text = String(value ?? "").trim();
+  if (/^\d{1,2}:\d{2}/.test(text)) return text.slice(0, 5).padStart(5, "0");
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  return `${String(Math.floor(number / 100)).padStart(2, "0")}:${String(number % 100).padStart(2, "0")}`;
+};
+
+const normalizeName = (value: unknown) => String(value ?? "")
+  .toLowerCase()
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/[^a-z0-9 ]/g, "")
+  .replace(/\s+/g, " ")
+  .trim();
+
+const ROW_KEYS = ["slots", "bookingSlots", "facilities", "items", "results", "data"] as const;
+
+const rowsFrom = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  for (const key of ROW_KEYS) {
+    if (Array.isArray(value?.[key])) return value[key];
+  }
+  return [];
+};
+
+const hasRowsEnvelope = (value: any) => Array.isArray(value) || ROW_KEYS.some((key) => Array.isArray(value?.[key]));
+
+const bookingIdFrom = (value: any): number | null => {
+  const candidates = [
+    value?.bookingId,
+    value?.BookingId,
+    value?.booking_id,
+    value?.id,
+    value?.booking?.bookingId,
+    value?.booking?.BookingId,
+    value?.booking?.id,
+    value?.result?.bookingId,
+    value?.result?.BookingId,
+    value?.result?.id,
+    value?.data?.bookingId,
+    value?.data?.BookingId,
+    value?.data?.id,
+    Array.isArray(value?.bookings) ? value.bookings[0]?.bookingId : null,
+    Array.isArray(value?.bookings) ? value.bookings[0]?.id : null,
+  ];
+  const found = candidates.map(Number).find((id) => Number.isInteger(id) && id > 0);
+  return found ?? null;
+};
+
+// A schedule slot's generic `id` is often the schedule-time id, not the
+// provider booking id. Never use it to create a cancellation reference.
+const slotBookingIdFrom = (value: any): number | null => {
+  const candidates = [
+    value?.bookingId,
+    value?.BookingId,
+    value?.booking_id,
+    value?.booking?.bookingId,
+    value?.booking?.BookingId,
+    value?.booking?.id,
+  ];
+  const found = candidates.map(Number).find((id) => Number.isInteger(id) && id > 0);
+  return found ?? null;
+};
+
+const isBookedSlot = (value: any) => {
+  return slotBookingIdFrom(value) !== null
+    || value?.isBooked === true
+    || value?.booked === true
+    || value?.available === false
+    || value?.isAvailable === false;
+};
+
+const bookerNameFrom = (value: any) => String(
+  value?.bookedText
+  ?? value?.bookedBy
+  ?? value?.clientName
+  ?? value?.clientFullName
+  ?? value?.booking?.clientName
+  ?? value?.booking?.clientFullName
+  ?? "",
+).trim() || null;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -272,19 +355,32 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
-    /** Resolve the calling member's GoBook client id (auto-links on a single exact match). */
+    /** Resolve a verified club member's GoBook client id (auto-links on an exact name match). */
     const resolveMyClient = async () => {
+      const requestedMemberId = String(payload.club_member_id ?? "").trim();
+      const canActForAnotherMember = !!(isAdmin || isSuper);
       let q = admin
         .from("club_members")
-        .select("id, name, email, gobook_client_id, gobook_client_name")
-        .eq("club_id", clubId);
-      q = payload.club_member_id
-        ? q.eq("id", String(payload.club_member_id))
-        : q.eq("user_id", user.id);
+        .select("id, name, email, user_id, gobook_client_id, gobook_client_name")
+        .eq("club_id", clubId)
+        .eq("status", "active");
+      if (requestedMemberId) {
+        q = q.eq("id", requestedMemberId);
+        if (!canActForAnotherMember) q = q.eq("user_id", user.id);
+      } else {
+        q = q.eq("user_id", user.id);
+      }
       const { data: me } = await q.maybeSingle();
-      if (!me) return { member: null, clientId: null, candidates: [] as any[] };
+      if (!me) {
+        return {
+          member: null,
+          clientId: null,
+          candidates: [] as any[],
+          forbidden: !!requestedMemberId,
+        };
+      }
       if (me.gobook_client_id) {
-        return { member: me, clientId: Number(me.gobook_client_id), candidates: [] };
+        return { member: me, clientId: Number(me.gobook_client_id), candidates: [], forbidden: false };
       }
       const surname = String(me.name ?? "").trim().split(/\s+/).slice(-1)[0] ?? "";
       const candidates = (surname.length >= 2 ? await searchClients(surname) : []).filter(
@@ -299,8 +395,9 @@ Deno.serve(async (req) => {
             gobook_client_name: clientFullName(exact[0]),
             gobook_linked_at: new Date().toISOString(),
           })
-          .eq("id", me.id);
-        return { member: me, clientId: Number(exact[0].clientId), candidates: [] };
+          .eq("id", me.id)
+          .eq("club_id", clubId);
+        return { member: me, clientId: Number(exact[0].clientId), candidates: [], forbidden: false };
       }
       return {
         member: me,
@@ -309,11 +406,13 @@ Deno.serve(async (req) => {
           clientId: c.clientId,
           name: clientFullName(c),
         })),
+        forbidden: false,
       };
     };
 
     if (action === "my_client") {
       const r = await resolveMyClient();
+      if (r.forbidden) return json({ error: "You may only use your own GoBook member profile" }, 403);
       return json({
         success: true,
         clientId: r.clientId,
@@ -325,6 +424,7 @@ Deno.serve(async (req) => {
 
     if (action === "my_bookings") {
       const r = await resolveMyClient();
+      if (r.forbidden) return json({ error: "You may only use your own GoBook member profile" }, 403);
       if (!r.clientId) return json({ success: true, clientId: null, bookings: [] });
       const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}`)) ?? [];
       const hhmm = (n: number) => `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
@@ -353,16 +453,15 @@ Deno.serve(async (req) => {
     if (action === "cancel") {
       const bookingId = Number(payload.booking_id);
       if (!Number.isInteger(bookingId) || bookingId <= 0) return json({ error: "booking_id must be a positive integer" }, 400);
-      const mine = await resolveMyClient();
-      if (!mine.clientId) return json({ error: "Your SquashHub profile is not linked to a GoBook account yet", needsLink: true }, 409);
-      const requestedClientId = payload.client_id ? Number(payload.client_id) : mine.clientId;
-      if (requestedClientId !== mine.clientId && !isAdmin && !isSuper) return json({ error: "You can only cancel your own GoBook bookings" }, 403);
+      const target = await resolveMyClient();
+      if (target.forbidden) return json({ error: "You may only cancel your own GoBook bookings" }, 403);
+      if (!target.clientId) return json({ error: "The selected club member is not linked to a GoBook account yet", needsLink: true }, 409);
 
       // Never trust a client-supplied booking id alone. Confirm GoBook lists it
-      // under the effective member before sending the destructive action.
-      const ownedBookings = (await apiGet(token, `/Booking/List?clientId=${mine.clientId}`)) ?? [];
-      const owned = (ownedBookings as any[]).some((b) => Number(b.bookingId) === bookingId && !b.cancelled);
-      if (!owned) return json({ error: "That booking does not belong to your GoBook account" }, 403);
+      // under the selected, server-verified member before sending the destructive action.
+      const ownedBookings = rowsFrom((await apiGet(token, `/Booking/List?clientId=${target.clientId}`)) ?? []);
+      const owned = ownedBookings.some((b) => Number(b.bookingId ?? b.BookingId ?? b.id) === bookingId && !b.cancelled);
+      if (!owned) return json({ error: "That booking does not belong to the selected GoBook member" }, 403);
 
       const result = await apiPost(token, "/Booking/Action", { bookingId, action: "cancel" });
       return json({ success: true, bookingId, result });
@@ -408,7 +507,7 @@ Deno.serve(async (req) => {
     }
 
     // Live slot grid. One court when provider_consultant_id is given, otherwise
-    // every active court for the club's service (so the UI can draw a grid).
+    // every active court for the club's service (so the core calendar can draw it).
     if (action === "list_slots") {
       const { data: club } = await admin
         .from("clubs")
@@ -416,7 +515,9 @@ Deno.serve(async (req) => {
         .eq("id", clubId)
         .maybeSingle();
       const providerServiceId = Number(payload.provider_service_id ?? club?.gobook_service_id ?? 0);
-      const clientId = Number(payload.client_id ?? (await resolveMyClient()).clientId ?? 0);
+      const resolved = await resolveMyClient();
+      if (resolved.forbidden) return json({ error: "You may only use your own GoBook member profile" }, 403);
+      const clientId = Number(resolved.clientId ?? 0);
       const date = String(payload.booking_date ?? "").slice(0, 10);
       if (!providerServiceId) return json({ error: "No GoBook service configured for this club" }, 400);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "booking_date must be YYYY-MM-DD" }, 400);
@@ -436,50 +537,130 @@ Deno.serve(async (req) => {
           .map((f) => ({ id: f.providerConsultantId, name: f.consultantName }));
       }
 
-      // GoBook returns times as HHMM integers (600 = 06:00).
-      const hhmm = (n: number) =>
-        `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
-
       const all: any[] = [];
       for (const court of courtIds) {
-        const slots = (await apiGet(
+        const slots = rowsFrom((await apiGet(
           token,
           `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}` +
             `&bookingDate=${date}&includeUnavailable=true` +
             `&providerConsultantId=${court.id}` +
             (clientId ? `&clientId=${clientId}` : ""),
-        )) ?? [];
-        for (const s of slots as any[]) {
-          all.push({
-            scheduleTimeId: s.providerServiceScheduleTimeId,
-            courtId: s.providerConsultantId ?? court.id,
-            courtName: s.consultantName ?? court.name,
-            startTime: hhmm(s.startTime),
-            endTime: hhmm(s.endTime),
-            label: s.timeText,
-            booked: !!s.bookingId,
-            ownBooking: !!s.ownBooking,
-            bookedBy: s.bookedText || null,
-            bookable: !s.excludedFromBooking && !s.bookingId,
-          });
-        }
+        )) ?? []);
+        for (const s of slots) {
+           const booked = isBookedSlot(s);
+           all.push({
+             scheduleTimeId: s.providerServiceScheduleTimeId ?? s.scheduleTimeId ?? s.id,
+             bookingId: bookingIdFrom(s),
+             courtId: s.providerConsultantId ?? s.consultantId ?? court.id,
+             courtName: s.consultantName ?? s.courtName ?? court.name,
+             startTime: hhmm(s.startTime ?? s.start_time),
+             endTime: hhmm(s.endTime ?? s.end_time),
+             label: s.timeText ?? s.label ?? null,
+             booked,
+             ownBooking: s.ownBooking === true || s.isOwnBooking === true,
+             bookedBy: bookerNameFrom(s),
+             bookable: !s.excludedFromBooking && !booked,
+           });
+         }
       }
 
       return json({ success: true, courts: courtIds, clientId: clientId || null, slots: all });
     }
 
+    // Pull one day from GoBook into the core calendar. Only rows written by
+    // this official API mirror are reconciled; native and legacy rows are never
+    // deleted or overwritten. A failed/partial provider read never cancels
+    // existing mirror rows.
+    if (action === "sync_core_day") {
+      const date = String(payload.booking_date ?? "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "booking_date must be YYYY-MM-DD" }, 400);
+      const { data: localCourts, error: courtError } = await admin.from("courts").select("id, name").eq("club_id", clubId).eq("is_external", false);
+      if (courtError) throw courtError;
+      const courtByName = new Map((localCourts ?? []).map((c: any) => [normalizeName(c.name), c]));
+      const courtByNumber = new Map<string, any>();
+      for (const court of localCourts ?? []) {
+        const number = String(court.name).match(/\d+/)?.[0];
+        if (number && !courtByNumber.has(number)) courtByNumber.set(number, court);
+      }
+      const { data: club } = await admin.from("clubs").select("gobook_service_id").eq("id", clubId).maybeSingle();
+      const providerServiceId = Number(club?.gobook_service_id ?? 0);
+      if (!providerServiceId) throw new Error("No GoBook service configured for this club");
+      const facilitiesResponse = await apiGet(token, `/Facility/ListForProviderService?providerServiceId=${providerServiceId}&includeInactive=false`);
+      const facilities = rowsFrom(facilitiesResponse).filter((f) => f.isActive && f.providerConsultantId);
+      if (!facilities.length) return json({ error: "GoBook returned no active courts; existing bookings were left unchanged" }, 502);
+      const slots: any[] = [];
+      let completeRead = hasRowsEnvelope(facilitiesResponse);
+      for (const facility of facilities) {
+        const response = await apiGet(token, `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}&bookingDate=${date}&includeUnavailable=true&providerConsultantId=${facility.providerConsultantId}`);
+        const rows = rowsFrom(response);
+        if (!hasRowsEnvelope(response)) completeRead = false;
+        slots.push(...rows.map((row) => ({ ...row, providerConsultantId: facility.providerConsultantId, consultantName: facility.consultantName })));
+      }
+      if (!completeRead) return json({ error: "GoBook returned an incomplete court schedule; existing bookings were left unchanged" }, 502);
+      const booked = slots.filter((slot) => isBookedSlot(slot));
+      const memberRows = (await admin.from("club_members").select("id, user_id, name, gobook_client_id").eq("club_id", clubId).eq("status", "active")).data ?? [];
+      const seen = new Set<string>();
+      let synced = 0;
+      let skipped = 0;
+      for (const slot of booked) {
+        const bookingId = slotBookingIdFrom(slot);
+        if (!bookingId) { skipped++; continue; }
+        const providerCourtName = String(slot.consultantName ?? slot.courtName ?? "");
+        const court = courtByName.get(normalizeName(providerCourtName)) || courtByNumber.get(providerCourtName.match(/\d+/)?.[0] ?? "");
+        const startTime = hhmm(slot.startTime ?? slot.start_time);
+        const endTime = hhmm(slot.endTime ?? slot.end_time);
+        if (!court || !startTime || !endTime) { skipped++; continue; }
+        const externalId = `gobook:${bookingId}`;
+        const bookerName = bookerNameFrom(slot);
+        const matchingMembers = bookerName ? memberRows.filter((m: any) => normalizeName(m.name) === normalizeName(bookerName)) : [];
+        const member = matchingMembers.length === 1 ? matchingMembers[0] : null;
+        const { error } = await admin.from("bookings").upsert({
+          club_id: clubId, court_id: court.id, date,
+          start_time: `${startTime}:00`, end_time: `${endTime}:00`,
+          status: "active", source: "gobook", external_id: externalId,
+          external_booker_name: bookerName, user_id: member?.user_id ?? null,
+          club_member_id: member?.id ?? null, is_friendly: true,
+        }, { onConflict: "club_id,source,external_id" });
+        if (error) throw error;
+        seen.add(externalId);
+        synced++;
+      }
+      const { data: existing, error: existingError } = await admin.from("bookings").select("id, external_id").eq("club_id", clubId).eq("date", date).eq("source", "gobook").like("external_id", "gobook:%").eq("status", "active");
+      if (existingError) throw existingError;
+      const stale = (existing ?? []).filter((row: any) => !seen.has(row.external_id)).map((row: any) => row.id);
+      if (stale.length) {
+        const { error } = await admin.from("bookings").update({ status: "cancelled" }).in("id", stale);
+        if (error) throw error;
+      }
+      return json({ success: true, date, synced, cancelled: stale.length, skipped });
+    }
 
     if (action === "book") {
-      const ids = Array.isArray(payload.schedule_time_ids) ? payload.schedule_time_ids : [];
-      if (!ids.length) return json({ error: "schedule_time_ids is required" }, 400);
-
-      // The booking is always made against the caller's own GoBook client id.
-      // Admins may book on behalf of someone else by passing club_member_id.
-      const mine = await resolveMyClient();
-      let clientId = mine.clientId;
-      if (!clientId && (isAdmin || isSuper) && payload.client_id) {
-        clientId = Number(payload.client_id);
+      let ids = Array.isArray(payload.schedule_time_ids) ? payload.schedule_time_ids : [];
+      const bookingDate = String(payload.booking_date ?? "").slice(0, 10);
+      if (!ids.length && payload.court_id && /^\d{4}-\d{2}-\d{2}$/.test(bookingDate) && payload.start_time) {
+        const { data: club } = await admin.from("clubs").select("gobook_service_id").eq("id", clubId).maybeSingle();
+        const providerServiceId = Number(club?.gobook_service_id ?? 0);
+        const { data: localCourt } = await admin.from("courts").select("name").eq("id", Number(payload.court_id)).eq("club_id", clubId).maybeSingle();
+        if (!providerServiceId || !localCourt) return json({ error: "The selected court is not mapped to GoBook" }, 400);
+        const fac = await apiGet(token, `/Facility/ListForProviderService?providerServiceId=${providerServiceId}&includeInactive=false`);
+        const target = ((fac?.facilities ?? []) as any[]).find((f) => normalizeName(f.consultantName) === normalizeName(localCourt.name) || String(f.consultantName ?? "").match(/\d+/)?.[0] === String(localCourt.name).match(/\d+/)?.[0]);
+        if (!target) return json({ error: `GoBook court mapping not found for ${localCourt.name}` }, 400);
+        const slots = rowsFrom((await apiGet(token, `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}&bookingDate=${bookingDate}&includeUnavailable=true&providerConsultantId=${target.providerConsultantId}`)) ?? []);
+        const targetTime = String(payload.start_time).slice(0, 5);
+        ids = slots
+          .filter((s) => hhmm(s.startTime ?? s.start_time) === targetTime && !isBookedSlot(s))
+          .map((s) => s.providerServiceScheduleTimeId ?? s.scheduleTimeId ?? s.id)
+          .filter((id) => Number.isInteger(Number(id)) && Number(id) > 0);
       }
+      ids = ids.map(Number).filter((id) => Number.isInteger(id) && id > 0);
+      if (!ids.length) return json({ error: "No bookable GoBook slot matches the selected court and time" }, 409);
+
+      // Members can only book for their own linked GoBook client. Club admins
+      // may target another active club member via club_member_id.
+      const mine = await resolveMyClient();
+      if (mine.forbidden) return json({ error: "You may only book for your own GoBook member profile" }, 403);
+      const clientId = mine.clientId;
       if (!clientId) {
         return json(
           {
@@ -508,7 +689,14 @@ Deno.serve(async (req) => {
         const msg = body?.globalMessages?.join(", ") || "GoBook rejected the booking";
         return json({ error: msg, detail: body }, 400);
       }
-      return json({ success: true, result: body });
+      const createdBookingId =
+        bookingIdFrom(body) ??
+        bookingIdFrom((Array.isArray(body?.bookings) ? body.bookings[0] : null)) ??
+        null;
+      if (!createdBookingId) {
+        return json({ error: "GoBook accepted the request but returned no booking ID; no local booking was created", providerAccepted: true }, 502);
+      }
+      return json({ success: true, bookingId: createdBookingId, result: body });
     }
 
     return json({ error: `Unknown action "${action}"` }, 400);

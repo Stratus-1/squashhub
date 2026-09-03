@@ -948,7 +948,9 @@ function ViewMode({
         );
       })()}
 
-      {clubMember && ((club as any)?.club?.uses_gobook || /csir/i.test((club as any)?.club?.name || "")) && (
+      {clubMember &&
+        !(club as any)?.club?.gobook_api_enabled &&
+        ((club as any)?.club?.uses_gobook || /csir/i.test((club as any)?.club?.name || "")) && (
         <GoBookCredentialsCard clubMemberId={clubMember.id} />
       )}
 

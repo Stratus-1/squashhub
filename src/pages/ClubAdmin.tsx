@@ -51,6 +51,24 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability; startHere?: boolean };
 
+// Static class map so Tailwind can see every utility. Keyed by AdminTab.color.
+const ICON_COLORS: Record<string, string> = {
+  violet: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  blue: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+  slate: "bg-slate-500/15 text-slate-600 dark:text-slate-300",
+  amber: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  cyan: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400",
+  emerald: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  green: "bg-green-500/15 text-green-600 dark:text-green-400",
+  sky: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+  orange: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+  yellow: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400",
+  rose: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+  red: "bg-red-500/15 text-red-600 dark:text-red-400",
+  indigo: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+  teal: "bg-teal-500/15 text-teal-600 dark:text-teal-400",
+};
+
 const SETUP_TABS: AdminTab[] = [
   // Features first: a new club picks what it does before anything else.
   { value: "features", label: "Features", icon: Sparkles, color: "violet", noStatus: true, startHere: true },

@@ -542,9 +542,7 @@ export default function BarCounter() {
                   setScanOpen(true);
                 }}
               >
-                Add to tab {scanQty > 1 ? `(${scanQty} × ` : "("}{scannedItem?.name}
-                {scanQty > 1 ? ")" : ""}
-                {scannedItem ? ` — ${money(scannedItem.price * scanQty)}` : ""}
+                Add to tab{scannedItem ? ` — ${money(scannedItem.price * scanQty)}` : ""}
               </Button>
             </DialogContent>
           </Dialog>

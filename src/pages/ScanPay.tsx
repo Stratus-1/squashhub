@@ -74,6 +74,7 @@ export default function ScanPay() {
   const [memberNumber, setMemberNumber] = useState("");
   const [identified, setIdentified] = useState<{ id: string; display_name: string; has_pin: boolean } | null>(null);
   const [identifying, setIdentifying] = useState(false);
+  const [accountChargeTarget, setAccountChargeTarget] = useState<"cart" | "tab">("cart");
 
 
   const [guestChosen, setGuestChosen] = useState<boolean>(
@@ -456,18 +457,34 @@ export default function ScanPay() {
 
   /** Post the basket to the identified member's account after their PIN. */
   const confirmGuestAccountCharge = async ({ secret }: { secret: string }) => {
-    const { error } = await (supabase as any).rpc("bar_qr_charge_member", {
-      _club_id: club!.id,
-      _club_member_id: identified!.id,
-      _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
-      _pin: secret,
-    });
+    if (!club || !identified) return;
+    const isTabCharge = accountChargeTarget === "tab" && tab !== null;
+    const { error } = isTabCharge
+      ? await (supabase as any).rpc("bar_qr_charge_guest_tab_member", {
+          _tab_id: tab.tab_id,
+          _token: tab.token,
+          _club_member_id: identified.id,
+          _pin: secret,
+        })
+      : await (supabase as any).rpc("bar_qr_charge_member", {
+          _club_id: club.id,
+          _club_member_id: identified.id,
+          _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
+          _pin: secret,
+        });
     if (error) throw error;
+    const chargedTotal = isTabCharge ? tab.total : total;
+    const chargedLabel = isTabCharge ? `Bar tab · ${tab.guest_name}` : cartLabel;
+    if (isTabCharge) {
+      localStorage.removeItem(tabKey);
+      setTab(null);
+    }
     setPinOpen(false);
     setIdentified(null);
     setNumberEntry(false);
     setMemberNumber("");
-    setDone({ total, itemName: cartLabel, onAccount: true });
+    setAccountChargeTarget("cart");
+    setDone({ total: chargedTotal, itemName: chargedLabel, onAccount: true });
     setCart({});
   };
 
@@ -640,6 +657,64 @@ export default function ScanPay() {
                     : "This tab is awaiting payment — settle it below."}
                 </p>
                 <div className="space-y-2">
+                  {club.account_tab_enabled !== false && (
+                    <div className="space-y-2">
+                      {!numberEntry || accountChargeTarget !== "tab" ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="w-full gap-1.5"
+                          disabled={submitting || tab.total <= 0}
+                          onClick={() => {
+                            setAccountChargeTarget("tab");
+                            setNumberEntry(true);
+                          }}
+                        >
+                          <Wallet className="w-3.5 h-3.5" /> Charge tab to my member account
+                        </Button>
+                      ) : (
+                        <div className="rounded-md border p-3 space-y-2">
+                          <Label htmlFor="tab-member-number" className="text-xs">
+                            Your membership number (digits only)
+                          </Label>
+                          <Input
+                            id="tab-member-number"
+                            value={memberNumber}
+                            inputMode="numeric"
+                            autoComplete="off"
+                            placeholder="e.g. 0036"
+                            className="h-9"
+                            onChange={(e) => setMemberNumber(e.target.value)}
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            You&apos;ll approve the full tab with your own six-digit Bar PIN.
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="flex-1 gap-1.5"
+                              disabled={identifying || !memberNumber.trim()}
+                              onClick={identifyByNumber}
+                            >
+                              {identifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wallet className="w-3.5 h-3.5" />}
+                              Continue
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setNumberEntry(false);
+                                setMemberNumber("");
+                                setAccountChargeTarget("cart");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {club.pay_online_enabled !== false && (
                     <Button size="sm" className="w-full gap-1.5" disabled={submitting} onClick={payTabOnline}>
                       {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
@@ -778,7 +853,7 @@ export default function ScanPay() {
                   {!member && club.account_tab_enabled !== false && (
                     <div className="space-y-2">
                       {!numberEntry ? (
-                        <Button variant="outline" className="w-full gap-2 h-11" onClick={() => setNumberEntry(true)}>
+                        <Button variant="outline" className="w-full gap-2 h-11" onClick={() => { setAccountChargeTarget("cart"); setNumberEntry(true); }}>
                           <Wallet className="w-4 h-4" /> Add to my member account
                         </Button>
                       ) : (
@@ -916,7 +991,7 @@ export default function ScanPay() {
           onOpenChange={(o) => { setPinOpen(o); if (!o) setIdentified(null); }}
           clubMemberId={identified.id}
           memberName={identified.display_name}
-          amountLabel={formatMoney(total, currency)}
+          amountLabel={formatMoney(accountChargeTarget === "tab" && tab ? tab.total : total, currency)}
           pinOnly
           onVerified={confirmGuestAccountCharge}
         />

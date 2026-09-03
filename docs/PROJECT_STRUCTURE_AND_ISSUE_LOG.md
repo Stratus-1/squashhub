@@ -1,3 +1,10 @@
+# 2026-09-03 — Open bar tabs could not be charged to a member account
+
+- **Symptom:** After a QR customer opened a tab, its settlement card only offered online card or counter swipe, so a member could no longer choose the member-account option.
+- **Finding:** Member-number/PIN checkout was implemented only for the current basket; the restored open-tab panel had no equivalent action or secure conversion path.
+- **Fix:** The open-tab panel now offers **Charge tab to my member account**, identifies only an active member of that QR code's club, requires that member's six-digit Bar PIN, and atomically converts the tab into member-account entries without changing stock twice.
+- **Guard:** Opening a visitor-style tab must not remove the member-account payment option; settlement still requires club-scoped member identification and personal PIN verification before any debtor entry is posted.
+
 # 2026-09-03 — GoBook accepted bookings without returning a booking ID
 
 - **Symptom:** A member could receive “GoBook accepted the request but returned no booking ID,” while the court was actually reserved in GoBook and no native calendar row appeared until a later refresh.

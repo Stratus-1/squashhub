@@ -533,31 +533,13 @@ export default function ScanPay() {
         </Button>
       </header>
 
-      {/* Always-visible account strip so there is never a dead-end screen */}
+      {/* Neutral strip — this page never assumes who is holding the phone */}
       <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-[11px]">
-        {member ? (
-          <>
-            <span className="truncate flex-1">
-              Signed in as <span className="font-medium text-foreground">{member.name}</span> — you can charge to your member account.
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-[11px] shrink-0"
-              onClick={async () => { await supabase.auth.signOut(); setGuestChosen(true); localStorage.setItem(GUEST_PREF_KEY, "1"); }}
-            >
-              Sign out
-            </Button>
-          </>
-        ) : (
-          <>
-            <span className="truncate flex-1 text-muted-foreground">
-              {userId ? "Signed in, but not a member here — paying as a visitor." : "Paying as a guest."}
-            </span>
-          </>
-        )}
+        <span className="truncate flex-1 text-muted-foreground">
+          Members: charge to your account with your membership number and Bar PIN. Visitors: pay by card or open a tab.
+        </span>
       </div>
+
 
       <main className={`px-4 py-4 max-w-md mx-auto space-y-4 ${!done && !checkingOut && count > 0 ? (tab ? "pb-40" : "pb-28") : ""}`}>
 

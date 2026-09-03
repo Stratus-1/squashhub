@@ -16,6 +16,7 @@ import { useClubContext } from "@/contexts/ClubContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
+import { CounterSaleDialog } from "@/components/bar/CounterSaleDialog";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -87,6 +88,7 @@ export default function HonestyBar() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const [visitorSaleOpen, setVisitorSaleOpen] = useState(false);
+  const [counterSaleOpen, setCounterSaleOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("shop");
   const [qrOpen, setQrOpen] = useState(false);
 
@@ -309,6 +311,17 @@ export default function HonestyBar() {
           </TooltipProvider>
         )}
 
+        {canSeeVisitors && (
+          <Button
+            variant="outline"
+            className="w-full h-11 gap-2 text-sm font-semibold"
+            onClick={() => setCounterSaleOpen(true)}
+          >
+            <Store className="w-4 h-4" />
+            Counter sale — member or visitor
+          </Button>
+        )}
+
         <Button
           variant="outline"
           className="w-full h-10 gap-2 text-sm"
@@ -513,6 +526,13 @@ export default function HonestyBar() {
         items={items}
         clubId={clubId!}
         loggedByMemberId={memberId}
+      />
+
+      <CounterSaleDialog
+        open={counterSaleOpen}
+        onOpenChange={setCounterSaleOpen}
+        items={items as any}
+        clubId={clubId!}
       />
 
       <BarMenuQrDialog

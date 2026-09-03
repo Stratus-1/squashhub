@@ -12,14 +12,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Store, Loader2 } from "lucide-react";
+import { Store, Loader2, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export function CounterModeCard({ clubId }: { clubId?: string | null }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [pin, setPin] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const { data: status } = useQuery({
+  const { data: status, refetch: refetchStatus } = useQuery({
     queryKey: ["bar-counter-status", clubId],
     enabled: !!clubId,
     queryFn: async () => {
@@ -38,6 +40,7 @@ export function CounterModeCard({ clubId }: { clubId?: string | null }) {
       if (error) throw error;
       setPin("");
       qc.invalidateQueries({ queryKey: ["bar-counter-status"] });
+      await refetchStatus();
       toast.success("Counter PIN saved — unlocked devices were signed out");
     } catch (e: any) {
       toast.error(e.message ?? "Could not save the counter PIN");
@@ -76,6 +79,19 @@ export function CounterModeCard({ clubId }: { clubId?: string | null }) {
         They can then run guest tabs for the evening without a SquashHub login. Charging a member's account
         still needs that member's own Bar PIN.
       </p>
+      <div className="text-[11px] flex items-center gap-1.5">
+        {status?.has_pin ? (
+          <span className="text-emerald-600 font-medium flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Counter PIN is set
+            {status.pin_updated_at
+              ? ` · last changed ${new Date(status.pin_updated_at).toLocaleString()}`
+              : ""}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">No counter PIN set yet.</span>
+        )}
+      </div>
       <div className="flex gap-2">
         <div className="flex-1">
           <Label className="text-[11px]">{status?.has_pin ? "New counter PIN" : "Counter PIN"} (4–8 digits)</Label>
@@ -90,11 +106,17 @@ export function CounterModeCard({ clubId }: { clubId?: string | null }) {
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
         </Button>
       </div>
-      {status?.has_pin && (
-        <Button variant="outline" size="sm" className="w-full" onClick={revoke}>
-          Sign out all counter devices
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="secondary" size="sm" onClick={() => navigate("/bar/counter")}>
+          Open counter mode
         </Button>
-      )}
+        {status?.has_pin && (
+          <Button variant="outline" size="sm" onClick={revoke}>
+            Sign out all counter devices
+          </Button>
+        )}
+      </div>
     </Card>
   );
 }
+

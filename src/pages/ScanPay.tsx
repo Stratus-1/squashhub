@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { Loader2, Minus, Plus, CreditCard, Wallet, LogIn, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt } from "lucide-react";
+import { Loader2, Minus, Plus, CreditCard, Wallet, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { BarPinDialog } from "@/components/bar/BarPinDialog";
@@ -393,11 +393,6 @@ export default function ScanPay() {
     setGuestChosen(true);
   };
 
-  const goLogin = () => {
-    const next = `/s/${code}`;
-    localStorage.removeItem(GUEST_PREF_KEY);
-    navigate(`/auth?redirectTo=${encodeURIComponent(next)}`);
-  };
 
   /** Real card checkout — hands the current tab to the club's hosted checkout. */
   const payByCardNow = async () => {
@@ -569,11 +564,6 @@ export default function ScanPay() {
             <span className="truncate flex-1 text-muted-foreground">
               {userId ? "Signed in, but not a member here — paying as a visitor." : "Paying as a guest."}
             </span>
-            {!userId && (
-              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[11px] gap-1 shrink-0" onClick={goLogin}>
-                <LogIn className="w-3 h-3" /> Log in
-              </Button>
-            )}
           </>
         )}
       </div>
@@ -618,17 +608,13 @@ export default function ScanPay() {
             {showLoginPrompt && (
               <Card className="p-4 space-y-3 border-primary/40">
                 <p className="text-sm">
-                  <span className="font-medium">Are you a member of {club.name}?</span>{" "}
-                  Log in to charge this to your member account. Otherwise carry on and pay now.
+                  <span className="font-medium">Member of {club.name}?</span>{" "}
+                  No login needed — tap items, then choose <span className="font-medium">Add to my member account</span> and
+                  confirm with your membership number and your six-digit Bar PIN. Visitors just pay by card.
                 </p>
-                <div className="flex gap-2">
-                  <Button className="flex-1 gap-1.5" onClick={goLogin}>
-                    <LogIn className="w-4 h-4" /> Yes, log me in
-                  </Button>
-                  <Button variant="outline" className="flex-1" onClick={continueAsGuest}>
-                    No, continue
-                  </Button>
-                </div>
+                <Button className="w-full" onClick={continueAsGuest}>
+                  Got it — start ordering
+                </Button>
               </Card>
             )}
 
@@ -899,11 +885,6 @@ export default function ScanPay() {
                     <p className="text-[11px] text-muted-foreground text-center">
                       You are signed in but not a member of {club.name}, so this is recorded as a visitor sale.
                     </p>
-                  )}
-                  {!userId && (
-                    <Button variant="ghost" size="sm" className="w-full gap-1.5" onClick={goLogin}>
-                      <LogIn className="w-3.5 h-3.5" /> I&apos;m a member — log in instead
-                    </Button>
                   )}
                 </div>
 

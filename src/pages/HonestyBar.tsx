@@ -17,6 +17,8 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { CounterSaleDialog } from "@/components/bar/CounterSaleDialog";
+import { CounterModeCard } from "@/components/bar/CounterModeCard";
+import { Link } from "react-router-dom";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -322,6 +324,15 @@ export default function HonestyBar() {
           </Button>
         )}
 
+        {canSeeVisitors && (
+          <Button asChild variant="outline" className="w-full h-11 gap-2 text-sm font-semibold">
+            <Link to="/bar/counter">
+              <Receipt className="w-4 h-4" />
+              Open tabs — counter view
+            </Link>
+          </Button>
+        )}
+
         <Button
           variant="outline"
           className="w-full h-10 gap-2 text-sm"
@@ -330,6 +341,8 @@ export default function HonestyBar() {
           <QrCode className="w-4 h-4" />
           Show / share Menu QR code
         </Button>
+
+        {canSeeVisitors && <CounterModeCard clubId={clubId} />}
 
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

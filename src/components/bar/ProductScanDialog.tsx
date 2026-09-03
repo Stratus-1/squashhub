@@ -39,7 +39,7 @@ declare global {
   }
 }
 
-export function ProductScanDialog({ open, onOpenChange, items, onItem }: Props) {
+export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);

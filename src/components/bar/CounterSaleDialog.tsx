@@ -362,7 +362,8 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
                     <p className="text-[11px] text-muted-foreground px-1">No active members match that search.</p>
                   )}
                 </div>
-              )}
+              ) : null}
+
             </TabsContent>
 
             <TabsContent value="visitor" className="space-y-2 mt-3">

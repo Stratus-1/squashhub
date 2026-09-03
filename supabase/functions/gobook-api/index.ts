@@ -422,16 +422,37 @@ Deno.serve(async (req) => {
     if (action === "book") {
       const ids = Array.isArray(payload.schedule_time_ids) ? payload.schedule_time_ids : [];
       if (!ids.length) return json({ error: "schedule_time_ids is required" }, 400);
+
+      // The booking is always made against the caller's own GoBook client id.
+      // Admins may book on behalf of someone else by passing club_member_id.
+      const mine = await resolveMyClient();
+      let clientId = mine.clientId;
+      if (!clientId && (isAdmin || isSuper) && payload.client_id) {
+        clientId = Number(payload.client_id);
+      }
+      if (!clientId) {
+        return json(
+          {
+            error:
+              "Your SquashHub profile is not linked to a GoBook account yet. Ask a club admin to link it.",
+            candidates: mine.candidates,
+            needsLink: true,
+          },
+          409,
+        );
+      }
+
       const res = await fetch(`${API_BASE}/Booking/Book`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           ProviderServiceScheduleTimeIds: ids,
-          ClientId: payload.client_id ?? null,
+          ClientId: clientId,
           BookingDate: payload.booking_date ?? null,
           Notes: payload.notes ?? null,
         }),
       });
+
       const body = await res.json().catch(() => null);
       if (!body?.success) {
         const msg = body?.globalMessages?.join(", ") || "GoBook rejected the booking";

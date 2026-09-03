@@ -151,8 +151,9 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
             <ScanBarcode className="w-5 h-5" /> Scan product barcode
           </DialogTitle>
           <DialogDescription>
-            Point the camera at the product's barcode — matching items are added automatically. Scan as many as you
-            like, then close.
+            {onCode
+              ? "Point the camera at the product's barcode to capture its code."
+              : "Point the camera at the product's barcode — matching items are added automatically. Scan as many as you like, then close."}
           </DialogDescription>
         </DialogHeader>
 

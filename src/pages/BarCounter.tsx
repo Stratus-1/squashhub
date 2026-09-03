@@ -307,7 +307,39 @@ export default function BarCounter() {
         </Button>
       </div>
 
-      {!activeTab ? (
+      {settled ? (
+        <div className="p-4 space-y-4">
+          <Card className="p-6 text-center space-y-3">
+            <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
+            <div>
+              <h2 className="text-lg font-semibold">Tab settled</h2>
+              <p className="text-sm text-muted-foreground">{settled.tab.guest_name}</p>
+            </div>
+            <div className="text-3xl font-bold">{money(settled.tab.total)}</div>
+            <Badge variant="secondary" className="text-sm capitalize">
+              {settled.method === "member_account"
+                ? `Charged to ${settled.memberName ?? "member account"}`
+                : settled.method === "terminal"
+                  ? "Card machine"
+                  : "Cash"}
+            </Badge>
+            {settled.tab.lines.length > 0 && (
+              <div className="text-left text-xs space-y-1 pt-2">
+                <Separator />
+                {settled.tab.lines.map((l, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span>{l.quantity} × {l.name ?? "Item"}</span>
+                    <span>{money(l.total)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+          <Button className="w-full h-12" onClick={finishSettled}>
+            Next customer
+          </Button>
+        </div>
+      ) : !activeTab ? (
         <div className="p-4 space-y-4">
           <Card className="p-3 flex gap-2">
             <Input
@@ -351,6 +383,7 @@ export default function BarCounter() {
           )}
         </div>
       ) : (
+
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={() => setActiveTabId(null)}>

@@ -13283,6 +13283,23 @@ export type Database = {
         Args: { _code: string; _pin: string }
         Returns: Json
       }
+      bar_qr_charge_member: {
+        Args: {
+          _club_id: string
+          _club_member_id: string
+          _lines: Json
+          _pin: string
+        }
+        Returns: Json
+      }
+      bar_qr_lookup_member: {
+        Args: { _club_id: string; _number: string }
+        Returns: {
+          display_name: string
+          has_pin: boolean
+          id: string
+        }[]
+      }
       bar_resolve_member_by_number: {
         Args: { _club_id: string; _number: string }
         Returns: {

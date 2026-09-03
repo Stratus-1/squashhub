@@ -69,6 +69,11 @@ export default function ScanPay() {
   const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; terminal?: boolean; reference?: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [tab, setTab] = useState<GuestTab | null>(null);
+  // Guest-QR member identification: membership number + own Bar PIN.
+  const [numberEntry, setNumberEntry] = useState(false);
+  const [memberNumber, setMemberNumber] = useState("");
+  const [identified, setIdentified] = useState<{ id: string; display_name: string; has_pin: boolean } | null>(null);
+  const [identifying, setIdentifying] = useState(false);
 
 
   const [guestChosen, setGuestChosen] = useState<boolean>(
@@ -441,6 +446,45 @@ export default function ScanPay() {
     setPinOpen(true);
   };
 
+  /** Look the member up from the digits on their dashboard (no login needed). */
+  const identifyByNumber = async () => {
+    if (!club || !memberNumber.trim()) return;
+    setIdentifying(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("bar_qr_lookup_member", {
+        _club_id: club.id,
+        _number: memberNumber.trim(),
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row?.id) throw new Error("No active member with that number at this club.");
+      if (!row.has_pin) throw new Error("That member has no Bar PIN yet — set one in Settings → Bar PIN first.");
+      setIdentified({ id: row.id, display_name: row.display_name, has_pin: row.has_pin });
+      setPinOpen(true);
+    } catch (err: any) {
+      toast.error(err.message || "Could not find that member number");
+    } finally {
+      setIdentifying(false);
+    }
+  };
+
+  /** Post the basket to the identified member's account after their PIN. */
+  const confirmGuestAccountCharge = async ({ secret }: { secret: string }) => {
+    const { error } = await (supabase as any).rpc("bar_qr_charge_member", {
+      _club_id: club!.id,
+      _club_member_id: identified!.id,
+      _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
+      _pin: secret,
+    });
+    if (error) throw error;
+    setPinOpen(false);
+    setIdentified(null);
+    setNumberEntry(false);
+    setMemberNumber("");
+    setDone({ total, itemName: cartLabel, onAccount: true });
+    setCart({});
+  };
+
   const confirmAccountCharge = async ({ secret, method }: { secret: string; method: "pin" | "otp" }) => {
     const { error } = await (supabase as any).rpc("charge_bar_to_member", {
       _club_member_id: member!.id,
@@ -772,6 +816,47 @@ export default function ScanPay() {
                     </Button>
                   )}
 
+                  {!member && club.account_tab_enabled !== false && (
+                    <div className="space-y-2">
+                      {!numberEntry ? (
+                        <Button variant="outline" className="w-full gap-2 h-11" onClick={() => setNumberEntry(true)}>
+                          <Wallet className="w-4 h-4" /> Add to my member account
+                        </Button>
+                      ) : (
+                        <div className="rounded-md border p-3 space-y-2">
+                          <Label htmlFor="bar-member-number" className="text-xs">
+                            Your membership number (digits only)
+                          </Label>
+                          <Input
+                            id="bar-member-number"
+                            value={memberNumber}
+                            inputMode="numeric"
+                            autoComplete="off"
+                            placeholder="e.g. 0036"
+                            className="h-9"
+                            onChange={(e) => setMemberNumber(e.target.value)}
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            You&apos;ll confirm with your own six-digit Bar PIN — nothing is charged before that.
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              className="flex-1 gap-2 h-10"
+                              disabled={identifying || !memberNumber.trim()}
+                              onClick={identifyByNumber}
+                            >
+                              {identifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+                              Continue
+                            </Button>
+                            <Button variant="ghost" className="h-10" onClick={() => { setNumberEntry(false); setMemberNumber(""); }}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {club.pay_online_enabled !== false && (
                     <Button
                       variant={member ? "outline" : "default"}
@@ -870,6 +955,17 @@ export default function ScanPay() {
             )}
           </div>
         </div>
+      )}
+      {!member && identified && (
+        <BarPinDialog
+          open={pinOpen}
+          onOpenChange={(o) => { setPinOpen(o); if (!o) setIdentified(null); }}
+          clubMemberId={identified.id}
+          memberName={identified.display_name}
+          amountLabel={formatMoney(total, currency)}
+          pinOnly
+          onVerified={confirmGuestAccountCharge}
+        />
       )}
       {member && (
         <BarPinDialog

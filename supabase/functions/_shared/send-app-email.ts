@@ -22,7 +22,14 @@ export interface SendAppEmailArgs {
 export type SendAppEmailResult =
   | { ok: true; sent: true }
   | { ok: true; sent: false; reason: 'recipient_suppressed' }
-  | { ok: false; error: string }
+  | { ok: false; error: string; code?: string; rateLimited?: boolean; retryAfterSeconds?: number }
+
+/** Managed email API rate limits are transient — wait and retry a couple of times. */
+const MAX_RATE_LIMIT_RETRIES = 2
+const MAX_RETRY_WAIT_SECONDS = 30
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
 
 function admin() {
   return createClient(

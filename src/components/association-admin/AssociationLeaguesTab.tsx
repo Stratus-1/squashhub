@@ -118,7 +118,7 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
         </TabsList>
 
         <TabsContent value="fixtures">
-          <AssociationFixturesPanel association={platformAssoc ?? null} />
+          <AssociationFixturesPanel association={platformAssoc ?? null} tenantId={clubId} />
         </TabsContent>
 
         <TabsContent value="rules">

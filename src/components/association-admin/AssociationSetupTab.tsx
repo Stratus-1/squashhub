@@ -53,12 +53,7 @@ export function AssociationSetupTab({ clubId }: Props) {
     setSaving(true);
     const { error } = await supabase
       .from("clubs")
-      .update({
-        name: form.name,
-        member_number_prefix: form.member_number_prefix,
-        member_number_length: form.member_number_length,
-        member_number_start: form.member_number_start,
-      })
+      .update({ name: form.name })
       .eq("id", clubId);
     setSaving(false);
     if (error) toast.error(error.message);

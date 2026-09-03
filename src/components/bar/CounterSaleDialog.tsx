@@ -275,18 +275,60 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
             </TabsList>
 
             <TabsContent value="member" className="space-y-2 mt-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Search this club's active members</Label>
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="h-9 pl-8 text-sm"
-                    placeholder="Name, surname, membership number or phone"
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-1 p-1 rounded-md bg-muted/50">
+                <Button
+                  type="button" size="sm"
+                  variant={idMode === "number" ? "default" : "ghost"}
+                  className="h-8 text-[11px]"
+                  onClick={() => { setIdMode("number"); setSelected(null); }}
+                >
+                  Member identifies himself
+                </Button>
+                <Button
+                  type="button" size="sm"
+                  variant={idMode === "search" ? "default" : "ghost"}
+                  className="h-8 text-[11px]"
+                  onClick={() => { setIdMode("search"); setSelected(null); }}
+                >
+                  Staff search
+                </Button>
               </div>
+
+              {idMode === "number" ? (
+                <div className="space-y-1">
+                  <Label className="text-xs">Membership number</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      className="h-9 text-sm uppercase"
+                      placeholder="e.g. GBSQ0036"
+                      value={memberNumber}
+                      onChange={(e) => { setMemberNumber(e.target.value); setSelected(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") lookupByNumber(); }}
+                    />
+                    <Button size="sm" className="h-9" disabled={lookingUp} onClick={lookupByNumber}>
+                      {lookingUp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Look up"}
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    The member types their own membership number, then approves the charge with their Bar PIN —
+                    the PIN on its own is never used to identify anybody.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label className="text-xs">Search this club's active members</Label>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="h-9 pl-8 text-sm"
+                      placeholder="Name, surname, membership number or phone"
+                      value={search}
+                      onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {selected ? (
                 <div className="flex items-center justify-between border rounded-md p-2 bg-primary/5">
                   <div className="min-w-0">

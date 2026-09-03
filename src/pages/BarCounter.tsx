@@ -178,7 +178,49 @@ export default function BarCounter() {
       toast.error(e.message ?? "Could not settle the tab");
     } finally {
       setBusy(false);
+  }
+
+  /** Staff picks the member by number; only the member can approve with their PIN. */
+  async function identifyMember() {
+    if (!board || !memberNumber.trim()) return;
+    setIdentifying(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("bar_qr_lookup_member", {
+        _club_id: board.club_id,
+        _number: memberNumber.trim(),
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row?.id) throw new Error("No active member with that number at this club.");
+      if (!row.has_pin) throw new Error("That member has no Bar PIN yet — they can set one in the app under Bar PIN.");
+      setIdentified({ id: row.id, display_name: row.display_name });
+      setMemberOpen(false);
+      setPinOpen(true);
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not find that member number");
+    } finally {
+      setIdentifying(false);
     }
+  }
+
+  async function chargeMemberAccount({ secret }: { secret: string }) {
+    if (!activeTab || !identified) return;
+    const { error } = await (supabase as any).rpc("bar_qr_charge_guest_tab_member", {
+      _tab_id: activeTab.tab_id,
+      _token: activeTab.token,
+      _club_member_id: identified.id,
+      _pin: secret,
+    });
+    if (error) throw new Error(error.message);
+    setPinOpen(false);
+    setIdentified(null);
+    setMemberNumber("");
+    setActiveTabId(null);
+    await refetch();
+    invalidate();
+    toast.success("Charged to the member's account");
+  }
+
   }
 
   // ---- Locked device ----------------------------------------------------

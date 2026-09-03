@@ -3,9 +3,9 @@
  * or `/bar/counter` for signed-in staff with Bar permission.
  *
  * One screen for the person behind the counter: see every open tab with its
- * running total, open new tabs, add rounds and settle by cash or card machine.
- * Charging a member's account is deliberately NOT here — that always needs the
- * member's own Bar PIN via the Counter Sale flow.
+ * running total, open new tabs, add rounds and settle by cash, card machine or
+ * — for members — straight onto the member's account. Staff can never approve
+ * an account charge themselves: the member enters their own six-digit Bar PIN.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -18,19 +18,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { BarPinDialog } from "@/components/bar/BarPinDialog";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 interface CounterItem { id: string; name: string; price: number; category?: string | null }
 interface CounterTab {
   tab_id: string;
+  token: string;
   guest_name: string;
   status: string;
   opened_at: string;
   total: number;
   lines: { name: string | null; quantity: number; total: number }[];
 }
+
 interface Board {
   club_id: string;
   club_name: string;

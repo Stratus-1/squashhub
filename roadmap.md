@@ -101,3 +101,9 @@
 - [x] Prevent member-created championship registrations from setting confirmed/paid/admin-invited/proof fields; preserve admin/service workflows.
 - [x] Add RLS-safe trigger migration and verify the guards were applied without changing legitimate payment flows.
 - [ ] Re-run the project-wide security linter remediation backlog separately; the migration linter still reports pre-existing project-wide findings unrelated to these three protections.
+
+## GoBook polish (in progress)
+- [x] Fix booker name format: GoBook stores "F Werner" -> reorder to "Werner F." and resolve full member names where surname+initial match
+- [x] Move/booking fixed (clientId-scoped slot lookup + multi-slot duration support): "No bookable GoBook slot matches the selected court and time" (Court 3, Fri 4 Sep 15:00-16:00, 60min) — debug slot lookup + support multi-slot (60min = 2x30min GoBook slots)
+- [x] Auto-sync on page open/date change (already wired, verified)
+- [x] Sync after booking, move, and cancellation

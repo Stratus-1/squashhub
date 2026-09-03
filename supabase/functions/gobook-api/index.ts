@@ -629,17 +629,24 @@ Deno.serve(async (req) => {
         // clientName arrives as "1004; M 2nd LEAGUE"; pcMappingText is the readable part.
         const rawName = String(row.pcMappingText ?? row.clientName ?? "").trim();
         const rawBooker = (rawName.includes(";") ? rawName.split(";").slice(1).join(";") : rawName).trim() || null;
-        // GoBook stores clients as "Initial Surname" (e.g. "F Werner", "M Chiloane").
-        // Reorder to "Surname F." and, where a club member matches that surname +
-        // first initial, display the member's real full name (e.g. "Werner Fick").
-        const initialFirst = rawBooker?.match(/^([A-Za-z])\s+([A-Za-z' -]{2,})$/);
-        const bookerSurname = initialFirst ? initialFirst[2].trim() : null;
-        const bookerInitial = initialFirst ? initialFirst[1].toUpperCase() : null;
-        const exactMatches = rawBooker ? memberRows.filter((m: any) => normalizeName(m.name) === normalizeName(rawBooker)) : [];
-        const surnameMatches = bookerSurname
+        // GoBook stores clients as "Surname, First" (e.g. "Fick, Werner") or
+        // sometimes "Initial Surname" (e.g. "F Werner"). Normalise to natural
+        // "First Surname" order and, where a club member matches, display the
+        // member's real full name.
+        const commaSplit = rawBooker?.match(/^([A-Za-z' -]{2,}),\s*([A-Za-z' -]+)$/);
+        const initialFirst = !commaSplit && rawBooker?.match(/^([A-Za-z])\s+([A-Za-z' -]{2,})$/);
+        const naturalName = commaSplit
+          ? `${commaSplit[2].trim()} ${commaSplit[1].trim()}`
+          : initialFirst
+            ? `${initialFirst[2].trim()} ${initialFirst[1].toUpperCase()}.`
+            : rawBooker;
+        const bookerSurname = commaSplit ? commaSplit[1].trim() : initialFirst ? initialFirst[2].trim() : null;
+        const bookerInitial = naturalName?.trim().charAt(0).toUpperCase() ?? null;
+        const exactMatches = naturalName ? memberRows.filter((m: any) => normalizeName(m.name) === normalizeName(naturalName)) : [];
+        const surnameMatches = !exactMatches.length && bookerSurname
           ? memberRows.filter((m: any) => {
               const parts = String(m.name ?? "").trim().split(/\s+/);
-              const mSurname = parts[parts.length - 1] ?? "";
+              const mSurname = parts.slice(1).join(" ");
               return normalizeName(mSurname) === normalizeName(bookerSurname)
                 && (!bookerInitial || String(m.name ?? "").trim().charAt(0).toUpperCase() === bookerInitial);
             })
@@ -647,8 +654,7 @@ Deno.serve(async (req) => {
         const member = exactMatches.length === 1 ? exactMatches[0]
           : surnameMatches.length === 1 ? surnameMatches[0]
           : null;
-        const bookerName = member?.name
-          ?? (initialFirst ? `${bookerSurname} ${bookerInitial}.` : rawBooker);
+        const bookerName = member?.name ?? naturalName;
         const { error } = await admin.from("bookings").upsert({
           club_id: clubId, court_id: court.id, date,
           start_time: `${startTime}:00`, end_time: `${endTime}:00`,
@@ -680,13 +686,31 @@ Deno.serve(async (req) => {
         const providerServiceId = Number(club?.gobook_service_id ?? 0);
         const { data: localCourt } = await admin.from("courts").select("name").eq("id", Number(payload.court_id)).eq("club_id", clubId).maybeSingle();
         if (!providerServiceId || !localCourt) return json({ error: "The selected court is not mapped to GoBook" }, 400);
-        const fac = await apiGet(token, `/Facility/ListForProviderService?providerServiceId=${providerServiceId}&includeInactive=false`);
+        // Resolve the caller's GoBook client first — availability differs per
+        // client, and calls without clientId can return empty/misleading slots.
+        const mineEarly = await resolveMyClient();
+        if (mineEarly.forbidden) return json({ error: "You may only book for your own GoBook member profile" }, 403);
+        const lookupClientId = mineEarly.clientId ?? 0;
+        const fac = await apiGet(token, `/Facility/ListForProviderService?providerServiceId=${providerServiceId}` + (lookupClientId ? `&clientId=${lookupClientId}` : "") + `&includeInactive=false`);
         const target = ((fac?.facilities ?? []) as any[]).find((f) => normalizeName(f.consultantName) === normalizeName(localCourt.name) || String(f.consultantName ?? "").match(/\d+/)?.[0] === String(localCourt.name).match(/\d+/)?.[0]);
         if (!target) return json({ error: `GoBook court mapping not found for ${localCourt.name}` }, 400);
-        const slots = rowsFrom((await apiGet(token, `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}&bookingDate=${bookingDate}&includeUnavailable=true&providerConsultantId=${target.providerConsultantId}`)) ?? []);
+        const slots = rowsFrom((await apiGet(token, `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}&bookingDate=${bookingDate}&includeUnavailable=true&providerConsultantId=${target.providerConsultantId}` + (lookupClientId ? `&clientId=${lookupClientId}` : ""))) ?? []);
         const targetTime = String(payload.start_time).slice(0, 5);
+        const endTime = payload.end_time ? String(payload.end_time).slice(0, 5) : null;
+        // A SquashHub booking can span several GoBook slots (e.g. 60 min =
+        // two 30-min GoBook slots). Gather every unbooked slot from start_time
+        // up to end_time (or just the starting slot when no end_time given).
+        const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+        const startMin = toMinutes(targetTime);
+        const endMin = endTime && toMinutes(endTime) > startMin ? toMinutes(endTime) : null;
         ids = slots
-          .filter((s) => hhmm(s.startTime ?? s.start_time) === targetTime && !isBookedSlot(s))
+          .filter((s) => {
+            const t = hhmm(s.startTime ?? s.start_time);
+            if (!t || isBookedSlot(s) || s.excludedFromBooking) return false;
+            const m = toMinutes(t);
+            return m >= startMin && (endMin === null ? m === startMin : m < endMin);
+          })
+          .sort((a, b) => toMinutes(hhmm(a.startTime ?? a.start_time)) - toMinutes(hhmm(b.startTime ?? b.start_time)))
           .map((s) => s.providerServiceScheduleTimeId ?? s.scheduleTimeId ?? s.id)
           .filter((id) => Number.isInteger(Number(id)) && Number(id) > 0);
       }

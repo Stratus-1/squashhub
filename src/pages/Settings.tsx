@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardAccountSettings } from "@/components/DashboardAccountSettings";
 import { InstallAppCard } from "@/components/InstallAppCard";
+import { BarPinSettingsCard } from "@/components/bar/BarPinSettingsCard";
 import { SEO } from "@/components/SEO";
 
 export default function Settings() {
@@ -10,6 +11,7 @@ export default function Settings() {
       <PageHeader title="Settings" subtitle="Account & preferences" />
       <div className="px-4 mt-3 mb-4 space-y-3">
         <DashboardAccountSettings />
+        <BarPinSettingsCard />
         <InstallAppCard />
       </div>
     </div>

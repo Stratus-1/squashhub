@@ -44,6 +44,8 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
   const lastRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manual, setManual] = useState("");
   const [manualMode, setManualMode] = useState(false);
@@ -159,7 +161,7 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
       streamRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, supported, items]);
+  }, [open, supported]);
 
   const stopCamera = () => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
@@ -183,7 +185,7 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
           <DialogDescription>
             {onCode
               ? "Point the camera at the product's barcode to capture its code."
-              : "Point the camera at the product's barcode — matching items are added automatically. Scan as many as you like, then close."}
+              : "Point the camera at the product's barcode — a matching item is added and the scanner closes automatically."}
           </DialogDescription>
         </DialogHeader>
 

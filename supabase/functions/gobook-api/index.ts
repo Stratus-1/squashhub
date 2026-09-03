@@ -9,9 +9,17 @@
 //   test_connection { club_id }                  -> token + provider profile + courts
 //   sync_settings   { club_id }                  -> saves provider/service ids on the club
 //   find_client     { club_id, query }           -> GoBook client lookup (Client/Search)
+//   list_courts     { club_id }                  -> Facility/ListForProviderService
+//   list_dates      { club_id, client_id }       -> Schedule/ListAvailableBookingDates
+//   list_slots      { club_id, client_id, booking_date, provider_consultant_id }
 //   book            { club_id, client_id, booking_date, schedule_time_ids[] }
 //
-// Only club admins (or platform super admins) may call it.
+// Booking chain (mirrors GoBook's own app, per their reference client):
+//   Service/List -> Provider (providerServices) -> Facility/ListForProviderService
+//   -> Schedule/ListAvailableBookingDates -> Schedule/ListBookingSlots -> Booking/Book
+//
+// Setup actions are club-admin only; read/booking actions are open to any
+// authenticated member of the club.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const corsHeaders = {

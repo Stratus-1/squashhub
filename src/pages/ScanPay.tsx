@@ -503,7 +503,39 @@ export default function ScanPay() {
         </Button>
       </header>
 
+      {/* Always-visible account strip so there is never a dead-end screen */}
+      <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-[11px]">
+        {member ? (
+          <>
+            <span className="truncate flex-1">
+              Signed in as <span className="font-medium text-foreground">{member.name}</span> — you can charge to your member account.
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[11px] shrink-0"
+              onClick={async () => { await supabase.auth.signOut(); setGuestChosen(true); localStorage.setItem(GUEST_PREF_KEY, "1"); }}
+            >
+              Sign out
+            </Button>
+          </>
+        ) : (
+          <>
+            <span className="truncate flex-1 text-muted-foreground">
+              {userId ? "Signed in, but not a member here — paying as a visitor." : "Paying as a guest."}
+            </span>
+            {!userId && (
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[11px] gap-1 shrink-0" onClick={goLogin}>
+                <LogIn className="w-3 h-3" /> Log in
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+
       <main className={`px-4 py-4 max-w-md mx-auto space-y-4 ${!done && !checkingOut && count > 0 ? (tab ? "pb-40" : "pb-28") : ""}`}>
+
         {verifying && !done && (
           <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />

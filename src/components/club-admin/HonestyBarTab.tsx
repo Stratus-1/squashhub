@@ -379,6 +379,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
   const [form, setForm] = useState({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
+  const [barcodeScanOpen, setBarcodeScanOpen] = useState(false);
 
   const resetForm = () => setForm({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
 
@@ -479,12 +480,24 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
         </div>
         <div>
           <Label className="text-xs">Product barcode (optional)</Label>
-          <Input
-            value={form.barcode}
-            onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))}
-            placeholder="e.g. 6001234567890"
-            inputMode="numeric"
-          />
+          <div className="flex gap-1.5">
+            <Input
+              value={form.barcode}
+              onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))}
+              placeholder="e.g. 6001234567890"
+              inputMode="numeric"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="Scan barcode with camera"
+              onClick={() => setBarcodeScanOpen(true)}
+            >
+              <ScanBarcode className="w-4 h-4" />
+            </Button>
+          </div>
           <p className="text-[10px] text-muted-foreground mt-1">Scan or type the barcode printed on the product — enables scan-to-add at the counter.</p>
         </div>
         <div>

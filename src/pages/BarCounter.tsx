@@ -293,7 +293,7 @@ export default function BarCounter() {
 
   // ---- Board ------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-64">
       <SEO title="Bar counter" description="Open tabs at the bar counter" path="/bar/counter" noIndex />
 
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">

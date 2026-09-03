@@ -611,6 +611,38 @@ export default function Bookings() {
   const gobookCaptchaBlocked =
     !!gobookCredInfo && gobookCredInfo.last_verification_status === "captcha_blocked";
 
+  /**
+   * Who may move or cancel a GoBook-sourced booking from the core grid.
+   * Imported rows that could not be matched to a member belong to someone
+   * outside SquashHub, so only club admins may touch them. Both Move and
+   * Cancel share this so a "move" (cancel + rebook) can never bypass it.
+   */
+  const gobookRowPermission = (bd: any) => {
+    const memberId = gobookApiMode
+      ? String(activeMember?.id || "")
+      : String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+    const rowMemberId = bd?.club_member_id ? String(bd.club_member_id) : "";
+    const isClubAdmin = !!(isMemberAdmin || isSuperAdmin);
+    const ownsBooking = !!memberId && !!rowMemberId && rowMemberId === memberId;
+    const externalBookingId = String(bd?.external_id || "").match(/^gobook:(\d+)$/)?.[1] || "";
+    const startMs = new Date(`${bd?.date}T${String(bd?.start_time || "00:00").slice(0, 5)}:00+02:00`).getTime();
+    const withinHour = !Number.isNaN(startMs) && startMs - Date.now() < 60 * 60 * 1000;
+
+    const reason = !gobookApiMode && !hasGobookCreds
+      ? "Save your GoBook login under Profile first."
+      : !ownsBooking && !isClubAdmin
+        ? rowMemberId
+          ? "Only the member who made this booking (or a club admin) can change it."
+          : "This booking was made outside SquashHub. Only a club admin can change it here."
+        : gobookApiMode && !externalBookingId
+          ? "This booking has no GoBook reference yet. Refresh from GoBook and try again."
+          : withinHour
+            ? "GoBook does not allow changes within 1 hour of the booking start time."
+            : null;
+
+    return { memberId, externalBookingId, allowed: !reason, reason };
+  };
+
 
 
   // Active light sessions for the current user

@@ -177,6 +177,87 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Courts (GoBook "facilities") for the club's bookable service.
+    if (action === "list_courts") {
+      const { data: club } = await admin
+        .from("clubs")
+        .select("gobook_service_id")
+        .eq("id", clubId)
+        .maybeSingle();
+      const providerServiceId = Number(payload.provider_service_id ?? club?.gobook_service_id ?? 0);
+      if (!providerServiceId) return json({ error: "No GoBook service configured for this club" }, 400);
+      const clientId = Number(payload.client_id ?? 0);
+      const data = await apiGet(
+        token,
+        `/Facility/ListForProviderService?providerServiceId=${providerServiceId}` +
+          (clientId ? `&clientId=${clientId}` : "") +
+          `&includeInactive=false`,
+      );
+      const courts = ((data?.facilities ?? []) as any[])
+        .filter((f) => f.isActive)
+        .map((f) => ({
+          providerConsultantId: f.providerConsultantId,
+          name: f.consultantName,
+          mapping: f.mappingValue,
+        }));
+      return json({ success: true, courts, provider: data?.provider ?? null });
+    }
+
+    // Dates GoBook will accept a booking for.
+    if (action === "list_dates") {
+      const clientId = Number(payload.client_id ?? 0);
+      if (!clientId) return json({ error: "client_id is required" }, 400);
+      const dates = (await apiGet(token, `/Schedule/ListAvailableBookingDates?clientId=${clientId}`)) ?? [];
+      return json({
+        success: true,
+        dates: (dates as any[]).map((d) => ({ date: d.dateFormatted, label: d.dateText })),
+      });
+    }
+
+    // Live slot grid for one court on one date.
+    if (action === "list_slots") {
+      const { data: club } = await admin
+        .from("clubs")
+        .select("gobook_service_id")
+        .eq("id", clubId)
+        .maybeSingle();
+      const providerServiceId = Number(payload.provider_service_id ?? club?.gobook_service_id ?? 0);
+      const consultantId = Number(payload.provider_consultant_id ?? 0);
+      const clientId = Number(payload.client_id ?? 0);
+      const date = String(payload.booking_date ?? "").slice(0, 10);
+      if (!providerServiceId) return json({ error: "No GoBook service configured for this club" }, 400);
+      if (!consultantId) return json({ error: "provider_consultant_id is required" }, 400);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "booking_date must be YYYY-MM-DD" }, 400);
+
+      const slots = (await apiGet(
+        token,
+        `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}` +
+          `&bookingDate=${date}&includeUnavailable=true` +
+          `&providerConsultantId=${consultantId}` +
+          (clientId ? `&clientId=${clientId}` : ""),
+      )) ?? [];
+
+      // GoBook returns times as HHMM integers (600 = 06:00).
+      const hhmm = (n: number) =>
+        `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
+
+      return json({
+        success: true,
+        slots: (slots as any[]).map((s) => ({
+          scheduleTimeId: s.providerServiceScheduleTimeId,
+          courtId: s.providerConsultantId,
+          courtName: s.consultantName,
+          startTime: hhmm(s.startTime),
+          endTime: hhmm(s.endTime),
+          label: s.timeText,
+          booked: !!s.bookingId,
+          ownBooking: !!s.ownBooking,
+          bookedBy: s.bookedText || null,
+          bookable: !s.excludedFromBooking && !s.bookingId,
+        })),
+      });
+    }
+
     if (action === "book") {
       const ids = Array.isArray(payload.schedule_time_ids) ? payload.schedule_time_ids : [];
       if (!ids.length) return json({ error: "schedule_time_ids is required" }, 400);

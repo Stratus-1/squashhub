@@ -171,14 +171,15 @@ export default function BarCounter() {
   }
 
   async function settle(method: "cash" | "terminal") {
-    if (!activeTabId) return;
+    if (!activeTab) return;
     setBusy(true);
     try {
       const { error } = await supabase.rpc("bar_counter_settle_tab", {
-        _tab_id: activeTabId, _method: method, _token: token, _club_id: clubId,
+        _tab_id: activeTab.tab_id, _method: method, _token: token, _club_id: clubId,
       } as any);
       if (error) throw error;
-      setActiveTabId(null);
+      setSettled({ tab: activeTab, method });
+      setCart({});
       await refetch();
       invalidate();
       toast.success("Tab settled");
@@ -188,6 +189,7 @@ export default function BarCounter() {
       setBusy(false);
     }
   }
+
 
 
 

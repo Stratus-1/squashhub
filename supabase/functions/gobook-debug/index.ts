@@ -34,6 +34,24 @@ Deno.serve(async (req) => {
       ? await get(`/Schedule/ListBookingSlots?providerServiceId=${svc}&bookingDate=${booking_date}&includeUnavailable=true&providerConsultantId=${first.providerConsultantId}`)
       : null;
     const slotRows: any[] = (slots?.body as any)?.slots ?? (slots?.body as any)?.bookingSlots ?? (Array.isArray(slots?.body) ? slots?.body : []);
+    const probePaths: string[] = (await Promise.resolve((globalThis as any).__x)) ?? [];
+    const candidates = [
+      `/Booking/List?providerServiceId=${svc}&bookingDate=${booking_date}`,
+      `/Booking/ListForProviderService?providerServiceId=${svc}&bookingDate=${booking_date}`,
+      `/Booking/ListForProvider?providerId=${club?.gobook_provider_id}&bookingDate=${booking_date}`,
+      `/Booking/ListForDate?providerServiceId=${svc}&bookingDate=${booking_date}`,
+      `/Booking/Search?providerServiceId=${svc}&fromDate=${booking_date}&toDate=${booking_date}`,
+      `/Schedule/ListBookingSlots?providerServiceId=${svc}&bookingDate=${booking_date}&includeUnavailable=true&includeBooked=true&providerConsultantId=${first?.providerConsultantId}`,
+      `/Schedule/List?providerServiceId=${svc}&bookingDate=${booking_date}`,
+      `/Provider/Get?providerId=${club?.gobook_provider_id}`,
+    ];
+    const probes: any[] = [];
+    for (const path of candidates) {
+      const r = await get(path);
+      const b: any = r.body;
+      probes.push({ path, status: r.status, kind: Array.isArray(b) ? `array(${b.length})` : typeof b === "object" && b ? Object.keys(b).slice(0, 12) : String(b).slice(0, 160), sample: Array.isArray(b) ? b.slice(0, 2) : undefined });
+    }
+    void probePaths;
     return new Response(JSON.stringify({
       serviceId: svc,
       facilityKeys: first ? Object.keys(first) : [],
@@ -41,7 +59,8 @@ Deno.serve(async (req) => {
       facilityCount: facRows.length,
       slotEnvelopeKeys: slots?.body && typeof slots.body === "object" ? Object.keys(slots.body as any) : [],
       slotCount: slotRows.length,
-      slotSample: slotRows.slice(0, 6),
+      slotSample: slotRows.slice(0, 2),
+      probes,
     }, null, 2), { headers: { "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500 });

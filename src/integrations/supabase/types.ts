@@ -12992,6 +12992,16 @@ export type Database = {
         }
         Returns: number
       }
+      association_save_season_fixtures: {
+        Args: {
+          _fixtures: Json
+          _platform_association_id: string
+          _replace_unplayed?: boolean
+          _season_id: string
+          _tenant_id: string
+        }
+        Returns: number
+      }
       auto_complete_past_tournaments: { Args: never; Returns: number }
       award_ranking_points_for_result: {
         Args: {

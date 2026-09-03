@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { BarPinDialog } from "@/components/bar/BarPinDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 interface CounterItem { id: string; name: string; price: number; category?: string | null; barcode?: string | null }
@@ -65,6 +65,12 @@ export default function BarCounter() {
   const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [settled, setSettled] = useState<{
+    tab: CounterTab;
+    method: "member_account" | "cash" | "terminal";
+    memberName?: string;
+  } | null>(null);
+
 
 
   const clubId: string | null = code ? null : activeClub?.id ?? null;
@@ -165,14 +171,15 @@ export default function BarCounter() {
   }
 
   async function settle(method: "cash" | "terminal") {
-    if (!activeTabId) return;
+    if (!activeTab) return;
     setBusy(true);
     try {
       const { error } = await supabase.rpc("bar_counter_settle_tab", {
-        _tab_id: activeTabId, _method: method, _token: token, _club_id: clubId,
+        _tab_id: activeTab.tab_id, _method: method, _token: token, _club_id: clubId,
       } as any);
       if (error) throw error;
-      setActiveTabId(null);
+      setSettled({ tab: activeTab, method });
+      setCart({});
       await refetch();
       invalidate();
       toast.success("Tab settled");
@@ -182,6 +189,7 @@ export default function BarCounter() {
       setBusy(false);
     }
   }
+
 
 
 
@@ -220,11 +228,20 @@ export default function BarCounter() {
     setPinOpen(false);
     setIdentified(null);
     setMemberNumber("");
-    setActiveTabId(null);
+    setCart({});
+    setSettled({ tab: activeTab, method: "member_account", memberName: identified.display_name });
     await refetch();
     invalidate();
     toast.success("Charged to the member's account");
   }
+
+  function finishSettled() {
+    setSettled(null);
+    setActiveTabId(null);
+    refetch();
+    invalidate();
+  }
+
 
 
 
@@ -290,7 +307,39 @@ export default function BarCounter() {
         </Button>
       </div>
 
-      {!activeTab ? (
+      {settled ? (
+        <div className="p-4 space-y-4">
+          <Card className="p-6 text-center space-y-3">
+            <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
+            <div>
+              <h2 className="text-lg font-semibold">Tab settled</h2>
+              <p className="text-sm text-muted-foreground">{settled.tab.guest_name}</p>
+            </div>
+            <div className="text-3xl font-bold">{money(settled.tab.total)}</div>
+            <Badge variant="secondary" className="text-sm capitalize">
+              {settled.method === "member_account"
+                ? `Charged to ${settled.memberName ?? "member account"}`
+                : settled.method === "terminal"
+                  ? "Card machine"
+                  : "Cash"}
+            </Badge>
+            {settled.tab.lines.length > 0 && (
+              <div className="text-left text-xs space-y-1 pt-2">
+                <Separator />
+                {settled.tab.lines.map((l, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span>{l.quantity} × {l.name ?? "Item"}</span>
+                    <span>{money(l.total)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+          <Button className="w-full h-12" onClick={finishSettled}>
+            Next customer
+          </Button>
+        </div>
+      ) : !activeTab ? (
         <div className="p-4 space-y-4">
           <Card className="p-3 flex gap-2">
             <Input
@@ -334,6 +383,7 @@ export default function BarCounter() {
           )}
         </div>
       ) : (
+
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={() => setActiveTabId(null)}>

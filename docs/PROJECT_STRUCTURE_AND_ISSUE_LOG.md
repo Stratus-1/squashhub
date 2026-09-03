@@ -1,9 +1,17 @@
+# 2026-09-03 — Counter mode dropped back to the tabs list after charging a member account
+
+- **Symptom:** When a bar counter staff member settled a tab by charging it to a member account, the active tab immediately disappeared and the screen returned to the open-tabs list, which felt like leaving counter mode.
+- **Finding:** `chargeMemberAccount` cleared `activeTabId` right after the backend call, so the UI re-rendered the board before the staff had a chance to confirm the receipt or continue serving.
+- **Fix:** Counter settlements (member account, cash, and card machine) now keep the counter context open and display a receipt card with the total, method, item lines, and member name. The staff taps **Next customer** only when ready to return to the open-tabs list.
+- **Guard:** A settled tab must never silently vanish from the counter UI; always show a confirmation step and require an explicit action to leave the serving context.
+
 # 2026-09-03 — Counter mode was configured but absent from the QR menu
 
 - **Symptom:** Riverside had an active counter PIN, but the person scanning the club menu QR could not see any way to open Counter mode.
 - **Finding:** The counter route and unlock screen existed, but the public QR menu never rendered a link to that route.
 - **Fix:** Added a persistent **Counter mode** action to the QR menu status strip; it opens the club-code-scoped PIN screen without requiring a login.
 - **Guard:** Every club menu QR must expose the counter entry point. The backend PIN remains the authorization boundary, so merely seeing the action grants no counter access.
+
 
 # 2026-09-03 — Open bar tabs could not be charged to a member account
 

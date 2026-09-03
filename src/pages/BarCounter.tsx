@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { BarPinDialog } from "@/components/bar/BarPinDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 interface CounterItem { id: string; name: string; price: number; category?: string | null; barcode?: string | null }

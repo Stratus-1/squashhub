@@ -335,9 +335,14 @@ export default function BarCounter() {
         </div>
       ) : (
         <div className="p-4 space-y-4">
-          <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={() => setActiveTabId(null)}>
-            <ArrowLeft className="w-4 h-4" /> All tabs
-          </Button>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={() => setActiveTabId(null)}>
+              <ArrowLeft className="w-4 h-4" /> All tabs
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setScanOpen(true)}>
+              <ScanBarcode className="w-4 h-4" /> Scan item
+            </Button>
+          </div>
 
           <Card className="p-3">
             <div className="flex items-center justify-between">

@@ -9,9 +9,17 @@
 //   test_connection { club_id }                  -> token + provider profile + courts
 //   sync_settings   { club_id }                  -> saves provider/service ids on the club
 //   find_client     { club_id, query }           -> GoBook client lookup (Client/Search)
+//   list_courts     { club_id }                  -> Facility/ListForProviderService
+//   list_dates      { club_id, client_id }       -> Schedule/ListAvailableBookingDates
+//   list_slots      { club_id, client_id, booking_date, provider_consultant_id }
 //   book            { club_id, client_id, booking_date, schedule_time_ids[] }
 //
-// Only club admins (or platform super admins) may call it.
+// Booking chain (mirrors GoBook's own app, per their reference client):
+//   Service/List -> Provider (providerServices) -> Facility/ListForProviderService
+//   -> Schedule/ListAvailableBookingDates -> Schedule/ListBookingSlots -> Booking/Book
+//
+// Setup actions are club-admin only; read/booking actions are open to any
+// authenticated member of the club.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const corsHeaders = {
@@ -76,13 +84,23 @@ Deno.serve(async (req) => {
     const clubId = String(payload.club_id ?? "");
     if (!clubId) return json({ error: "club_id is required" }, 400);
 
-    // Authorisation: club admin for this club, or platform super admin.
+    // Authorisation: setup actions need a club admin (or platform super admin);
+    // read/booking actions only need club membership.
+    const SETUP_ACTIONS = ["test_connection", "sync_settings"];
     const { data: isAdmin } = await admin.rpc("is_club_admin", {
       _user_id: user.id,
       _club_id: clubId,
     });
     const { data: isSuper } = await admin.rpc("has_role", { _user_id: user.id, _role: "admin" });
-    if (!isAdmin && !isSuper) return json({ error: "Admin access required" }, 403);
+    if (SETUP_ACTIONS.includes(action)) {
+      if (!isAdmin && !isSuper) return json({ error: "Admin access required" }, 403);
+    } else if (!isAdmin && !isSuper) {
+      const { data: isMember } = await admin.rpc("is_club_member", {
+        _user_id: user.id,
+        _club_id: clubId,
+      });
+      if (!isMember) return json({ error: "Club membership required" }, 403);
+    }
 
     const { data: secrets } = await admin
       .from("club_secrets")
@@ -155,6 +173,87 @@ Deno.serve(async (req) => {
           firstName: c.clientFirstName,
           lastName: c.clientLastName,
           isActive: c.isActive,
+        })),
+      });
+    }
+
+    // Courts (GoBook "facilities") for the club's bookable service.
+    if (action === "list_courts") {
+      const { data: club } = await admin
+        .from("clubs")
+        .select("gobook_service_id")
+        .eq("id", clubId)
+        .maybeSingle();
+      const providerServiceId = Number(payload.provider_service_id ?? club?.gobook_service_id ?? 0);
+      if (!providerServiceId) return json({ error: "No GoBook service configured for this club" }, 400);
+      const clientId = Number(payload.client_id ?? 0);
+      const data = await apiGet(
+        token,
+        `/Facility/ListForProviderService?providerServiceId=${providerServiceId}` +
+          (clientId ? `&clientId=${clientId}` : "") +
+          `&includeInactive=false`,
+      );
+      const courts = ((data?.facilities ?? []) as any[])
+        .filter((f) => f.isActive)
+        .map((f) => ({
+          providerConsultantId: f.providerConsultantId,
+          name: f.consultantName,
+          mapping: f.mappingValue,
+        }));
+      return json({ success: true, courts, provider: data?.provider ?? null });
+    }
+
+    // Dates GoBook will accept a booking for.
+    if (action === "list_dates") {
+      const clientId = Number(payload.client_id ?? 0);
+      if (!clientId) return json({ error: "client_id is required" }, 400);
+      const dates = (await apiGet(token, `/Schedule/ListAvailableBookingDates?clientId=${clientId}`)) ?? [];
+      return json({
+        success: true,
+        dates: (dates as any[]).map((d) => ({ date: d.dateFormatted, label: d.dateText })),
+      });
+    }
+
+    // Live slot grid for one court on one date.
+    if (action === "list_slots") {
+      const { data: club } = await admin
+        .from("clubs")
+        .select("gobook_service_id")
+        .eq("id", clubId)
+        .maybeSingle();
+      const providerServiceId = Number(payload.provider_service_id ?? club?.gobook_service_id ?? 0);
+      const consultantId = Number(payload.provider_consultant_id ?? 0);
+      const clientId = Number(payload.client_id ?? 0);
+      const date = String(payload.booking_date ?? "").slice(0, 10);
+      if (!providerServiceId) return json({ error: "No GoBook service configured for this club" }, 400);
+      if (!consultantId) return json({ error: "provider_consultant_id is required" }, 400);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "booking_date must be YYYY-MM-DD" }, 400);
+
+      const slots = (await apiGet(
+        token,
+        `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}` +
+          `&bookingDate=${date}&includeUnavailable=true` +
+          `&providerConsultantId=${consultantId}` +
+          (clientId ? `&clientId=${clientId}` : ""),
+      )) ?? [];
+
+      // GoBook returns times as HHMM integers (600 = 06:00).
+      const hhmm = (n: number) =>
+        `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
+
+      return json({
+        success: true,
+        slots: (slots as any[]).map((s) => ({
+          scheduleTimeId: s.providerServiceScheduleTimeId,
+          courtId: s.providerConsultantId,
+          courtName: s.consultantName,
+          startTime: hhmm(s.startTime),
+          endTime: hhmm(s.endTime),
+          label: s.timeText,
+          booked: !!s.bookingId,
+          ownBooking: !!s.ownBooking,
+          bookedBy: s.bookedText || null,
+          bookable: !s.excludedFromBooking && !s.bookingId,
         })),
       });
     }

@@ -87,9 +87,12 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
       onCode(code);
       return;
     }
-    const item = items.find((i) => (i.barcode ?? "").trim() === code);
+    const item = itemsRef.current.find((i) => (i.barcode ?? "").trim() === code);
     if (item) {
+      // Successful scan: beep, stop the camera, close, then hand the item over.
       playSuccessBeep();
+      stopCamera();
+      onOpenChange(false);
       onItem(item);
       toast.success(`Added ${item.name}`);
     } else {

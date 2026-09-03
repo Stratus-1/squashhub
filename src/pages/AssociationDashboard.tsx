@@ -287,52 +287,28 @@ export default function AssociationDashboard() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-3">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setView("overview")}
-                className="h-8 px-2"
+                className="h-8 px-2 shrink-0"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
-              <h2 className="text-sm font-semibold flex items-center gap-1.5">
-                <ShieldAlert className="w-4 h-4 text-primary" /> Setup
-              </h2>
-              <span className="w-[60px]" />
-            </div>
-
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-11 gap-2 md:gap-2.5">
-              {visibleAdminTabs
-                .filter((t) => !PROMOTED.some((p) => p.value === t.value) || t.value === adminTab)
-                .map((tab) => {
-
-                const Icon = tab.icon;
-                const isActive = adminTab === tab.value;
-                return (
-                  <button
-                    key={tab.value}
-                    onClick={() => setAdminTab(tab.value)}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-1.5 rounded-lg border p-2.5 md:p-3 transition-colors text-center min-h-[64px] md:min-h-[72px]",
-                      isActive
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : ADMIN_TAB_STYLES[tab.value] || "bg-card text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
-                    )}
-                  >
-                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                    <span className="text-[10px] md:text-[11px] font-medium leading-tight">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {activeTabMeta && (
-              <div className="flex items-center gap-2 pt-1 border-t border-border/60">
-                <activeTabMeta.icon className="w-4 h-4 text-primary mt-2" />
-                <h3 className="text-sm font-semibold text-foreground mt-2">{activeTabMeta.label}</h3>
+              <div className="flex items-center gap-2 min-w-0">
+                <ShieldAlert className="w-4 h-4 text-primary shrink-0" />
+                <h2 className="text-sm font-semibold truncate">{activeTabMeta?.label || "Admin"}</h2>
               </div>
-            )}
+              <select
+                aria-label="Go to association admin section"
+                value={adminTab}
+                onChange={(e) => setAdminTab(e.target.value)}
+                className="h-8 max-w-[190px] rounded-md border border-input bg-background px-2 text-xs shrink-0"
+              >
+                {visibleAdminTabs.map((tab) => <option key={tab.value} value={tab.value}>{tab.label}</option>)}
+              </select>
+            </div>
 
             <div className="[&_.space-y-6]:space-y-4 [&_.space-y-4]:space-y-3 [&_.space-y-3]:space-y-2 [&_h3]:text-sm [&_h3]:font-semibold [&_.p-4]:p-3 [&_.p-3]:p-2.5 [&_.gap-4]:gap-3 [&_.gap-3]:gap-2">
               {renderAdminTab()}

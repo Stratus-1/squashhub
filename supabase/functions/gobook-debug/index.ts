@@ -45,7 +45,11 @@ Deno.serve(async (req) => {
       `/Schedule/List?providerServiceId=${svc}&bookingDate=${booking_date}`,
       `/Provider/Get?providerId=${club?.gobook_provider_id}`,
     ];
-    const probes: any[] = [];
+    const bookingList = await get(`/Booking/List?providerServiceId=${svc}&bookingDate=${booking_date}`);
+    const bl: any[] = Array.isArray(bookingList.body) ? bookingList.body : [];
+    const forDay = bl.filter((b) => String(b.bookingDate ?? "").slice(0, 10) === booking_date);
+    const probes: any[] = [{ path: "booking-list-summary", status: bookingList.status, kind: `total=${bl.length} forDay=${forDay.length}`, sample: forDay.slice(0, 5) }];
+    candidates.length = 0;
     for (const path of candidates) {
       const r = await get(path);
       const b: any = r.body;

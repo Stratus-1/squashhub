@@ -32,6 +32,7 @@ interface BarItem {
   stock_qty: number;
   low_stock_threshold: number;
   cost_price: number;
+  barcode?: string | null;
 }
 
 interface BarTabEntry {
@@ -376,9 +377,9 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0" });
+  const [form, setForm] = useState({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
 
-  const resetForm = () => setForm({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0" });
+  const resetForm = () => setForm({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
 
   const openEdit = (item: BarItem) => {
     setEditItem(item);
@@ -390,6 +391,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
       low_stock_threshold: String(item.low_stock_threshold),
       cost_price: item.cost_price ? String(item.cost_price) : "",
       opening_stock: String(item.stock_qty ?? 0),
+      barcode: item.barcode ?? "",
     });
   };
 
@@ -405,6 +407,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
       low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
       cost_price: parseFloat(form.cost_price) || 0,
       stock_qty: parseInt(form.opening_stock) || 0,
+      barcode: form.barcode.trim() || null,
     });
     if (error) toast.error(error.message);
     else {
@@ -425,6 +428,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
       low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
       cost_price: parseFloat(form.cost_price) || 0,
       stock_qty: parseInt(form.opening_stock) || 0,
+      barcode: form.barcode.trim() || null,
     }).eq("id", editItem.id);
     if (error) toast.error(error.message);
     else {
@@ -471,6 +475,16 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
             onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
             placeholder="0.00"
           />
+        </div>
+        <div>
+          <Label className="text-xs">Product barcode (optional)</Label>
+          <Input
+            value={form.barcode}
+            onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))}
+            placeholder="e.g. 6001234567890"
+            inputMode="numeric"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">Scan or type the barcode printed on the product — enables scan-to-add at the counter.</p>
         </div>
         <div>
           <Label className="text-xs">Cost Price (R)</Label>

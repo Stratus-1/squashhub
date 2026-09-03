@@ -20,11 +20,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { BarPinDialog } from "@/components/bar/BarPinDialog";
+import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
-interface CounterItem { id: string; name: string; price: number; category?: string | null }
+interface CounterItem { id: string; name: string; price: number; category?: string | null; barcode?: string | null }
 interface CounterTab {
   tab_id: string;
   token: string;
@@ -63,6 +64,7 @@ export default function BarCounter() {
   const [identifying, setIdentifying] = useState(false);
   const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
 
 
   const clubId: string | null = code ? null : activeClub?.id ?? null;
@@ -333,9 +335,14 @@ export default function BarCounter() {
         </div>
       ) : (
         <div className="p-4 space-y-4">
-          <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={() => setActiveTabId(null)}>
-            <ArrowLeft className="w-4 h-4" /> All tabs
-          </Button>
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={() => setActiveTabId(null)}>
+              <ArrowLeft className="w-4 h-4" /> All tabs
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setScanOpen(true)}>
+              <ScanBarcode className="w-4 h-4" /> Scan item
+            </Button>
+          </div>
 
           <Card className="p-3">
             <div className="flex items-center justify-between">
@@ -434,6 +441,13 @@ export default function BarCounter() {
               </Button>
             </DialogContent>
           </Dialog>
+
+          <ProductScanDialog
+            open={scanOpen}
+            onOpenChange={setScanOpen}
+            items={board?.items ?? []}
+            onItem={(item) => setCart((c) => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
+          />
 
           {identified && (
             <BarPinDialog

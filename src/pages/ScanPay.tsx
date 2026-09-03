@@ -17,10 +17,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { Loader2, Minus, Plus, CreditCard, Wallet, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt, Store } from "lucide-react";
+import { Loader2, Minus, Plus, CreditCard, Wallet, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt, Store, ScanBarcode } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { BarPinDialog } from "@/components/bar/BarPinDialog";
+import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -33,6 +34,7 @@ interface ScanItem {
   category?: string;
   image_url?: string | null;
   stock_qty?: number;
+  barcode?: string | null;
 }
 
 interface ScanPayload {
@@ -66,6 +68,7 @@ export default function ScanPay() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; terminal?: boolean; reference?: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [tab, setTab] = useState<GuestTab | null>(null);
@@ -749,7 +752,12 @@ export default function ScanPay() {
             {!checkingOut ? (
 
               <>
-                <h2 className="text-sm font-semibold">Tap items to add</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold">Tap items to add</h2>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setScanOpen(true)}>
+                    <ScanBarcode className="w-3.5 h-3.5" /> Scan item
+                  </Button>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   {menu.map((m) => {
                     const qty = cart[m.id] || 0;
@@ -994,6 +1002,12 @@ export default function ScanPay() {
           </div>
         </div>
       )}
+      <ProductScanDialog
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        items={menu}
+        onItem={(item) => bump(item.id, 1)}
+      />
       {!member && identified && (
         <BarPinDialog
           open={pinOpen}

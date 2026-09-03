@@ -538,10 +538,11 @@ export default function BarCounter() {
                   setCart((c) => ({ ...c, [scannedItem.id]: (c[scannedItem.id] ?? 0) + scanQty }));
                   toast.success(`Added ${scanQty} × ${scannedItem.name}`);
                   setScannedItem(null);
+                  // Reopen the scanner so the next item can be scanned immediately.
+                  setScanOpen(true);
                 }}
               >
-                Add {scanQty > 1 ? `${scanQty} × ` : ""}{scannedItem?.name}
-                {scannedItem ? ` — ${money(scannedItem.price * scanQty)}` : ""}
+                Add to tab{scannedItem ? ` — ${money(scannedItem.price * scanQty)}` : ""}
               </Button>
             </DialogContent>
           </Dialog>

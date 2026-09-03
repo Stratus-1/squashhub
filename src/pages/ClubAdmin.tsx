@@ -268,8 +268,9 @@ export default function ClubAdmin() {
         )}
       >
         <span className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors",
-          activeTab === tab.value && "bg-primary text-primary-foreground",
+          "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+          ICON_COLORS[tab.color] ?? "bg-muted text-muted-foreground",
+          activeTab === tab.value && "ring-2 ring-current",
         )}>
           <Icon className="size-4" />
         </span>

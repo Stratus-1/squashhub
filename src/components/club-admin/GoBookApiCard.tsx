@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Loader2, PlugZap, ShieldCheck, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
+import { GoBookMemberLinkPanel } from "./GoBookMemberLinkPanel";
+
 
 type TestResult = {
   provider: {

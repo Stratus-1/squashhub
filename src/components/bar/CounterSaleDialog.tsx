@@ -340,8 +340,9 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>Change</Button>
                 </div>
-              ) : (
+              ) : idMode === "search" ? (
                 <div className="max-h-44 overflow-y-auto space-y-1">
+
                   {isFetching && <p className="text-[11px] text-muted-foreground px-1">Searching…</p>}
                   {hits.map((m) => (
                     <button

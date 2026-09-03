@@ -328,18 +328,25 @@ Deno.serve(async (req) => {
       if (!r.clientId) return json({ success: true, clientId: null, bookings: [] });
       const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}`)) ?? [];
       const hhmm = (n: number) => `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
+      // Club-local "today" (SAST) so a member only sees bookings they can still cancel.
+      const todayLocal = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const includePast = payload.include_past === true;
       return json({
         success: true,
         clientId: r.clientId,
-        bookings: (list as any[]).filter((b) => !b.cancelled && String(b.status ?? "").toLowerCase() !== "c").map((b) => ({
-          bookingId: b.bookingId,
-          date: String(b.bookingDate ?? "").slice(0, 10),
-          startTime: hhmm(b.startTime),
-          endTime: hhmm(b.endTime),
-          courtId: b.providerConsultantId,
-          courtName: b.consultantName ?? null,
-          status: b.status,
-        })),
+        bookings: (list as any[])
+          .filter((b) => !b.cancelled && String(b.status ?? "").toLowerCase() !== "c")
+          .map((b) => ({
+            bookingId: b.bookingId,
+            date: String(b.bookingDate ?? "").slice(0, 10),
+            startTime: hhmm(b.startTime),
+            endTime: hhmm(b.endTime),
+            courtId: b.providerConsultantId,
+            courtName: b.consultantName ?? null,
+            status: b.status,
+          }))
+          .filter((b) => includePast || b.date >= todayLocal)
+          .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime)),
       });
     }
 

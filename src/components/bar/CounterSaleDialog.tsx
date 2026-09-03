@@ -120,7 +120,7 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
    */
   const lookupByNumber = async () => {
     const num = memberNumber.trim();
-    if (num.length < 3) return toast.error("Enter the full membership number");
+    if (num.length < 1) return toast.error("Enter the membership number digits");
     setLookingUp(true);
     try {
       const { data, error } = await (supabase as any).rpc("bar_resolve_member_by_number", {
@@ -331,8 +331,8 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
                   <Label className="text-xs">Membership number</Label>
                   <div className="flex gap-2">
                     <Input
-                      className="h-9 text-sm uppercase"
-                      placeholder="e.g. GBSQ0036"
+                      className="h-9 text-sm"
+                      placeholder="Digits only, e.g. 0036"
                       value={memberNumber}
                       onChange={(e) => { setMemberNumber(e.target.value); setSelected(null); }}
                       onKeyDown={(e) => { if (e.key === "Enter") lookupByNumber(); }}
@@ -342,8 +342,9 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
                     </Button>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    The member types their own membership number, then approves the charge with their Bar PIN —
-                    the PIN on its own is never used to identify anybody.
+                    The member types just the digits of their membership number (the club prefix is matched
+                    automatically), then approves the charge with their Bar PIN — the PIN on its own is never
+                    used to identify anybody.
                   </p>
                 </div>
               ) : (

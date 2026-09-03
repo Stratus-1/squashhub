@@ -588,7 +588,7 @@ export default function ScanPay() {
               </Card>
             )}
 
-            {!tab && !member && count === 0 && (
+            {!tab && count === 0 && (
               <Card className="p-4 space-y-3 border-amber-500/40 bg-amber-500/5">
                 <div className="flex items-center gap-2">
                   <Receipt className="w-4 h-4 text-amber-600 shrink-0" />
@@ -616,7 +616,7 @@ export default function ScanPay() {
               </Card>
             )}
 
-            {tab && tab.status === "open" && (
+            {tab && tab.status !== "settled" && (
               <Card className="p-4 space-y-3 border-amber-500/50">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold">Your open tab · {tab.guest_name}</p>
@@ -632,7 +632,9 @@ export default function ScanPay() {
                 </div>
                 <Separator />
                 <p className="text-[11px] text-muted-foreground">
-                  Keep ordering all evening, then settle the whole tab once.
+                  {tab.status === "open"
+                    ? "Keep ordering all evening, then settle the whole tab once."
+                    : "This tab is awaiting payment — settle it below."}
                 </p>
                 <div className="space-y-2">
                   {club.pay_online_enabled !== false && (

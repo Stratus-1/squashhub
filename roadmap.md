@@ -108,3 +108,9 @@
 - [x] Move/booking fixed (clientId-scoped slot lookup + multi-slot duration support): "No bookable GoBook slot matches the selected court and time" (Court 3, Fri 4 Sep 15:00-16:00, 60min) — debug slot lookup + support multi-slot (60min = 2x30min GoBook slots)
 - [x] Auto-sync on page open/date change (already wired, verified)
 - [x] Sync after booking, move, and cancellation
+
+## Bar & shop secure checkout (in progress)
+- [x] Bar PIN storage (hashed), OTP fallback, lockout, secure RPCs for charge/search/counter sale
+- [x] Member Bar PIN settings card, member approval keypad dialog, staff Counter Sale screen
+- [ ] Counter sale: add "member identifies himself" mode — member types membership number + Bar PIN instead of staff searching (PIN alone is not unique/secure, so it is paired with the membership number)
+- [ ] Wire ScanPay member-account charge through the PIN/OTP dialog

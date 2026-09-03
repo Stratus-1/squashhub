@@ -14419,6 +14419,10 @@ export type Database = {
         Args: { _club_id: string; _period?: string }
         Returns: string
       }
+      store_bar_otp: {
+        Args: { _club_member_id: string; _code: string }
+        Returns: Json
+      }
       submit_platform_invoice_eft_proof: {
         Args: { _invoice_id: string; _path: string }
         Returns: undefined

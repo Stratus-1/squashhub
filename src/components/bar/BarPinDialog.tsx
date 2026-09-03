@@ -26,6 +26,8 @@ interface Props {
   /** Counter mode adds the private-entry wording and optional signature. */
   mode?: "self" | "counter";
   captureSignature?: boolean;
+  /** Public QR flow: the member is not signed in, so PIN is the only route. */
+  pinOnly?: boolean;
   onVerified: (args: {
     secret: string;
     method: BarVerificationMethod;
@@ -121,6 +123,7 @@ export function BarPinDialog({
   amountLabel,
   mode = "self",
   captureSignature = false,
+  pinOnly = false,
   onVerified,
 }: Props) {
   const [method, setMethod] = useState<BarVerificationMethod>("pin");
@@ -139,6 +142,7 @@ export function BarPinDialog({
       setSignature(null);
       return;
     }
+    if (pinOnly) { setStatus({ has_pin: true, locked: false, has_phone: false }); return; }
     (async () => {
       const { data, error } = await (supabase as any).rpc("get_bar_pin_status", { _club_member_id: clubMemberId });
       if (error) return;
@@ -146,7 +150,7 @@ export function BarPinDialog({
       setStatus({ has_pin: !!s?.has_pin, locked: !!s?.locked, has_phone: !!s?.has_phone });
       if (!s?.has_pin || s?.locked) setMethod("otp");
     })();
-  }, [open, clubMemberId]);
+  }, [open, clubMemberId, pinOnly]);
 
   const sendCode = async () => {
     setSending(true);
@@ -236,6 +240,12 @@ export function BarPinDialog({
           </>
         )}
 
+        {pinOnly ? (
+          <p className="text-[11px] text-muted-foreground text-center">
+            Forgotten your PIN? Sign in to your SquashHub account to reset it, or ask the bar staff to help.
+          </p>
+        ) : (
+        <>
         <Separator />
         <Button
           variant="ghost"
@@ -251,6 +261,8 @@ export function BarPinDialog({
           <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => { setMethod("pin"); setDigits(""); }}>
             Use my Bar PIN instead
           </Button>
+        )}
+        </>
         )}
       </DialogContent>
     </Dialog>

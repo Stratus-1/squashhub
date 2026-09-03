@@ -26,8 +26,6 @@ export function AssociationInfoTab({ club, clubId }: { club: Club; clubId: strin
     secretary_member_id: club.secretary_member_id || "",
     club_captain_member_id: club.club_captain_member_id || "",
     logo_url: club.logo_url || "",
-    league_member_annual_fee: club.league_member_annual_fee ?? 0,
-    league_fee_due_month: club.league_fee_due_month ?? 1,
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -63,10 +61,8 @@ export function AssociationInfoTab({ club, clubId }: { club: Club; clubId: strin
       if (!payload.secretary_member_id) payload.secretary_member_id = null;
       if (!payload.club_captain_member_id) payload.club_captain_member_id = null;
       if (!payload.logo_url) payload.logo_url = null;
-      payload.league_member_annual_fee = Number(payload.league_member_annual_fee) || 0;
-      payload.league_fee_due_month = Math.min(12, Math.max(1, Number(payload.league_fee_due_month) || 1));
       await updateClub.mutateAsync({ id: club.id, ...payload });
-      toast.success("Association info saved — fee propagated to all affiliated clubs");
+      toast.success("Association info saved");
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }

@@ -176,9 +176,9 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
         <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground">
           Request API credentials from GoBook (support@gobook.co.za). Court list, available
-          dates, live slot grids, client lookup and booking all run through the official API —
-          members no longer need their own GoBook login. Cancellations must still be done on
-          gobook.co.za: the API has no cancel endpoint yet.
+          dates, live slot grids, client lookup, booking and cancellation all run through the
+          official API — members no longer need their own GoBook login, and they can cancel
+          their own upcoming bookings straight from the booking page.
         </p>
       </div>
     </Card>

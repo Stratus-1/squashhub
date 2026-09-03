@@ -20,6 +20,8 @@ import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PlatformAssociation } from "@/hooks/use-platform-association";
+import { SeasonFixtureBuilder } from "@/components/association-admin/SeasonFixtureBuilder";
+import { type AssocTeam } from "@/lib/leagues/association-tree";
 
 const ALL = "__all__";
 
@@ -37,12 +39,23 @@ interface FixtureRow {
   winner_team_code: string | null;
 }
 
-export function AssociationFixturesPanel({ association }: { association: PlatformAssociation | null }) {
+export function AssociationFixturesPanel({ association, tenantId }: { association: PlatformAssociation | null; tenantId: string }) {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [season, setSeason] = useState<string>(String(new Date().getFullYear()));
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [syncing, setSyncing] = useState<"fixtures" | "members" | null>(null);
+  const [builderOpen, setBuilderOpen] = useState(false);
+
+  const { data: teams = [] } = useQuery({
+    queryKey: ["assoc-league-teams", tenantId, "builder"],
+    enabled: !!association?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("association_league_teams", { _tenant_id: tenantId });
+      if (error) throw error;
+      return (data || []) as AssocTeam[];
+    },
+  });
 
   const { data: fixtures = [], isLoading } = useQuery({
     queryKey: ["assoc-platform-fixtures", association?.id],
@@ -133,17 +146,25 @@ export function AssociationFixturesPanel({ association }: { association: Platfor
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <CalendarDays className="h-4 w-4" /> Rounds &amp; fixtures
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Every fixture on record for {association.name}, grouped by league. This is the association's own fixture
-          list — the single source of truth for the season.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" /> Rounds &amp; fixtures
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Every fixture on record for {association.name}, grouped by league. This is the association's own fixture
+                list — the single source of truth for the season.
+              </p>
+            </div>
+            <Button size="sm" className="h-8 text-xs" onClick={() => setBuilderOpen(true)}>
+              <CalendarDays className="mr-1.5 h-3.5 w-3.5" /> Build season fixtures
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
         {association.external_source && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 p-2.5">
             <div className="text-[11px] text-muted-foreground">
@@ -258,8 +279,16 @@ export function AssociationFixturesPanel({ association }: { association: Platfor
             })}
           </div>
         )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      <SeasonFixtureBuilder
+        tenantId={tenantId}
+        association={association}
+        teams={teams}
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+      />
+    </>
   );
 }
 

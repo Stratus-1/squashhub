@@ -2243,6 +2243,9 @@ export default function Bookings() {
                                   await fromExt("bookings").update({ status: "cancelled" }).eq("id", bd.id).eq("source", "gobook");
                                   toast.success("Booking cancelled on GoBook");
                                   setBookingDetails(null);
+                                  // Re-sync from GoBook so the grid reflects the
+                                  // provider's authoritative state immediately.
+                                  try { await syncGobookApiDay(String(bd.date)); } catch { /* manual refresh remains available */ }
                                   queryClient.invalidateQueries({ queryKey: ["bookings"] });
                                   queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
                                 } catch (e: any) {

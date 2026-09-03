@@ -442,13 +442,14 @@ export default function BarCounter() {
             </DialogContent>
           </Dialog>
 
+          <ProductScanDialog
+            open={scanOpen}
+            onOpenChange={setScanOpen}
+            items={board?.items ?? []}
+            onItem={(item) => setCart((c) => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
+          />
+
           {identified && (
-            <ProductScanDialog
-              open={scanOpen}
-              onOpenChange={setScanOpen}
-              items={board?.items ?? []}
-              onItem={(item) => setCart((c) => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
-            />
             <BarPinDialog
               open={pinOpen}
               onOpenChange={(o) => { setPinOpen(o); if (!o) setIdentified(null); }}

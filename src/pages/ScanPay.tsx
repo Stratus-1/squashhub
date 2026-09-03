@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { Loader2, Minus, Plus, CreditCard, Wallet, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt } from "lucide-react";
+import { Loader2, Minus, Plus, CreditCard, Wallet, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt, Store } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { BarPinDialog } from "@/components/bar/BarPinDialog";
@@ -555,6 +555,15 @@ export default function ScanPay() {
         <span className="truncate flex-1 text-muted-foreground">
           Members: charge to your account with your membership number and Bar PIN. Visitors: pay by card or open a tab.
         </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 gap-1.5 px-2.5 text-xs"
+          onClick={() => navigate(`/s/${code}/counter`)}
+        >
+          <Store className="h-3.5 w-3.5" /> Counter mode
+        </Button>
       </div>
 
 

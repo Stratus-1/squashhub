@@ -1,3 +1,10 @@
+# 2026-09-03 — Counter mode was configured but absent from the QR menu
+
+- **Symptom:** Riverside had an active counter PIN, but the person scanning the club menu QR could not see any way to open Counter mode.
+- **Finding:** The counter route and unlock screen existed, but the public QR menu never rendered a link to that route.
+- **Fix:** Added a persistent **Counter mode** action to the QR menu status strip; it opens the club-code-scoped PIN screen without requiring a login.
+- **Guard:** Every club menu QR must expose the counter entry point. The backend PIN remains the authorization boundary, so merely seeing the action grants no counter access.
+
 # 2026-09-03 — Open bar tabs could not be charged to a member account
 
 - **Symptom:** After a QR customer opened a tab, its settlement card only offered online card or counter swipe, so a member could no longer choose the member-account option.

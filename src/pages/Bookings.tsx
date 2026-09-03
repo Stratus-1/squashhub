@@ -1258,13 +1258,24 @@ export default function Bookings() {
           }
         }
       }
-      // If this was a "move", cancel the source booking now that the new slot succeeded
+      // A "move" is always: reserve the new slot first, then release the old one.
+      // We only reach here once the replacement booking succeeded, so a failure
+      // below leaves the member with the new slot and a clear warning about the
+      // original — never a silently lost booking.
       if (bookingSucceeded && moveSource) {
         const src: any = moveSource;
         try {
           if (src.source === "gobook") {
             const externalBookingId = String(src.external_id || "").match(/^gobook:(\d+)$/)?.[1] || "";
-            const cancelMemberId = String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+            // Official API mode uses the club-level account, so the signed-in
+            // member identifies the booking owner. Legacy mode keeps the saved
+            // personal GoBook credentials.
+            const cancelMemberId = gobookApiMode
+              ? String(activeMember?.id || "")
+              : String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
+            if (gobookApiMode && !externalBookingId) {
+              throw new Error("the original booking has no GoBook reference yet — refresh the grid and cancel it manually");
+            }
             const t = toast.loading("Cancelling original GoBook slot…");
             const { data, error } = await supabase.functions.invoke(gobookApiMode ? "gobook-api" : "gobook-book", {
               body: gobookApiMode
@@ -1274,11 +1285,17 @@ export default function Bookings() {
             toast.dismiss(t);
             const msg = await extractFunctionError(data, error);
             if (msg) throw new Error(msg);
+            if (gobookApiMode) {
+              // Release the local mirror straight away so the vacated slot is
+              // bookable again without waiting for the next provider sync.
+              await fromExt("bookings").update({ status: "cancelled" }).eq("id", src.id).eq("source", "gobook");
+            }
             toast.success("Booking moved — original GoBook slot cancelled");
           } else {
             await cancelBooking.mutateAsync(String(src.id));
             toast.success("Booking moved");
           }
+          if (gobookApiMode) await syncGobookApiDay(dateStr);
           queryClient.invalidateQueries({ queryKey: ["bookings"] });
           queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
         } catch (e: any) {

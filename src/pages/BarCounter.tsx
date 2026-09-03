@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
-interface CounterItem { id: string; name: string; price: number; category?: string | null; barcode?: string | null }
+interface CounterItem { id: string; name: string; price: number; category?: string | null; barcode?: string | null; image_url?: string | null }
 interface CounterTab {
   tab_id: string;
   token: string;
@@ -421,6 +421,11 @@ export default function BarCounter() {
               const qty = cart[item.id] ?? 0;
               return (
                 <Card key={item.id} className="p-2">
+                  {item.image_url ? (
+                    <div className="w-full h-20 rounded-md overflow-hidden mb-2 bg-muted">
+                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                    </div>
+                  ) : null}
                   <div className="text-sm font-medium leading-tight truncate">{item.name}</div>
                   <div className="text-[11px] text-muted-foreground">{money(item.price)}</div>
                   <div className="flex items-center justify-between mt-2">

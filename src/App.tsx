@@ -47,6 +47,7 @@ const SetPassword = lazy(() => import("./pages/SetPassword"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const PayReturn = lazy(() => import("./pages/PayReturn"));
 const ScanPay = lazy(() => import("./pages/ScanPay"));
+const BarCounter = lazy(() => import("./pages/BarCounter"));
 const BarPaymentSuccess = lazy(() => import("./pages/BarPaymentSuccess"));
 const StitchPaymentBridge = lazy(() => import("./pages/StitchPaymentBridge"));
 const StravaCallback = lazy(() => import("./pages/StravaCallback"));
@@ -462,6 +463,9 @@ function AppRoutes() {
         <Route path="/pay/stitch" element={<ProtectedRoute><StitchPaymentBridge /></ProtectedRoute>} />
         <Route path="/pay/return" element={<PayReturn />} />
         <Route path="/s/:code" element={<ScanPay />} />
+        <Route path="/s/:code/counter" element={<BarCounter />} />
+        <Route path="/c/:subdomain/s/:code/counter" element={<BarCounter />} />
+        <Route path="/bar/counter" element={<ProtectedRoute><BarCounter /></ProtectedRoute>} />
         <Route path="/s/:code/success" element={<BarPaymentSuccess />} />
         <Route path="/c/:subdomain/s/:code" element={<ScanPay />} />
         <Route path="/c/:subdomain/s/:code/success" element={<BarPaymentSuccess />} />

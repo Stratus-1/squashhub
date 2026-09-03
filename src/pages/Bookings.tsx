@@ -618,11 +618,11 @@ export default function Bookings() {
    * Cancel share this so a "move" (cancel + rebook) can never bypass it.
    */
   const gobookRowPermission = (bd: any) => {
-    const memberId = gobookApiMode
-      ? String(activeMember?.id || "")
-      : String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
     const rowMemberId = bd?.club_member_id ? String(bd.club_member_id) : "";
     const isClubAdmin = !!(isMemberAdmin || isSuperAdmin);
+    const memberId = gobookApiMode
+      ? (isClubAdmin && rowMemberId ? rowMemberId : String(activeMember?.id || ""))
+      : String((gobookCredInfo as any)?.club_member_id || activeMember?.id || "");
     const ownsBooking = !!memberId && !!rowMemberId && rowMemberId === memberId;
     const externalBookingId = String(bd?.external_id || "").match(/^gobook:(\d+)$/)?.[1] || "";
     const startMs = new Date(`${bd?.date}T${String(bd?.start_time || "00:00").slice(0, 5)}:00+02:00`).getTime();

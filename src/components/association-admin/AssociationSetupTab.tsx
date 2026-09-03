@@ -16,8 +16,6 @@ interface SetupRow {
   member_number_prefix: string | null;
   member_number_length: number | null;
   member_number_start: number | null;
-  league_member_annual_fee: number | null;
-  league_fee_due_month: number | null;
 }
 
 export function AssociationSetupTab({ clubId }: Props) {
@@ -28,8 +26,6 @@ export function AssociationSetupTab({ clubId }: Props) {
     member_number_prefix: "",
     member_number_length: 4,
     member_number_start: 1,
-    league_member_annual_fee: 0,
-    league_fee_due_month: 1,
   });
   const [nextPreview, setNextPreview] = useState<string>("");
 
@@ -37,7 +33,7 @@ export function AssociationSetupTab({ clubId }: Props) {
     (async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("name, member_number_prefix, member_number_length, member_number_start, league_member_annual_fee, league_fee_due_month")
+        .select("name, member_number_prefix, member_number_length, member_number_start")
         .eq("id", clubId)
         .maybeSingle();
       if (error) toast.error(error.message);
@@ -62,8 +58,6 @@ export function AssociationSetupTab({ clubId }: Props) {
         member_number_prefix: form.member_number_prefix,
         member_number_length: form.member_number_length,
         member_number_start: form.member_number_start,
-        league_member_annual_fee: form.league_member_annual_fee,
-        league_fee_due_month: form.league_fee_due_month,
       })
       .eq("id", clubId);
     setSaving(false);
@@ -132,36 +126,6 @@ export function AssociationSetupTab({ clubId }: Props) {
         </div>
       </Card>
 
-      <Card className="p-4 space-y-3">
-        <h3 className="text-sm font-semibold">Annual Membership Fee</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="fee">Fee per member / year (R)</Label>
-            <Input
-              id="fee"
-              type="number"
-              min={0}
-              step="0.01"
-              value={form.league_member_annual_fee ?? 0}
-              onChange={(e) => setForm({ ...form, league_member_annual_fee: parseFloat(e.target.value) || 0 })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="duemonth">Due month</Label>
-            <Input
-              id="duemonth"
-              type="number"
-              min={1}
-              max={12}
-              value={form.league_fee_due_month ?? 1}
-              onChange={(e) => setForm({ ...form, league_fee_due_month: parseInt(e.target.value) || 1 })}
-            />
-          </div>
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          This fee is billed pass-through via affiliated clubs to each registered league member.
-        </p>
-      </Card>
 
       <div className="flex justify-end">
         <Button onClick={save} disabled={saving}>

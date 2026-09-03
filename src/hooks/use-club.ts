@@ -35,6 +35,7 @@ export interface Club {
   tenant_type?: string;
   league_member_annual_fee?: number;
   league_fee_due_month?: number;
+  league_fee_due_day?: number;
   payment_gateway_fee_percent?: number | null;
   gateway_fee_pct_card_local?: number | null;
   gateway_fee_pct_card_intl?: number | null;

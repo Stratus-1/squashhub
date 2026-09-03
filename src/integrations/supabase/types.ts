@@ -4651,6 +4651,7 @@ export type Database = {
           host_cleaning_fee_cents_per_day: number
           host_court_fee_cents_per_hour: number
           id: string
+          league_fee_due_day: number
           league_fee_due_month: number
           league_member_annual_fee: number
           league_week_start_dow: number
@@ -4779,6 +4780,7 @@ export type Database = {
           host_cleaning_fee_cents_per_day?: number
           host_court_fee_cents_per_hour?: number
           id?: string
+          league_fee_due_day?: number
           league_fee_due_month?: number
           league_member_annual_fee?: number
           league_week_start_dow?: number
@@ -4907,6 +4909,7 @@ export type Database = {
           host_cleaning_fee_cents_per_day?: number
           host_court_fee_cents_per_hour?: number
           id?: string
+          league_fee_due_day?: number
           league_fee_due_month?: number
           league_member_annual_fee?: number
           league_week_start_dow?: number

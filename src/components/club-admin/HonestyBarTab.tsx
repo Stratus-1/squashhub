@@ -477,6 +477,16 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
           />
         </div>
         <div>
+          <Label className="text-xs">Product barcode (optional)</Label>
+          <Input
+            value={form.barcode}
+            onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))}
+            placeholder="e.g. 6001234567890"
+            inputMode="numeric"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">Scan or type the barcode printed on the product — enables scan-to-add at the counter.</p>
+        </div>
+        <div>
           <Label className="text-xs">Cost Price (R)</Label>
           <Input
             type="number" min={0} step={0.01}

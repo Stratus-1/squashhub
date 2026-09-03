@@ -64,3 +64,8 @@
 - [ ] Tournament invite platform cron jobs (nsc-champs-invites-platform-am/pm) are DISABLED after Gmail + platform rate-limit blocks. Re-enable only with strict pacing.
 - [ ] 24 CSIR Bells Doubles invites still unsent (rate_limited at 06:29 UTC 2 Sep) — resend slowly when clear.
 - [ ] Cron invite jobs pass the anon key; send-tournament-invite-email now also accepts the internal secret. Update the cron commands before re-enabling.
+
+## NEW: Prevent repeated member numbers
+- [ ] Trace current member-number allocation and uniqueness enforcement.
+- [ ] Fix allocation so concurrent/new-member assignments cannot reuse an existing number.
+- [ ] Verify duplicate-number state and preserve existing member numbers.

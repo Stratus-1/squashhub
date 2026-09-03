@@ -18,6 +18,7 @@ import { useIsSuperAdmin } from "@/hooks/use-club";
 import { QuickVisitorSaleDialog } from "@/components/QuickVisitorSaleDialog";
 import { CounterSaleDialog } from "@/components/bar/CounterSaleDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
+import { BarPinSettingsCard } from "@/components/bar/BarPinSettingsCard";
 import { Link } from "react-router-dom";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { toast } from "sonner";

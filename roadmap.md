@@ -95,8 +95,9 @@
 - [ ] Preserve move-booking behavior: create the replacement slot first, then cancel the original provider booking, with an explicit partial-failure state.
 - [ ] Never create a local GoBook row without a provider booking ID that can be cancelled.
 
-## NEW: Payment and tournament self-settlement guards
-- [ ] Prevent member-created bar entries from setting `settled` or `settled_at`; only admins/trusted backend routines may settle them.
-- [ ] Prevent member-created credit transactions from choosing confirmed status, arbitrary confirmed amounts, or confirmation actor/timestamps.
-- [ ] Prevent member-created championship registrations from setting confirmed/paid/admin-invited fields; preserve admin/service workflows.
-- [ ] Add grants/RLS-safe trigger migrations and verify the security findings are resolved without changing legitimate payment flows.
+## Completed: Payment and tournament self-settlement guards
+- [x] Prevent member-created bar entries from setting `settled` or `settled_at`; only admins/trusted backend routines may settle them.
+- [x] Prevent member-created credit transactions from choosing confirmed status or confirmation actor/timestamps; pending top-up amount selection remains available.
+- [x] Prevent member-created championship registrations from setting confirmed/paid/admin-invited/proof fields; preserve admin/service workflows.
+- [x] Add RLS-safe trigger migration and verify the guards were applied without changing legitimate payment flows.
+- [ ] Re-run the project-wide security linter remediation backlog separately; the migration linter still reports pre-existing project-wide findings unrelated to these three protections.

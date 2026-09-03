@@ -25,6 +25,12 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   items: ScannableItem[];
   onItem: (item: ScannableItem) => void;
+  /**
+   * Raw-code capture mode: when provided, scanned/typed codes are returned
+   * verbatim (no item matching) and the dialog closes after one code.
+   * Used by the item editor to capture a barcode into the form.
+   */
+  onCode?: (code: string) => void;
 }
 
 declare global {

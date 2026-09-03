@@ -25,6 +25,12 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   items: ScannableItem[];
   onItem: (item: ScannableItem) => void;
+  /**
+   * Raw-code capture mode: when provided, scanned/typed codes are returned
+   * verbatim (no item matching) and the dialog closes after one code.
+   * Used by the item editor to capture a barcode into the form.
+   */
+  onCode?: (code: string) => void;
 }
 
 declare global {
@@ -33,7 +39,7 @@ declare global {
   }
 }
 
-export function ProductScanDialog({ open, onOpenChange, items, onItem }: Props) {
+export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -50,6 +56,12 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem }: Props) 
     const now = Date.now();
     if (lastRef.current.code === code && now - lastRef.current.at < 1500) return;
     lastRef.current = { code, at: now };
+    if (onCode) {
+      // Raw capture: hand the code back and close (camera stopped via onOpenChange).
+      onOpenChange(false);
+      onCode(code);
+      return;
+    }
     const item = items.find((i) => (i.barcode ?? "").trim() === code);
     if (item) {
       onItem(item);
@@ -139,8 +151,9 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem }: Props) 
             <ScanBarcode className="w-5 h-5" /> Scan product barcode
           </DialogTitle>
           <DialogDescription>
-            Point the camera at the product's barcode — matching items are added automatically. Scan as many as you
-            like, then close.
+            {onCode
+              ? "Point the camera at the product's barcode to capture its code."
+              : "Point the camera at the product's barcode — matching items are added automatically. Scan as many as you like, then close."}
           </DialogDescription>
         </DialogHeader>
 

@@ -380,6 +380,9 @@ export default function Bookings() {
   const externalLabel = ((myClub as any)?.external_booking_label as string | undefined) ||
     (externalProvider === "gobook" ? "GoBook" : externalProvider === "courtmanager" ? "Court Manager" : "the booking system");
   const usesExternalBooking = !!externalProvider && externalProvider !== "none" && !!externalUrl;
+  // Official GoBook API mode: one club-level API account, no member logins.
+  const gobookApiMode = externalProvider === "gobook" && !!(myClub as any)?.gobook_api_enabled;
+
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
   const rawSlot = Number((myClub as any)?.booking_slot_minutes);

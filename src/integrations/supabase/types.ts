@@ -13154,6 +13154,15 @@ export type Database = {
         }
         Returns: string
       }
+      bar_resolve_member_by_number: {
+        Args: { _club_id: string; _number: string }
+        Returns: {
+          club_member_number: string
+          has_pin: boolean
+          id: string
+          name: string
+        }[]
+      }
       bar_search_members: {
         Args: { _club_id: string; _q: string }
         Returns: {

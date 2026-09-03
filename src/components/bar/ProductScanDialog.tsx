@@ -50,6 +50,29 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
 
   const supported = typeof window !== "undefined" && !!window.BarcodeDetector;
 
+  const playSuccessBeep = () => {
+    try {
+      const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+      setTimeout(() => ctx.close(), 250);
+    } catch {
+      /* ignore audio failures */
+    }
+  };
+
+
   const match = (raw: string) => {
     const code = raw.trim();
     if (!code) return;
@@ -58,6 +81,7 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
     lastRef.current = { code, at: now };
     if (onCode) {
       // Raw capture: stop the camera immediately, hand the code back, and close.
+      playSuccessBeep();
       stopCamera();
       onOpenChange(false);
       onCode(code);
@@ -65,11 +89,13 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
     }
     const item = items.find((i) => (i.barcode ?? "").trim() === code);
     if (item) {
+      playSuccessBeep();
       onItem(item);
       toast.success(`Added ${item.name}`);
     } else {
       toast.error(`No item with barcode ${code}`);
     }
+
   };
 
   useEffect(() => {

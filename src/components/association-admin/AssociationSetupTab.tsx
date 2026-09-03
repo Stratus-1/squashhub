@@ -83,48 +83,15 @@ export function AssociationSetupTab({ clubId }: Props) {
         </div>
       </Card>
 
-      <Card className="p-4 space-y-3">
+      <Card className="p-4 space-y-2">
         <h3 className="text-sm font-semibold">Member Number Allocation</h3>
         <p className="text-[11px] text-muted-foreground">
-          New league member numbers are auto-generated as <strong>prefix + sequence</strong>, padded to the chosen length.
+          Configured under <strong>Preferences → Member numbering</strong>. Current format:{" "}
+          <span className="font-mono font-semibold">{nextPreview}</span>
         </p>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="prefix">Prefix</Label>
-            <Input
-              id="prefix"
-              value={form.member_number_prefix || ""}
-              onChange={(e) => setForm({ ...form, member_number_prefix: e.target.value.toUpperCase() })}
-              placeholder="LWL"
-              maxLength={6}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="length">Digits</Label>
-            <Input
-              id="length"
-              type="number"
-              min={1}
-              max={8}
-              value={form.member_number_length ?? 4}
-              onChange={(e) => setForm({ ...form, member_number_length: parseInt(e.target.value) || 1 })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="start">Next sequence</Label>
-            <Input
-              id="start"
-              type="number"
-              min={1}
-              value={form.member_number_start ?? 1}
-              onChange={(e) => setForm({ ...form, member_number_start: parseInt(e.target.value) || 1 })}
-            />
-          </div>
-        </div>
-        <div className="rounded-md border bg-muted/40 px-3 py-2 text-[12px]">
-          Next allocated number: <span className="font-mono font-semibold">{nextPreview}</span>
-        </div>
       </Card>
+
+
 
 
       <div className="flex justify-end">

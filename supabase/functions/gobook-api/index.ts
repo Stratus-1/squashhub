@@ -686,13 +686,31 @@ Deno.serve(async (req) => {
         const providerServiceId = Number(club?.gobook_service_id ?? 0);
         const { data: localCourt } = await admin.from("courts").select("name").eq("id", Number(payload.court_id)).eq("club_id", clubId).maybeSingle();
         if (!providerServiceId || !localCourt) return json({ error: "The selected court is not mapped to GoBook" }, 400);
-        const fac = await apiGet(token, `/Facility/ListForProviderService?providerServiceId=${providerServiceId}&includeInactive=false`);
+        // Resolve the caller's GoBook client first — availability differs per
+        // client, and calls without clientId can return empty/misleading slots.
+        const mineEarly = await resolveMyClient();
+        if (mineEarly.forbidden) return json({ error: "You may only book for your own GoBook member profile" }, 403);
+        const lookupClientId = mineEarly.clientId ?? 0;
+        const fac = await apiGet(token, `/Facility/ListForProviderService?providerServiceId=${providerServiceId}` + (lookupClientId ? `&clientId=${lookupClientId}` : "") + `&includeInactive=false`);
         const target = ((fac?.facilities ?? []) as any[]).find((f) => normalizeName(f.consultantName) === normalizeName(localCourt.name) || String(f.consultantName ?? "").match(/\d+/)?.[0] === String(localCourt.name).match(/\d+/)?.[0]);
         if (!target) return json({ error: `GoBook court mapping not found for ${localCourt.name}` }, 400);
-        const slots = rowsFrom((await apiGet(token, `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}&bookingDate=${bookingDate}&includeUnavailable=true&providerConsultantId=${target.providerConsultantId}`)) ?? []);
+        const slots = rowsFrom((await apiGet(token, `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}&bookingDate=${bookingDate}&includeUnavailable=true&providerConsultantId=${target.providerConsultantId}` + (lookupClientId ? `&clientId=${lookupClientId}` : ""))) ?? []);
         const targetTime = String(payload.start_time).slice(0, 5);
+        const endTime = payload.end_time ? String(payload.end_time).slice(0, 5) : null;
+        // A SquashHub booking can span several GoBook slots (e.g. 60 min =
+        // two 30-min GoBook slots). Gather every unbooked slot from start_time
+        // up to end_time (or just the starting slot when no end_time given).
+        const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+        const startMin = toMinutes(targetTime);
+        const endMin = endTime && toMinutes(endTime) > startMin ? toMinutes(endTime) : null;
         ids = slots
-          .filter((s) => hhmm(s.startTime ?? s.start_time) === targetTime && !isBookedSlot(s))
+          .filter((s) => {
+            const t = hhmm(s.startTime ?? s.start_time);
+            if (!t || isBookedSlot(s) || s.excludedFromBooking) return false;
+            const m = toMinutes(t);
+            return m >= startMin && (endMin === null ? m === startMin : m < endMin);
+          })
+          .sort((a, b) => toMinutes(hhmm(a.startTime ?? a.start_time)) - toMinutes(hhmm(b.startTime ?? b.start_time)))
           .map((s) => s.providerServiceScheduleTimeId ?? s.scheduleTimeId ?? s.id)
           .filter((id) => Number.isInteger(Number(id)) && Number(id) > 0);
       }

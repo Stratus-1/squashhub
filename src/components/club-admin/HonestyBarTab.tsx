@@ -557,6 +557,16 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
           Cancel
         </Button>
       </div>
+      <ProductScanDialog
+        open={barcodeScanOpen}
+        onOpenChange={setBarcodeScanOpen}
+        items={items}
+        onItem={() => {}}
+        onCode={(code) => {
+          setForm(p => ({ ...p, barcode: code }));
+          toast.success(`Barcode ${code} captured`);
+        }}
+      />
     </div>
   );
 

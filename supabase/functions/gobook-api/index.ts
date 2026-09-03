@@ -367,8 +367,9 @@ Deno.serve(async (req) => {
 
     // Dates GoBook will accept a booking for.
     if (action === "list_dates") {
-      const clientId = Number(payload.client_id ?? 0);
-      if (!clientId) return json({ error: "client_id is required" }, 400);
+      const clientId = Number(payload.client_id ?? (await resolveMyClient()).clientId ?? 0);
+      if (!clientId) return json({ success: true, dates: [], needsLink: true });
+
       const dates = (await apiGet(token, `/Schedule/ListAvailableBookingDates?clientId=${clientId}`)) ?? [];
       return json({
         success: true,

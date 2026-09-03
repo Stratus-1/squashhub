@@ -843,9 +843,24 @@ export default function ScanPay() {
                   Add to my open tab
                 </Button>
               ) : (
-                <Button className="gap-2 h-11" onClick={() => setCheckingOut(true)}>
-                  <ShoppingCart className="w-4 h-4" /> Done — checkout
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    className="gap-1.5 h-11"
+                    disabled={submitting}
+                    onClick={() => {
+                      // Members can open a tab straight away (their name is known);
+                      // guests go to checkout where they enter a name for the tab.
+                      if (member) addToOpenTab();
+                      else setCheckingOut(true);
+                    }}
+                  >
+                    <Receipt className="w-4 h-4" /> Open a tab
+                  </Button>
+                  <Button className="gap-2 h-11 flex-1" onClick={() => setCheckingOut(true)}>
+                    <ShoppingCart className="w-4 h-4" /> Done — checkout
+                  </Button>
+                </div>
               )}
             </div>
             {tab && (

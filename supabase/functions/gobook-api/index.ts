@@ -600,33 +600,35 @@ Deno.serve(async (req) => {
       const { data: club } = await admin.from("clubs").select("gobook_service_id").eq("id", clubId).maybeSingle();
       const providerServiceId = Number(club?.gobook_service_id ?? 0);
       if (!providerServiceId) throw new Error("No GoBook service configured for this club");
-      const facilitiesResponse = await apiGet(token, `/Facility/ListForProviderService?providerServiceId=${providerServiceId}&includeInactive=false`);
-      const facilities = rowsFrom(facilitiesResponse).filter((f) => f.isActive && f.providerConsultantId);
-      if (!facilities.length) return json({ error: "GoBook returned no active courts; existing bookings were left unchanged" }, 502);
-      const slots: any[] = [];
-      let completeRead = hasRowsEnvelope(facilitiesResponse);
-      for (const facility of facilities) {
-        const response = await apiGet(token, `/Schedule/ListBookingSlots?providerServiceId=${providerServiceId}&bookingDate=${date}&includeUnavailable=true&providerConsultantId=${facility.providerConsultantId}`);
-        const rows = rowsFrom(response);
-        if (!hasRowsEnvelope(response)) completeRead = false;
-        slots.push(...rows.map((row) => ({ ...row, providerConsultantId: facility.providerConsultantId, consultantName: facility.consultantName })));
+      // GoBook's slot endpoint only returns still-bookable slots, so existing
+      // bookings never appear there. Booking/List returns the provider's real
+      // booking register (all dates), which we filter down to the day asked for.
+      const listResponse = await apiGet(token, `/Booking/List?providerServiceId=${providerServiceId}&bookingDate=${date}`);
+      if (!hasRowsEnvelope(listResponse)) {
+        return json({ error: "GoBook returned an unreadable booking list; existing bookings were left unchanged" }, 502);
       }
-      if (!completeRead) return json({ error: "GoBook returned an incomplete court schedule; existing bookings were left unchanged" }, 502);
-      const booked = slots.filter((slot) => isBookedSlot(slot));
+      const dayBookings = rowsFrom(listResponse).filter((row: any) => {
+        if (String(row?.bookingDate ?? "").slice(0, 10) !== date) return false;
+        if (row?.cancelled) return false;
+        const status = String(row?.status ?? "").toUpperCase();
+        return status !== "C" && status !== "X";
+      });
       const memberRows = (await admin.from("club_members").select("id, user_id, name, gobook_client_id").eq("club_id", clubId).eq("status", "active")).data ?? [];
       const seen = new Set<string>();
       let synced = 0;
       let skipped = 0;
-      for (const slot of booked) {
-        const bookingId = slotBookingIdFrom(slot);
-        if (!bookingId) { skipped++; continue; }
-        const providerCourtName = String(slot.consultantName ?? slot.courtName ?? "");
+      for (const row of dayBookings) {
+        const bookingId = Number(row?.bookingId ?? 0);
+        if (!Number.isInteger(bookingId) || bookingId <= 0) { skipped++; continue; }
+        const providerCourtName = String(row.consultantName ?? row.courtName ?? "");
         const court = courtByName.get(normalizeName(providerCourtName)) || courtByNumber.get(providerCourtName.match(/\d+/)?.[0] ?? "");
-        const startTime = hhmm(slot.startTime ?? slot.start_time);
-        const endTime = hhmm(slot.endTime ?? slot.end_time);
+        const startTime = hhmm(row.startTime ?? row.start_time);
+        const endTime = hhmm(row.endTime ?? row.end_time);
         if (!court || !startTime || !endTime) { skipped++; continue; }
         const externalId = `gobook:${bookingId}`;
-        const bookerName = bookerNameFrom(slot);
+        // clientName arrives as "1004; M 2nd LEAGUE"; pcMappingText is the readable part.
+        const rawName = String(row.pcMappingText ?? row.clientName ?? "").trim();
+        const bookerName = (rawName.includes(";") ? rawName.split(";").slice(1).join(";") : rawName).trim() || null;
         const matchingMembers = bookerName ? memberRows.filter((m: any) => normalizeName(m.name) === normalizeName(bookerName)) : [];
         const member = matchingMembers.length === 1 ? matchingMembers[0] : null;
         const { error } = await admin.from("bookings").upsert({
@@ -640,6 +642,7 @@ Deno.serve(async (req) => {
         seen.add(externalId);
         synced++;
       }
+
       const { data: existing, error: existingError } = await admin.from("bookings").select("id, external_id").eq("club_id", clubId).eq("date", date).eq("source", "gobook").like("external_id", "gobook:%").eq("status", "active");
       if (existingError) throw existingError;
       const stale = (existing ?? []).filter((row: any) => !seen.has(row.external_id)).map((row: any) => row.id);

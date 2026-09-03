@@ -3,9 +3,9 @@
  * or `/bar/counter` for signed-in staff with Bar permission.
  *
  * One screen for the person behind the counter: see every open tab with its
- * running total, open new tabs, add rounds and settle by cash or card machine.
- * Charging a member's account is deliberately NOT here — that always needs the
- * member's own Bar PIN via the Counter Sale flow.
+ * running total, open new tabs, add rounds and settle by cash, card machine or
+ * — for members — straight onto the member's account. Staff can never approve
+ * an account charge themselves: the member enters their own six-digit Bar PIN.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -18,19 +18,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { BarPinDialog } from "@/components/bar/BarPinDialog";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 interface CounterItem { id: string; name: string; price: number; category?: string | null }
 interface CounterTab {
   tab_id: string;
+  token: string;
   guest_name: string;
   status: string;
   opened_at: string;
   total: number;
   lines: { name: string | null; quantity: number; total: number }[];
 }
+
 interface Board {
   club_id: string;
   club_name: string;
@@ -54,6 +58,12 @@ export default function BarCounter() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [memberOpen, setMemberOpen] = useState(false);
+  const [memberNumber, setMemberNumber] = useState("");
+  const [identifying, setIdentifying] = useState(false);
+  const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
+
 
   const clubId: string | null = code ? null : activeClub?.id ?? null;
   const enabled = Boolean(token || clubId);
@@ -170,6 +180,51 @@ export default function BarCounter() {
       setBusy(false);
     }
   }
+
+
+
+  /** Staff picks the member by number; only the member can approve with their PIN. */
+  async function identifyMember() {
+    if (!board || !memberNumber.trim()) return;
+    setIdentifying(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("bar_qr_lookup_member", {
+        _club_id: board.club_id,
+        _number: memberNumber.trim(),
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row?.id) throw new Error("No active member with that number at this club.");
+      if (!row.has_pin) throw new Error("That member has no Bar PIN yet — they can set one in the app under Bar PIN.");
+      setIdentified({ id: row.id, display_name: row.display_name });
+      setMemberOpen(false);
+      setPinOpen(true);
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not find that member number");
+    } finally {
+      setIdentifying(false);
+    }
+  }
+
+  async function chargeMemberAccount({ secret }: { secret: string }) {
+    if (!activeTab || !identified) return;
+    const { error } = await (supabase as any).rpc("bar_qr_charge_guest_tab_member", {
+      _tab_id: activeTab.tab_id,
+      _token: activeTab.token,
+      _club_member_id: identified.id,
+      _pin: secret,
+    });
+    if (error) throw new Error(error.message);
+    setPinOpen(false);
+    setIdentified(null);
+    setMemberNumber("");
+    setActiveTabId(null);
+    await refetch();
+    invalidate();
+    toast.success("Charged to the member's account");
+  }
+
+
 
   // ---- Locked device ----------------------------------------------------
   if (code && !token) {
@@ -350,7 +405,49 @@ export default function BarCounter() {
                 <CreditCard className="w-4 h-4" /> Card machine
               </Button>
             </div>
+            <Button
+              variant="secondary" className="w-full h-11 gap-2"
+              disabled={busy || activeTab.total <= 0}
+              onClick={() => { setMemberNumber(""); setMemberOpen(true); }}
+            >
+              <UserCheck className="w-4 h-4" /> Add to member account
+            </Button>
           </div>
+
+          <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Charge to a member account</DialogTitle>
+                <DialogDescription className="text-xs">
+                  Enter the member's number. They then approve {money(activeTab.total)} with their own six-digit Bar PIN — staff cannot approve it.
+                </DialogDescription>
+              </DialogHeader>
+              <Input
+                inputMode="numeric" autoFocus value={memberNumber}
+                onChange={(e) => setMemberNumber(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && identifyMember()}
+                className="h-12 text-center text-xl tracking-widest"
+                placeholder="Member number"
+              />
+              <Button className="w-full h-11" disabled={!memberNumber.trim() || identifying} onClick={identifyMember}>
+                {identifying ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue"}
+              </Button>
+            </DialogContent>
+          </Dialog>
+
+          {identified && (
+            <BarPinDialog
+              open={pinOpen}
+              onOpenChange={(o) => { setPinOpen(o); if (!o) setIdentified(null); }}
+              clubMemberId={identified.id}
+              memberName={identified.display_name}
+              amountLabel={money(activeTab.total)}
+              mode="counter"
+              pinOnly
+              onVerified={chargeMemberAccount}
+            />
+          )}
+
         </div>
       )}
     </div>

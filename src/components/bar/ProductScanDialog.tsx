@@ -208,33 +208,50 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
           </div>
         )}
 
-        <div className="flex gap-2">
-          <Input
-            value={manual}
-            onChange={(e) => setManual(e.target.value)}
-            placeholder="Type barcode digits"
-            inputMode="numeric"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                match(manual);
-                setManual("");
-              }
-            }}
-          />
+        {manualMode ? (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                value={manual}
+                onChange={(e) => setManual(e.target.value)}
+                placeholder="Type barcode digits"
+                inputMode="numeric"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    match(manual);
+                    setManual("");
+                  }
+                }}
+              />
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  match(manual);
+                  setManual("");
+                }}
+              >
+                Add
+              </Button>
+            </div>
+            {supported && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => { setCameraError(null); setManualMode(false); }}
+              >
+                <Camera className="w-3.5 h-3.5" /> Back to camera
+              </Button>
+            )}
+          </div>
+        ) : (
           <Button
-            variant="secondary"
-            onClick={() => {
-              match(manual);
-              setManual("");
-            }}
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => { stopCamera(); setManualMode(true); }}
           >
-            Add
-          </Button>
-        </div>
-
-        {supported && !manualMode && (
-          <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => { stopCamera(); setManualMode(true); }}>
-            <Keyboard className="w-3.5 h-3.5" /> Enter code manually instead
+            <Keyboard className="w-3.5 h-3.5" /> Enter barcode manually
           </Button>
         )}
       </DialogContent>

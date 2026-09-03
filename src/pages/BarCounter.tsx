@@ -228,11 +228,20 @@ export default function BarCounter() {
     setPinOpen(false);
     setIdentified(null);
     setMemberNumber("");
-    setActiveTabId(null);
+    setCart({});
+    setSettled({ tab: activeTab, method: "member_account", memberName: identified.display_name });
     await refetch();
     invalidate();
     toast.success("Charged to the member's account");
   }
+
+  function finishSettled() {
+    setSettled(null);
+    setActiveTabId(null);
+    refetch();
+    invalidate();
+  }
+
 
 
 

@@ -4086,6 +4086,8 @@ export type Database = {
           created_at: string
           fluss_api_token: string | null
           fluss_default_device_id: string | null
+          gobook_api_password: string | null
+          gobook_api_username: string | null
           id: string
           payment_gateway_credentials: Json | null
           payment_gateway_secret_key: string | null
@@ -4142,6 +4144,8 @@ export type Database = {
           created_at?: string
           fluss_api_token?: string | null
           fluss_default_device_id?: string | null
+          gobook_api_password?: string | null
+          gobook_api_username?: string | null
           id?: string
           payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
@@ -4198,6 +4202,8 @@ export type Database = {
           created_at?: string
           fluss_api_token?: string | null
           fluss_default_device_id?: string | null
+          gobook_api_password?: string | null
+          gobook_api_username?: string | null
           id?: string
           payment_gateway_credentials?: Json | null
           payment_gateway_secret_key?: string | null
@@ -4628,6 +4634,9 @@ export type Database = {
           gateway_fee_pct_card_intl: number | null
           gateway_fee_pct_card_local: number | null
           gateway_fee_pct_wallet: number | null
+          gobook_api_enabled: boolean
+          gobook_provider_id: number | null
+          gobook_service_id: number | null
           gobook_url: string | null
           honesty_bar_enabled: boolean
           host_cleaning_fee_cents_per_day: number
@@ -4753,6 +4762,9 @@ export type Database = {
           gateway_fee_pct_card_intl?: number | null
           gateway_fee_pct_card_local?: number | null
           gateway_fee_pct_wallet?: number | null
+          gobook_api_enabled?: boolean
+          gobook_provider_id?: number | null
+          gobook_service_id?: number | null
           gobook_url?: string | null
           honesty_bar_enabled?: boolean
           host_cleaning_fee_cents_per_day?: number
@@ -4878,6 +4890,9 @@ export type Database = {
           gateway_fee_pct_card_intl?: number | null
           gateway_fee_pct_card_local?: number | null
           gateway_fee_pct_wallet?: number | null
+          gobook_api_enabled?: boolean
+          gobook_provider_id?: number | null
+          gobook_service_id?: number | null
           gobook_url?: string | null
           honesty_bar_enabled?: boolean
           host_cleaning_fee_cents_per_day?: number

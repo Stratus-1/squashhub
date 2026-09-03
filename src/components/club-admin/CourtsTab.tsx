@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { GoBookApiCard } from "./GoBookApiCard";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { EditLock, useEditLock } from "./setup/EditLock";
 
@@ -1050,21 +1051,24 @@ function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }
       )}
 
       {enabled && form.provider === "gobook" && (
-        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex gap-2">
-          <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-[11px] text-muted-foreground">
-              Your club uses{" "}
-              <a href="https://www.gobook.co.za" target="_blank" rel="noopener noreferrer" className="underline text-primary font-medium">GoBook</a>{" "}
-              for court bookings. SquashHub syncs with GoBook so members can book courts here.
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Members must first register directly on{" "}
-              <a href="https://www.gobook.co.za" target="_blank" rel="noopener noreferrer" className="underline text-primary font-medium">GoBook</a>{" "}
-              and then go to <strong>My Account</strong> on this app to save their GoBook credentials. Once linked, they can make bookings through SquashHub.
-            </p>
+        <>
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex gap-2">
+            <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-[11px] text-muted-foreground">
+                Your club uses{" "}
+                <a href="https://www.gobook.co.za" target="_blank" rel="noopener noreferrer" className="underline text-primary font-medium">GoBook</a>{" "}
+                for court bookings. SquashHub syncs with GoBook so members can book courts here.
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {(club as any).gobook_api_enabled
+                  ? "API booking is active: members book straight from SquashHub and never enter GoBook credentials."
+                  : "Until the API connection below is enabled, members must save their own GoBook login under My Account — and GoBook's new captcha may block that."}
+              </p>
+            </div>
           </div>
-        </div>
+          <GoBookApiCard clubId={clubId} club={club} />
+        </>
       )}
 
       {enabled && (

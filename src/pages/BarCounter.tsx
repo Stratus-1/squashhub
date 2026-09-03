@@ -65,6 +65,12 @@ export default function BarCounter() {
   const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [settled, setSettled] = useState<{
+    tab: CounterTab;
+    method: "member_account" | "cash" | "terminal";
+    memberName?: string;
+  } | null>(null);
+
 
 
   const clubId: string | null = code ? null : activeClub?.id ?? null;

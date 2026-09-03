@@ -141,7 +141,11 @@ const providerBookingIdFrom = (value: any): number | null => {
     const candidate = queue.shift();
     if (!candidate || typeof candidate !== "object" || seen.has(candidate)) continue;
     seen.add(candidate);
-    const nested = bookingIdFrom(candidate);
+    // Nested generic `id` values may be schedule-time ids. Only accept fields
+    // that explicitly identify a booking while walking unknown envelopes.
+    const nested = [candidate.bookingId, candidate.BookingId, candidate.booking_id]
+      .map(Number)
+      .find((id) => Number.isInteger(id) && id > 0) ?? null;
     if (nested) return nested;
     queue.push(...(Array.isArray(candidate) ? candidate : Object.values(candidate)));
   }

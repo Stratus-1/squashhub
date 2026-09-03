@@ -12,14 +12,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Store, Loader2 } from "lucide-react";
+import { Store, Loader2, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export function CounterModeCard({ clubId }: { clubId?: string | null }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [pin, setPin] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const { data: status } = useQuery({
+  const { data: status, refetch: refetchStatus } = useQuery({
     queryKey: ["bar-counter-status", clubId],
     enabled: !!clubId,
     queryFn: async () => {
@@ -38,6 +40,7 @@ export function CounterModeCard({ clubId }: { clubId?: string | null }) {
       if (error) throw error;
       setPin("");
       qc.invalidateQueries({ queryKey: ["bar-counter-status"] });
+      await refetchStatus();
       toast.success("Counter PIN saved — unlocked devices were signed out");
     } catch (e: any) {
       toast.error(e.message ?? "Could not save the counter PIN");

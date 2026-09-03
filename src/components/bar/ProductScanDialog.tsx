@@ -56,6 +56,12 @@ export function ProductScanDialog({ open, onOpenChange, items, onItem, onCode }:
     const now = Date.now();
     if (lastRef.current.code === code && now - lastRef.current.at < 1500) return;
     lastRef.current = { code, at: now };
+    if (onCode) {
+      // Raw capture: hand the code back and close (camera stopped via onOpenChange).
+      onOpenChange(false);
+      onCode(code);
+      return;
+    }
     const item = items.find((i) => (i.barcode ?? "").trim() === code);
     if (item) {
       onItem(item);

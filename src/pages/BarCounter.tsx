@@ -224,7 +224,7 @@ export default function BarCounter() {
     toast.success("Charged to the member's account");
   }
 
-  }
+
 
   // ---- Locked device ----------------------------------------------------
   if (code && !token) {

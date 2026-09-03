@@ -293,7 +293,7 @@ export default function BarCounter() {
 
   // ---- Board ------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-64">
       <SEO title="Bar counter" description="Open tabs at the bar counter" path="/bar/counter" noIndex />
 
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
@@ -443,7 +443,7 @@ export default function BarCounter() {
             })}
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-3 space-y-2">
+          <div className="fixed bottom-16 left-0 right-0 z-40 border-t bg-background p-3 space-y-2">
             <Button className="w-full h-12 gap-2" disabled={cartTotal <= 0 || busy} onClick={addRound}>
               <Receipt className="w-4 h-4" />
               Add {money(cartTotal)} to {activeTab.guest_name}'s tab

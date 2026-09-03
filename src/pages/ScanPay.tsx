@@ -508,7 +508,7 @@ export default function ScanPay() {
     );
   }
 
-  const showLoginPrompt = !userId && !guestChosen;
+  const showLoginPrompt = !guestChosen;
 
   return (
     <div className="min-h-screen bg-background pb-28">

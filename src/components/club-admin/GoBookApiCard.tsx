@@ -167,9 +167,9 @@ export function GoBookApiCard({ clubId, club }: { clubId: string; club: any }) {
       <div className="rounded-lg border border-primary/30 bg-primary/5 p-2 flex gap-2">
         <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-foreground">
-          Request API credentials from GoBook (support@gobook.co.za). Availability lookup for
-          live slot grids still needs GoBook's slot endpoint — booking, court list and client
-          lookup already run through the API.
+          Request API credentials from GoBook (support@gobook.co.za). Court list, available
+          dates, live slot grids, client lookup and booking all run through the official API —
+          members no longer need their own GoBook login.
         </p>
       </div>
     </Card>

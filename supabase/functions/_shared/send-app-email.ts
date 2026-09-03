@@ -22,7 +22,14 @@ export interface SendAppEmailArgs {
 export type SendAppEmailResult =
   | { ok: true; sent: true }
   | { ok: true; sent: false; reason: 'recipient_suppressed' }
-  | { ok: false; error: string }
+  | { ok: false; error: string; code?: string; rateLimited?: boolean; retryAfterSeconds?: number }
+
+/** Managed email API rate limits are transient — wait and retry a couple of times. */
+const MAX_RATE_LIMIT_RETRIES = 2
+const MAX_RETRY_WAIT_SECONDS = 30
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
 
 function admin() {
   return createClient(
@@ -43,46 +50,65 @@ async function logSend(row: Record<string, unknown>) {
 export async function sendAppEmail(args: SendAppEmailArgs): Promise<SendAppEmailResult> {
   const { templateName, recipientEmail, templateData, idempotencyKey, clubId, replyTo } = args
 
-  try {
-    const result = await sendTemplateEmail(templateName, recipientEmail, {
-      templateData: templateData as Record<string, any> | undefined,
-      idempotencyKey,
-      replyTo,
-    })
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const result = await sendTemplateEmail(templateName, recipientEmail, {
+        templateData: templateData as Record<string, any> | undefined,
+        idempotencyKey,
+        replyTo,
+      })
 
-    if (!result.sent) {
+      if (!result.sent) {
+        await logSend({
+          club_id: clubId ?? null,
+          template_name: templateName,
+          recipient_email: recipientEmail,
+          status: 'suppressed',
+        })
+        return { ok: true, sent: false, reason: 'recipient_suppressed' }
+      }
+
       await logSend({
         club_id: clubId ?? null,
         template_name: templateName,
         recipient_email: recipientEmail,
-        status: 'suppressed',
+        status: 'sent',
       })
-      return { ok: true, sent: false, reason: 'recipient_suppressed' }
-    }
-
-    await logSend({
-      club_id: clubId ?? null,
-      template_name: templateName,
-      recipient_email: recipientEmail,
-      status: 'sent',
-    })
-    return { ok: true, sent: true }
-  } catch (error) {
-    const message =
-      error instanceof EmailAPIError
-        ? `${error.code ?? 'email_error'}: ${error.message}`
+      return { ok: true, sent: true }
+    } catch (error) {
+      const apiError = error instanceof EmailAPIError ? error : null
+      const rateLimited = apiError?.status === 429
+      const retryAfterSeconds = Math.min(apiError?.retryAfterSeconds ?? 60, MAX_RETRY_WAIT_SECONDS)
+      const message = apiError
+        ? `${apiError.code ?? 'email_error'}: ${apiError.message}`
         : error instanceof Error
           ? error.message
           : String(error)
 
-    await logSend({
-      club_id: clubId ?? null,
-      template_name: templateName,
-      recipient_email: recipientEmail,
-      status: 'failed',
-      error_message: message.slice(0, 1000),
-    })
-    console.error('App email send failed', { templateName, message })
-    return { ok: false, error: message }
+      // Transient rate limiting: wait the advised window and try again before
+      // giving up, so a burst of invitations is not silently lost.
+      if (rateLimited && attempt < MAX_RATE_LIMIT_RETRIES) {
+        console.warn('App email rate limited, retrying', { templateName, attempt, retryAfterSeconds })
+        await sleep(retryAfterSeconds * 1000)
+        continue
+      }
+
+      await logSend({
+        club_id: clubId ?? null,
+        template_name: templateName,
+        recipient_email: recipientEmail,
+        status: 'failed',
+        error_message: message.slice(0, 1000),
+      })
+      console.error('App email send failed', { templateName, message, rateLimited })
+      return {
+        ok: false,
+        error: message,
+        code: apiError?.code ?? undefined,
+        rateLimited,
+        retryAfterSeconds: rateLimited ? retryAfterSeconds : undefined,
+      }
+    }
   }
 }
+

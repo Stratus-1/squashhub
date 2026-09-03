@@ -402,12 +402,17 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           remainder = Math.max(0, remaining);
         }
 
+        // Partly-settled fees are reduced instead of marked paid, so the
+        // AFTER UPDATE OF paid trigger never fires for them — post the bank
+        // receipt for those amounts here so the cash is never lost.
+        let partialSettled = 0;
         for (const fee of feesToMark) {
           const deduction = (fee as any).__deduction;
           if (deduction != null && deduction < Number(fee.amount) - 0.001) {
             await fromExt("club_member_fee_payments")
               .update({ amount: Number(fee.amount) - deduction })
               .eq("id", fee.id);
+            partialSettled += Number(deduction);
           } else {
             await fromExt("club_member_fee_payments")
               .update({ paid: true, paid_at: new Date().toISOString() })
@@ -416,6 +421,15 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           postedFromFees = true;
         }
         queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+
+        if (partialSettled > 0) {
+          const memberName = getMemberName(tx.club_member_id);
+          const desc = `Part payment received: ${tx.description || "EFT"} — ${memberName}`;
+          await postJournal(clubId, [
+            { account: "bank_current", debit: partialSettled, description: desc, member_id: tx.club_member_id },
+            { account: "debtors", credit: partialSettled, description: desc, member_id: tx.club_member_id },
+          ]);
+        }
       }
 
       // Fallback: if no fee rows could be matched (e.g. ad-hoc top-ups, light fees),
@@ -430,6 +444,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           { account: "member_credits", credit: amt, description: desc, member_id: tx.club_member_id },
         ]);
       }
+
 
       toast.success("Payment confirmed & recorded as income");
       queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });

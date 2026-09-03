@@ -83,6 +83,14 @@ Deno.serve(async (req) => {
     },
   })
 
-  if (!result.ok) return json({ error: 'Failed to send invitation email' }, 502)
+  if (!result.ok) {
+    // 429 tells the caller this is a transient throttle worth retrying later,
+    // and the reason is returned so organisers can see why an invite failed.
+    return json(
+      { error: 'Failed to send invitation email', reason: result.error, code: result.code, retry_after: result.retryAfterSeconds },
+      result.rateLimited ? 429 : 502,
+    )
+  }
+
   return json({ success: true, sent: result.sent })
 })

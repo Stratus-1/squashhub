@@ -402,7 +402,49 @@ export default function BarCounter() {
                 <CreditCard className="w-4 h-4" /> Card machine
               </Button>
             </div>
+            <Button
+              variant="secondary" className="w-full h-11 gap-2"
+              disabled={busy || activeTab.total <= 0}
+              onClick={() => { setMemberNumber(""); setMemberOpen(true); }}
+            >
+              <UserCheck className="w-4 h-4" /> Add to member account
+            </Button>
           </div>
+
+          <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Charge to a member account</DialogTitle>
+                <DialogDescription className="text-xs">
+                  Enter the member's number. They then approve {money(activeTab.total)} with their own six-digit Bar PIN — staff cannot approve it.
+                </DialogDescription>
+              </DialogHeader>
+              <Input
+                inputMode="numeric" autoFocus value={memberNumber}
+                onChange={(e) => setMemberNumber(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && identifyMember()}
+                className="h-12 text-center text-xl tracking-widest"
+                placeholder="Member number"
+              />
+              <Button className="w-full h-11" disabled={!memberNumber.trim() || identifying} onClick={identifyMember}>
+                {identifying ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue"}
+              </Button>
+            </DialogContent>
+          </Dialog>
+
+          {identified && (
+            <BarPinDialog
+              open={pinOpen}
+              onOpenChange={(o) => { setPinOpen(o); if (!o) setIdentified(null); }}
+              clubMemberId={identified.id}
+              memberName={identified.display_name}
+              amountLabel={money(activeTab.total)}
+              mode="counter"
+              pinOnly
+              onVerified={chargeMemberAccount}
+            />
+          )}
+
         </div>
       )}
     </div>

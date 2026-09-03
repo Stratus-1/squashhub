@@ -51,17 +51,27 @@ async function getToken(username: string, password: string): Promise<string> {
 }
 
 async function apiGet(token: string, path: string) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
   if (res.status === 204) return null;
   const text = await res.text();
-  if (!res.ok) throw new Error(`GoBook ${path} failed (${res.status})`);
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
+  if (!res.ok) throw new Error(`GoBook ${path} failed (${res.status}): ${text}`);
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+async function apiPost(token: string, path: string, body: Record<string, unknown>) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let parsed: any = null;
+  try { parsed = JSON.parse(text); } catch { /* provider may return an empty body */ }
+  if (!res.ok) throw new Error(`GoBook ${path} failed (${res.status}): ${text}`);
+  if (parsed && parsed.success === false) {
+    throw new Error(parsed.globalMessages?.join(", ") || parsed.messages?.join(", ") || `GoBook rejected ${path}`);
   }
+  return parsed;
 }
 
 Deno.serve(async (req) => {
@@ -317,26 +327,32 @@ Deno.serve(async (req) => {
       const r = await resolveMyClient();
       if (!r.clientId) return json({ success: true, clientId: null, bookings: [] });
       const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}`)) ?? [];
-      const hhmm = (n: number) =>
-        `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
+      const hhmm = (n: number) => `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
       return json({
         success: true,
         clientId: r.clientId,
-        bookings: (list as any[])
-          .filter((b) => !b.cancelled)
-          .map((b) => ({
-            bookingId: b.bookingId,
-            date: String(b.bookingDate ?? "").slice(0, 10),
-            startTime: hhmm(b.startTime),
-            endTime: hhmm(b.endTime),
-            courtId: b.providerConsultantId,
-            courtName: b.consultantName ?? null,
-            status: b.status,
-          })),
+        bookings: (list as any[]).filter((b) => !b.cancelled && String(b.status ?? "").toLowerCase() !== "c").map((b) => ({
+          bookingId: b.bookingId,
+          date: String(b.bookingDate ?? "").slice(0, 10),
+          startTime: hhmm(b.startTime),
+          endTime: hhmm(b.endTime),
+          courtId: b.providerConsultantId,
+          courtName: b.consultantName ?? null,
+          status: b.status,
+        })),
       });
     }
 
-
+    if (action === "cancel") {
+      const bookingId = Number(payload.booking_id);
+      if (!Number.isInteger(bookingId) || bookingId <= 0) return json({ error: "booking_id must be a positive integer" }, 400);
+      const mine = await resolveMyClient();
+      if (!mine.clientId) return json({ error: "Your SquashHub profile is not linked to a GoBook account yet", needsLink: true }, 409);
+      const requestedClientId = payload.client_id ? Number(payload.client_id) : mine.clientId;
+      if (requestedClientId !== mine.clientId && !isAdmin && !isSuper) return json({ error: "You can only cancel your own GoBook bookings" }, 403);
+      const result = await apiPost(token, "/Booking/Action", { bookingId, action: "cancel" });
+      return json({ success: true, bookingId, result });
+    }
 
     // Courts (GoBook "facilities") for the club's bookable service.
     if (action === "list_courts") {

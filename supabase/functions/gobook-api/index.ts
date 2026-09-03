@@ -177,6 +177,167 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---- Member <-> GoBook client mapping -------------------------------
+    const norm = (s: unknown) =>
+      String(s ?? "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const searchClients = async (term: string) => {
+      const q = encodeURIComponent(term.trim());
+      if (!q) return [] as any[];
+      return ((await apiGet(token, `/Client/Search?searchText=${q}`)) ?? []) as any[];
+    };
+
+    const clientFullName = (c: any) =>
+      `${c.clientFirstName ?? ""} ${c.clientLastName ?? ""}`.trim();
+
+    /** Auto-link every unmapped club member whose name matches exactly one GoBook client. */
+    if (action === "match_clients") {
+      if (!isAdmin && !isSuper) return json({ error: "Admin access required" }, 403);
+      const { data: members } = await admin
+        .from("club_members")
+        .select("id, name, email, gobook_client_id, gobook_client_name")
+        .eq("club_id", clubId)
+        .eq("status", "active");
+
+      const linked: any[] = [];
+      const unmatched: any[] = [];
+      const ambiguous: any[] = [];
+
+      for (const m of members ?? []) {
+        if (m.gobook_client_id) continue;
+        const surname = String(m.name ?? "").trim().split(/\s+/).slice(-1)[0] ?? "";
+        const candidates = surname.length >= 2 ? await searchClients(surname) : [];
+        const active = candidates.filter((c) => c.isActive !== false);
+        const exact = active.filter((c) => norm(clientFullName(c)) === norm(m.name));
+
+        if (exact.length === 1) {
+          await admin
+            .from("club_members")
+            .update({
+              gobook_client_id: exact[0].clientId,
+              gobook_client_name: clientFullName(exact[0]),
+              gobook_linked_at: new Date().toISOString(),
+            })
+            .eq("id", m.id);
+          linked.push({ memberId: m.id, name: m.name, clientId: exact[0].clientId });
+        } else if (exact.length > 1 || active.length) {
+          ambiguous.push({
+            memberId: m.id,
+            name: m.name,
+            candidates: (exact.length ? exact : active).slice(0, 8).map((c) => ({
+              clientId: c.clientId,
+              name: clientFullName(c),
+            })),
+          });
+        } else {
+          unmatched.push({ memberId: m.id, name: m.name });
+        }
+      }
+
+      return json({ success: true, linked, ambiguous, unmatched });
+    }
+
+    /** Admin manually links (or clears) a member's GoBook client id. */
+    if (action === "link_member") {
+      if (!isAdmin && !isSuper) return json({ error: "Admin access required" }, 403);
+      const memberId = String(payload.club_member_id ?? "");
+      if (!memberId) return json({ error: "club_member_id is required" }, 400);
+      const clientId = payload.gobook_client_id ? Number(payload.gobook_client_id) : null;
+      const { error } = await admin
+        .from("club_members")
+        .update({
+          gobook_client_id: clientId,
+          gobook_client_name: clientId ? (payload.gobook_client_name ?? null) : null,
+          gobook_linked_at: clientId ? new Date().toISOString() : null,
+        })
+        .eq("id", memberId)
+        .eq("club_id", clubId);
+      if (error) return json({ error: error.message }, 400);
+      return json({ success: true });
+    }
+
+    /** Resolve the calling member's GoBook client id (auto-links on a single exact match). */
+    const resolveMyClient = async () => {
+      let q = admin
+        .from("club_members")
+        .select("id, name, email, gobook_client_id, gobook_client_name")
+        .eq("club_id", clubId);
+      q = payload.club_member_id
+        ? q.eq("id", String(payload.club_member_id))
+        : q.eq("user_id", user.id);
+      const { data: me } = await q.maybeSingle();
+      if (!me) return { member: null, clientId: null, candidates: [] as any[] };
+      if (me.gobook_client_id) {
+        return { member: me, clientId: Number(me.gobook_client_id), candidates: [] };
+      }
+      const surname = String(me.name ?? "").trim().split(/\s+/).slice(-1)[0] ?? "";
+      const candidates = (surname.length >= 2 ? await searchClients(surname) : []).filter(
+        (c) => c.isActive !== false,
+      );
+      const exact = candidates.filter((c) => norm(clientFullName(c)) === norm(me.name));
+      if (exact.length === 1) {
+        await admin
+          .from("club_members")
+          .update({
+            gobook_client_id: exact[0].clientId,
+            gobook_client_name: clientFullName(exact[0]),
+            gobook_linked_at: new Date().toISOString(),
+          })
+          .eq("id", me.id);
+        return { member: me, clientId: Number(exact[0].clientId), candidates: [] };
+      }
+      return {
+        member: me,
+        clientId: null,
+        candidates: candidates.slice(0, 8).map((c) => ({
+          clientId: c.clientId,
+          name: clientFullName(c),
+        })),
+      };
+    };
+
+    if (action === "my_client") {
+      const r = await resolveMyClient();
+      return json({
+        success: true,
+        clientId: r.clientId,
+        clientName: (r.member as any)?.gobook_client_name ?? null,
+        memberId: (r.member as any)?.id ?? null,
+        candidates: r.candidates,
+      });
+    }
+
+    if (action === "my_bookings") {
+      const r = await resolveMyClient();
+      if (!r.clientId) return json({ success: true, clientId: null, bookings: [] });
+      const list = (await apiGet(token, `/Booking/List?clientId=${r.clientId}`)) ?? [];
+      const hhmm = (n: number) =>
+        `${String(Math.floor(Number(n) / 100)).padStart(2, "0")}:${String(Number(n) % 100).padStart(2, "0")}`;
+      return json({
+        success: true,
+        clientId: r.clientId,
+        bookings: (list as any[])
+          .filter((b) => !b.cancelled)
+          .map((b) => ({
+            bookingId: b.bookingId,
+            date: String(b.bookingDate ?? "").slice(0, 10),
+            startTime: hhmm(b.startTime),
+            endTime: hhmm(b.endTime),
+            courtId: b.providerConsultantId,
+            courtName: b.consultantName ?? null,
+            status: b.status,
+          })),
+      });
+    }
+
+
+
     // Courts (GoBook "facilities") for the club's bookable service.
     if (action === "list_courts") {
       const { data: club } = await admin

@@ -439,7 +439,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0 border-emerald-300 text-emerald-700">NSA Live</Badge>
                 )}
               </div>
-              <div className="flex items-center gap-1 flex-wrap lg:flex-shrink-0">
+              <div className="flex items-center gap-1 flex-wrap w-full lg:w-auto lg:justify-end min-w-0">
                 <AssocFillUpToggle assoc={a} clubDefault={clubDefaultFillUp} />
                 {(() => {
                   const hasTeams = leagues.some((l: any) => l.association_id === a.id);

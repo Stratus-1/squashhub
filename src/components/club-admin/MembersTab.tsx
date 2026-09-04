@@ -1445,6 +1445,34 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
   const [leagueAssocs, setLeagueAssocs] = useState<ClassifiedAssoc[]>([]);
   const [tickedAssociations, setTickedAssociations] = useState<Record<string, boolean>>({});
   const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
+  // Which team (league) the member should be placed in per association. Placing a
+  // member in a submitted team is what puts their association fee on the club's bill.
+  const [teamDrafts, setTeamDrafts] = useState<Record<string, string>>({});
+  const [registeredLeagueIds, setRegisteredLeagueIds] = useState<string[]>([]);
+  const qcEdit = useQueryClient();
+
+  // Association teams this club runs, newest season first, for the team picker.
+  const { data: assocTeams = [] } = useQuery({
+    queryKey: ["club-association-teams", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("leagues")
+        .select("id, name, association_id, season_year, category, level, submitted_to_association_at")
+        .eq("club_id", clubId)
+        .is("archived_at", null);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+  const latestSeasonFor = (associationId: string) => {
+    const years = assocTeams.filter((t) => t.association_id === associationId).map((t) => t.season_year).filter((y) => y != null) as number[];
+    return years.length ? Math.max(...years) : null;
+  };
+  const teamsFor = (associationId: string) => {
+    const season = latestSeasonFor(associationId);
+    return assocTeams
+      .filter((t) => t.association_id === associationId && (season == null || t.season_year === season))
+      .sort((a, b) => String(a.category ?? "").localeCompare(String(b.category ?? "")) || (a.level ?? 99) - (b.level ?? 99));
+  };
 
   const [form, setForm] = useState({
     name: member.name || member.profiles?.name || "",
@@ -1490,11 +1518,13 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
 
       const numberByAssoc: Record<string, string> = {};
       const regIdsByAssoc: Record<string, string[]> = {};
+      const regLeagueIds: string[] = [];
       for (const r of regs) {
         const aid = r.league?.association_id as string | undefined;
         if (!aid) continue;
         regIdsByAssoc[aid] ||= [];
         regIdsByAssoc[aid].push(r.id);
+        if (r.league?.id) regLeagueIds.push(r.league.id as string);
         const num = (r.league_association_number || "").trim();
         if (num && !numberByAssoc[aid]) numberByAssoc[aid] = num;
       }
@@ -1552,6 +1582,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
         };
       });
 
+      setRegisteredLeagueIds(regLeagueIds);
       setLeagueAssocs(classified);
       setTickedAssociations((prev) => {
         const next = { ...prev };

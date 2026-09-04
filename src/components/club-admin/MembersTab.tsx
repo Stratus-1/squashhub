@@ -192,7 +192,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, isSuperAdmin }: {
+function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
@@ -206,8 +206,10 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
   onAssignNumber?: (member: ClubMember) => void;
   numberLabel?: string;
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
+  onAffiliate?: () => void;
   isSuperAdmin?: boolean;
 }) {
+
   const navigate = useNavigate();
   const { switchMember } = useMemberContext();
   const displayName = m.name || m.profiles?.name || "—";

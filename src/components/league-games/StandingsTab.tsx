@@ -157,7 +157,7 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
   const standingsQueries = useQuery({
     queryKey: ["nsa-standings", seasonYear, leaguesToFetch.map((l) => l.id).join(",")],
     queryFn: async () => {
-      const out: Array<{ league: typeof leaguesToFetch[number]; result: StandingsResult | null; error?: string }> = [];
+      const out: Array<{ league: typeof leaguesToFetch[number]; result: StandingsResult | null; error?: string; notice?: string }> = [];
       // Fetch in parallel
       const settled = await Promise.allSettled(
         leaguesToFetch.map(async (l) => {
@@ -173,6 +173,13 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
           });
           if (error) throw new Error(error.message || "Standings fetch failed");
           if (data?.error) throw new Error(data.error);
+          if (data?.not_published) {
+            return {
+              league: l,
+              result: null,
+              notice: (data.message as string) || "Not published by NSA yet.",
+            };
+          }
           return { league: l, result: data?.data as StandingsResult };
         })
       );
@@ -283,7 +290,7 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
         </div>
       )}
 
-      {!standingsQueries.isLoading && (standingsQueries.data || []).map(({ league, result, error }) => (
+      {!standingsQueries.isLoading && (standingsQueries.data || []).map(({ league, result, error, notice }) => (
         <div key={league.id}>
           <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
             {league.category} {league.number}
@@ -295,6 +302,10 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
           {error ? (
             <Card className="p-4 text-xs text-destructive flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+            </Card>
+          ) : notice ? (
+            <Card className="p-4 text-xs text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {notice}
             </Card>
           ) : !result || result.rows.length === 0 ? (
             <Card className="p-4 text-xs text-muted-foreground">No standings published yet for this division.</Card>

@@ -766,7 +766,15 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         </div>
       )}
 
-      <SetupStepNav steps={steps} value={step} onChange={setStep} />
+      <SetupStepNav
+        steps={steps}
+        value={step}
+        onChange={setStep}
+        nextDisabled={activeTeamsIsSystem}
+        nextHint={activeTeamsIsSystem
+          ? `Rounds & fixtures for ${activeTeamsAssocName ?? "this System League"} are created and published by the association — no Step 3 needed here.`
+          : undefined}
+      />
 
 
       {/* Allocate Players Dialog (per association+gender group) */}

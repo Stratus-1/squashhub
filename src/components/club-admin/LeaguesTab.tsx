@@ -3294,7 +3294,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
       };
     };
 
-    const nextMen = makeAllocator("men");
+    const nextMen = makeAllocator("mens");
     const nextLadies = makeAllocator("ladies");
     const nextMixed = makeAllocator("mixed");
 

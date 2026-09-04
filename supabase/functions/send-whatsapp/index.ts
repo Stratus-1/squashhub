@@ -68,6 +68,34 @@ function json(body: unknown, status = 200) {
   });
 }
 
+
+/**
+ * Ask whatsapp-templates-sync to create/submit templates on Twilio + Meta.
+ * Fire-and-forget: a send must never fail because registration is lagging.
+ */
+async function requestTemplateSync(
+  admin: ReturnType<typeof createClient>,
+  supabaseUrl: string,
+  keys: string[],
+) {
+  try {
+    const { data: secretRow } = await admin
+      .from("app_settings")
+      .select("value")
+      .eq("key", "whatsapp_templates_internal_secret")
+      .maybeSingle();
+    const secret = (secretRow as { value?: string } | null)?.value;
+    if (!secret) return;
+    await fetch(`${supabaseUrl}/functions/v1/whatsapp-templates-sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-internal-secret": secret },
+      body: JSON.stringify({ keys }),
+    });
+  } catch (e) {
+    console.error("template auto-sync failed", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -119,6 +147,23 @@ Deno.serve(async (req) => {
       if (tpl?.content_sid && tpl.approval_status === "approved") {
         contentSid = tpl.content_sid;
         templateOrder = Array.isArray(tpl.variables) ? (tpl.variables as string[]) : [];
+      }
+
+      // Self-healing: a template that is missing or not approved yet is pushed
+      // to Twilio/Meta straight away (fire-and-forget) so it is registered
+      // before the next send, and this send falls back to the generic
+      // 'club_notice' template — which every dynamic message fits inside.
+      if (!contentSid) {
+        if (tpl) void requestTemplateSync(admin, supabaseUrl, [payload.template_key]);
+        const { data: generic } = await admin
+          .from("whatsapp_templates")
+          .select("content_sid, approval_status, variables")
+          .eq("key", "club_notice")
+          .maybeSingle();
+        if (generic?.content_sid && generic.approval_status === "approved" && payload.body) {
+          contentSid = generic.content_sid;
+          templateOrder = Array.isArray(generic.variables) ? (generic.variables as string[]) : [];
+        }
       }
       // Not approved yet: fall back to free-form text, which Twilio only
       // delivers inside the 24h customer-service window.

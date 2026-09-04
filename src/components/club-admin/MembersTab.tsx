@@ -1037,8 +1037,10 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     onAssignNumber={handleAssignNumber}
                     numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
                     onChangeStatus={handleChangeStatus}
+                    onAffiliate={() => setAffiliateMember(m)}
                     isSuperAdmin={isSuperAdmin}
                   />
+
 
                 ))}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}

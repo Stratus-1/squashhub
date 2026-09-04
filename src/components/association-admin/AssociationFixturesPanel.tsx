@@ -87,6 +87,35 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
     },
   });
 
+  const teamCodes = useMemo(
+    () => Array.from(new Set(fixtures.flatMap((f) => [f.home_team_code, f.away_team_code]).filter(Boolean))),
+    [fixtures]
+  );
+
+  const { data: clubNameMap = {} } = useQuery({
+    queryKey: ["assoc-fixture-club-names", association?.id, JSON.stringify(teamCodes.sort())],
+    enabled: !!association?.id && teamCodes.length > 0,
+    queryFn: async () => {
+      const out: ClubNameMap = {};
+      const pageSize = 200;
+      for (let from = 0; from < teamCodes.length; from += pageSize) {
+        const slice = teamCodes.slice(from, from + pageSize);
+        const { data, error } = await supabase
+          .from("leagues")
+          .select("nsa_team_code, clubs(name)")
+          .in("nsa_team_code", slice)
+          .not("nsa_team_code", "is", null);
+        if (error) throw error;
+        for (const row of data || []) {
+          const code = row.nsa_team_code as string;
+          const clubName = (row.clubs as any)?.name;
+          if (clubName && !out[code]) out[code] = clubName;
+        }
+      }
+      return out;
+    },
+  });
+
   const { seasons: openSeasons } = useAssociationSeasons(association?.id ?? null);
 
   // Season list = seasons that already have fixtures + seasons declared by the

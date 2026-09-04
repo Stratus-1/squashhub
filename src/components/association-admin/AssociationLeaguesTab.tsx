@@ -23,6 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronRight, Search, Trophy, UserPlus, Plus, CalendarPlus, Building2, ScrollText } from "lucide-react";
 import { usePlatformAssociation } from "@/hooks/use-platform-association";
 import { AssociationFixturesPanel } from "@/components/association-admin/AssociationFixturesPanel";
+import { AssociationSeasonDialog } from "@/components/association-admin/AssociationSeasonDialog";
+import { useAssociationSeasons } from "@/hooks/use-association-seasons";
 import AssociationRulesTab from "@/components/super-admin/league/AssociationRulesTab";
 import { toast } from "sonner";
 
@@ -55,6 +57,7 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
   const [addTeamClub, setAddTeamClub] = useState<{ id: string; name: string } | null>(null);
   const [addPlayerTeam, setAddPlayerTeam] = useState<AssocTeam | null>(null);
   const [fixturesFor, setFixturesFor] = useState<{ label: string; teams: AssocTeam[] } | null>(null);
+  const [seasonsOpen, setSeasonsOpen] = useState(false);
 
   const { data: teams = [], isLoading } = useQuery({
     queryKey: ["assoc-league-teams", clubId],
@@ -84,7 +87,12 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
   const platformAssocId = platformAssoc?.id ?? null;
 
 
-  const seasons = useMemo(() => seasonsOf(teams), [teams]);
+  const { seasons: openSeasons } = useAssociationSeasons(platformAssocId);
+  const seasons = useMemo(() => {
+    const fromTeams = seasonsOf(teams);
+    const declared = openSeasons.map((s) => s.season_year);
+    return Array.from(new Set([...fromTeams, ...declared])).sort((a, b) => b - a);
+  }, [teams, openSeasons]);
 
   const currentYear = new Date().getFullYear();
   useEffect(() => {
@@ -184,6 +192,9 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
                 </button>
               ))}
             </div>
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setSeasonsOpen(true)}>
+              <CalendarPlus className="h-3.5 w-3.5 mr-1" /> Seasons
+            </Button>
             <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setAddTeamClub(clubs[0] ?? null)}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Add team
             </Button>

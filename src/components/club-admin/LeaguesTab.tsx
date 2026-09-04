@@ -3289,7 +3289,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     const nextMixed = makeAllocator("mixed");
 
     const menEntries = sortedMen.map(label => ({
-      name: `Men's ${label} League ${year}`, code: makeAllocator("men")(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Men's ${label} League ${year}`, code: nextMen(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
     const ladiesEntries = sortedLadies.map(label => ({

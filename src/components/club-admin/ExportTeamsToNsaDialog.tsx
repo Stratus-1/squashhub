@@ -69,6 +69,9 @@ const csvEscape = (v: string | number | null | undefined) => {
 
 export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange }: Props) {
   const [copied, setCopied] = useState<"csv" | "email" | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
 
   const { data, isLoading } = useQuery({
     enabled: open && !!association?.id,

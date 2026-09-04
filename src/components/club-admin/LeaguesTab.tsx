@@ -36,6 +36,7 @@ import { LeagueFormatCard } from "./LeagueFormatCard";
 import { pairDisplayName } from "@/lib/leagues/format";
 
 import { supabase } from "@/integrations/supabase/client";
+import { useAssociationSeasons } from "@/hooks/use-association-seasons";
 import {
   COMPETITION_CATEGORIES,
   COMPETITION_DISCIPLINES,
@@ -217,6 +218,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [step, setStep] = useState<string>("leagues");
   const [teamsTab, setTeamsTab] = useState<string | null>(null);
   const [createTeamsAssoc, setCreateTeamsAssoc] = useState<LeagueAssociation | null>(null);
+  const [createTeamsYear, setCreateTeamsYear] = useState<number | null>(null);
   const [teamsTipDismissed, setTeamsTipDismissed] = useState<Record<string, boolean>>({});
 
   const { data: clubFillDefault } = useQuery({
@@ -623,6 +625,14 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             </div>
           </div>
 
+          {active.assoc && !isClubLeagueScope(active.assoc.scope) && (
+            <AssociationSeasonPrompt
+              association={active.assoc}
+              teamYears={[...men, ...ladies, ...mixed, ...open, ...other].map((l: any) => l.season_year)}
+              onCreate={(y) => { setCreateTeamsAssoc(active.assoc); setCreateTeamsYear(y); setAddLeagueOpen(true); }}
+            />
+          )}
+
           {active.assoc && !isClubLeagueScope(active.assoc.scope) && !teamsTipDismissed[active.assoc.id] && (
             <Alert className="mb-4 relative pr-10">
               <Info className="h-4 w-4" />
@@ -769,9 +779,10 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         clubId={clubId}
         associations={associations}
         open={addLeagueOpen}
-        onOpenChange={(o) => { setAddLeagueOpen(o); if (!o) setCreateTeamsAssoc(null); }}
+        onOpenChange={(o) => { setAddLeagueOpen(o); if (!o) { setCreateTeamsAssoc(null); setCreateTeamsYear(null); } }}
         hideTrigger
         lockedAssociationId={createTeamsAssoc?.id ?? null}
+        defaultYear={createTeamsYear}
       />
 
       <StepByStepLeagueSetup
@@ -3142,8 +3153,37 @@ function LinkedNationalBodiesSection({ associationId, clubId }: { associationId:
   );
 }
 
+// ─── Association season prompt ───
+// The league association opens the season; the club is then prompted to create
+// its teams for that year. Read-only for the club — it never creates seasons.
+function AssociationSeasonPrompt({ association, teamYears, onCreate }: { association: any; teamYears: (number | null | undefined)[]; onCreate: (year: number) => void }) {
+  const { latest } = useAssociationSeasons(association?.platform_association_id ?? null);
+  if (!latest) return null;
+  const hasTeams = teamYears.some((y) => y === latest.season_year);
+  const name = association.abbreviation || association.name;
+  return (
+    <Alert className="mb-4">
+      <CalendarRange className="h-4 w-4" />
+      <AlertTitle className="text-sm">
+        {name} has opened the {latest.season_year} season
+        {latest.starts_on ? ` (starts ${latest.starts_on})` : ""}
+      </AlertTitle>
+      <AlertDescription className="text-xs flex items-center gap-3 flex-wrap">
+        {hasTeams
+          ? `Your ${latest.season_year} teams are created — allocate your players and submit the roster to ${name}.`
+          : `Create your club's teams for ${latest.season_year} so ${name} can build the rounds and fixtures.`}
+        {!hasTeams && (
+          <Button size="sm" className="h-7" onClick={() => onCreate(latest.season_year)}>
+            <Plus className="w-3.5 h-3.5 mr-1" />Create {latest.season_year} teams
+          </Button>
+        )}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 // ─── League Dialog (bulk add) ───
-function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, lockedAssociationId }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void; hideTrigger?: boolean; lockedAssociationId?: string | null }) {
+function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, lockedAssociationId, defaultYear }: { clubId: string; associations: LeagueAssociation[]; open: boolean; onOpenChange: (o: boolean) => void; hideTrigger?: boolean; lockedAssociationId?: string | null; defaultYear?: number | null }) {
   const [selectedMen, setSelectedMen] = useState<string[]>([]);
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
   const [selectedMixed, setSelectedMixed] = useState<string[]>([]);
@@ -3154,6 +3194,11 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
   useEffect(() => {
     if (open && lockedAssociationId) setAssociationId(lockedAssociationId);
   }, [open, lockedAssociationId]);
+  // The association opens the season; when a club is prompted for a specific
+  // year we prefill it so teams land in the right season.
+  useEffect(() => {
+    if (open && defaultYear) setYear(defaultYear);
+  }, [open, defaultYear]);
 
   const [affectsRanking, setAffectsRanking] = useState(false);
   const [rankingWeight, setRankingWeight] = useState(1);

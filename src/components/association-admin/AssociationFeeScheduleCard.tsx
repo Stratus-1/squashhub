@@ -158,6 +158,7 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
                 <th className="text-left px-2 py-1.5 font-medium">Description</th>
                 <th className="text-left px-2 py-1.5 font-medium">Charged</th>
                 <th className="text-left px-2 py-1.5 font-medium">Season</th>
+                <th className="text-left px-2 py-1.5 font-medium">Renewal date</th>
                 <th className="text-right px-2 py-1.5 font-medium">Amount</th>
                 <th className="w-16" />
               </tr>
@@ -172,6 +173,7 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
                   </td>
                   <td className="px-2 py-1.5"><Badge variant="secondary" className="text-[10px]">{BASIS_LABEL[i.basis]}</Badge></td>
                   <td className="px-2 py-1.5">{i.season_year || "—"}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{fmtDueDate(i)}</td>
                   <td className="px-2 py-1.5 text-right font-medium">{fmt(Number(i.amount || 0))}</td>
                   <td className="px-2 py-1.5 text-right whitespace-nowrap">
                     <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(i)} aria-label={`Edit ${i.label}`}>

@@ -96,10 +96,19 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
 
   const currentYear = new Date().getFullYear();
   useEffect(() => {
-    if (season === ALL && seasons.length > 0 && seasons.includes(currentYear)) {
-      setSeason(String(currentYear));
-    }
-  }, [seasons, currentYear]);
+    if (season !== ALL || seasons.length === 0) return;
+    // Default to the association-declared current season, then the latest
+    // declared season, then the calendar year, then the newest season with teams.
+    const declaredCurrent = openSeasons.find((s) => s.is_current)?.season_year;
+    const declaredLatest = openSeasons.length
+      ? Math.max(...openSeasons.map((s) => s.season_year))
+      : null;
+    const pick =
+      declaredCurrent ??
+      declaredLatest ??
+      (seasons.includes(currentYear) ? currentYear : seasons[0]);
+    if (pick != null) setSeason(String(pick));
+  }, [seasons, openSeasons, season, currentYear]);
 
   const scoped = useMemo(
     () => (season === ALL ? teams : teams.filter((t) => String(t.season_year ?? "") === season)),

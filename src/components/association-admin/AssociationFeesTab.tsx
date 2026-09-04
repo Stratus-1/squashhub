@@ -206,7 +206,9 @@ export function AssociationFeesTab({ clubId }: { clubId: string }) {
 interface TeamRow { team_id: string; club_id: string; club_name: string; player_count: number; season_year: number }
 
 function ClubBillingPreview({ clubId }: { clubId: string }) {
+  const qc = useQueryClient();
   const currentYear = new Date().getFullYear();
+
   const { data: platformAssoc } = usePlatformAssociation(clubId);
   const { seasons: openSeasons } = useAssociationSeasons(platformAssoc?.id ?? null);
   const [season, setSeason] = useState<number | null>(null);

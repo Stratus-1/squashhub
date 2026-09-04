@@ -217,6 +217,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [step, setStep] = useState<string>("leagues");
   const [teamsTab, setTeamsTab] = useState<string | null>(null);
   const [createTeamsAssoc, setCreateTeamsAssoc] = useState<LeagueAssociation | null>(null);
+  const [teamsTipDismissed, setTeamsTipDismissed] = useState<Record<string, boolean>>({});
 
   const { data: clubFillDefault } = useQuery({
     queryKey: ["club-fill-settings", clubId],

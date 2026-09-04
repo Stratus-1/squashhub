@@ -304,8 +304,9 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
                     {stats.missingNsf > 0 && (
                       <p>
                         <strong>{stats.missingNsf}</strong> player(s) have no {asLabel}{" "}
-                        number. {asLabel} will reject the entry — capture their number
-                        under the member profile before sending.
+                        number yet. {asLabel} will allocate new numbers to them as per
+                        their setup specs, and your club's fees will be billed based on
+                        this list.
                       </p>
                     )}
                     {stats.noCaptain > 0 && (

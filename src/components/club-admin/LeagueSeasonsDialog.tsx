@@ -210,6 +210,7 @@ export function LeagueSeasonsDialog({ association, open, onOpenChange, readOnly 
               Create {yearValue} season
             </Button>
           </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

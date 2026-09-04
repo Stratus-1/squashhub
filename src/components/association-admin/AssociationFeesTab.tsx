@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AssociationFeeScheduleCard, useAssociationFeeItems, BASIS_LABEL } from "./AssociationFeeScheduleCard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePlatformAssociation } from "@/hooks/use-platform-association";
+import { useAssociationSeasons } from "@/hooks/use-association-seasons";
 import { Receipt, Building2 } from "lucide-react";
 
 
@@ -323,7 +326,7 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
               </tr>
             ))}
             {clubs.length === 0 && (
-              <tr><td colSpan={7} className="text-center text-muted-foreground py-6">No affiliated clubs with members or teams yet.</td></tr>
+              <tr><td colSpan={7} className="text-center text-muted-foreground py-6">No club has submitted teams for this season yet.</td></tr>
             )}
           </tbody>
           {clubs.length > 0 && (

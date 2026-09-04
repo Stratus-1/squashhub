@@ -155,11 +155,13 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
         f.away_team_code,
         f.home_team_name_snapshot,
         f.away_team_name_snapshot,
+        clubNameMap[f.home_team_code],
+        clubNameMap[f.away_team_code],
       ]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
-  }, [fixtures, season, query]);
+  }, [fixtures, season, query, clubNameMap]);
 
   const groups = useMemo(() => {
     const map = new Map<string, FixtureRow[]>();

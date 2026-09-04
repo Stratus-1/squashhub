@@ -78,10 +78,15 @@ export default function BarCounter() {
   const clubId: string | null = code ? null : activeClub?.id ?? null;
   const enabled = Boolean(token || clubId);
 
-  const { data: board, isLoading, refetch } = useQuery({
+  const { data: board, isLoading, error: boardError, refetch } = useQuery({
     queryKey: ["bar-counter-board", token, clubId],
     enabled,
     refetchInterval: 20000,
+    retry: (failureCount, err: any) => {
+      // Never retry an auth/session failure — fall back to the PIN screen instead.
+      if (/unlock|revok|token|permission/i.test(String(err?.message ?? ""))) return false;
+      return failureCount < 2;
+    },
     queryFn: async () => {
       const { data, error } = await supabase.rpc("bar_counter_board", {
         _token: token,
@@ -91,6 +96,20 @@ export default function BarCounter() {
       return data as unknown as Board;
     },
   });
+
+  // If the stored device token was revoked ("sign out all devices") or expired,
+  // drop it so the page returns to the PIN unlock screen automatically.
+  useEffect(() => {
+    if (!boardError || !code || !token) return;
+    if (/unlock|revok|token|permission/i.test(String((boardError as any)?.message ?? ""))) {
+      localStorage.removeItem(tokenKey(code));
+      setToken(null);
+      setPin("");
+      setActiveTabId(null);
+      setCart({});
+      toast.error("This device was signed out — enter the counter PIN to unlock it again.");
+    }
+  }, [boardError, code, token]);
 
   useEffect(() => {
     if (!activeTabId) setCart({});

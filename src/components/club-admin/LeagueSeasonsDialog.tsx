@@ -112,7 +112,11 @@ export function LeagueSeasonsDialog({ association, open, onOpenChange, readOnly 
           <div className="space-y-1.5">
             {isLoading && <p className="text-xs text-muted-foreground">Loading seasons…</p>}
             {!isLoading && sorted.length === 0 && (
-              <p className="text-xs text-muted-foreground">No seasons yet for this league.</p>
+              <p className="text-xs text-muted-foreground">
+                {readOnly
+                  ? `No seasons yet — ${association?.name} has not opened one. You'll be prompted here once they do.`
+                  : "No seasons yet for this league."}
+              </p>
             )}
             {sorted.map((s) => (
               <Card key={s.id} className="p-2 flex items-center justify-between gap-2">
@@ -127,11 +131,22 @@ export function LeagueSeasonsDialog({ association, open, onOpenChange, readOnly 
                   <Badge variant="outline" className="text-[10px] h-5">
                     {s.status}
                   </Badge>
+                  {readOnly && onCreateTeams && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-6 text-[11px] px-2"
+                      onClick={() => onCreateTeams(s.season_year)}
+                    >
+                      Create {s.season_year} teams
+                    </Button>
+                  )}
                 </div>
               </Card>
             ))}
           </div>
 
+          {!readOnly && (
           <div className="rounded-md border p-3 space-y-3">
             <p className="text-xs font-semibold">Create a new season</p>
             <div className="grid grid-cols-2 gap-2">

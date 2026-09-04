@@ -471,8 +471,9 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 </Button>
                 {a.scope !== "internal" && (
                   <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
-                    <Send className="w-4 h-4 mr-1" />Export teams to {a.abbreviation || a.name}
+                    <Send className="w-4 h-4 mr-1" /><span className="truncate max-w-[180px]">Export teams to {a.abbreviation || a.name}</span>
                   </Button>
+
                 )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>

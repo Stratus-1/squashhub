@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Plus, Trash2, GripVertical, Users, X, ChevronDown, ChevronUp, Crown, RefreshCw, Pencil, Check, Loader2, CalendarDays, Search } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -216,6 +217,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [step, setStep] = useState<string>("leagues");
   const [teamsTab, setTeamsTab] = useState<string | null>(null);
   const [createTeamsAssoc, setCreateTeamsAssoc] = useState<LeagueAssociation | null>(null);
+  const [teamsTipDismissed, setTeamsTipDismissed] = useState<Record<string, boolean>>({});
 
   const { data: clubFillDefault } = useQuery({
     queryKey: ["club-fill-settings", clubId],
@@ -230,6 +232,13 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed" | "open"; leagues: League[] } | null>(null);
   const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed" | "open"; leagues: League[] } | null>(null);
   const qc = useQueryClient();
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sh.league-teams-tip-dismissed");
+      if (raw) setTeamsTipDismissed(JSON.parse(raw));
+    } catch {}
+  }, []);
 
   const handleDeleteAssoc = async (id: string) => {
     if (!confirm("Delete this association?")) return;
@@ -470,10 +479,18 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
                 </Button>
                 {a.scope !== "internal" && (
-                  <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
-                    <Send className="w-4 h-4 mr-1" /><span className="truncate max-w-[180px]">Submit teams to {a.abbreviation || a.name}</span>
-                  </Button>
-
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
+                          <Send className="w-4 h-4 mr-1" /><span className="truncate max-w-[180px]">Submit teams to {a.abbreviation || a.name}</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">Send the final team roster to {a.abbreviation || a.name}. Allocate all players first — new members will be affiliated and numbered automatically.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
@@ -583,6 +600,30 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
               )}
             </div>
           </div>
+
+          {active.assoc && !isClubLeagueScope(active.assoc.scope) && !teamsTipDismissed[active.assoc.id] && (
+            <Alert className="mb-4 relative pr-10">
+              <Info className="h-4 w-4" />
+              <AlertTitle className="text-sm">Next: allocate players and submit your teams</AlertTitle>
+              <AlertDescription className="text-xs">
+                After creating teams, use <strong>Allocate players</strong> (or <strong>Manage pairs</strong> for doubles) to place members into each team.
+                New members will automatically be affiliated with {active.assoc.abbreviation || active.assoc.name}.
+                When you're ready, press <strong>Submit teams to {active.assoc.abbreviation || active.assoc.name}</strong> in Step 1 to send the final roster.
+              </AlertDescription>
+              <button
+                type="button"
+                aria-label="Dismiss tip"
+                className="absolute right-2 top-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={() => {
+                  const next = { ...teamsTipDismissed, [active.assoc!.id]: true };
+                  setTeamsTipDismissed(next);
+                  try { localStorage.setItem("sh.league-teams-tip-dismissed", JSON.stringify(next)); } catch {}
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </Alert>
+          )}
 
           <div className={`grid grid-cols-1 ${mdCols} ${cols} gap-4`}>
             {men.length > 0 && <GenderColumn {...columnProps("Men's", "men", men)} />}
@@ -814,14 +855,32 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                   <Pencil className="w-3 h-3" />Edit setup
                 </Button>
                 {g.assoc?.discipline !== "doubles" && (
-                  <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
-                    <Users className="w-3 h-3" />Allocate players
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
+                          <Users className="w-3 h-3" />Allocate players
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">Place members into teams. New players will be affiliated with {g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "the league"} and receive a league number.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 {(g.assoc?.discipline === "doubles" || g.assoc?.discipline === "hybrid") && (
-                  <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onManagePairs(g.assoc)}>
-                    <Users className="w-3 h-3" />Manage pairs
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onManagePairs(g.assoc)}>
+                          <Users className="w-3 h-3" />Manage pairs
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">Build doubles/hybrid pairs before submitting the roster to {g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "the league"}.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 <Button
                   variant="outline"

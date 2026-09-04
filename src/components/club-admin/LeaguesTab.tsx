@@ -3196,6 +3196,10 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
   const [selectedMen, setSelectedMen] = useState<string[]>([]);
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
   const [selectedMixed, setSelectedMixed] = useState<string[]>([]);
+  // Teams per league (clubs with many members enter 2-3 teams in the same league)
+  const [teamCounts, setTeamCounts] = useState<Record<"men" | "ladies" | "mixed", Record<string, number>>>({ men: {}, ladies: {}, mixed: {} });
+  const setTeamCount = (gender: "men" | "ladies" | "mixed", league: string, count: number) =>
+    setTeamCounts(prev => ({ ...prev, [gender]: { ...prev[gender], [league]: count } }));
   const [prefix, setPrefix] = useState("");
   const [startNum, setStartNum] = useState(1);
   const [year, setYear] = useState(new Date().getFullYear());

@@ -21,6 +21,10 @@ type Props = {
   association: { id: string; name: string } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** System leagues: seasons are opened by the association — clubs view and pick one. */
+  readOnly?: boolean;
+  /** Club-level shortcut: create this club's teams for a chosen season. */
+  onCreateTeams?: (seasonYear: number) => void;
 };
 
 /**

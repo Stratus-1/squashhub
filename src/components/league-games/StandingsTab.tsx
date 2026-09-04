@@ -102,8 +102,30 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
     }, { replace: true });
   };
 
-  // Season selector — default current year, allow past years
+  // Season selector — default to the association-declared current season (e.g. 2027),
+  // falling back to the calendar year. Past years remain selectable.
   const [seasonYear, setSeasonYear] = useState<string>(String(CURRENT_YEAR));
+
+  const { data: declaredSeasonYear } = useQuery({
+    queryKey: ["association-current-season-year", associationId ?? null],
+    enabled: !!associationId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("league_seasons")
+        .select("season_year, is_current")
+        .eq("association_id", associationId!)
+        .order("is_current", { ascending: false })
+        .order("season_year", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return data?.[0]?.season_year ?? null;
+    },
+  });
+
+  useEffect(() => {
+    if (declaredSeasonYear) setSeasonYear(String(declaredSeasonYear));
+  }, [declaredSeasonYear]);
 
   // Fetch list of available seasons (so we can show a real dropdown)
   const { data: seasonsList } = useQuery({

@@ -168,24 +168,33 @@ export default function BarCounter() {
     }
   }
 
-  async function addRound() {
-    if (!activeTabId) return;
+  /** Post whatever is in the basket onto the tab. Returns false if it failed. */
+  async function flushCart(tabId: string): Promise<boolean> {
     const lines = Object.entries(cart)
       .filter(([, q]) => q > 0)
       .map(([bar_item_id, quantity]) => ({ bar_item_id, quantity }));
-    if (!lines.length) return;
+    if (!lines.length) return true;
+    const { error } = await supabase.rpc("bar_counter_add_to_tab", {
+      _tab_id: tabId, _lines: lines, _token: token, _club_id: clubId,
+    } as any);
+    if (error) {
+      toast.error(error.message ?? "Could not add the basket to the tab");
+      return false;
+    }
+    setCart({});
+    return true;
+  }
+
+  async function addRound() {
+    if (!activeTabId) return;
+    if (!Object.values(cart).some((q) => q > 0)) return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc("bar_counter_add_to_tab", {
-        _tab_id: activeTabId, _lines: lines, _token: token, _club_id: clubId,
-      } as any);
-      if (error) throw error;
-      setCart({});
-      await refetch();
-      invalidate();
-      toast.success("Added to tab");
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not add to the tab");
+      if (await flushCart(activeTabId)) {
+        await refetch();
+        invalidate();
+        toast.success("Added to tab");
+      }
     } finally {
       setBusy(false);
     }
@@ -195,11 +204,17 @@ export default function BarCounter() {
     if (!activeTab) return;
     setBusy(true);
     try {
+      // Never lose a round that was scanned but not yet added to the tab.
+      if (!(await flushCart(activeTab.tab_id))) return;
       const { error } = await supabase.rpc("bar_counter_settle_tab", {
         _tab_id: activeTab.tab_id, _method: method, _token: token, _club_id: clubId,
       } as any);
       if (error) throw error;
-      setSettled({ tab: activeTab, method });
+      const { data: fresh } = await supabase.rpc("bar_counter_board", {
+        _token: token, _club_id: clubId,
+      } as any);
+      const latest = (fresh as any)?.tabs?.find((t: CounterTab) => t.tab_id === activeTab.tab_id);
+      setSettled({ tab: latest ?? activeTab, method });
       setCart({});
       await refetch();
       invalidate();
@@ -210,6 +225,7 @@ export default function BarCounter() {
       setBusy(false);
     }
   }
+
 
 
 

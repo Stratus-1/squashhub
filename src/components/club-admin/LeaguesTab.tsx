@@ -593,6 +593,30 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             </div>
           </div>
 
+          {active.assoc && !isClubLeagueScope(active.assoc.scope) && !teamsTipDismissed[active.assoc.id] && (
+            <Alert className="mb-4 relative pr-10">
+              <Info className="h-4 w-4" />
+              <AlertTitle className="text-sm">Next: allocate players and submit your teams</AlertTitle>
+              <AlertDescription className="text-xs">
+                After creating teams, use <strong>Allocate players</strong> (or <strong>Manage pairs</strong> for doubles) to place members into each team.
+                New members will automatically be affiliated with {active.assoc.abbreviation || active.assoc.name}.
+                When you're ready, press <strong>Submit teams to {active.assoc.abbreviation || active.assoc.name}</strong> in Step 1 to send the final roster.
+              </AlertDescription>
+              <button
+                type="button"
+                aria-label="Dismiss tip"
+                className="absolute right-2 top-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={() => {
+                  const next = { ...teamsTipDismissed, [active.assoc!.id]: true };
+                  setTeamsTipDismissed(next);
+                  try { localStorage.setItem("sh.league-teams-tip-dismissed", JSON.stringify(next)); } catch {}
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </Alert>
+          )}
+
           <div className={`grid grid-cols-1 ${mdCols} ${cols} gap-4`}>
             {men.length > 0 && <GenderColumn {...columnProps("Men's", "men", men)} />}
             {ladies.length > 0 && <GenderColumn {...columnProps("Ladies", "ladies", ladies)} />}

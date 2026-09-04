@@ -26,8 +26,6 @@ import {
   Copy,
   AlertTriangle,
   Crown,
-  Mail,
-  FileText,
 } from "lucide-react";
 
 interface Props {
@@ -196,24 +194,6 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
     return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
   }, [leagues, association]);
 
-  const emailBody = useMemo(() => {
-    const lines: string[] = [];
-    const asLabel = association.abbreviation || association.name;
-    lines.push(`${asLabel} League Team Submission`);
-    lines.push(`Season: ${new Date().getFullYear()}`);
-    lines.push("");
-    for (const l of leagues) {
-      if (l.regs.length === 0) continue;
-      lines.push(`--- ${l.name}${l.team_code ? ` (${l.team_code})` : ""} ---`);
-      for (const r of l.regs) {
-        const cap = r.is_captain ? " [CAPTAIN]" : "";
-        const num = r.affiliation_number || "NO NUMBER";
-        lines.push(`  ${num}  ${r.member_name}${cap}`);
-      }
-      lines.push("");
-    }
-    return lines.join("\n");
-  }, [leagues, association]);
 
   const downloadFile = (contents: string, filename: string, mime: string) => {
     const blob = new Blob([contents], { type: mime });

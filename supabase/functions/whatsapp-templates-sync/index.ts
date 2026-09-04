@@ -137,8 +137,34 @@ Deno.serve(async (req) => {
           status = "created";
         }
 
-        // 2. Submit for WhatsApp (Meta) approval if not submitted / approved yet.
-        if (contentSid && !["pending", "approved"].includes(status)) {
+        // 2. Read the current approval state from Twilio first — a template
+        // that Meta already has must never be re-submitted (error 92009).
+        const readStatus = async () => {
+          if (!contentSid) return;
+          const statusResp = await fetch(
+            `${GATEWAY_URL}/content/v1/Content/${contentSid}/ApprovalRequests`,
+            { method: "GET", headers },
+          );
+          const statusText = await statusResp.text();
+          if (!statusResp.ok) return;
+          try {
+            const parsed = JSON.parse(statusText) as {
+              whatsapp?: { status?: string; rejection_reason?: string };
+            };
+            if (parsed.whatsapp?.status) status = parsed.whatsapp.status;
+            approvalError = parsed.whatsapp?.rejection_reason ?? null;
+          } catch {
+            /* keep the current status */
+          }
+        };
+
+        await readStatus();
+
+        // Statuses that mean Meta already holds this template.
+        const SUBMITTED = ["received", "pending", "approved", "rejected", "paused", "disabled"];
+
+        // 3. Submit for approval only when it has never been submitted.
+        if (contentSid && !SUBMITTED.includes(status)) {
           const approveResp = await fetch(
             `${GATEWAY_URL}/content/v1/Content/${contentSid}/ApprovalRequests/whatsapp`,
             {
@@ -148,29 +174,16 @@ Deno.serve(async (req) => {
             },
           );
           const approveText = await approveResp.text();
-          if (!approveResp.ok) throw new Error(`submit [${approveResp.status}] ${approveText}`);
-          status = "pending";
-        }
-
-        // 3. Refresh the current approval status from Twilio.
-        if (contentSid) {
-          const statusResp = await fetch(
-            `${GATEWAY_URL}/content/v1/Content/${contentSid}/ApprovalRequests`,
-            { method: "GET", headers },
-          );
-          const statusText = await statusResp.text();
-          if (statusResp.ok) {
-            try {
-              const parsed = JSON.parse(statusText) as {
-                whatsapp?: { status?: string; rejection_reason?: string };
-              };
-              if (parsed.whatsapp?.status) status = parsed.whatsapp.status;
-              approvalError = parsed.whatsapp?.rejection_reason ?? null;
-            } catch {
-              /* keep the current status */
+          if (!approveResp.ok) {
+            // 92009 = already submitted; treat as success and re-read.
+            if (!approveText.includes("92009")) {
+              throw new Error(`submit [${approveResp.status}] ${approveText}`);
             }
           }
+          status = "received";
+          await readStatus();
         }
+
       } catch (e) {
         approvalError = e instanceof Error ? e.message : String(e);
         if (!contentSid) status = "error";

@@ -40,6 +40,10 @@ interface FixtureRow {
   winner_team_code: string | null;
 }
 
+interface ClubNameMap {
+  [code: string]: string;
+}
+
 export function AssociationFixturesPanel({ association, tenantId }: { association: PlatformAssociation | null; tenantId: string }) {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
@@ -83,6 +87,35 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
     },
   });
 
+  const teamCodes = useMemo(
+    () => Array.from(new Set(fixtures.flatMap((f) => [f.home_team_code, f.away_team_code]).filter(Boolean))),
+    [fixtures]
+  );
+
+  const { data: clubNameMap = {} } = useQuery({
+    queryKey: ["assoc-fixture-club-names", association?.id, JSON.stringify(teamCodes.sort())],
+    enabled: !!association?.id && teamCodes.length > 0,
+    queryFn: async () => {
+      const out: ClubNameMap = {};
+      const pageSize = 200;
+      for (let from = 0; from < teamCodes.length; from += pageSize) {
+        const slice = teamCodes.slice(from, from + pageSize);
+        const { data, error } = await supabase
+          .from("leagues")
+          .select("nsa_team_code, clubs(name)")
+          .in("nsa_team_code", slice)
+          .not("nsa_team_code", "is", null);
+        if (error) throw error;
+        for (const row of data || []) {
+          const code = row.nsa_team_code as string;
+          const clubName = (row.clubs as any)?.name;
+          if (clubName && !out[code]) out[code] = clubName;
+        }
+      }
+      return out;
+    },
+  });
+
   const { seasons: openSeasons } = useAssociationSeasons(association?.id ?? null);
 
   // Season list = seasons that already have fixtures + seasons declared by the
@@ -122,11 +155,13 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
         f.away_team_code,
         f.home_team_name_snapshot,
         f.away_team_name_snapshot,
+        clubNameMap[f.home_team_code],
+        clubNameMap[f.away_team_code],
       ]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
-  }, [fixtures, season, query]);
+  }, [fixtures, season, query, clubNameMap]);
 
   const groups = useMemo(() => {
     const map = new Map<string, FixtureRow[]>();
@@ -275,13 +310,20 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
                   {isOpen && (
                     <div className="divide-y border-t">
                       {rows.map((f) => (
-                        <div key={f.id} className="flex items-center gap-2 px-2 py-1 pl-8 text-[11px]">
+                    <div key={f.id} className="flex items-center gap-2 px-2 py-1 pl-8 text-[11px]">
                           <span className="w-20 shrink-0 text-muted-foreground">
                             {f.fixture_date ? format(parseISO(f.fixture_date), "dd MMM") : "TBC"}
                           </span>
                           <span className="flex-1 truncate">
-                            {f.home_team_name_snapshot || f.home_team_code} vs{" "}
-                            {f.away_team_name_snapshot || f.away_team_code}
+                            <span className="font-medium">{clubNameMap[f.home_team_code] || f.home_team_code}</span>
+                            {f.home_team_name_snapshot && (
+                              <span className="text-muted-foreground"> {f.home_team_name_snapshot}</span>
+                            )}
+                            <span className="text-muted-foreground mx-1">vs</span>
+                            <span className="font-medium">{clubNameMap[f.away_team_code] || f.away_team_code}</span>
+                            {f.away_team_name_snapshot && (
+                              <span className="text-muted-foreground"> {f.away_team_name_snapshot}</span>
+                            )}
                           </span>
                           {f.score && <span className="text-muted-foreground">{f.score}</span>}
                           <span className="hidden truncate text-muted-foreground sm:inline">{f.venue_name}</span>

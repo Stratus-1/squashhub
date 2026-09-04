@@ -293,6 +293,8 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
   }, [teams, perClub, perMember, perTeam]);
 
   const grand = clubs.reduce((s, c) => s + c.total, 0);
+  const grandPaid = clubs.reduce((s, c) => s + (paidByClub.get(c.id) || 0), 0);
+  const grandOwing = Math.max(grand - grandPaid, 0);
 
 
   return (

@@ -134,7 +134,7 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
           <div>
             <h3 className="font-semibold flex items-center gap-2">
               {isRec ? <ArrowDownLeft className="w-4 h-4 text-emerald-600" /> : <ArrowUpRight className="w-4 h-4 text-amber-600" />}
-              {isRec ? "Additional fees receivable" : "Fees payable"}
+              {isRec ? "Fees receivable" : "Fees payable"}
             </h3>
             <p className="text-xs text-muted-foreground">
               {isRec

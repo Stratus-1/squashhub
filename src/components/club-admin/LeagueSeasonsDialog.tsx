@@ -34,7 +34,7 @@ type Props = {
  * optionally, fresh team rows rolled over from the current season. Historical
  * fixtures keep pointing at the old teams and their name snapshots.
  */
-export function LeagueSeasonsDialog({ association, open, onOpenChange }: Props) {
+export function LeagueSeasonsDialog({ association, open, onOpenChange, readOnly = false, onCreateTeams }: Props) {
   const queryClient = useQueryClient();
   const associationId = association?.id ?? null;
 

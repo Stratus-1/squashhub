@@ -77,14 +77,20 @@ export function SetupStepNav({
   steps,
   value,
   onChange,
+  nextDisabled,
+  nextHint,
 }: {
   steps: SetupStep[];
   value: string;
   onChange: (id: string) => void;
+  /** Disable the Next button (e.g. step not applicable in the current context). */
+  nextDisabled?: boolean;
+  /** Explanation shown next to a disabled Next button. */
+  nextHint?: string;
 }) {
   const i = Math.max(0, steps.findIndex((s) => s.id === value));
   return (
-    <div className="flex items-center justify-between pt-1">
+    <div className="flex items-center justify-between gap-3 pt-1 flex-wrap">
       <Button
         variant="ghost"
         size="sm"
@@ -93,15 +99,19 @@ export function SetupStepNav({
       >
         <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Back
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={i >= steps.length - 1}
-        onClick={() => onChange(steps[i + 1].id)}
-      >
-        Next: {steps[Math.min(i + 1, steps.length - 1)].label}
-        <ChevronRight className="w-3.5 h-3.5 ml-1" />
-      </Button>
+      {nextDisabled && nextHint ? (
+        <p className="text-xs text-muted-foreground flex-1 text-right min-w-[200px]">{nextHint}</p>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={nextDisabled || i >= steps.length - 1}
+          onClick={() => onChange(steps[i + 1].id)}
+        >
+          Next: {steps[Math.min(i + 1, steps.length - 1)].label}
+          <ChevronRight className="w-3.5 h-3.5 ml-1" />
+        </Button>
+      )}
     </div>
   );
 }

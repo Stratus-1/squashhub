@@ -201,56 +201,71 @@ export function AssociationFeesTab({ clubId }: { clubId: string }) {
 interface TeamRow { team_id: string; club_id: string; club_name: string; player_count: number; season_year: number }
 
 function ClubBillingPreview({ clubId }: { clubId: string }) {
-  const season = new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
+  const { data: platformAssoc } = usePlatformAssociation(clubId);
+  const { seasons: openSeasons } = useAssociationSeasons(platformAssoc?.id ?? null);
+  const [season, setSeason] = useState<number | null>(null);
+
   const { data: items = [] } = useAssociationFeeItems(clubId);
 
-  const { data: teams = [] } = useQuery({
-    queryKey: ["association-billing-teams", clubId, season],
+  const { data: allTeams = [] } = useQuery({
+    queryKey: ["association-billing-teams", clubId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("association_league_teams" as any, {
         _tenant_id: clubId,
-        _season_year: season,
       });
       if (error) throw error;
-      return (data || []) as TeamRow[];
+      return (data || []) as (TeamRow & { player_count: number })[];
     },
   });
 
-  const { data: members = [] } = useQuery({
-    queryKey: ["association-billing-members", clubId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("association_member_affiliations_v")
-        .select("club_id, club_name, club_member_id")
-        .eq("association_tenant_id", clubId)
-        .eq("active", true);
-      if (error) throw error;
-      return (data || []) as { club_id: string; club_name: string; club_member_id: string }[];
-    },
-  });
+  const seasonOptions = useMemo(() => {
+    const years = new Set<number>();
+    openSeasons.forEach((s) => years.add(s.season_year));
+    allTeams.forEach((t) => t.season_year != null && years.add(Number(t.season_year)));
+    years.add(currentYear);
+    return Array.from(years).sort((a, b) => b - a);
+  }, [openSeasons, allTeams, currentYear]);
+
+  useEffect(() => {
+    if (season != null || seasonOptions.length === 0) return;
+    const declaredCurrent = openSeasons.find((s) => s.is_current)?.season_year;
+    const declaredLatest = openSeasons.length ? Math.max(...openSeasons.map((s) => s.season_year)) : null;
+    setSeason(declaredCurrent ?? declaredLatest ?? seasonOptions[0]);
+  }, [season, seasonOptions, openSeasons]);
+
+  const teams = useMemo(
+    () => allTeams.filter((t) => season != null && Number(t.season_year) === season),
+    [allTeams, season],
+  );
 
   const active = items.filter(i => i.active && i.direction === "receivable" && (!i.season_year || i.season_year === season));
   const perMember = active.filter(i => i.basis === "member").reduce((s, i) => s + Number(i.amount || 0), 0);
   const perClub = active.filter(i => i.basis === "club").reduce((s, i) => s + Number(i.amount || 0), 0);
   const perTeam = active.filter(i => i.basis === "league_team").reduce((s, i) => s + Number(i.amount || 0), 0);
 
+  // Only clubs that actually submitted teams (and their players) for this season are billed.
   const clubs = useMemo(() => {
-    const map = new Map<string, { name: string; members: Set<string>; teams: number }>();
-    const ensure = (id: string, name: string) => {
-      if (!map.has(id)) map.set(id, { name, members: new Set(), teams: 0 });
-      return map.get(id)!;
-    };
-    members.forEach(m => ensure(m.club_id, m.club_name).members.add(m.club_member_id));
-    teams.forEach(t => { ensure(t.club_id, t.club_name).teams += 1; });
+    const map = new Map<string, { name: string; members: number; teams: number }>();
+    teams.forEach(t => {
+      if (!map.has(t.club_id)) map.set(t.club_id, { name: t.club_name, members: 0, teams: 0 });
+      const e = map.get(t.club_id)!;
+      e.teams += 1;
+      e.members += Number(t.player_count || 0);
+    });
     return Array.from(map.entries())
-      .map(([id, v]) => {
-        const memberCount = v.members.size;
-        const total = perClub + memberCount * perMember + v.teams * perTeam;
-        return { id, name: v.name, memberCount, teams: v.teams, total };
-      })
+      .map(([id, v]) => ({
+        id,
+        name: v.name,
+        memberCount: v.members,
+        teams: v.teams,
+        total: perClub + v.members * perMember + v.teams * perTeam,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [members, teams, perClub, perMember, perTeam]);
+  }, [teams, perClub, perMember, perTeam]);
 
   const grand = clubs.reduce((s, c) => s + c.total, 0);
+
 
   return (
     <div className="space-y-4">

@@ -3241,12 +3241,14 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     },
   });
 
-  // Codes must be unique per association (the DB also keys on season/category),
-  // so allocate one running sequence across every category in this batch and
-  // skip anything already used by this association.
-  const takenCodes = () => {
+  // Codes restart per category (Men's, Ladies, Mixed) — e.g. RSC001 for Men's
+  // 1st and RSC001 for Ladies 1st in the same season. The DB unique key
+  // includes category, so only skip codes already taken in the SAME category.
+  const takenCodesByCategory = (category: string) => {
     const set = new Set<string>();
-    for (const l of existingLeagues as any[]) if (l.code) set.add(l.code);
+    for (const l of existingLeagues as any[]) {
+      if (l.code && (l.category ?? "") === category) set.add(l.code);
+    }
     return set;
   };
 

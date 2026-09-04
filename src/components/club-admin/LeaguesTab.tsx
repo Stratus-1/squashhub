@@ -3292,17 +3292,26 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     const nextLadies = makeAllocator("ladies");
     const nextMixed = makeAllocator("mixed");
 
-    const menEntries = sortedMen.map(label => ({
-      name: `Men's ${label} League ${year}`, code: nextMen(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
-    }));
+    // Expand each selected league by its team count. When a club enters
+    // multiple teams in the same league they share the level; the name gets a
+    // Team A / Team B / Team C suffix and each gets its own sequential code.
+    const expand = (sorted: string[], genderLabel: string, gender: "men" | "ladies" | "mixed", next: () => string | null) =>
+      sorted.flatMap(label => {
+        const count = Math.min(3, Math.max(1, teamCounts[gender]?.[label] ?? 1));
+        return Array.from({ length: count }, (_, i) => ({
+          name: `${genderLabel} ${label} League ${year}${count > 1 ? ` — Team ${String.fromCharCode(65 + i)}` : ""}`,
+          code: next(),
+          association_id: associationId || null,
+          club_id: clubId,
+          affects_ranking_points: affectsRanking,
+          ranking_weight: rankingWeight,
+          ...base(label),
+        }));
+      });
 
-    const ladiesEntries = sortedLadies.map(label => ({
-      name: `Ladies ${label} League ${year}`, code: nextLadies(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
-    }));
-
-    const mixedEntries = sortedMixed.map(label => ({
-      name: `Mixed ${label} League ${year}`, code: nextMixed(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
-    }));
+    const menEntries = expand(sortedMen, "Men's", "men", nextMen);
+    const ladiesEntries = expand(sortedLadies, "Ladies", "ladies", nextLadies);
+    const mixedEntries = expand(sortedMixed, "Mixed", "mixed", nextMixed);
 
 
     return [...menEntries, ...ladiesEntries, ...mixedEntries];

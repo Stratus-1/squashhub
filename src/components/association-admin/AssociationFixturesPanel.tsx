@@ -309,32 +309,46 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
                   </button>
                   {isOpen && (
                     <div className="divide-y border-t">
-                      {rows.map((f) => (
-                    <div key={f.id} className="flex items-center gap-2 px-2 py-1 pl-8 text-[11px]">
-                          <span className="w-20 shrink-0 text-muted-foreground">
-                            {f.fixture_date ? format(parseISO(f.fixture_date), "dd MMM") : "TBC"}
-                          </span>
-                          <span className="flex-1 truncate">
-                            <span className="font-medium">{clubNameMap[f.home_team_code] || f.home_team_code}</span>
-                            {f.home_team_name_snapshot && (
-                              <span className="text-muted-foreground"> {f.home_team_name_snapshot}</span>
-                            )}
-                            <span className="text-muted-foreground mx-1">vs</span>
-                            <span className="font-medium">{clubNameMap[f.away_team_code] || f.away_team_code}</span>
-                            {f.away_team_name_snapshot && (
-                              <span className="text-muted-foreground"> {f.away_team_name_snapshot}</span>
-                            )}
-                          </span>
-                          {f.score && <span className="text-muted-foreground">{f.score}</span>}
-                          <span className="hidden truncate text-muted-foreground sm:inline">{f.venue_name}</span>
-                          <Badge
-                            variant={f.status === "completed" ? "secondary" : "outline"}
-                            className="h-4 px-1 text-[9px] font-normal"
+                      {rows.map((f) => {
+                        const homeClub = clubNameMap[f.home_team_code];
+                        const awayClub = clubNameMap[f.away_team_code];
+                        return (
+                          <div
+                            key={f.id}
+                            className="flex items-center gap-2 px-2 py-1 pl-8 text-[11px]"
+                            title={`${f.home_team_code} vs ${f.away_team_code}`}
                           >
-                            {f.status}
-                          </Badge>
-                        </div>
-                      ))}
+                            <span className="w-20 shrink-0 text-muted-foreground">
+                              {f.fixture_date ? format(parseISO(f.fixture_date), "dd MMM") : "TBC"}
+                            </span>
+                            <span className="flex-1 truncate">
+                              <span className="font-medium">{homeClub || f.home_team_code}</span>
+                              {homeClub && (
+                                <span className="text-muted-foreground"> ({f.home_team_code})</span>
+                              )}
+                              {f.home_team_name_snapshot && (
+                                <span className="text-muted-foreground"> · {f.home_team_name_snapshot}</span>
+                              )}
+                              <span className="text-muted-foreground mx-1">vs</span>
+                              <span className="font-medium">{awayClub || f.away_team_code}</span>
+                              {awayClub && (
+                                <span className="text-muted-foreground"> ({f.away_team_code})</span>
+                              )}
+                              {f.away_team_name_snapshot && (
+                                <span className="text-muted-foreground"> · {f.away_team_name_snapshot}</span>
+                              )}
+                            </span>
+                            {f.score && <span className="text-muted-foreground">{f.score}</span>}
+                            <span className="hidden truncate text-muted-foreground sm:inline">{f.venue_name}</span>
+                            <Badge
+                              variant={f.status === "completed" ? "secondary" : "outline"}
+                              className="h-4 px-1 text-[9px] font-normal"
+                            >
+                              {f.status}
+                            </Badge>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

@@ -3302,6 +3302,11 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
         return Array.from({ length: count }, (_, i) => ({
           name: `${genderLabel} ${label} League ${year}${count > 1 ? ` — Team ${String.fromCharCode(65 + i)}` : ""}`,
           code: next(),
+          // Category + division must be stored: the unique code index is scoped
+          // by (association, season, division, category), so leaving them null
+          // makes Men's RSC001 collide with Ladies RSC001.
+          category: gender,
+          division: `${label} League`,
           association_id: associationId || null,
           club_id: clubId,
           affects_ranking_points: affectsRanking,
@@ -3309,6 +3314,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
           ...base(label),
         }));
       });
+
 
     const menEntries = expand(sortedMen, "Men's", "men", nextMen);
     const ladiesEntries = expand(sortedLadies, "Ladies", "ladies", nextLadies);

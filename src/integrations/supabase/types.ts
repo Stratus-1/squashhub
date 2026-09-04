@@ -13167,6 +13167,21 @@ export type Database = {
         Args: { _journal_ref: string; _note?: string }
         Returns: Json
       }
+      admin_list_club_visitors: {
+        Args: { _club_id: string }
+        Returns: {
+          category: string
+          club_id: string
+          created_at: string
+          email: string
+          first_name: string
+          home_club_name: string
+          id: string
+          last_name: string
+          member_number: string
+          phone: string
+        }[]
+      }
       admin_list_unclaimed_club_members: {
         Args: { _club_id: string }
         Returns: {
@@ -14056,6 +14071,10 @@ export type Database = {
         Returns: boolean
       }
       is_club_member: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_club_secrets_admin: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }

@@ -1203,7 +1203,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       </Dialog>
 
       <Dialog open={!!selectedDevice} onOpenChange={(open) => !open && setSelectedDevice(null)}>
-        <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-xl overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="max-h-[90dvh] w-[calc(100%-1rem)] max-w-xl overflow-hidden p-4 sm:p-6">
           {selectedDevice && (
             <>
               <DialogHeader>
@@ -1222,10 +1222,10 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                       : `${DEVICE_CATEGORY_META[selectedDevice.category].label} device details`}
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
+              <div className="grid max-h-[calc(90dvh-8rem)] gap-4 overflow-y-auto pr-1 sm:grid-cols-[132px_1fr]">
                 <div
                   className={cn(
-                    "flex items-center justify-center rounded-2xl border p-6",
+                    "flex h-24 items-center justify-center rounded-xl border p-5 sm:aspect-square sm:h-auto sm:self-start",
                     "bg-gradient-to-br from-muted/80 to-muted/40",
                     "relative overflow-hidden",
                   )}
@@ -1237,12 +1237,12 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                     )}
                   />
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.35),transparent_60%)]" />
-                  <div className="absolute inset-x-4 bottom-3 rounded-full bg-background/80 px-2 py-1 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <div className="absolute inset-x-3 bottom-2 rounded-full bg-background/80 px-2 py-1 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                     {DEVICE_CATEGORY_META[selectedDevice.category].label}
                   </div>
                   {(() => {
                     const Icon = deviceIcon(selectedDevice);
-                    return <Icon className="relative z-10 w-12 h-12 text-foreground drop-shadow-sm" />;
+                    return <Icon className="relative z-10 h-10 w-10 text-foreground drop-shadow-sm sm:h-12 sm:w-12" />;
                   })()}
                 </div>
                 <div className="space-y-3">

@@ -11,6 +11,8 @@ import { Loader2, Save } from "lucide-react";
 
 interface Props {
   associationId: string;
+  /** When true, all controls are disabled and the save button is hidden (e.g. club viewing a System League). */
+  readOnly?: boolean;
 }
 
 const DEFAULTS: Partial<LeagueRules> = {
@@ -43,7 +45,7 @@ const DEFAULTS: Partial<LeagueRules> = {
   fill_up_leagues_enabled: true,
 };
 
-export default function AssociationRulesTab({ associationId }: Props) {
+export default function AssociationRulesTab({ associationId, readOnly = false }: Props) {
   const { data, isLoading } = useAssociationRules(associationId);
   const update = useUpdateAssociationRules();
   const [form, setForm] = useState<Partial<LeagueRules>>(DEFAULTS);

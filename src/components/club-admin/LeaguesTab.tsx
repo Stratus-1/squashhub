@@ -865,7 +865,9 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
         <h4 className="text-sm font-semibold text-muted-foreground">{title} ({leagues.length})</h4>
       </div>
       <div className="space-y-3">
-        {groups.map(g => (
+        {groups.map(g => {
+          const isSystemGroup = !!g.assoc && ((g.assoc as any).scope ?? "") !== "internal";
+          return (
           <div key={g.assocId ?? "none"} className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[11px] font-semibold text-foreground/80 truncate">
@@ -873,10 +875,13 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                 <span className="text-muted-foreground font-normal"> • {g.leagues.length}</span>
               </p>
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onEditSetup(g.assocId, g.leagues)} title="Edit Step-by-Step setup for this group">
-                  <Pencil className="w-3 h-3" />Edit setup
-                </Button>
+                {!isSystemGroup && (
+                  <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onEditSetup(g.assocId, g.leagues)} title="Edit Step-by-Step setup for this group">
+                    <Pencil className="w-3 h-3" />Edit setup
+                  </Button>
+                )}
                 {g.assoc?.discipline !== "doubles" && (
+
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -904,15 +909,17 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                     </Tooltip>
                   </TooltipProvider>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-6 text-[11px] gap-1 px-2"
-                  onClick={() => onAddReserves(g.assocId, g.leagues)}
-                  title="Add reserve players to this league group"
-                >
-                  <UserPlus className="w-3 h-3" />Add reserves
-                </Button>
+                {!isSystemGroup && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[11px] gap-1 px-2"
+                    onClick={() => onAddReserves(g.assocId, g.leagues)}
+                    title="Add reserve players to this league group"
+                  >
+                    <UserPlus className="w-3 h-3" />Add reserves
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -932,7 +939,9 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
             />
 
           </div>
-        ))}
+          );
+        })}
+
         {leagues.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No {title.toLowerCase()} leagues</p>}
       </div>
     </div>

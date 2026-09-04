@@ -394,19 +394,27 @@ Deno.serve(async (req) => {
         (assocAbbr && (r.abbreviation || "").toLowerCase() === String(assocAbbr).toLowerCase())
       ) || (homeAssocRows || [])[0] || null;
 
-      await supabaseAdmin
-        .from("club_members")
-        .update({ enable_league_association_id: homeAssoc?.id ?? null, plays_league: true })
-        .eq("club_id", validatedHomeClubId)
-        .eq("user_id", user.id);
+      // Resolve the home-club member row (explicit id in admin mode, otherwise the caller's row)
+      let homeMemberId: string | null = targetHomeMemberId;
+      if (!homeMemberId && targetUserId) {
+        const { data: found } = await supabaseAdmin
+          .from("club_members")
+          .select("id")
+          .eq("club_id", validatedHomeClubId)
+          .eq("user_id", targetUserId)
+          .maybeSingle();
+        homeMemberId = found?.id ?? null;
+      }
 
-      // Resolve the home-club member row id (needed for the registration)
-      const { data: homeMember } = await supabaseAdmin
-        .from("club_members")
-        .select("id")
-        .eq("club_id", validatedHomeClubId)
-        .eq("user_id", user.id)
-        .maybeSingle();
+      if (homeMemberId) {
+        await supabaseAdmin
+          .from("club_members")
+          .update({ enable_league_association_id: homeAssoc?.id ?? null, plays_league: true })
+          .eq("id", homeMemberId);
+      }
+
+      const homeMember = homeMemberId ? { id: homeMemberId } : null;
+
 
       if (homeMember?.id && homeAssoc?.id) {
         // IMPORTANT: We deliberately do NOT create any `member_league_registrations`

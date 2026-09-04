@@ -310,13 +310,20 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
                   {isOpen && (
                     <div className="divide-y border-t">
                       {rows.map((f) => (
-                        <div key={f.id} className="flex items-center gap-2 px-2 py-1 pl-8 text-[11px]">
+                    <div key={f.id} className="flex items-center gap-2 px-2 py-1 pl-8 text-[11px]">
                           <span className="w-20 shrink-0 text-muted-foreground">
                             {f.fixture_date ? format(parseISO(f.fixture_date), "dd MMM") : "TBC"}
                           </span>
                           <span className="flex-1 truncate">
-                            {f.home_team_name_snapshot || f.home_team_code} vs{" "}
-                            {f.away_team_name_snapshot || f.away_team_code}
+                            <span className="font-medium">{clubNameMap[f.home_team_code] || f.home_team_code}</span>
+                            {f.home_team_name_snapshot && (
+                              <span className="text-muted-foreground"> {f.home_team_name_snapshot}</span>
+                            )}
+                            <span className="text-muted-foreground mx-1">vs</span>
+                            <span className="font-medium">{clubNameMap[f.away_team_code] || f.away_team_code}</span>
+                            {f.away_team_name_snapshot && (
+                              <span className="text-muted-foreground"> {f.away_team_name_snapshot}</span>
+                            )}
                           </span>
                           {f.score && <span className="text-muted-foreground">{f.score}</span>}
                           <span className="hidden truncate text-muted-foreground sm:inline">{f.venue_name}</span>

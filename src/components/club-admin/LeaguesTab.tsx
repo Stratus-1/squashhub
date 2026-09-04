@@ -389,6 +389,21 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const clubLeagues = associations.filter((a: any) => isClubLeagueScope(a.scope));
   const hasSystemAssocs = associations.some((a: any) => !isClubLeagueScope(a.scope));
 
+  // Mirror of the Step 2 tab logic (system associations first, then "Club
+  // Leagues") so the footer nav can tell whether the active teams tab belongs
+  // to a System League — for which the association, not the club, creates
+  // rounds & fixtures (Step 3 doesn't apply).
+  const systemAssocsNav = associations.filter((a: any) => !isClubLeagueScope(a.scope));
+  const clubAssocsNav = associations.filter((a: any) => isClubLeagueScope(a.scope));
+  const teamsTabIds = [
+    ...systemAssocsNav.map((a: any) => a.id as string),
+    ...(clubAssocsNav.length > 0 || systemAssocsNav.length === 0 ? ["club"] : []),
+  ];
+  const activeTeamsTabId = (teamsTab && teamsTabIds.includes(teamsTab)) ? teamsTab : teamsTabIds[0];
+  const activeTeamsIsSystem = step === "teams" && !!activeTeamsTabId && systemAssocsNav.some((a: any) => a.id === activeTeamsTabId);
+  const activeTeamsAssocName = systemAssocsNav.find((a: any) => a.id === activeTeamsTabId)?.abbreviation
+    ?? systemAssocsNav.find((a: any) => a.id === activeTeamsTabId)?.name;
+
   const steps: SetupStep[] = CLUB_LEAGUE_STEPS.map((s) => ({
     id: s.id,
     label:

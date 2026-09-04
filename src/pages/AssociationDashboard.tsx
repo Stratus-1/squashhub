@@ -146,6 +146,9 @@ export default function AssociationDashboard() {
     { value: "rankings", label: "Rankings", description: "Player rankings & data sync", icon: BarChart3, color: "text-violet-600", gradient: "from-violet-400 to-indigo-600", border: "border-violet-200 dark:border-violet-800", shadow: "shadow-violet-500/10" },
     { value: "members", label: "Members", description: "League members across clubs", icon: Users, color: "text-emerald-600", gradient: "from-emerald-400 to-teal-600", border: "border-emerald-200 dark:border-emerald-800", shadow: "shadow-emerald-500/10" },
     { value: "users", label: "Users", description: "Logins & access", icon: UserCheck, color: "text-cyan-600", gradient: "from-cyan-400 to-blue-500", border: "border-cyan-200 dark:border-cyan-800", shadow: "shadow-cyan-500/10" },
+    { value: "fees", label: "Fees", description: "League & affiliation fees", icon: Receipt, color: "text-lime-600", gradient: "from-lime-400 to-emerald-600", border: "border-lime-200 dark:border-lime-800", shadow: "shadow-lime-500/10" },
+    { value: "finance", label: "Finance", description: "Ledger & club billing", icon: Landmark, color: "text-teal-600", gradient: "from-teal-400 to-cyan-600", border: "border-teal-200 dark:border-teal-800", shadow: "shadow-teal-500/10" },
+    { value: "banking", label: "Banking", description: "Bank account & statements", icon: Banknote, color: "text-green-600", gradient: "from-green-400 to-emerald-600", border: "border-green-200 dark:border-green-800", shadow: "shadow-green-500/10" },
     { value: "comms", label: "Comms", description: "Templates & campaigns", icon: MessageCircle, color: "text-rose-600", gradient: "from-rose-400 to-pink-600", border: "border-rose-200 dark:border-rose-800", shadow: "shadow-rose-500/10" },
   ];
 

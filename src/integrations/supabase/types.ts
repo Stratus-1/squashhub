@@ -1595,6 +1595,116 @@ export type Database = {
           },
         ]
       }
+      club_association_invoice_lines: {
+        Row: {
+          amount: number
+          basis: string
+          created_at: string
+          fee_item_id: string | null
+          id: string
+          invoice_id: string
+          label: string
+          unit_amount: number
+          units: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          basis: string
+          created_at?: string
+          fee_item_id?: string | null
+          id?: string
+          invoice_id: string
+          label: string
+          unit_amount?: number
+          units?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          basis?: string
+          created_at?: string
+          fee_item_id?: string | null
+          id?: string
+          invoice_id?: string
+          label?: string
+          unit_amount?: number
+          units?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_association_invoice_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "club_association_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_association_invoices: {
+        Row: {
+          association_tenant_id: string
+          club_id: string
+          created_at: string
+          emailed_at: string | null
+          emailed_to: string | null
+          id: string
+          invoice_number: string
+          issued_at: string
+          notes: string | null
+          season_year: number
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          association_tenant_id: string
+          club_id: string
+          created_at?: string
+          emailed_at?: string | null
+          emailed_to?: string | null
+          id?: string
+          invoice_number: string
+          issued_at?: string
+          notes?: string | null
+          season_year: number
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          association_tenant_id?: string
+          club_id?: string
+          created_at?: string
+          emailed_at?: string | null
+          emailed_to?: string | null
+          id?: string
+          invoice_number?: string
+          issued_at?: string
+          notes?: string | null
+          season_year?: number
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_association_invoices_association_tenant_id_fkey"
+            columns: ["association_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_association_invoices_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_association_payable_batches: {
         Row: {
           bank_account: string | null
@@ -13813,6 +13923,15 @@ export type Database = {
         }[]
       }
       generate_all_clubs_renewal_invoices: { Args: never; Returns: Json }
+      generate_club_association_invoice: {
+        Args: { _club_id: string; _season_year: number }
+        Returns: {
+          invoice_id: string
+          invoice_number: string
+          line_count: number
+          total: number
+        }[]
+      }
       generate_club_whatsapp_invoice: {
         Args: { _club_id: string; _period_start: string }
         Returns: string

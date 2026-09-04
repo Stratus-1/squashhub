@@ -3022,6 +3022,37 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     setter(prev => prev.includes(league) ? prev.filter(l => l !== league) : [...prev, league]);
   };
 
+  // Existing leagues for this association + season, so generated codes never
+  // collide with codes already taken (unique per association/season/category).
+  const { data: existingLeagues = [] } = useQuery({
+    queryKey: ["league-codes", associationId, year, clubId],
+    enabled: open && !!associationId,
+    queryFn: async () => {
+      const { data } = await fromExt("leagues")
+        .select("code,category,name,season_year")
+        .eq("association_id", associationId);
+      return (data as any[]) || [];
+    },
+  });
+
+  const takenCodes = (category: "men" | "ladies" | "mixed") => {
+    const set = new Set<string>();
+    for (const l of existingLeagues as any[]) {
+      if (!l.code) continue;
+      if (Number(l.season_year) !== Number(year)) continue;
+      const name = String(l.name || "").toLowerCase();
+      const cat =
+        l.category ||
+        (name.includes("ladies") || name.includes("women")
+          ? "ladies"
+          : name.includes("mixed")
+            ? "mixed"
+            : "men");
+      if (cat === category) set.add(l.code);
+    }
+    return set;
+  };
+
   const buildEntries = () => {
     const parseNum = (l: string) => parseInt(l);
     const sortedMen = [...selectedMen].sort((a, b) => parseNum(a) - parseNum(b));
@@ -3038,31 +3069,40 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
       season_source: "manual",
     });
 
-    let codeNum = startNum;
-    const menEntries = sortedMen.map(label => {
-      const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
-      codeNum++;
-      return { name: `Men's ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label) };
-    });
+    const makeAllocator = (category: "men" | "ladies" | "mixed") => {
+      const taken = takenCodes(category);
+      let n = startNum;
+      return () => {
+        if (!prefix) return null;
+        let code = `${prefix}${String(n).padStart(3, "0")}`;
+        while (taken.has(code)) {
+          n++;
+          code = `${prefix}${String(n).padStart(3, "0")}`;
+        }
+        taken.add(code);
+        n++;
+        return code;
+      };
+    };
 
-    // Reset numbering for Ladies
-    codeNum = startNum;
-    const ladiesEntries = sortedLadies.map(label => {
-      const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
-      codeNum++;
-      return { name: `Ladies ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label) };
-    });
+    const nextMen = makeAllocator("men");
+    const menEntries = sortedMen.map(label => ({
+      name: `Men's ${label} League ${year}`, code: nextMen(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+    }));
 
-    // Reset numbering for Mixed
-    codeNum = startNum;
-    const mixedEntries = sortedMixed.map(label => {
-      const code = prefix ? `${prefix}${String(codeNum).padStart(3, "0")}` : null;
-      codeNum++;
-      return { name: `Mixed ${label} League ${year}`, code, association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label) };
-    });
+    const nextLadies = makeAllocator("ladies");
+    const ladiesEntries = sortedLadies.map(label => ({
+      name: `Ladies ${label} League ${year}`, code: nextLadies(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+    }));
+
+    const nextMixed = makeAllocator("mixed");
+    const mixedEntries = sortedMixed.map(label => ({
+      name: `Mixed ${label} League ${year}`, code: nextMixed(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+    }));
 
     return [...menEntries, ...ladiesEntries, ...mixedEntries];
   };
+
 
 
   const entries = buildEntries();
@@ -3072,39 +3112,11 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     const { error } = await fromExt("leagues").insert(entries);
     if (error) { toast.error(error.message); return; }
 
-    // After adding, renumber ALL league codes in each gender group from 001
-    if (prefix) {
-      // Fetch all leagues for this club to get fresh data including newly inserted
-      const { data: allLeagues } = await fromExt("leagues").select("*").eq("club_id", clubId);
-      if (allLeagues) {
-        const renumberGroup = async (filterFn: (l: any) => boolean) => {
-          const group = allLeagues
-            .filter(l => l.code?.startsWith(prefix) && filterFn(l))
-            .sort((a, b) => {
-              const numA = parseInt(a.name.match(/(\d+)/)?.[1] || "99");
-              const numB = parseInt(b.name.match(/(\d+)/)?.[1] || "99");
-              return numA - numB;
-            });
-          for (let i = 0; i < group.length; i++) {
-            const newCode = `${prefix}${String(i + 1).padStart(3, "0")}`;
-            if (group[i].code !== newCode) {
-              await fromExt("leagues").update({ code: newCode }).eq("id", group[i].id);
-            }
-          }
-        };
+    // Codes are allocated collision-free above; no bulk renumbering (it clashed
+    // with codes already used by other seasons/associations).
 
-        await renumberGroup(l => {
-          const n = l.name.toLowerCase();
-          return n.includes("men's") || n.startsWith("men");
-        });
-        await renumberGroup(l => {
-          const n = l.name.toLowerCase();
-          return n.includes("ladies") || n.includes("women");
-        });
-      }
-    }
+    toast.success(`${entries.length} league(s) added`);
 
-    toast.success(`${entries.length} league(s) added & codes renumbered`);
     onOpenChange(false);
     setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
     qc.invalidateQueries({ queryKey: ["leagues"] });

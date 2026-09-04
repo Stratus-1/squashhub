@@ -102,7 +102,6 @@ export function AssociationFeesTab({ clubId }: { clubId: string }) {
       <TabsList>
         <TabsTrigger value="schedule">Fee Schedule</TabsTrigger>
         <TabsTrigger value="billing">Club Billing</TabsTrigger>
-        <TabsTrigger value="statement">Statement</TabsTrigger>
       </TabsList>
 
       <TabsContent value="schedule" className="mt-4">
@@ -111,93 +110,6 @@ export function AssociationFeesTab({ clubId }: { clubId: string }) {
 
       <TabsContent value="billing" className="mt-4">
         <ClubBillingPreview clubId={clubId} />
-      </TabsContent>
-
-      <TabsContent value="statement" className="mt-4">
-    <div className="space-y-4">
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card className="p-3">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total Billable</p>
-          <p className="text-lg font-bold">{fmt(grandOwed)}</p>
-        </Card>
-        <Card className="p-3">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Collected</p>
-          <p className="text-lg font-bold text-emerald-600">{fmt(grandPaid)}</p>
-        </Card>
-        <Card className="p-3">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Outstanding</p>
-          <p className="text-lg font-bold text-amber-600">{fmt(grandOutstanding)}</p>
-        </Card>
-      </div>
-
-      <Card className="p-4 space-y-3">
-        <div>
-          <h3 className="font-semibold flex items-center gap-2">
-            <Receipt className="w-4 h-4" /> Fees by Club
-          </h3>
-          <p className="text-xs text-muted-foreground">League fees owed via each affiliated club</p>
-        </div>
-
-        {isLoading ? (
-          <p className="text-xs text-muted-foreground py-6 text-center">Loading…</p>
-        ) : byClub.length === 0 ? (
-          <div className="text-center py-10 text-muted-foreground text-sm">
-            <Receipt className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p>No active league members yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {byClub.map((g) => {
-              const outstanding = Math.max(g.owed - g.paid, 0);
-              return (
-                <div key={g.name} className="border rounded-md overflow-hidden">
-                  <div className="flex items-center justify-between gap-3 px-3 py-2 bg-muted/40">
-                    <div className="flex items-center gap-2 font-medium text-sm">
-                      <Building2 className="w-4 h-4 text-muted-foreground" /> {g.name}
-                      <Badge variant="outline" className="text-[10px]">{g.rows.length} members</Badge>
-                    </div>
-                    <div className="text-xs flex items-center gap-3">
-                      <span className="text-muted-foreground">Billable: <strong className="text-foreground">{fmt(g.owed)}</strong></span>
-                      <span className="text-emerald-600">Paid: {fmt(g.paid)}</span>
-                      <span className="text-amber-600">Owing: {fmt(outstanding)}</span>
-                    </div>
-                  </div>
-                  <table className="w-full text-xs">
-                    <thead className="text-muted-foreground">
-                      <tr>
-                        <th className="text-left px-3 py-1.5 font-medium">League #</th>
-                        <th className="text-left px-3 py-1.5 font-medium">Name</th>
-                        <th className="text-right px-3 py-1.5 font-medium">Fee</th>
-                        <th className="text-right px-3 py-1.5 font-medium">Paid</th>
-                        <th className="text-right px-3 py-1.5 font-medium">Owing</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {g.rows.map(r => {
-                        const owed = Number(r.league_fee_annual || 0);
-                        const memPays = payByMember.get(r.club_member_id) || [];
-                        const paid = memPays.filter(p => p.paid).reduce((s, p) => s + Number(p.amount || 0), 0);
-                        const owing = Math.max(owed - paid, 0);
-                        return (
-                          <tr key={r.affiliation_id} className="border-t hover:bg-accent/30">
-                            <td className="px-3 py-1.5 font-mono">{r.league_association_number || "—"}</td>
-                            <td className="px-3 py-1.5">{r.member_name}</td>
-                            <td className="px-3 py-1.5 text-right">{fmt(owed)}</td>
-                            <td className="px-3 py-1.5 text-right text-emerald-600">{fmt(paid)}</td>
-                            <td className={`px-3 py-1.5 text-right ${owing > 0 ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>{fmt(owing)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-    </div>
       </TabsContent>
     </Tabs>
   );

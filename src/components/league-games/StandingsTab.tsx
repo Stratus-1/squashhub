@@ -248,10 +248,12 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {(seasonsList && seasonsList.length > 0
-              ? seasonsList.map((s) => s.label)
-              : [String(CURRENT_YEAR), String(CURRENT_YEAR - 1), String(CURRENT_YEAR - 2)]
-            ).map((y) => (
+            {Array.from(new Set([
+              ...(declaredSeasonYear ? [String(declaredSeasonYear)] : []),
+              ...(seasonsList && seasonsList.length > 0
+                ? seasonsList.map((s) => s.label)
+                : [String(CURRENT_YEAR), String(CURRENT_YEAR - 1), String(CURRENT_YEAR - 2)]),
+            ])).map((y) => (
               <SelectItem key={y} value={y}>
                 {y}
               </SelectItem>

@@ -47,6 +47,7 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [syncing, setSyncing] = useState<"fixtures" | "members" | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [seasonPicked, setSeasonPicked] = useState(false);
 
   const { data: teams = [] } = useQuery({
     queryKey: ["assoc-league-teams", tenantId, "builder"],
@@ -100,13 +101,14 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
   // Default to the association-declared current season, then latest declared,
   // then the calendar year, then the newest season on record.
   useEffect(() => {
-    if (seasons.length === 0) return;
-    if (seasons.includes(season)) return;
+    if (seasons.length === 0 || seasonPicked) return;
+    if (seasons.includes(season)) { setSeasonPicked(true); return; }
     const declaredCurrent = openSeasons.find((s) => s.is_current)?.season_year;
     const declaredLatest = openSeasons.length ? Math.max(...openSeasons.map((s) => s.season_year)) : null;
     const pick = declaredCurrent ?? declaredLatest ?? seasons[0];
     if (pick != null) setSeason(String(pick));
-  }, [seasons, openSeasons, season]);
+    setSeasonPicked(true);
+  }, [seasons, openSeasons, season, seasonPicked]);
 
   const scoped = useMemo(() => {
     const q = query.trim().toLowerCase();

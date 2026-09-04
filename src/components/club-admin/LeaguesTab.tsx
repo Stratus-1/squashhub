@@ -2455,8 +2455,14 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
                               {teamLeague.code || teamLeague.name}
                             </Badge>
                           )}
+                          {!isAffiliated(m) && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 leading-none border-amber-500 text-amber-600">
+                              New
+                            </Badge>
+                          )}
                         </div>
                       </div>
+
                     </div>
                   );
                 })}

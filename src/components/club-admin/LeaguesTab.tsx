@@ -3332,7 +3332,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     toast.success(`${entries.length} league(s) added`);
 
     onOpenChange(false);
-    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
+    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setTeamCounts({ men: {}, ladies: {}, mixed: {} }); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
 

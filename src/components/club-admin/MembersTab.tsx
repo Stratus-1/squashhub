@@ -1777,16 +1777,22 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
           if (affErr) { toast.error(`League info: ${affErr.message}`); return; }
         }
       } else if (ticked) {
-        if (a.kind === "tenant") continue; // edge function creates the row
+        // Tenant associations: the edge function normally creates this row (with the
+        // allocated league number). Upsert as a safety net so the tick always sticks,
+        // even when provisioning could not run.
         const { error: insErr } = await fromExt("member_association_affiliations")
-          .insert({
-            club_member_id: member.id,
-            association_id: a.associationId,
-            league_association_number: effectiveNumber || null,
-            active: true,
-          });
+          .upsert(
+            {
+              club_member_id: member.id,
+              association_id: a.associationId,
+              league_association_number: effectiveNumber || null,
+              active: true,
+            },
+            { onConflict: "club_member_id,association_id", ignoreDuplicates: true },
+          );
         if (insErr) { toast.error(`League info: ${insErr.message}`); return; }
       }
+
 
       // Back-compat: also write the number onto any season-team registration rows
       // that are still blank (so existing UI bits that read from member_league_registrations keep working).

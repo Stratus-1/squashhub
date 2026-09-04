@@ -813,6 +813,14 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         association={seasonsAssoc}
         open={!!seasonsAssoc}
         onOpenChange={(o) => !o && setSeasonsAssoc(null)}
+        readOnly={(seasonsAssoc as any)?.scope !== "internal"}
+        onCreateTeams={(y) => {
+          const a = seasonsAssoc;
+          setSeasonsAssoc(null);
+          setCreateTeamsAssoc(a);
+          setCreateTeamsYear(y);
+          setAddLeagueOpen(true);
+        }}
       />
       {pairsAssoc && (
         <DoublesPairsDialog

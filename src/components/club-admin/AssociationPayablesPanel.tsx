@@ -189,29 +189,64 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {fees.map((f) => (
-            <Card key={f.id} className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">{f.payee_name}</p>
-                  <Badge variant="secondary" className="text-[10px] mt-1">{basisLabel(f.basis)}</Badge>
+          {fees.map((f) => {
+            const stmtRows = feeStatementRows(f);
+            const autoBilled = stmtRows.length > 0;
+            const subUnits = stmtRows.reduce((s, r) => s + Number(r.units_submitted || 0), 0);
+            const subTotal = stmtRows.reduce((s, r) => s + Number(r.total_submitted || 0), 0);
+            const pendUnits = stmtRows.reduce((s, r) => s + Number(r.units_pending || 0), 0);
+            const pendTotal = stmtRows.reduce((s, r) => s + Number(r.total_pending || 0), 0);
+            return (
+              <Card key={f.id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{f.payee_name}</p>
+                    <Badge variant="secondary" className="text-[10px] mt-1">{basisLabel(f.basis)}</Badge>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+                    {money(f.amount)} / {basisUnit(f.basis)}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className="text-[10px] whitespace-nowrap">
-                  {money(f.amount)} / {basisUnit(f.basis)}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2 text-[11px]">
-                <Wallet className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Outstanding:</span>
-                <span className={outstandingByFee[f.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
-                  {money(outstandingByFee[f.id] || 0)}
-                </span>
-              </div>
-              <Button size="sm" className="w-full gap-1.5 h-8" onClick={() => setGenerateFee(f)}>
-                <Plus className="w-3.5 h-3.5" /> Generate Payable
-              </Button>
-            </Card>
-          ))}
+
+                {autoBilled ? (
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Submitted ({subUnits} {basisUnit(f.basis)}{subUnits === 1 ? "" : "s"})</span>
+                      <span className="font-semibold tabular-nums">{money(subTotal)}</span>
+                    </div>
+                    {pendUnits > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Not yet submitted ({pendUnits})</span>
+                        <span className="tabular-nums text-amber-600">{money(pendTotal)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between border-t pt-1.5">
+                      <span className="text-muted-foreground">Outstanding (manual batches)</span>
+                      <span className={outstandingByFee[f.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
+                        {money(outstandingByFee[f.id] || 0)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground pt-1">
+                      Calculated automatically from your {season} submission — no manual payable needed.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <Wallet className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">Outstanding:</span>
+                      <span className={outstandingByFee[f.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
+                        {money(outstandingByFee[f.id] || 0)}
+                      </span>
+                    </div>
+                    <Button size="sm" className="w-full gap-1.5 h-8" onClick={() => setGenerateFee(f)}>
+                      <Plus className="w-3.5 h-3.5" /> Generate Payable
+                    </Button>
+                  </>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
 

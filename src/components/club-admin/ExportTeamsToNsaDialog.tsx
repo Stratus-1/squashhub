@@ -26,8 +26,6 @@ import {
   Copy,
   AlertTriangle,
   Crown,
-  Mail,
-  FileText,
 } from "lucide-react";
 
 interface Props {
@@ -196,24 +194,6 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
     return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
   }, [leagues, association]);
 
-  const emailBody = useMemo(() => {
-    const lines: string[] = [];
-    const asLabel = association.abbreviation || association.name;
-    lines.push(`${asLabel} League Team Submission`);
-    lines.push(`Season: ${new Date().getFullYear()}`);
-    lines.push("");
-    for (const l of leagues) {
-      if (l.regs.length === 0) continue;
-      lines.push(`--- ${l.name}${l.team_code ? ` (${l.team_code})` : ""} ---`);
-      for (const r of l.regs) {
-        const cap = r.is_captain ? " [CAPTAIN]" : "";
-        const num = r.affiliation_number || "NO NUMBER";
-        lines.push(`  ${num}  ${r.member_name}${cap}`);
-      }
-      lines.push("");
-    }
-    return lines.join("\n");
-  }, [leagues, association]);
 
   const downloadFile = (contents: string, filename: string, mime: string) => {
     const blob = new Blob([contents], { type: mime });
@@ -247,9 +227,10 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
         <DialogHeader>
           <DialogTitle>Submit teams to {asLabel}</DialogTitle>
           <DialogDescription>
-            Preview and download the full team + player list to submit to{" "}
-            {association.name}. Paste the email body into an email to your league
-            administrator, or attach the CSV.
+            Review your team + player list. SquashHub is integrated with{" "}
+            {association.name} — this data is submitted automatically and {asLabel}{" "}
+            allocates numbers to new members and bills your club based on this list.
+            Download the CSV for your own records if needed.
           </DialogDescription>
         </DialogHeader>
 
@@ -303,8 +284,9 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
                     {stats.missingNsf > 0 && (
                       <p>
                         <strong>{stats.missingNsf}</strong> player(s) have no {asLabel}{" "}
-                        number. {asLabel} will reject the entry — capture their number
-                        under the member profile before sending.
+                        number yet. {asLabel} will allocate new numbers to them as per
+                        their setup specs, and your club's fees will be billed based on
+                        this list.
                       </p>
                     )}
                     {stats.noCaptain > 0 && (
@@ -322,30 +304,14 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
+                variant="outline"
                 onClick={() => downloadFile(csv, `${fileBase}.csv`, "text/csv")}
               >
-                <Download className="w-4 h-4 mr-1" /> Download CSV
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  downloadFile(emailBody, `${fileBase}.txt`, "text/plain")
-                }
-              >
-                <FileText className="w-4 h-4 mr-1" /> Download .txt
+                <Download className="w-4 h-4 mr-1" /> Download CSV (own records)
               </Button>
               <Button size="sm" variant="outline" onClick={() => copy(csv, "csv")}>
                 <Copy className="w-4 h-4 mr-1" />
                 {copied === "csv" ? "Copied" : "Copy CSV"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => copy(emailBody, "email")}
-              >
-                <Mail className="w-4 h-4 mr-1" />
-                {copied === "email" ? "Copied" : "Copy email body"}
               </Button>
             </div>
 
@@ -420,9 +386,10 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              Submit the CSV/.txt (or paste the email body) to your {asLabel} league
-              administrator. Direct submission from here is enabled once the{" "}
-              {asLabel} integration is switched on for your club.
+              This list is shared with {asLabel} automatically through the
+              integration — there is nothing to email. If you add more players to
+              league teams later, they appear here too and your club's fees payable
+              are updated accordingly. Downloads are for your own records only.
             </p>
           </div>
         )}

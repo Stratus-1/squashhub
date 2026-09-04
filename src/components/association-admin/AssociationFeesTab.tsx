@@ -336,10 +336,15 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
               <th className="text-right px-2 py-1.5 font-medium">Member fees</th>
               <th className="text-right px-2 py-1.5 font-medium">Team fees</th>
               <th className="text-right px-2 py-1.5 font-medium">Total</th>
+              <th className="text-right px-2 py-1.5 font-medium">Paid to date</th>
+              <th className="text-right px-2 py-1.5 font-medium">O/s balance</th>
             </tr>
           </thead>
           <tbody>
-            {clubs.map(c => (
+            {clubs.map(c => {
+              const paid = paidByClub.get(c.id) || 0;
+              const owing = Math.max(c.total - paid, 0);
+              return (
               <tr key={c.id} className="border-t hover:bg-accent/30">
                 <td className="px-2 py-1.5 flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-muted-foreground" />{c.name}</td>
                 <td className="px-2 py-1.5 text-right">{c.memberCount}</td>
@@ -348,10 +353,13 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
                 <td className="px-2 py-1.5 text-right">{fmt(c.memberCount * perMember)}</td>
                 <td className="px-2 py-1.5 text-right">{fmt(c.teams * perTeam)}</td>
                 <td className="px-2 py-1.5 text-right font-semibold">{fmt(c.total)}</td>
+                <td className="px-2 py-1.5 text-right text-emerald-600">{fmt(paid)}</td>
+                <td className={`px-2 py-1.5 text-right ${owing > 0 ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>{fmt(owing)}</td>
               </tr>
-            ))}
+              );
+            })}
             {clubs.length === 0 && (
-              <tr><td colSpan={7} className="text-center text-muted-foreground py-6">No club has submitted teams for this season yet.</td></tr>
+              <tr><td colSpan={9} className="text-center text-muted-foreground py-6">No club has submitted teams for this season yet.</td></tr>
             )}
           </tbody>
           {clubs.length > 0 && (
@@ -359,6 +367,8 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
               <tr className="border-t bg-muted/40">
                 <td className="px-2 py-1.5 font-semibold" colSpan={6}>Total receivable</td>
                 <td className="px-2 py-1.5 text-right font-bold">{fmt(grand)}</td>
+                <td className="px-2 py-1.5 text-right font-bold text-emerald-600">{fmt(grandPaid)}</td>
+                <td className="px-2 py-1.5 text-right font-bold text-amber-600">{fmt(grandOwing)}</td>
               </tr>
             </tfoot>
           )}

@@ -158,13 +158,14 @@ Deno.serve(async (req) => {
     if (claimedMember) {
       // Link existing row → keep their club_member_number and any prior setup.
       const updatePayload: Record<string, unknown> = {
-        user_id: user.id,
         name: memberName,
         plays_league: true,
       };
+      if (targetUserId) updatePayload.user_id = targetUserId;
       if (memberPhone) updatePayload.phone = memberPhone;
-      if (user.email) updatePayload.email = user.email;
+      if (memberEmail) updatePayload.email = memberEmail;
       if (validatedHomeClubId) updatePayload.home_club_id = validatedHomeClubId;
+
 
       const { error: updErr } = await supabaseAdmin
         .from("club_members")

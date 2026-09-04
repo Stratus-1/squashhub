@@ -1445,6 +1445,34 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
   const [leagueAssocs, setLeagueAssocs] = useState<ClassifiedAssoc[]>([]);
   const [tickedAssociations, setTickedAssociations] = useState<Record<string, boolean>>({});
   const [leagueNumberDrafts, setLeagueNumberDrafts] = useState<Record<string, string>>({});
+  // Which team (league) the member should be placed in per association. Placing a
+  // member in a submitted team is what puts their association fee on the club's bill.
+  const [teamDrafts, setTeamDrafts] = useState<Record<string, string>>({});
+  const [registeredLeagueIds, setRegisteredLeagueIds] = useState<string[]>([]);
+  const qcEdit = useQueryClient();
+
+  // Association teams this club runs, newest season first, for the team picker.
+  const { data: assocTeams = [] } = useQuery({
+    queryKey: ["club-association-teams", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("leagues")
+        .select("id, name, association_id, season_year, category, level, submitted_to_association_at")
+        .eq("club_id", clubId)
+        .is("archived_at", null);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+  const latestSeasonFor = (associationId: string) => {
+    const years = assocTeams.filter((t) => t.association_id === associationId).map((t) => t.season_year).filter((y) => y != null) as number[];
+    return years.length ? Math.max(...years) : null;
+  };
+  const teamsFor = (associationId: string) => {
+    const season = latestSeasonFor(associationId);
+    return assocTeams
+      .filter((t) => t.association_id === associationId && (season == null || t.season_year === season))
+      .sort((a, b) => String(a.category ?? "").localeCompare(String(b.category ?? "")) || (a.level ?? 99) - (b.level ?? 99));
+  };
 
   const [form, setForm] = useState({
     name: member.name || member.profiles?.name || "",
@@ -1490,11 +1518,13 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
 
       const numberByAssoc: Record<string, string> = {};
       const regIdsByAssoc: Record<string, string[]> = {};
+      const regLeagueIds: string[] = [];
       for (const r of regs) {
         const aid = r.league?.association_id as string | undefined;
         if (!aid) continue;
         regIdsByAssoc[aid] ||= [];
         regIdsByAssoc[aid].push(r.id);
+        if (r.league?.id) regLeagueIds.push(r.league.id as string);
         const num = (r.league_association_number || "").trim();
         if (num && !numberByAssoc[aid]) numberByAssoc[aid] = num;
       }
@@ -1552,6 +1582,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
         };
       });
 
+      setRegisteredLeagueIds(regLeagueIds);
       setLeagueAssocs(classified);
       setTickedAssociations((prev) => {
         const next = { ...prev };
@@ -1766,7 +1797,31 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       }
     }
 
-    toast.success("Member updated");
+    // Team placement: registering the member in a team is what puts their
+    // association fee on the club's bill, so do it as part of this save.
+    let placed = 0;
+    const affiliatedWithoutTeam: string[] = [];
+    for (const a of leagueAssocs) {
+      if (a.kind === "internal" || !tickedAssociations[a.associationId]) continue;
+      const leagueId = teamDrafts[a.associationId] || "";
+      const hasTeam = assocTeams.some((t) => t.association_id === a.associationId && registeredLeagueIds.includes(t.id));
+      if (!leagueId) { if (!hasTeam) affiliatedWithoutTeam.push(a.abbreviation || a.associationName); continue; }
+      const { error: rpcErr } = await (supabase as any).rpc("club_affiliate_member_to_association", {
+        _club_id: clubId,
+        _club_member_id: member.id,
+        _association_id: a.associationId,
+        _league_id: leagueId,
+        _submit: true,
+      });
+      if (rpcErr) { toast.error(`Team placement: ${rpcErr.message}`); return; }
+      placed += 1;
+    }
+    qcEdit.invalidateQueries({ queryKey: ["club-association-statement", clubId] });
+    qcEdit.invalidateQueries({ queryKey: ["club-association-teams", clubId] });
+
+    if (placed > 0) toast.success("Member updated, submitted to the association and added to the club's bill");
+    else if (affiliatedWithoutTeam.length) toast.warning(`Member updated — affiliated to ${affiliatedWithoutTeam.join(", ")} but not in a team yet, so no association fee is billed.`);
+    else toast.success("Member updated");
     onClose();
   };
 
@@ -1892,6 +1947,34 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
                                 ? "A number will be auto-allocated when you save."
                                 : "Enter the number once. After saving it's locked to this member."}
                         </p>
+                        {!isInternal && (() => {
+                          const options = teamsFor(a.associationId);
+                          const already = options.find((t) => registeredLeagueIds.includes(t.id));
+                          if (already) {
+                            return <p className="text-[10px] text-muted-foreground">Playing in <span className="font-medium">{already.name}</span> — already on the club's association bill.</p>;
+                          }
+                          if (!options.length) {
+                            return <p className="text-[10px] text-amber-600">No teams created for this association yet. Create teams under Leagues, then place this member in one so the fee is billed.</p>;
+                          }
+                          return (
+                            <div className="space-y-1">
+                              <Label className="text-[11px]">Team for {options[0].season_year ?? "this season"}</Label>
+                              <select
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                                value={teamDrafts[a.associationId] ?? ""}
+                                onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [a.associationId]: e.target.value }))}
+                              >
+                                <option value="">— Choose a league / team —</option>
+                                {options.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                              </select>
+                              <p className="text-[10px] text-muted-foreground">
+                                {teamDrafts[a.associationId]
+                                  ? "Saving submits this member to the association and adds their fee to the club's bill once."
+                                  : "Without a team the member is affiliated only — no association fee is billed yet."}
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>

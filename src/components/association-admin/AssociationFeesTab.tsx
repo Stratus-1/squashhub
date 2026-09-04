@@ -14,28 +14,6 @@ import { useAssociationSeasons } from "@/hooks/use-association-seasons";
 import { Receipt, Building2 } from "lucide-react";
 
 
-interface Row {
-  affiliation_id: string;
-  club_member_id: string;
-  league_association_number: string | null;
-  active: boolean;
-  member_name: string;
-  club_id: string;
-  club_name: string;
-  league_association_id: string;
-  league_name: string;
-  league_fee_annual: number | null;
-  members_pay_directly: boolean | null;
-}
-
-interface PaymentRow {
-  id: string;
-  club_member_id: string;
-  amount: number;
-  paid: boolean;
-  fee_label: string | null;
-}
-
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", minimumFractionDigits: 0 }).format(n);
 

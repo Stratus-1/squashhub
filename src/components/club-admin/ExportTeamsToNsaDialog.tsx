@@ -247,9 +247,10 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
         <DialogHeader>
           <DialogTitle>Submit teams to {asLabel}</DialogTitle>
           <DialogDescription>
-            Preview and download the full team + player list to submit to{" "}
-            {association.name}. Paste the email body into an email to your league
-            administrator, or attach the CSV.
+            Review your team + player list. SquashHub is integrated with{" "}
+            {association.name} — this data is submitted automatically and {asLabel}{" "}
+            allocates numbers to new members and bills your club based on this list.
+            Download the CSV for your own records if needed.
           </DialogDescription>
         </DialogHeader>
 

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useLeagueAssociations, useClubLeagues } from "@/hooks/use-club";
+import { useLeagueAssociations, useLeagues } from "@/hooks/use-club";
 import { toast } from "sonner";
 
 const NO_TEAM = "__none__";
@@ -25,7 +25,7 @@ export function AffiliateMemberDialog({
 }) {
   const qc = useQueryClient();
   const { data: associations = [] } = useLeagueAssociations(clubId);
-  const { data: leagues = [] } = useClubLeagues(clubId);
+  const { data: leagues = [] } = useLeagues(clubId);
 
   const eligible = useMemo(
     () => (associations as any[]).filter((a) => String(a.scope || "") !== "internal"),

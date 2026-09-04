@@ -251,6 +251,31 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Renewal month</Label>
+                <Select
+                  value={draft.due_month ? String(draft.due_month) : "none"}
+                  onValueChange={(v) => setDraft({ ...draft, due_month: v === "none" ? null : Number(v) })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not set</SelectItem>
+                    {MONTHS.map((month, index) => <SelectItem key={month} value={String(index + 1)}>{month}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Payable on day</Label>
+                <Input
+                  type="number" min={1} max={31} placeholder="Optional"
+                  value={draft.due_day ?? ""}
+                  onChange={(e) => setDraft({ ...draft, due_day: e.target.value ? parseInt(e.target.value, 10) : null })}
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground -mt-1">The date this fee becomes payable each season. Leave empty if not date-bound.</p>
+
             <div className="space-y-1.5">
               <Label>Notes</Label>
               <Textarea rows={2} value={draft.notes || ""} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} placeholder="Optional" />

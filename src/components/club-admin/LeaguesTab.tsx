@@ -3268,30 +3268,32 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
       season_source: "manual",
     });
 
-    const taken = takenCodes();
-    let n = startNum;
-    const nextCode = () => {
-      if (!prefix) return null;
-      let code = `${prefix}${String(n).padStart(3, "0")}`;
-      while (taken.has(code)) {
+    const makeAllocator = (category: string) => {
+      const taken = takenCodesByCategory(category);
+      let n = startNum;
+      return () => {
+        if (!prefix) return null;
+        let code = `${prefix}${String(n).padStart(3, "0")}`;
+        while (taken.has(code)) {
+          n++;
+          code = `${prefix}${String(n).padStart(3, "0")}`;
+        }
+        taken.add(code);
         n++;
-        code = `${prefix}${String(n).padStart(3, "0")}`;
-      }
-      taken.add(code);
-      n++;
-      return code;
+        return code;
+      };
     };
 
     const menEntries = sortedMen.map(label => ({
-      name: `Men's ${label} League ${year}`, code: nextCode(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Men's ${label} League ${year}`, code: makeAllocator("men")(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
     const ladiesEntries = sortedLadies.map(label => ({
-      name: `Ladies ${label} League ${year}`, code: nextCode(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Ladies ${label} League ${year}`, code: makeAllocator("ladies")(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
     const mixedEntries = sortedMixed.map(label => ({
-      name: `Mixed ${label} League ${year}`, code: nextCode(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Mixed ${label} League ${year}`, code: makeAllocator("mixed")(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
 

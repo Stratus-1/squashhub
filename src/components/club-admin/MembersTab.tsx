@@ -23,6 +23,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
+import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */

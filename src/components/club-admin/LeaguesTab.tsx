@@ -479,10 +479,16 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
                 </Button>
                 {a.scope !== "internal" && (
-                  <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
-                    <Send className="w-4 h-4 mr-1" /><span className="truncate max-w-[180px]">Submit teams to {a.abbreviation || a.name}</span>
-                  </Button>
-
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
+                        <Send className="w-4 h-4 mr-1" /><span className="truncate max-w-[180px]">Submit teams to {a.abbreviation || a.name}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">Send the final team roster to {a.abbreviation || a.name}. Allocate all players first — new members will be affiliated and numbered automatically.</p>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>

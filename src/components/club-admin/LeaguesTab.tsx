@@ -1781,20 +1781,22 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     [associationMemberUserIds],
   );
 
-  // Filter members by gender AND association eligibility.
-  // PRIMARY check = active row in `member_association_affiliations` (the new permanent
-  // model). Legacy fallbacks (registration rows, regional tenant membership, profile
-  // opt-in) are kept for historical members not yet migrated.
+  // Admins may allocate ANY club member of the right gender into a league team.
+  // Affiliation is no longer a gate: allocating a member into a regional league is
+  // exactly what CREATES their association affiliation (number + fees follow after).
+  // We still track who is already affiliated so the pool can badge newcomers.
+  const isAffiliated = (m: ClubMember) => {
+    if (!associationId) return true;
+    if (permanentAffiliatedSet.has(m.id)) return true;
+    if (isInternal) {
+      return (m as any).enable_league_association_id === associationId || affiliatedSet.has(m.id);
+    }
+    return affiliatedSet.has(m.id) || (m.user_id ? associationUserIdSet.has(m.user_id) : false);
+  };
+
   const genderMembers = members
     .filter(m => ((gender === "mixed" || gender === "open") ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
-    .filter(m => {
-      if (!associationId) return true;
-      if (permanentAffiliatedSet.has(m.id)) return true;
-      if (isInternal) {
-        return (m as any).enable_league_association_id === associationId || affiliatedSet.has(m.id);
-      }
-      return affiliatedSet.has(m.id) || (m.user_id ? associationUserIdSet.has(m.user_id) : false);
-    })
+
     .sort((a, b) => {
       const la = (a as any).ladder_position ?? Number.POSITIVE_INFINITY;
       const lb = (b as any).ladder_position ?? Number.POSITIVE_INFINITY;
@@ -2346,6 +2348,49 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         }
       }
       console.log("[AllocateLeagues] save complete", { totalRowsWritten });
+
+      // Allocating a member into an association league AFFILIATES them to that
+      // association. Create/reactivate a permanent affiliation row with NO league
+      // number — the number comes from the association (e.g. NSA) and the fee is
+      // billed separately. Existing affiliations (and their numbers) are untouched.
+      if (associationId) {
+        const allocatedIds = Array.from(
+          new Set(Object.values(leagueData).flat().map(p => String(p.club_member_id))),
+        );
+        if (allocatedIds.length > 0) {
+          const { data: existingAff, error: affErr } = await fromExt("member_association_affiliations")
+            .select("id, club_member_id, active")
+            .eq("association_id", associationId)
+            .in("club_member_id", allocatedIds);
+          if (affErr) {
+            console.error("[AllocateLeagues] affiliation lookup failed", affErr);
+          } else {
+            const byMember = new Map<string, any>((existingAff || []).map((r: any) => [r.club_member_id, r]));
+            const toInsert = allocatedIds
+              .filter(id => !byMember.has(id))
+              .map(id => ({
+                club_member_id: id,
+                association_id: associationId,
+                active: true,
+                league_association_number: null,
+              }));
+            const toReactivate = (existingAff || []).filter((r: any) => !r.active).map((r: any) => r.id);
+            if (toInsert.length > 0) {
+              const { error: insErr } = await fromExt("member_association_affiliations").insert(toInsert);
+              if (insErr) console.error("[AllocateLeagues] affiliation insert failed", insErr);
+              else toast.info(`${toInsert.length} new player(s) affiliated — awaiting association number & fee.`);
+            }
+            if (toReactivate.length > 0) {
+              await fromExt("member_association_affiliations")
+                .update({ active: true, deactivated_at: null })
+                .in("id", toReactivate);
+            }
+            qc.invalidateQueries({ queryKey: ["permanent-affiliated-members", clubId, associationId] });
+            qc.invalidateQueries({ queryKey: ["affil-numbers-by-member", associationId] });
+          }
+        }
+      }
+
       // Refresh snapshot so a second Save in the same session is a no-op.
       initialLeagueData.current = Object.fromEntries(
         Object.entries(leagueData).map(([k, v]) => [k, v.map(p => ({ ...p }))])
@@ -2453,8 +2498,14 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
                               {teamLeague.code || teamLeague.name}
                             </Badge>
                           )}
+                          {!isAffiliated(m) && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 leading-none border-amber-500 text-amber-600">
+                              New
+                            </Badge>
+                          )}
                         </div>
                       </div>
+
                     </div>
                   );
                 })}

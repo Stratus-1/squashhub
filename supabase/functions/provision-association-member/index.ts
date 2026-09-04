@@ -341,12 +341,15 @@ Deno.serve(async (req) => {
     // row and journals "club owes league" on the home-club books.
     if (validatedHomeClubId && homeClubFeeSeeds.length > 0 && insertedAssocFeeIds.length > 0) {
       try {
-        const { data: homeMemberRow } = await supabaseAdmin
-          .from("club_members")
-          .select("id")
-          .eq("club_id", validatedHomeClubId)
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const { data: homeMemberRow } = targetHomeMemberId
+          ? { data: { id: targetHomeMemberId } }
+          : await supabaseAdmin
+              .from("club_members")
+              .select("id")
+              .eq("club_id", validatedHomeClubId)
+              .eq("user_id", targetUserId ?? "00000000-0000-0000-0000-000000000000")
+              .maybeSingle();
+
         if (homeMemberRow?.id) {
           const seasonYear = new Date().getFullYear();
           const ptRecords = homeClubFeeSeeds

@@ -102,8 +102,9 @@ export function LeagueSeasonsDialog({ association, open, onOpenChange, readOnly 
             Seasons — {association?.name}
           </DialogTitle>
           <DialogDescription>
-            A league is permanent; each year is a season. Past seasons keep their own
-            teams, rounds, fixtures and standings.
+            {readOnly
+              ? `${association?.name} opens each season. Select the season you want to create your club's teams for.`
+              : "A league is permanent; each year is a season. Past seasons keep their own teams, rounds, fixtures and standings."}
           </DialogDescription>
         </DialogHeader>
 

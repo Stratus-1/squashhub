@@ -31,6 +31,9 @@ Deno.serve(async (req) => {
     const associationSubdomain = String(body?.associationSubdomain || "").trim().toLowerCase();
     const homeClubId = body?.homeClubId ? String(body.homeClubId) : null;
     const homeClubName = body?.homeClubName ? String(body.homeClubName) : null;
+    // Admin mode: a club admin affiliates ANOTHER member (who may not even have
+    // a login yet). Without this the function used to provision the *caller*.
+    const clubMemberId = body?.clubMemberId ? String(body.clubMemberId) : null;
 
     if (!associationSubdomain) {
       return jsonResp(400, { error: "associationSubdomain is required" });
@@ -50,51 +53,80 @@ Deno.serve(async (req) => {
       return jsonResp(400, { error: "Tenant is not an association" });
     }
 
-    // Idempotency: if a club_member already exists at the association for this user, return success
-    const { data: existing } = await supabaseAdmin
-      .from("club_members")
-      .select("id")
-      .eq("club_id", assoc.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // ---------------------------------------------------------------
+    // Resolve WHO is being affiliated (self-signup vs admin acting for a member)
+    // ---------------------------------------------------------------
+    const normalisePhone = (p: string | null | undefined) =>
+      (p || "").replace(/\D+/g, "").replace(/^0+/, "");
 
-    if (existing?.id) {
-      return jsonResp(200, { ok: true, memberId: existing.id, alreadyExists: true });
+    let targetUserId: string | null = user.id;
+    let targetHomeMemberId: string | null = null;
+    let targetHomeClubId: string | null = homeClubId;
+    let memberName = ((user.user_metadata || {}) as any).name as string ||
+      (user.email?.split("@")[0] ?? "Member");
+    let memberEmail: string | null = user.email ?? null;
+    let memberPhone: string | null = (((user.user_metadata || {}) as any).phone as string) ||
+      (user.phone ?? null);
+
+    if (clubMemberId) {
+      const { data: target, error: targetErr } = await supabaseAdmin
+        .from("club_members")
+        .select("id, club_id, user_id, name, email, phone")
+        .eq("id", clubMemberId)
+        .maybeSingle();
+      if (targetErr || !target) {
+        return jsonResp(404, { error: "Member not found" });
+      }
+      const { data: isAdmin } = await supabaseAdmin.rpc("is_club_admin", {
+        _user_id: user.id,
+        _club_id: target.club_id,
+      });
+      if (!isAdmin) {
+        return jsonResp(403, { error: "Not a club admin for this member" });
+      }
+      targetUserId = (target as any).user_id ?? null;
+      targetHomeMemberId = target.id;
+      targetHomeClubId = target.club_id;
+      memberName = (target as any).name || "Member";
+      memberEmail = (target as any).email ?? null;
+      memberPhone = (target as any).phone ?? null;
+    }
+
+    // Idempotency: association row already exists for this person?
+    if (targetUserId) {
+      const { data: existing } = await supabaseAdmin
+        .from("club_members")
+        .select("id")
+        .eq("club_id", assoc.id)
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+      if (existing?.id) {
+        return jsonResp(200, { ok: true, memberId: existing.id, alreadyExists: true });
+      }
     }
 
     // If home club provided, validate it is affiliated to this association
     let validatedHomeClubId: string | null = null;
-    if (homeClubId) {
+    if (targetHomeClubId) {
       const { data: aff } = await supabaseAdmin
         .from("association_affiliated_clubs")
         .select("id")
         .eq("association_tenant_id", assoc.id)
-        .eq("club_id", homeClubId)
+        .eq("club_id", targetHomeClubId)
         .eq("status", "active")
         .maybeSingle();
       if (aff) {
-        validatedHomeClubId = homeClubId;
+        validatedHomeClubId = targetHomeClubId;
       }
     }
-
-    const meta = (user.user_metadata || {}) as Record<string, unknown>;
-    const memberName = (meta.name as string) || (user.email?.split("@")[0] ?? "Member");
-    const memberPhone = (meta.phone as string) || null;
 
     // ---------------------------------------------------------------
     // CLAIM EXISTING PRE-LOADED ROW (admin pre-allocated members)
     // ---------------------------------------------------------------
-    // Admin may have already created a club_members row for this person at
-    // the association tenant (with a club_member_number / league number,
-    // email and/or phone) but with user_id IS NULL because they hadn't
-    // signed up yet. When they now sign up, we MUST link to that existing
-    // row instead of inserting a duplicate with a fresh number.
-    //
     // Match priority: email (case-insensitive) → phone (digits-only).
-    const normalisePhone = (p: string | null | undefined) =>
-      (p || "").replace(/\D+/g, "").replace(/^0+/, "");
-    const userEmailLower = (user.email || "").toLowerCase();
-    const userPhoneDigits = normalisePhone(memberPhone) || normalisePhone(user.phone || "");
+    const userEmailLower = (memberEmail || "").toLowerCase();
+    const userPhoneDigits = normalisePhone(memberPhone);
+
 
     let claimedMember: { id: string; club_member_number: string | null } | null = null;
     if (userEmailLower || userPhoneDigits) {

@@ -6,7 +6,7 @@
  * source of truth. Where the association is fed by an external source (NSA),
  * the sync actions live here too.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { PlatformAssociation } from "@/hooks/use-platform-association";
 import { SeasonFixtureBuilder } from "@/components/association-admin/SeasonFixtureBuilder";
 import { type AssocTeam } from "@/lib/leagues/association-tree";
+import { useAssociationSeasons } from "@/hooks/use-association-seasons";
 
 const ALL = "__all__";
 
@@ -46,6 +47,7 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [syncing, setSyncing] = useState<"fixtures" | "members" | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [seasonPicked, setSeasonPicked] = useState(false);
 
   const { data: teams = [] } = useQuery({
     queryKey: ["assoc-league-teams", tenantId, "builder"],
@@ -81,13 +83,32 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
     },
   });
 
-  const seasons = useMemo(
-    () =>
-      Array.from(new Set(fixtures.map((f) => (f.fixture_date || "").slice(0, 4)).filter(Boolean))).sort(
-        (a, b) => Number(b) - Number(a)
-      ),
-    [fixtures]
-  );
+  const { seasons: openSeasons } = useAssociationSeasons(association?.id ?? null);
+
+  // Season list = seasons that already have fixtures + seasons declared by the
+  // association (e.g. 2027 before any fixture exists) + seasons that have teams.
+  const seasons = useMemo(() => {
+    const years = new Set<string>();
+    fixtures.forEach((f) => {
+      const y = (f.fixture_date || "").slice(0, 4);
+      if (y) years.add(y);
+    });
+    openSeasons.forEach((s) => years.add(String(s.season_year)));
+    teams.forEach((t: any) => t?.season_year != null && years.add(String(t.season_year)));
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+  }, [fixtures, openSeasons, teams]);
+
+  // Default to the association-declared current season, then latest declared,
+  // then the calendar year, then the newest season on record.
+  useEffect(() => {
+    if (seasons.length === 0 || seasonPicked) return;
+    if (seasons.includes(season)) { setSeasonPicked(true); return; }
+    const declaredCurrent = openSeasons.find((s) => s.is_current)?.season_year;
+    const declaredLatest = openSeasons.length ? Math.max(...openSeasons.map((s) => s.season_year)) : null;
+    const pick = declaredCurrent ?? declaredLatest ?? seasons[0];
+    if (pick != null) setSeason(String(pick));
+    setSeasonPicked(true);
+  }, [seasons, openSeasons, season, seasonPicked]);
 
   const scoped = useMemo(() => {
     const q = query.trim().toLowerCase();

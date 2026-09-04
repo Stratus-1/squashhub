@@ -106,6 +106,71 @@ export function AssociationPayablesPanel({ clubId }: Props) {
     return m;
   }, [batches]);
 
+  /* ─── Submission-driven billing: totals calculated when rosters are submitted ─── */
+  const season = new Date().getFullYear() + 1;
+
+  const { data: assocRows = [] } = useQuery({
+    queryKey: ["assoc-payable-associations"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_associations")
+        .select("id, name, tenant_association_id");
+      if (error) throw error;
+      return (data || []) as { id: string; name: string; tenant_association_id: string | null }[];
+    },
+  });
+
+  const { data: nbLinks = [] } = useQuery({
+    queryKey: ["assoc-payable-nb-links"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_association_national_bodies")
+        .select("league_association_id, national_body_fee_id");
+      if (error) throw error;
+      return (data || []) as { league_association_id: string; national_body_fee_id: string }[];
+    },
+  });
+
+  const { data: statement = [] } = useQuery({
+    queryKey: ["assoc-payable-statement", clubId, season],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("club_association_statement", {
+        _club_id: clubId,
+        _season_year: season,
+      });
+      if (error) throw error;
+      return (data || []) as {
+        association_tenant_id: string;
+        basis: string;
+        amount: number;
+        units_submitted: number;
+        units_pending: number;
+        total_submitted: number;
+        total_pending: number;
+      }[];
+    },
+    enabled: !!clubId,
+  });
+
+  const feeTenant = (f: PayableFee): string | null => {
+    if (f.payee_type === "league_association" && f.payee_ref_id) {
+      return assocRows.find((a) => a.id === f.payee_ref_id)?.tenant_association_id ?? null;
+    }
+    if (f.payee_type === "national_body" && f.payee_ref_id) {
+      const link = nbLinks.find((l) => l.national_body_fee_id === f.payee_ref_id);
+      const assoc = link ? assocRows.find((a) => a.id === link.league_association_id) : undefined;
+      return assoc?.tenant_association_id ?? null;
+    }
+    return null;
+  };
+
+  const basisMap: Record<Basis, string> = { per_member: "member", per_team: "league_team", per_club: "club" };
+  const feeStatementRows = (f: PayableFee) => {
+    const t = feeTenant(f);
+    if (!t) return [];
+    return statement.filter(
+      (r) => r.association_tenant_id === t && r.basis === basisMap[f.basis] && Number(r.amount) === f.amount,
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">

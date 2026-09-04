@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useLeagueAssociations, useLeagues, useClubMembers, LeagueAssociation, League, ClubMember, SKILL_LEVELS, getSkillOrder, getSkillLabel } from "@/hooks/use-club";
 import { useLadder } from "@/hooks/use-data";
 import { fromExt } from "@/lib/supabase-ext";
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

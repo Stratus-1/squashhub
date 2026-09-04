@@ -437,9 +437,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => setBulkBookOpen(true)}>
-              <CalendarDays className="w-4 h-4 mr-1" />Bulk book home fixtures
-            </Button>
             <AssociationDialog
               clubId={clubId}
               open={addAssocOpen}
@@ -448,8 +445,10 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             />
           </div>
         </div>
-        <div className="space-y-2">
-          {associations.map((a: any) => (
+        {(() => {
+          const renderCard = (a: any) => {
+            const isClubLeague = isClubLeagueScope(a.scope);
+            return (
             <Card key={a.id} className="p-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
               <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto lg:flex-1 lg:basis-[220px] lg:min-w-[200px]">
                 <p className="font-medium break-normal">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
@@ -458,8 +457,8 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">Platform</Badge>
                 )}
                 <Badge
-                  variant={isClubLeagueScope(a.scope) ? "outline" : "default"}
-                  className={`text-[10px] h-5 flex-shrink-0 ${isClubLeagueScope(a.scope) ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}
+                  variant={isClubLeague ? "outline" : "default"}
+                  className={`text-[10px] h-5 flex-shrink-0 ${isClubLeague ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}
                 >
                   {leagueKindLabel(a.scope)}
                 </Badge>
@@ -504,19 +503,33 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
 
                   <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
                 </Button>
-                {a.scope !== "internal" && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
-                          <Send className="w-4 h-4 mr-1" /><span className="truncate max-w-[180px]">Submit teams to {a.abbreviation || a.name}</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs">
-                        <p className="text-xs">Send the final team roster to {a.abbreviation || a.name}. Allocate all players first — new members will be affiliated and numbered automatically.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                {!isClubLeague && (
+                  <>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="sm" variant="outline" onClick={() => setBulkBookOpen(true)}>
+                            <CalendarDays className="w-4 h-4 mr-1" />Bulk book home fixtures
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="text-xs">Reserve courts for every home fixture {a.abbreviation || a.name} has published this season.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
+                            <Send className="w-4 h-4 mr-1" /><span className="truncate max-w-[180px]">Submit teams to {a.abbreviation || a.name}</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="text-xs">Send the final team roster to {a.abbreviation || a.name}. Allocate all players first — new members will be affiliated and numbered automatically.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
                 )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
@@ -524,9 +537,45 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 </Button>
               </div>
             </Card>
-          ))}
-          {associations.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No associations added yet</p>}
-        </div>
+            );
+          };
+
+          const systemAssocs = associations.filter((a: any) => !isClubLeagueScope(a.scope));
+          const clubAssocs = associations.filter((a: any) => isClubLeagueScope(a.scope));
+
+          return (
+            <div className="space-y-5">
+              <section className="space-y-2">
+                <div className="flex items-baseline gap-2 border-b pb-1">
+                  <h4 className="text-sm font-semibold">{SYSTEM_LEAGUES}</h4>
+                  <span className="text-[11px] text-muted-foreground">
+                    Run by the association — fixtures, rules and rosters come from them.
+                  </span>
+                </div>
+                {systemAssocs.map(renderCard)}
+                {systemAssocs.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-2">
+                    Your club has not joined a {SYSTEM_LEAGUE} yet.
+                  </p>
+                )}
+              </section>
+
+              <section className="space-y-2">
+                <div className="flex items-baseline gap-2 border-b pb-1">
+                  <h4 className="text-sm font-semibold">{CLUB_LEAGUES}</h4>
+                  <span className="text-[11px] text-muted-foreground">
+                    Your own leagues — you set the format, teams and fixtures.
+                  </span>
+                </div>
+                {clubAssocs.map(renderCard)}
+                {clubAssocs.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-2">No club leagues created yet.</p>
+                )}
+              </section>
+            </div>
+          );
+        })()}
+
         <FillTopDownSettings clubId={clubId} />
       </div>
       )}

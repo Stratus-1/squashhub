@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import type { LeagueAssociation } from "@/hooks/use-club";
 import {
   Dialog,
@@ -26,6 +27,8 @@ import {
   Copy,
   AlertTriangle,
   Crown,
+  Send,
+  Check,
 } from "lucide-react";
 
 interface Props {
@@ -327,6 +330,10 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
 
             {/* Actions */}
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={submit} disabled={submitting || stats.teams === 0}>
+                {submitted ? <Check className="w-4 h-4 mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                {submitting ? "Submitting…" : submitted ? `Submitted to ${asLabel}` : `Submit to ${asLabel}`}
+              </Button>
               <Button
                 size="sm"
                 variant="outline"

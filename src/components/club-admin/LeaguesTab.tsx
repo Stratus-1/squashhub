@@ -3213,10 +3213,15 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
   // association opens the season calendar — the club just responds). Falls
   // back to the calendar year for associations with no seasons yet.
   const yearAssoc = associations.find((a) => a.id === (associationId || lockedAssociationId));
+  // Seasons can be declared either against the shared platform association or
+  // directly against this club's association row (regional rows often have no
+  // platform link), so fall back to the local id rather than skipping the read.
+  const usePlatform = Boolean(yearAssoc && !isClubLeagueScope(yearAssoc.scope) && yearAssoc.platform_association_id);
   const { currentSeason } = useLeagueSeasons({
-    associationId: yearAssoc && isClubLeagueScope(yearAssoc.scope) ? yearAssoc.id : null,
-    platformAssociationId: yearAssoc && !isClubLeagueScope(yearAssoc.scope) ? yearAssoc.platform_association_id : null,
+    associationId: yearAssoc && !usePlatform ? yearAssoc.id : null,
+    platformAssociationId: usePlatform ? yearAssoc!.platform_association_id : null,
   });
+
   useEffect(() => {
     if (!open) return;
     if (defaultYear) { setYear(defaultYear); return; }

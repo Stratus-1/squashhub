@@ -211,15 +211,16 @@ Deno.serve(async (req) => {
 
       const insertPayload: Record<string, unknown> = {
         club_id: assoc.id,
-        user_id: user.id,
+        user_id: targetUserId,
         name: memberName,
-        email: user.email,
+        email: memberEmail,
         phone: memberPhone,
         plays_league: true,
         role: "member",
         is_league_only_membership: true,
         club_member_number: allocatedNumber,
       };
+
       if (validatedHomeClubId) {
         insertPayload.home_club_id = validatedHomeClubId;
       }

@@ -1781,20 +1781,22 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
     [associationMemberUserIds],
   );
 
-  // Filter members by gender AND association eligibility.
-  // PRIMARY check = active row in `member_association_affiliations` (the new permanent
-  // model). Legacy fallbacks (registration rows, regional tenant membership, profile
-  // opt-in) are kept for historical members not yet migrated.
+  // Admins may allocate ANY club member of the right gender into a league team.
+  // Affiliation is no longer a gate: allocating a member into a regional league is
+  // exactly what CREATES their association affiliation (number + fees follow after).
+  // We still track who is already affiliated so the pool can badge newcomers.
+  const isAffiliated = (m: ClubMember) => {
+    if (!associationId) return true;
+    if (permanentAffiliatedSet.has(m.id)) return true;
+    if (isInternal) {
+      return (m as any).enable_league_association_id === associationId || affiliatedSet.has(m.id);
+    }
+    return affiliatedSet.has(m.id) || (m.user_id ? associationUserIdSet.has(m.user_id) : false);
+  };
+
   const genderMembers = members
     .filter(m => ((gender === "mixed" || gender === "open") ? true : gender === "ladies" ? m.gender === "Ladies" : m.gender !== "Ladies"))
-    .filter(m => {
-      if (!associationId) return true;
-      if (permanentAffiliatedSet.has(m.id)) return true;
-      if (isInternal) {
-        return (m as any).enable_league_association_id === associationId || affiliatedSet.has(m.id);
-      }
-      return affiliatedSet.has(m.id) || (m.user_id ? associationUserIdSet.has(m.user_id) : false);
-    })
+
     .sort((a, b) => {
       const la = (a as any).ladder_position ?? Number.POSITIVE_INFINITY;
       const lb = (b as any).ladder_position ?? Number.POSITIVE_INFINITY;

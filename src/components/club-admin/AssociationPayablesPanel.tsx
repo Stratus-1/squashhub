@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { postJournal } from "@/lib/post-journal";
 import { Building2, Plus, CheckCircle2, Clock, Wallet, XCircle, Users } from "lucide-react";
@@ -105,6 +106,71 @@ export function AssociationPayablesPanel({ clubId }: Props) {
     return m;
   }, [batches]);
 
+  /* ─── Submission-driven billing: totals calculated when rosters are submitted ─── */
+  const season = new Date().getFullYear() + 1;
+
+  const { data: assocRows = [] } = useQuery({
+    queryKey: ["assoc-payable-associations"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_associations")
+        .select("id, name, tenant_association_id");
+      if (error) throw error;
+      return (data || []) as { id: string; name: string; tenant_association_id: string | null }[];
+    },
+  });
+
+  const { data: nbLinks = [] } = useQuery({
+    queryKey: ["assoc-payable-nb-links"],
+    queryFn: async () => {
+      const { data, error } = await fromExt("league_association_national_bodies")
+        .select("league_association_id, national_body_fee_id");
+      if (error) throw error;
+      return (data || []) as { league_association_id: string; national_body_fee_id: string }[];
+    },
+  });
+
+  const { data: statement = [] } = useQuery({
+    queryKey: ["assoc-payable-statement", clubId, season],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("club_association_statement", {
+        _club_id: clubId,
+        _season_year: season,
+      });
+      if (error) throw error;
+      return (data || []) as {
+        association_tenant_id: string;
+        basis: string;
+        amount: number;
+        units_submitted: number;
+        units_pending: number;
+        total_submitted: number;
+        total_pending: number;
+      }[];
+    },
+    enabled: !!clubId,
+  });
+
+  const feeTenant = (f: PayableFee): string | null => {
+    if (f.payee_type === "league_association" && f.payee_ref_id) {
+      return assocRows.find((a) => a.id === f.payee_ref_id)?.tenant_association_id ?? null;
+    }
+    if (f.payee_type === "national_body" && f.payee_ref_id) {
+      const link = nbLinks.find((l) => l.national_body_fee_id === f.payee_ref_id);
+      const assoc = link ? assocRows.find((a) => a.id === link.league_association_id) : undefined;
+      return assoc?.tenant_association_id ?? null;
+    }
+    return null;
+  };
+
+  const basisMap: Record<Basis, string> = { per_member: "member", per_team: "league_team", per_club: "club" };
+  const feeStatementRows = (f: PayableFee) => {
+    const t = feeTenant(f);
+    if (!t) return [];
+    return statement.filter(
+      (r) => r.association_tenant_id === t && r.basis === basisMap[f.basis] && Number(r.amount) === f.amount,
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -113,8 +179,9 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         <Badge variant="outline" className="text-[10px]">{fees.length} fee{fees.length === 1 ? "" : "s"} configured</Badge>
       </div>
       <p className="text-xs text-muted-foreground -mt-4">
-        Generate lump-sum payables for the fees in your Fees Payable Schedule. The club is invoiced; each batch
-        keeps a permanent audit trail of who/what was covered.
+        Fees linked to an association are calculated automatically when you submit your teams and players — the
+        totals shown come straight from that submission. Manual batches are only needed for fees without an
+        automatic submission.
       </p>
 
       {fees.length === 0 ? (
@@ -123,29 +190,64 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {fees.map((f) => (
-            <Card key={f.id} className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">{f.payee_name}</p>
-                  <Badge variant="secondary" className="text-[10px] mt-1">{basisLabel(f.basis)}</Badge>
+          {fees.map((f) => {
+            const stmtRows = feeStatementRows(f);
+            const autoBilled = stmtRows.length > 0;
+            const subUnits = stmtRows.reduce((s, r) => s + Number(r.units_submitted || 0), 0);
+            const subTotal = stmtRows.reduce((s, r) => s + Number(r.total_submitted || 0), 0);
+            const pendUnits = stmtRows.reduce((s, r) => s + Number(r.units_pending || 0), 0);
+            const pendTotal = stmtRows.reduce((s, r) => s + Number(r.total_pending || 0), 0);
+            return (
+              <Card key={f.id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{f.payee_name}</p>
+                    <Badge variant="secondary" className="text-[10px] mt-1">{basisLabel(f.basis)}</Badge>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] whitespace-nowrap">
+                    {money(f.amount)} / {basisUnit(f.basis)}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className="text-[10px] whitespace-nowrap">
-                  {money(f.amount)} / {basisUnit(f.basis)}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2 text-[11px]">
-                <Wallet className="w-3 h-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Outstanding:</span>
-                <span className={outstandingByFee[f.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
-                  {money(outstandingByFee[f.id] || 0)}
-                </span>
-              </div>
-              <Button size="sm" className="w-full gap-1.5 h-8" onClick={() => setGenerateFee(f)}>
-                <Plus className="w-3.5 h-3.5" /> Generate Payable
-              </Button>
-            </Card>
-          ))}
+
+                {autoBilled ? (
+                  <div className="space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Submitted ({subUnits} {basisUnit(f.basis)}{subUnits === 1 ? "" : "s"})</span>
+                      <span className="font-semibold tabular-nums">{money(subTotal)}</span>
+                    </div>
+                    {pendUnits > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Not yet submitted ({pendUnits})</span>
+                        <span className="tabular-nums text-amber-600">{money(pendTotal)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between border-t pt-1.5">
+                      <span className="text-muted-foreground">Outstanding (manual batches)</span>
+                      <span className={outstandingByFee[f.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
+                        {money(outstandingByFee[f.id] || 0)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground pt-1">
+                      Calculated automatically from your {season} submission — no manual payable needed.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <Wallet className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">Outstanding:</span>
+                      <span className={outstandingByFee[f.id] ? "text-destructive font-semibold tabular-nums" : "tabular-nums"}>
+                        {money(outstandingByFee[f.id] || 0)}
+                      </span>
+                    </div>
+                    <Button size="sm" className="w-full gap-1.5 h-8" onClick={() => setGenerateFee(f)}>
+                      <Plus className="w-3.5 h-3.5" /> Generate Payable
+                    </Button>
+                  </>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
 

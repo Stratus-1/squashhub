@@ -68,6 +68,7 @@ export default function AssociationRulesTab({ associationId, readOnly = false }:
 
   return (
     <div className="space-y-4">
+      <fieldset disabled={readOnly} className="contents">
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Scoring</CardTitle>
@@ -351,15 +352,18 @@ export default function AssociationRulesTab({ associationId, readOnly = false }:
 
       {/* "Fill Up Leagues tab" toggle moved to Club Admin → Leagues so each club decides whether their captains use weekly team planning. */}
 
-      <div className="flex justify-end">
-        <Button
-          disabled={update.isPending}
-          onClick={() => update.mutate({ associationId, patch: form })}
-        >
-          {update.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Save rules
-        </Button>
-      </div>
+      </fieldset>
+      {!readOnly && (
+        <div className="flex justify-end">
+          <Button
+            disabled={update.isPending}
+            onClick={() => update.mutate({ associationId, patch: form })}
+          >
+            {update.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Save rules
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

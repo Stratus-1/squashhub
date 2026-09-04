@@ -43,6 +43,7 @@ import {
   DEVICE_ICONS,
   type ClubDevice,
   type DeviceCategory,
+  describeDeviceSchedule,
   deviceIcon,
   describeDeviceBehaviour,
 } from "@/lib/devices";
@@ -92,6 +93,11 @@ type DeviceForm = {
   pulse_ms: string;
   ble_mac: string;
   auto_off_minutes: string;
+  schedule_enabled: boolean;
+  schedule_timezone: string;
+  schedule_days: number[];
+  schedule_on_time: string;
+  schedule_off_time: string;
   sort_order: string;
   server_url: string;
   auth_key: string;
@@ -112,6 +118,11 @@ const emptyForm = (category: DeviceCategory): DeviceForm => ({
   pulse_ms: "3000",
   ble_mac: "",
   auto_off_minutes: "",
+  schedule_enabled: false,
+  schedule_timezone: "Africa/Johannesburg",
+  schedule_days: [1, 2, 3, 4, 5, 6, 7],
+  schedule_on_time: "",
+  schedule_off_time: "",
   sort_order: "0",
   server_url: "",
   auth_key: "",
@@ -134,6 +145,11 @@ const toForm = (d: IoTDevice): DeviceForm => ({
   pulse_ms: String(d.pulse_ms ?? 3000),
   ble_mac: d.ble_mac || "",
   auto_off_minutes: d.auto_off_minutes == null ? "" : String(d.auto_off_minutes),
+  schedule_enabled: !!d.schedule_enabled,
+  schedule_timezone: d.schedule_timezone || "Africa/Johannesburg",
+  schedule_days: d.schedule_days?.length ? d.schedule_days : [1, 2, 3, 4, 5, 6, 7],
+  schedule_on_time: d.schedule_on_time?.slice(0, 5) || "",
+  schedule_off_time: d.schedule_off_time?.slice(0, 5) || "",
   sort_order: String(d.sort_order ?? 0),
   server_url: d.server_url || "",
   auth_key: d.auth_key || "",
@@ -313,6 +329,16 @@ export function DevicesTab({ clubId }: { clubId: string }) {
   const set = <K extends keyof DeviceForm>(key: K, value: DeviceForm[K]) =>
     setForm((p) => (p ? { ...p, [key]: value } : p));
 
+  const toggleScheduleDay = (day: number) => {
+    setForm((p) => {
+      if (!p) return p;
+      const schedule_days = p.schedule_days.includes(day)
+        ? p.schedule_days.filter((d) => d !== day)
+        : [...p.schedule_days, day].sort((a, b) => a - b);
+      return { ...p, schedule_days };
+    });
+  };
+
   const openEditor = (device: IoTDevice) => {
     setSelectedDevice(null);
     setForm(toForm(device));
@@ -341,6 +367,24 @@ export function DevicesTab({ clubId }: { clubId: string }) {
     if (autoOff != null && (!Number.isFinite(autoOff) || autoOff < 1 || autoOff > 1440)) {
       toast.error("Auto-off must be between 1 and 1440 minutes.");
       return;
+    }
+    if (form.schedule_enabled) {
+      if (form.source !== "registry" || form.category !== "gadgets" || form.control_mode !== "toggle") {
+        toast.error("Schedules are only available for on/off gadgets.");
+        return;
+      }
+      if (!form.schedule_on_time || !form.schedule_off_time) {
+        toast.error("Set both the on time and off time for the schedule.");
+        return;
+      }
+      if (form.schedule_on_time === form.schedule_off_time) {
+        toast.error("On time and off time must be different.");
+        return;
+      }
+      if (form.schedule_days.length === 0) {
+        toast.error("Choose at least one day for the schedule.");
+        return;
+      }
     }
 
     setSavingForm(true);
@@ -415,6 +459,13 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         pulse_ms: Number.isFinite(pulseMs) ? pulseMs : 3000,
         ble_mac: form.ble_mac.trim() || null,
         auto_off_minutes: form.control_mode === "pulse" ? null : autoOff,
+        schedule_enabled: form.source === "registry" && form.category === "gadgets" && form.control_mode === "toggle"
+          ? form.schedule_enabled
+          : false,
+        schedule_timezone: form.schedule_timezone || "Africa/Johannesburg",
+        schedule_days: form.schedule_days,
+        schedule_on_time: form.schedule_enabled ? form.schedule_on_time : null,
+        schedule_off_time: form.schedule_enabled ? form.schedule_off_time : null,
         sort_order: Number(form.sort_order) || 0,
       });
       toast.success(form.id ? "Device updated" : "Device added");
@@ -551,7 +602,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
               ) : (
                 rows.map((device) => {
                   const DeviceIcon = deviceIcon(device);
-                  const behaviour = describeDeviceBehaviour(device);
+                  const behaviour = describeDeviceSchedule(device) ?? describeDeviceBehaviour(device);
                   return (
                     <div
                       key={device.id}
@@ -847,6 +898,78 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                       Set on a geyser. The relay counts down itself, so it still switches off if the
                       phone, the app or the network drops out.
                     </p>
+                  </div>
+                )}
+
+                {form.source === "registry" && form.category === "gadgets" && form.control_mode === "toggle" && (
+                  <div className="space-y-3 rounded-xl border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <Label className="text-sm">Daily timer</Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Automatically switch this gadget on and off at fixed club times.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={form.schedule_enabled}
+                        onCheckedChange={(v) => set("schedule_enabled", v)}
+                      />
+                    </div>
+
+                    {form.schedule_enabled && (
+                      <div className="space-y-3">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label>Turn on</Label>
+                            <Input
+                              type="time"
+                              value={form.schedule_on_time}
+                              onChange={(e) => set("schedule_on_time", e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Turn off</Label>
+                            <Input
+                              type="time"
+                              value={form.schedule_off_time}
+                              onChange={(e) => set("schedule_off_time", e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Days</Label>
+                          <div className="grid grid-cols-7 gap-1">
+                            {[
+                              [1, "M"],
+                              [2, "T"],
+                              [3, "W"],
+                              [4, "T"],
+                              [5, "F"],
+                              [6, "S"],
+                              [7, "S"],
+                            ].map(([day, label]) => (
+                              <Button
+                                key={day}
+                                type="button"
+                                variant={form.schedule_days.includes(Number(day)) ? "default" : "outline"}
+                                className="h-9 px-0 text-xs"
+                                onClick={() => toggleScheduleDay(Number(day))}
+                              >
+                                {label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Timezone</Label>
+                          <Input
+                            value={form.schedule_timezone}
+                            placeholder="Africa/Johannesburg"
+                            onChange={(e) => set("schedule_timezone", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1155,7 +1278,8 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                     <div className="col-span-2 rounded-xl border bg-muted/25 p-3">
                       <p className="text-xs text-muted-foreground">Behaviour</p>
                       <p className="font-medium">
-                        {describeDeviceBehaviour(selectedDevice) ??
+                        {describeDeviceSchedule(selectedDevice) ??
+                          describeDeviceBehaviour(selectedDevice) ??
                           (selectedDevice.control_mode === "pulse" ? "Momentary" : "On / off")}
                       </p>
                     </div>

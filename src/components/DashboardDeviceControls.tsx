@@ -17,6 +17,7 @@ import {
   DEVICE_CATEGORY_META,
   type ClubDevice,
   type DeviceCategory,
+  describeDeviceSchedule,
   deviceIcon,
   describeDeviceBehaviour,
   groupDevices,
@@ -182,7 +183,7 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
 
   const isPulse = device.control_mode === "pulse";
   const state = optimistic ?? device.last_state ?? false;
-  const behaviour = describeDeviceBehaviour(device);
+  const behaviour = describeDeviceSchedule(device) ?? describeDeviceBehaviour(device);
   const busy = control.isPending;
 
   const run = async (action: "on" | "off" | "pulse") => {

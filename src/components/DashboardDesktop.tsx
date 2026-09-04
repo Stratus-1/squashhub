@@ -116,9 +116,9 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
         </div>
 
 
-      {/* Club Controls — same grouped section the mobile dashboard renders */}
+      {/* Club Controls — same grouped section the mobile admin dashboard renders */}
       <div className="px-8 space-y-3">
-        <DashboardDeviceControls />
+        {props.hasAnyAdminAccess && <DashboardDeviceControls />}
         <DashboardWifiCard />
         <DashboardRouterCard />
       </div>
@@ -539,6 +539,5 @@ function TileGroup({
     </section>
   );
 }
-
 
 

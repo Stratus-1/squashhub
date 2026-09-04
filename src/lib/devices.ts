@@ -52,6 +52,14 @@ export interface ClubDevice {
   pulse_ms: number;
   ble_mac: string | null;
   auto_off_minutes: number | null;
+  schedule_enabled?: boolean | null;
+  schedule_timezone?: string | null;
+  schedule_days?: number[] | null;
+  schedule_on_time?: string | null;
+  schedule_off_time?: string | null;
+  schedule_last_on_key?: string | null;
+  schedule_last_off_key?: string | null;
+  schedule_last_checked_at?: string | null;
   last_state: boolean | null;
   last_state_at: string | null;
   last_error: string | null;
@@ -169,4 +177,13 @@ export function describeDeviceBehaviour(device: ClubDevice): string | null {
       : `Switches itself off after ${device.auto_off_minutes} min`;
   }
   return null;
+}
+
+export function describeDeviceSchedule(
+  device: Pick<ClubDevice, "schedule_enabled" | "schedule_days" | "schedule_on_time" | "schedule_off_time">,
+): string | null {
+  if (!device.schedule_enabled || !device.schedule_on_time || !device.schedule_off_time) return null;
+  const days = device.schedule_days?.length ? device.schedule_days : [1, 2, 3, 4, 5, 6, 7];
+  const dayLabel = days.length === 7 ? "daily" : `${days.length} day${days.length === 1 ? "" : "s"}/week`;
+  return `${dayLabel} ${device.schedule_on_time.slice(0, 5)}-${device.schedule_off_time.slice(0, 5)}`;
 }

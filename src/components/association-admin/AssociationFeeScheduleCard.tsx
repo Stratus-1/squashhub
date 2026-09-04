@@ -24,20 +24,19 @@ export interface FeeItem {
   label: string;
   amount: number;
   season_year: number | null;
+  due_month: number | null;
+  due_day: number | null;
   notes: string | null;
   active: boolean;
-}
-
-interface AnnualFeeSettings {
-  league_member_annual_fee: number | null;
-  league_fee_due_month: number | null;
-  league_fee_due_day: number | null;
 }
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
+const fmtDueDate = (item: FeeItem) =>
+  item.due_month && item.due_day ? `${item.due_day} ${MONTHS[item.due_month - 1]}` : "—";
 
 export const BASIS_LABEL: Record<FeeItem["basis"], string> = {
   member: "Per member",
@@ -54,6 +53,8 @@ const emptyDraft = (direction: FeeItem["direction"]): Partial<FeeItem> => ({
   label: "",
   amount: 0,
   season_year: new Date().getFullYear(),
+  due_month: null,
+  due_day: null,
   notes: "",
   active: true,
 });

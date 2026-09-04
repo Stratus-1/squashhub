@@ -44,9 +44,24 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // Automated callers (the hourly cron and send-whatsapp, which self-heals
+    // when it meets a template that is not registered yet) authenticate with a
+    // shared internal secret stored in app_settings.
+    const headerSecret = req.headers.get("x-internal-secret");
+    let isInternal = false;
+    if (headerSecret) {
+      const { data: secretRow } = await admin
+        .from("app_settings")
+        .select("value")
+        .eq("key", "whatsapp_templates_internal_secret")
+        .maybeSingle();
+      isInternal = !!secretRow?.value && secretRow.value === headerSecret;
+      if (!isInternal) return json({ error: "Not authenticated" }, 401);
+    }
+
     const bearer = (req.headers.get("Authorization") ?? "").replace("Bearer ", "").trim();
-    if (!bearer) return json({ error: "Not authenticated" }, 401);
-    const isInternal = bearer === serviceKey;
+    if (!isInternal && !bearer) return json({ error: "Not authenticated" }, 401);
+    isInternal = isInternal || bearer === serviceKey;
     if (!isInternal) {
       const { data: userData } = await admin.auth.getUser(bearer);
       const userId = userData?.user?.id;
@@ -64,12 +79,17 @@ Deno.serve(async (req) => {
       "X-Connection-Api-Key": twilioKey,
     };
 
-    const payload = (await req.json().catch(() => ({}))) as { keys?: string[] };
+    const payload = (await req.json().catch(() => ({}))) as {
+      keys?: string[];
+      /** Skip templates that are already approved (used by the cron). */
+      pending_only?: boolean;
+    };
 
     let query = admin
       .from("whatsapp_templates")
       .select("id, key, friendly_name, category, language, body, quick_replies, content_sid, approval_status");
     if (payload.keys?.length) query = query.in("key", payload.keys);
+    if (payload.pending_only) query = query.neq("approval_status", "approved");
     const { data: rows, error: rowsErr } = await query;
     if (rowsErr) return json({ error: rowsErr.message }, 500);
 

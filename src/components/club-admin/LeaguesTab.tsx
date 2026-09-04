@@ -233,6 +233,13 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed" | "open"; leagues: League[] } | null>(null);
   const qc = useQueryClient();
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sh.league-teams-tip-dismissed");
+      if (raw) setTeamsTipDismissed(JSON.parse(raw));
+    } catch {}
+  }, []);
+
   const handleDeleteAssoc = async (id: string) => {
     if (!confirm("Delete this association?")) return;
     const { error } = await fromExt("league_associations").delete().eq("id", id);

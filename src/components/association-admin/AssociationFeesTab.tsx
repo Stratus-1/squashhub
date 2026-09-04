@@ -18,63 +18,6 @@ const fmt = (n: number) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", minimumFractionDigits: 0 }).format(n);
 
 export function AssociationFeesTab({ clubId }: { clubId: string }) {
-  const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["association-fees", clubId],
-    queryFn: async () => {
-      const { data, error } = await fromExt("association_member_affiliations_v")
-        .select("*")
-        .eq("association_tenant_id", clubId)
-        .eq("active", true);
-      if (error) throw error;
-      return (data || []) as Row[];
-    },
-  });
-
-  // Pull league-fee payments for those members so we can mark paid vs owing
-  const memberIds = useMemo(() => Array.from(new Set(rows.map(r => r.club_member_id))), [rows]);
-  const { data: payments = [] } = useQuery({
-    queryKey: ["association-fee-payments", clubId, memberIds.join(",")],
-    queryFn: async () => {
-      if (memberIds.length === 0) return [] as PaymentRow[];
-      const { data, error } = await fromExt("club_member_fee_payments")
-        .select("id, club_member_id, amount, paid, fee_label, fee_type")
-        .in("club_member_id", memberIds)
-        .in("fee_type", ["league_affiliation", "association"]);
-      if (error) throw error;
-      return (data || []) as PaymentRow[];
-    },
-    enabled: memberIds.length > 0,
-  });
-
-  const payByMember = useMemo(() => {
-    const map = new Map<string, PaymentRow[]>();
-    payments.forEach(p => {
-      if (!map.has(p.club_member_id)) map.set(p.club_member_id, []);
-      map.get(p.club_member_id)!.push(p);
-    });
-    return map;
-  }, [payments]);
-
-  // Group rows by club for totals
-  const byClub = useMemo(() => {
-    const groups = new Map<string, { name: string; rows: Row[]; owed: number; paid: number }>();
-    rows.forEach(r => {
-      const owed = Number(r.league_fee_annual || 0);
-      const memPays = payByMember.get(r.club_member_id) || [];
-      const paid = memPays.filter(p => p.paid).reduce((s, p) => s + Number(p.amount || 0), 0);
-      const g = groups.get(r.club_id) || { name: r.club_name, rows: [], owed: 0, paid: 0 };
-      g.rows.push(r);
-      g.owed += owed;
-      g.paid += paid;
-      groups.set(r.club_id, g);
-    });
-    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [rows, payByMember]);
-
-  const grandOwed = byClub.reduce((s, g) => s + g.owed, 0);
-  const grandPaid = byClub.reduce((s, g) => s + g.paid, 0);
-  const grandOutstanding = Math.max(grandOwed - grandPaid, 0);
-
   return (
     <Tabs defaultValue="schedule" className="mt-4">
       <TabsList>

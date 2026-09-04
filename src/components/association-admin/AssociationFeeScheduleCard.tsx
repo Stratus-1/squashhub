@@ -75,64 +75,19 @@ export function useAssociationFeeItems(clubId: string) {
   });
 }
 
-function useAnnualFeeSettings(clubId: string) {
-  return useQuery({
-    queryKey: ["association-annual-fee-settings", clubId],
-    queryFn: async (): Promise<AnnualFeeSettings> => {
-      const { data, error } = await fromExt("clubs")
-        .select("league_member_annual_fee, league_fee_due_month, league_fee_due_day")
-        .eq("id", clubId)
-        .single();
-      if (error) throw error;
-      return data as AnnualFeeSettings;
-    },
-  });
-}
-
 export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const { data: items = [], isLoading } = useAssociationFeeItems(clubId);
-  const { data: annualSettings } = useAnnualFeeSettings(clubId);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Partial<FeeItem>>(emptyDraft("receivable"));
-  const [annualFee, setAnnualFee] = useState(0);
-  const [dueMonth, setDueMonth] = useState(1);
-  const [dueDay, setDueDay] = useState(1);
-
-  useEffect(() => {
-    if (!annualSettings) return;
-    setAnnualFee(Number(annualSettings.league_member_annual_fee || 0));
-    setDueMonth(Number(annualSettings.league_fee_due_month || 1));
-    setDueDay(Number(annualSettings.league_fee_due_day || 1));
-  }, [annualSettings]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["association-fee-items", clubId] });
 
-  const saveAnnual = useMutation({
-    mutationFn: async () => {
-      const amount = Number(annualFee || 0);
-      const month = Number(dueMonth || 0);
-      const day = Number(dueDay || 0);
-      if (amount < 0) throw new Error("Annual fee cannot be negative");
-      if (month < 1 || month > 12) throw new Error("Choose a valid renewal month");
-      if (day < 1 || day > 31) throw new Error("Choose a valid renewal day");
-      const { error } = await fromExt("clubs").update({
-        league_member_annual_fee: amount,
-        league_fee_due_month: month,
-        league_fee_due_day: day,
-      }).eq("id", clubId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["association-annual-fee-settings", clubId] });
-      qc.invalidateQueries({ queryKey: ["association-fees", clubId] });
-      toast.success("Annual fee schedule saved and affiliated clubs updated");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const save = useMutation({
     mutationFn: async (d: Partial<FeeItem>) => {
+      const dueMonth = d.due_month ? Number(d.due_month) : null;
+      const dueDay = d.due_day ? Number(d.due_day) : null;
+      if ((dueMonth && !dueDay) || (!dueMonth && dueDay)) throw new Error("Set both a renewal month and day, or leave both empty");
       const payload = {
         association_club_id: clubId,
         direction: d.direction,
@@ -140,6 +95,8 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
         label: (d.label || "").trim(),
         amount: Number(d.amount || 0),
         season_year: d.season_year ? Number(d.season_year) : null,
+        due_month: dueMonth,
+        due_day: dueDay,
         notes: d.notes || null,
         active: d.active ?? true,
       };

@@ -3289,11 +3289,11 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     }));
 
     const ladiesEntries = sortedLadies.map(label => ({
-      name: `Ladies ${label} League ${year}`, code: makeAllocator("ladies")(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Ladies ${label} League ${year}`, code: nextLadies(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
     const mixedEntries = sortedMixed.map(label => ({
-      name: `Mixed ${label} League ${year}`, code: makeAllocator("mixed")(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Mixed ${label} League ${year}`, code: nextMixed(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
 

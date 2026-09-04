@@ -241,6 +241,26 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
       toast.success(`Roster uploaded to ${asLabel}`, {
         description: `${row?.teams ?? stats.teams} team(s) and ${row?.players ?? stats.players} player(s) are now visible to ${association.name}.`,
       });
+
+      // Auto-generate the affiliation invoice and email it to club finance.
+      try {
+        const { data: inv, error: invErr } = await supabase.functions.invoke(
+          "issue-association-invoice",
+          { body: { clubId } },
+        );
+        if (invErr) throw invErr;
+        if (inv?.invoice?.invoice_number) {
+          toast.success(`Invoice ${inv.invoice.invoice_number} generated`, {
+            description: inv?.emailed?.length
+              ? `Emailed to ${inv.emailed.length} finance contact(s).`
+              : "Available under Fees → Affiliation billing.",
+          });
+        }
+      } catch (e: any) {
+        toast.message("Roster submitted, invoice pending", {
+          description: e?.message ?? "The invoice could not be generated automatically.",
+        });
+      }
     } catch (e: any) {
       toast.error("Could not submit roster", { description: e?.message });
     } finally {

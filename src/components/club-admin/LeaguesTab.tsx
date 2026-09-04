@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useLeagueAssociations, useLeagues, useClubMembers, LeagueAssociation, League, ClubMember, SKILL_LEVELS, getSkillOrder, getSkillLabel } from "@/hooks/use-club";
 import { useLadder } from "@/hooks/use-data";
 import { fromExt } from "@/lib/supabase-ext";
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -3196,6 +3197,10 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
   const [selectedMen, setSelectedMen] = useState<string[]>([]);
   const [selectedLadies, setSelectedLadies] = useState<string[]>([]);
   const [selectedMixed, setSelectedMixed] = useState<string[]>([]);
+  // Teams per league (clubs with many members enter 2-3 teams in the same league)
+  const [teamCounts, setTeamCounts] = useState<Record<"men" | "ladies" | "mixed", Record<string, number>>>({ men: {}, ladies: {}, mixed: {} });
+  const setTeamCount = (gender: "men" | "ladies" | "mixed", league: string, count: number) =>
+    setTeamCounts(prev => ({ ...prev, [gender]: { ...prev[gender], [league]: count } }));
   const [prefix, setPrefix] = useState("");
   const [startNum, setStartNum] = useState(1);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -3288,17 +3293,26 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     const nextLadies = makeAllocator("ladies");
     const nextMixed = makeAllocator("mixed");
 
-    const menEntries = sortedMen.map(label => ({
-      name: `Men's ${label} League ${year}`, code: nextMen(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
-    }));
+    // Expand each selected league by its team count. When a club enters
+    // multiple teams in the same league they share the level; the name gets a
+    // Team A / Team B / Team C suffix and each gets its own sequential code.
+    const expand = (sorted: string[], genderLabel: string, gender: "men" | "ladies" | "mixed", next: () => string | null) =>
+      sorted.flatMap(label => {
+        const count = Math.min(3, Math.max(1, teamCounts[gender]?.[label] ?? 1));
+        return Array.from({ length: count }, (_, i) => ({
+          name: `${genderLabel} ${label} League ${year}${count > 1 ? ` — Team ${String.fromCharCode(65 + i)}` : ""}`,
+          code: next(),
+          association_id: associationId || null,
+          club_id: clubId,
+          affects_ranking_points: affectsRanking,
+          ranking_weight: rankingWeight,
+          ...base(label),
+        }));
+      });
 
-    const ladiesEntries = sortedLadies.map(label => ({
-      name: `Ladies ${label} League ${year}`, code: nextLadies(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
-    }));
-
-    const mixedEntries = sortedMixed.map(label => ({
-      name: `Mixed ${label} League ${year}`, code: nextMixed(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
-    }));
+    const menEntries = expand(sortedMen, "Men's", "men", nextMen);
+    const ladiesEntries = expand(sortedLadies, "Ladies", "ladies", nextLadies);
+    const mixedEntries = expand(sortedMixed, "Mixed", "mixed", nextMixed);
 
 
     return [...menEntries, ...ladiesEntries, ...mixedEntries];
@@ -3319,7 +3333,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     toast.success(`${entries.length} league(s) added`);
 
     onOpenChange(false);
-    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
+    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setTeamCounts({ men: {}, ladies: {}, mixed: {} }); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
 
@@ -3373,40 +3387,54 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
           )}
 
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label className="mb-2 block font-semibold">Men's Leagues</Label>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {LEAGUE_OPTIONS.map(l => (
-                  <label key={`men-${l}`} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
-                    <input type="checkbox" checked={selectedMen.includes(l)} onChange={() => handleToggle(l, "men")} className="rounded border-input" />
-                    {l} League
-                  </label>
-                ))}
+            {([
+              { key: "men" as const, title: "Men's Leagues", selected: selectedMen },
+              { key: "ladies" as const, title: "Ladies Leagues", selected: selectedLadies },
+              { key: "mixed" as const, title: "Mixed Leagues", selected: selectedMixed },
+            ]).map(col => (
+              <div key={col.key}>
+                <Label className="mb-2 block font-semibold">{col.title}</Label>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {LEAGUE_OPTIONS.map(l => {
+                    const checked = col.selected.includes(l);
+                    const count = teamCounts[col.key]?.[l] ?? 1;
+                    return (
+                      <div key={`${col.key}-${l}`} className="flex items-center gap-2 text-sm hover:bg-muted/50 rounded px-2 py-1">
+                        <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                          <input type="checkbox" checked={checked} onChange={() => handleToggle(l, col.key)} className="rounded border-input" />
+                          <span className="truncate">{l} League</span>
+                        </label>
+                        {checked && (
+                          <div className="flex items-center gap-0.5 shrink-0" title="Number of teams in this league">
+                            {[1, 2, 3].map(n => (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => setTeamCount(col.key, l, n)}
+                                className={cn(
+                                  "w-5 h-5 rounded text-[10px] font-semibold border",
+                                  count === n
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-background text-muted-foreground border-input hover:bg-muted",
+                                )}
+                              >
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-            <div>
-              <Label className="mb-2 block font-semibold">Ladies Leagues</Label>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {LEAGUE_OPTIONS.map(l => (
-                  <label key={`ladies-${l}`} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
-                    <input type="checkbox" checked={selectedLadies.includes(l)} onChange={() => handleToggle(l, "ladies")} className="rounded border-input" />
-                    {l} League
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="mb-2 block font-semibold">Mixed Leagues</Label>
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {LEAGUE_OPTIONS.map(l => (
-                  <label key={`mixed-${l}`} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
-                    <input type="checkbox" checked={selectedMixed.includes(l)} onChange={() => handleToggle(l, "mixed")} className="rounded border-input" />
-                    {l} League
-                  </label>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
+          {(selectedMen.length + selectedLadies.length + selectedMixed.length) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Use the 1 / 2 / 3 buttons next to a league to enter multiple teams in that league — they get their own codes and Team A / B / C labels.
+            </p>
+          )}
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">

@@ -194,42 +194,6 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4">
-      <Card className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="font-semibold flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-primary" /> Annual league fee
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              The single annual member fee and renewal date. Saving this pushes the month and day to every affiliated club.
-            </p>
-          </div>
-          <Badge variant="secondary" className="text-[10px]">Canonical schedule</Badge>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label>Annual fee per member</Label>
-            <Input type="number" min={0} step="0.01" value={annualFee} onChange={(e) => setAnnualFee(parseFloat(e.target.value) || 0)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Renewal month</Label>
-            <Select value={String(dueMonth)} onValueChange={(value) => setDueMonth(Number(value))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{MONTHS.map((month, index) => <SelectItem key={month} value={String(index + 1)}>{month}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Payable on day</Label>
-            <Input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(parseInt(e.target.value, 10) || 1)} />
-          </div>
-        </div>
-        <div>
-          <Button size="sm" onClick={() => saveAnnual.mutate()} disabled={saveAnnual.isPending}>
-            {saveAnnual.isPending ? "Saving…" : "Save annual schedule"}
-          </Button>
-        </div>
-      </Card>
-
       {section("receivable")}
       {section("payable")}
 

@@ -41,13 +41,14 @@ export function DashboardDeviceControls({ className }: { className?: string }) {
   const courtLightsOn = useHasCapability("lights", clubId);
 
   const grouped = groupDevices((devices || []) as ClubDevice[]);
-  // A device row the member can actually act on.
+  // Dashboard actions are only for direct-access devices and staff gadgets.
+  // Court lights are intentionally booking-driven so light fees stay billable.
   const enabledIn = (c: DeviceCategory) => grouped[c].filter((d) => d.enabled);
 
   const groupHasContent = (c: DeviceCategory) => {
+    if (c === "lights") return courtLightsOn;
     if (enabledIn(c).length > 0) return true;
     if (c === "access") return door.available;
-    if (c === "lights") return courtLightsOn;
     return false;
   };
 
@@ -63,7 +64,12 @@ export function DashboardDeviceControls({ className }: { className?: string }) {
 
       {visibleGroups.map((group) => {
         const Icon = group.icon;
-        const rows = enabledIn(group.slug);
+        const rows = group.slug === "lights"
+          ? []
+          : enabledIn(group.slug).filter((device) => {
+              if (group.slug !== "access" || !door.available) return true;
+              return !/^main\s+door$/i.test(device.name.trim());
+            });
         return (
           <div key={group.slug} className="space-y-1.5">
             <div className="flex items-center gap-1.5">

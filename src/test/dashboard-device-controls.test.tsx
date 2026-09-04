@@ -75,7 +75,8 @@ describe("DashboardDeviceControls", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("groups devices under Court lights, Access and Gadgets", () => {
+  it("groups access devices and gadgets without exposing court-light switches", () => {
+    mocks.courtLightsOn = true;
     mocks.devices = [
       device({ id: "a", category: "lights", name: "Court 1 court lights" }),
       device({ id: "b", category: "access", name: "Side gate", control_mode: "pulse" }),
@@ -87,9 +88,10 @@ describe("DashboardDeviceControls", () => {
     expect(screen.getByText("Court lights")).toBeTruthy();
     expect(screen.getByText("Access")).toBeTruthy();
     expect(screen.getByText("Gadgets")).toBeTruthy();
-    expect(screen.getByText("Court 1 court lights")).toBeTruthy();
+    expect(screen.queryByText("Court 1 court lights")).toBeNull();
     expect(screen.getByText("Side gate")).toBeTruthy();
     expect(screen.getByText("Clubhouse geyser")).toBeTruthy();
+    expect(screen.queryByRole("switch", { name: /Court 1 court lights/i })).toBeNull();
   });
 
   it("omits a group heading when that group has nothing in it", () => {
@@ -125,6 +127,17 @@ describe("DashboardDeviceControls", () => {
     render(<DashboardDeviceControls />);
     expect(screen.getByText("Access")).toBeTruthy();
     expect(screen.getByText("Main door")).toBeTruthy();
+  });
+
+  it("does not show a duplicate registry Main door row when the main door card is available", () => {
+    mocks.doorAvailable = true;
+    mocks.devices = [
+      device({ id: "a", category: "access", name: "Main door", location: "Main entrance", control_mode: "pulse" }),
+      device({ id: "b", category: "access", name: "Side gate", control_mode: "pulse" }),
+    ];
+    render(<DashboardDeviceControls />);
+    expect(screen.getAllByText("Main door")).toHaveLength(1);
+    expect(screen.getByText("Side gate")).toBeTruthy();
   });
 
   it("explains where court lights live instead of offering an unbilled switch", () => {

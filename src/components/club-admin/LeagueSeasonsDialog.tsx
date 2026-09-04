@@ -21,6 +21,10 @@ type Props = {
   association: { id: string; name: string } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** System leagues: seasons are opened by the association — clubs view and pick one. */
+  readOnly?: boolean;
+  /** Club-level shortcut: create this club's teams for a chosen season. */
+  onCreateTeams?: (seasonYear: number) => void;
 };
 
 /**
@@ -30,7 +34,7 @@ type Props = {
  * optionally, fresh team rows rolled over from the current season. Historical
  * fixtures keep pointing at the old teams and their name snapshots.
  */
-export function LeagueSeasonsDialog({ association, open, onOpenChange }: Props) {
+export function LeagueSeasonsDialog({ association, open, onOpenChange, readOnly = false, onCreateTeams }: Props) {
   const queryClient = useQueryClient();
   const associationId = association?.id ?? null;
 
@@ -98,8 +102,9 @@ export function LeagueSeasonsDialog({ association, open, onOpenChange }: Props) 
             Seasons — {association?.name}
           </DialogTitle>
           <DialogDescription>
-            A league is permanent; each year is a season. Past seasons keep their own
-            teams, rounds, fixtures and standings.
+            {readOnly
+              ? `${association?.name} opens each season. Select the season you want to create your club's teams for.`
+              : "A league is permanent; each year is a season. Past seasons keep their own teams, rounds, fixtures and standings."}
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +112,11 @@ export function LeagueSeasonsDialog({ association, open, onOpenChange }: Props) 
           <div className="space-y-1.5">
             {isLoading && <p className="text-xs text-muted-foreground">Loading seasons…</p>}
             {!isLoading && sorted.length === 0 && (
-              <p className="text-xs text-muted-foreground">No seasons yet for this league.</p>
+              <p className="text-xs text-muted-foreground">
+                {readOnly
+                  ? `No seasons yet — ${association?.name} has not opened one. You'll be prompted here once they do.`
+                  : "No seasons yet for this league."}
+              </p>
             )}
             {sorted.map((s) => (
               <Card key={s.id} className="p-2 flex items-center justify-between gap-2">
@@ -122,11 +131,22 @@ export function LeagueSeasonsDialog({ association, open, onOpenChange }: Props) 
                   <Badge variant="outline" className="text-[10px] h-5">
                     {s.status}
                   </Badge>
+                  {readOnly && onCreateTeams && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-6 text-[11px] px-2"
+                      onClick={() => onCreateTeams(s.season_year)}
+                    >
+                      Create {s.season_year} teams
+                    </Button>
+                  )}
                 </div>
               </Card>
             ))}
           </div>
 
+          {!readOnly && (
           <div className="rounded-md border p-3 space-y-3">
             <p className="text-xs font-semibold">Create a new season</p>
             <div className="grid grid-cols-2 gap-2">
@@ -190,6 +210,7 @@ export function LeagueSeasonsDialog({ association, open, onOpenChange }: Props) 
               Create {yearValue} season
             </Button>
           </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

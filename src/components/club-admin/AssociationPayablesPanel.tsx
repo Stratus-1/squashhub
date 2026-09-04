@@ -179,8 +179,9 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         <Badge variant="outline" className="text-[10px]">{fees.length} fee{fees.length === 1 ? "" : "s"} configured</Badge>
       </div>
       <p className="text-xs text-muted-foreground -mt-4">
-        Generate lump-sum payables for the fees in your Fees Payable Schedule. The club is invoiced; each batch
-        keeps a permanent audit trail of who/what was covered.
+        Fees linked to an association are calculated automatically when you submit your teams and players — the
+        totals shown come straight from that submission. Manual batches are only needed for fees without an
+        automatic submission.
       </p>
 
       {fees.length === 0 ? (

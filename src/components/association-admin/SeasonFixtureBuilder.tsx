@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { generateSeasonFixtures, type DivisionPlan, type SeasonPlanResult } from "@/lib/leagues/season-fixtures";
-import { expandRange, publicHolidays, schoolBreaks, seasonWeeks, weekDates, weekStart } from "@/lib/leagues/calendar";
+import { seasonWeeks, weekDates } from "@/lib/leagues/calendar";
 import type { AssocTeam } from "@/lib/leagues/association-tree";
 import type { PlatformAssociation } from "@/hooks/use-platform-association";
 

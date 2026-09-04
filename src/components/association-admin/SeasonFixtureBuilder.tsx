@@ -13,16 +13,16 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { generateSeasonFixtures, type DivisionPlan, type SeasonPlanResult } from "@/lib/leagues/season-fixtures";
-import { expandRange, publicHolidays, schoolBreaks } from "@/lib/leagues/calendar";
+import { seasonWeeks, weekDates } from "@/lib/leagues/calendar";
 import type { AssocTeam } from "@/lib/leagues/association-tree";
 import type { PlatformAssociation } from "@/hooks/use-platform-association";
 
 const DOWS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const blankExclusions = (year: number): Record<string, string> =>
-  Object.fromEntries([
-    ...publicHolidays(year).map((h) => [h.date, h.name]),
-    ...schoolBreaks(year).flatMap((r) => expandRange(r).map((date) => [date, r.name])),
-  ]);
+const WEEK_COUNT = 44;
+const fmtDay = (isoDate: string) => {
+  const [, month, day] = isoDate.split("-");
+  return `${day}/${month}`;
+};
 
 type Props = { tenantId: string; association: PlatformAssociation; teams: AssocTeam[]; open: boolean; onOpenChange: (open: boolean) => void };
 
@@ -38,8 +38,10 @@ export function SeasonFixtureBuilder({ tenantId, association, teams, open, onOpe
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [playNights, setPlayNights] = useState<Record<string, number[]>>({});
   const [manualDates, setManualDates] = useState("");
-  const [excludedHolidays, setExcludedHolidays] = useState<Record<string, boolean>>({});
-  const [excludedBreaks, setExcludedBreaks] = useState<Record<string, boolean>>({});
+  const [holidayWeekOff, setHolidayWeekOff] = useState(true);
+  const [breakWeekOff, setBreakWeekOff] = useState(true);
+  const [weekOverride, setWeekOverride] = useState<Record<string, boolean>>({});
+  const [maxHomePerClubPerNight, setMaxHomePerClubPerNight] = useState(2);
   const [saving, setSaving] = useState(false);
 
   const { data: seasons = [] } = useQuery({
@@ -56,9 +58,17 @@ export function SeasonFixtureBuilder({ tenantId, association, teams, open, onOpe
     },
   });
 
+  // The calendar always follows the season being built (e.g. 2027), never the
+  // current calendar year, so holidays and weeks line up with that season.
+  const selectSeason = (id: string) => {
+    setSeasonId(id);
+    const season = seasons.find((item) => item.id === id) as { starts_on?: string | null; season_year?: number } | undefined;
+    if (!season) return;
+    const next = season.starts_on || (season.season_year ? `${season.season_year}-03-01` : "");
+    if (next) { setStartDate(next); setWeekOverride({}); setSecondLegStart(""); }
+  };
+
   const year = Number(startDate.slice(0, 4)) || new Date().getFullYear();
-  const holidayItems = useMemo(() => publicHolidays(year), [year]);
-  const breakItems = useMemo(() => schoolBreaks(year), [year]);
   const scopedTeams = useMemo(() => teams.filter((t) => selected[t.team_id]), [teams, selected]);
   const divisions = useMemo(() => {
     const map = new Map<string, DivisionPlan>();
@@ -71,19 +81,32 @@ export function SeasonFixtureBuilder({ tenantId, association, teams, open, onOpe
     return [...map.values()].sort((a, b) => a.division.localeCompare(b.division, undefined, { numeric: true }));
   }, [scopedTeams, playNights]);
 
+  // Every week from the season start, with the holidays / school breaks in it.
+  const weeks = useMemo(() => seasonWeeks(startDate, WEEK_COUNT), [startDate]);
+  const weekReason = (week: (typeof weeks)[number]) => {
+    if (holidayWeekOff && week.holidays.length) return week.holidays.map((h) => h.name).join(", ");
+    if (breakWeekOff && week.breaks.length) return week.breaks.map((b) => b.name).join(", ");
+    return "";
+  };
+  const weekOn = (week: (typeof weeks)[number]) => weekOverride[week.start] ?? !weekReason(week);
+  const offWeeks = useMemo(() => weeks.filter((week) => !weekOn(week)), [weeks, weekOverride, holidayWeekOff, breakWeekOff]);
+
   const exclusions = useMemo(() => {
-    const result = blankExclusions(year);
-    for (const holiday of holidayItems) {
-      if (excludedHolidays[holiday.date] === false) delete result[holiday.date];
-    }
-    for (const range of breakItems) {
-      if (excludedBreaks[range.start] === false) for (const date of expandRange(range)) delete result[date];
+    const result: Record<string, string> = {};
+    for (const week of weeks) {
+      if (weekOn(week)) {
+        // Week is played: still keep the individual public-holiday dates out.
+        for (const holiday of week.holidays) result[holiday.date] = holiday.name;
+        continue;
+      }
+      const reason = weekReason(week) || "Week excluded by the association";
+      for (const date of weekDates(week.start)) result[date] = reason;
     }
     for (const date of manualDates.split(/[\s,]+/).map((value) => value.trim()).filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))) result[date] = "Manual exclusion";
     return result;
-  }, [year, holidayItems, breakItems, excludedHolidays, excludedBreaks, manualDates]);
+  }, [weeks, weekOverride, holidayWeekOff, breakWeekOff, manualDates]);
 
-  const plan = useMemo<SeasonPlanResult>(() => generateSeasonFixtures({ divisions, startDate, exclusions, twoLegs, secondLegStart: secondLegStart || undefined }), [divisions, startDate, exclusions, twoLegs, secondLegStart]);
+  const plan = useMemo<SeasonPlanResult>(() => generateSeasonFixtures({ divisions, startDate, exclusions, twoLegs, secondLegStart: secondLegStart || undefined, maxHomePerClubPerNight }), [divisions, startDate, exclusions, twoLegs, secondLegStart, maxHomePerClubPerNight]);
 
   // Step 1 groups every submitted team under its league, e.g. "Men's 2nd League",
   // so the association ticks whole leagues instead of hunting through a flat list.
@@ -111,7 +134,7 @@ export function SeasonFixtureBuilder({ tenantId, association, teams, open, onOpe
     return next;
   });
 
-  const reset = () => { setStep(1); setSeasonId(""); setSelected({}); setManualDates(""); setExcludedHolidays({}); setExcludedBreaks({}); setSaving(false); };
+  const reset = () => { setStep(1); setSeasonId(""); setSelected({}); setManualDates(""); setWeekOverride({}); setSaving(false); };
   const close = (value: boolean) => { if (!value) reset(); onOpenChange(value); };
   const toggleAll = (value: boolean) => setSelected(Object.fromEntries(teams.map((team) => [team.team_id, value])));
   const toggleNight = (division: string, day: number) => setPlayNights((current) => ({ ...current, [division]: (current[division] ?? [3]).includes(day) ? (current[division] ?? [3]).filter((item) => item !== day) : [...(current[division] ?? [3]), day] }));
@@ -137,7 +160,7 @@ export function SeasonFixtureBuilder({ tenantId, association, teams, open, onOpe
         <div className="space-y-1 pt-1"><Progress value={step * 25} /><p className="text-[11px] text-muted-foreground">Step {step} of 4 · no emails are sent by saving fixtures</p></div>
       </DialogHeader>
       {step === 1 && <div className="space-y-4">
-        <div><Label className="text-xs">Season</Label><Select value={seasonId} onValueChange={setSeasonId}><SelectTrigger className="mt-1"><SelectValue placeholder="Select a season" /></SelectTrigger><SelectContent>{seasons.map((season) => <SelectItem key={season.id} value={season.id}>{season.label} · {season.season_year}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label className="text-xs">Season</Label><Select value={seasonId} onValueChange={selectSeason}><SelectTrigger className="mt-1"><SelectValue placeholder="Select a season" /></SelectTrigger><SelectContent>{seasons.map((season) => <SelectItem key={season.id} value={season.id}>{season.label} · {season.season_year}</SelectItem>)}</SelectContent></Select></div>
         <div className="flex items-center justify-between border-b pb-2"><div><p className="text-sm font-medium">Submitted teams</p><p className="text-[11px] text-muted-foreground">Choose the teams that will participate in this season, grouped per league.</p></div><Button type="button" variant="outline" size="sm" onClick={() => toggleAll(scopedTeams.length !== teams.length)}>{scopedTeams.length === teams.length ? "Clear all" : "Select all"}</Button></div>
         <div className="space-y-2">{teamGroups.map((group) => { const count = groupSelected(group); return (
           <div key={group.key} className="rounded-md border">
@@ -153,8 +176,27 @@ export function SeasonFixtureBuilder({ tenantId, association, teams, open, onOpe
             <div className="grid gap-1 p-1.5 sm:grid-cols-2">{group.teams.map((team) => <label key={team.team_id} className="flex items-center gap-2 rounded border p-2 text-xs"><Checkbox checked={!!selected[team.team_id]} onCheckedChange={(value) => setSelected((current) => ({ ...current, [team.team_id]: !!value }))} /><span className="min-w-0 flex-1 truncate">{team.team_name}</span><span className="text-muted-foreground truncate">{team.club_name}</span></label>)}</div>
           </div>); })}</div>
       </div>}
-      {step === 2 && <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><div><Label className="text-xs">First possible play date</Label><Input type="date" className="mt-1" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></div><div><Label className="text-xs">Return leg may start from (optional)</Label><Input type="date" className="mt-1" value={secondLegStart} onChange={(event) => setSecondLegStart(event.target.value)} /></div></div><label className="flex items-center gap-2 text-xs"><Checkbox checked={twoLegs} onCheckedChange={(value) => setTwoLegs(!!value)} />Generate home and away rounds with reversed venues</label><div className="space-y-2">{divisions.map((division) => <Card key={division.division}><CardHeader className="py-2"><CardTitle className="text-xs">{division.division} <Badge variant="secondary" className="ml-1">{division.teams.length} teams</Badge></CardTitle></CardHeader><CardContent className="pt-0"><div className="flex flex-wrap gap-1">{DOWS.map((day, index) => <Button key={day} type="button" size="sm" variant={(playNights[division.division] ?? [3]).includes(index) ? "default" : "outline"} className="h-7 px-2 text-[11px]" onClick={() => toggleNight(division.division, index)}>{day}</Button>)}</div></CardContent></Card>)}</div></div>}
-      {step === 3 && <div className="space-y-4"><div><p className="text-sm font-medium">Calendar exclusions</p><p className="text-[11px] text-muted-foreground">Public holidays are selected by default. Turn off a school break if the league will continue during that period.</p></div><div className="grid gap-2 sm:grid-cols-2">{holidayItems.map((holiday) => <label key={holiday.date} className="flex items-center gap-2 text-xs"><Checkbox checked={excludedHolidays[holiday.date] !== false} onCheckedChange={(value) => setExcludedHolidays((current) => ({ ...current, [holiday.date]: !!value }))} /><span>{holiday.date} · {holiday.name}</span></label>)}{breakItems.map((range) => <label key={range.start} className="flex items-center gap-2 text-xs"><Checkbox checked={excludedBreaks[range.start] !== false} onCheckedChange={(value) => setExcludedBreaks((current) => ({ ...current, [range.start]: !!value }))} /><span>{range.start} to {range.end} · {range.name}</span></label>)}</div><div><Label className="text-xs">Additional dates to exclude</Label><Input className="mt-1" placeholder="2026-05-04, 2026-08-10" value={manualDates} onChange={(event) => setManualDates(event.target.value)} /></div></div>}
+      {step === 2 && <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><div><Label className="text-xs">First possible play date</Label><Input type="date" className="mt-1" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></div><div><Label className="text-xs">Return leg may start from (optional)</Label><Input type="date" className="mt-1" value={secondLegStart} onChange={(event) => setSecondLegStart(event.target.value)} /></div><div><Label className="text-xs">Max fixtures a club may host per night</Label><Input type="number" min={1} max={6} className="mt-1" value={maxHomePerClubPerNight} onChange={(event) => setMaxHomePerClubPerNight(Math.max(1, Number(event.target.value) || 1))} /><p className="mt-1 text-[11px] text-muted-foreground">Applies to every league in this season.</p></div></div><label className="flex items-center gap-2 text-xs"><Checkbox checked={twoLegs} onCheckedChange={(value) => setTwoLegs(!!value)} />Generate home and away rounds with reversed venues</label><div className="space-y-2">{divisions.map((division) => <Card key={division.division}><CardHeader className="py-2"><CardTitle className="text-xs">{division.division} <Badge variant="secondary" className="ml-1">{division.teams.length} teams</Badge></CardTitle></CardHeader><CardContent className="pt-0"><div className="flex flex-wrap gap-1">{DOWS.map((day, index) => <Button key={day} type="button" size="sm" variant={(playNights[division.division] ?? [3]).includes(index) ? "default" : "outline"} className="h-7 px-2 text-[11px]" onClick={() => toggleNight(division.division, index)}>{day}</Button>)}</div></CardContent></Card>)}</div></div>}
+      {step === 3 && <div className="space-y-4">
+        <div><p className="text-sm font-medium">Playing weeks for {year}</p><p className="text-[11px] text-muted-foreground">Every week from the season start date is listed. Weeks with a public holiday or school break are switched off by default — tick a week to play it anyway, or untick any other week the league should skip. These rules apply to every league in this season.</p></div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="flex items-center gap-2 rounded border p-2 text-xs"><Checkbox checked={holidayWeekOff} onCheckedChange={(value) => { setHolidayWeekOff(!!value); setWeekOverride({}); }} />Skip the whole week when a public holiday falls in it</label>
+          <label className="flex items-center gap-2 rounded border p-2 text-xs"><Checkbox checked={breakWeekOff} onCheckedChange={(value) => { setBreakWeekOff(!!value); setWeekOverride({}); }} />Skip school-break weeks</label>
+        </div>
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground"><span>{weeks.length - offWeeks.length} weeks playing · {offWeeks.length} skipped</span><Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => setWeekOverride({})}>Reset to defaults</Button></div>
+        <div className="max-h-80 space-y-1 overflow-y-auto rounded border p-1.5">{weeks.map((week) => { const on = weekOn(week); const reason = weekReason(week); return (
+          <label key={week.start} className={`flex items-start gap-2 rounded border p-2 text-xs ${on ? "" : "bg-muted/40"}`}>
+            <Checkbox className="mt-0.5" checked={on} onCheckedChange={(value) => setWeekOverride((current) => ({ ...current, [week.start]: !!value }))} />
+            <span className="min-w-0 flex-1">
+              <span className={on ? "" : "text-muted-foreground line-through"}>{fmtDay(week.start)} – {fmtDay(week.end)}</span>
+              {week.holidays.map((holiday) => <Badge key={holiday.date} variant="destructive" className="ml-1.5 h-4 px-1.5 text-[9px] font-normal">{fmtDay(holiday.date)} {holiday.name}</Badge>)}
+              {week.breaks.map((range) => <Badge key={range.start} variant="outline" className="ml-1.5 h-4 px-1.5 text-[9px] font-normal">{range.name}</Badge>)}
+            </span>
+            {!on && <span className="shrink-0 text-[10px] text-muted-foreground">{reason || "Skipped"}</span>}
+          </label>); })}</div>
+        <div><Label className="text-xs">Additional dates to exclude</Label><Input className="mt-1" placeholder={`${year}-05-04, ${year}-08-10`} value={manualDates} onChange={(event) => setManualDates(event.target.value)} /></div>
+      </div>}
+
       {step === 4 && <div className="space-y-3"><div className="flex flex-wrap items-center gap-2"><Badge variant="secondary">{plan.fixtures.length} fixtures</Badge><Badge variant="outline">{new Set(plan.fixtures.map((fixture) => fixture.fixture_date)).size} play nights</Badge><Badge variant={plan.conflicts.length ? "destructive" : "secondary"}>{plan.conflicts.length ? `${plan.conflicts.length} checks need attention` : "Checks passed"}</Badge></div>{plan.conflicts.length > 0 && <div className="space-y-1 rounded border border-destructive/40 p-2 text-xs">{plan.conflicts.map((conflict, index) => <p key={`${conflict.kind}-${index}`} className="flex gap-1.5"><ShieldAlert className="h-3.5 w-3.5 shrink-0 text-destructive" />{conflict.detail}</p>)}</div>}<div className="max-h-80 overflow-y-auto rounded border divide-y">{(plan.fixtures as PreviewFixture[]).map((fixture, index) => <div key={index} className="grid grid-cols-[90px_1fr_auto] gap-2 p-2 text-[11px]"><span className="text-muted-foreground">{fixture.fixture_date}</span><span className="truncate">{fixture.division}: {fixture.home_team_name} vs {fixture.away_team_name}</span><span className="text-muted-foreground">{fixture.venue_name}</span></div>)}</div><p className="text-[11px] text-muted-foreground">Saving replaces only unplayed fixtures in this season. Completed or scored fixtures are never deleted or rewritten. Saving does not send invitations or emails.</p></div>}
       <DialogFooter className="gap-2"><Button variant="outline" onClick={() => step === 1 ? close(false) : setStep((value) => value - 1)}>{step === 1 ? "Cancel" : <><ChevronLeft className="mr-1 h-4 w-4" />Back</>}</Button>{step < 4 ? <Button onClick={() => setStep((value) => value + 1)} disabled={step === 1 && (!seasonId || !scopedTeams.length)}><ChevronRight className="mr-1 h-4 w-4" />Next</Button> : <Button onClick={save} disabled={saving || !plan.fixtures.length || !!plan.conflicts.length}>{saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}Save fixtures</Button>}</DialogFooter>
     </DialogContent>

@@ -242,30 +242,60 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
     [allTeams, season],
   );
 
-  // Payments recorded against members for this season, grouped by their club.
+  // Payments recorded by the clubs against this association for the season.
   const { data: seasonPayments = [] } = useQuery({
-    queryKey: ["association-billing-payments", clubId, season],
+    queryKey: ["association-club-payments", clubId, season],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_member_fee_payments")
-        .select("club_member_id, amount, paid, club_members!inner(club_id)")
-        .in("fee_type", ["league_affiliation", "association"])
-        .eq("paid", true)
-        .eq("season_year", season!);
+      const { data, error } = await fromExt("club_association_payments")
+        .select("id, club_id, amount, paid_on, method, reference, proof_path, status")
+        .eq("association_tenant_id", clubId)
+        .eq("season_year", season!)
+        .order("paid_on", { ascending: false });
       if (error) throw error;
-      return (data || []) as { club_member_id: string; amount: number; club_members: { club_id: string } }[];
+      return (data || []) as unknown as {
+        id: string; club_id: string; amount: number; paid_on: string;
+        method: string; reference: string | null; proof_path: string | null;
+        status: "pending" | "confirmed" | "disputed";
+      }[];
     },
-    enabled: season != null,
+    enabled: season != null && !!clubId,
   });
 
   const paidByClub = useMemo(() => {
     const map = new Map<string, number>();
     seasonPayments.forEach((p) => {
-      const cid = p.club_members?.club_id;
-      if (!cid) return;
-      map.set(cid, (map.get(cid) || 0) + Number(p.amount || 0));
+      if (p.status === "disputed") return;
+      map.set(p.club_id, (map.get(p.club_id) || 0) + Number(p.amount || 0));
     });
     return map;
   }, [seasonPayments]);
+
+  const paymentsByClub = useMemo(() => {
+    const map = new Map<string, typeof seasonPayments>();
+    seasonPayments.forEach((p) => {
+      const list = map.get(p.club_id) || [];
+      list.push(p);
+      map.set(p.club_id, list);
+    });
+    return map;
+  }, [seasonPayments]);
+
+  const reviewPayment = async (id: string, status: "confirmed" | "disputed") => {
+    const { data: userRes } = await supabase.auth.getUser();
+    const { error } = await fromExt("club_association_payments")
+      .update({ status, reviewed_at: new Date().toISOString(), reviewed_by: userRes?.user?.id ?? null } as any)
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(status === "confirmed" ? "Payment confirmed" : "Payment marked as disputed");
+    qc.invalidateQueries({ queryKey: ["association-club-payments", clubId, season] });
+  };
+
+  const openProof = async (path: string) => {
+    const { data, error } = await supabase.storage.from("payment-proofs").createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) { toast.error("Could not open the proof of payment"); return; }
+    window.open(data.signedUrl, "_blank");
+  };
+
 
   const active = items.filter(i => i.active && i.direction === "receivable" && (!i.season_year || i.season_year === season));
   const perMember = active.filter(i => i.basis === "member").reduce((s, i) => s + Number(i.amount || 0), 0);

@@ -40,6 +40,10 @@ interface FixtureRow {
   winner_team_code: string | null;
 }
 
+interface ClubNameMap {
+  [code: string]: string;
+}
+
 export function AssociationFixturesPanel({ association, tenantId }: { association: PlatformAssociation | null; tenantId: string }) {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");

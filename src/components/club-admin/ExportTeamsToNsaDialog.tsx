@@ -245,7 +245,7 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Export teams to {asLabel}</DialogTitle>
+          <DialogTitle>Submit teams to {asLabel}</DialogTitle>
           <DialogDescription>
             Preview and download the full team + player list to submit to{" "}
             {association.name}. Paste the email body into an email to your league

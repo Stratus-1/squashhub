@@ -383,11 +383,18 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     });
 
   const clubLeagues = associations.filter((a: any) => isClubLeagueScope(a.scope));
+  const hasSystemAssocs = associations.some((a: any) => !isClubLeagueScope(a.scope));
 
   const steps: SetupStep[] = CLUB_LEAGUE_STEPS.map((s) => ({
     id: s.id,
-    label: s.label,
-    description: s.description,
+    label:
+      s.id === "leagues" && hasSystemAssocs
+        ? "Select / Join League"
+        : s.label,
+    description:
+      s.id === "leagues" && hasSystemAssocs
+        ? "Step one — select a System League your club wants to join, or create your own Club League, then choose format, category and season settings."
+        : s.description,
     complete:
       s.id === "leagues"
         ? associations.length > 0

@@ -3241,12 +3241,14 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     },
   });
 
-  // Codes must be unique per association (the DB also keys on season/category),
-  // so allocate one running sequence across every category in this batch and
-  // skip anything already used by this association.
-  const takenCodes = () => {
+  // Codes restart per category (Men's, Ladies, Mixed) — e.g. RSC001 for Men's
+  // 1st and RSC001 for Ladies 1st in the same season. The DB unique key
+  // includes category, so only skip codes already taken in the SAME category.
+  const takenCodesByCategory = (category: string) => {
     const set = new Set<string>();
-    for (const l of existingLeagues as any[]) if (l.code) set.add(l.code);
+    for (const l of existingLeagues as any[]) {
+      if (l.code && (l.category ?? "") === category) set.add(l.code);
+    }
     return set;
   };
 
@@ -3266,30 +3268,36 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
       season_source: "manual",
     });
 
-    const taken = takenCodes();
-    let n = startNum;
-    const nextCode = () => {
-      if (!prefix) return null;
-      let code = `${prefix}${String(n).padStart(3, "0")}`;
-      while (taken.has(code)) {
+    const makeAllocator = (category: string) => {
+      const taken = takenCodesByCategory(category);
+      let n = startNum;
+      return () => {
+        if (!prefix) return null;
+        let code = `${prefix}${String(n).padStart(3, "0")}`;
+        while (taken.has(code)) {
+          n++;
+          code = `${prefix}${String(n).padStart(3, "0")}`;
+        }
+        taken.add(code);
         n++;
-        code = `${prefix}${String(n).padStart(3, "0")}`;
-      }
-      taken.add(code);
-      n++;
-      return code;
+        return code;
+      };
     };
 
+    const nextMen = makeAllocator("men");
+    const nextLadies = makeAllocator("ladies");
+    const nextMixed = makeAllocator("mixed");
+
     const menEntries = sortedMen.map(label => ({
-      name: `Men's ${label} League ${year}`, code: nextCode(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Men's ${label} League ${year}`, code: nextMen(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
     const ladiesEntries = sortedLadies.map(label => ({
-      name: `Ladies ${label} League ${year}`, code: nextCode(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Ladies ${label} League ${year}`, code: nextLadies(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
     const mixedEntries = sortedMixed.map(label => ({
-      name: `Mixed ${label} League ${year}`, code: nextCode(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Mixed ${label} League ${year}`, code: nextMixed(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
 

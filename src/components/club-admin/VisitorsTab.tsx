@@ -138,11 +138,13 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   const { data: visitors = [], isLoading } = useQuery({
     queryKey: ["club-visitors", clubId],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_visitors")
-        .select("*")
-        .eq("club_id", clubId)
-        .order("created_at", { ascending: false });
+      // Full visitor details (incl. phone/email) are admin/front-desk only and
+      // come from a secured lookup rather than a direct table read.
+      const { data, error } = await supabase.rpc("admin_list_club_visitors" as any, {
+        _club_id: clubId,
+      });
       if (error) throw error;
+
       const { data: memberVisitors, error: memberError } = await fromExt("club_members")
         .select("id, name, email, phone, club_member_number, gender, joined_at, home_club_name, suspension_status, profiles:user_id(email, phone)")
         .eq("club_id", clubId)

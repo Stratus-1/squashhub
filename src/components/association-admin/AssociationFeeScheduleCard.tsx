@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ArrowDownLeft, ArrowUpRight, CalendarDays } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 
 export interface FeeItem {
   id: string;
@@ -24,20 +24,19 @@ export interface FeeItem {
   label: string;
   amount: number;
   season_year: number | null;
+  due_month: number | null;
+  due_day: number | null;
   notes: string | null;
   active: boolean;
-}
-
-interface AnnualFeeSettings {
-  league_member_annual_fee: number | null;
-  league_fee_due_month: number | null;
-  league_fee_due_day: number | null;
 }
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
+const fmtDueDate = (item: FeeItem) =>
+  item.due_month && item.due_day ? `${item.due_day} ${MONTHS[item.due_month - 1]}` : "—";
 
 export const BASIS_LABEL: Record<FeeItem["basis"], string> = {
   member: "Per member",
@@ -54,6 +53,8 @@ const emptyDraft = (direction: FeeItem["direction"]): Partial<FeeItem> => ({
   label: "",
   amount: 0,
   season_year: new Date().getFullYear(),
+  due_month: null,
+  due_day: null,
   notes: "",
   active: true,
 });
@@ -74,64 +75,19 @@ export function useAssociationFeeItems(clubId: string) {
   });
 }
 
-function useAnnualFeeSettings(clubId: string) {
-  return useQuery({
-    queryKey: ["association-annual-fee-settings", clubId],
-    queryFn: async (): Promise<AnnualFeeSettings> => {
-      const { data, error } = await fromExt("clubs")
-        .select("league_member_annual_fee, league_fee_due_month, league_fee_due_day")
-        .eq("id", clubId)
-        .single();
-      if (error) throw error;
-      return data as AnnualFeeSettings;
-    },
-  });
-}
-
 export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const { data: items = [], isLoading } = useAssociationFeeItems(clubId);
-  const { data: annualSettings } = useAnnualFeeSettings(clubId);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Partial<FeeItem>>(emptyDraft("receivable"));
-  const [annualFee, setAnnualFee] = useState(0);
-  const [dueMonth, setDueMonth] = useState(1);
-  const [dueDay, setDueDay] = useState(1);
-
-  useEffect(() => {
-    if (!annualSettings) return;
-    setAnnualFee(Number(annualSettings.league_member_annual_fee || 0));
-    setDueMonth(Number(annualSettings.league_fee_due_month || 1));
-    setDueDay(Number(annualSettings.league_fee_due_day || 1));
-  }, [annualSettings]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["association-fee-items", clubId] });
 
-  const saveAnnual = useMutation({
-    mutationFn: async () => {
-      const amount = Number(annualFee || 0);
-      const month = Number(dueMonth || 0);
-      const day = Number(dueDay || 0);
-      if (amount < 0) throw new Error("Annual fee cannot be negative");
-      if (month < 1 || month > 12) throw new Error("Choose a valid renewal month");
-      if (day < 1 || day > 31) throw new Error("Choose a valid renewal day");
-      const { error } = await fromExt("clubs").update({
-        league_member_annual_fee: amount,
-        league_fee_due_month: month,
-        league_fee_due_day: day,
-      }).eq("id", clubId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["association-annual-fee-settings", clubId] });
-      qc.invalidateQueries({ queryKey: ["association-fees", clubId] });
-      toast.success("Annual fee schedule saved and affiliated clubs updated");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const save = useMutation({
     mutationFn: async (d: Partial<FeeItem>) => {
+      const dueMonth = d.due_month ? Number(d.due_month) : null;
+      const dueDay = d.due_day ? Number(d.due_day) : null;
+      if ((dueMonth && !dueDay) || (!dueMonth && dueDay)) throw new Error("Set both a renewal month and day, or leave both empty");
       const payload = {
         association_club_id: clubId,
         direction: d.direction,
@@ -139,6 +95,8 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
         label: (d.label || "").trim(),
         amount: Number(d.amount || 0),
         season_year: d.season_year ? Number(d.season_year) : null,
+        due_month: dueMonth,
+        due_day: dueDay,
         notes: d.notes || null,
         active: d.active ?? true,
       };
@@ -176,11 +134,11 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
           <div>
             <h3 className="font-semibold flex items-center gap-2">
               {isRec ? <ArrowDownLeft className="w-4 h-4 text-emerald-600" /> : <ArrowUpRight className="w-4 h-4 text-amber-600" />}
-              {isRec ? "Additional fees receivable" : "Fees payable"}
+              {isRec ? "Fees receivable" : "Fees payable"}
             </h3>
             <p className="text-xs text-muted-foreground">
               {isRec
-                ? "Optional charges alongside the annual league fee — per member, per club or per league team."
+                ? "Charges the association bills to affiliated clubs — per member, per club or per league team. Each fee can carry its own renewal date."
                 : "Amounts the association pays out, charged per member."}
             </p>
           </div>
@@ -200,6 +158,7 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
                 <th className="text-left px-2 py-1.5 font-medium">Description</th>
                 <th className="text-left px-2 py-1.5 font-medium">Charged</th>
                 <th className="text-left px-2 py-1.5 font-medium">Season</th>
+                <th className="text-left px-2 py-1.5 font-medium">Renewal date</th>
                 <th className="text-right px-2 py-1.5 font-medium">Amount</th>
                 <th className="w-16" />
               </tr>
@@ -214,6 +173,7 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
                   </td>
                   <td className="px-2 py-1.5"><Badge variant="secondary" className="text-[10px]">{BASIS_LABEL[i.basis]}</Badge></td>
                   <td className="px-2 py-1.5">{i.season_year || "—"}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{fmtDueDate(i)}</td>
                   <td className="px-2 py-1.5 text-right font-medium">{fmt(Number(i.amount || 0))}</td>
                   <td className="px-2 py-1.5 text-right whitespace-nowrap">
                     <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(i)} aria-label={`Edit ${i.label}`}>
@@ -234,42 +194,6 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
 
   return (
     <div className="space-y-4">
-      <Card className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="font-semibold flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-primary" /> Annual league fee
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              The single annual member fee and renewal date. Saving this pushes the month and day to every affiliated club.
-            </p>
-          </div>
-          <Badge variant="secondary" className="text-[10px]">Canonical schedule</Badge>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="space-y-1.5">
-            <Label>Annual fee per member</Label>
-            <Input type="number" min={0} step="0.01" value={annualFee} onChange={(e) => setAnnualFee(parseFloat(e.target.value) || 0)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Renewal month</Label>
-            <Select value={String(dueMonth)} onValueChange={(value) => setDueMonth(Number(value))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{MONTHS.map((month, index) => <SelectItem key={month} value={String(index + 1)}>{month}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Payable on day</Label>
-            <Input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(parseInt(e.target.value, 10) || 1)} />
-          </div>
-        </div>
-        <div>
-          <Button size="sm" onClick={() => saveAnnual.mutate()} disabled={saveAnnual.isPending}>
-            {saveAnnual.isPending ? "Saving…" : "Save annual schedule"}
-          </Button>
-        </div>
-      </Card>
-
       {section("receivable")}
       {section("payable")}
 
@@ -326,6 +250,31 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
                 <Input type="number" value={draft.season_year ?? ""} onChange={(e) => setDraft({ ...draft, season_year: parseInt(e.target.value, 10) || null })} />
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Renewal month</Label>
+                <Select
+                  value={draft.due_month ? String(draft.due_month) : "none"}
+                  onValueChange={(v) => setDraft({ ...draft, due_month: v === "none" ? null : Number(v) })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not set</SelectItem>
+                    {MONTHS.map((month, index) => <SelectItem key={month} value={String(index + 1)}>{month}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Payable on day</Label>
+                <Input
+                  type="number" min={1} max={31} placeholder="Optional"
+                  value={draft.due_day ?? ""}
+                  onChange={(e) => setDraft({ ...draft, due_day: e.target.value ? parseInt(e.target.value, 10) : null })}
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground -mt-1">The date this fee becomes payable each season. Leave empty if not date-bound.</p>
 
             <div className="space-y-1.5">
               <Label>Notes</Label>

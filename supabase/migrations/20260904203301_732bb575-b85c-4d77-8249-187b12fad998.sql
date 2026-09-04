@@ -1,0 +1,3 @@
+ALTER TABLE public.association_fee_items
+  ADD COLUMN IF NOT EXISTS due_month INTEGER CHECK (due_month BETWEEN 1 AND 12),
+  ADD COLUMN IF NOT EXISTS due_day INTEGER CHECK (due_day BETWEEN 1 AND 31);

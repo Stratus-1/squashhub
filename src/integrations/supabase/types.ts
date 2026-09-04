@@ -400,6 +400,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           direction: string
+          due_day: number | null
+          due_month: number | null
           id: string
           label: string
           league_association_id: string | null
@@ -416,6 +418,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           direction?: string
+          due_day?: number | null
+          due_month?: number | null
           id?: string
           label: string
           league_association_id?: string | null
@@ -432,6 +436,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           direction?: string
+          due_day?: number | null
+          due_month?: number | null
           id?: string
           label?: string
           league_association_id?: string | null

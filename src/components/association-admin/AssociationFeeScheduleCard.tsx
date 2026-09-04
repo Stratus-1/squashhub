@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ArrowDownLeft, ArrowUpRight, CalendarDays } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 
 export interface FeeItem {
   id: string;
@@ -138,7 +138,7 @@ export function AssociationFeeScheduleCard({ clubId }: { clubId: string }) {
             </h3>
             <p className="text-xs text-muted-foreground">
               {isRec
-                ? "Optional charges alongside the annual league fee — per member, per club or per league team."
+                ? "Charges the association bills to affiliated clubs — per member, per club or per league team. Each fee can carry its own renewal date."
                 : "Amounts the association pays out, charged per member."}
             </p>
           </div>

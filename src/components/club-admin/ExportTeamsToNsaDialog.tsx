@@ -245,7 +245,7 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Export teams to {asLabel}</DialogTitle>
+          <DialogTitle>Submit teams to {asLabel}</DialogTitle>
           <DialogDescription>
             Preview and download the full team + player list to submit to{" "}
             {association.name}. Paste the email body into an email to your league
@@ -420,9 +420,9 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              This is a manual export for now. Send the CSV/.txt (or paste the email
-              body) to your {asLabel} league administrator. An automated push to the{" "}
-              {asLabel} admin site is coming next.
+              Submit the CSV/.txt (or paste the email body) to your {asLabel} league
+              administrator. Direct submission from here is enabled once the{" "}
+              {asLabel} integration is switched on for your club.
             </p>
           </div>
         )}

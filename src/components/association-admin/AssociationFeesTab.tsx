@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -204,7 +206,9 @@ export function AssociationFeesTab({ clubId }: { clubId: string }) {
 interface TeamRow { team_id: string; club_id: string; club_name: string; player_count: number; season_year: number }
 
 function ClubBillingPreview({ clubId }: { clubId: string }) {
+  const qc = useQueryClient();
   const currentYear = new Date().getFullYear();
+
   const { data: platformAssoc } = usePlatformAssociation(clubId);
   const { seasons: openSeasons } = useAssociationSeasons(platformAssoc?.id ?? null);
   const [season, setSeason] = useState<number | null>(null);
@@ -242,30 +246,60 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
     [allTeams, season],
   );
 
-  // Payments recorded against members for this season, grouped by their club.
+  // Payments recorded by the clubs against this association for the season.
   const { data: seasonPayments = [] } = useQuery({
-    queryKey: ["association-billing-payments", clubId, season],
+    queryKey: ["association-club-payments", clubId, season],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_member_fee_payments")
-        .select("club_member_id, amount, paid, club_members!inner(club_id)")
-        .in("fee_type", ["league_affiliation", "association"])
-        .eq("paid", true)
-        .eq("season_year", season!);
+      const { data, error } = await fromExt("club_association_payments")
+        .select("id, club_id, amount, paid_on, method, reference, proof_path, status")
+        .eq("association_tenant_id", clubId)
+        .eq("season_year", season!)
+        .order("paid_on", { ascending: false });
       if (error) throw error;
-      return (data || []) as { club_member_id: string; amount: number; club_members: { club_id: string } }[];
+      return (data || []) as unknown as {
+        id: string; club_id: string; amount: number; paid_on: string;
+        method: string; reference: string | null; proof_path: string | null;
+        status: "pending" | "confirmed" | "disputed";
+      }[];
     },
-    enabled: season != null,
+    enabled: season != null && !!clubId,
   });
 
   const paidByClub = useMemo(() => {
     const map = new Map<string, number>();
     seasonPayments.forEach((p) => {
-      const cid = p.club_members?.club_id;
-      if (!cid) return;
-      map.set(cid, (map.get(cid) || 0) + Number(p.amount || 0));
+      if (p.status === "disputed") return;
+      map.set(p.club_id, (map.get(p.club_id) || 0) + Number(p.amount || 0));
     });
     return map;
   }, [seasonPayments]);
+
+  const paymentsByClub = useMemo(() => {
+    const map = new Map<string, typeof seasonPayments>();
+    seasonPayments.forEach((p) => {
+      const list = map.get(p.club_id) || [];
+      list.push(p);
+      map.set(p.club_id, list);
+    });
+    return map;
+  }, [seasonPayments]);
+
+  const reviewPayment = async (id: string, status: "confirmed" | "disputed") => {
+    const { data: userRes } = await supabase.auth.getUser();
+    const { error } = await fromExt("club_association_payments")
+      .update({ status, reviewed_at: new Date().toISOString(), reviewed_by: userRes?.user?.id ?? null } as any)
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(status === "confirmed" ? "Payment confirmed" : "Payment marked as disputed");
+    qc.invalidateQueries({ queryKey: ["association-club-payments", clubId, season] });
+  };
+
+  const openProof = async (path: string) => {
+    const { data, error } = await supabase.storage.from("payment-proofs").createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) { toast.error("Could not open the proof of payment"); return; }
+    window.open(data.signedUrl, "_blank");
+  };
+
 
   const active = items.filter(i => i.active && i.direction === "receivable" && (!i.season_year || i.season_year === season));
   const perMember = active.filter(i => i.basis === "member").reduce((s, i) => s + Number(i.amount || 0), 0);
@@ -375,7 +409,39 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
             </tfoot>
           )}
         </table>
+
+        <div className="border-t pt-2 space-y-1">
+          <p className="text-xs font-medium">Payments received from clubs</p>
+          {seasonPayments.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">No club has recorded a payment for {season} yet.</p>
+          )}
+          {clubs.map((c) => (paymentsByClub.get(c.id) || []).map((p) => (
+            <div key={p.id} className="flex items-center gap-2 text-[11px] flex-wrap">
+              <span className="font-medium min-w-[140px]">{c.name}</span>
+              <span className="w-20">{p.paid_on}</span>
+              <span>{fmt(Number(p.amount || 0))}</span>
+              <span className="text-muted-foreground capitalize">{p.method}</span>
+              {p.reference && <span className="text-muted-foreground truncate max-w-[140px]">{p.reference}</span>}
+              <Badge
+                variant="outline"
+                className={`text-[9px] px-1 py-0 ${p.status === "confirmed" ? "border-emerald-500 text-emerald-600" : p.status === "disputed" ? "border-destructive text-destructive" : "border-amber-500 text-amber-600"}`}
+              >
+                {p.status}
+              </Badge>
+              {p.proof_path && (
+                <button className="text-primary hover:underline" onClick={() => openProof(p.proof_path!)}>proof</button>
+              )}
+              {p.status !== "confirmed" && (
+                <button className="text-emerald-600 hover:underline" onClick={() => reviewPayment(p.id, "confirmed")}>confirm</button>
+              )}
+              {p.status !== "disputed" && (
+                <button className="text-destructive hover:underline" onClick={() => reviewPayment(p.id, "disputed")}>dispute</button>
+              )}
+            </div>
+          )))}
+        </div>
       </Card>
+
     </div>
   );
 }

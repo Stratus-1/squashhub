@@ -23,6 +23,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
+import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
@@ -192,7 +193,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, isSuperAdmin }: {
+function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
@@ -206,8 +207,10 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
   onAssignNumber?: (member: ClubMember) => void;
   numberLabel?: string;
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
+  onAffiliate?: () => void;
   isSuperAdmin?: boolean;
 }) {
+
   const navigate = useNavigate();
   const { switchMember } = useMemberContext();
   const displayName = m.name || m.profiles?.name || "—";
@@ -335,7 +338,19 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
           );
         })}
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
+        {onAffiliate && affiliations.filter((a) => a.active && !a.internal).length === 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-5 px-1.5 text-[9px] gap-1 text-primary border-primary/40 hover:bg-primary/10"
+            onClick={(e) => { e.stopPropagation(); onAffiliate(); }}
+            title="Affiliate this member to the league association"
+          >
+            + Affiliate
+          </Button>
+        )}
       </div>
+
 
       {/* Row 3: Fees receivable from member — totals reflect the GL / member statement */}
       {(fees.length > 0 || (glBilled ?? 0) > 0) && (
@@ -382,6 +397,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const [addOpen, setAddOpen] = useState(false);
   const [bulkTypesOpen, setBulkTypesOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
+  const [affiliateMember, setAffiliateMember] = useState<ClubMember | null>(null);
+
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -1037,8 +1054,10 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     onAssignNumber={handleAssignNumber}
                     numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
                     onChangeStatus={handleChangeStatus}
+                    onAffiliate={() => setAffiliateMember(m)}
                     isSuperAdmin={isSuperAdmin}
                   />
+
 
                 ))}
                 {all.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No {gender.toLowerCase()} members</p>}
@@ -1053,6 +1072,15 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
 
       {editMember && <EditMemberDialog member={editMember} feeCategories={feeCategories} clubId={clubId} onClose={() => { setEditMember(null); qc.invalidateQueries({ queryKey: ["club-members"] }); qc.invalidateQueries({ queryKey: ["club-member-affiliations"] }); qc.invalidateQueries({ queryKey: ["club-member-fee-payments"] }); refetchPayments(); }} />}
+      {affiliateMember && (
+        <AffiliateMemberDialog
+          clubId={clubId}
+          memberId={affiliateMember.id}
+          memberName={affiliateMember.name || affiliateMember.profiles?.name || "Member"}
+          onClose={() => setAffiliateMember(null)}
+        />
+      )}
+
     </div>
   );
 }

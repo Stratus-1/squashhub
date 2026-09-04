@@ -1730,6 +1730,78 @@ export type Database = {
           },
         ]
       }
+      club_association_payments: {
+        Row: {
+          amount: number
+          association_tenant_id: string
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          method: string
+          notes: string | null
+          paid_on: string
+          proof_path: string | null
+          reference: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          season_year: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          association_tenant_id: string
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method?: string
+          notes?: string | null
+          paid_on?: string
+          proof_path?: string | null
+          reference?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          season_year: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          association_tenant_id?: string
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          method?: string
+          notes?: string | null
+          paid_on?: string
+          proof_path?: string | null
+          reference?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          season_year?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_association_payments_association_tenant_id_fkey"
+            columns: ["association_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_association_payments_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_bank_rules: {
         Row: {
           account: Database["public"]["Enums"]["gl_account"] | null
@@ -13611,6 +13683,33 @@ export type Database = {
       claim_unclaimed_membership: {
         Args: { _member_id: string }
         Returns: Json
+      }
+      club_affiliate_member_to_association: {
+        Args: {
+          _association_id: string
+          _club_id: string
+          _club_member_id: string
+          _league_id?: string
+          _submit?: boolean
+        }
+        Returns: Json
+      }
+      club_association_statement: {
+        Args: { _club_id: string; _season_year: number }
+        Returns: {
+          amount: number
+          association_name: string
+          association_tenant_id: string
+          basis: string
+          due_day: number
+          due_month: number
+          fee_item_id: string
+          label: string
+          total_pending: number
+          total_submitted: number
+          units_pending: number
+          units_submitted: number
+        }[]
       }
       club_gateway_fee_percent: {
         Args: { _club_id: string; _method?: string }

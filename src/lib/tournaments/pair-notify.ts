@@ -52,6 +52,8 @@ export async function notifyDoublesPair(
           recipients: [{ member_id: w.member_id }],
           kind: "champ_doubles_pair",
           category: "utility",
+          templateKey: "club_notice",
+          templateVariables: { message: w.message },
           body: w.message,
         });
         whatsappSent += 1;

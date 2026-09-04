@@ -5540,6 +5540,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               recipients: [{ member_id: r.club_member_id }],
               kind: "champ_invite",
               category: "utility",
+              // Cold WhatsApp sends must use an approved template; the free-form
+              // body is only used inside a 24h reply window.
+              templateKey: "rsvp_question",
+              templateVariables: {
+                question: `${msg}`,
+                details: `Reply YES to enter or NO to decline.\n${urlForRegistration(r.id)}`,
+              },
               body: `${msg}\n\nReply YES to enter or NO to decline.\n${urlForRegistration(r.id)}`,
               interaction: {
                 kind: "champ_entry",

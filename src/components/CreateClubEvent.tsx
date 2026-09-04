@@ -841,6 +841,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               recipients: inviteeIds.map((id) => ({ member_id: id })),
               kind: "event_invite",
               category: "utility",
+              templateKey: "rsvp_question",
+              templateVariables: {
+                question: `You're invited to "${form.title}" ${whenText} at ${form.start_time}.`,
+                details: "Reply YES to confirm or NO to decline.",
+              },
               body: `You're invited to "${form.title}" ${whenText} at ${form.start_time}.\n\nReply YES to confirm or NO to decline.`,
               interaction: {
                 kind: "event_rsvp",

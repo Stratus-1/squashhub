@@ -264,6 +264,8 @@ Deno.serve(async (req) => {
                 club_id: campaign.club_id,
                 recipients: [{ member_id: m.id, phone: m.phone }],
                 body: rendered.body,
+                template_key: "club_notice",
+                template_variables: { message: rendered.body, link: rendered.url || "" },
                 kind: "campaign",
                 category: "marketing",
               }),

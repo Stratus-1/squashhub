@@ -24,6 +24,14 @@ export type SendWhatsAppOptions = {
   /** Approved Twilio Content template SID (HX…) for out-of-window sends. */
   contentSid?: string;
   contentVariables?: Record<string, string>;
+  /**
+   * Registry key from the approved WhatsApp template list (e.g. 'club_notice',
+   * 'tournament_invite'). Required for cold sends — WhatsApp only delivers
+   * free-form `body` text inside a 24h reply window.
+   */
+  templateKey?: string;
+  /** Named variables for the template, e.g. { player, event, details, link }. */
+  templateVariables?: Record<string, string>;
   kind?: string;
   /** Drives the per-message rate billed to the club. */
   category?: "utility" | "service" | "marketing";
@@ -58,6 +66,8 @@ export async function sendWhatsApp(opts: SendWhatsAppOptions): Promise<SendWhats
       body: opts.body,
       content_sid: opts.contentSid,
       content_variables: opts.contentVariables,
+      template_key: opts.templateKey,
+      template_variables: opts.templateVariables,
       kind: opts.kind,
       category: opts.category,
       interaction: opts.interaction

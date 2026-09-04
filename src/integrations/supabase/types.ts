@@ -7449,6 +7449,7 @@ export type Database = {
           season_id: string | null
           season_source: string | null
           season_year: number | null
+          submitted_to_association_at: string | null
           updated_at: string
         }
         Insert: {
@@ -7478,6 +7479,7 @@ export type Database = {
           season_id?: string | null
           season_source?: string | null
           season_year?: number | null
+          submitted_to_association_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -7507,6 +7509,7 @@ export type Database = {
           season_id?: string | null
           season_source?: string | null
           season_year?: number | null
+          submitted_to_association_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -13597,6 +13600,17 @@ export type Database = {
         Returns: boolean
       }
       club_has_no_admin: { Args: { _club_id: string }; Returns: boolean }
+      club_submit_association_roster: {
+        Args: {
+          _association_id: string
+          _club_id: string
+          _season_year?: number
+        }
+        Returns: {
+          players: number
+          teams: number
+        }[]
+      }
       count_member_duplicate_hints: {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number

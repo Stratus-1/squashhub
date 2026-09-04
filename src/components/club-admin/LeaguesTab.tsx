@@ -3037,21 +3037,12 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     },
   });
 
-  const takenCodes = (category: "men" | "ladies" | "mixed") => {
+  // Codes must be unique per association (the DB also keys on season/category),
+  // so allocate one running sequence across every category in this batch and
+  // skip anything already used by this association.
+  const takenCodes = () => {
     const set = new Set<string>();
-    for (const l of existingLeagues as any[]) {
-      if (!l.code) continue;
-      if (Number(l.season_year) !== Number(year)) continue;
-      const name = String(l.name || "").toLowerCase();
-      const cat =
-        l.category ||
-        (name.includes("ladies") || name.includes("women")
-          ? "ladies"
-          : name.includes("mixed")
-            ? "mixed"
-            : "men");
-      if (cat === category) set.add(l.code);
-    }
+    for (const l of existingLeagues as any[]) if (l.code) set.add(l.code);
     return set;
   };
 
@@ -3071,36 +3062,32 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
       season_source: "manual",
     });
 
-    const makeAllocator = (category: "men" | "ladies" | "mixed") => {
-      const taken = takenCodes(category);
-      let n = startNum;
-      return () => {
-        if (!prefix) return null;
-        let code = `${prefix}${String(n).padStart(3, "0")}`;
-        while (taken.has(code)) {
-          n++;
-          code = `${prefix}${String(n).padStart(3, "0")}`;
-        }
-        taken.add(code);
+    const taken = takenCodes();
+    let n = startNum;
+    const nextCode = () => {
+      if (!prefix) return null;
+      let code = `${prefix}${String(n).padStart(3, "0")}`;
+      while (taken.has(code)) {
         n++;
-        return code;
-      };
+        code = `${prefix}${String(n).padStart(3, "0")}`;
+      }
+      taken.add(code);
+      n++;
+      return code;
     };
 
-    const nextMen = makeAllocator("men");
     const menEntries = sortedMen.map(label => ({
-      name: `Men's ${label} League ${year}`, code: nextMen(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Men's ${label} League ${year}`, code: nextCode(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
-    const nextLadies = makeAllocator("ladies");
     const ladiesEntries = sortedLadies.map(label => ({
-      name: `Ladies ${label} League ${year}`, code: nextLadies(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Ladies ${label} League ${year}`, code: nextCode(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
 
-    const nextMixed = makeAllocator("mixed");
     const mixedEntries = sortedMixed.map(label => ({
-      name: `Mixed ${label} League ${year}`, code: nextMixed(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
+      name: `Mixed ${label} League ${year}`, code: nextCode(), association_id: associationId || null, club_id: clubId, affects_ranking_points: affectsRanking, ranking_weight: rankingWeight, ...base(label),
     }));
+
 
     return [...menEntries, ...ladiesEntries, ...mixedEntries];
   };

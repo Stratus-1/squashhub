@@ -3306,7 +3306,7 @@ function AssociationRulesPenaltiesDialog({ association, open, onOpenChange }: { 
         </DialogHeader>
         {!isInternal && (
           <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            System Leagues inherit defaults from the league organiser. Edits saved here become a club-level override that only applies to your club.
+            This is a System League — its rules and penalties are set by {association.name}. You can view them here, but only the league organiser can change them.
           </div>
         )}
         <Tabs defaultValue="rules" className="w-full">
@@ -3315,7 +3315,7 @@ function AssociationRulesPenaltiesDialog({ association, open, onOpenChange }: { 
             <TabsTrigger value="penalties">Penalties</TabsTrigger>
           </TabsList>
           <TabsContent value="rules" className="mt-3">
-            <AssociationRulesTab associationId={association.id} />
+            <AssociationRulesTab associationId={association.id} readOnly={!isInternal} />
           </TabsContent>
           <TabsContent value="penalties" className="mt-3">
             <AssociationPenaltiesTab associationId={association.id} />

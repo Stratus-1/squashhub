@@ -3310,7 +3310,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
           // Category + division must be stored: the unique code index is scoped
           // by (association, season, division, category), so leaving them null
           // makes Men's RSC001 collide with Ladies RSC001.
-          category: gender,
+          category: gender === "men" ? "mens" : gender,
           division: `${label} League`,
           association_id: associationId || null,
           club_id: clubId,

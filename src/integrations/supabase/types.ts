@@ -2673,6 +2673,14 @@ export type Database = {
           notes: string | null
           provider: string
           pulse_ms: number
+          schedule_days: number[]
+          schedule_enabled: boolean
+          schedule_last_checked_at: string | null
+          schedule_last_off_key: string | null
+          schedule_last_on_key: string | null
+          schedule_off_time: string | null
+          schedule_on_time: string | null
+          schedule_timezone: string
           shelly_channel: number
           shelly_device_id: string | null
           sort_order: number
@@ -2697,6 +2705,14 @@ export type Database = {
           notes?: string | null
           provider?: string
           pulse_ms?: number
+          schedule_days?: number[]
+          schedule_enabled?: boolean
+          schedule_last_checked_at?: string | null
+          schedule_last_off_key?: string | null
+          schedule_last_on_key?: string | null
+          schedule_off_time?: string | null
+          schedule_on_time?: string | null
+          schedule_timezone?: string
           shelly_channel?: number
           shelly_device_id?: string | null
           sort_order?: number
@@ -2721,6 +2737,14 @@ export type Database = {
           notes?: string | null
           provider?: string
           pulse_ms?: number
+          schedule_days?: number[]
+          schedule_enabled?: boolean
+          schedule_last_checked_at?: string | null
+          schedule_last_off_key?: string | null
+          schedule_last_on_key?: string | null
+          schedule_off_time?: string | null
+          schedule_on_time?: string | null
+          schedule_timezone?: string
           shelly_channel?: number
           shelly_device_id?: string | null
           sort_order?: number

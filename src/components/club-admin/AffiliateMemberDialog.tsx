@@ -35,10 +35,16 @@ export function AffiliateMemberDialog({
   const [leagueId, setLeagueId] = useState<string>(NO_TEAM);
   const [saving, setSaving] = useState(false);
 
-  const teams = useMemo(
-    () => (leagues as any[]).filter((l) => l.association_id === associationId),
-    [leagues, associationId],
-  );
+  // Only the newest season's teams — placing the member in one is what adds
+  // their fee to the club's association bill.
+  const teams = useMemo(() => {
+    const scoped = (leagues as any[]).filter((l) => l.association_id === associationId && !l.archived_at);
+    const years = scoped.map((l) => l.season_year).filter((y) => y != null) as number[];
+    const season = years.length ? Math.max(...years) : null;
+    return scoped
+      .filter((l) => season == null || l.season_year === season)
+      .sort((a, b) => String(a.category ?? "").localeCompare(String(b.category ?? "")) || (a.level ?? 99) - (b.level ?? 99));
+  }, [leagues, associationId]);
 
   const submit = async () => {
     if (!associationId) { toast.error("Choose an association"); return; }
@@ -95,8 +101,12 @@ export function AffiliateMemberDialog({
               </SelectContent>
             </Select>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Choosing a team submits this member to the association right away and adds their fee to the club's bill once.
+          <p className={`text-[11px] ${leagueId === NO_TEAM ? "text-amber-600" : "text-muted-foreground"}`}>
+            {leagueId === NO_TEAM
+              ? teams.length
+                ? "No team chosen — the member is affiliated only and no association fee is billed yet."
+                : "No teams exist for this association yet. Create teams under Leagues first, then place this member in one."
+              : "Choosing a team submits this member to the association right away and adds their fee to the club's bill once."}
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>

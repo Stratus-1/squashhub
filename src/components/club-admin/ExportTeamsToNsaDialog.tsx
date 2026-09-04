@@ -221,6 +221,28 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
     }
   };
 
+  const submit = async () => {
+    setSubmitting(true);
+    try {
+      const { data: res, error } = await (supabase.rpc as any)("club_submit_association_roster", {
+        _club_id: clubId,
+        _association_id: association.id,
+        _season_year: null,
+      });
+      if (error) throw error;
+      const row = Array.isArray(res) ? res[0] : res;
+      setSubmitted(true);
+      toast.success(`Roster uploaded to ${asLabel}`, {
+        description: `${row?.teams ?? stats.teams} team(s) and ${row?.players ?? stats.players} player(s) are now visible to ${association.name}.`,
+      });
+    } catch (e: any) {
+      toast.error("Could not submit roster", { description: e?.message });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

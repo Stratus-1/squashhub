@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import type { LeagueAssociation } from "@/hooks/use-club";
 import {
   Dialog,
@@ -26,6 +27,8 @@ import {
   Copy,
   AlertTriangle,
   Crown,
+  Send,
+  Check,
 } from "lucide-react";
 
 interface Props {
@@ -69,6 +72,9 @@ const csvEscape = (v: string | number | null | undefined) => {
 
 export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange }: Props) {
   const [copied, setCopied] = useState<"csv" | "email" | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
 
   const { data, isLoading } = useQuery({
     enabled: open && !!association?.id,
@@ -221,6 +227,28 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
     }
   };
 
+  const submit = async () => {
+    setSubmitting(true);
+    try {
+      const { data: res, error } = await (supabase.rpc as any)("club_submit_association_roster", {
+        _club_id: clubId,
+        _association_id: association.id,
+        _season_year: null,
+      });
+      if (error) throw error;
+      const row = Array.isArray(res) ? res[0] : res;
+      setSubmitted(true);
+      toast.success(`Roster uploaded to ${asLabel}`, {
+        description: `${row?.teams ?? stats.teams} team(s) and ${row?.players ?? stats.players} player(s) are now visible to ${association.name}.`,
+      });
+    } catch (e: any) {
+      toast.error("Could not submit roster", { description: e?.message });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -302,6 +330,10 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
 
             {/* Actions */}
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={submit} disabled={submitting || stats.teams === 0}>
+                {submitted ? <Check className="w-4 h-4 mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                {submitting ? "Submitting…" : submitted ? `Submitted to ${asLabel}` : `Submit to ${asLabel}`}
+              </Button>
               <Button
                 size="sm"
                 variant="outline"

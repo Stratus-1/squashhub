@@ -312,6 +312,14 @@ export function AssociationLeaguesTab({ clubId }: { clubId: string }) {
         group={fixturesFor}
         onClose={() => setFixturesFor(null)}
       />
+      <AssociationSeasonDialog
+        open={seasonsOpen}
+        onOpenChange={setSeasonsOpen}
+        platformAssociationId={platformAssocId ?? null}
+        tenantClubId={clubId}
+        associationName={platformAssoc?.name ?? "this league"}
+      />
+
     </div>
   );
 }

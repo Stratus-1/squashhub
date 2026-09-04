@@ -324,30 +324,14 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
+                variant="outline"
                 onClick={() => downloadFile(csv, `${fileBase}.csv`, "text/csv")}
               >
-                <Download className="w-4 h-4 mr-1" /> Download CSV
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  downloadFile(emailBody, `${fileBase}.txt`, "text/plain")
-                }
-              >
-                <FileText className="w-4 h-4 mr-1" /> Download .txt
+                <Download className="w-4 h-4 mr-1" /> Download CSV (own records)
               </Button>
               <Button size="sm" variant="outline" onClick={() => copy(csv, "csv")}>
                 <Copy className="w-4 h-4 mr-1" />
                 {copied === "csv" ? "Copied" : "Copy CSV"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => copy(emailBody, "email")}
-              >
-                <Mail className="w-4 h-4 mr-1" />
-                {copied === "email" ? "Copied" : "Copy email body"}
               </Button>
             </div>
 
@@ -422,9 +406,10 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              Submit the CSV/.txt (or paste the email body) to your {asLabel} league
-              administrator. Direct submission from here is enabled once the{" "}
-              {asLabel} integration is switched on for your club.
+              This list is shared with {asLabel} automatically through the
+              integration — there is nothing to email. If you add more players to
+              league teams later, they appear here too and your club's fees payable
+              are updated accordingly. Downloads are for your own records only.
             </p>
           </div>
         )}

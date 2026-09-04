@@ -242,6 +242,31 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
     [allTeams, season],
   );
 
+  // Payments recorded against members for this season, grouped by their club.
+  const { data: seasonPayments = [] } = useQuery({
+    queryKey: ["association-billing-payments", clubId, season],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_member_fee_payments")
+        .select("club_member_id, amount, paid, club_members!inner(club_id)")
+        .in("fee_type", ["league_affiliation", "association"])
+        .eq("paid", true)
+        .eq("season_year", season!);
+      if (error) throw error;
+      return (data || []) as { club_member_id: string; amount: number; club_members: { club_id: string } }[];
+    },
+    enabled: season != null,
+  });
+
+  const paidByClub = useMemo(() => {
+    const map = new Map<string, number>();
+    seasonPayments.forEach((p) => {
+      const cid = p.club_members?.club_id;
+      if (!cid) return;
+      map.set(cid, (map.get(cid) || 0) + Number(p.amount || 0));
+    });
+    return map;
+  }, [seasonPayments]);
+
   const active = items.filter(i => i.active && i.direction === "receivable" && (!i.season_year || i.season_year === season));
   const perMember = active.filter(i => i.basis === "member").reduce((s, i) => s + Number(i.amount || 0), 0);
   const perClub = active.filter(i => i.basis === "club").reduce((s, i) => s + Number(i.amount || 0), 0);
@@ -268,6 +293,8 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
   }, [teams, perClub, perMember, perTeam]);
 
   const grand = clubs.reduce((s, c) => s + c.total, 0);
+  const grandPaid = clubs.reduce((s, c) => s + (paidByClub.get(c.id) || 0), 0);
+  const grandOwing = Math.max(grand - grandPaid, 0);
 
 
   return (
@@ -311,10 +338,15 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
               <th className="text-right px-2 py-1.5 font-medium">Member fees</th>
               <th className="text-right px-2 py-1.5 font-medium">Team fees</th>
               <th className="text-right px-2 py-1.5 font-medium">Total</th>
+              <th className="text-right px-2 py-1.5 font-medium">Paid to date</th>
+              <th className="text-right px-2 py-1.5 font-medium">O/s balance</th>
             </tr>
           </thead>
           <tbody>
-            {clubs.map(c => (
+            {clubs.map(c => {
+              const paid = paidByClub.get(c.id) || 0;
+              const owing = Math.max(c.total - paid, 0);
+              return (
               <tr key={c.id} className="border-t hover:bg-accent/30">
                 <td className="px-2 py-1.5 flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-muted-foreground" />{c.name}</td>
                 <td className="px-2 py-1.5 text-right">{c.memberCount}</td>
@@ -323,10 +355,13 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
                 <td className="px-2 py-1.5 text-right">{fmt(c.memberCount * perMember)}</td>
                 <td className="px-2 py-1.5 text-right">{fmt(c.teams * perTeam)}</td>
                 <td className="px-2 py-1.5 text-right font-semibold">{fmt(c.total)}</td>
+                <td className="px-2 py-1.5 text-right text-emerald-600">{fmt(paid)}</td>
+                <td className={`px-2 py-1.5 text-right ${owing > 0 ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>{fmt(owing)}</td>
               </tr>
-            ))}
+              );
+            })}
             {clubs.length === 0 && (
-              <tr><td colSpan={7} className="text-center text-muted-foreground py-6">No club has submitted teams for this season yet.</td></tr>
+              <tr><td colSpan={9} className="text-center text-muted-foreground py-6">No club has submitted teams for this season yet.</td></tr>
             )}
           </tbody>
           {clubs.length > 0 && (
@@ -334,6 +369,8 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
               <tr className="border-t bg-muted/40">
                 <td className="px-2 py-1.5 font-semibold" colSpan={6}>Total receivable</td>
                 <td className="px-2 py-1.5 text-right font-bold">{fmt(grand)}</td>
+                <td className="px-2 py-1.5 text-right font-bold text-emerald-600">{fmt(grandPaid)}</td>
+                <td className="px-2 py-1.5 text-right font-bold text-amber-600">{fmt(grandOwing)}</td>
               </tr>
             </tfoot>
           )}

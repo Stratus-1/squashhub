@@ -1797,7 +1797,31 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       }
     }
 
-    toast.success("Member updated");
+    // Team placement: registering the member in a team is what puts their
+    // association fee on the club's bill, so do it as part of this save.
+    let placed = 0;
+    const affiliatedWithoutTeam: string[] = [];
+    for (const a of leagueAssocs) {
+      if (a.kind === "internal" || !tickedAssociations[a.associationId]) continue;
+      const leagueId = teamDrafts[a.associationId] || "";
+      const hasTeam = assocTeams.some((t) => t.association_id === a.associationId && registeredLeagueIds.includes(t.id));
+      if (!leagueId) { if (!hasTeam) affiliatedWithoutTeam.push(a.abbreviation || a.associationName); continue; }
+      const { error: rpcErr } = await (supabase as any).rpc("club_affiliate_member_to_association", {
+        _club_id: clubId,
+        _club_member_id: member.id,
+        _association_id: a.associationId,
+        _league_id: leagueId,
+        _submit: true,
+      });
+      if (rpcErr) { toast.error(`Team placement: ${rpcErr.message}`); return; }
+      placed += 1;
+    }
+    qcEdit.invalidateQueries({ queryKey: ["club-association-statement", clubId] });
+    qcEdit.invalidateQueries({ queryKey: ["club-association-teams", clubId] });
+
+    if (placed > 0) toast.success("Member updated, submitted to the association and added to the club's bill");
+    else if (affiliatedWithoutTeam.length) toast.warning(`Member updated — affiliated to ${affiliatedWithoutTeam.join(", ")} but not in a team yet, so no association fee is billed.`);
+    else toast.success("Member updated");
     onClose();
   };
 
@@ -1923,6 +1947,34 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
                                 ? "A number will be auto-allocated when you save."
                                 : "Enter the number once. After saving it's locked to this member."}
                         </p>
+                        {!isInternal && (() => {
+                          const options = teamsFor(a.associationId);
+                          const already = options.find((t) => registeredLeagueIds.includes(t.id));
+                          if (already) {
+                            return <p className="text-[10px] text-muted-foreground">Playing in <span className="font-medium">{already.name}</span> — already on the club's association bill.</p>;
+                          }
+                          if (!options.length) {
+                            return <p className="text-[10px] text-amber-600">No teams created for this association yet. Create teams under Leagues, then place this member in one so the fee is billed.</p>;
+                          }
+                          return (
+                            <div className="space-y-1">
+                              <Label className="text-[11px]">Team for {options[0].season_year ?? "this season"}</Label>
+                              <select
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                                value={teamDrafts[a.associationId] ?? ""}
+                                onChange={(e) => setTeamDrafts((prev) => ({ ...prev, [a.associationId]: e.target.value }))}
+                              >
+                                <option value="">— Choose a league / team —</option>
+                                {options.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                              </select>
+                              <p className="text-[10px] text-muted-foreground">
+                                {teamDrafts[a.associationId]
+                                  ? "Saving submits this member to the association and adds their fee to the club's bill once."
+                                  : "Without a team the member is affiliated only — no association fee is billed yet."}
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>

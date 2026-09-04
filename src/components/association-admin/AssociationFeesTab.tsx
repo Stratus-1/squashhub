@@ -270,12 +270,23 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
   return (
     <div className="space-y-4">
       <Card className="p-4 space-y-3">
-        <div>
-          <h3 className="font-semibold flex items-center gap-2"><Receipt className="w-4 h-4" /> Billing by Club — {season}</h3>
-          <p className="text-xs text-muted-foreground">
-            Calculated from the active receivable fee schedule. Fees are invoiced to the club, not the member.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="font-semibold flex items-center gap-2"><Receipt className="w-4 h-4" /> Billing by Club — {season ?? "—"}</h3>
+            <p className="text-xs text-muted-foreground">
+              Only clubs that submitted their teams and players for this season are billed. Fees are invoiced to the club, not the member.
+            </p>
+          </div>
+          <Select value={season != null ? String(season) : ""} onValueChange={(v) => setSeason(Number(v))}>
+            <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Season" /></SelectTrigger>
+            <SelectContent>
+              {seasonOptions.map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
 
         <div className="flex flex-wrap gap-2 text-[11px]">
           {active.length === 0

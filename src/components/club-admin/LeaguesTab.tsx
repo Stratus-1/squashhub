@@ -37,6 +37,7 @@ import { pairDisplayName } from "@/lib/leagues/format";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAssociationSeasons } from "@/hooks/use-association-seasons";
+import { useLeagueSeasons } from "@/hooks/use-league-seasons";
 import {
   COMPETITION_CATEGORIES,
   COMPETITION_DISCIPLINES,
@@ -3202,11 +3203,20 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
   useEffect(() => {
     if (open && lockedAssociationId) setAssociationId(lockedAssociationId);
   }, [open, lockedAssociationId]);
-  // The association opens the season; when a club is prompted for a specific
-  // year we prefill it so teams land in the right season.
+
+  // Default the season year to the association's current season (the
+  // association opens the season calendar — the club just responds). Falls
+  // back to the calendar year for associations with no seasons yet.
+  const yearAssoc = associations.find((a) => a.id === (associationId || lockedAssociationId));
+  const { currentSeason } = useLeagueSeasons({
+    associationId: yearAssoc && isClubLeagueScope(yearAssoc.scope) ? yearAssoc.id : null,
+    platformAssociationId: yearAssoc && !isClubLeagueScope(yearAssoc.scope) ? yearAssoc.platform_association_id : null,
+  });
   useEffect(() => {
-    if (open && defaultYear) setYear(defaultYear);
-  }, [open, defaultYear]);
+    if (!open) return;
+    if (defaultYear) { setYear(defaultYear); return; }
+    if (currentSeason) setYear(currentSeason.season_year);
+  }, [open, defaultYear, currentSeason]);
 
   const [affectsRanking, setAffectsRanking] = useState(false);
   const [rankingWeight, setRankingWeight] = useState(1);

@@ -2348,6 +2348,49 @@ function AllocatePlayersDialog({ gender, leagues, members, clubId, open, onOpenC
         }
       }
       console.log("[AllocateLeagues] save complete", { totalRowsWritten });
+
+      // Allocating a member into an association league AFFILIATES them to that
+      // association. Create/reactivate a permanent affiliation row with NO league
+      // number — the number comes from the association (e.g. NSA) and the fee is
+      // billed separately. Existing affiliations (and their numbers) are untouched.
+      if (associationId) {
+        const allocatedIds = Array.from(
+          new Set(Object.values(leagueData).flat().map(p => String(p.club_member_id))),
+        );
+        if (allocatedIds.length > 0) {
+          const { data: existingAff, error: affErr } = await fromExt("member_association_affiliations")
+            .select("id, club_member_id, active")
+            .eq("association_id", associationId)
+            .in("club_member_id", allocatedIds);
+          if (affErr) {
+            console.error("[AllocateLeagues] affiliation lookup failed", affErr);
+          } else {
+            const byMember = new Map<string, any>((existingAff || []).map((r: any) => [r.club_member_id, r]));
+            const toInsert = allocatedIds
+              .filter(id => !byMember.has(id))
+              .map(id => ({
+                club_member_id: id,
+                association_id: associationId,
+                active: true,
+                league_association_number: null,
+              }));
+            const toReactivate = (existingAff || []).filter((r: any) => !r.active).map((r: any) => r.id);
+            if (toInsert.length > 0) {
+              const { error: insErr } = await fromExt("member_association_affiliations").insert(toInsert);
+              if (insErr) console.error("[AllocateLeagues] affiliation insert failed", insErr);
+              else toast.info(`${toInsert.length} new player(s) affiliated — awaiting association number & fee.`);
+            }
+            if (toReactivate.length > 0) {
+              await fromExt("member_association_affiliations")
+                .update({ active: true, deactivated_at: null })
+                .in("id", toReactivate);
+            }
+            qc.invalidateQueries({ queryKey: ["permanent-affiliated-members", clubId, associationId] });
+            qc.invalidateQueries({ queryKey: ["affil-numbers-by-member", associationId] });
+          }
+        }
+      }
+
       // Refresh snapshot so a second Save in the same session is a no-op.
       initialLeagueData.current = Object.fromEntries(
         Object.entries(leagueData).map(([k, v]) => [k, v.map(p => ({ ...p }))])

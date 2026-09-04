@@ -598,6 +598,21 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   <Plus className="w-4 h-4 mr-1" />Create teams for new season
                 </Button>
               )}
+              {active.assoc && !isClubLeagueScope(active.assoc.scope) && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="sm" variant="outline" onClick={() => setExportAssoc(active.assoc)}>
+                        <Send className="w-4 h-4 mr-1" />
+                        <span className="truncate max-w-[200px]">Submit new teams or added players to {active.assoc.abbreviation || active.assoc.name}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p className="text-xs">Send the latest team roster and any newly allocated players to {active.assoc.abbreviation || active.assoc.name}. Make sure all players are allocated first.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
           </div>
 

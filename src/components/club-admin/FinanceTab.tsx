@@ -129,7 +129,10 @@ type BillFeeOption = {
 const getLabel = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount]?.label || account;
 const getMeta = (account: string) => CHART_OF_ACCOUNTS[account as GLAccount];
 
-export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
+export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clubId: string; party?: "member" | "club" }) {
+  const Party = party === "club" ? "Club" : "Member";
+  const partyLower = party === "club" ? "club" : "member";
+  const partyPlural = party === "club" ? "clubs" : "members";
   const { format: money, symbol: currencySymbol } = useClubCurrency();
   const queryClient = useQueryClient();
   const { data: members } = useClubMembers(clubId);
@@ -792,6 +795,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           .filter((a) => CHART_OF_ACCOUNTS[a as keyof typeof CHART_OF_ACCOUNTS])
           .map((a) => ({ account: a, label: getLabel(a), balance: getBalance(a), display: money(getBalance(a)) }))}
         onSelectAccount={(a) => setAccountFilter(a)}
+        party={party}
       >
         {(view, setView) => (
           <Tabs value={view} onValueChange={setView} className="w-full mt-4">
@@ -801,29 +805,29 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
               </Button>
               <div className="flex items-center gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={() => setStatementOpen(true)} className="gap-1.5 h-8">
-                  <BookOpen className="w-3.5 h-3.5" /> Member Statement
+                  <BookOpen className="w-3.5 h-3.5" /> {Party} Statement
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" variant="outline" className="gap-1.5 h-8">
-                      <Wallet className="w-3.5 h-3.5" /> Member Balances
+                      <Wallet className="w-3.5 h-3.5" /> {Party} Balances
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => { setBalancesFilter("outstanding"); setBalancesSearch(""); setBalancesOpen(true); }}>
-                      Outstanding (owes club)
+                      Outstanding
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => { setBalancesFilter("credit"); setBalancesSearch(""); setBalancesOpen(true); }}>
                       In Credit (overpaid)
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => { setBalancesFilter("all"); setBalancesSearch(""); setBalancesOpen(true); }}>
-                      All members
+                      All {partyPlural}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Button size="sm" variant="outline" onClick={() => { setBillMemberId(""); setBillMemberSearch(""); setBillOpen(true); }} className="gap-1.5 h-8">
-                  <Receipt className="w-3.5 h-3.5" /> Bill Member
+                  <Receipt className="w-3.5 h-3.5" /> Bill {Party}
                 </Button>
                 <Button size="sm" onClick={() => { setTxMemberSearch(""); setTxMemberId(""); setTxOpen(true); }} className="gap-1.5 h-8">
                   <Plus className="w-3.5 h-3.5" /> Enter Transaction
@@ -1417,7 +1421,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         <DialogContent className="w-[95vw] max-w-5xl min-h-[80vh] max-h-[95vh] flex flex-col p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4" /> Member Statement
+              <BookOpen className="w-4 h-4" /> {Party} Statement
             </DialogTitle>
             <DialogDescription>Select a member to view their account statement.</DialogDescription>
           </DialogHeader>
@@ -1495,7 +1499,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
                   setBillOpen(true);
                 }}
               >
-                <Receipt className="w-3.5 h-3.5" /> Bill Member
+                <Receipt className="w-3.5 h-3.5" /> Bill {Party}
               </Button>
             </div>
 
@@ -1625,7 +1629,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Wallet className="w-4 h-4" /> Member Balances
+              <Wallet className="w-4 h-4" /> {Party} Balances
             </DialogTitle>
             <DialogDescription>
               Net of <strong>Accounts Receivable</strong> (billed minus paid) less <strong>Member Credits</strong> (EFT top-ups not yet applied). Positive = owes the club; negative = in credit.
@@ -1917,7 +1921,7 @@ export function FinanceTab({ club, clubId }: { club: Club; clubId: string }) {
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setBillOpen(false)}>Cancel</Button>
             <Button size="sm" onClick={handleBillMember} disabled={billSubmitting}>
-              {billSubmitting ? "Posting…" : "Bill Member"}
+              {billSubmitting ? "Posting…" : `Bill ${Party}`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1972,10 +1976,13 @@ interface FinanceHubProps {
   onOpeningBalances: () => void;
   moneyAccounts: Array<{ account: string; label: string; balance: number; display: string }>;
   onSelectAccount: (account: string) => void;
+  party?: "member" | "club";
   children: (view: FinanceView, setView: (v: string) => void) => ReactNode;
 }
 
-function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, children }: FinanceHubProps) {
+function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, onImportBank, onOpeningBalances, moneyAccounts, onSelectAccount, party = "member", children }: FinanceHubProps) {
+  const Party = party === "club" ? "Club" : "Member";
+  const partyLower = party === "club" ? "club" : "member";
   const [view, setView] = useState<FinanceView>("");
   const [hubStep, setHubStep] = useState("0");
 
@@ -2022,13 +2029,13 @@ function FinanceHub({ pendingCount, onStatement, onBalances, onBill, onEnterTx, 
       ],
     },
     {
-      title: "Member Billing",
+      title: `${Party} Billing`,
       description: "Statements, balances and invoicing",
       tiles: [
-        { key: "" as FinanceView, label: "Member Statement", desc: "Full transaction history for one member", icon: FileText, onClick: onStatement },
-        { key: "" as FinanceView, label: "Member Balances", desc: "Who owes and who's in credit", icon: Wallet, onClick: () => onBalances("outstanding") },
-        { key: "renewals", label: "Annual Renewals", desc: "Generate & send yearly invoices", icon: CalendarDays },
-        { key: "" as FinanceView, label: "Bill Member", desc: "Add an ad-hoc charge to a member", icon: Receipt, onClick: onBill },
+        { key: "" as FinanceView, label: `${Party} Statement`, desc: `Full transaction history for one ${partyLower}`, icon: FileText, onClick: onStatement },
+        { key: "" as FinanceView, label: `${Party} Balances`, desc: "Who owes and who's in credit", icon: Wallet, onClick: () => onBalances("outstanding") },
+        { key: "renewals", label: "Annual Renewals", desc: `Generate & email yearly invoices to every ${partyLower}`, icon: CalendarDays },
+        { key: "" as FinanceView, label: `Bill ${Party}`, desc: `Add an ad-hoc charge to a ${partyLower}`, icon: Receipt, onClick: onBill },
       ],
     },
     {

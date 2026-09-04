@@ -518,9 +518,17 @@ Deno.serve(async (req) => {
         seasonId = resolveSeasonId(map, params.season_year) ?? "";
       }
       if (!seasonId) {
+        // Season not published on the NSA site yet (e.g. a new season before
+        // the association loads it). Return 200 with an empty result so the UI
+        // can show a friendly notice instead of an edge-function error.
         return new Response(
-          JSON.stringify({ error: "Could not resolve season. Provide season_year (e.g. '2026') or season_id." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({
+            data: null,
+            not_published: true,
+            message: `The ${params.season_year ?? "selected"} season has not been published by NSA yet.`,
+            available_seasons: map.seasons.map((s) => s.label),
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -531,10 +539,12 @@ Deno.serve(async (req) => {
       if (!divisionId) {
         return new Response(
           JSON.stringify({
-            error: "Could not resolve division.",
+            data: null,
+            not_published: true,
+            message: "This league is not listed on the NSA site for the selected season yet.",
             available: map.divisions[seasonId] ?? [],
           }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 

@@ -38,7 +38,6 @@ import { pairDisplayName } from "@/lib/leagues/format";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssociationSeasons } from "@/hooks/use-association-seasons";
 import { useLeagueSeasons } from "@/hooks/use-league-seasons";
-import { isClubLeagueScope } from "@/lib/leagues/terminology";
 import {
   COMPETITION_CATEGORIES,
   COMPETITION_DISCIPLINES,

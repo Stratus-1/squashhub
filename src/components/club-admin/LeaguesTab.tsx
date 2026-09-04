@@ -855,28 +855,32 @@ function GenderColumn({ title, gender, leagues, associations, members, sortLeagu
                   <Pencil className="w-3 h-3" />Edit setup
                 </Button>
                 {g.assoc?.discipline !== "doubles" && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
-                        <Users className="w-3 h-3" />Allocate players
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs">
-                      <p className="text-xs">Place members into teams. New players will be affiliated with {g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "the league"} and receive a league number.</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onAllocate(g.assocId, g.leagues)}>
+                          <Users className="w-3 h-3" />Allocate players
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">Place members into teams. New players will be affiliated with {g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "the league"} and receive a league number.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 {(g.assoc?.discipline === "doubles" || g.assoc?.discipline === "hybrid") && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onManagePairs(g.assoc)}>
-                        <Users className="w-3 h-3" />Manage pairs
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs">
-                      <p className="text-xs">Build doubles/hybrid pairs before submitting the roster to {g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "the league"}.</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-6 text-[11px] gap-1 px-2" onClick={() => onManagePairs(g.assoc)}>
+                          <Users className="w-3 h-3" />Manage pairs
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">Build doubles/hybrid pairs before submitting the roster to {g.assoc ? (g.assoc.abbreviation || g.assoc.name) : "the league"}.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 <Button
                   variant="outline"

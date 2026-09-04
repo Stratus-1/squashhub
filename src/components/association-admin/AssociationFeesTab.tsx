@@ -242,6 +242,31 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
     [allTeams, season],
   );
 
+  // Payments recorded against members for this season, grouped by their club.
+  const { data: seasonPayments = [] } = useQuery({
+    queryKey: ["association-billing-payments", clubId, season],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_member_fee_payments")
+        .select("club_member_id, amount, paid, club_members!inner(club_id)")
+        .in("fee_type", ["league_affiliation", "association"])
+        .eq("paid", true)
+        .eq("season_year", season!);
+      if (error) throw error;
+      return (data || []) as { club_member_id: string; amount: number; club_members: { club_id: string } }[];
+    },
+    enabled: season != null,
+  });
+
+  const paidByClub = useMemo(() => {
+    const map = new Map<string, number>();
+    seasonPayments.forEach((p) => {
+      const cid = p.club_members?.club_id;
+      if (!cid) return;
+      map.set(cid, (map.get(cid) || 0) + Number(p.amount || 0));
+    });
+    return map;
+  }, [seasonPayments]);
+
   const active = items.filter(i => i.active && i.direction === "receivable" && (!i.season_year || i.season_year === season));
   const perMember = active.filter(i => i.basis === "member").reduce((s, i) => s + Number(i.amount || 0), 0);
   const perClub = active.filter(i => i.basis === "club").reduce((s, i) => s + Number(i.amount || 0), 0);

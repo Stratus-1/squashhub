@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { ReleaseRolloutCard } from "@/components/platform/ReleaseRolloutCard";
+import { WhatsAppTemplatesCard } from "@/components/platform/WhatsAppTemplatesCard";
 
 interface PlatformSettings {
   platform_sender_email: string;
@@ -326,6 +327,8 @@ export default function SuperAdminSettings() {
           </p>
         </div>
       </Card>
+
+      <WhatsAppTemplatesCard />
 
       <ReleaseRolloutCard />
     </div>

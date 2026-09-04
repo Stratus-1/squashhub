@@ -78,6 +78,8 @@ export async function notifyRoundDraw(scope: RoundDrawNotifyScope): Promise<Roun
           recipients: [{ member_id: w.member_id }],
           kind: "champ_round_draw",
           category: "utility",
+          templateKey: "club_notice",
+          templateVariables: { message: w.message },
           body: w.message,
         });
         whatsappSent += 1;

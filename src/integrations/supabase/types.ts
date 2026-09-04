@@ -12688,6 +12688,60 @@ export type Database = {
           },
         ]
       }
+      whatsapp_templates: {
+        Row: {
+          approval_error: string | null
+          approval_status: string
+          body: string
+          category: string
+          content_sid: string | null
+          created_at: string
+          description: string | null
+          friendly_name: string
+          id: string
+          key: string
+          language: string
+          last_synced_at: string | null
+          quick_replies: Json
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          approval_error?: string | null
+          approval_status?: string
+          body: string
+          category?: string
+          content_sid?: string | null
+          created_at?: string
+          description?: string | null
+          friendly_name: string
+          id?: string
+          key: string
+          language?: string
+          last_synced_at?: string | null
+          quick_replies?: Json
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          approval_error?: string | null
+          approval_status?: string
+          body?: string
+          category?: string
+          content_sid?: string | null
+          created_at?: string
+          description?: string | null
+          friendly_name?: string
+          id?: string
+          key?: string
+          language?: string
+          last_synced_at?: string | null
+          quick_replies?: Json
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: []
+      }
       xp_events: {
         Row: {
           amount: number

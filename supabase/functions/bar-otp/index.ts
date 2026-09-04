@@ -89,6 +89,8 @@ Deno.serve(async (req) => {
           club_id: member.club_id,
           recipients: [{ member_id: member.id, phone: member.phone }],
           body: message,
+          template_key: "otp_code",
+          template_variables: { code, minutes: "10" },
           kind: "bar_otp",
           category: "utility",
         }),

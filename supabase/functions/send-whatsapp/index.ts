@@ -29,6 +29,13 @@ type Payload = {
   /** Approved Twilio Content template SID (HX...). Required outside the 24h window. */
   content_sid?: string;
   content_variables?: Record<string, string>;
+  /**
+   * Registry key from public.whatsapp_templates (e.g. 'club_notice',
+   * 'tournament_invite'). Resolved to the approved Content SID; named
+   * variables are mapped onto the template's numbered placeholders.
+   */
+  template_key?: string;
+  template_variables?: Record<string, string>;
   kind?: string;
   /** Message category — drives the per-message rate charged to the club. */
   category?: "utility" | "service" | "marketing";
@@ -95,10 +102,37 @@ Deno.serve(async (req) => {
     if (!clubId) return json({ error: "club_id is required" }, 400);
     if (recipients.length === 0) return json({ error: "recipients is required" }, 400);
     if (recipients.length > 200) return json({ error: "Maximum 200 recipients per call" }, 400);
-    if (!payload.body && !payload.content_sid) {
-      return json({ error: "Either body or content_sid is required" }, 400);
+    if (!payload.body && !payload.content_sid && !payload.template_key) {
+      return json({ error: "Either body, content_sid or template_key is required" }, 400);
     }
-    const category = payload.category ?? (payload.content_sid ? "utility" : "service");
+
+    // ---- Resolve a registry template key to an approved Content SID --------
+    let contentSid = payload.content_sid ?? null;
+    let contentVariables: Record<string, string> | null = payload.content_variables ?? null;
+    let templateOrder: string[] | null = null;
+    if (!contentSid && payload.template_key) {
+      const { data: tpl } = await admin
+        .from("whatsapp_templates")
+        .select("content_sid, approval_status, variables")
+        .eq("key", payload.template_key)
+        .maybeSingle();
+      if (tpl?.content_sid && tpl.approval_status === "approved") {
+        contentSid = tpl.content_sid;
+        templateOrder = Array.isArray(tpl.variables) ? (tpl.variables as string[]) : [];
+      }
+      // Not approved yet: fall back to free-form text, which Twilio only
+      // delivers inside the 24h customer-service window.
+      if (!contentSid && !payload.body) {
+        return json(
+          {
+            error:
+              `The WhatsApp template "${payload.template_key}" is not approved yet, and no fallback text was supplied.`,
+          },
+          503,
+        );
+      }
+    }
+    const category = payload.category ?? (contentSid ? "utility" : "service");
 
     // Authorisation: club admin of this club, or platform admin.
     if (!isInternal) {
@@ -117,6 +151,22 @@ Deno.serve(async (req) => {
       .eq("id", clubId)
       .maybeSingle();
     const clubName = club?.name ?? "SquashHub";
+
+    // Map named template variables onto the template's numbered placeholders.
+    // WhatsApp rejects blank variables, so unfilled slots fall back sensibly.
+    if (templateOrder) {
+      const named: Record<string, string> = {
+        club: clubName,
+        message: payload.body ?? "",
+        ...(payload.template_variables ?? {}),
+      };
+      const numbered: Record<string, string> = {};
+      templateOrder.forEach((name, i) => {
+        const v = (named[name] ?? "").toString().trim();
+        numbered[String(i + 1)] = v || "-";
+      });
+      contentVariables = numbered;
+    }
 
     if (!(await clubHasCapability(admin, clubId, "whatsapp"))) {
       return json(
@@ -219,9 +269,19 @@ Deno.serve(async (req) => {
         From: `whatsapp:+${from}`,
       });
       let logBody = payload.body ?? null;
-      if (payload.content_sid) {
-        form.set("ContentSid", payload.content_sid);
-        const vars = { club: clubName, ...(payload.content_variables ?? {}), ...(r.variables ?? {}) };
+      if (contentSid) {
+        form.set("ContentSid", contentSid);
+        let vars: Record<string, string> = { ...(contentVariables ?? { club: clubName }) };
+        if (r.variables) {
+          if (templateOrder) {
+            templateOrder.forEach((name, i) => {
+              const v = (r.variables?.[name] ?? "").toString().trim();
+              if (v) vars[String(i + 1)] = v;
+            });
+          } else {
+            vars = { ...vars, ...r.variables };
+          }
+        }
         form.set("ContentVariables", JSON.stringify(vars));
         logBody = JSON.stringify(vars);
       } else {
@@ -270,7 +330,7 @@ Deno.serve(async (req) => {
         to_phone: to,
         from_phone: from,
         direction: "out",
-        kind: payload.kind ?? (payload.content_sid ? "template" : "freeform"),
+        kind: payload.kind ?? (contentSid ? "template" : "freeform"),
         category,
         unit_cost: status === "sent" ? unitCost : 0,
         billable: status === "sent" && !ownMode,

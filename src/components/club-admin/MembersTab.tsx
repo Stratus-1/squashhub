@@ -337,7 +337,19 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
           );
         })}
         {m.skill_level && <Badge variant="outline" className="text-[9px] px-1 py-0 text-blue-600 border-blue-400">{getSkillLabel(m.skill_level)}</Badge>}
+        {onAffiliate && affiliations.filter((a) => a.active && !a.internal).length === 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-5 px-1.5 text-[9px] gap-1 text-primary border-primary/40 hover:bg-primary/10"
+            onClick={(e) => { e.stopPropagation(); onAffiliate(); }}
+            title="Affiliate this member to the league association"
+          >
+            + Affiliate
+          </Button>
+        )}
       </div>
+
 
       {/* Row 3: Fees receivable from member — totals reflect the GL / member statement */}
       {(fees.length > 0 || (glBilled ?? 0) > 0) && (

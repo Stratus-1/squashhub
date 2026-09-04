@@ -32,6 +32,8 @@ export type SeasonOptions = {
   twoLegs: boolean;
   /** Optional mid-season break: earliest date the return leg may start. */
   secondLegStart?: string;
+  /** How many fixtures one club may host on the same night (default 2). */
+  maxHomePerClubPerNight?: number;
 };
 
 export type SkippedWeek = { division: string; date: string; reason: string };
@@ -82,6 +84,7 @@ function swap(
 
 export function generateSeasonFixtures(opts: SeasonOptions): SeasonPlanResult {
   const { divisions, startDate, exclusions, twoLegs, secondLegStart } = opts;
+  const maxHomePerNight = Math.max(1, opts.maxHomePerClubPerNight ?? 2);
   const skipped: SkippedWeek[] = [];
   const conflicts: SeasonConflict[] = [];
   const byDivision: Record<string, GeneratedFixture[]> = {};
@@ -162,20 +165,20 @@ export function generateSeasonFixtures(opts: SeasonOptions): SeasonPlanResult {
     }
   }
 
-  // venue clashes: one club hosting more than its court capacity is unknown here,
-  // so we only flag the same club hosting 2+ fixtures on the same night.
+  // venue clashes: a club may host up to `maxHomePerClubPerNight` fixtures on one
+  // night (2 by default); anything above that is flagged.
   const venueMap = new Map<string, GeneratedFixture[]>();
   for (const f of all) {
     const key = `${f.fixture_date}|${f.venue_name}`;
     venueMap.set(key, [...(venueMap.get(key) ?? []), f]);
   }
   for (const [key, rows] of venueMap) {
-    if (rows.length > 1) {
+    if (rows.length > maxHomePerNight) {
       const [date, venue] = key.split("|");
       conflicts.push({
         kind: "venue-clash",
         division: [...new Set(rows.map((r) => r.division))].join(", "),
-        detail: `${venue} hosts ${rows.length} fixtures on ${date}.`,
+        detail: `${venue} hosts ${rows.length} fixtures on ${date} (max ${maxHomePerNight} per night).`,
       });
     }
   }

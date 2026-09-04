@@ -90,3 +90,61 @@ export function weeksInRange(range: DateRange): string[] {
 }
 
 export { iso };
+
+export type SeasonWeek = {
+  /** Monday key of the week. */
+  start: string;
+  /** Sunday of the same week. */
+  end: string;
+  /** ISO dates in this week that are public holidays, with their names. */
+  holidays: { date: string; name: string }[];
+  /** School-break ranges overlapping this week. */
+  breaks: DateRange[];
+};
+
+/** Every ISO date in a Monday-start week. */
+export function weekDates(mondayISO: string): string[] {
+  const out: string[] = [];
+  const cursor = parseISODate(mondayISO);
+  for (let i = 0; i < 7; i++) {
+    out.push(toISO(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+}
+
+/**
+ * Consecutive weeks from the season start date, annotated with the public
+ * holidays and school breaks that fall inside them, so an organiser can see at a
+ * glance which weeks should be skipped.
+ */
+export function seasonWeeks(startISO: string, count = 40): SeasonWeek[] {
+  const first = weekStart(startISO);
+  const years = new Set<number>();
+  const cursor = parseISODate(first);
+  for (let i = 0; i < count; i++) {
+    years.add(cursor.getFullYear());
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  const holidayMap = new Map<string, string>();
+  const breaks: DateRange[] = [];
+  for (const year of years) {
+    for (const holiday of publicHolidays(year)) holidayMap.set(holiday.date, holiday.name);
+    breaks.push(...schoolBreaks(year));
+  }
+
+  const weeks: SeasonWeek[] = [];
+  const walker = parseISODate(first);
+  for (let i = 0; i < count; i++) {
+    const start = toISO(walker);
+    const dates = weekDates(start);
+    weeks.push({
+      start,
+      end: dates[6],
+      holidays: dates.filter((d) => holidayMap.has(d)).map((d) => ({ date: d, name: holidayMap.get(d)! })),
+      breaks: breaks.filter((range) => range.start <= dates[6] && range.end >= start),
+    });
+    walker.setDate(walker.getDate() + 7);
+  }
+  return weeks;
+}

@@ -352,8 +352,12 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       )}
 
       {step === "payable" && (
-        <FeesPayableSchedule clubId={clubId} />
+        <div className="space-y-4">
+          <AffiliationBillingCard clubId={clubId} />
+          <FeesPayableSchedule clubId={clubId} />
+        </div>
       )}
+
 
       {editFee && (
         <FeeDialog clubId={clubId} open onOpenChange={() => setEditFee(null)} existing={editFee} tenantType={tenantType} tenantName={tenantName} stitchEnabled={stitchEnabled} />

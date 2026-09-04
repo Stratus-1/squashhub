@@ -405,7 +405,39 @@ function ClubBillingPreview({ clubId }: { clubId: string }) {
             </tfoot>
           )}
         </table>
+
+        <div className="border-t pt-2 space-y-1">
+          <p className="text-xs font-medium">Payments received from clubs</p>
+          {seasonPayments.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">No club has recorded a payment for {season} yet.</p>
+          )}
+          {clubs.map((c) => (paymentsByClub.get(c.id) || []).map((p) => (
+            <div key={p.id} className="flex items-center gap-2 text-[11px] flex-wrap">
+              <span className="font-medium min-w-[140px]">{c.name}</span>
+              <span className="w-20">{p.paid_on}</span>
+              <span>{fmt(Number(p.amount || 0))}</span>
+              <span className="text-muted-foreground capitalize">{p.method}</span>
+              {p.reference && <span className="text-muted-foreground truncate max-w-[140px]">{p.reference}</span>}
+              <Badge
+                variant="outline"
+                className={`text-[9px] px-1 py-0 ${p.status === "confirmed" ? "border-emerald-500 text-emerald-600" : p.status === "disputed" ? "border-destructive text-destructive" : "border-amber-500 text-amber-600"}`}
+              >
+                {p.status}
+              </Badge>
+              {p.proof_path && (
+                <button className="text-primary hover:underline" onClick={() => openProof(p.proof_path!)}>proof</button>
+              )}
+              {p.status !== "confirmed" && (
+                <button className="text-emerald-600 hover:underline" onClick={() => reviewPayment(p.id, "confirmed")}>confirm</button>
+              )}
+              {p.status !== "disputed" && (
+                <button className="text-destructive hover:underline" onClick={() => reviewPayment(p.id, "disputed")}>dispute</button>
+              )}
+            </div>
+          )))}
+        </div>
       </Card>
+
     </div>
   );
 }

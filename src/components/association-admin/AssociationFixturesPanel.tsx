@@ -312,6 +312,9 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
                       {rows.map((f) => {
                         const homeClub = clubNameMap[f.home_team_code];
                         const awayClub = clubNameMap[f.away_team_code];
+                        const homeSnap = cleanTeamLabel(f.home_team_name_snapshot);
+                        const awaySnap = cleanTeamLabel(f.away_team_name_snapshot);
+
                         return (
                           <div
                             key={f.id}

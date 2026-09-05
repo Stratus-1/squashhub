@@ -115,12 +115,13 @@ export function ExportTeamsToNsaDialog({ clubId, association, open, onOpenChange
       // 4. Permanent affiliation numbers (NSF) for this association
       const affilMap = new Map<string, string>();
       if (memberIds.length) {
-        const { data: affs } = await fromExt("member_association_affiliations")
-          .select("club_member_id, league_association_number, is_active")
+        const { data: affs, error: ae } = await fromExt("member_association_affiliations")
+          .select("club_member_id, league_association_number, active")
           .eq("association_id", association.id)
           .in("club_member_id", memberIds);
+        if (ae) throw ae;
         for (const a of (affs || []) as any[]) {
-          if (a.is_active !== false && a.league_association_number) {
+          if (a.active !== false && a.league_association_number) {
             affilMap.set(a.club_member_id, String(a.league_association_number).trim());
           }
         }

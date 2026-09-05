@@ -35,6 +35,27 @@ export function SmsMessagingCard({ clubId }: { clubId: string }) {
     },
   });
 
+  // Platform message rates (public, non-private app settings) — used to show
+  // the club clear per-message cost guidance so they can decide per channel.
+  const { data: rates } = useQuery({
+    queryKey: ["messaging-rates"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("key, value")
+        .in("key", ["sms_unit_cost", "whatsapp_rate_service", "whatsapp_rate_utility", "whatsapp_rate_marketing"]);
+      if (error) throw error;
+      const map = new Map((data ?? []).map((r: { key: string; value: string | null }) => [r.key, Number(r.value || 0)]));
+      return {
+        sms: map.get("sms_unit_cost") ?? 0.25,
+        waService: map.get("whatsapp_rate_service") ?? 0.15,
+        waUtility: map.get("whatsapp_rate_utility") ?? 0.45,
+        waMarketing: map.get("whatsapp_rate_marketing") ?? 0.80,
+      };
+    },
+  });
+
   const { data: usage } = useQuery({
     queryKey: ["club-sms-usage", clubId, since],
     enabled: !!club?.sms_enabled,
@@ -93,6 +114,32 @@ export function SmsMessagingCard({ clubId }: { clubId: string }) {
         championship results, and payment reminders. Longer or conversational messages stay on email
         and WhatsApp. Members who opt out of SMS are skipped automatically.
       </p>
+
+      {rates && (
+        <div className="rounded-md border bg-muted/40 p-3 space-y-2">
+          <p className="text-xs font-medium">What each message costs your club</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-md bg-background border p-2">
+              <p className="font-semibold">{money(rates.sms)} <span className="font-normal text-muted-foreground">/ SMS</span></p>
+              <p className="text-[11px] text-muted-foreground">
+                Per segment (±160 characters). Works on every phone, no app or data needed.
+              </p>
+            </div>
+            <div className="rounded-md bg-background border p-2">
+              <p className="font-semibold">{money(rates.waService)}–{money(rates.waUtility)} <span className="font-normal text-muted-foreground">/ WhatsApp</span></p>
+              <p className="text-[11px] text-muted-foreground">
+                Service replies are cheapest; template messages cost more ({money(rates.waMarketing)} for marketing).
+              </p>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Guideline: use SMS for one-way, time-sensitive notices (bookings, results, payment
+            reminders); use WhatsApp when members must reply or for richer content; email is free for
+            anything long or formal. You can switch SMS off at any time — your club only pays for
+            what it sends.
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center justify-between rounded-md border p-3">
         <div>

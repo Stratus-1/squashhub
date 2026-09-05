@@ -1,7 +1,7 @@
 // Server mirror of src/lib/comms/{actions,render}.ts — keep in sync.
 // deno-lint-ignore-file no-explicit-any
 
-export type CommsChannel = "email" | "whatsapp" | "in_app";
+export type CommsChannel = "email" | "whatsapp" | "sms" | "in_app";
 
 export type CommsAction = {
   key?: string;
@@ -102,7 +102,7 @@ export function renderChannel(
     const body = alreadyHasUrl ? rawBody : `${rawBody}${actionButtonHtml(action)}`;
     return { channel, subject, body, text: htmlToPlainText(body), url: action.webUrl };
   }
-  if (channel === "whatsapp") {
+  if (channel === "whatsapp" || channel === "sms") {
     const plain = htmlToPlainText(rawBody);
     const withAction = action.hasAction && action.webUrl && !alreadyHasUrl
       ? `${plain}\n\n${action.label ? `${action.label}: ` : ""}${action.webUrl}`

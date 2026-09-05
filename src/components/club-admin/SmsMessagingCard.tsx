@@ -115,6 +115,32 @@ export function SmsMessagingCard({ clubId }: { clubId: string }) {
         and WhatsApp. Members who opt out of SMS are skipped automatically.
       </p>
 
+      {rates && (
+        <div className="rounded-md border bg-muted/40 p-3 space-y-2">
+          <p className="text-xs font-medium">What each message costs your club</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-md bg-background border p-2">
+              <p className="font-semibold">{money(rates.sms)} <span className="font-normal text-muted-foreground">/ SMS</span></p>
+              <p className="text-[11px] text-muted-foreground">
+                Per segment (±160 characters). Works on every phone, no app or data needed.
+              </p>
+            </div>
+            <div className="rounded-md bg-background border p-2">
+              <p className="font-semibold">{money(rates.waService)}–{money(rates.waUtility)} <span className="font-normal text-muted-foreground">/ WhatsApp</span></p>
+              <p className="text-[11px] text-muted-foreground">
+                Service replies are cheapest; template messages cost more ({money(rates.waMarketing)} for marketing).
+              </p>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Guideline: use SMS for one-way, time-sensitive notices (bookings, results, payment
+            reminders); use WhatsApp when members must reply or for richer content; email is free for
+            anything long or formal. You can switch SMS off at any time — your club only pays for
+            what it sends.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between rounded-md border p-3">
         <div>
           <Label className="text-sm">Send SMS for this club</Label>

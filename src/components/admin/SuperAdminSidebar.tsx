@@ -32,8 +32,9 @@ const navItems = [
 ];
 
 export function SuperAdminSidebar() {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { state, isMobile } = useSidebar();
+  // On mobile the sidebar renders as a full-width sheet, so labels must always show.
+  const collapsed = !isMobile && state === "collapsed";
   const location = useLocation();
   const { signOut } = useAuth();
 

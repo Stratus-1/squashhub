@@ -74,3 +74,7 @@ verify_jwt = true
 # Daily reminder sent one day before a subscription invoice due date.
 [functions.notify-invoice-due]
 verify_jwt = false
+
+# Outbound SMS gateway (platform-configured provider).
+[functions.send-sms]
+verify_jwt = false

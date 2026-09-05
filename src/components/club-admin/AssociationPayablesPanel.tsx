@@ -199,6 +199,23 @@ export function AssociationPayablesPanel({ clubId }: Props) {
         association does not bill automatically.
       </p>
 
+      <div className="flex items-center gap-2 -mt-2">
+        <span className="text-xs text-muted-foreground">Season</span>
+        <div className="flex gap-1">
+          {seasonOptions.map((y) => (
+            <Button
+              key={y}
+              size="sm"
+              variant={y === season ? "default" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => setSeason(y)}
+            >
+              {y}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       {statement.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -207,6 +224,7 @@ export function AssociationPayablesPanel({ clubId }: Props) {
               Total billed <span className="font-semibold text-foreground tabular-nums">{money(statementTotal)}</span>
             </span>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {statement.map((r) => (
               <Card key={r.fee_item_id} className="p-4 space-y-3">

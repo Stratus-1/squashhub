@@ -24,6 +24,12 @@ import { SeasonFixtureBuilder } from "@/components/association-admin/SeasonFixtu
 import { type AssocTeam } from "@/lib/leagues/association-tree";
 import { useAssociationSeasons } from "@/hooks/use-association-seasons";
 
+// Snapshot labels were captured when the fixture was created and often carry a
+// stale season year (e.g. "Ladies 2nd League 2026" on a 2027 fixture). The
+// season is already shown by the season selector, so drop the year here.
+const cleanTeamLabel = (label: string | null) =>
+  (label || "").replace(/\b(19|20)\d{2}\b/g, "").replace(/\s{2,}/g, " ").trim();
+
 const ALL = "__all__";
 
 interface FixtureRow {
@@ -329,16 +335,16 @@ export function AssociationFixturesPanel({ association, tenantId }: { associatio
                               {homeClub && (
                                 <span className="text-muted-foreground"> ({f.home_team_code})</span>
                               )}
-                              {f.home_team_name_snapshot && (
-                                <span className="text-muted-foreground"> · {f.home_team_name_snapshot}</span>
+                              {homeSnap && (
+                                <span className="text-muted-foreground"> · {homeSnap}</span>
                               )}
                               <span className="text-muted-foreground mx-1">vs</span>
                               <span className="font-medium">{awayClub || f.away_team_code}</span>
                               {awayClub && (
                                 <span className="text-muted-foreground"> ({f.away_team_code})</span>
                               )}
-                              {f.away_team_name_snapshot && (
-                                <span className="text-muted-foreground"> · {f.away_team_name_snapshot}</span>
+                              {awaySnap && (
+                                <span className="text-muted-foreground"> · {awaySnap}</span>
                               )}
                             </span>
                             {f.score && <span className="text-muted-foreground">{f.score}</span>}

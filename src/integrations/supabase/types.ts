@@ -3740,6 +3740,7 @@ export type Database = {
           skills: string[]
           skills_other: string | null
           skills_updated_at: string | null
+          sms_opt_out: boolean
           status: Database["public"]["Enums"]["member_status"]
           suspended_at: string | null
           suspension_cleared_at: string | null
@@ -3792,6 +3793,7 @@ export type Database = {
           skills?: string[]
           skills_other?: string | null
           skills_updated_at?: string | null
+          sms_opt_out?: boolean
           status?: Database["public"]["Enums"]["member_status"]
           suspended_at?: string | null
           suspension_cleared_at?: string | null
@@ -3844,6 +3846,7 @@ export type Database = {
           skills?: string[]
           skills_other?: string | null
           skills_updated_at?: string | null
+          sms_opt_out?: boolean
           status?: Database["public"]["Enums"]["member_status"]
           suspended_at?: string | null
           suspension_cleared_at?: string | null
@@ -5049,6 +5052,8 @@ export type Database = {
           sla_billing_option: string | null
           sla_payment_method: string | null
           sla_version: string | null
+          sms_enabled: boolean
+          sms_sender_id: string | null
           subdomain: string | null
           suspension_rules: Json
           tenant_type: string
@@ -5179,6 +5184,8 @@ export type Database = {
           sla_billing_option?: string | null
           sla_payment_method?: string | null
           sla_version?: string | null
+          sms_enabled?: boolean
+          sms_sender_id?: string | null
           subdomain?: string | null
           suspension_rules?: Json
           tenant_type?: string
@@ -5309,6 +5316,8 @@ export type Database = {
           sla_billing_option?: string | null
           sla_payment_method?: string | null
           sla_version?: string | null
+          sms_enabled?: boolean
+          sms_sender_id?: string | null
           subdomain?: string | null
           suspension_rules?: Json
           tenant_type?: string
@@ -11000,6 +11009,78 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      sms_send_log: {
+        Row: {
+          billable: boolean
+          body: string | null
+          club_id: string | null
+          created_at: string
+          error: string | null
+          from_sender: string | null
+          id: string
+          kind: string | null
+          member_id: string | null
+          provider: string | null
+          provider_ref: string | null
+          segments: number
+          sent_by: string | null
+          status: string
+          to_phone: string
+          unit_cost: number
+        }
+        Insert: {
+          billable?: boolean
+          body?: string | null
+          club_id?: string | null
+          created_at?: string
+          error?: string | null
+          from_sender?: string | null
+          id?: string
+          kind?: string | null
+          member_id?: string | null
+          provider?: string | null
+          provider_ref?: string | null
+          segments?: number
+          sent_by?: string | null
+          status?: string
+          to_phone: string
+          unit_cost?: number
+        }
+        Update: {
+          billable?: boolean
+          body?: string | null
+          club_id?: string | null
+          created_at?: string
+          error?: string | null
+          from_sender?: string | null
+          id?: string
+          kind?: string | null
+          member_id?: string | null
+          provider?: string | null
+          provider_ref?: string | null
+          segments?: number
+          sent_by?: string | null
+          status?: string
+          to_phone?: string
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_send_log_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_send_log_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sportyhq_lookup_attempts: {
         Row: {

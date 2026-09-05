@@ -25,7 +25,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 const ALLOWED_SMTP_PORTS = new Set([25, 465, 587, 2525]);
-const VALID_CHANNELS: CommsChannel[] = ["email", "whatsapp", "in_app"];
+const VALID_CHANNELS: CommsChannel[] = ["email", "whatsapp", "sms", "in_app"];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -274,6 +274,29 @@ Deno.serve(async (req) => {
             if (!res.ok || (out?.sent ?? 0) < 1) {
               failed++;
               await logDelivery({ ...base, target: phone, status: "failed", error_message: String(out?.error || out?.results?.[0]?.error || "WhatsApp send failed").slice(0, 500) });
+            } else {
+              sent++; await logDelivery({ ...base, target: phone, status: "sent" });
+            }
+          } else if (ch === "sms") {
+            const phone = normalisePhone(m.phone);
+            if (!phone) {
+              skipped++; await logDelivery({ ...base, target: null, status: "skipped", error_message: "No mobile number" });
+              continue;
+            }
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/send-sms`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
+              body: JSON.stringify({
+                club_id: campaign.club_id,
+                recipients: [{ member_id: m.id, phone: m.phone }],
+                body: rendered.text || rendered.body,
+                kind: "campaign",
+              }),
+            });
+            const out = await res.json().catch(() => ({}));
+            if (!res.ok || (out?.sent ?? 0) < 1) {
+              failed++;
+              await logDelivery({ ...base, target: phone, status: "failed", error_message: String(out?.error || out?.results?.[0]?.error || "SMS send failed").slice(0, 500) });
             } else {
               sent++; await logDelivery({ ...base, target: phone, status: "sent" });
             }

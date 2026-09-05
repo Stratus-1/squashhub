@@ -25,12 +25,13 @@ export type CommsWarning = {
 export const CHANNEL_LABEL: Record<CommsChannel, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
+  sms: "SMS",
   in_app: "In-app",
 };
 
 export function reachableFor(channel: CommsChannel, r: CommsRecipient): boolean {
   if (channel === "email") return !!r.email && r.email.includes("@");
-  if (channel === "whatsapp") return !!r.phone && String(r.phone).replace(/\D/g, "").length >= 8;
+  if (channel === "whatsapp" || channel === "sms") return !!r.phone && String(r.phone).replace(/\D/g, "").length >= 8;
   return !!r.user_id;
 }
 
@@ -77,7 +78,7 @@ export function validateCampaign(opts: {
         level: "error",
         channel: ch,
         message: `No selected recipient can receive ${CHANNEL_LABEL[ch]} (${
-          ch === "email" ? "no email addresses" : ch === "whatsapp" ? "no mobile numbers" : "no linked app accounts"
+          ch === "email" ? "no email addresses" : ch === "in_app" ? "no linked app accounts" : "no mobile numbers"
         }).`,
       });
     } else if (reachable < recipients.length) {

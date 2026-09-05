@@ -10,11 +10,12 @@
  * keeps working.
  */
 
-export type CommsChannel = "email" | "whatsapp" | "in_app";
+export type CommsChannel = "email" | "whatsapp" | "sms" | "in_app";
 
 export const COMMS_CHANNELS: { key: CommsChannel; label: string }[] = [
   { key: "email", label: "Email" },
   { key: "whatsapp", label: "WhatsApp" },
+  { key: "sms", label: "SMS" },
   { key: "in_app", label: "In-app" },
 ];
 

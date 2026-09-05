@@ -90,7 +90,7 @@ export function renderChannel(
     return { channel, subject, body, text: htmlToPlainText(body), url: action.webUrl };
   }
 
-  if (channel === "whatsapp") {
+  if (channel === "whatsapp" || channel === "sms") {
     const plain = htmlToPlainText(rawBody);
     const withAction =
       action.hasAction && action.webUrl && !alreadyHasUrl

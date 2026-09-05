@@ -340,7 +340,7 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Duplicate rounds</DialogTitle>
+          <DialogTitle>Create next rounds</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">

@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Receipt } from "lucide-react";
+import { MessageCircle, Receipt, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 function monthBounds(d = new Date()) {
   const start = new Date(d.getFullYear(), d.getMonth(), 1);

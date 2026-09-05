@@ -61,6 +61,19 @@ function normalisePhone(raw?: string | null, defaultCc = "27"): string | null {
   return s;
 }
 
+/**
+ * WhatsApp template variables may not contain newlines, tabs or 4+ consecutive
+ * spaces (Twilio error 21656), and are length-capped by Meta. Flatten to one
+ * line and truncate.
+ */
+function sanitiseVar(raw: unknown, max = 900): string {
+  const s = (raw ?? "").toString()
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -198,7 +211,9 @@ Deno.serve(async (req) => {
     const clubName = club?.name ?? "SquashHub";
 
     // Map named template variables onto the template's numbered placeholders.
-    // WhatsApp rejects blank variables, so unfilled slots fall back sensibly.
+    // WhatsApp rejects blank variables, and Twilio rejects any variable that
+    // contains a newline, a tab or 4+ consecutive spaces (error 21656), so
+    // every value is flattened to a single line and length-capped.
     if (templateOrder) {
       const named: Record<string, string> = {
         club: clubName,
@@ -207,7 +222,7 @@ Deno.serve(async (req) => {
       };
       const numbered: Record<string, string> = {};
       templateOrder.forEach((name, i) => {
-        const v = (named[name] ?? "").toString().trim();
+        const v = sanitiseVar(named[name]);
         numbered[String(i + 1)] = v || "-";
       });
       contentVariables = numbered;
@@ -320,11 +335,11 @@ Deno.serve(async (req) => {
         if (r.variables) {
           if (templateOrder) {
             templateOrder.forEach((name, i) => {
-              const v = (r.variables?.[name] ?? "").toString().trim();
+              const v = sanitiseVar(r.variables?.[name]);
               if (v) vars[String(i + 1)] = v;
             });
           } else {
-            vars = { ...vars, ...r.variables };
+            for (const [k, v] of Object.entries(r.variables)) vars[k] = sanitiseVar(v);
           }
         }
         form.set("ContentVariables", JSON.stringify(vars));

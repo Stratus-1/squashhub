@@ -71,10 +71,12 @@ export function LeagueWeekAvailabilityCard() {
   });
 
 
-  // Is there actually a league fixture scheduled for this club during the
-  // upcoming week? If not, hide the prompt entirely.
+  // Is there still a league fixture *coming up* for this club during the
+  // current league week? Fixtures already played (or the whole season being
+  // finished) must not keep asking members to confirm availability.
+  const todayStr = format(new Date(), "yyyy-MM-dd");
   const { data: hasFixture } = useQuery({
-    queryKey: ["lwa-has-fixture", clubId, weekStartStr, weekEndStr],
+    queryKey: ["lwa-has-fixture", clubId, weekStartStr, weekEndStr, todayStr],
     enabled: !!clubId,
     queryFn: async () => {
       const { data: leagues } = await fromExt("leagues")
@@ -91,14 +93,18 @@ export function LeagueWeekAvailabilityCard() {
         new Set(((assocRows || []) as any[]).map((a) => a.platform_association_id || a.id)),
       ) as string[];
       if (platformIds.length === 0) return false;
+      const fromDate = todayStr > weekStartStr ? todayStr : weekStartStr;
+      if (fromDate > weekEndStr) return false;
       const { count } = await fromExt("platform_league_fixtures")
         .select("id", { count: "exact", head: true })
         .in("association_id", platformIds)
-        .gte("fixture_date", weekStartStr)
-        .lte("fixture_date", weekEndStr);
+        .gte("fixture_date", fromDate)
+        .lte("fixture_date", weekEndStr)
+        .in("status", ["scheduled", "postponed", "pending", "confirmed"]);
       return (count ?? 0) > 0;
     },
   });
+
 
 
   // Existing response for the upcoming week

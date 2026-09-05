@@ -957,11 +957,10 @@ export default function Dashboard() {
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />
 
-      {hasAnyAdminAccess && (
-        <div className="px-4 mt-2">
-          <DashboardDeviceControls />
-        </div>
-      )}
+      <div className="px-4 mt-2">
+        <DashboardDeviceControls />
+      </div>
+
 
       {/* Club internet / data bundle status (club admins only) */}
       <div className="px-4 mt-2">

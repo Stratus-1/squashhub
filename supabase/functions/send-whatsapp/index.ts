@@ -61,6 +61,19 @@ function normalisePhone(raw?: string | null, defaultCc = "27"): string | null {
   return s;
 }
 
+/**
+ * WhatsApp template variables may not contain newlines, tabs or 4+ consecutive
+ * spaces (Twilio error 21656), and are length-capped by Meta. Flatten to one
+ * line and truncate.
+ */
+function sanitiseVar(raw: unknown, max = 900): string {
+  const s = (raw ?? "").toString()
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,

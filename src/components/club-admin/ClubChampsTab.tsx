@@ -11314,6 +11314,20 @@ function InvitePreviewDialog({
     (detailsBlock ? `\n\n${detailsBlock}` : "") +
     (description?.trim() ? `\n\n${description.trim()}` : "");
 
+  // WhatsApp preview mirrors the approved rsvp_question template and the
+  // send logic in sendChampInvites: paid events drop the Yes/No buttons and
+  // point the member to their invitation link to register & pay.
+  const waNeedsPayment = !!registrationRequired && Number(entryFeeRand || 0) > 0;
+  const waCallToAction = waNeedsPayment
+    ? `Please follow the link to complete your registration and pay the entry fee.\nhttps://squashhub.co.za/i/… (your personal invitation link)`
+    : `Reply YES to enter or NO to decline.\nhttps://squashhub.co.za/i/… (your personal invitation link)`;
+  const waBody =
+    `Hello from *${clubLabel}* on SquashHub.\n\n` +
+    `Please see the following club activity:\n\n` +
+    `${appBody}\n\n` +
+    `Additional details: ${waCallToAction}\n\n` +
+    `Please reply using the buttons below so that we can finalise the arrangements. Thank you.`;
+
 
 
   return (

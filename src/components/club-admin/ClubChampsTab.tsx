@@ -131,7 +131,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy, Check, ChevronDown, Send } from "lucide-react";
+import { Calendar as CalendarIcon, Users, Trophy, ChevronRight, ChevronLeft, Loader2, Trash2, Eye, Pencil, Plus, X, GripVertical, Save, Copy, Check, ChevronDown, Send, MessageCircle } from "lucide-react";
 
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -11026,6 +11026,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       <InvitePreviewDialog
         open={showInvitePreview}
         onOpenChange={setShowInvitePreview}
+        clubId={clubId}
         tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
         description={description}
         methods={inviteMethods}
@@ -11223,6 +11224,7 @@ function PairBuilder({
 function InvitePreviewDialog({
   open,
   onOpenChange,
+  clubId,
   tournamentName,
   description,
   methods,
@@ -11252,6 +11254,7 @@ function InvitePreviewDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  clubId?: string;
   tournamentName: string;
   description: string;
   methods: Set<"app" | "email" | "whatsapp">;
@@ -11279,6 +11282,16 @@ function InvitePreviewDialog({
   roundDeadlines?: { label: string; date: string }[];
   inviteExtraDetails?: string;
 }) {
+  const { data: previewClub } = useQuery({
+    queryKey: ["invite-preview-club", clubId],
+    enabled: open && !!clubId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("clubs").select("name").eq("id", clubId).maybeSingle();
+      return data?.name as string | undefined;
+    },
+  });
+  const clubLabel = previewClub || "Your club";
   const descHasDetails = /— Tournament details —/.test(description || "");
   const extras = inviteExtraDetails?.trim()
     ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
@@ -11301,6 +11314,20 @@ function InvitePreviewDialog({
     (extras ? `\n\n${extras}` : "") +
     (detailsBlock ? `\n\n${detailsBlock}` : "") +
     (description?.trim() ? `\n\n${description.trim()}` : "");
+
+  // WhatsApp preview mirrors the approved rsvp_question template and the
+  // send logic in sendChampInvites: paid events drop the Yes/No buttons and
+  // point the member to their invitation link to register & pay.
+  const waNeedsPayment = !!registrationRequired && Number(entryFeeRand || 0) > 0;
+  const waCallToAction = waNeedsPayment
+    ? `Please follow the link to complete your registration and pay the entry fee.\nhttps://squashhub.co.za/i/… (your personal invitation link)`
+    : `Reply YES to enter or NO to decline.\nhttps://squashhub.co.za/i/… (your personal invitation link)`;
+  const waBody =
+    `Hello from *${clubLabel}* on SquashHub.\n\n` +
+    `Please see the following club activity:\n\n` +
+    `${appBody}\n\n` +
+    `Additional details: ${waCallToAction}\n\n` +
+    `Please reply using the buttons below so that we can finalise the arrangements. Thank you.`;
 
 
 
@@ -11370,6 +11397,37 @@ function InvitePreviewDialog({
               {!methods.has("email") && (
                 <p className="text-[11px] text-muted-foreground italic">
                   Not sent by email — in-app only is selected.
+                </p>
+              )}
+            </div>
+
+            {/* WhatsApp preview */}
+            <div className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp message
+              </div>
+              <div className="rounded-md border bg-background p-3">
+                <div className="rounded-lg rounded-tl-none border bg-muted/40 p-3">
+                  <p className="text-sm whitespace-pre-wrap">{waBody}</p>
+                </div>
+                {!waNeedsPayment && (
+                  <div className="flex gap-2 mt-2">
+                    <span className="text-xs px-3 py-1 rounded-full border">Yes</span>
+                    <span className="text-xs px-3 py-1 rounded-full border">No</span>
+                  </div>
+                )}
+              </div>
+              {!methods.has("whatsapp") ? (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Not sent via WhatsApp — WhatsApp is not selected.
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Sent via an approved WhatsApp template — the wording of the fixed
+                  opening and closing lines can't change per message.
+                  {waNeedsPayment
+                    ? " Entry fee applies, so there are no Yes/No buttons — members register and pay via their link."
+                    : " Free entry — a YES reply enters them automatically."}
                 </p>
               )}
             </div>

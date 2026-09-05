@@ -11026,6 +11026,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       <InvitePreviewDialog
         open={showInvitePreview}
         onOpenChange={setShowInvitePreview}
+        clubId={clubId}
         tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
         description={description}
         methods={inviteMethods}

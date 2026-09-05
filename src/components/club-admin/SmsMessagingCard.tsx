@@ -19,7 +19,7 @@ function monthStart() {
 const money = (n: number) =>
   `R${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function SmsMessagingCard({ clubId }: { clubId: string }) {
+export function SmsMessagingCard({ clubId, hideToggle }: { clubId: string; hideToggle?: boolean }) {
   const qc = useQueryClient();
   const since = useMemo(() => monthStart(), []);
 
@@ -143,7 +143,7 @@ export function SmsMessagingCard({ clubId }: { clubId: string }) {
         </div>
       )}
 
-      <div className="flex items-center justify-between rounded-md border p-3">
+      <div className={`flex items-center justify-between rounded-md border p-3 ${hideToggle ? "hidden" : ""}`}>
         <div>
           <Label className="text-sm">Send SMS for this club</Label>
           <p className="text-xs text-muted-foreground">Each message is billed per segment.</p>

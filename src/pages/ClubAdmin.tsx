@@ -32,6 +32,7 @@ import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
+import { MessagingCard } from "@/components/club-admin/MessagingCard";
 import { WhatsAppBillingCard } from "@/components/club-admin/WhatsAppBillingCard";
 import { SmsMessagingCard } from "@/components/club-admin/SmsMessagingCard";
 import { RouterTab } from "@/components/club-admin/RouterTab";
@@ -240,17 +241,20 @@ export default function ClubAdmin() {
         <div className="mt-4 space-y-4">
           <Alert className="bg-blue-500/5 border-blue-500/20">
             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <AlertTitle className="text-sm">WhatsApp and SMS are independent channels</AlertTitle>
+            <AlertTitle className="text-sm">One switch — SquashHub picks the channel</AlertTitle>
             <AlertDescription className="text-xs text-muted-foreground">
-              Turning WhatsApp on does not enable SMS, and vice versa. Each channel has its own
-              toggle, sender settings, and bill. Use the guidance below to choose when each one is
-              sent and what it costs your club.
+              Member messaging is simply on or off. A WhatsApp goes out when a reply is expected
+              (tournament launches, invites, RSVPs) and an SMS when it is a one-way notice (next
+              round starting, make your booking, well done on your win). The sections below only
+              hold sender details and what each channel costs.
             </AlertDescription>
           </Alert>
-          <WhatsAppBillingCard clubId={club.id} />
-          <SmsMessagingCard clubId={club.id} />
+          <MessagingCard clubId={club.id} />
+          <WhatsAppBillingCard clubId={club.id} hideToggle />
+          <SmsMessagingCard clubId={club.id} hideToggle />
         </div>
       );
+
       case "router": return <RouterTab clubId={club.id} club={club} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
       case "rules": return <RulesTab clubId={club.id} club={club} />;

@@ -11223,6 +11223,7 @@ function PairBuilder({
 function InvitePreviewDialog({
   open,
   onOpenChange,
+  clubId,
   tournamentName,
   description,
   methods,

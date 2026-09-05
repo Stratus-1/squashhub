@@ -4954,6 +4954,7 @@ export type Database = {
           baseline_cycle: string | null
           baseline_member_count: number | null
           baseline_set_at: string | null
+          block_back_to_back_bookings: boolean
           booking_last_slot_time: string
           booking_open_time: string
           booking_slot_minutes: number
@@ -5083,6 +5084,7 @@ export type Database = {
           baseline_cycle?: string | null
           baseline_member_count?: number | null
           baseline_set_at?: string | null
+          block_back_to_back_bookings?: boolean
           booking_last_slot_time?: string
           booking_open_time?: string
           booking_slot_minutes?: number
@@ -5212,6 +5214,7 @@ export type Database = {
           baseline_cycle?: string | null
           baseline_member_count?: number | null
           baseline_set_at?: string | null
+          block_back_to_back_bookings?: boolean
           booking_last_slot_time?: string
           booking_open_time?: string
           booking_slot_minutes?: number

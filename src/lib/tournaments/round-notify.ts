@@ -14,7 +14,7 @@
  * containing the identical text.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { sendWhatsApp } from "@/lib/whatsapp-send";
+import { sendMemberMessage } from "@/lib/messaging";
 
 export type RoundDrawNotifyScope = {
   champId: string;
@@ -73,16 +73,17 @@ export async function notifyRoundDraw(scope: RoundDrawNotifyScope): Promise<Roun
         continue;
       }
       try {
-        await sendWhatsApp({
+        // Round draws are one-way notices ("your next match / make your
+        // booking") — SMS by default, WhatsApp only as a fallback.
+        const r = await sendMemberMessage({
           clubId,
           recipients: [{ member_id: w.member_id }],
+          text: w.message,
+          replyRequired: false,
           kind: "champ_round_draw",
-          category: "utility",
-          templateKey: "club_notice",
-          templateVariables: { message: w.message },
-          body: w.message,
         });
-        whatsappSent += 1;
+        if (r.sent > 0) whatsappSent += 1;
+        else whatsappFailed += 1;
       } catch {
         whatsappFailed += 1;
       }

@@ -11399,6 +11399,37 @@ function InvitePreviewDialog({
                 </p>
               )}
             </div>
+
+            {/* WhatsApp preview */}
+            <div className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp message
+              </div>
+              <div className="rounded-md border bg-background p-3">
+                <div className="rounded-lg rounded-tl-none border bg-muted/40 p-3">
+                  <p className="text-sm whitespace-pre-wrap">{waBody}</p>
+                </div>
+                {!waNeedsPayment && (
+                  <div className="flex gap-2 mt-2">
+                    <span className="text-xs px-3 py-1 rounded-full border">Yes</span>
+                    <span className="text-xs px-3 py-1 rounded-full border">No</span>
+                  </div>
+                )}
+              </div>
+              {!methods.has("whatsapp") ? (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Not sent via WhatsApp — WhatsApp is not selected.
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Sent via an approved WhatsApp template — the wording of the fixed
+                  opening and closing lines can't change per message.
+                  {waNeedsPayment
+                    ? " Entry fee applies, so there are no Yes/No buttons — members register and pay via their link."
+                    : " Free entry — a YES reply enters them automatically."}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 

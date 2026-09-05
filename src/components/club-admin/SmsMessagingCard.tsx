@@ -148,10 +148,35 @@ export function SmsMessagingCard({ clubId }: { clubId: string }) {
           <Label className="text-sm">Send SMS for this club</Label>
           <p className="text-xs text-muted-foreground">Each message is billed per segment.</p>
         </div>
-        <Switch
-          checked={!!club?.sms_enabled}
-          onCheckedChange={(v) => save.mutate({ sms_enabled: v })}
-        />
+        <div className="flex items-center gap-2">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="text-muted-foreground hover:text-foreground">
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-xs">
+                <p className="font-medium">When SMS is used</p>
+                <ul className="list-disc pl-3 mt-1 space-y-0.5 text-muted-foreground">
+                  <li>Short, time-sensitive one-way notices</li>
+                  <li>Booking confirmations and reminders</li>
+                  <li>Match / championship result alerts</li>
+                  <li>Payment reminders (no reply needed)</li>
+                </ul>
+                <p className="mt-1.5 font-medium">Cost</p>
+                <p className="text-muted-foreground">
+                  {money(rates?.sms ?? 0.25)} per segment (±160 characters). Long messages use
+                  more segments.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <Switch
+            checked={!!club?.sms_enabled}
+            onCheckedChange={(v) => save.mutate({ sms_enabled: v })}
+          />
+        </div>
       </div>
 
       {club?.sms_enabled && (

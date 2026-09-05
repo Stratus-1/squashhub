@@ -11281,6 +11281,16 @@ function InvitePreviewDialog({
   roundDeadlines?: { label: string; date: string }[];
   inviteExtraDetails?: string;
 }) {
+  const { data: previewClub } = useQuery({
+    queryKey: ["invite-preview-club", clubId],
+    enabled: open && !!clubId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("clubs").select("name").eq("id", clubId).maybeSingle();
+      return data?.name as string | undefined;
+    },
+  });
+  const clubLabel = previewClub || "Your club";
   const descHasDetails = /— Tournament details —/.test(description || "");
   const extras = inviteExtraDetails?.trim()
     ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")

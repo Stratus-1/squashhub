@@ -22,7 +22,7 @@ function monthBounds(d = new Date()) {
 const money = (n: number) =>
   `R${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function WhatsAppBillingCard({ clubId }: { clubId: string }) {
+export function WhatsAppBillingCard({ clubId, hideToggle }: { clubId: string; hideToggle?: boolean }) {
   const qc = useQueryClient();
   const { start, end } = useMemo(() => monthBounds(), []);
 
@@ -197,15 +197,19 @@ export function WhatsAppBillingCard({ clubId }: { clubId: string }) {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <Label htmlFor="wa-optin" className="text-xs">
-            {club?.whatsapp_enabled ? "On" : "Off"}
-          </Label>
-          <Switch
-            id="wa-optin"
-            checked={!!club?.whatsapp_enabled}
-            onCheckedChange={(v) => toggle.mutate(v)}
-            disabled={toggle.isPending}
-          />
+          {!hideToggle && (
+            <>
+              <Label htmlFor="wa-optin" className="text-xs">
+                {club?.whatsapp_enabled ? "On" : "Off"}
+              </Label>
+              <Switch
+                id="wa-optin"
+                checked={!!club?.whatsapp_enabled}
+                onCheckedChange={(v) => toggle.mutate(v)}
+                disabled={toggle.isPending}
+              />
+            </>
+          )}
         </div>
       </div>
 

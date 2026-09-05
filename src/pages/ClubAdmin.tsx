@@ -32,6 +32,7 @@ import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
+import { MessagingCard } from "@/components/club-admin/MessagingCard";
 import { WhatsAppBillingCard } from "@/components/club-admin/WhatsAppBillingCard";
 import { SmsMessagingCard } from "@/components/club-admin/SmsMessagingCard";
 import { RouterTab } from "@/components/club-admin/RouterTab";

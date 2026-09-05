@@ -324,7 +324,7 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
         nextNum += 1;
       }
 
-      toast.success(`Duplicated ${selectedIds.length} round${selectedIds.length === 1 ? "" : "s"}${swapVenues ? " with home/visitor swapped" : ""}.`);
+      toast.success(`Created ${selectedIds.length} round${selectedIds.length === 1 ? "" : "s"}${swapVenues ? " with home/visitor swapped" : ""}.`);
       qc.invalidateQueries({ queryKey: ["league-rounds", associationId] });
       qc.invalidateQueries({ queryKey: ["round-fixtures"] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
@@ -429,7 +429,7 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
             Cancel
           </Button>
           <Button onClick={submit} disabled={!canSubmit || saving}>
-            {saving ? "Duplicating…" : `Duplicate ${selectedIds.length} round${selectedIds.length === 1 ? "" : "s"}`}
+            {saving ? "Creating…" : `Create ${selectedIds.length} round${selectedIds.length === 1 ? "" : "s"}`}
           </Button>
         </DialogFooter>
       </DialogContent>

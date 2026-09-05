@@ -111,9 +111,10 @@ export function SmsMessagingCard({ clubId }: { clubId: string }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        SMS is used for short, urgent notices — booking confirmations and reminders, match and
-        championship results, and payment reminders. Longer or conversational messages stay on email
-        and WhatsApp. Members who opt out of SMS are skipped automatically.
+        SMS is a separate channel from WhatsApp. It is used for short, urgent notices — booking
+        confirmations and reminders, match and championship results, and payment reminders. Longer
+        or conversational messages stay on email and WhatsApp. Members who opt out of SMS are
+        skipped automatically.
       </p>
 
       {rates && (

@@ -335,11 +335,11 @@ Deno.serve(async (req) => {
         if (r.variables) {
           if (templateOrder) {
             templateOrder.forEach((name, i) => {
-              const v = (r.variables?.[name] ?? "").toString().trim();
+              const v = sanitiseVar(r.variables?.[name]);
               if (v) vars[String(i + 1)] = v;
             });
           } else {
-            vars = { ...vars, ...r.variables };
+            for (const [k, v] of Object.entries(r.variables)) vars[k] = sanitiseVar(v);
           }
         }
         form.set("ContentVariables", JSON.stringify(vars));

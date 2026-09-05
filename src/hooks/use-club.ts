@@ -51,6 +51,7 @@ export interface Club {
   peak_weekend_end?: string;
   max_peak_bookings_per_day?: number;
   max_bookings_per_day?: number;
+  block_back_to_back_bookings?: boolean;
   max_member_events_per_month?: number;
   uses_gobook?: boolean;
   gobook_url?: string;

@@ -149,7 +149,11 @@ export function buildQuickResultPayload(games: GameScore[], bestOf: number): Qui
 export function canEnterChampResult(
   m: SelfScheduleMatchLike,
   memberId?: string | null,
-  opts: { canManage?: boolean } = {},
+  opts: { canManage?: boolean; anyClubMember?: boolean } = {},
 ): MarkPermission {
-  return canMarkChampMatch(m, memberId, { canManage: opts.canManage, requireBooking: false });
+  return canMarkChampMatch(m, memberId, {
+    canManage: opts.canManage,
+    anyClubMember: opts.anyClubMember,
+    requireBooking: false,
+  });
 }

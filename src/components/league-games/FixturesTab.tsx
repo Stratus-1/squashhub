@@ -625,7 +625,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
           <div className="flex items-center gap-2">
             {(rounds?.length ?? 0) > 0 && (
               <Button size="sm" variant="outline" onClick={() => setDuplicateOpen(true)}>
-                Duplicate rounds
+                Create next rounds
               </Button>
             )}
             <Button

@@ -2166,7 +2166,7 @@ export default function ClubChampsView() {
         {(() => {
           // "Enter Result" for a match that was played away from the live
           // marker. Same audience as marking — participants and officials.
-          const perm = canEnterChampResult(m, myMemberId, { canManage });
+          const perm = canEnterChampResult(m, myMemberId, { canManage, anyClubMember: true });
           if (!perm.allowed) return null;
           return (
             <Button

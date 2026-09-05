@@ -259,7 +259,7 @@ export function MyChampionships() {
                   const perm = canSelfScheduleMatch(m, memberId);
                   // Entering an already-played score is independent of both the
                   // scheduling mode and any court booking.
-                  const resultPerm = canEnterChampResult(m, memberId);
+                  const resultPerm = canEnterChampResult(m, memberId, { anyClubMember: true });
                   const openResult = (e: any) => {
                     e.stopPropagation();
                     setEntering({

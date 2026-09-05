@@ -11253,6 +11253,7 @@ function InvitePreviewDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  clubId?: string;
   tournamentName: string;
   description: string;
   methods: Set<"app" | "email" | "whatsapp">;

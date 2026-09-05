@@ -70,3 +70,7 @@ verify_jwt = true
 # Issues + emails the affiliation invoice after a club submits its roster.
 [functions.issue-association-invoice]
 verify_jwt = true
+
+# Daily reminder sent one day before a subscription invoice due date.
+[functions.notify-invoice-due]
+verify_jwt = false

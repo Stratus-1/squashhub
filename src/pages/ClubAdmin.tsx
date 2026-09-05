@@ -33,6 +33,7 @@ import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
 import { WhatsAppBillingCard } from "@/components/club-admin/WhatsAppBillingCard";
+import { SmsMessagingCard } from "@/components/club-admin/SmsMessagingCard";
 import { RouterTab } from "@/components/club-admin/RouterTab";
 import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
 import { AiAssistantTab } from "@/components/club-admin/AiAssistantTab";
@@ -234,7 +235,7 @@ export default function ClubAdmin() {
       case "ai": return <AiAssistantTab clubId={club.id} />;
       case "emails": return <EmailLogTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;
-      case "whatsapp": return <div className="mt-4"><WhatsAppBillingCard clubId={club.id} /></div>;
+      case "whatsapp": return <div className="mt-4 space-y-4"><WhatsAppBillingCard clubId={club.id} /><SmsMessagingCard clubId={club.id} /></div>;
       case "router": return <RouterTab clubId={club.id} club={club} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
       case "rules": return <RulesTab clubId={club.id} club={club} />;

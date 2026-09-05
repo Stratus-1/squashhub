@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { ReleaseRolloutCard } from "@/components/platform/ReleaseRolloutCard";
 import { WhatsAppTemplatesCard } from "@/components/platform/WhatsAppTemplatesCard";
+import { SmsGatewayCard } from "@/components/platform/SmsGatewayCard";
 
 interface PlatformSettings {
   platform_sender_email: string;
@@ -327,6 +328,8 @@ export default function SuperAdminSettings() {
           </p>
         </div>
       </Card>
+
+      <SmsGatewayCard />
 
       <WhatsAppTemplatesCard />
 

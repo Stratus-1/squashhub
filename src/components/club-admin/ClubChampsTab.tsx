@@ -7015,6 +7015,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ladder">Club ladder</SelectItem>
+                      <SelectItem value="club_ranking">Club ranking</SelectItem>
                       <SelectItem value="ranking">National ranking</SelectItem>
                       <SelectItem value="manual">Manual order</SelectItem>
                     </SelectContent>

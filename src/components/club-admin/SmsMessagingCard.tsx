@@ -50,7 +50,7 @@ export function SmsMessagingCard({ clubId }: { clubId: string }) {
       return {
         messages: sent.length,
         segments: sent.reduce((t, r) => t + (r.segments ?? 1), 0),
-        cost: sent.reduce((t, r) => t + (r.segments ?? 1) * Number(r.unit_cost ?? 0), 0),
+        cost: sent.reduce((t, r) => t + Number(r.unit_cost ?? 0), 0),
         failed: rows.length - sent.length,
       };
     },

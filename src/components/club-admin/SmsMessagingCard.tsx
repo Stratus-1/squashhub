@@ -41,16 +41,16 @@ export function SmsMessagingCard({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sms_send_log")
-        .select("segments, cost, status")
+        .select("segments, unit_cost, status")
         .eq("club_id", clubId)
         .gte("created_at", since);
       if (error) throw error;
-      const rows = (data ?? []) as Array<{ segments: number | null; cost: number | null; status: string }>;
+      const rows = (data ?? []) as Array<{ segments: number | null; unit_cost: number | null; status: string }>;
       const sent = rows.filter((r) => r.status === "sent");
       return {
         messages: sent.length,
         segments: sent.reduce((t, r) => t + (r.segments ?? 1), 0),
-        cost: sent.reduce((t, r) => t + Number(r.cost ?? 0), 0),
+        cost: sent.reduce((t, r) => t + (r.segments ?? 1) * Number(r.unit_cost ?? 0), 0),
         failed: rows.length - sent.length,
       };
     },

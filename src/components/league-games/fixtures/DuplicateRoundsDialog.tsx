@@ -85,8 +85,29 @@ export function DuplicateRoundsDialog({ open, onOpenChange, clubId, associationI
     ? [...sortedRounds.map((r) => originalDateFor(r)).filter(Boolean)].sort()[0]
     : undefined;
 
+  // Number of distinct weeks the original series spans. Rounds that share a
+  // week (e.g. Ladies Tue + Men Wed) count once — not 7 days per round.
+  const seriesWeeks = useMemo(() => {
+    if (!earliestDate) return 1;
+    const anchor = parseISO(earliestDate);
+    const anchorDow = anchor.getDay();
+    let maxWeek = 0;
+    for (const r of sortedRounds) {
+      const orig = originalDateFor(r);
+      if (!orig) continue;
+      const o = parseISO(orig);
+      const weekStartOfOrig = addDays(o, -((o.getDay() - anchorDow + 7) % 7));
+      const wk = Math.round(differenceInCalendarDays(weekStartOfOrig, anchor) / 7);
+      if (wk > maxWeek) maxWeek = wk;
+    }
+    return maxWeek + 1;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [earliestDate, sortedRounds, firstFixtureByRound]);
+
+  // Default the return series to the week immediately after the original
+  // series ended (same weekday as the anchor round).
   const defaultStart = earliestDate
-    ? format(addDays(parseISO(earliestDate), 7 * (rounds.length || 1)), "yyyy-MM-dd")
+    ? format(addDays(parseISO(earliestDate), 7 * seriesWeeks), "yyyy-MM-dd")
     : format(new Date(), "yyyy-MM-dd");
 
   const [startFrom, setStartFrom] = useState<string>(defaultStart);

@@ -24,6 +24,7 @@ import { template as slaOutstanding } from './sla-outstanding.tsx'
 import { template as tournamentInvitePreview } from './tournament-invite-preview.tsx'
 import { template as clubNotification } from './club-notification.tsx'
 import { template as associationInvoice } from './association-invoice.tsx'
+import { template as subscriptionInvoiceReminder } from './subscription-invoice-reminder.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-club-registered': newClubRegistered,
@@ -41,4 +42,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'tournament-invite-preview': tournamentInvitePreview,
   'club-notification': clubNotification,
   'association-invoice': associationInvoice,
+  'subscription-invoice-reminder': subscriptionInvoiceReminder,
 }

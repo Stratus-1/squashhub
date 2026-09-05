@@ -950,6 +950,32 @@ export default function Bookings() {
         }
       }
 
+      // 1b. Optional "no back-to-back slots" rule — a member may play twice in a
+      //     day (morning and evening) but not take two slots directly in a row.
+      if ((myClub as any)?.block_back_to_back_bookings) {
+        const toMin = (t: string) => {
+          const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+          return (h || 0) * 60 + (m || 0);
+        };
+        const newStart = toMin(bookingDialog.time);
+        const newEnd = newStart + slotMinutes;
+        const adjacent = (memberId?: string | null, userId?: string | null) =>
+          bookingsFor(memberId, userId).some((b: any) => {
+            if (b.date && b.date !== dateStr) return false;
+            const s = toMin(String(b.start_time || ""));
+            const e = b.end_time ? toMin(String(b.end_time)) : s + slotMinutes;
+            return e === newStart || s === newEnd;
+          });
+        if (adjacent(activeMember?.id, user?.id)) {
+          toast.error("Back-to-back slots aren't allowed — pick a slot later in the day.");
+          return;
+        }
+        if (opp && adjacent((opp as any).memberId, (opp as any).id)) {
+          toast.error(`${(opp as any).name || "Your opponent"} already has a booking directly before or after this slot.`);
+          return;
+        }
+      }
+
       // 2. Enforce peak-hour cap
       if (isPeak) {
         const peakCountFor = (memberId?: string | null, userId?: string | null) =>

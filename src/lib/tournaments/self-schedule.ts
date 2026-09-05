@@ -224,7 +224,7 @@ export interface MarkPermission {
 export function canMarkChampMatch(
   m: SelfScheduleMatchLike,
   memberId?: string | null,
-  opts: { canManage?: boolean; requireBooking?: boolean } = {},
+  opts: { canManage?: boolean; requireBooking?: boolean; anyClubMember?: boolean } = {},
 ): MarkPermission {
   if (m.is_bye) return { allowed: false, reason: "This is a bye" };
   const status = String(m.status || "").toLowerCase();
@@ -237,9 +237,13 @@ export function canMarkChampMatch(
   if (!m.player_a_member_id || !m.player_b_member_id) {
     return { allowed: false, reason: "Waiting for both players to be known" };
   }
-  if (!opts.canManage && !isParticipant(m, memberId)) {
+  // Clubs mark each other's games all the time — a family member or the next
+  // pair on court may capture the score. Any club member may mark, unless the
+  // caller explicitly restricts it.
+  if (!opts.canManage && !opts.anyClubMember && !isParticipant(m, memberId)) {
     return { allowed: false, reason: "Only the players in this match can mark it" };
   }
+
   if (opts.requireBooking && isUnscheduled(m)) {
     return { allowed: false, reason: "Book a court for this match first" };
   }

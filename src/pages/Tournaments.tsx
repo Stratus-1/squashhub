@@ -864,7 +864,7 @@ export default function Tournaments() {
           // Allowed for the two players in THIS match, club/tournament admins
           // and super admins — never for an uninvolved player.
           if (isPlaceholder) return null;
-          const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps });
+          const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps, anyClubMember: true });
           if (!perm.allowed) return null;
           return (
             <Button
@@ -885,7 +885,7 @@ export default function Tournaments() {
           if (isPlaceholder) return null;
           const selfScheduled = String((champ as any)?.scheduling_mode || "") === "self";
           if (selfScheduled) {
-            const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps });
+            const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps, anyClubMember: true });
             if (!perm.allowed) return null;
           }
           return (

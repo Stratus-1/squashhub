@@ -961,7 +961,7 @@ export default function Bookings() {
         const newEnd = newStart + slotMinutes;
         const adjacent = (memberId?: string | null, userId?: string | null) =>
           bookingsFor(memberId, userId).some((b: any) => {
-            if (b.date && b.date !== selectedDateStr) return false;
+            if (b.date && b.date !== dateStr) return false;
             const s = toMin(String(b.start_time || ""));
             const e = b.end_time ? toMin(String(b.end_time)) : s + slotMinutes;
             return e === newStart || s === newEnd;

@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap, ChevronsUpDown } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap, ChevronsUpDown, Info } from "lucide-react";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 import { RulesTab } from "@/components/club-admin/RulesTab";
@@ -48,6 +48,7 @@ import { FeaturesTab } from "@/components/club-admin/FeaturesTab";
 import { QuickSetupWizard } from "@/components/club-admin/setup/QuickSetupWizard";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 
 type AdminTab = { value: string; label: string; icon: any; permission?: PermissionSlug; color: string; noStatus?: boolean; capability?: Capability; startHere?: boolean };
@@ -88,7 +89,7 @@ const SETUP_TABS: AdminTab[] = [
   { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
   { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
-  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true, capability: "whatsapp" },
+  { value: "whatsapp", label: "Messaging", icon: MessageCircle, color: "green", noStatus: true, capability: "whatsapp" },
   { value: "router", label: "Member Wi-Fi", icon: Router, color: "cyan", noStatus: true, capability: "wifi" },
 ];
 
@@ -235,7 +236,21 @@ export default function ClubAdmin() {
       case "ai": return <AiAssistantTab clubId={club.id} />;
       case "emails": return <EmailLogTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;
-      case "whatsapp": return <div className="mt-4 space-y-4"><WhatsAppBillingCard clubId={club.id} /><SmsMessagingCard clubId={club.id} /></div>;
+      case "whatsapp": return (
+        <div className="mt-4 space-y-4">
+          <Alert className="bg-blue-500/5 border-blue-500/20">
+            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertTitle className="text-sm">WhatsApp and SMS are independent channels</AlertTitle>
+            <AlertDescription className="text-xs text-muted-foreground">
+              Turning WhatsApp on does not enable SMS, and vice versa. Each channel has its own
+              toggle, sender settings, and bill. Use the guidance below to choose when each one is
+              sent and what it costs your club.
+            </AlertDescription>
+          </Alert>
+          <WhatsAppBillingCard clubId={club.id} />
+          <SmsMessagingCard clubId={club.id} />
+        </div>
+      );
       case "router": return <RouterTab clubId={club.id} club={club} />;
       case "permissions": return <PermissionsTab clubId={club.id} />;
       case "rules": return <RulesTab clubId={club.id} club={club} />;

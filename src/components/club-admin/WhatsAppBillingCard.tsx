@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Receipt } from "lucide-react";
+import { MessageCircle, Receipt, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 function monthBounds(d = new Date()) {
   const start = new Date(d.getFullYear(), d.getMonth(), 1);
@@ -173,6 +174,29 @@ export function WhatsAppBillingCard({ clubId }: { clubId: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-xs">
+                <p className="font-medium">When WhatsApp is used</p>
+                <ul className="list-disc pl-3 mt-1 space-y-0.5 text-muted-foreground">
+                  <li>Event invites & tournament entries with Yes/No replies</li>
+                  <li>Conversational reminders where members must reply</li>
+                  <li>Rich notices with buttons or links</li>
+                </ul>
+                <p className="mt-1.5 font-medium">Costs (platform sender)</p>
+                <p className="text-muted-foreground">
+                  {money(rates?.whatsapp_rate_service ?? 0.15)} reply /{" "}
+                  {money(rates?.whatsapp_rate_utility ?? 0.45)} notice /{" "}
+                  {money(rates?.whatsapp_rate_marketing ?? 0.8)} marketing
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Label htmlFor="wa-optin" className="text-xs">
             {club?.whatsapp_enabled ? "On" : "Off"}
           </Label>

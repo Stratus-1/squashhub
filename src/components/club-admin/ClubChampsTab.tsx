@@ -9335,7 +9335,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 ) : (
                   <span
                     className="flex items-center gap-2 text-sm text-muted-foreground"
-                    title="Member messaging is not activated for your club. Activate it in Club Admin → Member messaging."
+                    title="Member messaging is off. Turn it on in Club Admin → Messaging. One-way notices go via SMS; replies and rich invites go via WhatsApp."
                   >
                     <Checkbox checked={false} disabled />
                     WhatsApp/SMS
@@ -9352,8 +9352,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </div>
               <p className="text-xs text-muted-foreground">
                 Choose how invited members are notified. Pick more than one for maximum reach.
-                {inviteMethods.has("whatsapp") && " WhatsApp/SMS invites let members reply YES/NO to enter — billed to your club."}
-                {!whatsappEnabled && " WhatsApp/SMS is inactive — activate Member messaging in your admin setup to invite members via phone."}
+                {inviteMethods.has("whatsapp") && " Tournament invites need a reply, so WhatsApp is used when messaging is on — billed to your club."}
+                {!whatsappEnabled && " WhatsApp/SMS is inactive — activate Member messaging in Club Admin → Messaging to reach members by phone."}
               </p>
             </div>
 

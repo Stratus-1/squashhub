@@ -121,6 +121,17 @@ Deno.serve(async (req) => {
               }
             : { "twilio/text": { body: row.body } };
 
+          // One-time passcodes must use Meta's AUTHENTICATION template shape:
+          // a fixed copy-code message with no branding, links or free text.
+          // Anything else gets re-categorised as MARKETING (or rejected).
+          if (row.category.toUpperCase() === "AUTHENTICATION") {
+            for (const k of Object.keys(types)) delete types[k];
+            types["twilio/authentication"] = {
+              add_security_recommendation: true,
+              code_expiration_minutes: 10,
+            };
+          }
+
           const createResp = await fetch(`${GATEWAY_URL}/content/v1/Content`, {
             method: "POST",
             headers: { ...headers, "Content-Type": "application/json" },

@@ -88,7 +88,7 @@ const SETUP_TABS: AdminTab[] = [
   { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },
   { value: "subscription", label: "Subscription", icon: CreditCard, color: "emerald", noStatus: true },
-  { value: "whatsapp", label: "WhatsApp", icon: MessageCircle, color: "green", noStatus: true, capability: "whatsapp" },
+  { value: "whatsapp", label: "Messaging", icon: MessageCircle, color: "green", noStatus: true, capability: "whatsapp" },
   { value: "router", label: "Member Wi-Fi", icon: Router, color: "cyan", noStatus: true, capability: "wifi" },
 ];
 

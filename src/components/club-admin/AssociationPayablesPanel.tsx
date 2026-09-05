@@ -107,7 +107,9 @@ export function AssociationPayablesPanel({ clubId }: Props) {
   }, [batches]);
 
   /* ─── Submission-driven billing: totals calculated when rosters are submitted ─── */
-  const season = new Date().getFullYear() + 1;
+  const thisYear = new Date().getFullYear();
+  const seasonOptions = [thisYear + 1, thisYear, thisYear - 1];
+  const [season, setSeason] = useState<number>(thisYear + 1);
 
   const { data: assocRows = [] } = useQuery({
     queryKey: ["assoc-payable-associations"],

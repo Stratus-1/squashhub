@@ -118,7 +118,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
       {/* Club Controls — same grouped section the mobile admin dashboard renders */}
       <div className="px-8 space-y-3">
-        {props.hasAnyAdminAccess && <DashboardDeviceControls />}
+        <DashboardDeviceControls />
         <DashboardWifiCard />
         <DashboardRouterCard />
       </div>

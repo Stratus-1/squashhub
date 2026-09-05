@@ -114,15 +114,32 @@ export default function Tournaments() {
   const champIdsKey = champIds.slice().sort().join("|");
 
 
+  // Supabase caps a single response at 1000 rows. Busy clubs have far more
+  // tournament rows than that, and the undated (TBD) fixtures sort last — so
+  // an unpaged query silently hid whole rounds. Always page through.
+  const fetchAllPages = async (build: () => any) => {
+    const PAGE = 1000;
+    const rows: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await build().range(from, from + PAGE - 1);
+      if (error) throw error;
+      const batch = data || [];
+      rows.push(...batch);
+      if (batch.length < PAGE) break;
+    }
+    return rows;
+  };
+
   const { data: allEntries = [] } = useQuery({
     queryKey: ["tournaments-all-entries", champIds],
     queryFn: async () => {
       if (!champIds.length) return [];
-      const { data, error } = await fromExt("club_champs_entries")
-        .select("*, club_members:club_member_id(id, name, profiles:user_id(name)), partner:partner_member_id(id, name, profiles:user_id(name))")
-        .in("champ_id", champIds);
-      if (error) throw error;
-      return data || [];
+      return fetchAllPages(() =>
+        fromExt("club_champs_entries")
+          .select("*, club_members:club_member_id(id, name, profiles:user_id(name)), partner:partner_member_id(id, name, profiles:user_id(name))")
+          .in("champ_id", champIds)
+          .order("id"),
+      );
     },
     enabled: champIds.length > 0,
   });
@@ -132,17 +149,19 @@ export default function Tournaments() {
     queryKey: ["tournaments-all-matches", champIds],
     queryFn: async () => {
       if (!champIds.length) return [];
-      const { data, error } = await fromExt("club_champs_matches")
-        .select("*, player_a:player_a_member_id(id, name, profiles:user_id(name)), player_b:player_b_member_id(id, name, profiles:user_id(name)), partner_a:partner_a_member_id(id, name, profiles:user_id(name)), partner_b:partner_b_member_id(id, name, profiles:user_id(name)), court:court_id(name)")
-        .in("champ_id", champIds)
-        .order("scheduled_date")
-        .order("scheduled_time");
-      if (error) throw error;
-      return data || [];
+      return fetchAllPages(() =>
+        fromExt("club_champs_matches")
+          .select("*, player_a:player_a_member_id(id, name, profiles:user_id(name)), player_b:player_b_member_id(id, name, profiles:user_id(name)), partner_a:partner_a_member_id(id, name, profiles:user_id(name)), partner_b:partner_b_member_id(id, name, profiles:user_id(name)), court:court_id(name)")
+          .in("champ_id", champIds)
+          .order("scheduled_date")
+          .order("scheduled_time")
+          .order("id"),
+      );
     },
     enabled: champIds.length > 0,
     refetchInterval: 10000,
   });
+
 
   const today = todayStr;
   // Marker presence drives the LIVE chip: a game is only "live" while someone

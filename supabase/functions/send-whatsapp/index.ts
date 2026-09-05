@@ -198,7 +198,9 @@ Deno.serve(async (req) => {
     const clubName = club?.name ?? "SquashHub";
 
     // Map named template variables onto the template's numbered placeholders.
-    // WhatsApp rejects blank variables, so unfilled slots fall back sensibly.
+    // WhatsApp rejects blank variables, and Twilio rejects any variable that
+    // contains a newline, a tab or 4+ consecutive spaces (error 21656), so
+    // every value is flattened to a single line and length-capped.
     if (templateOrder) {
       const named: Record<string, string> = {
         club: clubName,
@@ -207,7 +209,7 @@ Deno.serve(async (req) => {
       };
       const numbered: Record<string, string> = {};
       templateOrder.forEach((name, i) => {
-        const v = (named[name] ?? "").toString().trim();
+        const v = sanitiseVar(named[name]);
         numbered[String(i + 1)] = v || "-";
       });
       contentVariables = numbered;

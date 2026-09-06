@@ -62,115 +62,6 @@ import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog"
 import { ExportTeamsToNsaDialog } from "@/components/club-admin/ExportTeamsToNsaDialog";
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 
-const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-function FillTopDownSettings({ clubId }: { clubId: string }) {
-  const qc = useQueryClient();
-  const { data: club } = useQuery({
-    queryKey: ["club-fill-settings", clubId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("fill_top_down_enabled, league_week_start_dow, fill_up_leagues_enabled").eq("id", clubId).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!clubId,
-  });
-
-  const update = async (patch: { fill_top_down_enabled?: boolean; league_week_start_dow?: number; fill_up_leagues_enabled?: boolean }) => {
-    const { error } = await supabase.from("clubs").update(patch).eq("id", clubId);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["club-fill-settings", clubId] });
-    qc.invalidateQueries({ queryKey: ["club-league-settings", clubId] });
-    toast.success("Saved");
-  };
-
-  const fillUpEnabled = club?.fill_up_leagues_enabled ?? true;
-
-  return (
-    <Card className="p-3 mt-2 space-y-3">
-      {/* Show / hide the Fill Up Leagues tab entirely for this club's captains */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
-          <div className="text-sm font-medium">Club default: show "Fill Up Leagues" tab in League Games</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            When on, your captains see the weekly Fill Up Leagues drag-and-drop board in League Games.
-            Turn off if your club doesn't do weekly team planning (e.g. NIL / Lowveld style) — captains then place players directly on the scorecard instead.
-            Each league affiliation can override this with its own toggle below.
-          </p>
-        </div>
-        <Switch
-          checked={fillUpEnabled}
-          onCheckedChange={(v) => update({ fill_up_leagues_enabled: v })}
-        />
-      </div>
-
-      {fillUpEnabled && (
-        <div className="pt-3 border-t border-border space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={!!club?.fill_top_down_enabled}
-                onCheckedChange={(v) => update({ fill_top_down_enabled: !!v })}
-              />
-              <span className="text-sm font-medium">Fill up league teams from top down</span>
-            </label>
-            {club?.fill_top_down_enabled && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Squash week starts:</span>
-                <Select
-                  value={String(club?.league_week_start_dow ?? 3)}
-                  onValueChange={(v) => update({ league_week_start_dow: Number(v) })}
-                >
-                  <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {DOW_LABELS.map((d, i) => <SelectItem key={i} value={String(i)}>{d}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            When enabled, captains use <strong>Fill Up Leagues</strong> to assign players top-down. Excess players cascade to the next league. The ±2 position rule is enforced against the previous week's snapshot.
-          </p>
-          <p className="md:hidden text-xs text-muted-foreground rounded-md border border-border bg-muted/40 px-2.5 py-2">
-            On mobile: weekly team planning happens in <strong>League Games → Fill Up Leagues</strong>. Press and hold a player for a moment, then drag. The admin <strong>Allocate</strong> dialog is still desktop-first.
-          </p>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function AssocFillUpToggle({ assoc, clubDefault }: { assoc: any; clubDefault: boolean }) {
-  const qc = useQueryClient();
-  const value = assoc.fill_up_leagues_enabled ?? clubDefault;
-  const isOverride = assoc.fill_up_leagues_enabled !== null && assoc.fill_up_leagues_enabled !== undefined;
-
-  const set = async (v: boolean | null) => {
-    const { error } = await fromExt("league_associations").update({ fill_up_leagues_enabled: v }).eq("id", assoc.id);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["league-associations"] });
-    qc.invalidateQueries({ queryKey: ["league-associations-linked"] });
-    qc.invalidateQueries({ queryKey: ["league-associations-with-week"] });
-    toast.success("Saved");
-  };
-
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-1.5">
-      <div className="text-[11px] leading-tight">
-        <div className="font-medium">Fill Up Leagues board</div>
-        <div className="text-muted-foreground">
-          {isOverride ? (value ? "On for this league" : "Off for this league") : `Following club default (${clubDefault ? "on" : "off"})`}
-        </div>
-      </div>
-      <Switch checked={value} onCheckedChange={(v) => set(v)} />
-      {isOverride && (
-        <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]" onClick={() => set(null)}>Use default</Button>
-      )}
-    </div>
-  );
-}
-
 // ─── Types ───
 interface LeaguePlayer {
   id: string;
@@ -221,17 +112,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [createTeamsAssoc, setCreateTeamsAssoc] = useState<LeagueAssociation | null>(null);
   const [createTeamsYear, setCreateTeamsYear] = useState<number | null>(null);
   const [teamsTipDismissed, setTeamsTipDismissed] = useState<Record<string, boolean>>({});
-
-  const { data: clubFillDefault } = useQuery({
-    queryKey: ["club-fill-settings", clubId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("fill_top_down_enabled, league_week_start_dow, fill_up_leagues_enabled").eq("id", clubId).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!clubId,
-  });
-  const clubDefaultFillUp = clubFillDefault?.fill_up_leagues_enabled ?? true;
   const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed" | "open"; leagues: League[] } | null>(null);
   const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed" | "open"; leagues: League[] } | null>(null);
   const qc = useQueryClient();
@@ -503,7 +383,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 )}
               </div>
               <div className="flex items-center gap-1 flex-wrap lg:justify-end min-w-0">
-                <AssocFillUpToggle assoc={a} clubDefault={clubDefaultFillUp} />
                 {isClub ? (
                   <Button asChild size="sm" disabled={scoped.length === 0}>
                     <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>
@@ -554,6 +433,9 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                   </>
                 )}
                 <Button size="sm" variant="ghost" onClick={() => setEditAssoc(a)}>Edit</Button>
+                <Button size="sm" variant="ghost" onClick={() => handleDeleteAssoc(a.id)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </Card>
 
@@ -616,7 +498,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       })()}
 
       <SeasonArchiveCard clubId={clubId} />
-      <FillTopDownSettings clubId={clubId} />
 
 
 

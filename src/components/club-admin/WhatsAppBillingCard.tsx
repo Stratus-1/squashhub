@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Receipt, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMessagingRates } from "@/hooks/use-messaging-rates";
 
 function monthBounds(d = new Date()) {
   const start = new Date(d.getFullYear(), d.getMonth(), 1);
@@ -19,12 +20,11 @@ function monthBounds(d = new Date()) {
   return { start: fmt(start), end: fmt(end) };
 }
 
-const money = (n: number) =>
-  `R${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 export function WhatsAppBillingCard({ clubId, hideToggle }: { clubId: string; hideToggle?: boolean }) {
   const qc = useQueryClient();
   const { start, end } = useMemo(() => monthBounds(), []);
+  const clubRates = useMessagingRates();
+  const money = clubRates.money;
 
   const { data: club } = useQuery({
     queryKey: ["club-whatsapp-settings", clubId],
@@ -63,19 +63,6 @@ export function WhatsAppBillingCard({ clubId, hideToggle }: { clubId: string; hi
     setSenderNumber(secrets?.whatsapp_from ?? "");
     setToken("");
   }, [secrets?.whatsapp_account_sid, secrets?.whatsapp_from]);
-
-  const { data: rates } = useQuery({
-    queryKey: ["whatsapp-rates"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("app_settings")
-        .select("key, value")
-        .in("key", ["whatsapp_rate_utility", "whatsapp_rate_service", "whatsapp_rate_marketing"]);
-      const map: Record<string, number> = {};
-      (data ?? []).forEach((r) => (map[r.key] = Number(r.value)));
-      return map;
-    },
-  });
 
   const { data: usage } = useQuery({
     queryKey: ["whatsapp-usage", clubId, start],
@@ -156,7 +143,7 @@ export function WhatsAppBillingCard({ clubId, hideToggle }: { clubId: string; hi
     onError: (e: Error) => toast({ title: "Could not save", description: e.message, variant: "destructive" }),
   });
 
-  const rate = club?.whatsapp_rate_override ?? rates?.whatsapp_rate_utility ?? 0.45;
+  const rate = club?.whatsapp_rate_override ?? clubRates.waUtility;
   const subtotal = Number(usage?.subtotal ?? 0);
   const vat = subtotal * 0.15;
 
@@ -190,9 +177,9 @@ export function WhatsAppBillingCard({ clubId, hideToggle }: { clubId: string; hi
                 </ul>
                 <p className="mt-1.5 font-medium">Costs (platform sender)</p>
                 <p className="text-muted-foreground">
-                  {money(rates?.whatsapp_rate_service ?? 0.15)} reply /{" "}
-                  {money(rates?.whatsapp_rate_utility ?? 0.45)} notice /{" "}
-                  {money(rates?.whatsapp_rate_marketing ?? 0.8)} marketing
+                  {money(clubRates.waService)} reply /{" "}
+                  {money(clubRates.waUtility)} notice /{" "}
+                  {money(clubRates.waMarketing)} marketing
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -279,15 +266,15 @@ export function WhatsAppBillingCard({ clubId, hideToggle }: { clubId: string; hi
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div className="rounded border border-border p-2">
             <p className="text-muted-foreground">Notice / reminder</p>
-            <p className="font-semibold">{money(club?.whatsapp_rate_override ?? rates?.whatsapp_rate_utility ?? 0.45)}</p>
+            <p className="font-semibold">{money(club?.whatsapp_rate_override ?? clubRates.waUtility)}</p>
           </div>
           <div className="rounded border border-border p-2">
             <p className="text-muted-foreground">Reply (24h window)</p>
-            <p className="font-semibold">{money(club?.whatsapp_rate_override ?? rates?.whatsapp_rate_service ?? 0.15)}</p>
+            <p className="font-semibold">{money(club?.whatsapp_rate_override ?? clubRates.waService)}</p>
           </div>
           <div className="rounded border border-border p-2">
             <p className="text-muted-foreground">Promotional</p>
-            <p className="font-semibold">{money(club?.whatsapp_rate_override ?? rates?.whatsapp_rate_marketing ?? 0.8)}</p>
+            <p className="font-semibold">{money(club?.whatsapp_rate_override ?? clubRates.waMarketing)}</p>
           </div>
         </div>
       )}

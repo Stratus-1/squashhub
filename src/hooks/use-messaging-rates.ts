@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { formatMoney } from "@/lib/currency";
 import { normaliseCurrency } from "@/lib/saas-tiers";
 
 /**

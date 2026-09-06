@@ -686,8 +686,16 @@ export default function Tournaments() {
       koOut === "b" && ELIMINATED_NAME_CLASS,
     );
 
+    // Self-scheduled rounds carry a "must be played by" date. Show it on any
+    // fixture that still has no court/time so players know their booking cut-off.
+    const playBy = !m.scheduled_date && !isPlaceholder
+      ? playByNudge(
+          deadlineForRound(parseRoundDeadlines((champ as any)?.round_play_by), m.round_number),
+          todayISO(),
+        )
+      : null;
 
-    const bKey = bucketKeyOf(m);
+
     const bMeta = buckets.find((x) => x.key === bKey) || null;
     const color = bucketColor(bKey);
     const rowStyle = color

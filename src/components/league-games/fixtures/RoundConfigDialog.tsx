@@ -489,7 +489,7 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
               if (!slotMinutes || slotMinutes <= 0) { toast.error("End time must be after the start time."); return; }
               setSaving(true);
               try {
-                await onSave({ ...draft, venue_name: venueLabel });
+                await onSave({ ...draft, venue_name: venueLabel, slot_minutes: slotMinutes });
                 onOpenChange(false);
               } catch (e: any) {
                 toast.error(e?.message ?? "Could not save round");

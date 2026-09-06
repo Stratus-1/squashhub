@@ -28,9 +28,10 @@ const DEFAULTS: Record<(typeof BASE_KEYS)[number], number> = {
 };
 
 export function useMessagingRates() {
-  const { code: clubCode, format } = useClubCurrency();
+  const { code: clubCode } = useClubCurrency();
   // Same currency rule as subscriptions: only ZAR/USD/EUR have rate tables.
   const code = normaliseCurrency(clubCode);
+  const symbol = code === "USD" ? "$" : code === "EUR" ? "€" : "R";
 
   const { data } = useQuery({
     queryKey: ["messaging-rates", code],

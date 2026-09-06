@@ -37,6 +37,7 @@ import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
+import { parseRoundDeadlines, deadlineForRound, playByNudge } from "@/lib/tournaments/round-deadlines";
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
 import { useHasPermission } from "@/hooks/use-club-permissions";
@@ -686,6 +687,15 @@ export default function Tournaments() {
       koOut === "b" && ELIMINATED_NAME_CLASS,
     );
 
+    // Self-scheduled rounds carry a "must be played by" date. Show it on any
+    // fixture that still has no court/time so players know their booking cut-off.
+    const playBy = !m.scheduled_date && !isPlaceholder
+      ? playByNudge(
+          deadlineForRound(parseRoundDeadlines((champ as any)?.round_play_by), m.round_number),
+          todayISO(),
+        )
+      : null;
+
 
     const bKey = bucketKeyOf(m);
     const bMeta = buckets.find((x) => x.key === bKey) || null;
@@ -776,6 +786,22 @@ export default function Tournaments() {
             {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
           </span>
           <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
+          {playBy && (
+            <span
+              title={playBy.label}
+              className={cn(
+                "inline-flex items-center gap-1 shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                playBy.tone === "late"
+                  ? "border-destructive/50 bg-destructive/10 text-destructive"
+                  : playBy.tone === "soon"
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "border-primary/40 bg-primary/10 text-primary",
+              )}
+            >
+              <CalendarClock className="w-3 h-3" /> {playBy.label}
+            </span>
+          )}
+
           <span className="font-medium text-xs sm:text-sm break-words basis-full sm:basis-auto sm:flex-1 sm:min-w-0">
             {playoffHeading && (
               <span className="block text-[10px] uppercase tracking-wide font-semibold text-primary mb-0.5 break-words">

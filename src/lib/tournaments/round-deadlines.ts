@@ -108,3 +108,27 @@ export function roundDeadlineSummary(list: RoundDeadline[]): string {
   if (!clean.length) return "No deadlines set";
   return clean.map((d) => `${d.label}: ${pretty(d.date)}`).join(" · ");
 }
+
+/**
+ * Nudge shown on an unscheduled fixture: "Book your court by 15 Sep".
+ * Tone escalates as the deadline approaches so players see the urgency.
+ */
+export function playByNudge(
+  deadline: string | null | undefined,
+  today: string,
+): { label: string; short: string; tone: "ok" | "soon" | "late"; daysLeft: number } | null {
+  if (!deadline || !/^\d{4}-\d{2}-\d{2}/.test(deadline)) return null;
+  const date = deadline.slice(0, 10);
+  const ms = new Date(`${date}T00:00:00`).getTime() - new Date(`${today}T00:00:00`).getTime();
+  const daysLeft = Math.round(ms / 86_400_000);
+  const nice = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const tone = daysLeft < 0 ? "late" : daysLeft <= 3 ? "soon" : "ok";
+  const label =
+    tone === "late"
+      ? `Overdue — should have been played by ${nice}`
+      : daysLeft === 0
+        ? "Play by today"
+        : `Book your court by ${nice}`;
+  const short = tone === "late" ? `Overdue ${nice}` : daysLeft === 0 ? "Today" : `By ${nice}`;
+  return { label, short, tone, daysLeft };
+}

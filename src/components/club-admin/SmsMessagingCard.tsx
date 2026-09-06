@@ -96,8 +96,7 @@ export function SmsMessagingCard({ clubId, hideToggle }: { clubId: string; hideT
         skipped automatically.
       </p>
 
-      {(
-        <div className="rounded-md border bg-muted/40 p-3 space-y-2">
+      <div className="rounded-md border bg-muted/40 p-3 space-y-2">
           <p className="text-xs font-medium">What each message costs your club</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="rounded-md bg-background border p-2">
@@ -119,8 +118,7 @@ export function SmsMessagingCard({ clubId, hideToggle }: { clubId: string; hideT
             anything long or formal. You can switch SMS off at any time — your club only pays for
             what it sends.
           </p>
-        </div>
-      )}
+      </div>
 
       <div className={`flex items-center justify-between rounded-md border p-3 ${hideToggle ? "hidden" : ""}`}>
         <div>

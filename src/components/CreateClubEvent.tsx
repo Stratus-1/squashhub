@@ -1883,10 +1883,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   </p>
                 )}
                 <p className="text-[11px] text-muted-foreground">
-                  Courts: {form.court_ids.length} · Lights: {form.light_fee_split === "attendees" ? "Shared" : "Creator pays"}
+                  Courts: {form.court_ids.length} · Lights: {form.light_fee_split === "attendees" ? "Split among attendees" : form.light_fee_split === "none" ? "No light fees" : "Club pays"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Booked under: {adminBypass ? `${club?.name || "Club"} (free)` : (activeMember?.name || "you")}
+                  Courts booked under: {adminBypass ? `${club?.name || "Club"} (courts free — light fees still apply)` : (activeMember?.name || "you")}
                 </p>
 
                 <p className="text-[11px] text-muted-foreground">

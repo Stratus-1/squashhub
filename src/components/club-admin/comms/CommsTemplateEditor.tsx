@@ -52,6 +52,7 @@ export function CommsTemplateEditor({
   const [bodyEditor, setBodyEditor] = useState<any>(null);
   const subjectRef = useRef<HTMLInputElement>(null);
   const whatsappRef = useRef<HTMLTextAreaElement>(null);
+  const smsRef = useRef<HTMLTextAreaElement>(null);
   const inAppRef = useRef<HTMLTextAreaElement>(null);
   const [focusField, setFocusField] = useState<"subject" | "body">("body");
 
@@ -72,7 +73,7 @@ export function CommsTemplateEditor({
       bodyEditor?.chain().focus().insertContent(token).run();
       return;
     }
-    const el = channel === "whatsapp" ? whatsappRef.current : inAppRef.current;
+    const el = channel === "whatsapp" ? whatsappRef.current : channel === "sms" ? smsRef.current : inAppRef.current;
     const s = current.body ?? "";
     const start = el?.selectionStart ?? s.length;
     const end = el?.selectionEnd ?? s.length;
@@ -195,6 +196,21 @@ export function CommsTemplateEditor({
               />
               <p className="text-[11px] text-muted-foreground">
                 The action link is appended on its own line. Keep it short.
+              </p>
+            </TabsContent>
+
+            <TabsContent value="sms" className="mt-3 space-y-2">
+              <Label className="text-xs">SMS message</Label>
+              <Textarea
+                ref={smsRef}
+                rows={7}
+                value={current.body ?? ""}
+                onFocus={() => setFocusField("body")}
+                onChange={(e) => setCurrent({ body: e.target.value })}
+                placeholder="Hi {{first_name}} — short text-only message."
+              />
+              <p className="text-[11px] text-muted-foreground">
+                SMS is plain text only. The action link is appended on its own line.
               </p>
             </TabsContent>
 

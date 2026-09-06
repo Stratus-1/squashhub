@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Users } from "lucide-react";
+import { Pencil, Trash2, Users } from "lucide-react";
 import { validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
 import { pairDisplayName } from "@/lib/leagues/format";
 
@@ -54,6 +54,10 @@ export function DoublesPairsDialog({
   const [teamId, setTeamId] = useState<string>("");
   const [p1, setP1] = useState<string>("");
   const [p2, setP2] = useState<string>("");
+  // Pair currently being edited (replace one player) + the replacement choice.
+  const [editPairId, setEditPairId] = useState<string | null>(null);
+  const [editSlot, setEditSlot] = useState<"one" | "two">("one");
+  const [editPlayer, setEditPlayer] = useState<string>("");
 
   const { data: teams = [], isLoading: teamsLoading, error: teamsError } = useQuery({
     queryKey: ["doubles-pairs-teams", associationId, seasonId],
@@ -207,6 +211,42 @@ export function DoublesPairsDialog({
 
     onSuccess: () => {
       toast.success("Pair removed");
+      setEditPairId(null);
+      qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, activeSeasonId] });
+      qc.invalidateQueries({ queryKey: ["league-team-pairs-summary", activeTeam] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Replace one player of an existing pair (e.g. injury). Past results keep
+  // the frozen player snapshot — only future fixture selection uses the new
+  // pairing.
+  const replacePlayer = useMutation({
+    mutationFn: async () => {
+      const pair = pairs.find((p: any) => p.id === editPairId);
+      if (!pair || !editPlayer) throw new Error("Choose the replacement player.");
+      const one = editSlot === "one" ? editPlayer : pair.player_one_member_id;
+      const two = editSlot === "two" ? editPlayer : pair.player_two_member_id;
+      if (one === two) throw new Error("A pair must be two different players.");
+      if (pairedIds.has(one) && one !== pair.player_one_member_id && one !== pair.player_two_member_id)
+        throw new Error(`${nameOf(one)} is already in another pair for this team.`);
+      if (pairedIds.has(two) && two !== pair.player_one_member_id && two !== pair.player_two_member_id)
+        throw new Error(`${nameOf(two)} is already in another pair for this team.`);
+      const genders = [one, two].map((id) => roster.find((r) => r.id === id)?.gender);
+      const check = validatePairComposition(genders, category, { requireMixedPair });
+      if (!check.valid) throw new Error(check.reason!);
+      const { data: updated, error } = await (supabase as any)
+        .from("league_team_pairs")
+        .update({ player_one_member_id: one, player_two_member_id: two })
+        .eq("id", pair.id)
+        .select("id");
+      if (error) throw error;
+      if (!updated || updated.length === 0) throw new Error("Pair could not be updated — your account may not have access to this club's pairs.");
+    },
+    onSuccess: () => {
+      toast.success("Pair updated");
+      setEditPairId(null);
+      setEditPlayer("");
       qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, activeSeasonId] });
       qc.invalidateQueries({ queryKey: ["league-team-pairs-summary", activeTeam] });
     },
@@ -313,30 +353,89 @@ export function DoublesPairsDialog({
           </Button>
 
           <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-            {pairs.map((pair, i) => (
-              <div
-                key={pair.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-border p-2"
-              >
-                <div className="min-w-0">
-                  <Badge variant="outline" className="h-5 text-[10px] mr-2">Pair {i + 1}</Badge>
-                  <span className="text-sm">
-                    {pairDisplayName(
-                      nameOf(pair.player_one_member_id),
-                      nameOf(pair.player_two_member_id),
-                    )}
-                  </span>
+            {pairs.map((pair, i) => {
+              const editing = editPairId === pair.id;
+              // Replacement candidates: anyone not already paired, plus the two
+              // current players of this pair (so the list is never empty).
+              const candidates = roster.filter(
+                (r) =>
+                  !pairedIds.has(r.id) ||
+                  r.id === pair.player_one_member_id ||
+                  r.id === pair.player_two_member_id,
+              );
+              return (
+                <div key={pair.id} className="rounded-md border border-border p-2 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <Badge variant="outline" className="h-5 text-[10px] mr-2">Pair {i + 1}</Badge>
+                      <span className="text-sm">
+                        {pairDisplayName(
+                          nameOf(pair.player_one_member_id),
+                          nameOf(pair.player_two_member_id),
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditPairId(editing ? null : pair.id);
+                          setEditSlot("one");
+                          setEditPlayer("");
+                        }}
+                        aria-label="Replace a player in this pair"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => remove.mutate(pair.id)}
+                        aria-label="Remove pair"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  {editing && (
+                    <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/40 p-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Replace</Label>
+                        <Select value={editSlot} onValueChange={(v) => setEditSlot(v as "one" | "two")}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="one">{nameOf(pair.player_one_member_id)}</SelectItem>
+                            <SelectItem value="two">{nameOf(pair.player_two_member_id)}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">With</Label>
+                        <Select value={editPlayer} onValueChange={setEditPlayer}>
+                          <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
+                          <SelectContent>
+                            {candidates.map((r) => (
+                              <SelectItem key={r.id} value={r.id}>
+                                {r.name}{r.inTeam ? "" : " · not in team"}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="col-span-2"
+                        disabled={!editPlayer || replacePlayer.isPending}
+                        onClick={() => replacePlayer.mutate()}
+                      >
+                        {replacePlayer.isPending ? "Saving..." : "Save replacement"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => remove.mutate(pair.id)}
-                  aria-label="Remove pair"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
             {!pairs.length && (
               <p className="text-xs text-muted-foreground">No pairs yet for this team.</p>
             )}

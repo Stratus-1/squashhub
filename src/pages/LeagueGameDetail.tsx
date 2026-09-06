@@ -2726,41 +2726,52 @@ export default function LeagueGameDetail() {
                   <Label className="text-[11px] text-muted-foreground">
                     Scoring{scoringLocked && " · locked"}
                   </Label>
-                  <RadioGroup
-                    value={scoringLocked ? ruleScoring! : scoringFormat}
-                    onValueChange={(v) => { if (!scoringLocked) setScoringFormat(v as "par11" | "par15"); }}
-                    className={`flex gap-3 ${scoringLocked ? "opacity-70 pointer-events-none" : ""}`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="par11" id="par11" disabled={scoringLocked} />
-                      <Label htmlFor="par11" className="text-xs font-normal cursor-pointer">PAR 11</Label>
+                  {scoringLocked ? (
+                    <div className="text-sm font-semibold text-foreground">
+                      {ruleScoring === "par11" ? "PAR 11" : "PAR 15"}
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="par15" id="par15" disabled={scoringLocked} />
-                      <Label htmlFor="par15" className="text-xs font-normal cursor-pointer">PAR 15</Label>
-                    </div>
-                  </RadioGroup>
+                  ) : (
+                    <RadioGroup
+                      value={scoringFormat}
+                      onValueChange={(v) => setScoringFormat(v as "par11" | "par15")}
+                      className="flex gap-3"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="par11" id="par11" />
+                        <Label htmlFor="par11" className="text-xs font-normal cursor-pointer">PAR 11</Label>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="par15" id="par15" />
+                        <Label htmlFor="par15" className="text-xs font-normal cursor-pointer">PAR 15</Label>
+                      </div>
+                    </RadioGroup>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[11px] text-muted-foreground">
                     Best of{bestOfLocked && " · locked"}
                   </Label>
-                  <RadioGroup
-                    value={String(bestOfLocked ? ruleBestOf : bestOf)}
-                    onValueChange={(v) => { if (!bestOfLocked) setBestOf(Number(v) as 3 | 5); }}
-                    className={`flex gap-3 ${bestOfLocked ? "opacity-70 pointer-events-none" : ""}`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="3" id="bo3" disabled={bestOfLocked} />
-                      <Label htmlFor="bo3" className="text-xs font-normal cursor-pointer">3</Label>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="5" id="bo5" disabled={bestOfLocked} />
-                      <Label htmlFor="bo5" className="text-xs font-normal cursor-pointer">5</Label>
-                    </div>
-                  </RadioGroup>
+                  {bestOfLocked ? (
+                    <div className="text-sm font-semibold text-foreground">Best of {ruleBestOf}</div>
+                  ) : (
+                    <RadioGroup
+                      value={String(bestOf)}
+                      onValueChange={(v) => setBestOf(Number(v) as 3 | 5)}
+                      className="flex gap-3"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="3" id="bo3" />
+                        <Label htmlFor="bo3" className="text-xs font-normal cursor-pointer">3</Label>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <RadioGroupItem value="5" id="bo5" />
+                        <Label htmlFor="bo5" className="text-xs font-normal cursor-pointer">5</Label>
+                      </div>
+                    </RadioGroup>
+                  )}
                 </div>
               </div>
+
             </div>
           );
         })()}

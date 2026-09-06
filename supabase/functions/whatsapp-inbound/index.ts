@@ -234,6 +234,18 @@ Deno.serve(async (req) => {
           );
         applied = !error;
         if (error) console.error("event rsvp update failed", error);
+        if (applied) {
+          // Close the in-app invite prompt so it doesn't pop up again after
+          // the member has already answered via WhatsApp.
+          const { error: notifErr } = await admin
+            .from("notifications")
+            .update({ read: true })
+            .eq("club_member_id", interaction.member_id)
+            .eq("type", "booking")
+            .eq("read", false)
+            .filter("data->>event_id", "eq", interaction.target_id);
+          if (notifErr) console.error("event invite notification close failed", notifErr);
+        }
         reply = answer === "yes" ? "You're in — see you there!" : "No problem, we've marked you as unavailable.";
       } else if (interaction.kind === "champ_entry") {
         if (answer === "yes") {

@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Info } from "lucide-react";
 import { CalendarRange } from "lucide-react";
 import { LeagueSeasonsDialog } from "./LeagueSeasonsDialog";
+import { LeagueSeasonPanel } from "./LeagueSeasonPanel";
 import {
   CLUB_LEAGUE,
   CLUB_LEAGUES,
@@ -59,7 +60,6 @@ import AssociationPenaltiesTab from "@/components/super-admin/league/Association
 import { Settings2, Send } from "lucide-react";
 import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
 import { ExportTeamsToNsaDialog } from "@/components/club-admin/ExportTeamsToNsaDialog";
-import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -217,7 +217,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     teamLeagueIds: string[];
     reservesLeagueId: string | null;
   }>(null);
-  const [step, setStep] = useState<string>("leagues");
   const [teamsTab, setTeamsTab] = useState<string | null>(null);
   const [createTeamsAssoc, setCreateTeamsAssoc] = useState<LeagueAssociation | null>(null);
   const [createTeamsYear, setCreateTeamsYear] = useState<number | null>(null);
@@ -386,124 +385,147 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       return numA - numB;
     });
 
-  const clubLeagues = associations.filter((a: any) => isClubLeagueScope(a.scope));
-  const hasSystemAssocs = associations.some((a: any) => !isClubLeagueScope(a.scope));
 
-  // Mirror of the Step 2 tab logic (system associations first, then "Club
-  // Leagues") so the footer nav can tell whether the active teams tab belongs
-  // to a System League — for which the association, not the club, creates
-  // rounds & fixtures (Step 3 doesn't apply).
-  const systemAssocsNav = associations.filter((a: any) => !isClubLeagueScope(a.scope));
-  const clubAssocsNav = associations.filter((a: any) => isClubLeagueScope(a.scope));
-  const teamsTabIds = [
-    ...systemAssocsNav.map((a: any) => a.id as string),
-    ...(clubAssocsNav.length > 0 || systemAssocsNav.length === 0 ? ["club"] : []),
-  ];
-  const activeTeamsTabId = (teamsTab && teamsTabIds.includes(teamsTab)) ? teamsTab : teamsTabIds[0];
-  const activeTeamsIsSystem = step === "teams" && !!activeTeamsTabId && systemAssocsNav.some((a: any) => a.id === activeTeamsTabId);
-  const activeTeamsAssocName = systemAssocsNav.find((a: any) => a.id === activeTeamsTabId)?.abbreviation
-    ?? systemAssocsNav.find((a: any) => a.id === activeTeamsTabId)?.name;
+  // One tab per league — System Leagues first, then the club's own leagues.
+  const systemAssocs = associations.filter((a: any) => !isClubLeagueScope(a.scope));
+  const clubAssocs = associations.filter((a: any) => isClubLeagueScope(a.scope));
+  const tabAssocs: any[] = [...systemAssocs, ...clubAssocs];
+  const activeAssoc = tabAssocs.find((a: any) => a.id === teamsTab) ?? tabAssocs[0] ?? null;
 
-  const steps: SetupStep[] = CLUB_LEAGUE_STEPS.map((s) => ({
-    id: s.id,
-    label:
-      s.id === "leagues" && hasSystemAssocs
-        ? "Select / Join League"
-        : s.label,
-    description:
-      s.id === "leagues" && hasSystemAssocs
-        ? "Step one — select a System League your club wants to join, or create your own Club League, then choose format, category and season settings."
-        : s.description,
-    complete:
-      s.id === "leagues"
-        ? associations.length > 0
-        : s.id === "teams"
-          ? leagues.length > 0
-          : false,
-  }));
-
+  const columnPropsFor = (title: string, gender: "men" | "ladies" | "mixed" | "open", list: League[]) => ({
+    title,
+    gender,
+    leagues: list,
+    associations,
+    members,
+    sortLeagues,
+    onDelete: handleDeleteLeague,
+    onDeleteGroup: handleDeleteGroup,
+    onAllocate: (assocId: string | null, l: League[]) => setAllocateGroup({ associationId: assocId, gender, leagues: l }),
+    onManagePairs: (association: any) => setPairsAssoc(association),
+    onAddReserves: (assocId: string | null, l: League[]) => setReservesGroup({ associationId: assocId, gender, leagues: l }),
+    onEditSetup: (assocId: string, l: League[]) => openEditSetup(assocId, gender, l),
+  });
 
   return (
-    <div className="space-y-6 mt-4">
-      <SetupSteps steps={steps} value={step} onChange={setStep} />
-
-      {/* Step 1 — Create League */}
-      {step === "leagues" && (
-      <div>
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <div>
-            <h3 className="font-semibold">Your Leagues</h3>
-            <p className="text-xs text-muted-foreground">{SELECT_OR_CREATE_COPY} Each league (e.g. Singles, Doubles) has its own format, teams, rounds and fixtures. Fee settings are managed in the Fees tab.</p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <AssociationDialog
-              clubId={clubId}
-              open={addAssocOpen}
-              onOpenChange={setAddAssocOpen}
-              defaultMode={associations.length > 0 ? "create" : "select"}
-            />
-          </div>
+    <div className="space-y-4 mt-4">
+      {/* Header — create a new Club League / join a System League */}
+      <div className="flex items-start justify-between gap-2 flex-wrap">
+        <div className="min-w-0">
+          <h3 className="font-semibold">Your Leagues</h3>
+          <p className="text-xs text-muted-foreground max-w-2xl">
+            {SELECT_OR_CREATE_COPY} Each league has its own tab below with its seasons, teams and fixtures.
+          </p>
         </div>
-        {(() => {
-          const renderCard = (a: any) => {
-            const isClubLeague = isClubLeagueScope(a.scope);
-            return (
-            <Card key={a.id} className="p-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-              <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto lg:flex-1 lg:basis-[220px] lg:min-w-[200px]">
-                <p className="font-medium break-normal">{a.name} {a.abbreviation ? `(${a.abbreviation})` : ""}</p>
+        <AssociationDialog
+          clubId={clubId}
+          open={addAssocOpen}
+          onOpenChange={setAddAssocOpen}
+          defaultMode={associations.length > 0 ? "create" : "select"}
+        />
+      </div>
 
-                {a.platform_association_id && (
-                  <Badge variant="secondary" className="text-[10px] h-5 flex-shrink-0">Platform</Badge>
-                )}
+      {tabAssocs.length === 0 && (
+        <Card className="p-6 text-center text-sm text-muted-foreground">
+          No leagues yet — use <strong>Create New League</strong> to join a {SYSTEM_LEAGUE} or create your own {CLUB_LEAGUE}.
+        </Card>
+      )}
+
+      {/* League tabs */}
+      {tabAssocs.length > 0 && (
+        <div className="flex items-center gap-1 flex-wrap border-b pb-2">
+          {tabAssocs.map((a: any) => {
+            const isClub = isClubLeagueScope(a.scope);
+            const isActive = activeAssoc?.id === a.id;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setTeamsTab(a.id)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted"
+                }`}
+              >
+                <span className="truncate max-w-[220px]">{a.abbreviation || a.name}</span>
+                <span className={`text-[9px] uppercase tracking-wide ${isActive ? "opacity-80" : "opacity-70"}`}>
+                  {isClub ? "Club" : "System"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {activeAssoc && (() => {
+        const a = activeAssoc;
+        const isClub = isClubLeagueScope(a.scope);
+        const firstClubAssoc = clubAssocs[0]?.id === a.id;
+        const inScope = (l: any) =>
+          l.association_id === a.id || (isClub && firstClubAssoc && !l.association_id);
+
+        const men = menLeagues.filter(inScope);
+        const ladies = ladiesLeagues.filter(inScope);
+        const mixed = mixedLeagues.filter(inScope);
+        const open = openLeagues.filter(inScope);
+        const other = otherLeagues.filter(inScope);
+        const scoped = [...men, ...ladies, ...mixed, ...open, ...other];
+        const filled = [men, ladies, mixed, open].filter((l) => l.length > 0).length;
+        const cols = filled <= 1 ? "xl:grid-cols-1" : filled === 2 ? "xl:grid-cols-2" : filled === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4";
+        const mdCols = filled <= 1 ? "md:grid-cols-1" : "md:grid-cols-2";
+        const name = a.abbreviation || a.name;
+
+        return (
+          <div className="space-y-4">
+            {/* League header + actions */}
+            <Card className="p-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <p className="font-medium break-normal">{a.name}{a.abbreviation ? ` (${a.abbreviation})` : ""}</p>
                 <Badge
-                  variant={isClubLeague ? "outline" : "default"}
-                  className={`text-[10px] h-5 flex-shrink-0 ${isClubLeague ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}
+                  variant={isClub ? "outline" : "default"}
+                  className={`text-[10px] h-5 ${isClub ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}
                 >
                   {leagueKindLabel(a.scope)}
                 </Badge>
-
                 {(a as any).discipline && (a as any).discipline !== "singles" && (
-                  <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0">{DISCIPLINE_LABELS[(a as any).discipline as CompetitionDiscipline] ?? (a as any).discipline}</Badge>
+                  <Badge variant="outline" className="text-[10px] h-5">
+                    {DISCIPLINE_LABELS[(a as any).discipline as CompetitionDiscipline] ?? (a as any).discipline}
+                  </Badge>
                 )}
                 {(a as any).category && (
-                  <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0">{CATEGORY_LABELS[(a as any).category as CompetitionCategory] ?? (a as any).category}</Badge>
+                  <Badge variant="outline" className="text-[10px] h-5">
+                    {CATEGORY_LABELS[(a as any).category as CompetitionCategory] ?? (a as any).category}
+                  </Badge>
                 )}
                 {a.external_source === "nsa" && (
-                  <Badge variant="outline" className="text-[10px] h-5 flex-shrink-0 border-emerald-300 text-emerald-700">NSA Live</Badge>
+                  <Badge variant="outline" className="text-[10px] h-5 border-emerald-300 text-emerald-700">NSA Live</Badge>
                 )}
               </div>
-              <div className="flex items-center gap-1 flex-wrap w-full lg:w-auto lg:justify-end min-w-0">
+              <div className="flex items-center gap-1 flex-wrap lg:justify-end min-w-0">
                 <AssocFillUpToggle assoc={a} clubDefault={clubDefaultFillUp} />
-                {(() => {
-                  const hasTeams = leagues.some((l: any) => l.association_id === a.id);
-                  return (
-                    <Button size="sm" variant={hasTeams ? "outline" : "default"} onClick={() => setStep("teams")}>
-                      <Users className="w-4 h-4 mr-1" />{hasTeams ? "Edit teams" : "Create teams"}
-                    </Button>
-                  );
-                })()}
-                {a.scope === "internal" && (
-                  <Button asChild size="sm" variant="outline">
+                {isClub ? (
+                  <Button asChild size="sm" disabled={scoped.length === 0}>
                     <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>
-                      <CalendarDays className="w-4 h-4 mr-1" />Create Rounds & Fixtures
+                      <CalendarDays className="w-4 h-4 mr-1" />Rounds & Fixtures
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button asChild size="sm" variant="outline">
+                    <Link to={`/league-games?assoc=${a.id}`}>
+                      <CalendarDays className="w-4 h-4 mr-1" />View fixtures
                     </Link>
                   </Button>
                 )}
-
-                <Button size="sm" variant="outline" onClick={() => setSeasonsAssoc(a)}>
-                  <CalendarRange className="w-4 h-4 mr-1" />Seasons
-                </Button>
                 {((a as any).discipline === "doubles" || (a as any).discipline === "hybrid") && (
                   <Button size="sm" variant="outline" onClick={() => setPairsAssoc(a)}>
                     <Users className="w-4 h-4 mr-1" />Pairs
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={() => setRulesAssoc(a)}>
-
                   <Settings2 className="w-4 h-4 mr-1" />Rules & Penalties
                 </Button>
-                {!isClubLeague && (
+                {!isClub && (
                   <>
                     <TooltipProvider>
                       <Tooltip>
@@ -513,7 +535,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-xs">Reserve courts for every home fixture {a.abbreviation || a.name} has published this season.</p>
+                          <p className="text-xs">Reserve courts for every home fixture {name} has published this season.</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -521,11 +543,11 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button size="sm" variant="outline" onClick={() => setExportAssoc(a)}>
-                            <Send className="w-4 h-4 mr-1" /><span className="truncate max-w-[180px]">Submit teams to {a.abbreviation || a.name}</span>
+                            <Send className="w-4 h-4 mr-1" /><span className="truncate max-w-[180px]">Submit teams to {name}</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-xs">Send the final team roster to {a.abbreviation || a.name}. Allocate all players first — new members will be affiliated and numbered automatically.</p>
+                          <p className="text-xs">Send the final roster to {name}. Allocate all players first — new members are affiliated and numbered automatically.</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -537,293 +559,68 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 </Button>
               </div>
             </Card>
-            );
-          };
 
-          const systemAssocs = associations.filter((a: any) => !isClubLeagueScope(a.scope));
-          const clubAssocs = associations.filter((a: any) => isClubLeagueScope(a.scope));
-
-          return (
-            <div className="space-y-5">
-              <section className="space-y-2">
-                <div className="flex items-baseline gap-2 border-b pb-1">
-                  <h4 className="text-sm font-semibold">{SYSTEM_LEAGUES}</h4>
-                  <span className="text-[11px] text-muted-foreground">
-                    Run by the association — fixtures, rules and rosters come from them.
-                  </span>
-                </div>
-                {systemAssocs.map(renderCard)}
-                {systemAssocs.length === 0 && (
-                  <p className="text-xs text-muted-foreground py-2">
-                    Your club has not joined a {SYSTEM_LEAGUE} yet.
-                  </p>
-                )}
-              </section>
-
-              <section className="space-y-2">
-                <div className="flex items-baseline gap-2 border-b pb-1">
-                  <h4 className="text-sm font-semibold">{CLUB_LEAGUES}</h4>
-                  <span className="text-[11px] text-muted-foreground">
-                    Your own leagues — you set the format, teams and fixtures.
-                  </span>
-                </div>
-                {clubAssocs.map(renderCard)}
-                {clubAssocs.length === 0 && (
-                  <p className="text-xs text-muted-foreground py-2">No club leagues created yet.</p>
-                )}
-              </section>
-            </div>
-          );
-        })()}
-
-        <FillTopDownSettings clubId={clubId} />
-      </div>
-      )}
-
-      {/* Step 2 — Create League Teams (one tab per league) */}
-      {step === "teams" && (() => {
-        const systemAssocs = associations.filter((a: any) => !isClubLeagueScope(a.scope));
-        const clubAssocs = associations.filter((a: any) => isClubLeagueScope(a.scope));
-        const tabs: { id: string; label: string; assoc: any | null }[] = [
-          ...systemAssocs.map((a: any) => ({ id: a.id, label: a.abbreviation || a.name, assoc: a })),
-          ...(clubAssocs.length > 0 || systemAssocs.length === 0
-            ? [{ id: "club", label: CLUB_LEAGUES, assoc: null }]
-            : []),
-        ];
-        const active = tabs.find((t) => t.id === teamsTab) ?? tabs[0];
-        if (!active) {
-          return (
-            <div>
-              <p className="text-sm text-muted-foreground py-4">Add a league in Step 1 first.</p>
-              <SetupStepNav steps={steps} value={step} onChange={setStep} />
-            </div>
-          );
-        }
-        const inScope = (l: any) =>
-          active.assoc
-            ? l.association_id === active.assoc.id
-            : !l.association_id || clubAssocs.some((c: any) => c.id === l.association_id);
-
-        const men = menLeagues.filter(inScope);
-        const ladies = ladiesLeagues.filter(inScope);
-        const mixed = mixedLeagues.filter(inScope);
-        const open = openLeagues.filter(inScope);
-        const other = otherLeagues.filter(inScope);
-        const filled = [men, ladies, mixed, open].filter((l) => l.length > 0).length;
-        const cols = filled <= 1 ? "xl:grid-cols-1" : filled === 2 ? "xl:grid-cols-2" : filled === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4";
-        const mdCols = filled <= 1 ? "md:grid-cols-1" : "md:grid-cols-2";
-        const columnProps = (title: string, gender: "men" | "ladies" | "mixed" | "open", list: League[]) => ({
-          title,
-          gender,
-          leagues: list,
-          associations,
-          members,
-          sortLeagues,
-          onDelete: handleDeleteLeague,
-          onDeleteGroup: handleDeleteGroup,
-          onAllocate: (assocId: string | null, l: League[]) => setAllocateGroup({ associationId: assocId, gender, leagues: l }),
-          onManagePairs: (association: any) => setPairsAssoc(association),
-          onAddReserves: (assocId: string | null, l: League[]) => setReservesGroup({ associationId: assocId, gender, leagues: l }),
-          onEditSetup: (assocId: string, l: League[]) => openEditSetup(assocId, gender, l),
-        });
-
-        return (
-        <div>
-          {/* One tab per regional/system league, plus a single tab for club leagues */}
-          {tabs.length > 1 && (
-            <div className="flex items-center gap-1 flex-wrap mb-3">
-              {tabs.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTeamsTab(t.id)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
-                    active.id === t.id
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-start justify-between mb-3 gap-2 flex-wrap">
-            <div className="min-w-0">
-              <h3 className="font-semibold break-words">
-                {active.assoc ? `${active.assoc.name} teams` : `${CLUB_LEAGUES} teams`}
-              </h3>
-              <p className="text-xs text-muted-foreground max-w-2xl">
-                {active.assoc
-                  ? `Teams you create here are registered with ${active.assoc.abbreviation || active.assoc.name} and their season fees are calculated automatically. ${active.assoc.abbreviation || active.assoc.name} then creates the rounds and fixtures for the new season.`
-                  : "Club leagues stay inside your club — you create the teams here and schedule the rounds and fixtures in Step 3."}
-              </p>
-            </div>
-            <div className="flex gap-2 flex-wrap shrink-0">
-              <Button size="sm" variant="outline" onClick={() => setSeasonsAssoc(active.assoc ?? clubAssocs[0] ?? null)} disabled={!active.assoc && clubAssocs.length === 0}>
-                <CalendarRange className="w-4 h-4 mr-1" />Seasons
-              </Button>
-              {active.assoc ? (
-                <Button size="sm" onClick={() => { setCreateTeamsAssoc(active.assoc); setAddLeagueOpen(true); }}>
-                  <Plus className="w-4 h-4 mr-1" />Create teams for new season
-                </Button>
-              ) : (
-                <Button size="sm" onClick={() => setStepByStepOpen(true)}>
-                  <Plus className="w-4 h-4 mr-1" />Create teams for new season
-                </Button>
-              )}
-              {active.assoc && !isClubLeagueScope(active.assoc.scope) && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button size="sm" variant="outline" onClick={() => setExportAssoc(active.assoc)}>
-                        <Send className="w-4 h-4 mr-1" />
-                        <span className="truncate max-w-[200px]">Submit new teams or added players to {active.assoc.abbreviation || active.assoc.name}</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs">
-                      <p className="text-xs">Send the latest team roster and any newly allocated players to {active.assoc.abbreviation || active.assoc.name}. Make sure all players are allocated first.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-          </div>
-
-          {active.assoc && !isClubLeagueScope(active.assoc.scope) && (
-            <AssociationSeasonPrompt
-              association={active.assoc}
-              teamYears={[...men, ...ladies, ...mixed, ...open, ...other].map((l: any) => l.season_year)}
-              onCreate={(y) => { setCreateTeamsAssoc(active.assoc); setCreateTeamsYear(y); setAddLeagueOpen(true); }}
+            {/* Seasons for this league */}
+            <LeagueSeasonPanel
+              association={a}
+              teamYears={scoped.map((l: any) => l.season_year)}
+              onCreateTeams={(y) => {
+                if (isClub) {
+                  setStepByStepOpen(true);
+                } else {
+                  setCreateTeamsAssoc(a);
+                  setCreateTeamsYear(y);
+                  setAddLeagueOpen(true);
+                }
+              }}
             />
-          )}
 
-          {active.assoc && !isClubLeagueScope(active.assoc.scope) && !teamsTipDismissed[active.assoc.id] && (
-            <Alert className="mb-4 relative pr-10">
-              <Info className="h-4 w-4" />
-              <AlertTitle className="text-sm">Next: allocate players and submit your teams</AlertTitle>
-              <AlertDescription className="text-xs">
-                After creating teams, use <strong>Allocate players</strong> (or <strong>Manage pairs</strong> for doubles) to place members into each team.
-                New members will automatically be affiliated with {active.assoc.abbreviation || active.assoc.name}.
-                When you're ready, press <strong>Submit teams to {active.assoc.abbreviation || active.assoc.name}</strong> in Step 1 to send the final roster.
-              </AlertDescription>
-              <button
-                type="button"
-                aria-label="Dismiss tip"
-                className="absolute right-2 top-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+            {!isClub && (
+              <AssociationSeasonPrompt
+                association={a}
+                teamYears={scoped.map((l: any) => l.season_year)}
+                onCreate={(y) => { setCreateTeamsAssoc(a); setCreateTeamsYear(y); setAddLeagueOpen(true); }}
+              />
+            )}
+
+            {/* Teams */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h4 className="text-sm font-semibold">Teams</h4>
+              <Button
+                size="sm"
                 onClick={() => {
-                  const next = { ...teamsTipDismissed, [active.assoc!.id]: true };
-                  setTeamsTipDismissed(next);
-                  try { localStorage.setItem("sh.league-teams-tip-dismissed", JSON.stringify(next)); } catch {}
+                  if (isClub) setStepByStepOpen(true);
+                  else { setCreateTeamsAssoc(a); setAddLeagueOpen(true); }
                 }}
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </Alert>
-          )}
+                <Plus className="w-4 h-4 mr-1" />Create teams
+              </Button>
+            </div>
 
-          <div className={`grid grid-cols-1 ${mdCols} ${cols} gap-4`}>
-            {men.length > 0 && <GenderColumn {...columnProps("Men's", "men", men)} />}
-            {ladies.length > 0 && <GenderColumn {...columnProps("Ladies", "ladies", ladies)} />}
-            {mixed.length > 0 && <GenderColumn {...columnProps("Mixed", "mixed", mixed)} />}
-            {open.length > 0 && <GenderColumn {...columnProps("Open", "open", open)} />}
-            {filled === 0 && (
-              <p className="text-xs text-muted-foreground">
-                No teams yet for {active.assoc ? active.assoc.name : CLUB_LEAGUES} — use “Create teams for new season”.
-              </p>
+            <div className={`grid grid-cols-1 ${mdCols} ${cols} gap-4`}>
+              {men.length > 0 && <GenderColumn {...columnPropsFor("Men's", "men", men)} />}
+              {ladies.length > 0 && <GenderColumn {...columnPropsFor("Ladies", "ladies", ladies)} />}
+              {mixed.length > 0 && <GenderColumn {...columnPropsFor("Mixed", "mixed", mixed)} />}
+              {open.length > 0 && <GenderColumn {...columnPropsFor("Open", "open", open)} />}
+              {filled === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No teams yet for {a.name} — use “Create teams” above, or create them for a season listed there.
+                </p>
+              )}
+            </div>
+
+            {other.length > 0 && (
+              <div className="mt-2">
+                <GenderColumn {...columnPropsFor("Other", "mixed", other)} />
+              </div>
             )}
           </div>
-
-          {other.length > 0 && (
-            <div className="mt-4">
-              <GenderColumn {...columnProps("Other", "mixed", other)} />
-            </div>
-          )}
-
-          <SeasonArchiveCard clubId={clubId} />
-        </div>
         );
       })()}
 
+      <SeasonArchiveCard clubId={clubId} />
+      <FillTopDownSettings clubId={clubId} />
 
-      {/* Step 3 — Create Rounds & Fixtures */}
-      {step === "fixtures" && (
-        <div>
-          <div className="mb-3">
-            <h3 className="font-semibold">Create Rounds & Fixtures</h3>
-            <p className="text-xs text-muted-foreground">
-              Rounds and fixtures are created per league and belong to that league's current season.
-              {CLUB_LEAGUES} are scheduled here; {SYSTEM_LEAGUES} publish their own fixtures centrally.
-            </p>
-          </div>
-          <div className="space-y-2">
-            {associations.map((a: any) => {
-              const teamCount = leagues.filter((l: any) => l.association_id === a.id).length;
-              const isClub = isClubLeagueScope(a.scope);
-              return (
-                <Card key={a.id} className="p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
-                    <p className="font-medium break-words min-w-0">{a.name}</p>
-                    <Badge
-                      variant={isClub ? "outline" : "default"}
-                      className={`text-[10px] h-5 ${isClub ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}
-                    >
-                      {leagueKindLabel(a.scope)}
-                    </Badge>
-                    {(a as any).discipline && (a as any).discipline !== "singles" && (
-                      <Badge variant="outline" className="text-[10px] h-5">
-                        {DISCIPLINE_LABELS[(a as any).discipline as CompetitionDiscipline] ?? (a as any).discipline}
-                      </Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {teamCount} team{teamCount === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
-                    <Button size="sm" variant="outline" onClick={() => setSeasonsAssoc(a)}>
-                      <CalendarRange className="w-4 h-4 mr-1" />Seasons
-                    </Button>
-                    {isClub ? (
-                      <Button asChild size="sm" disabled={teamCount === 0}>
-                        <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>
-                          <CalendarDays className="w-4 h-4 mr-1" />Create Rounds & Fixtures
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button asChild size="sm" variant="outline">
-                        <Link to={`/league-games?assoc=${a.id}`}>
-                          <CalendarDays className="w-4 h-4 mr-1" />View fixtures
-                        </Link>
-                      </Button>
-                    )}
-                  </div>
-                </Card>
-              );
-            })}
-            {associations.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Create a league in Step 1 first.
-              </p>
-            )}
-            {clubLeagues.length === 0 && associations.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                You have no {CLUB_LEAGUES} yet — only {SYSTEM_LEAGUES}, whose fixtures are published centrally.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      <SetupStepNav
-        steps={steps}
-        value={step}
-        onChange={setStep}
-        nextDisabled={activeTeamsIsSystem}
-        nextHint={activeTeamsIsSystem
-          ? `Rounds & fixtures for ${activeTeamsAssocName ?? "this System League"} are created and published by the association — no Step 3 needed here.`
-          : undefined}
-      />
 
 
       {/* Allocate Players Dialog (per association+gender group) */}
@@ -905,7 +702,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           seasonId={pairsAssoc.current_season_id ?? null}
           category={(pairsAssoc.category as any) ?? null}
           requireMixedPair={!!pairsAssoc.require_mixed_pair}
-          onCreateTeams={() => setStep("teams")}
+          onCreateTeams={() => setPairsAssoc(null)}
         />
       )}
 

@@ -73,7 +73,7 @@ export function CommsTemplateEditor({
       bodyEditor?.chain().focus().insertContent(token).run();
       return;
     }
-    const el = channel === "whatsapp" ? whatsappRef.current : inAppRef.current;
+    const el = channel === "whatsapp" ? whatsappRef.current : channel === "sms" ? smsRef.current : inAppRef.current;
     const s = current.body ?? "";
     const start = el?.selectionStart ?? s.length;
     const end = el?.selectionEnd ?? s.length;

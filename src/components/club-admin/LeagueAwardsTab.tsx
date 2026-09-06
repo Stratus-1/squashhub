@@ -121,7 +121,7 @@ export function LeagueAwardsTab({ clubId }: Props) {
   const computed = useMemo(() => {
     if (!data) return null;
     const rounds = (data.rounds as AwardRoundMeta[])
-      .filter((r) => leagueLabelFromRoundName(r.name) === activeLabel)
+      .filter((r) => isAllLeagues || leagueLabelFromRoundName(r.name) === activeLabel)
       .filter((r) => !pickedRoundIds || pickedRoundIds.includes(r.id));
     const roundMap = new Map(rounds.map((r) => [r.id, r]));
     const fixtures = (data.fixtures as AwardFixtureMeta[]).filter((f) => f.round_id && roundMap.has(f.round_id));
@@ -147,7 +147,7 @@ export function LeagueAwardsTab({ clubId }: Props) {
     const review = computeLeagueReview(matches, fixtureMap, rounds.length);
 
     return { rounds, players, ranked, improvement, standings, positions, consistency, review, teamNames, matchCount: matches.length };
-  }, [data, activeLabel, pickedRoundIds]);
+  }, [data, activeLabel, pickedRoundIds, isAllLeagues]);
 
   const top = <T,>(list: T[], pick: (t: T) => number, minPlayed?: (t: T) => boolean): T[] => {
     const filtered = minPlayed ? list.filter(minPlayed) : list;

@@ -36,10 +36,16 @@ type Pending =
  * its current one active forever. Archived seasons stay fully intact and are
  * browsable here; they are only hidden from active workflows.
  */
-export function SeasonArchiveCard({ clubId }: { clubId: string }) {
+export function SeasonArchiveCard({ clubId, associationId }: { clubId: string; associationId?: string }) {
   const qc = useQueryClient();
   // includeArchived — this is the historical view, it must see everything.
-  const { data: allLeagues = [] } = useLeagues(clubId, { includeArchived: true });
+  const { data: fetched = [] } = useLeagues(clubId, { includeArchived: true });
+  // When rendered inside a per-league tab, only that association's seasons
+  // may show here — otherwise one tab lists every league's teams.
+  const allLeagues = useMemo(
+    () => (associationId ? fetched.filter((l: any) => l.association_id === associationId) : fetched),
+    [fetched, associationId],
+  );
   const [showArchived, setShowArchived] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [busy, setBusy] = useState(false);
@@ -62,7 +68,7 @@ export function SeasonArchiveCard({ clubId }: { clubId: string }) {
     setBusy(true);
     try {
       const fn = pending.kind === "archive" ? "archive_club_season" : "unarchive_club_season";
-      const args: Record<string, unknown> = { _club_id: clubId, _season_year: pending.year };
+      const args: Record<string, unknown> = { _club_id: clubId, _season_year: pending.year, _association_id: associationId ?? null };
       const { data, error } = await (supabase.rpc as any)(fn, args);
       if (error) throw error;
       toast.success(
@@ -140,7 +146,7 @@ export function SeasonArchiveCard({ clubId }: { clubId: string }) {
                 className="h-7 text-xs"
                 onClick={() => setPending({ kind: "archive", year: g.seasonYear!, count: g.activeCount })}
               >
-                <Archive className="w-3.5 h-3.5 mr-1" />Archive {g.seasonYear} leagues
+                <Archive className="w-3.5 h-3.5 mr-1" />Archive {g.seasonYear} {associationId ? "season" : "leagues"}
               </Button>
             ))}
         </div>

@@ -3141,18 +3141,58 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
 
   const handleSave = async () => {
     if (entries.length === 0) return;
-    const { error } = await fromExt("leagues").insert(entries);
+    const { data: inserted, error } = await fromExt("leagues").insert(entries).select("id,category,level,name");
     if (error) { toast.error(error.message); return; }
 
     // Codes are allocated collision-free above; no bulk renumbering (it clashed
     // with codes already used by other seasons/associations).
 
-    toast.success(`${entries.length} league(s) added`);
+    let copied = 0;
+    if (copyFromYear && copyPlayers && Array.isArray(inserted)) {
+      try {
+        const src = (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(copyFromYear));
+        const srcIds = src.map((l) => l.id);
+        if (srcIds.length) {
+          const { data: regs } = await fromExt("member_league_registrations")
+            .select("club_member_id,league_id,player_rank,is_captain,is_reserve,reserve_order,league_association_number,ssa_number")
+            .in("league_id", srcIds);
+          // Match old league → new league on category + level, keeping the
+          // order of same-level teams (Team A → Team A).
+          const keyOf = (l: any) => `${l.category ?? ""}|${l.level ?? ""}`;
+          const buckets = new Map<string, any[]>();
+          for (const l of inserted as any[]) {
+            const k = keyOf(l);
+            buckets.set(k, [...(buckets.get(k) ?? []), l]);
+          }
+          const used = new Map<string, number>();
+          const map = new Map<string, string>();
+          for (const l of src) {
+            const k = keyOf(l);
+            const idx = used.get(k) ?? 0;
+            const target = buckets.get(k)?.[idx];
+            if (target) { map.set(l.id, target.id); used.set(k, idx + 1); }
+          }
+          const rows = (regs as any[] ?? [])
+            .filter((r) => map.has(r.league_id))
+            .map((r) => ({ ...r, league_id: map.get(r.league_id) }));
+          if (rows.length) {
+            const { error: regErr } = await fromExt("member_league_registrations").insert(rows);
+            if (regErr) toast.error(`Teams created, but players could not be copied: ${regErr.message}`);
+            else copied = rows.length;
+          }
+        }
+      } catch (e: any) {
+        toast.error(`Teams created, but players could not be copied: ${e?.message ?? e}`);
+      }
+    }
+
+    toast.success(`${entries.length} league(s) added${copied ? ` · ${copied} player allocation(s) copied` : ""}`);
 
     onOpenChange(false);
-    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setTeamCounts({ men: {}, ladies: {}, mixed: {} }); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
+    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setTeamCounts({ men: {}, ladies: {}, mixed: {} }); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId(""); setCopyFromYear(""); setCopyPlayers(true);
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

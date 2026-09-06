@@ -52,6 +52,7 @@ export function CommsTemplateEditor({
   const [bodyEditor, setBodyEditor] = useState<any>(null);
   const subjectRef = useRef<HTMLInputElement>(null);
   const whatsappRef = useRef<HTMLTextAreaElement>(null);
+  const smsRef = useRef<HTMLTextAreaElement>(null);
   const inAppRef = useRef<HTMLTextAreaElement>(null);
   const [focusField, setFocusField] = useState<"subject" | "body">("body");
 

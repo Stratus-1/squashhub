@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar as CalendarIcon, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { publicHolidays, schoolBreaks, weekDates, weekStart } from "@/lib/leagues/calendar";
+
 
 export type RoundDraft = {
   id?: string;
@@ -185,6 +187,13 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
   const [saving, setSaving] = useState(false);
   const datesInvalid = draft.end_date < draft.round_date;
 
+  // Same calendar rules as the association season builder: public holidays (and
+  // optionally school-break weeks) are switched off by default.
+  const [holidayWeekOff, setHolidayWeekOff] = useState(true);
+  const [breakWeekOff, setBreakWeekOff] = useState(false);
+  // Dates the admin deliberately ticked back on, so auto-skip never re-skips them.
+  const [manualOn, setManualOn] = useState<string[]>([]);
+
   // Weekly matchday preview from the start date, honouring the selected play
   // days. Admins untick holiday weeks; those land in `skip_dates`.
   const upcomingPlayDates = (() => {
@@ -207,12 +216,54 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     return out;
   })();
 
+  // Reason (if any) a given play date should be skipped by default.
+  const calendarNotes = (() => {
+    const notes = new Map<string, string>();
+    if (!upcomingPlayDates.length) return notes;
+    const years = new Set(upcomingPlayDates.map((d) => Number(d.slice(0, 4))));
+    const holidayMap = new Map<string, string>();
+    const breaks: { start: string; end: string; name: string }[] = [];
+    for (const year of years) {
+      for (const h of publicHolidays(year)) holidayMap.set(h.date, h.name);
+      for (const y2 of [year - 1, year, year + 1]) breaks.push(...schoolBreaks(y2));
+      for (const h of publicHolidays(year + 1)) holidayMap.set(h.date, h.name);
+    }
+    for (const date of upcomingPlayDates) {
+      const week = weekDates(weekStart(date));
+      const hit = week.map((d) => holidayMap.get(d) && { d, name: holidayMap.get(d)! }).find(Boolean) as
+        | { d: string; name: string }
+        | undefined;
+      if (holidayMap.has(date)) {
+        notes.set(date, holidayMap.get(date)!);
+      } else if (holidayWeekOff && hit) {
+        notes.set(date, `${hit.name} week`);
+      } else if (breakWeekOff) {
+        const br = breaks.find((b) => week.some((d) => d >= b.start && d <= b.end));
+        if (br) notes.set(date, br.name);
+      }
+    }
+    return notes;
+  })();
+
+  // Apply the calendar rules to skip_dates, respecting manual re-ticks.
+  const autoKey = `${Array.from(calendarNotes.keys()).sort().join(",")}|${manualOn.join(",")}`;
+  useEffect(() => {
+    if (!open) return;
+    setDraft((prev) => {
+      const auto = Array.from(calendarNotes.keys()).filter((d) => !manualOn.includes(d));
+      const next = Array.from(new Set([...prev.skip_dates, ...auto])).sort();
+      return next.join(",") === [...prev.skip_dates].sort().join(",") ? prev : { ...prev, skip_dates: next };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoKey]);
+
   const formatPlayDate = (iso: string) => {
     const [yy, mm, dd] = iso.split("-").map(Number);
     return new Date(Date.UTC(yy, mm - 1, dd)).toLocaleDateString(undefined, {
       weekday: "short", day: "numeric", month: "short", timeZone: "UTC",
     });
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

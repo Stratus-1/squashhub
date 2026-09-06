@@ -64,19 +64,6 @@ export function WhatsAppBillingCard({ clubId, hideToggle }: { clubId: string; hi
     setToken("");
   }, [secrets?.whatsapp_account_sid, secrets?.whatsapp_from]);
 
-  const { data: rates } = useQuery({
-    queryKey: ["whatsapp-rates"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("app_settings")
-        .select("key, value")
-        .in("key", ["whatsapp_rate_utility", "whatsapp_rate_service", "whatsapp_rate_marketing"]);
-      const map: Record<string, number> = {};
-      (data ?? []).forEach((r) => (map[r.key] = Number(r.value)));
-      return map;
-    },
-  });
-
   const { data: usage } = useQuery({
     queryKey: ["whatsapp-usage", clubId, start],
     enabled: !!club?.whatsapp_enabled,

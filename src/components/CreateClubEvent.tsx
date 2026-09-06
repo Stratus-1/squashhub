@@ -193,6 +193,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [deleteBookings, setDeleteBookings] = useState(true);
+  const [memberSearch, setMemberSearch] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -1755,8 +1756,16 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       ? `Category members (${form.selected_member_ids.length} selected — untick to exclude)`
                       : `Select Members (${form.selected_member_ids.length} selected)`}
                   </Label>
+                  <Input
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    placeholder="Search members…"
+                    className="h-7 text-xs"
+                  />
                   <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
-                    {(members || []).map((m) => (
+                    {(members || [])
+                      .filter((m) => (m.name || "").toLowerCase().includes(memberSearch.trim().toLowerCase()))
+                      .map((m) => (
                       <label
                         key={m.id}
                         className={cn(
@@ -1771,6 +1780,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                         <span className="text-xs">{m.name || "Unnamed"}</span>
                       </label>
                     ))}
+                    {(members || []).filter((m) => (m.name || "").toLowerCase().includes(memberSearch.trim().toLowerCase())).length === 0 && (
+                      <p className="text-[11px] text-muted-foreground py-2 text-center">No members match "{memberSearch.trim()}".</p>
+                    )}
                   </div>
                 </div>
               )}

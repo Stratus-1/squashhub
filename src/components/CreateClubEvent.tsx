@@ -1756,8 +1756,16 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       ? `Category members (${form.selected_member_ids.length} selected — untick to exclude)`
                       : `Select Members (${form.selected_member_ids.length} selected)`}
                   </Label>
+                  <Input
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    placeholder="Search members…"
+                    className="h-7 text-xs"
+                  />
                   <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
-                    {(members || []).map((m) => (
+                    {(members || [])
+                      .filter((m) => (m.name || "").toLowerCase().includes(memberSearch.trim().toLowerCase()))
+                      .map((m) => (
                       <label
                         key={m.id}
                         className={cn(

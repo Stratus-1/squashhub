@@ -232,7 +232,8 @@ export function LeagueAwardsTab({ clubId }: Props) {
 
   const copySummary = () => {
     if (!computed) return;
-    const lines: string[] = [`*${activeLabel} — Prize giving*`, ""];
+    const summaryLabel = isAllLeagues ? "All leagues" : activeLabel;
+    const lines: string[] = [`*${summaryLabel} — Prize giving*`, ""];
     lines.push("*Top 4 players*");
     computed.ranked.slice(0, 4).forEach((p, i) => {
       lines.push(`${MEDALS[i] || `${i + 1}.`} ${p.name} — ${p.won}/${p.played} wins, ${winPct(p).toFixed(0)}%`);

@@ -193,6 +193,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [deleteBookings, setDeleteBookings] = useState(true);
+  const [memberSearch, setMemberSearch] = useState("");
 
   const [form, setForm] = useState({
     title: "",

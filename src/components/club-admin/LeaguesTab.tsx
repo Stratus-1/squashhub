@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Info } from "lucide-react";
 import { CalendarRange } from "lucide-react";
 import { LeagueSeasonsDialog } from "./LeagueSeasonsDialog";
+import { LeagueSeasonPanel } from "./LeagueSeasonPanel";
 import {
   CLUB_LEAGUE,
   CLUB_LEAGUES,
@@ -59,7 +60,6 @@ import AssociationPenaltiesTab from "@/components/super-admin/league/Association
 import { Settings2, Send } from "lucide-react";
 import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog";
 import { ExportTeamsToNsaDialog } from "@/components/club-admin/ExportTeamsToNsaDialog";
-import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -217,7 +217,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
     teamLeagueIds: string[];
     reservesLeagueId: string | null;
   }>(null);
-  const [step, setStep] = useState<string>("leagues");
   const [teamsTab, setTeamsTab] = useState<string | null>(null);
   const [createTeamsAssoc, setCreateTeamsAssoc] = useState<LeagueAssociation | null>(null);
   const [createTeamsYear, setCreateTeamsYear] = useState<number | null>(null);
@@ -386,8 +385,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       return numA - numB;
     });
 
-  const clubLeagues = associations.filter((a: any) => isClubLeagueScope(a.scope));
-  const hasSystemAssocs = associations.some((a: any) => !isClubLeagueScope(a.scope));
 
   // One tab per league — System Leagues first, then the club's own leagues.
   const systemAssocs = associations.filter((a: any) => !isClubLeagueScope(a.scope));
@@ -705,7 +702,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
           seasonId={pairsAssoc.current_season_id ?? null}
           category={(pairsAssoc.category as any) ?? null}
           requireMixedPair={!!pairsAssoc.require_mixed_pair}
-          onCreateTeams={() => setStep("teams")}
+          onCreateTeams={() => setPairsAssoc(null)}
         />
       )}
 

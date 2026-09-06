@@ -1,15 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { formatMoney, getCurrencyOption } from "@/lib/currency";
+import { useClubCurrency } from "@/hooks/use-currency";
 import { normaliseCurrency } from "@/lib/saas-tiers";
 
 /**
  * Per-message rates shown to a club.
  *
  * Mirrors the subscription-pricing convention: ZAR is the base currency and
- * USD/EUR are fixed tables scaled by the same exchange ratio used for SaaS
- * tiers (no live FX). Platform defaults live in `app_settings` (ZAR); a
- * currency override uses a `<key>_<ccy>` setting, e.g. `sms_unit_cost_usd`.
+ * USD/EUR are fixed rate tables scaled by the same exchange ratio used for
+ * SaaS tiers (no live FX). Platform defaults live in `app_settings` (ZAR);
+ * a currency override uses a `<key>_<ccy>` setting, e.g. `sms_unit_cost_usd`.
  * Clubs in any other currency are billed at the ZAR rates, exactly like
  * their subscription.
  */
@@ -27,35 +27,10 @@ const DEFAULTS: Record<(typeof BASE_KEYS)[number], number> = {
   whatsapp_rate_marketing: 0.8,
 };
 
-export function useMessagingRates(clubCurrencyCode?: string | null) {
-  const { data: club } = useQuery({
-    queryKey: ["messaging-rates-club-ccy"],
-    enabled: clubCurrencyCode === undefined,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return null;
-      const { data: mem } = await supabase
-        .from("club_members")
-        .select("club_id")
-        .eq("profile_id", auth.user.id)
-        .limit(1)
-        .maybeSingle();
-      if (!mem?.club_id) return null;
-      const { data: c } = await supabase
-        .from("clubs")
-        .select("currency_code, currency_symbol")
-        .eq("id", mem.club_id)
-        .maybeSingle();
-      return c;
-    },
-  });
-
+export function useMessagingRates() {
+  const { code: clubCode, format } = useClubCurrency();
   // Same currency rule as subscriptions: only ZAR/USD/EUR have rate tables.
-  const rawCode = (clubCurrencyCode ?? club?.currency_code ?? "ZAR") as string;
-  const code = normaliseCurrency(rawCode);
-  const opt = getCurrencyOption(code);
-  const symbol = opt.symbol;
+  const code = normaliseCurrency(clubCode);
 
   const { data } = useQuery({
     queryKey: ["messaging-rates", code],
@@ -81,13 +56,16 @@ export function useMessagingRates(clubCurrencyCode?: string | null) {
 
   return {
     currency: code,
-    symbol,
     /** Money formatter bound to the messaging rate currency, always 2 decimals. */
     money: (n: number | null | undefined) =>
-      formatMoney(Number(n || 0), { currency_symbol: symbol, currency_code: code }, { decimals: 2 }),
+      format(Number(n || 0), 2).replace(/^[^\d]*/, getSymbol(code)),
     sms: rate("sms_unit_cost"),
     waService: rate("whatsapp_rate_service"),
     waUtility: rate("whatsapp_rate_utility"),
     waMarketing: rate("whatsapp_rate_marketing"),
   };
+}
+
+function getSymbol(code: string) {
+  return code === "USD" ? "$" : code === "EUR" ? "€" : "R";
 }

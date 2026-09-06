@@ -396,7 +396,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 )}
               </div>
               <div className="flex items-center gap-1 flex-wrap lg:justify-end min-w-0">
-                <AssocFillUpToggle assoc={a} clubDefault={clubDefaultFillUp} />
                 {isClub ? (
                   <Button asChild size="sm" disabled={scoped.length === 0}>
                     <Link to={`/league-games?tab=rounds&assoc=${a.id}`}>

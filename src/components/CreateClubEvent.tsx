@@ -833,9 +833,13 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       if (inviteeIds.length > 0 && form.notify_whatsapp && canUseClubWhatsApp && clubId) {
         (async () => {
           try {
-            const whenText = form.recurrence === "once"
-              ? `on ${format(new Date(form.event_date), "EEE d MMM")}`
-              : `${form.recurrence} from ${format(new Date(form.event_date), "EEE d MMM")}`;
+            // Ask about the specific occurrence, not the whole series — each
+            // week gets its own invite and its own Yes/No reply.
+            const occurrenceText = `${format(new Date(form.event_date), "EEE d MMM")} at ${String(form.start_time || "").slice(0, 5)}`;
+            const questionText = `Are you joining "${form.title}" on ${occurrenceText}?`;
+            const detailsText = form.recurrence === "once"
+              ? "Reply YES to confirm or NO to decline."
+              : "Reply YES to confirm or NO to decline. (Weekly event — we'll ask again before each one.)";
             await sendWhatsApp({
               clubId,
               recipients: inviteeIds.map((id) => ({ member_id: id })),
@@ -843,10 +847,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               category: "utility",
               templateKey: "rsvp_question",
               templateVariables: {
-                question: `You're invited to "${form.title}" ${whenText} at ${form.start_time}.`,
-                details: "Reply YES to confirm or NO to decline.",
+                question: questionText,
+                details: detailsText,
               },
-              body: `You're invited to "${form.title}" ${whenText} at ${form.start_time}.\n\nReply YES to confirm or NO to decline.`,
+              body: `${questionText}\n\n${detailsText}`,
               interaction: {
                 kind: "event_rsvp",
                 targetId: eventId,

@@ -199,6 +199,21 @@ export function CommsTemplateEditor({
               </p>
             </TabsContent>
 
+            <TabsContent value="sms" className="mt-3 space-y-2">
+              <Label className="text-xs">SMS message</Label>
+              <Textarea
+                ref={smsRef}
+                rows={7}
+                value={current.body ?? ""}
+                onFocus={() => setFocusField("body")}
+                onChange={(e) => setCurrent({ body: e.target.value })}
+                placeholder="Hi {{first_name}} — short text-only message."
+              />
+              <p className="text-[11px] text-muted-foreground">
+                SMS is plain text only. The action link is appended on its own line.
+              </p>
+            </TabsContent>
+
             <TabsContent value="in_app" className="mt-3 space-y-2">
               <div>
                 <Label className="text-xs">Notification title</Label>

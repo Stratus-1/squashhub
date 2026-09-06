@@ -62,8 +62,6 @@ import { BulkLeagueBookingsDialog } from "@/components/BulkLeagueBookingsDialog"
 import { ExportTeamsToNsaDialog } from "@/components/club-admin/ExportTeamsToNsaDialog";
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 
-const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
 // ─── Types ───
 interface LeaguePlayer {
   id: string;

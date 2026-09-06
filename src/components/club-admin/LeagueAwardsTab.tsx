@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Trophy, Copy, Flame, Repeat, TrendingUp, Zap, Shield, Swords, Timer, Users, Target } from "lucide-react";
+import { Loader2, Trophy, Copy, Flame, Repeat, TrendingUp, Zap, Shield, Swords, Timer, Users, Target, BarChart3, Clock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   computeImprovement,
@@ -14,6 +15,7 @@ import {
   computePositionAwards,
   computeTeamConsistency,
   computeTeamStandings,
+  computeLeagueReview,
   leagueLabelFromRoundName,
   rankPlayers,
   winPct,
@@ -30,6 +32,8 @@ const MEDALS = ["🥇", "🥈", "🥉", "4️⃣"];
 
 export function LeagueAwardsTab({ clubId }: Props) {
   const [leagueLabel, setLeagueLabel] = useState<string>("");
+  // null = every round in the league; otherwise the admin-picked subset.
+  const [pickedRoundIds, setPickedRoundIds] = useState<string[] | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["league-awards", clubId],
@@ -91,9 +95,26 @@ export function LeagueAwardsTab({ clubId }: Props) {
 
   const activeLabel = leagueLabel || leagueOptions[0]?.label || "";
 
+  const leagueRounds = useMemo(
+    () =>
+      ((data?.rounds || []) as AwardRoundMeta[])
+        .filter((r) => leagueLabelFromRoundName(r.name) === activeLabel)
+        .sort((a, b) => a.round_number - b.round_number),
+    [data, activeLabel],
+  );
+
+  const isRoundOn = (id: string) => !pickedRoundIds || pickedRoundIds.includes(id);
+  const toggleRound = (id: string) => {
+    const current = pickedRoundIds ?? leagueRounds.map((r) => r.id);
+    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+    setPickedRoundIds(next.length === leagueRounds.length ? null : next);
+  };
+
   const computed = useMemo(() => {
     if (!data) return null;
-    const rounds = (data.rounds as AwardRoundMeta[]).filter((r) => leagueLabelFromRoundName(r.name) === activeLabel);
+    const rounds = (data.rounds as AwardRoundMeta[])
+      .filter((r) => leagueLabelFromRoundName(r.name) === activeLabel)
+      .filter((r) => !pickedRoundIds || pickedRoundIds.includes(r.id));
     const roundMap = new Map(rounds.map((r) => [r.id, r]));
     const fixtures = (data.fixtures as AwardFixtureMeta[]).filter((f) => f.round_id && roundMap.has(f.round_id));
     const fixtureMap = new Map(fixtures.map((f) => [f.id, f]));
@@ -115,9 +136,10 @@ export function LeagueAwardsTab({ clubId }: Props) {
     const standings = computeTeamStandings(results, fixtureMap, teamNames);
     const positions = computePositionAwards(matches, fixtureMap, roundMap);
     const consistency = computeTeamConsistency(matches, fixtureMap, teamNames);
+    const review = computeLeagueReview(matches, fixtureMap, rounds.length);
 
-    return { rounds, players, ranked, improvement, standings, positions, consistency, teamNames, matchCount: matches.length };
-  }, [data, activeLabel]);
+    return { rounds, players, ranked, improvement, standings, positions, consistency, review, teamNames, matchCount: matches.length };
+  }, [data, activeLabel, pickedRoundIds]);
 
   const top = <T,>(list: T[], pick: (t: T) => number, minPlayed?: (t: T) => boolean): T[] => {
     const filtered = minPlayed ? list.filter(minPlayed) : list;
@@ -250,7 +272,7 @@ export function LeagueAwardsTab({ clubId }: Props) {
     <div className="space-y-4">
       <Card className="p-3 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">League</span>
-        <Select value={activeLabel} onValueChange={setLeagueLabel}>
+        <Select value={activeLabel} onValueChange={(v) => { setLeagueLabel(v); setPickedRoundIds(null); }}>
           <SelectTrigger className="w-[240px] h-8 text-[13px]">
             <SelectValue />
           </SelectTrigger>

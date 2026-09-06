@@ -3293,11 +3293,51 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
             </p>
           )}
 
+          {priorSeasons.length > 0 && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Duplicate teams from a previous season</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild><Info className="w-3.5 h-3.5 text-muted-foreground" /></TooltipTrigger>
+                    <TooltipContent className="max-w-xs"><p>Can be edited — tick or untick leagues and change team counts after copying.</p></TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={copyFromYear}
+                  onChange={(e) => applyCopyFrom(e.target.value)}
+                >
+                  <option value="">Don't copy — start empty</option>
+                  {priorSeasons.map((y) => <option key={y} value={y}>Copy {y} teams</option>)}
+                </select>
+                {copyFromYear && (
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox checked={copyPlayers} onCheckedChange={(v) => setCopyPlayers(Boolean(v))} />
+                    Also copy the players allocated to each team
+                  </label>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Copied selections can be edited before you save.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label>Code Prefix</Label>
-              <Input value={prefix} onChange={e => setPrefix(e.target.value.toUpperCase())} placeholder="e.g. WCS" maxLength={10} />
+              <Input
+                value={prefix}
+                onChange={e => { prefixTouched.current = true; setPrefix(e.target.value.toUpperCase()); }}
+                placeholder={suggestedPrefix || "e.g. WCS"}
+                maxLength={10}
+              />
+              {suggestedPrefix && (
+                <p className="text-[11px] text-muted-foreground">Your club's usual prefix ({suggestedPrefix}) — can be edited.</p>
+              )}
             </div>
+
             <div className="space-y-1">
               <Label>Start Number</Label>
               <Input type="number" min={1} value={startNum} onChange={e => setStartNum(Number(e.target.value) || 1)} />

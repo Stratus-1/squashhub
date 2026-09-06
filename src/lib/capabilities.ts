@@ -208,9 +208,10 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
   },
   whatsapp: {
     slug: "whatsapp",
-    label: "WhatsApp Messaging",
-    question: "Do you want to send WhatsApp messages to members?",
-    description: "WhatsApp invites, RSVPs and reminders (metered, billed monthly).",
+    label: "WhatsApp / SMS Messaging",
+    question: "Do you want to send WhatsApp and SMS messages to members?",
+    description:
+      "WhatsApp for invites, RSVPs and anything needing a reply; SMS for one-way notices and reminders (metered, billed monthly).",
     group: "community",
     requires: [],
     worksWith: ["finance"],

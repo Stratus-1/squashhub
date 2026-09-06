@@ -211,6 +211,42 @@ export function DoublesPairsDialog({
 
     onSuccess: () => {
       toast.success("Pair removed");
+      setEditPairId(null);
+      qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, activeSeasonId] });
+      qc.invalidateQueries({ queryKey: ["league-team-pairs-summary", activeTeam] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Replace one player of an existing pair (e.g. injury). Past results keep
+  // the frozen player snapshot — only future fixture selection uses the new
+  // pairing.
+  const replacePlayer = useMutation({
+    mutationFn: async () => {
+      const pair = pairs.find((p: any) => p.id === editPairId);
+      if (!pair || !editPlayer) throw new Error("Choose the replacement player.");
+      const one = editSlot === "one" ? editPlayer : pair.player_one_member_id;
+      const two = editSlot === "two" ? editPlayer : pair.player_two_member_id;
+      if (one === two) throw new Error("A pair must be two different players.");
+      if (pairedIds.has(one) && one !== pair.player_one_member_id && one !== pair.player_two_member_id)
+        throw new Error(`${nameOf(one)} is already in another pair for this team.`);
+      if (pairedIds.has(two) && two !== pair.player_one_member_id && two !== pair.player_two_member_id)
+        throw new Error(`${nameOf(two)} is already in another pair for this team.`);
+      const genders = [one, two].map((id) => roster.find((r) => r.id === id)?.gender);
+      const check = validatePairComposition(genders, category, { requireMixedPair });
+      if (!check.valid) throw new Error(check.reason!);
+      const { data: updated, error } = await (supabase as any)
+        .from("league_team_pairs")
+        .update({ player_one_member_id: one, player_two_member_id: two })
+        .eq("id", pair.id)
+        .select("id");
+      if (error) throw error;
+      if (!updated || updated.length === 0) throw new Error("Pair could not be updated — your account may not have access to this club's pairs.");
+    },
+    onSuccess: () => {
+      toast.success("Pair updated");
+      setEditPairId(null);
+      setEditPlayer("");
       qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, activeSeasonId] });
       qc.invalidateQueries({ queryKey: ["league-team-pairs-summary", activeTeam] });
     },

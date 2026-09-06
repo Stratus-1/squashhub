@@ -628,9 +628,13 @@ export function FixturesTab({ clubId, associationId }: Props) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["league-rounds", associationId] });
+      qc.invalidateQueries({ queryKey: ["round-fixtures"] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
       toast.success("Round deleted");
     },
+    onError: (e: any) => toast.error(e?.message ?? "Could not delete round"),
   });
+
 
   const nextRoundNumber = Math.max(0, ...((rounds ?? []).map((r) => Number(r.round_number) || 0))) + 1;
 

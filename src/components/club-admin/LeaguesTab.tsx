@@ -64,36 +64,6 @@ import { CompetitionRankingCard } from "./CompetitionRankingCard";
 
 const DOW_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-function AssocFillUpToggle({ assoc, clubDefault }: { assoc: any; clubDefault: boolean }) {
-  const qc = useQueryClient();
-  const value = assoc.fill_up_leagues_enabled ?? clubDefault;
-  const isOverride = assoc.fill_up_leagues_enabled !== null && assoc.fill_up_leagues_enabled !== undefined;
-
-  const set = async (v: boolean | null) => {
-    const { error } = await fromExt("league_associations").update({ fill_up_leagues_enabled: v }).eq("id", assoc.id);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["league-associations"] });
-    qc.invalidateQueries({ queryKey: ["league-associations-linked"] });
-    qc.invalidateQueries({ queryKey: ["league-associations-with-week"] });
-    toast.success("Saved");
-  };
-
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-1.5">
-      <div className="text-[11px] leading-tight">
-        <div className="font-medium">Fill Up Leagues board</div>
-        <div className="text-muted-foreground">
-          {isOverride ? (value ? "On for this league" : "Off for this league") : `Following club default (${clubDefault ? "on" : "off"})`}
-        </div>
-      </div>
-      <Switch checked={value} onCheckedChange={(v) => set(v)} />
-      {isOverride && (
-        <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]" onClick={() => set(null)}>Use default</Button>
-      )}
-    </div>
-  );
-}
-
 // ─── Types ───
 interface LeaguePlayer {
   id: string;

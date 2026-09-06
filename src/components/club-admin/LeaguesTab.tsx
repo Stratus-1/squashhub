@@ -465,15 +465,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
             {/* Teams */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h4 className="text-sm font-semibold">Teams</h4>
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (isClub) setStepByStepOpen(true);
-                  else { setCreateTeamsAssoc(a); setAddLeagueOpen(true); }
-                }}
-              >
-                <Plus className="w-4 h-4 mr-1" />Create teams
-              </Button>
             </div>
 
             <div className={`grid grid-cols-1 ${mdCols} ${cols} gap-4`}>
@@ -483,7 +474,7 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
               {open.length > 0 && <GenderColumn {...columnPropsFor("Open", "open", open)} />}
               {filled === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  No teams yet for {a.name} — use “Create teams” above, or create them for a season listed there.
+                  No teams yet for {a.name} — create them for a season listed above.
                 </p>
               )}
             </div>

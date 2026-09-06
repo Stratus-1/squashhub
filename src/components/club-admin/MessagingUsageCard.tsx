@@ -59,8 +59,13 @@ export function MessagingUsageCard({ clubId }: { clubId: string }) {
     },
   });
 
-  const waCost = Number(wa?.subtotal ?? 0);
-  const smsCost = Number(sms?.cost ?? 0);
+  // Price usage in the club's own currency from counts. Logged unit_cost values
+  // are stored in ZAR, so summing them directly mis-prices USD/EUR clubs.
+  const waCost =
+    Number(wa?.utility_count ?? 0) * rates.waUtility +
+    Number(wa?.service_count ?? 0) * rates.waService +
+    Number(wa?.marketing_count ?? 0) * rates.waMarketing;
+  const smsCost = Number(sms?.segments ?? 0) * rates.sms;
   const total = waCost + smsCost;
   const messages = Number(wa?.message_count ?? 0) + Number(sms?.messages ?? 0);
 

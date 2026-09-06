@@ -2991,6 +2991,71 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     },
   });
 
+  // This club's own past teams — used to (a) default the code prefix (the club
+  // always reuses the same one, e.g. CSI) and (b) duplicate a previous
+  // season's teams/players into the new season.
+  const { data: clubLeagues = [] } = useQuery({
+    queryKey: ["club-league-history", clubId, associationId],
+    enabled: open && !!clubId && !!associationId,
+    queryFn: async () => {
+      const { data } = await fromExt("leagues")
+        .select("id,code,category,name,season_year,level,is_reserve")
+        .eq("club_id", clubId)
+        .eq("association_id", associationId)
+        .order("season_year", { ascending: false });
+      return (data as any[]) || [];
+    },
+  });
+
+  // Most-used prefix on this club's existing codes (CSI001 → CSI).
+  const suggestedPrefix = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const l of clubLeagues as any[]) {
+      const p = String(l.code || "").replace(/\d+$/, "").trim().toUpperCase();
+      if (p) counts.set(p, (counts.get(p) ?? 0) + 1);
+    }
+    let best = ""; let bestN = 0;
+    counts.forEach((n, p) => { if (n > bestN) { best = p; bestN = n; } });
+    return best;
+  }, [clubLeagues]);
+
+  // Prefill the prefix once the history loads, unless the admin typed one.
+  const prefixTouched = useRef(false);
+  useEffect(() => {
+    if (!open) { prefixTouched.current = false; return; }
+    if (!prefixTouched.current && suggestedPrefix && !prefix) setPrefix(suggestedPrefix);
+  }, [open, suggestedPrefix, prefix]);
+
+  // Seasons this club already has teams for (newest first), for duplication.
+  const priorSeasons = useMemo(() => {
+    const years = new Set<number>();
+    for (const l of clubLeagues as any[]) {
+      if (l.season_year && l.season_year !== year) years.add(Number(l.season_year));
+    }
+    return [...years].sort((a, b) => b - a);
+  }, [clubLeagues, year]);
+
+  const [copyFromYear, setCopyFromYear] = useState<string>("");
+  const [copyPlayers, setCopyPlayers] = useState(true);
+
+  const applyCopyFrom = (yr: string) => {
+    setCopyFromYear(yr);
+    if (!yr) return;
+    const src = (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(yr) && !l.is_reserve);
+    const sel: Record<"men" | "ladies" | "mixed", string[]> = { men: [], ladies: [], mixed: [] };
+    const counts: Record<"men" | "ladies" | "mixed", Record<string, number>> = { men: {}, ladies: {}, mixed: {} };
+    for (const l of src) {
+      const key = l.category === "mens" || l.category === "men" ? "men" : l.category === "ladies" ? "ladies" : l.category === "mixed" ? "mixed" : null;
+      const lvl = Number(l.level);
+      if (!key || !Number.isFinite(lvl) || lvl < 1 || lvl > LEAGUE_OPTIONS.length) continue;
+      const label = LEAGUE_OPTIONS[lvl - 1];
+      if (!sel[key].includes(label)) sel[key].push(label);
+      counts[key][label] = Math.min(3, (counts[key][label] ?? 0) + 1);
+    }
+    setSelectedMen(sel.men); setSelectedLadies(sel.ladies); setSelectedMixed(sel.mixed);
+    setTeamCounts(counts);
+  };
+
   // Codes restart per category (Men's, Ladies, Mixed) — e.g. RSC001 for Men's
   // 1st and RSC001 for Ladies 1st in the same season. The DB unique key
   // includes category, so only skip codes already taken in the SAME category.
@@ -3001,6 +3066,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     }
     return set;
   };
+
 
   const buildEntries = () => {
     const parseNum = (l: string) => parseInt(l);
@@ -3075,18 +3141,58 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
 
   const handleSave = async () => {
     if (entries.length === 0) return;
-    const { error } = await fromExt("leagues").insert(entries);
+    const { data: inserted, error } = await fromExt("leagues").insert(entries).select("id,category,level,name");
     if (error) { toast.error(error.message); return; }
 
     // Codes are allocated collision-free above; no bulk renumbering (it clashed
     // with codes already used by other seasons/associations).
 
-    toast.success(`${entries.length} league(s) added`);
+    let copied = 0;
+    if (copyFromYear && copyPlayers && Array.isArray(inserted)) {
+      try {
+        const src = (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(copyFromYear));
+        const srcIds = src.map((l) => l.id);
+        if (srcIds.length) {
+          const { data: regs } = await fromExt("member_league_registrations")
+            .select("club_member_id,league_id,player_rank,is_captain,is_reserve,reserve_order,league_association_number,ssa_number")
+            .in("league_id", srcIds);
+          // Match old league → new league on category + level, keeping the
+          // order of same-level teams (Team A → Team A).
+          const keyOf = (l: any) => `${l.category ?? ""}|${l.level ?? ""}`;
+          const buckets = new Map<string, any[]>();
+          for (const l of inserted as any[]) {
+            const k = keyOf(l);
+            buckets.set(k, [...(buckets.get(k) ?? []), l]);
+          }
+          const used = new Map<string, number>();
+          const map = new Map<string, string>();
+          for (const l of src) {
+            const k = keyOf(l);
+            const idx = used.get(k) ?? 0;
+            const target = buckets.get(k)?.[idx];
+            if (target) { map.set(l.id, target.id); used.set(k, idx + 1); }
+          }
+          const rows = (regs as any[] ?? [])
+            .filter((r) => map.has(r.league_id))
+            .map((r) => ({ ...r, league_id: map.get(r.league_id) }));
+          if (rows.length) {
+            const { error: regErr } = await fromExt("member_league_registrations").insert(rows);
+            if (regErr) toast.error(`Teams created, but players could not be copied: ${regErr.message}`);
+            else copied = rows.length;
+          }
+        }
+      } catch (e: any) {
+        toast.error(`Teams created, but players could not be copied: ${e?.message ?? e}`);
+      }
+    }
+
+    toast.success(`${entries.length} league(s) added${copied ? ` · ${copied} player allocation(s) copied` : ""}`);
 
     onOpenChange(false);
-    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setTeamCounts({ men: {}, ladies: {}, mixed: {} }); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId("");
+    setSelectedMen([]); setSelectedLadies([]); setSelectedMixed([]); setTeamCounts({ men: {}, ladies: {}, mixed: {} }); setPrefix(""); setStartNum(1); setYear(new Date().getFullYear()); setAssociationId(""); setCopyFromYear(""); setCopyPlayers(true);
     qc.invalidateQueries({ queryKey: ["leagues"] });
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -3187,11 +3293,51 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
             </p>
           )}
 
+          {priorSeasons.length > 0 && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Duplicate teams from a previous season</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild><Info className="w-3.5 h-3.5 text-muted-foreground" /></TooltipTrigger>
+                    <TooltipContent className="max-w-xs"><p>Can be edited — tick or untick leagues and change team counts after copying.</p></TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={copyFromYear}
+                  onChange={(e) => applyCopyFrom(e.target.value)}
+                >
+                  <option value="">Don't copy — start empty</option>
+                  {priorSeasons.map((y) => <option key={y} value={y}>Copy {y} teams</option>)}
+                </select>
+                {copyFromYear && (
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox checked={copyPlayers} onCheckedChange={(v) => setCopyPlayers(Boolean(v))} />
+                    Also copy the players allocated to each team
+                  </label>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Copied selections can be edited before you save.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label>Code Prefix</Label>
-              <Input value={prefix} onChange={e => setPrefix(e.target.value.toUpperCase())} placeholder="e.g. WCS" maxLength={10} />
+              <Input
+                value={prefix}
+                onChange={e => { prefixTouched.current = true; setPrefix(e.target.value.toUpperCase()); }}
+                placeholder={suggestedPrefix || "e.g. WCS"}
+                maxLength={10}
+              />
+              {suggestedPrefix && (
+                <p className="text-[11px] text-muted-foreground">Your club's usual prefix ({suggestedPrefix}) — can be edited.</p>
+              )}
             </div>
+
             <div className="space-y-1">
               <Label>Start Number</Label>
               <Input type="number" min={1} value={startNum} onChange={e => setStartNum(Number(e.target.value) || 1)} />

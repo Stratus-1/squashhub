@@ -144,7 +144,12 @@ export function WhatsAppBillingCard({ clubId, hideToggle }: { clubId: string; hi
   });
 
   const rate = club?.whatsapp_rate_override ?? clubRates.waUtility;
-  const subtotal = Number(usage?.subtotal ?? 0);
+  // Price usage in the club's own currency from message counts. The send log's
+  // unit_cost is stored in ZAR, so summing it directly mis-prices USD/EUR clubs.
+  const subtotal =
+    Number(usage?.utility_count ?? 0) * clubRates.waUtility +
+    Number(usage?.service_count ?? 0) * clubRates.waService +
+    Number(usage?.marketing_count ?? 0) * clubRates.waMarketing;
   const vat = subtotal * 0.15;
 
   return (

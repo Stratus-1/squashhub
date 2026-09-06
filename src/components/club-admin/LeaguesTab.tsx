@@ -114,17 +114,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
   const [createTeamsAssoc, setCreateTeamsAssoc] = useState<LeagueAssociation | null>(null);
   const [createTeamsYear, setCreateTeamsYear] = useState<number | null>(null);
   const [teamsTipDismissed, setTeamsTipDismissed] = useState<Record<string, boolean>>({});
-
-  const { data: clubFillDefault } = useQuery({
-    queryKey: ["club-fill-settings", clubId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("clubs").select("fill_top_down_enabled, league_week_start_dow, fill_up_leagues_enabled").eq("id", clubId).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!clubId,
-  });
-  const clubDefaultFillUp = clubFillDefault?.fill_up_leagues_enabled ?? true;
   const [allocateGroup, setAllocateGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed" | "open"; leagues: League[] } | null>(null);
   const [reservesGroup, setReservesGroup] = useState<{ associationId: string | null; gender: "men" | "ladies" | "mixed" | "open"; leagues: League[] } | null>(null);
   const qc = useQueryClient();

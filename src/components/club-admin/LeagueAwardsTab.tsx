@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Trophy, Copy, Flame, Repeat, TrendingUp, Zap, Shield, Swords, Timer, Users, Target } from "lucide-react";
+import { Loader2, Trophy, Copy, Flame, Repeat, TrendingUp, Zap, Shield, Swords, Timer, Users, Target, BarChart3, Clock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   computeImprovement,
@@ -14,6 +15,7 @@ import {
   computePositionAwards,
   computeTeamConsistency,
   computeTeamStandings,
+  computeLeagueReview,
   leagueLabelFromRoundName,
   rankPlayers,
   winPct,
@@ -30,6 +32,8 @@ const MEDALS = ["🥇", "🥈", "🥉", "4️⃣"];
 
 export function LeagueAwardsTab({ clubId }: Props) {
   const [leagueLabel, setLeagueLabel] = useState<string>("");
+  // null = every round in the league; otherwise the admin-picked subset.
+  const [pickedRoundIds, setPickedRoundIds] = useState<string[] | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["league-awards", clubId],
@@ -91,9 +95,26 @@ export function LeagueAwardsTab({ clubId }: Props) {
 
   const activeLabel = leagueLabel || leagueOptions[0]?.label || "";
 
+  const leagueRounds = useMemo(
+    () =>
+      ((data?.rounds || []) as AwardRoundMeta[])
+        .filter((r) => leagueLabelFromRoundName(r.name) === activeLabel)
+        .sort((a, b) => a.round_number - b.round_number),
+    [data, activeLabel],
+  );
+
+  const isRoundOn = (id: string) => !pickedRoundIds || pickedRoundIds.includes(id);
+  const toggleRound = (id: string) => {
+    const current = pickedRoundIds ?? leagueRounds.map((r) => r.id);
+    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+    setPickedRoundIds(next.length === leagueRounds.length ? null : next);
+  };
+
   const computed = useMemo(() => {
     if (!data) return null;
-    const rounds = (data.rounds as AwardRoundMeta[]).filter((r) => leagueLabelFromRoundName(r.name) === activeLabel);
+    const rounds = (data.rounds as AwardRoundMeta[])
+      .filter((r) => leagueLabelFromRoundName(r.name) === activeLabel)
+      .filter((r) => !pickedRoundIds || pickedRoundIds.includes(r.id));
     const roundMap = new Map(rounds.map((r) => [r.id, r]));
     const fixtures = (data.fixtures as AwardFixtureMeta[]).filter((f) => f.round_id && roundMap.has(f.round_id));
     const fixtureMap = new Map(fixtures.map((f) => [f.id, f]));
@@ -115,9 +136,10 @@ export function LeagueAwardsTab({ clubId }: Props) {
     const standings = computeTeamStandings(results, fixtureMap, teamNames);
     const positions = computePositionAwards(matches, fixtureMap, roundMap);
     const consistency = computeTeamConsistency(matches, fixtureMap, teamNames);
+    const review = computeLeagueReview(matches, fixtureMap, rounds.length);
 
-    return { rounds, players, ranked, improvement, standings, positions, consistency, teamNames, matchCount: matches.length };
-  }, [data, activeLabel]);
+    return { rounds, players, ranked, improvement, standings, positions, consistency, review, teamNames, matchCount: matches.length };
+  }, [data, activeLabel, pickedRoundIds]);
 
   const top = <T,>(list: T[], pick: (t: T) => number, minPlayed?: (t: T) => boolean): T[] => {
     const filtered = minPlayed ? list.filter(minPlayed) : list;
@@ -207,6 +229,12 @@ export function LeagueAwardsTab({ clubId }: Props) {
     computed.ranked.slice(0, 4).forEach((p, i) => {
       lines.push(`${MEDALS[i] || `${i + 1}.`} ${p.name} — ${p.won}/${p.played} wins, ${winPct(p).toFixed(0)}%`);
     });
+    if (computed.review) {
+      lines.push(
+        "",
+        `*By the numbers*: ${computed.review.completedMatches} matches · ${computed.review.setsPlayed} sets · ~${computed.review.estimatedHours.toFixed(1)} hours on court · ${computed.review.players} players`,
+      );
+    }
     lines.push("");
     for (const a of awards) {
       if (!a.winners.length) continue;
@@ -250,7 +278,7 @@ export function LeagueAwardsTab({ clubId }: Props) {
     <div className="space-y-4">
       <Card className="p-3 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">League</span>
-        <Select value={activeLabel} onValueChange={setLeagueLabel}>
+        <Select value={activeLabel} onValueChange={(v) => { setLeagueLabel(v); setPickedRoundIds(null); }}>
           <SelectTrigger className="w-[240px] h-8 text-[13px]">
             <SelectValue />
           </SelectTrigger>
@@ -269,6 +297,86 @@ export function LeagueAwardsTab({ clubId }: Props) {
           </Button>
         </div>
       </Card>
+
+      {/* Rounds to include */}
+      <Card className="p-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold">Rounds to include</h3>
+          <span className="text-[11px] text-muted-foreground">
+            Awards and stats below are generated from the ticked rounds only.
+          </span>
+          <div className="ml-auto flex gap-1.5">
+            <Button size="sm" variant="ghost" className="h-7 text-[12px]" onClick={() => setPickedRoundIds(null)}>
+              All rounds
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-[12px]" onClick={() => setPickedRoundIds([])}>
+              Clear
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+          {leagueRounds.map((r) => (
+            <label key={r.id} className="flex items-center gap-1.5 text-[13px] cursor-pointer">
+              <Checkbox checked={isRoundOn(r.id)} onCheckedChange={() => toggleRound(r.id)} />
+              <span>{r.name}</span>
+              {r.round_date && (
+                <span className="text-[11px] text-muted-foreground">
+                  {new Date(r.round_date).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+                </span>
+              )}
+            </label>
+          ))}
+        </div>
+      </Card>
+
+      {/* League review */}
+      {!!computed?.review && (
+        <Card className="p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-semibold">League review</h3>
+            <Badge variant="secondary" className="text-[11px]">
+              {computed.review.rounds} round{computed.review.rounds === 1 ? "" : "s"}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+            {[
+              { label: "Matches played", value: computed.review.completedMatches },
+              { label: "Sets played", value: computed.review.setsPlayed },
+              { label: "Court time (hrs)", value: computed.review.estimatedHours.toFixed(1) },
+              { label: "Rally points", value: computed.review.rallyPoints.toLocaleString() },
+              { label: "Players", value: computed.review.players },
+              { label: "Teams", value: computed.review.teams },
+              { label: "Fixtures", value: computed.review.fixtures },
+              { label: "Avg sets / match", value: computed.review.avgSetsPerMatch.toFixed(2) },
+              { label: "5-setters", value: computed.review.fiveSetters },
+              { label: "3-0 sweeps", value: computed.review.sweeps },
+              { label: "Forfeits", value: computed.review.forfeits },
+              {
+                label: "Busiest night",
+                value: computed.review.busiestDate
+                  ? `${new Date(computed.review.busiestDate.date).toLocaleDateString(undefined, { day: "numeric", month: "short" })} (${computed.review.busiestDate.matches})`
+                  : "—",
+              },
+            ].map((s) => (
+              <div key={s.label} className="rounded-md border bg-muted/30 p-2">
+                <div className="text-base font-semibold leading-tight">{s.value}</div>
+                <div className="text-[11px] text-muted-foreground">{s.label}</div>
+              </div>
+            ))}
+          </div>
+          {computed.review.longestMatch && (
+            <p className="text-[12px] text-muted-foreground">
+              <Clock className="w-3 h-3 inline mr-1" />
+              Longest match: <span className="font-medium text-foreground">{computed.review.longestMatch.label}</span> —{" "}
+              {computed.review.longestMatch.sets} sets, {computed.review.longestMatch.points} rally points.
+            </p>
+          )}
+          <p className="text-[11px] text-muted-foreground/80">
+            Court time is an estimate: about 11 minutes per set plus 2 minutes between sets. Forfeits are excluded.
+          </p>
+        </Card>
+      )}
 
       {/* Awards */}
       <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">

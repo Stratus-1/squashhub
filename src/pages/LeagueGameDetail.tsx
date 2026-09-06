@@ -533,7 +533,7 @@ export default function LeagueGameDetail() {
         captainMemberIdByCode: {} as Record<string, string>,
         logoByCode: {} as Record<string, string>,
         associationIdByCode: {} as Record<string, string>,
-        ruleByCode: {} as Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null }>,
+        ruleByCode: {} as Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null; win_by: number | null }>,
       };
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
       if (codes.length === 0) return empty;
@@ -555,11 +555,11 @@ export default function LeagueGameDetail() {
         if (l.logo_url) logoByCode[k] = l.logo_url;
       }
       const leagueIds = (leagues || []).map((l: any) => l.id);
-      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null }> = {};
+      const ruleByCode: Record<string, { team_size: number; team_size_mode: "fixed" | "flexible"; points_per_game: number | null; win_by: number | null }> = {};
       if (leagueIds.length) {
         const { data: teamRules } = await (supabase as any)
           .from("league_rules")
-          .select("league_id, team_size, team_size_mode, points_per_game")
+          .select("league_id, team_size, team_size_mode, points_per_game, win_by")
           .in("league_id", leagueIds);
         for (const r of (teamRules || []) as any[]) {
           const k = leagueIdToCode[r.league_id];
@@ -569,6 +569,7 @@ export default function LeagueGameDetail() {
               team_size: Number.isFinite(size) && size > 0 ? Math.min(MAX_POSITIONS, Math.max(1, Math.floor(size))) : DEFAULT_POSITIONS,
               team_size_mode: r.team_size_mode === "flexible" ? "flexible" : "fixed",
               points_per_game: typeof r.points_per_game === "number" ? r.points_per_game : null,
+              win_by: typeof r.win_by === "number" ? r.win_by : null,
             };
           }
         }
@@ -1819,10 +1820,13 @@ export default function LeagueGameDetail() {
     const effectiveBestOf = leagueRules?.games_format === "best_of_5" ? 5
       : leagueRules?.games_format === "best_of_3" ? 3
       : bestOf;
+    // win_by 1 = sudden death at deuce; anything else plays win-by-2.
+    const effectiveWinBy = homeRule?.win_by ?? awayRule?.win_by ?? leagueRules?.win_by ?? 2;
+    const deuceRule: MarkerConfig["deuceRule"] = effectiveWinBy <= 1 ? "sudden_death" : "win_by_2";
     return {
       playerA: { name: pos.homeName || pos.homeCode, number: pos.homeCode, club: fixture?.home_team_code || "" },
       playerB: { name: pos.awayName || pos.awayCode, number: pos.awayCode, club: fixture?.away_team_code || "" },
-      isDoubles: false, matchType: "league", scoringFormat: effectiveFormat, bestOf: effectiveBestOf, deuceRule: "win_by_2",
+      isDoubles: false, matchType: "league", scoringFormat: effectiveFormat, bestOf: effectiveBestOf, deuceRule,
       source: "league", sourceId: fixtureId,
       sourcePosition: posIdx + 1,
     };

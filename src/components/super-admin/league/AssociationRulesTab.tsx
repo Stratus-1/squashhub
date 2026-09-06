@@ -73,46 +73,66 @@ export default function AssociationRulesTab({ associationId, readOnly = false }:
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Scoring</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label>Points per game</Label>
-            <Input type="number" min={5} max={21}
-              value={form.points_per_game ?? 11}
-              onChange={(e) => set("points_per_game", Number(e.target.value))} />
-            <p className="text-xs text-muted-foreground">Standard: 11 (PAR) or 15 (HiHo)</p>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SegButtons
+              label="Points per game"
+              value={String(form.points_per_game ?? 11)}
+              options={[
+                { v: "11", l: "PAR 11", hint: "Point-a-rally to 11" },
+                { v: "15", l: "PAR 15", hint: "Point-a-rally to 15" },
+                { v: "9", l: "English 9", hint: "Hand-in hand-out to 9" },
+              ]}
+              onChange={(v) => {
+                const ppg = Number(v);
+                setForm((f) => ({
+                  ...f,
+                  points_per_game: ppg,
+                  // Tiebreak always sits one point below game point.
+                  tiebreak_at: ppg - 1,
+                }));
+              }}
+            />
+            <SegButtons
+              label="Win condition"
+              value={(form.win_by ?? 2) <= 1 ? "sudden_death" : "win_by_2"}
+              options={[
+                { v: "win_by_2", l: "Win by 2", hint: "e.g. 10–10 → play to 12" },
+                { v: "sudden_death", l: "Sudden death", hint: "Next point wins at deuce" },
+              ]}
+              onChange={(v) => set("win_by", v === "sudden_death" ? 1 : 2)}
+            />
+            <SegButtons
+              label="Match format"
+              value={form.games_format ?? "best_of_5"}
+              options={[
+                { v: "best_of_3", l: "Best of 3" },
+                { v: "best_of_5", l: "Best of 5" },
+                { v: "best_of_7", l: "Best of 7" },
+              ]}
+              onChange={(v) => set("games_format", v as LeagueRules["games_format"])}
+            />
+            <SegButtons
+              label="Max timeouts / player"
+              value={String(form.max_timeouts_per_player ?? 1)}
+              options={[
+                { v: "0", l: "None" },
+                { v: "1", l: "1" },
+                { v: "2", l: "2" },
+                { v: "3", l: "3" },
+              ]}
+              onChange={(v) => set("max_timeouts_per_player", Number(v))}
+            />
           </div>
-          <div className="space-y-1.5">
-            <Label>Win by</Label>
-            <Input type="number" min={1} max={5}
-              value={form.win_by ?? 2}
-              onChange={(e) => set("win_by", Number(e.target.value))} />
-            <p className="text-xs text-muted-foreground">Lead required to close a game</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Match format</Label>
-            <Select value={form.games_format ?? "best_of_5"}
-              onValueChange={(v) => set("games_format", v as LeagueRules["games_format"])}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="best_of_3">Best of 3</SelectItem>
-                <SelectItem value="best_of_5">Best of 5</SelectItem>
-                <SelectItem value="best_of_7">Best of 7</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Tiebreak at</Label>
-            <Input type="number" min={5} max={20}
-              value={form.tiebreak_at ?? 10}
-              onChange={(e) => set("tiebreak_at", Number(e.target.value))} />
-            <p className="text-xs text-muted-foreground">e.g. 10–10 → win by 2</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Max timeouts / player</Label>
-            <Input type="number" min={0} max={5}
-              value={form.max_timeouts_per_player ?? 1}
-              onChange={(e) => set("max_timeouts_per_player", Number(e.target.value))} />
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {(() => {
+              const ppg = form.points_per_game ?? 11;
+              const sd = (form.win_by ?? 2) <= 1;
+              return sd
+                ? `A game ends at ${ppg} points; at ${ppg - 1}–${ppg - 1} the next point wins (sudden death).`
+                : `A game ends at ${ppg} points; from ${ppg - 1}–${ppg - 1} a player must lead by 2.`;
+            })()}
+          </p>
         </CardContent>
       </Card>
 
@@ -376,6 +396,39 @@ function ToggleRow({ label, hint, value, onChange }: { label: string; hint?: str
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </div>
       <Switch checked={value} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+function SegButtons({ label, value, options, onChange }: {
+  label: string;
+  value: string;
+  options: { v: string; l: string; hint?: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => onChange(o.v)}
+            title={o.hint}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+              value === o.v
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted/40 text-muted-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {o.l}
+          </button>
+        ))}
+      </div>
+      {options.find((o) => o.v === value)?.hint && (
+        <p className="text-xs text-muted-foreground">{options.find((o) => o.v === value)!.hint}</p>
+      )}
     </div>
   );
 }

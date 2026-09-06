@@ -632,7 +632,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
     },
   });
 
-  const nextRoundNumber = (rounds?.length ?? 0) + 1;
+  const nextRoundNumber = Math.max(0, ...((rounds ?? []).map((r) => Number(r.round_number) || 0))) + 1;
 
   return (
     <div className="space-y-3">

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Users } from "lucide-react";
+import { Pencil, Trash2, Users } from "lucide-react";
 import { validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
 import { pairDisplayName } from "@/lib/leagues/format";
 
@@ -54,6 +54,10 @@ export function DoublesPairsDialog({
   const [teamId, setTeamId] = useState<string>("");
   const [p1, setP1] = useState<string>("");
   const [p2, setP2] = useState<string>("");
+  // Pair currently being edited (replace one player) + the replacement choice.
+  const [editPairId, setEditPairId] = useState<string | null>(null);
+  const [editSlot, setEditSlot] = useState<"one" | "two">("one");
+  const [editPlayer, setEditPlayer] = useState<string>("");
 
   const { data: teams = [], isLoading: teamsLoading, error: teamsError } = useQuery({
     queryKey: ["doubles-pairs-teams", associationId, seasonId],

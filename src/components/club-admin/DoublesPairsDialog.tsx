@@ -141,9 +141,23 @@ export function DoublesPairsDialog({
     return (id: string) => m.get(id) ?? "Unknown";
   }, [roster]);
 
+  // A player may only appear in ONE active pair per team/season. Anyone
+  // already paired is removed from the dropdowns and blocked again in the
+  // mutation as a safety net (stale lists, double-clicks).
+  const pairedIds = useMemo(() => {
+    const s = new Set<string>();
+    pairs.forEach((pair: any) => {
+      if (pair.player_one_member_id) s.add(pair.player_one_member_id);
+      if (pair.player_two_member_id) s.add(pair.player_two_member_id);
+    });
+    return s;
+  }, [pairs]);
+
   const create = useMutation({
     mutationFn: async () => {
       if (!p1 || !p2 || p1 === p2) throw new Error("Choose two different players.");
+      if (pairedIds.has(p1)) throw new Error(`${nameOf(p1)} is already in a pair for this team. Remove that pair first.`);
+      if (pairedIds.has(p2)) throw new Error(`${nameOf(p2)} is already in a pair for this team. Remove that pair first.`);
       const genders = [p1, p2].map((id) => roster.find((r) => r.id === id)?.gender);
       const check = validatePairComposition(genders, category, { requireMixedPair });
       if (!check.valid) throw new Error(check.reason!);

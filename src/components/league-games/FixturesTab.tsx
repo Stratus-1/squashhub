@@ -644,8 +644,14 @@ export function FixturesTab({ clubId, associationId }: Props) {
                     const s = ["th", "st", "nd", "rd"], v = n % 100;
                     return n + (s[(v - 20) % 10] || s[v] || s[0]);
                   };
-                  setEditingRound({ round_number: nextRoundNumber, name: `${ord(nextRoundNumber)} League Round ${nextRoundNumber}` });
+                  setEditingRound({
+                    round_number: nextRoundNumber,
+                    name: hasTiers
+                      ? `${ord(nextRoundNumber)} League Round ${nextRoundNumber}`
+                      : `Round ${nextRoundNumber}`,
+                  });
                 }
+
                 setDialogOpen(true);
               }}
             >

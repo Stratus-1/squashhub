@@ -353,30 +353,89 @@ export function DoublesPairsDialog({
           </Button>
 
           <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-            {pairs.map((pair, i) => (
-              <div
-                key={pair.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-border p-2"
-              >
-                <div className="min-w-0">
-                  <Badge variant="outline" className="h-5 text-[10px] mr-2">Pair {i + 1}</Badge>
-                  <span className="text-sm">
-                    {pairDisplayName(
-                      nameOf(pair.player_one_member_id),
-                      nameOf(pair.player_two_member_id),
-                    )}
-                  </span>
+            {pairs.map((pair, i) => {
+              const editing = editPairId === pair.id;
+              // Replacement candidates: anyone not already paired, plus the two
+              // current players of this pair (so the list is never empty).
+              const candidates = roster.filter(
+                (r) =>
+                  !pairedIds.has(r.id) ||
+                  r.id === pair.player_one_member_id ||
+                  r.id === pair.player_two_member_id,
+              );
+              return (
+                <div key={pair.id} className="rounded-md border border-border p-2 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <Badge variant="outline" className="h-5 text-[10px] mr-2">Pair {i + 1}</Badge>
+                      <span className="text-sm">
+                        {pairDisplayName(
+                          nameOf(pair.player_one_member_id),
+                          nameOf(pair.player_two_member_id),
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditPairId(editing ? null : pair.id);
+                          setEditSlot("one");
+                          setEditPlayer("");
+                        }}
+                        aria-label="Replace a player in this pair"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => remove.mutate(pair.id)}
+                        aria-label="Remove pair"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  {editing && (
+                    <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/40 p-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Replace</Label>
+                        <Select value={editSlot} onValueChange={(v) => setEditSlot(v as "one" | "two")}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="one">{nameOf(pair.player_one_member_id)}</SelectItem>
+                            <SelectItem value="two">{nameOf(pair.player_two_member_id)}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">With</Label>
+                        <Select value={editPlayer} onValueChange={setEditPlayer}>
+                          <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
+                          <SelectContent>
+                            {candidates.map((r) => (
+                              <SelectItem key={r.id} value={r.id}>
+                                {r.name}{r.inTeam ? "" : " · not in team"}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="col-span-2"
+                        disabled={!editPlayer || replacePlayer.isPending}
+                        onClick={() => replacePlayer.mutate()}
+                      >
+                        {replacePlayer.isPending ? "Saving..." : "Save replacement"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => remove.mutate(pair.id)}
-                  aria-label="Remove pair"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
             {!pairs.length && (
               <p className="text-xs text-muted-foreground">No pairs yet for this team.</p>
             )}

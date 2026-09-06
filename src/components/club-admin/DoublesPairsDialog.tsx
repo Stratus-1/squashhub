@@ -141,9 +141,23 @@ export function DoublesPairsDialog({
     return (id: string) => m.get(id) ?? "Unknown";
   }, [roster]);
 
+  // A player may only appear in ONE active pair per team/season. Anyone
+  // already paired is removed from the dropdowns and blocked again in the
+  // mutation as a safety net (stale lists, double-clicks).
+  const pairedIds = useMemo(() => {
+    const s = new Set<string>();
+    pairs.forEach((pair: any) => {
+      if (pair.player_one_member_id) s.add(pair.player_one_member_id);
+      if (pair.player_two_member_id) s.add(pair.player_two_member_id);
+    });
+    return s;
+  }, [pairs]);
+
   const create = useMutation({
     mutationFn: async () => {
       if (!p1 || !p2 || p1 === p2) throw new Error("Choose two different players.");
+      if (pairedIds.has(p1)) throw new Error(`${nameOf(p1)} is already in a pair for this team. Remove that pair first.`);
+      if (pairedIds.has(p2)) throw new Error(`${nameOf(p2)} is already in a pair for this team. Remove that pair first.`);
       const genders = [p1, p2].map((id) => roster.find((r) => r.id === id)?.gender);
       const check = validatePairComposition(genders, category, { requireMixedPair });
       if (!check.valid) throw new Error(check.reason!);
@@ -261,7 +275,7 @@ export function DoublesPairsDialog({
               <Select value={p1} onValueChange={setP1} disabled={!activeTeam || rosterLoading || roster.length === 0}>
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
-                  {roster.map((r) => (
+                  {roster.filter((r) => r.id !== p2 && !pairedIds.has(r.id)).map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.name}{r.inTeam ? "" : " · not in team"}
                     </SelectItem>
@@ -274,7 +288,7 @@ export function DoublesPairsDialog({
               <Select value={p2} onValueChange={setP2} disabled={!activeTeam || rosterLoading || roster.length < 2}>
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
-                  {roster.filter((r) => r.id !== p1).map((r) => (
+                  {roster.filter((r) => r.id !== p1 && !pairedIds.has(r.id)).map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.name}{r.inTeam ? "" : " · not in team"}
                     </SelectItem>

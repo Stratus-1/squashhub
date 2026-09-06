@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarRange, Loader2, Plus } from "lucide-react";
+import { CalendarRange, Loader2, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useLeagueSeasons } from "@/hooks/use-league-seasons";
 import { nextSeasonYear, seasonLabel } from "@/lib/leagues/seasons";
@@ -132,8 +132,17 @@ export function LeagueSeasonPanel({ association, teamYears, onCreateTeams }: Pro
                 className="h-7 text-[11px]"
                 onClick={() => onCreateTeams(s.season_year)}
               >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                {teams === 0 ? `Create teams for ${s.season_year}` : `Add teams for ${s.season_year}`}
+                {teams === 0 ? (
+                  <>
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Create teams for {s.season_year}
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="w-3.5 h-3.5 mr-1" />
+                    Edit teams
+                  </>
+                )}
               </Button>
             </div>
           );

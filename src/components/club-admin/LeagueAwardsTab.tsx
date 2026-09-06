@@ -30,9 +30,11 @@ interface Props {
 
 const MEDALS = ["🥇", "🥈", "🥉", "4️⃣"];
 
+const ALL_LEAGUES = "__ALL_LEAGUES__";
+
 export function LeagueAwardsTab({ clubId }: Props) {
   const [leagueLabel, setLeagueLabel] = useState<string>("");
-  // null = every round in the league; otherwise the admin-picked subset.
+  // null = every round in the selected league(s); otherwise the admin-picked subset.
   const [pickedRoundIds, setPickedRoundIds] = useState<string[] | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -94,13 +96,19 @@ export function LeagueAwardsTab({ clubId }: Props) {
   }, [data]);
 
   const activeLabel = leagueLabel || leagueOptions[0]?.label || "";
+  const isAllLeagues = activeLabel === ALL_LEAGUES;
 
   const leagueRounds = useMemo(
     () =>
       ((data?.rounds || []) as AwardRoundMeta[])
-        .filter((r) => leagueLabelFromRoundName(r.name) === activeLabel)
-        .sort((a, b) => a.round_number - b.round_number),
-    [data, activeLabel],
+        .filter((r) => isAllLeagues || leagueLabelFromRoundName(r.name) === activeLabel)
+        .sort((a, b) => {
+          const labelA = leagueLabelFromRoundName(a.name);
+          const labelB = leagueLabelFromRoundName(b.name);
+          if (labelA !== labelB) return labelA.localeCompare(labelB);
+          return a.round_number - b.round_number;
+        }),
+    [data, activeLabel, isAllLeagues],
   );
 
   const isRoundOn = (id: string) => !pickedRoundIds || pickedRoundIds.includes(id);
@@ -113,7 +121,7 @@ export function LeagueAwardsTab({ clubId }: Props) {
   const computed = useMemo(() => {
     if (!data) return null;
     const rounds = (data.rounds as AwardRoundMeta[])
-      .filter((r) => leagueLabelFromRoundName(r.name) === activeLabel)
+      .filter((r) => isAllLeagues || leagueLabelFromRoundName(r.name) === activeLabel)
       .filter((r) => !pickedRoundIds || pickedRoundIds.includes(r.id));
     const roundMap = new Map(rounds.map((r) => [r.id, r]));
     const fixtures = (data.fixtures as AwardFixtureMeta[]).filter((f) => f.round_id && roundMap.has(f.round_id));
@@ -139,7 +147,7 @@ export function LeagueAwardsTab({ clubId }: Props) {
     const review = computeLeagueReview(matches, fixtureMap, rounds.length);
 
     return { rounds, players, ranked, improvement, standings, positions, consistency, review, teamNames, matchCount: matches.length };
-  }, [data, activeLabel, pickedRoundIds]);
+  }, [data, activeLabel, pickedRoundIds, isAllLeagues]);
 
   const top = <T,>(list: T[], pick: (t: T) => number, minPlayed?: (t: T) => boolean): T[] => {
     const filtered = minPlayed ? list.filter(minPlayed) : list;
@@ -224,7 +232,8 @@ export function LeagueAwardsTab({ clubId }: Props) {
 
   const copySummary = () => {
     if (!computed) return;
-    const lines: string[] = [`*${activeLabel} — Prize giving*`, ""];
+    const summaryLabel = isAllLeagues ? "All leagues" : activeLabel;
+    const lines: string[] = [`*${summaryLabel} — Prize giving*`, ""];
     lines.push("*Top 4 players*");
     computed.ranked.slice(0, 4).forEach((p, i) => {
       lines.push(`${MEDALS[i] || `${i + 1}.`} ${p.name} — ${p.won}/${p.played} wins, ${winPct(p).toFixed(0)}%`);
@@ -283,6 +292,11 @@ export function LeagueAwardsTab({ clubId }: Props) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {leagueOptions.length > 1 && (
+              <SelectItem value={ALL_LEAGUES}>
+                All leagues ({leagueOptions.reduce((sum, o) => sum + o.count, 0)} rounds)
+              </SelectItem>
+            )}
             {leagueOptions.map((o) => (
               <SelectItem key={o.label} value={o.label}>
                 {o.label} ({o.count} round{o.count === 1 ? "" : "s"})

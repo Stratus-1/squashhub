@@ -17,6 +17,7 @@ import { BillingFrequencyCard } from "@/components/club-admin/BillingFrequencyCa
 import { billingOptionLabel } from "@/lib/billing/frequency";
 import { openStitchCheckout, buildStitchReturnUrl } from "@/lib/stitch-checkout";
 import { PlatformInvoiceEftDialog } from "@/components/club-admin/PlatformInvoiceEftDialog";
+import { MessagingUsageCard } from "@/components/club-admin/MessagingUsageCard";
 
 interface Invoice {
   id: string;
@@ -499,6 +500,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
         <TabsContent value="subscription" className="space-y-4 mt-4">
           {club && <ClubParticipationCard club={club} />}
           {club && <BillingFrequencyCard club={club} invoices={invoices} />}
+          <MessagingUsageCard clubId={clubId} />
 
           {/* EFT bank details */}
           <Card className="p-4 space-y-3">

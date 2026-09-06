@@ -92,42 +92,6 @@ export function AddReservesDialog({
   const affSet = useMemo(() => new Set(affiliated), [affiliated]);
   const inGroupSet = useMemo(() => new Set(alreadyInGroup), [alreadyInGroup]);
 
-  // Per-association substitution rules
-  const { data: subRules } = useAssociationRules(associationId);
-
-  // Target league number (the team this reserve will sub INTO when needed)
-  const targetLeagueNumber = useMemo(() => {
-    for (const l of groupLeagues) {
-      const n = parseLeagueNumber(l.name, l.code);
-      if (n != null) return n;
-    }
-    return null;
-  }, [groupLeagues]);
-
-  // Resolve each member's home league number from their existing registrations.
-  // Used to evaluate the sub-direction rule (NIL: subs must come from same/lower league).
-  const { data: memberHomeLeagues = {} } = useQuery<Record<string, number>>({
-    queryKey: ["member-home-leagues-for-reserves", clubId, associationId],
-    enabled: open && !!associationId,
-    queryFn: async () => {
-      const { data, error } = await fromExt("member_league_registrations")
-        .select("club_member_id, leagues(name, code, association_id)")
-        .eq("leagues.association_id", associationId!);
-      if (error) throw error;
-      const out: Record<string, number> = {};
-      for (const r of (data || []) as any[]) {
-        if (!r.leagues) continue;
-        const n = parseLeagueNumber(r.leagues.name, r.leagues.code);
-        if (n == null) continue;
-        // Home = strongest (lowest #) league they're already registered in
-        if (out[r.club_member_id] == null || n < out[r.club_member_id]) {
-          out[r.club_member_id] = n;
-        }
-      }
-      return out;
-    },
-  });
-
   const eligible = useMemo(() => {
     const f = filter.trim().toLowerCase();
     return members

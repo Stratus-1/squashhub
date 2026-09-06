@@ -122,11 +122,11 @@ export function FixturesTab({ clubId, associationId }: Props) {
     queryKey: ["assoc-leagues-for-fixtures", associationId],
     queryFn: async () => {
       const { data, error } = await fromExt("leagues")
-        .select("id, code, name")
+        .select("id, code, name, level")
         .eq("club_id", clubId)
         .eq("association_id", associationId);
       if (error) throw error;
-      return (data ?? []) as { id: string; code: string; name: string }[];
+      return (data ?? []) as { id: string; code: string; name: string; level: number | null }[];
     },
     enabled: !!associationId && !!clubId,
   });
@@ -135,6 +135,14 @@ export function FixturesTab({ clubId, associationId }: Props) {
     () => (leagues ?? []).filter((l) => l.code).map((l) => ({ code: l.code, name: l.name })),
     [leagues],
   );
+
+  // Only label rounds "1st League / 2nd League ..." when this association actually
+  // has multiple levels. A single-level league (e.g. a doubles league) just gets "Round N".
+  const hasTiers = useMemo(() => {
+    const levels = new Set((leagues ?? []).map((l) => l.level ?? 1));
+    return levels.size > 1;
+  }, [leagues]);
+
 
   const saveRound = useMutation({
     mutationFn: async (r: RoundDraft) => {
@@ -636,8 +644,14 @@ export function FixturesTab({ clubId, associationId }: Props) {
                     const s = ["th", "st", "nd", "rd"], v = n % 100;
                     return n + (s[(v - 20) % 10] || s[v] || s[0]);
                   };
-                  setEditingRound({ round_number: nextRoundNumber, name: `${ord(nextRoundNumber)} League Round ${nextRoundNumber}` });
+                  setEditingRound({
+                    round_number: nextRoundNumber,
+                    name: hasTiers
+                      ? `${ord(nextRoundNumber)} League Round ${nextRoundNumber}`
+                      : `Round ${nextRoundNumber}`,
+                  });
                 }
+
                 setDialogOpen(true);
               }}
             >

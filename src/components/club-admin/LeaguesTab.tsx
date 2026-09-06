@@ -511,7 +511,6 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
       })()}
 
       <SeasonArchiveCard clubId={clubId} />
-      <FillTopDownSettings clubId={clubId} />
 
 
 

@@ -129,26 +129,26 @@ export default function AssociationRulesTab({ associationId, readOnly = false }:
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="fixed">Fixed number of players</SelectItem>
+                <SelectItem value="fixed">Fixed number of players/pairs</SelectItem>
                 <SelectItem value="flexible">Set per league team</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Fixed: scorecard always shows the configured number of players; any additional allocations are reserves only.
-              Set per league team: each league sets its own size in its league settings; scorecard expands to whatever the captain has allocated (up to 8).
+              Fixed: scorecard always shows the configured number of players/pairs; any additional allocations are reserves only.
+              Set per league team: each league sets its own size in its league settings; scorecard expands to whatever the captain has allocated (up to 8). For doubles leagues, one "player" = one pair.
             </p>
           </div>
           {form.team_size_mode === "fixed" ? (
             <div className="space-y-1.5">
-              <Label>Players per team</Label>
+              <Label>Players/pairs per team</Label>
               <Input type="number" min={1} max={8}
                 value={form.team_size ?? 4}
                 onChange={(e) => set("team_size", Number(e.target.value))} />
-              <p className="text-xs text-muted-foreground">Scorecard always shows exactly this many positions.</p>
+              <p className="text-xs text-muted-foreground">Scorecard always shows exactly this many positions (pairs for doubles leagues).</p>
             </div>
           ) : (
             <div className="space-y-1.5">
-              <Label className="text-muted-foreground">Players per team</Label>
+              <Label className="text-muted-foreground">Players/pairs per team</Label>
               <div className="h-10 rounded-md border border-dashed border-border bg-muted/30 px-3 flex items-center text-xs text-muted-foreground italic">
                 Not applicable — set in each league's own settings.
               </div>

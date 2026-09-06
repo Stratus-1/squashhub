@@ -1780,6 +1780,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                         <span className="text-xs">{m.name || "Unnamed"}</span>
                       </label>
                     ))}
+                    {(members || []).filter((m) => (m.name || "").toLowerCase().includes(memberSearch.trim().toLowerCase())).length === 0 && (
+                      <p className="text-[11px] text-muted-foreground py-2 text-center">No members match "{memberSearch.trim()}".</p>
+                    )}
                   </div>
                 </div>
               )}

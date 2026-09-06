@@ -146,7 +146,7 @@ export function SeasonArchiveCard({ clubId, associationId }: { clubId: string; a
                 className="h-7 text-xs"
                 onClick={() => setPending({ kind: "archive", year: g.seasonYear!, count: g.activeCount })}
               >
-                <Archive className="w-3.5 h-3.5 mr-1" />Archive {g.seasonYear} leagues
+                <Archive className="w-3.5 h-3.5 mr-1" />Archive {g.seasonYear} {associationId ? "season" : "leagues"}
               </Button>
             ))}
         </div>

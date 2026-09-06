@@ -11,8 +11,6 @@ import { Loader2, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubMembers } from "@/hooks/use-club";
-import { useAssociationRules } from "@/hooks/use-association-rules";
-import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibility";
 
 type Gender = "men" | "ladies" | "mixed" | "open";
 
@@ -118,7 +116,7 @@ export function AddReservesDialog({
         if (ap !== bp) return ap - bp;
         return (a.name || "").localeCompare(b.name || "");
       });
-  }, [members, associationId, affSet, inGroupSet, gender, filter, subRules, targetLeagueNumber, memberHomeLeagues]);
+  }, [members, associationId, affSet, inGroupSet, gender, filter]);
 
   const toggle = (id: string) => {
     setPicked(prev => {
@@ -242,8 +240,8 @@ export function AddReservesDialog({
                     <Badge variant="outline" className="text-[10px] tabular-nums">#{m.ladder_position}</Badge>
                   )}
                   {blocked && (
-                    <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 shrink-0">
-                      blocked
+                    <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 max-w-[45%] truncate">
+                      {blocked}
                     </Badge>
                   )}
                 </label>

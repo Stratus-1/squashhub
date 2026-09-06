@@ -275,7 +275,7 @@ export function DoublesPairsDialog({
               <Select value={p1} onValueChange={setP1} disabled={!activeTeam || rosterLoading || roster.length === 0}>
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
-                  {roster.map((r) => (
+                  {roster.filter((r) => r.id !== p2 && !pairedIds.has(r.id)).map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.name}{r.inTeam ? "" : " · not in team"}
                     </SelectItem>
@@ -288,7 +288,7 @@ export function DoublesPairsDialog({
               <Select value={p2} onValueChange={setP2} disabled={!activeTeam || rosterLoading || roster.length < 2}>
                 <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
                 <SelectContent>
-                  {roster.filter((r) => r.id !== p1).map((r) => (
+                  {roster.filter((r) => r.id !== p1 && !pairedIds.has(r.id)).map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.name}{r.inTeam ? "" : " · not in team"}
                     </SelectItem>

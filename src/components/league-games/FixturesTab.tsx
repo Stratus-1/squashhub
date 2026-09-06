@@ -598,9 +598,18 @@ export function FixturesTab({ clubId, associationId }: Props) {
           }
         }
       } else {
-        const { error } = await fromExt("league_rounds").insert(payload);
+        // Pick a round number that is genuinely free right now (deleted rounds
+        // leave gaps, and another admin may have added one meanwhile).
+        const { data: existing } = await fromExt("league_rounds")
+          .select("round_number")
+          .eq("association_id", associationId);
+        const taken = new Set<number>(((existing ?? []) as any[]).map((x) => Number(x.round_number)));
+        let num = Number(payload.round_number) || 1;
+        while (taken.has(num)) num += 1;
+        const { error } = await fromExt("league_rounds").insert({ ...payload, round_number: num });
         if (error) throw error;
       }
+
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["league-rounds", associationId] });
@@ -623,7 +632,7 @@ export function FixturesTab({ clubId, associationId }: Props) {
     },
   });
 
-  const nextRoundNumber = (rounds?.length ?? 0) + 1;
+  const nextRoundNumber = Math.max(0, ...((rounds ?? []).map((r) => Number(r.round_number) || 0))) + 1;
 
   return (
     <div className="space-y-3">

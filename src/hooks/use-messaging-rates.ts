@@ -57,16 +57,13 @@ export function useMessagingRates() {
 
   return {
     currency: code,
+    symbol,
     /** Money formatter bound to the messaging rate currency, always 2 decimals. */
     money: (n: number | null | undefined) =>
-      format(Number(n || 0), 2).replace(/^[^\d]*/, getSymbol(code)),
+      formatMoney(Number(n || 0), { currency_symbol: symbol, currency_code: code }, { decimals: 2 }),
     sms: rate("sms_unit_cost"),
     waService: rate("whatsapp_rate_service"),
     waUtility: rate("whatsapp_rate_utility"),
     waMarketing: rate("whatsapp_rate_marketing"),
   };
-}
-
-function getSymbol(code: string) {
-  return code === "USD" ? "$" : code === "EUR" ? "€" : "R";
 }

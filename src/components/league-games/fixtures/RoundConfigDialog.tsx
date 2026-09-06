@@ -32,6 +32,14 @@ export type RoundDraft = {
 
 const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** Minutes between two HH:mm strings (start -> end). */
+const minutesBetween = (startTime: string, endTime: string) => {
+  const [sh, sm] = (startTime || "").split(":").map(Number);
+  const [eh, em] = (endTime || "").split(":").map(Number);
+  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return 0;
+  return (eh * 60 + em) - (sh * 60 + sm);
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -96,7 +104,10 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     court_ids: initial?.court_ids ?? [],
     start_time: initial?.start_time ?? "18:00",
     end_time: initial?.end_time ?? "20:00",
-    slot_minutes: initial?.slot_minutes ?? 45,
+    slot_minutes:
+      initial?.slot_minutes ??
+      minutesBetween(initial?.start_time ?? "18:00", initial?.end_time ?? "20:00") ??
+      120,
     play_dows: initial?.play_dows ?? [],
     skip_dates: (initial?.skip_dates ?? []).map((d) => String(d).slice(0, 10)),
     notes: initial?.notes ?? "",
@@ -104,16 +115,27 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     id: initial?.id,
   });
 
+  // Default assumption: a team plays once an evening, so one fixture fills the
+  // whole window on a court. Unticking exposes the manual slot length again.
+  const [oneFixturePerNight, setOneFixturePerNight] = useState(true);
+
   useEffect(() => {
-    if (open && initial) {
+    if (!open) return;
+    if (initial) {
       setDraft((d) => ({
         ...d,
         ...initial,
         end_date: initial.end_date ?? initial.round_date ?? d.end_date,
       } as RoundDraft));
     }
+    const start = initial?.start_time ?? draft.start_time;
+    const end = initial?.end_time ?? draft.end_time;
+    const slot = Number(initial?.slot_minutes ?? draft.slot_minutes);
+    const window = minutesBetween(start, end);
+    setOneFixturePerNight(!slot || !window || slot >= window);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
 
   // Selected venues drive which court groups appear.
   const [selectedVenues, setSelectedVenues] = useState<string[]>([]);
@@ -254,38 +276,87 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
               Tick every venue whose courts you want to make available for this round.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Start</Label>
-              <Input type="time" value={draft.start_time} onChange={(e) => setDraft({ ...draft, start_time: e.target.value })} />
+              <Input
+                type="time"
+                value={draft.start_time}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDraft((d) => ({
+                    ...d,
+                    start_time: v,
+                    slot_minutes: oneFixturePerNight ? (minutesBetween(v, d.end_time) || d.slot_minutes) : d.slot_minutes,
+                  }));
+                }}
+              />
             </div>
             <div>
               <Label>End</Label>
-              <Input type="time" value={draft.end_time} onChange={(e) => setDraft({ ...draft, end_time: e.target.value })} />
-            </div>
-            <div>
-              <Label className="flex items-center gap-1">
-                Match slot (min)
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="w-3 h-3 opacity-70 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs text-xs">
-                      Duration of one match block on a court. The window above is split into back-to-back slots of this length, and auto-created court bookings use it as their length. A typical squash match (best-of-5) fits in 30–45 min — use 45 for safety, 60 if you want extra buffer.
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </Label>
               <Input
-                type="number"
-                min={15}
-                step={5}
-                value={draft.slot_minutes}
-                onChange={(e) => setDraft({ ...draft, slot_minutes: Number(e.target.value) })}
+                type="time"
+                value={draft.end_time}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDraft((d) => ({
+                    ...d,
+                    end_time: v,
+                    slot_minutes: oneFixturePerNight ? (minutesBetween(d.start_time, v) || d.slot_minutes) : d.slot_minutes,
+                  }));
+                }}
               />
             </div>
           </div>
+          <div className="rounded border p-2 bg-muted/30 space-y-2">
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <Checkbox
+                checked={oneFixturePerNight}
+                onCheckedChange={(v) => {
+                  const on = !!v;
+                  setOneFixturePerNight(on);
+                  if (on) {
+                    setDraft((d) => ({
+                      ...d,
+                      slot_minutes: minutesBetween(d.start_time, d.end_time) || d.slot_minutes,
+                    }));
+                  }
+                }}
+              />
+              <span>
+                <span className="font-medium">One fixture per court per evening</span>
+                <span className="block text-xs text-muted-foreground">
+                  Each court hosts a single team fixture for the whole {minutesBetween(draft.start_time, draft.end_time) || "—"} minute window
+                  ({draft.start_time}–{draft.end_time}). Untick only if you want several fixtures back-to-back on the same court.
+                </span>
+              </span>
+            </label>
+            {!oneFixturePerNight && (
+              <div className="max-w-[180px]">
+                <Label className="flex items-center gap-1">
+                  Match slot (min)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3 h-3 opacity-70 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-xs">
+                        Length of one fixture block on a court. The evening window is split into back-to-back blocks of this length, and auto-created court bookings use the same length.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </Label>
+                <Input
+                  type="number"
+                  min={15}
+                  step={5}
+                  value={draft.slot_minutes}
+                  onChange={(e) => setDraft({ ...draft, slot_minutes: Number(e.target.value) })}
+                />
+              </div>
+            )}
+          </div>
+
           <div>
             <Label>Play days</Label>
             <div className="flex flex-wrap gap-1.5 mt-1">
@@ -412,6 +483,10 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
               if (!selectedVenues.length) { toast.error("Please select at least one venue."); return; }
               if (!draft.court_ids.length) { toast.error("Please select at least one court."); return; }
               const venueLabel = selectedVenues.join(", ");
+              const slotMinutes = oneFixturePerNight
+                ? (minutesBetween(draft.start_time, draft.end_time) || draft.slot_minutes)
+                : draft.slot_minutes;
+              if (!slotMinutes || slotMinutes <= 0) { toast.error("End time must be after the start time."); return; }
               setSaving(true);
               try {
                 await onSave({ ...draft, venue_name: venueLabel });

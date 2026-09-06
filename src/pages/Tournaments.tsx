@@ -785,6 +785,22 @@ export default function Tournaments() {
             {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
           </span>
           <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
+          {playBy && (
+            <span
+              title={playBy.label}
+              className={cn(
+                "inline-flex items-center gap-1 shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                playBy.tone === "late"
+                  ? "border-destructive/50 bg-destructive/10 text-destructive"
+                  : playBy.tone === "soon"
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "border-primary/40 bg-primary/10 text-primary",
+              )}
+            >
+              <CalendarClock className="w-3 h-3" /> {playBy.label}
+            </span>
+          )}
+
           <span className="font-medium text-xs sm:text-sm break-words basis-full sm:basis-auto sm:flex-1 sm:min-w-0">
             {playoffHeading && (
               <span className="block text-[10px] uppercase tracking-wide font-semibold text-primary mb-0.5 break-words">

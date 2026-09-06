@@ -10,18 +10,18 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMessagingRates } from "@/hooks/use-messaging-rates";
 
 function monthStart() {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
 }
 
-const money = (n: number) =>
-  `R${Number(n || 0).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 export function SmsMessagingCard({ clubId, hideToggle }: { clubId: string; hideToggle?: boolean }) {
   const qc = useQueryClient();
   const since = useMemo(() => monthStart(), []);
+  const rates = useMessagingRates();
+  const money = rates.money;
 
   const { data: club } = useQuery({
     queryKey: ["club-sms-settings", clubId],
@@ -33,27 +33,6 @@ export function SmsMessagingCard({ clubId, hideToggle }: { clubId: string; hideT
         .maybeSingle();
       if (error) throw error;
       return data as { id: string; sms_enabled: boolean | null; sms_sender_id: string | null } | null;
-    },
-  });
-
-  // Platform message rates (public, non-private app settings) — used to show
-  // the club clear per-message cost guidance so they can decide per channel.
-  const { data: rates } = useQuery({
-    queryKey: ["messaging-rates"],
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("app_settings")
-        .select("key, value")
-        .in("key", ["sms_unit_cost", "whatsapp_rate_service", "whatsapp_rate_utility", "whatsapp_rate_marketing"]);
-      if (error) throw error;
-      const map = new Map((data ?? []).map((r: { key: string; value: string | null }) => [r.key, Number(r.value || 0)]));
-      return {
-        sms: map.get("sms_unit_cost") ?? 0.25,
-        waService: map.get("whatsapp_rate_service") ?? 0.15,
-        waUtility: map.get("whatsapp_rate_utility") ?? 0.45,
-        waMarketing: map.get("whatsapp_rate_marketing") ?? 0.80,
-      };
     },
   });
 
@@ -117,7 +96,7 @@ export function SmsMessagingCard({ clubId, hideToggle }: { clubId: string; hideT
         skipped automatically.
       </p>
 
-      {rates && (
+      {(
         <div className="rounded-md border bg-muted/40 p-3 space-y-2">
           <p className="text-xs font-medium">What each message costs your club</p>
           <div className="grid grid-cols-2 gap-2 text-xs">
@@ -166,7 +145,7 @@ export function SmsMessagingCard({ clubId, hideToggle }: { clubId: string; hideT
                 </ul>
                 <p className="mt-1.5 font-medium">Cost</p>
                 <p className="text-muted-foreground">
-                  {money(rates?.sms ?? 0.25)} per segment (±160 characters). Long messages use
+                  {money(rates.sms)} per segment (±160 characters). Long messages use
                   more segments.
                 </p>
               </TooltipContent>

@@ -36,10 +36,16 @@ type Pending =
  * its current one active forever. Archived seasons stay fully intact and are
  * browsable here; they are only hidden from active workflows.
  */
-export function SeasonArchiveCard({ clubId }: { clubId: string }) {
+export function SeasonArchiveCard({ clubId, associationId }: { clubId: string; associationId?: string }) {
   const qc = useQueryClient();
   // includeArchived — this is the historical view, it must see everything.
-  const { data: allLeagues = [] } = useLeagues(clubId, { includeArchived: true });
+  const { data: fetched = [] } = useLeagues(clubId, { includeArchived: true });
+  // When rendered inside a per-league tab, only that association's seasons
+  // may show here — otherwise one tab lists every league's teams.
+  const allLeagues = useMemo(
+    () => (associationId ? fetched.filter((l: any) => l.association_id === associationId) : fetched),
+    [fetched, associationId],
+  );
   const [showArchived, setShowArchived] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [busy, setBusy] = useState(false);

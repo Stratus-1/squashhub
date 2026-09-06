@@ -137,16 +137,9 @@ export function AddReservesDialog({
         else if (inGroupSet.has(m.id)) blocked = "already in this league group";
         else if (gender === "men" && !isMaleGender(m.gender)) blocked = "not a male member";
         else if (gender === "ladies" && !isFemaleGender(m.gender)) blocked = "not a female member";
-        else if (subRules && targetLeagueNumber != null) {
-          const homeLeagueNumber = memberHomeLeagues[m.id] ?? null;
-          // Evaluate against the target team's #1 slot (most lenient slot in that league)
-          const result = checkSubEligibility(
-            subRules,
-            { homeLeagueNumber, homePosition: null, gender: (gender === "mixed" || gender === "open") ? null : (gender as any) },
-            { leagueNumber: targetLeagueNumber, position: 1, gender },
-          );
-          if (!result.ok) blocked = result.reason || "rule violation";
-        }
+        // NOTE: sub-direction / movement-cap rules are NOT applied here. Being added
+        // to the reserves pool is not a substitution; the rules are enforced when a
+        // reserve is actually picked to play (Fill Leagues / reserves picker).
         return { ...m, _blocked: blocked };
       })
       .filter((m: any) => {

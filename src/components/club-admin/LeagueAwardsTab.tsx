@@ -291,6 +291,11 @@ export function LeagueAwardsTab({ clubId }: Props) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {leagueOptions.length > 1 && (
+              <SelectItem value={ALL_LEAGUES}>
+                All leagues ({leagueOptions.reduce((sum, o) => sum + o.count, 0)} rounds)
+              </SelectItem>
+            )}
             {leagueOptions.map((o) => (
               <SelectItem key={o.label} value={o.label}>
                 {o.label} ({o.count} round{o.count === 1 ? "" : "s"})

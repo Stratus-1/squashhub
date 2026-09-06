@@ -68,7 +68,7 @@ export function SeasonArchiveCard({ clubId, associationId }: { clubId: string; a
     setBusy(true);
     try {
       const fn = pending.kind === "archive" ? "archive_club_season" : "unarchive_club_season";
-      const args: Record<string, unknown> = { _club_id: clubId, _season_year: pending.year };
+      const args: Record<string, unknown> = { _club_id: clubId, _season_year: pending.year, _association_id: associationId ?? null };
       const { data, error } = await (supabase.rpc as any)(fn, args);
       if (error) throw error;
       toast.success(

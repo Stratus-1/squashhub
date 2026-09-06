@@ -696,6 +696,7 @@ export default function Tournaments() {
       : null;
 
 
+    const bKey = bucketKeyOf(m);
     const bMeta = buckets.find((x) => x.key === bKey) || null;
     const color = bucketColor(bKey);
     const rowStyle = color

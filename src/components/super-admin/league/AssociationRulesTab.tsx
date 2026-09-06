@@ -399,3 +399,36 @@ function ToggleRow({ label, hint, value, onChange }: { label: string; hint?: str
     </div>
   );
 }
+
+function SegButtons({ label, value, options, onChange }: {
+  label: string;
+  value: string;
+  options: { v: string; l: string; hint?: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => (
+          <button
+            key={o.v}
+            type="button"
+            onClick={() => onChange(o.v)}
+            title={o.hint}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+              value === o.v
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted/40 text-muted-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {o.l}
+          </button>
+        ))}
+      </div>
+      {options.find((o) => o.v === value)?.hint && (
+        <p className="text-xs text-muted-foreground">{options.find((o) => o.v === value)!.hint}</p>
+      )}
+    </div>
+  );
+}

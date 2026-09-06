@@ -30,9 +30,11 @@ interface Props {
 
 const MEDALS = ["🥇", "🥈", "🥉", "4️⃣"];
 
+const ALL_LEAGUES = "__ALL_LEAGUES__";
+
 export function LeagueAwardsTab({ clubId }: Props) {
   const [leagueLabel, setLeagueLabel] = useState<string>("");
-  // null = every round in the league; otherwise the admin-picked subset.
+  // null = every round in the selected league(s); otherwise the admin-picked subset.
   const [pickedRoundIds, setPickedRoundIds] = useState<string[] | null>(null);
 
   const { data, isLoading } = useQuery({

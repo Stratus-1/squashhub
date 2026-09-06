@@ -1,12 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubCurrency } from "@/hooks/use-currency";
+import { formatMoney } from "@/lib/currency";
+import { normaliseCurrency } from "@/lib/saas-tiers";
 
 /**
- * Per-message rates shown to a club, expressed in that club's currency.
+ * Per-message rates shown to a club.
  *
- * Platform defaults live in `app_settings` (ZAR). A market can override any
- * rate per currency with a `<key>_<ccy>` setting, e.g. `sms_unit_cost_usd`.
+ * Mirrors the subscription-pricing convention: ZAR is the base currency and
+ * USD/EUR are fixed rate tables scaled by the same exchange ratio used for
+ * SaaS tiers (no live FX). Platform defaults live in `app_settings` (ZAR);
+ * a currency override uses a `<key>_<ccy>` setting, e.g. `sms_unit_cost_usd`.
+ * Clubs in any other currency are billed at the ZAR rates, exactly like
+ * their subscription.
  */
 const BASE_KEYS = [
   "sms_unit_cost",
@@ -23,7 +29,10 @@ const DEFAULTS: Record<(typeof BASE_KEYS)[number], number> = {
 };
 
 export function useMessagingRates() {
-  const { code, symbol, format } = useClubCurrency();
+  const { code: clubCode } = useClubCurrency();
+  // Same currency rule as subscriptions: only ZAR/USD/EUR have rate tables.
+  const code = normaliseCurrency(clubCode);
+  const symbol = code === "USD" ? "$" : code === "EUR" ? "€" : "R";
 
   const { data } = useQuery({
     queryKey: ["messaging-rates", code],
@@ -42,7 +51,7 @@ export function useMessagingRates() {
   const rate = (key: (typeof BASE_KEYS)[number]) => {
     const scoped = data?.get(`${key}_${code.toLowerCase()}`);
     const base = data?.get(key);
-    const raw = scoped ?? base;
+    const raw = code === "ZAR" ? base : (scoped ?? base);
     const n = Number(raw);
     return raw == null || raw === "" || Number.isNaN(n) ? DEFAULTS[key] : n;
   };
@@ -50,8 +59,9 @@ export function useMessagingRates() {
   return {
     currency: code,
     symbol,
-    /** Money formatter bound to the club's currency, always 2 decimals. */
-    money: (n: number | null | undefined) => format(Number(n || 0), 2),
+    /** Money formatter bound to the messaging rate currency, always 2 decimals. */
+    money: (n: number | null | undefined) =>
+      formatMoney(Number(n || 0), { currency_symbol: symbol, currency_code: code }, { decimals: 2 }),
     sms: rate("sms_unit_cost"),
     waService: rate("whatsapp_rate_service"),
     waUtility: rate("whatsapp_rate_utility"),

@@ -2991,6 +2991,71 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     },
   });
 
+  // This club's own past teams — used to (a) default the code prefix (the club
+  // always reuses the same one, e.g. CSI) and (b) duplicate a previous
+  // season's teams/players into the new season.
+  const { data: clubLeagues = [] } = useQuery({
+    queryKey: ["club-league-history", clubId, associationId],
+    enabled: open && !!clubId && !!associationId,
+    queryFn: async () => {
+      const { data } = await fromExt("leagues")
+        .select("id,code,category,name,season_year,level,is_reserve")
+        .eq("club_id", clubId)
+        .eq("association_id", associationId)
+        .order("season_year", { ascending: false });
+      return (data as any[]) || [];
+    },
+  });
+
+  // Most-used prefix on this club's existing codes (CSI001 → CSI).
+  const suggestedPrefix = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const l of clubLeagues as any[]) {
+      const p = String(l.code || "").replace(/\d+$/, "").trim().toUpperCase();
+      if (p) counts.set(p, (counts.get(p) ?? 0) + 1);
+    }
+    let best = ""; let bestN = 0;
+    counts.forEach((n, p) => { if (n > bestN) { best = p; bestN = n; } });
+    return best;
+  }, [clubLeagues]);
+
+  // Prefill the prefix once the history loads, unless the admin typed one.
+  const prefixTouched = useRef(false);
+  useEffect(() => {
+    if (!open) { prefixTouched.current = false; return; }
+    if (!prefixTouched.current && suggestedPrefix && !prefix) setPrefix(suggestedPrefix);
+  }, [open, suggestedPrefix, prefix]);
+
+  // Seasons this club already has teams for (newest first), for duplication.
+  const priorSeasons = useMemo(() => {
+    const years = new Set<number>();
+    for (const l of clubLeagues as any[]) {
+      if (l.season_year && l.season_year !== year) years.add(Number(l.season_year));
+    }
+    return [...years].sort((a, b) => b - a);
+  }, [clubLeagues, year]);
+
+  const [copyFromYear, setCopyFromYear] = useState<string>("");
+  const [copyPlayers, setCopyPlayers] = useState(true);
+
+  const applyCopyFrom = (yr: string) => {
+    setCopyFromYear(yr);
+    if (!yr) return;
+    const src = (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(yr) && !l.is_reserve);
+    const sel: Record<"men" | "ladies" | "mixed", string[]> = { men: [], ladies: [], mixed: [] };
+    const counts: Record<"men" | "ladies" | "mixed", Record<string, number>> = { men: {}, ladies: {}, mixed: {} };
+    for (const l of src) {
+      const key = l.category === "mens" || l.category === "men" ? "men" : l.category === "ladies" ? "ladies" : l.category === "mixed" ? "mixed" : null;
+      const lvl = Number(l.level);
+      if (!key || !Number.isFinite(lvl) || lvl < 1 || lvl > LEAGUE_OPTIONS.length) continue;
+      const label = LEAGUE_OPTIONS[lvl - 1];
+      if (!sel[key].includes(label)) sel[key].push(label);
+      counts[key][label] = Math.min(3, (counts[key][label] ?? 0) + 1);
+    }
+    setSelectedMen(sel.men); setSelectedLadies(sel.ladies); setSelectedMixed(sel.mixed);
+    setTeamCounts(counts);
+  };
+
   // Codes restart per category (Men's, Ladies, Mixed) — e.g. RSC001 for Men's
   // 1st and RSC001 for Ladies 1st in the same season. The DB unique key
   // includes category, so only skip codes already taken in the SAME category.
@@ -3001,6 +3066,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     }
     return set;
   };
+
 
   const buildEntries = () => {
     const parseNum = (l: string) => parseInt(l);

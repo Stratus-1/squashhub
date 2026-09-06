@@ -465,3 +465,111 @@ export function computeTeamConsistency(
     return a.playersUsed - b.playersUsed;
   });
 }
+
+/* ------------------------------------------------------------------ */
+/* League review — headline stats for a set of rounds                  */
+/* ------------------------------------------------------------------ */
+
+/** Average on-court minutes per game (set), incl. warm-up/knock-up share. */
+export const MINUTES_PER_GAME = 11;
+/** Average minutes lost between games of the same match. */
+export const MINUTES_BETWEEN_GAMES = 2;
+
+export type LeagueReview = {
+  rounds: number;
+  fixtures: number;
+  matches: number;
+  completedMatches: number;
+  setsPlayed: number;
+  rallyPoints: number;
+  fiveSetters: number;
+  sweeps: number;
+  forfeits: number;
+  players: number;
+  teams: number;
+  avgSetsPerMatch: number;
+  estimatedMinutes: number;
+  estimatedHours: number;
+  longestMatch: { label: string; sets: number; points: number } | null;
+  busiestDate: { date: string; matches: number } | null;
+};
+
+export function computeLeagueReview(
+  matches: AwardMatchRow[],
+  fixtures: Map<string, AwardFixtureMeta>,
+  roundCount: number,
+): LeagueReview {
+  let setsPlayed = 0;
+  let rallyPoints = 0;
+  let fiveSetters = 0;
+  let sweeps = 0;
+  let forfeits = 0;
+  let completed = 0;
+  let estimatedMinutes = 0;
+  const playedFixtures = new Set<string>();
+  const players = new Set<string>();
+  const teams = new Set<string>();
+  const byDate = new Map<string, number>();
+  let longest: LeagueReview["longestMatch"] = null;
+
+  for (const m of matches) {
+    const hg = Number(m.home_games_won ?? 0) || 0;
+    const ag = Number(m.away_games_won ?? 0) || 0;
+    if (!m.winner && hg === 0 && ag === 0) continue; // unplayed
+
+    completed += 1;
+    const games = parseGames(m.game_scores);
+    const sets = Math.max(games.length, hg + ag);
+    const pts = games.reduce((s, g) => s + g.home + g.away, 0);
+    setsPlayed += sets;
+    rallyPoints += pts;
+    if (sets >= 5) fiveSetters += 1;
+    if ((hg >= 3 && ag === 0) || (ag >= 3 && hg === 0)) sweeps += 1;
+    if (m.is_forfeit) {
+      forfeits += 1;
+    } else {
+      estimatedMinutes += sets * MINUTES_PER_GAME + Math.max(0, sets - 1) * MINUTES_BETWEEN_GAMES;
+    }
+
+    const fx = fixtures.get(m.fixture_id);
+    playedFixtures.add(m.fixture_id);
+    if (fx?.home_team_code) teams.add(String(fx.home_team_code).toUpperCase());
+    if (fx?.away_team_code) teams.add(String(fx.away_team_code).toUpperCase());
+    if (fx?.fixture_date) byDate.set(fx.fixture_date, (byDate.get(fx.fixture_date) || 0) + 1);
+    for (const [c, n] of [
+      [m.home_player_code, m.home_player_name],
+      [m.away_player_code, m.away_player_name],
+    ] as const) {
+      const k = playerKey(c, n);
+      if (k) players.add(k);
+    }
+
+    if (!m.is_forfeit && sets > 0) {
+      const label = `${(m.home_player_name || m.home_player_code || "?").trim()} vs ${(m.away_player_name || m.away_player_code || "?").trim()}`;
+      if (!longest || sets > longest.sets || (sets === longest.sets && pts > longest.points)) {
+        longest = { label, sets, points: pts };
+      }
+    }
+  }
+
+  const busiest = [...byDate.entries()].sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    rounds: roundCount,
+    fixtures: playedFixtures.size,
+    matches: matches.length,
+    completedMatches: completed,
+    setsPlayed,
+    rallyPoints,
+    fiveSetters,
+    sweeps,
+    forfeits,
+    players: players.size,
+    teams: teams.size,
+    avgSetsPerMatch: completed ? setsPlayed / completed : 0,
+    estimatedMinutes,
+    estimatedHours: estimatedMinutes / 60,
+    longestMatch: longest,
+    busiestDate: busiest ? { date: busiest[0], matches: busiest[1] } : null,
+  };
+}

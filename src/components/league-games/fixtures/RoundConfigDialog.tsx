@@ -442,32 +442,56 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
           </div>
           <div>
             <Label>Match days (untick holidays / breaks)</Label>
-            <div className="mt-1 rounded border p-2 grid grid-cols-2 gap-1.5 max-h-48 overflow-auto">
+            <div className="mt-1 grid gap-1.5">
+              <label className="flex items-center gap-2 rounded border p-2 text-xs">
+                <Checkbox
+                  checked={holidayWeekOff}
+                  onCheckedChange={(v) => { setHolidayWeekOff(!!v); setManualOn([]); }}
+                />
+                Skip the whole week when a public holiday falls in it
+              </label>
+              <label className="flex items-center gap-2 rounded border p-2 text-xs">
+                <Checkbox
+                  checked={breakWeekOff}
+                  onCheckedChange={(v) => { setBreakWeekOff(!!v); setManualOn([]); }}
+                />
+                Also skip school-holiday weeks
+              </label>
+            </div>
+            <div className="mt-1 rounded border p-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-auto">
               {upcomingPlayDates.length === 0 && (
                 <p className="text-xs text-muted-foreground col-span-2">Pick a start date (and play days) to see the weekly schedule.</p>
               )}
               {upcomingPlayDates.map((d) => {
                 const skipped = draft.skip_dates.includes(d);
+                const note = calendarNotes.get(d);
                 return (
                   <label key={d} className="flex items-center gap-2 text-sm">
                     <Checkbox
                       checked={!skipped}
-                      onCheckedChange={() =>
+                      onCheckedChange={() => {
+                        setManualOn((prev) =>
+                          skipped ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d),
+                        );
                         setDraft((prev) => ({
                           ...prev,
                           skip_dates: skipped
                             ? prev.skip_dates.filter((x) => x !== d)
                             : [...prev.skip_dates, d].sort(),
-                        }))
-                      }
+                        }));
+                      }}
                     />
                     <span className={skipped ? "line-through text-muted-foreground" : ""}>
                       {formatPlayDate(d)}
                     </span>
+                    {note && (
+                      <span className="text-[10px] text-destructive truncate" title={note}>{note}</span>
+                    )}
                   </label>
                 );
               })}
             </div>
+
             <p className="text-[11px] text-muted-foreground mt-1">
               Unticked dates are skipped when fixtures are generated — the schedule rolls on to the next available week.
             </p>

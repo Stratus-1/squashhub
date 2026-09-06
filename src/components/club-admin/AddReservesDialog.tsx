@@ -11,8 +11,6 @@ import { Loader2, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubMembers } from "@/hooks/use-club";
-import { useAssociationRules } from "@/hooks/use-association-rules";
-import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibility";
 
 type Gender = "men" | "ladies" | "mixed" | "open";
 
@@ -92,42 +90,6 @@ export function AddReservesDialog({
   const affSet = useMemo(() => new Set(affiliated), [affiliated]);
   const inGroupSet = useMemo(() => new Set(alreadyInGroup), [alreadyInGroup]);
 
-  // Per-association substitution rules
-  const { data: subRules } = useAssociationRules(associationId);
-
-  // Target league number (the team this reserve will sub INTO when needed)
-  const targetLeagueNumber = useMemo(() => {
-    for (const l of groupLeagues) {
-      const n = parseLeagueNumber(l.name, l.code);
-      if (n != null) return n;
-    }
-    return null;
-  }, [groupLeagues]);
-
-  // Resolve each member's home league number from their existing registrations.
-  // Used to evaluate the sub-direction rule (NIL: subs must come from same/lower league).
-  const { data: memberHomeLeagues = {} } = useQuery<Record<string, number>>({
-    queryKey: ["member-home-leagues-for-reserves", clubId, associationId],
-    enabled: open && !!associationId,
-    queryFn: async () => {
-      const { data, error } = await fromExt("member_league_registrations")
-        .select("club_member_id, leagues(name, code, association_id)")
-        .eq("leagues.association_id", associationId!);
-      if (error) throw error;
-      const out: Record<string, number> = {};
-      for (const r of (data || []) as any[]) {
-        if (!r.leagues) continue;
-        const n = parseLeagueNumber(r.leagues.name, r.leagues.code);
-        if (n == null) continue;
-        // Home = strongest (lowest #) league they're already registered in
-        if (out[r.club_member_id] == null || n < out[r.club_member_id]) {
-          out[r.club_member_id] = n;
-        }
-      }
-      return out;
-    },
-  });
-
   const eligible = useMemo(() => {
     const f = filter.trim().toLowerCase();
     return members
@@ -137,16 +99,9 @@ export function AddReservesDialog({
         else if (inGroupSet.has(m.id)) blocked = "already in this league group";
         else if (gender === "men" && !isMaleGender(m.gender)) blocked = "not a male member";
         else if (gender === "ladies" && !isFemaleGender(m.gender)) blocked = "not a female member";
-        else if (subRules && targetLeagueNumber != null) {
-          const homeLeagueNumber = memberHomeLeagues[m.id] ?? null;
-          // Evaluate against the target team's #1 slot (most lenient slot in that league)
-          const result = checkSubEligibility(
-            subRules,
-            { homeLeagueNumber, homePosition: null, gender: (gender === "mixed" || gender === "open") ? null : (gender as any) },
-            { leagueNumber: targetLeagueNumber, position: 1, gender },
-          );
-          if (!result.ok) blocked = result.reason || "rule violation";
-        }
+        // NOTE: sub-direction / movement-cap rules are NOT applied here. Being added
+        // to the reserves pool is not a substitution; the rules are enforced when a
+        // reserve is actually picked to play (Fill Leagues / reserves picker).
         return { ...m, _blocked: blocked };
       })
       .filter((m: any) => {
@@ -161,7 +116,7 @@ export function AddReservesDialog({
         if (ap !== bp) return ap - bp;
         return (a.name || "").localeCompare(b.name || "");
       });
-  }, [members, associationId, affSet, inGroupSet, gender, filter, subRules, targetLeagueNumber, memberHomeLeagues]);
+  }, [members, associationId, affSet, inGroupSet, gender, filter]);
 
   const toggle = (id: string) => {
     setPicked(prev => {
@@ -285,8 +240,8 @@ export function AddReservesDialog({
                     <Badge variant="outline" className="text-[10px] tabular-nums">#{m.ladder_position}</Badge>
                   )}
                   {blocked && (
-                    <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 shrink-0">
-                      blocked
+                    <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 max-w-[45%] truncate">
+                      {blocked}
                     </Badge>
                   )}
                 </label>

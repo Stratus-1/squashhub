@@ -484,11 +484,13 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
                 <GenderColumn {...columnPropsFor("Other", "mixed", other)} />
               </div>
             )}
+
+            {/* Season history & archive — scoped to THIS league tab only */}
+            <SeasonArchiveCard clubId={clubId} associationId={a.id} />
           </div>
         );
       })()}
 
-      <SeasonArchiveCard clubId={clubId} />
 
 
 

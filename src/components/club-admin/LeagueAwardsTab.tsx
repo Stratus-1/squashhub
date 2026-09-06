@@ -96,13 +96,19 @@ export function LeagueAwardsTab({ clubId }: Props) {
   }, [data]);
 
   const activeLabel = leagueLabel || leagueOptions[0]?.label || "";
+  const isAllLeagues = activeLabel === ALL_LEAGUES;
 
   const leagueRounds = useMemo(
     () =>
       ((data?.rounds || []) as AwardRoundMeta[])
-        .filter((r) => leagueLabelFromRoundName(r.name) === activeLabel)
-        .sort((a, b) => a.round_number - b.round_number),
-    [data, activeLabel],
+        .filter((r) => isAllLeagues || leagueLabelFromRoundName(r.name) === activeLabel)
+        .sort((a, b) => {
+          const labelA = leagueLabelFromRoundName(a.name);
+          const labelB = leagueLabelFromRoundName(b.name);
+          if (labelA !== labelB) return labelA.localeCompare(labelB);
+          return a.round_number - b.round_number;
+        }),
+    [data, activeLabel, isAllLeagues],
   );
 
   const isRoundOn = (id: string) => !pickedRoundIds || pickedRoundIds.includes(id);

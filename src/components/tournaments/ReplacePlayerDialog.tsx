@@ -148,7 +148,20 @@ export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubl
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Who should be playing instead?</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs">
+                {useClubList ? "Who should be playing instead?" : "Players still in this competition"}
+              </Label>
+              {hasCandidates && (
+                <button
+                  type="button"
+                  className="text-[11px] underline text-muted-foreground hover:text-foreground"
+                  onClick={() => { setShowAll((v) => !v); setPicked(null); }}
+                >
+                  {showAll ? "Only players still in" : "Show all club members"}
+                </button>
+              )}
+            </div>
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}

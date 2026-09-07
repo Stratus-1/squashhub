@@ -310,6 +310,10 @@ Deno.serve(async (req) => {
     }
 
     // ---- Club opt-in + sender ----------------------------------------------
+    // System messages (bar / till one-time codes and other transactional
+    // security codes) are ALWAYS sent, whether or not the club has switched
+    // member messaging on — the club opt-in only governs optional
+    // communications. Their usage is still logged and billed to the club.
     let sender = cfg.sender;
     if (!isPlatformNotice) {
       const { data: club } = await admin
@@ -317,13 +321,13 @@ Deno.serve(async (req) => {
         .select("name, sms_enabled, sms_sender_id")
         .eq("id", clubId)
         .maybeSingle();
-      if (!club?.sms_enabled) {
+      if (!club?.sms_enabled && !isSystem) {
         return json(
           { error: "SMS messaging is switched off for this club. Enable it under Club Admin → Subscription → SMS messaging." },
           403,
         );
       }
-      sender = club.sms_sender_id || cfg.sender;
+      sender = club?.sms_sender_id || cfg.sender;
     }
 
     // ---- Resolve phones + honour opt-outs -----------------------------------

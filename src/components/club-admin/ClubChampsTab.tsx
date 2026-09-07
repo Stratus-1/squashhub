@@ -1530,6 +1530,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Invite by league (just for the initial roster — admin can still sub from any league later)
   const [inviteSource, setInviteSource] = useState<"manual" | "leagues">("manual");
   const [inviteIncludeReserves, setInviteIncludeReserves] = useState<boolean>(true);
+  // Short invites: the WhatsApp/SMS/email message stays brief and the personal
+  // link carries the full tournament details (they're rendered on /i/:token).
+  const [inviteShortMessage, setInviteShortMessage] = useState<boolean>(false);
   const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
 
   /**
@@ -2343,6 +2346,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       entry_source: entrySource,
       approval_gate: approvalGate,
       invite_include_reserves: inviteIncludeReserves,
+      invite_short_message: inviteShortMessage,
       invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
       handicap_mode: matchType === "singles" ? handicapMode : "none",
       handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,

@@ -12679,6 +12679,7 @@ export type Database = {
           invite_extra_details: string | null
           invite_include_reserves: boolean
           invite_methods: string[]
+          invite_short_message: boolean
           invite_source: string
           knockout_seeds: Json | null
           knockout_seeds_at: string | null
@@ -12766,6 +12767,7 @@ export type Database = {
           invite_extra_details?: string | null
           invite_include_reserves?: boolean
           invite_methods?: string[]
+          invite_short_message?: boolean
           invite_source?: string
           knockout_seeds?: Json | null
           knockout_seeds_at?: string | null
@@ -12853,6 +12855,7 @@ export type Database = {
           invite_extra_details?: string | null
           invite_include_reserves?: boolean
           invite_methods?: string[]
+          invite_short_message?: boolean
           invite_source?: string
           knockout_seeds?: Json | null
           knockout_seeds_at?: string | null
@@ -13441,6 +13444,7 @@ export type Database = {
           invite_extra_details: string | null
           invite_include_reserves: boolean | null
           invite_methods: string[] | null
+          invite_short_message: boolean | null
           invite_source: string | null
           knockout_seeds: Json | null
           knockout_seeds_at: string | null

@@ -26,7 +26,7 @@ type Audience = {
   memberIds: string[];
 };
 
-const ADMIN_ROLES = ["admin", "captain"];
+const ADMIN_ROLES = ["admin", "captain"] as const;
 
 function normalisePhone(raw?: string | null) {
   if (!raw) return null;
@@ -94,10 +94,10 @@ export function PlatformCampaignWizard({
   const { data: admins = [], isLoading: adminsLoading } = useQuery({
     queryKey: ["platform-updates-admins"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("club_members")
         .select("id,club_id,user_id,name,email,phone,role,status")
-        .in("role", ADMIN_ROLES)
+        .in("role", ADMIN_ROLES as unknown as string[])
         .neq("status", "resigned")
         .order("name");
       return data ?? [];
@@ -107,18 +107,18 @@ export function PlatformCampaignWizard({
   const clubById = useMemo(() => new Map(clubs.map((c: any) => [c.id, c])), [clubs]);
 
   /** Clubs matched by the current audience choice. */
-  const { data: audienceClubIds = null } = useQuery({
+  const { data: audienceClubIds = null } = useQuery<string[] | null>({
     queryKey: ["platform-updates-audience", audience.type, audience.associationId, audience.planId],
     queryFn: async () => {
       if (audience.type === "association" && audience.associationId) {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from("association_affiliated_clubs").select("club_id").eq("association_id", audience.associationId);
-        return (data ?? []).map((r: any) => r.club_id);
+        return (data ?? []).map((r: any) => r.club_id as string);
       }
       if (audience.type === "plan" && audience.planId) {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from("club_subscriptions").select("club_id").eq("plan_id", audience.planId);
-        return [...new Set((data ?? []).map((r: any) => r.club_id))];
+        return [...new Set((data ?? []).map((r: any) => r.club_id as string))];
       }
       return null;
     },

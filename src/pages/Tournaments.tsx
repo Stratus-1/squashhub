@@ -189,6 +189,7 @@ export default function Tournaments() {
     return map;
   }, [allRounds]);
 
+  const today = todayStr;
 
   // Marker presence drives the LIVE chip: a game is only "live" while someone
   // is actually scoring it (fresh heartbeat in champ_marker_locks). When the

@@ -238,6 +238,26 @@ export default function ClubChampsView() {
     return `${getPlayerName(player)} & ${getPlayerName(partner)}`;
   };
 
+  /**
+   * Doubles is decided per division, not per tournament: a single event can hold
+   * a "Doubles Bells" league alongside a "Singles Bells" one. We trust the
+   * configured match type, and fall back to the entries themselves (a division
+   * whose entries carry partners is a doubles division) so mislabelled setups
+   * still show both names of a pair.
+   */
+  const leagueMatchTypes: Record<string, string> =
+    ((champ as any)?.league_match_types as Record<string, string>) || {};
+  const isDoublesLeague = (gn: number | null | undefined) => {
+    if (isDoubles) return true;
+    if (gn == null) return false;
+    const cfg = String(leagueMatchTypes[String(gn)] || "").toLowerCase();
+    if (cfg === "doubles") return true;
+    return (entries as any[]).some(
+      (e: any) => e.group_number === gn && !!e.partner_member_id,
+    );
+  };
+
+
   // Build standings per league (includes substitutes who appear in completed matches but were not in original entries)
   const byeHandling: string = (champ as any)?.bye_handling || "no_match";
   const tournamentFormat = getTournamentFormat((champ as any)?.scoring_mode);

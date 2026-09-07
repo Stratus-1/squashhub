@@ -1585,34 +1585,65 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Courts</Label>
+                <Label className="text-xs">Must courts be booked for this event?</Label>
                 <div className="flex flex-wrap gap-2">
-                  {(courts || []).map((c) => (
-                    <Button
-                      key={c.id}
-                      type="button"
-                      size="sm"
-                      variant={form.court_ids.includes(c.id) ? "default" : "outline"}
-                      className="h-8 text-xs"
-                      onClick={() => toggleCourt(c.id)}
-                    >
-                      {c.name}
-                    </Button>
-                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={form.reserve_courts === "yes" ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => setForm((f) => ({ ...f, reserve_courts: "yes" }))}
+                  >
+                    Yes, book courts
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={form.reserve_courts === "no" ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => setForm((f) => ({ ...f, reserve_courts: "no", court_ids: [] }))}
+                  >
+                    No courts needed
+                  </Button>
                 </div>
-                {adminBypass ? (
-                  <p className="text-[11px] text-muted-foreground">
-                    Booked under {club?.name || "the club"} — free, no booking limits.
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">
-                    Members may book 1 peak-hour and 1 off-peak court slot per occurrence.
-                  </p>
-                )}
-                {!bookingLimit.ok && (
-                  <p className="text-[11px] text-destructive">{bookingLimit.message}</p>
-                )}
+                <p className="text-[11px] text-muted-foreground">
+                  {form.reserve_courts === "no"
+                    ? "No court bookings will be made for this event."
+                    : "Choose \"Yes\" only if courts must be reserved on the app for this event."}
+                </p>
               </div>
+
+              {form.reserve_courts === "yes" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Courts</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(courts || []).map((c) => (
+                      <Button
+                        key={c.id}
+                        type="button"
+                        size="sm"
+                        variant={form.court_ids.includes(c.id) ? "default" : "outline"}
+                        className="h-8 text-xs"
+                        onClick={() => toggleCourt(c.id)}
+                      >
+                        {c.name}
+                      </Button>
+                    ))}
+                  </div>
+                  {adminBypass ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Booked under {club?.name || "the club"} — free, no booking limits.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      Members may book 1 peak-hour and 1 off-peak court slot per occurrence.
+                    </p>
+                  )}
+                  {!bookingLimit.ok && (
+                    <p className="text-[11px] text-destructive">{bookingLimit.message}</p>
+                  )}
+                </div>
+              )}
 
 
               </div>

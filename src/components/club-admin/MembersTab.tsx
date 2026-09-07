@@ -1196,11 +1196,7 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
     }
     // ID number uniqueness within club
     if (idNumber.trim()) {
-      const { data: dupId } = await fromExt("club_members")
-        .select("id")
-        .eq("club_id", clubId)
-        .eq("id_number", idNumber.trim())
-        .maybeSingle();
+      const { data: dupId } = await (supabase as any).rpc("club_member_id_number_taken", { _club_id: clubId, _id_number: idNumber.trim() });
       if (dupId) {
         toast.error("This ID number is already registered in the club");
         return;
@@ -1208,13 +1204,9 @@ function AddMemberDialog({ clubId, open, onOpenChange }: { clubId: string; open:
     }
     // Duplicate email: allowed only if ID numbers differ
     if (trimmedEmail) {
-      const { data: dupEmail } = await fromExt("club_members")
-        .select("id, id_number")
-        .eq("club_id", clubId)
-        .eq("email", trimmedEmail);
-      if (dupEmail && dupEmail.length > 0 && idNumber.trim()) {
-        const sameId = dupEmail.find((m: any) => m.id_number === idNumber.trim());
-        if (sameId) {
+      if (idNumber.trim()) {
+        const { data: conflict } = await (supabase as any).rpc("club_member_email_id_conflict", { _club_id: clubId, _email: trimmedEmail, _id_number: idNumber.trim() });
+        if (conflict) {
           toast.error("A member with this email and ID number already exists");
           return;
         }
@@ -1673,12 +1665,7 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
       }
     }
     if (form.id_number.trim()) {
-      const { data: dupId } = await fromExt("club_members")
-        .select("id")
-        .eq("club_id", clubId)
-        .eq("id_number", form.id_number.trim())
-        .neq("id", member.id)
-        .maybeSingle();
+      const { data: dupId } = await (supabase as any).rpc("club_member_id_number_taken", { _club_id: clubId, _id_number: form.id_number.trim(), _exclude_member_id: member.id });
       if (dupId) {
         toast.error("This ID number is already registered in the club");
         return;
@@ -1686,12 +1673,8 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     }
     // Duplicate email allowed, but not with same ID number
     if (form.email.trim() && form.id_number.trim()) {
-      const { data: dupEmail } = await fromExt("club_members")
-        .select("id, id_number")
-        .eq("club_id", clubId)
-        .eq("email", form.email.trim().toLowerCase())
-        .neq("id", member.id);
-      if (dupEmail && dupEmail.find((m: any) => m.id_number === form.id_number.trim())) {
+      const { data: emailIdConflict } = await (supabase as any).rpc("club_member_email_id_conflict", { _club_id: clubId, _email: form.email.trim().toLowerCase(), _id_number: form.id_number.trim(), _exclude_member_id: member.id });
+      if (emailIdConflict) {
         toast.error("A member with this email and ID number already exists");
         return;
       }

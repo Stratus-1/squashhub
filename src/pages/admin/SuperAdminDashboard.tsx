@@ -35,7 +35,7 @@ export default function SuperAdminDashboard() {
     queryFn: async () => {
       const { count, error } = await supabase
         .from("club_members")
-        .select("*", { count: "exact", head: true });
+        .select("id", { count: "exact", head: true });
       if (error) throw error;
       return count ?? 0;
     },

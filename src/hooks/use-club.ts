@@ -300,6 +300,22 @@ export function useIsSuperAdmin() {
   return useSuperAdminStatus().isSuperAdmin;
 }
 
+
+/**
+ * Columns of club_members readable by any club member. `id_number` and `address`
+ * are private PII: the database only exposes them to the member themselves and to
+ * club admins, through the club_member_private_fields() function.
+ */
+export const CLUB_MEMBER_COLUMNS = "id,club_id,user_id,role,club_member_number,plays_league,ladder_position,joined_at,updated_at,fee_category_id,phone,name,email,gender,skill_level,avatar_url,home_club_id,enable_league_association_id,is_league_only_membership,pending_captain_claim,face_consent_at,face_provisioned_at,face_provider_person_id,home_club_name,status,ranking_points,access_suspended_at,suspension_status,suspension_reason,suspension_outstanding,suspended_at,suspension_cleared_at,suspension_manual,whatsapp_opt_out,billing_exempt,person_id,occupation,skills,skills_other,volunteer_willing,skills_updated_at,is_pending_approval,applied_at,approved_at,approved_by,gobook_client_id,gobook_client_name,gobook_linked_at,sms_opt_out";
+
+/** Fetches id_number/address for members the current user is allowed to see (self or club admin). */
+export async function fetchClubMemberPrivateFields(clubId: string) {
+  const { data } = await (supabase as any).rpc("club_member_private_fields", { _club_id: clubId });
+  const map = new Map<string, { id_number?: string | null; address?: string | null }>();
+  for (const row of (data as any[]) || []) map.set(row.member_id, { id_number: row.id_number, address: row.address });
+  return map;
+}
+
 /** Get the current user's own club member record */
 export function useMyClubMember() {
   const { user } = useAuth();
@@ -311,13 +327,19 @@ export function useMyClubMember() {
       // Use limit(1) instead of maybeSingle() because a user can have
       // multiple club_member rows (family accounts / duplicates).
       const { data, error } = await fromExt("club_members")
-        .select("*, fee_category:fee_category_id(id, name, annual_fee)")
+        .select(`${CLUB_MEMBER_COLUMNS}, fee_category:fee_category_id(id, name, annual_fee)`)
         .eq("user_id", user!.id)
         .eq("club_id", clubId!)
         .order("joined_at", { ascending: true })
         .limit(1);
       if (error) throw error;
-      return (data && data.length > 0 ? data[0] : null) as ClubMember | null;
+      const mine = (data && data.length > 0 ? data[0] : null) as ClubMember | null;
+      if (mine) {
+        const priv = await fetchClubMemberPrivateFields(clubId!);
+        const p = priv.get(mine.id);
+        if (p) Object.assign(mine, { id_number: p.id_number ?? undefined, address: p.address ?? undefined });
+      }
+      return mine;
     },
     enabled: !!user && !!clubId,
   });
@@ -329,12 +351,20 @@ export function useClubMembers(clubId?: string) {
     queryKey: ["club-members", clubId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("*, profiles:user_id(name, email, phone, avatar_url), fee_category:fee_category_id(id, name, annual_fee)")
+        .select(`${CLUB_MEMBER_COLUMNS}, profiles:user_id(name, email, phone, avatar_url), fee_category:fee_category_id(id, name, annual_fee)`)
         .eq("club_id", clubId!)
         .order("role")
         .order("joined_at");
       if (error) throw error;
-      return (data || []) as ClubMember[];
+      const rows = (data || []) as ClubMember[];
+      const priv = await fetchClubMemberPrivateFields(clubId!);
+      if (priv.size) {
+        for (const m of rows) {
+          const p = priv.get(m.id);
+          if (p) Object.assign(m, { id_number: p.id_number ?? undefined, address: p.address ?? undefined });
+        }
+      }
+      return rows;
     },
     enabled: !!clubId,
   });

@@ -28,7 +28,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useProfile } from "@/hooks/use-data";
-import { useMyClubMember, useMyClub, useFeeCategories, SKILL_LEVELS } from "@/hooks/use-club";
+import { useMyClubMember, useMyClub, useFeeCategories, SKILL_LEVELS, CLUB_MEMBER_COLUMNS, fetchClubMemberPrivateFields } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -79,10 +79,15 @@ export default function Profile() {
     queryKey: ["club-member-by-id", activeMemberId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("*, fee_category:fee_category_id(id, name, annual_fee)")
+        .select(`${CLUB_MEMBER_COLUMNS}, fee_category:fee_category_id(id, name, annual_fee)`)
         .eq("id", activeMemberId!)
         .maybeSingle();
       if (error) throw error;
+      if (data && (data as any).club_id) {
+        const priv = await fetchClubMemberPrivateFields((data as any).club_id);
+        const p = priv.get((data as any).id);
+        if (p) Object.assign(data as any, { id_number: p.id_number ?? null, address: p.address ?? null });
+      }
       return data;
     },
     enabled: !!activeMemberId && activeMemberId !== defaultClubMember?.id,

@@ -1145,8 +1145,8 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   </div>
                   <div className="flex items-center justify-between rounded-lg border p-2.5">
                     <div className="min-w-0">
-                      <Label className="text-sm">Show on dashboard</Label>
-                      <p className="text-[11px] text-muted-foreground">Hide without deleting</p>
+                      <Label className="text-sm">Device in use</Label>
+                      <p className="text-[11px] text-muted-foreground">Switch off to retire it without deleting</p>
                     </div>
                     <Switch
                       checked={form.enabled}
@@ -1154,6 +1154,163 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                     />
                   </div>
                 </div>}
+
+                {form.source !== "court" && (
+                  <div className="space-y-3 rounded-xl border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <Label className="text-sm">Show on dashboard</Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Give members a button for this device on their dashboard.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={form.show_on_dashboard}
+                        onCheckedChange={(v) => set("show_on_dashboard", v)}
+                      />
+                    </div>
+
+                    {form.show_on_dashboard && (
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Who may use it</Label>
+                        {permissionRoles.length === 0 ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            Everyone at the club. Create roles under Permissions to limit this device
+                            to certain people.
+                          </p>
+                        ) : (
+                          <>
+                            <div className="flex flex-wrap gap-1.5">
+                              {permissionRoles.map((role) => {
+                                const on = form.dashboard_role_ids.includes(role.id);
+                                return (
+                                  <Button
+                                    key={role.id}
+                                    type="button"
+                                    size="sm"
+                                    variant={on ? "default" : "outline"}
+                                    className="h-7 px-2.5 text-xs"
+                                    onClick={() =>
+                                      set(
+                                        "dashboard_role_ids",
+                                        on
+                                          ? form.dashboard_role_ids.filter((id) => id !== role.id)
+                                          : [...form.dashboard_role_ids, role.id],
+                                      )
+                                    }
+                                  >
+                                    {role.role_name}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              {form.dashboard_role_ids.length === 0
+                                ? "No role picked — every eligible member sees this control."
+                                : "Only members with a selected role (and club admins) see and use this control."}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {form.source === "main-access" && (
+                  <div className="space-y-3 rounded-xl border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <Label className="text-sm">Only near the door (GPS)</Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Members are only offered the door when their phone is at the club.
+                          Club admins can still open it from anywhere.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={form.geofence_enabled}
+                        onCheckedChange={(v) => set("geofence_enabled", v)}
+                      />
+                    </div>
+
+                    {form.geofence_enabled && (
+                      <div className="space-y-3">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label>Latitude</Label>
+                            <Input
+                              value={form.geofence_lat}
+                              placeholder="-25.474"
+                              onChange={(e) => set("geofence_lat", e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Longitude</Label>
+                            <Input
+                              value={form.geofence_lng}
+                              placeholder="30.970"
+                              onChange={(e) => set("geofence_lng", e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Button radius (m)</Label>
+                            <Input
+                              type="number"
+                              min={25}
+                              max={2000}
+                              value={form.geofence_radius}
+                              onChange={(e) => set("geofence_radius", e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Auto-unlock radius (m)</Label>
+                            <Input
+                              type="number"
+                              min={8}
+                              max={500}
+                              value={form.geofence_auto_radius}
+                              onChange={(e) => set("geofence_auto_radius", e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => {
+                            if (!navigator.geolocation) {
+                              toast.error("This device can't report its location.");
+                              return;
+                            }
+                            navigator.geolocation.getCurrentPosition(
+                              (pos) => {
+                                set("geofence_lat", pos.coords.latitude.toFixed(6));
+                                set("geofence_lng", pos.coords.longitude.toFixed(6));
+                                toast.success("Location captured");
+                              },
+                              () => toast.error("Could not get your location"),
+                              { enableHighAccuracy: true, timeout: 15000 },
+                            );
+                          }}
+                        >
+                          Use my current location (stand at the door)
+                        </Button>
+                        <div className="flex items-center justify-between gap-3 rounded-md border p-2.5">
+                          <div className="min-w-0">
+                            <Label className="text-sm">Open automatically at the door</Label>
+                            <p className="text-[11px] text-muted-foreground">
+                              Fires once per visit inside the auto-unlock radius.
+                            </p>
+                          </div>
+                          <Switch
+                            checked={form.geofence_auto}
+                            onCheckedChange={(v) => set("geofence_auto", v)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <DialogFooter>

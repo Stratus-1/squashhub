@@ -257,7 +257,13 @@ Deno.serve(async (req) => {
       contentVariables = fitTemplateVariables(templateBody, numbered);
     }
 
-    if (!(await clubHasCapability(admin, clubId, "whatsapp"))) {
+    // System messages (bar / till one-time codes and other transactional
+    // security codes) are ALWAYS sent, whether or not the club has switched
+    // WhatsApp on — the club opt-in only governs optional communications.
+    // Usage is still logged and billed to the club.
+    const isSystem = !!payload.system && isInternal;
+
+    if (!isSystem && !(await clubHasCapability(admin, clubId, "whatsapp"))) {
       return json(
         {
           error:
@@ -267,7 +273,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!club?.whatsapp_enabled) {
+    if (!club?.whatsapp_enabled && !isSystem) {
       return json(
         {
           error:

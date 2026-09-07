@@ -32,6 +32,12 @@ type Payload = {
    * marketing opt-out. Everything else honours it.
    */
   critical?: boolean;
+  /**
+   * Transactional system message (bar one-time codes, security codes).
+   * Bypasses the club's messaging opt-in and member marketing opt-out —
+   * still logged and billed to the club. Internal (service-role) callers only.
+   */
+  system?: boolean;
 };
 
 const GSM7 =
@@ -251,6 +257,7 @@ Deno.serve(async (req) => {
 
     const clubId = payload.club_id ?? null;
     const isPlatformNotice = !!payload.platform || !clubId;
+    const isSystem = !!payload.system && isInternal;
 
     // ---- Authorisation ------------------------------------------------------
     if (!isInternal) {
@@ -354,7 +361,7 @@ Deno.serve(async (req) => {
         results.push({ member_id: r.member_id, status: "skipped", error: "No usable mobile number" });
         continue;
       }
-      if (member?.sms_opt_out && !payload.critical) {
+      if (member?.sms_opt_out && !payload.critical && !isSystem) {
         results.push({ member_id: r.member_id, to, status: "skipped", error: "Member opted out of SMS" });
         continue;
       }

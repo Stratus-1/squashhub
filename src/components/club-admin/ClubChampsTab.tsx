@@ -5886,7 +5886,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
       if (methods.includes("whatsapp")) {
-        toast.info("WhatsApp test invitations aren't wired up yet — the in-app/email test uses the same link.");
+        const myPhone = String((myMember as any)?.phone || (myMember as any)?.cell || "").trim();
+        if (!myPhone) {
+          toast.warning("No cell number on your club profile — the WhatsApp test was skipped.");
+        } else {
+          const needsPayment = paymentRequired && entryFeeAmount > 0;
+          const details = needsPayment
+            ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+            : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+          const wa = await sendWhatsApp({
+            clubId,
+            recipients: [{ phone: myPhone }],
+            kind: "champ_invite_test",
+            category: "utility",
+            templateKey: "tournament_invite",
+            templateVariables: {
+              player: String((myMember as any)?.name || "").trim() || "player",
+              event: champName || "our tournament",
+              details,
+              link: testUrl,
+            },
+            body: `TEST INVITATION\n\n${body}\n\n${details}\n${testUrl}`,
+          });
+          if (wa.results?.[0]?.status !== "sent") {
+            throw new Error(wa.results?.[0]?.error || "The WhatsApp test could not be sent.");
+          }
+          delivered.push(`WhatsApp ${myPhone}`);
+        }
       }
 
       if (delivered.length === 0) throw new Error("No deliverable channel available for a test invitation.");

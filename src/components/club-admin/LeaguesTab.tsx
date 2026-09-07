@@ -3179,7 +3179,13 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
   const entries = buildEntries();
 
   const handleSave = async () => {
-    if (entries.length === 0) return;
+    if (entries.length === 0) {
+      if (editMode) {
+        toast.info("No new teams to add — existing teams were kept as-is. Rename or remove teams from the team list instead.");
+        onOpenChange(false);
+      }
+      return;
+    }
     const { data: inserted, error } = await fromExt("leagues").insert(entries).select("id,category,level,name");
     if (error) { toast.error(error.message); return; }
 
@@ -3187,7 +3193,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     // with codes already used by other seasons/associations).
 
     let copied = 0;
-    if (copyFromYear && copyPlayers && Array.isArray(inserted)) {
+    if (!editMode && copyFromYear && copyPlayers && Array.isArray(inserted)) {
       try {
         const src = (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(copyFromYear));
         const srcIds = src.map((l) => l.id);

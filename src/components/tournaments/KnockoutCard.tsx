@@ -79,6 +79,41 @@ export function KnockoutCard({
   const embeddedNames = useMemo(() => buildNameMap(matches || []), [matches]);
   const states = useMemo(() => sectionProgression(koMatches, rounds), [koMatches, rounds]);
 
+  /** Entrants whose name never appeared in an embedded match relation. */
+  const missingIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const s of states) {
+      for (const e of s.entrants) {
+        if (e.memberId && !embeddedNames.has(e.memberId)) ids.add(e.memberId);
+      }
+    }
+    return Array.from(ids).sort();
+  }, [states, embeddedNames]);
+
+  const { data: fetchedNames } = useQuery({
+    queryKey: ["ko-entrant-names", missingIds],
+    enabled: missingIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("club_members")
+        .select("id, name")
+        .in("id", missingIds);
+      if (error) throw error;
+      const map = new Map<string, string>();
+      (data || []).forEach((r: any) => {
+        if (r.name && !looksLikePhone(r.name)) map.set(r.id, r.name);
+      });
+      return map;
+    },
+  });
+
+  const names = useMemo(() => {
+    const map = new Map(embeddedNames);
+    fetchedNames?.forEach((v, k) => map.set(k, v));
+    return map;
+  }, [embeddedNames, fetchedNames]);
+
+
   const leagues = useMemo(() => {
     const byLeague = new Map<number, typeof states>();
     for (const s of states) {

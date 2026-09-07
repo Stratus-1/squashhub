@@ -32,7 +32,7 @@ export function useProvisionalSettings(
         };
       }
       const table = scope === "association" ? "association_ranking_settings" : "organisation_settings";
-      const idCol = scope === "association" ? "association_id" : "organisation_id";
+      const idCol = scope === "association" ? "association_id" : "org_id";
       const { data } = await (supabase as any)
         .from(table)
         .select("provisional_enabled, provisional_start_points, provisional_min_matches")

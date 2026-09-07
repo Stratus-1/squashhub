@@ -16,6 +16,7 @@ import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
 import { FederationTreeTab } from "@/components/admin/FederationTreeTab";
 import FederationOrgChart from "@/components/admin/FederationOrgChart";
 import { TournamentsPanel } from "@/components/tournaments/TournamentsPanel";
+import { ProvisionalRankingSettingsCard } from "@/components/rankings/ProvisionalRankingSettingsCard";
 
 
 
@@ -231,7 +232,16 @@ export default function SuperAdminFederation() {
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="competitions">Competitions</TabsTrigger>
           <TabsTrigger value="roles">Federation roles</TabsTrigger>
+          <TabsTrigger value="rankings">Rankings</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="rankings" className="mt-3">
+          {nationalOrgId ? (
+            <ProvisionalRankingSettingsCard scope="national" ownerId={nationalOrgId} />
+          ) : (
+            <p className="text-xs text-white/50">No national organisation found in the hierarchy yet.</p>
+          )}
+        </TabsContent>
 
         <TabsContent value="tree" className="mt-3">
           <FederationTreeTab />

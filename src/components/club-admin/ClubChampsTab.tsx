@@ -5741,32 +5741,71 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       if (!previewToken) throw new Error(`Could not create a secure invitation link for ${previewMember.name}.`);
       const previewUrl = buildInviteUrl(previewToken, sub);
 
-      // Tenant-branded: send through the CLUB's own email settings when the
-      // club has SMTP configured; the backend falls back to the platform
-      // sender only when the club has none.
-      const { data: sendData, error: sendError } = await supabase.functions.invoke("email-notifications", {
-        body: {
-          action: "club-send",
-          clubId,
-          to: parsedEmail.data,
-          subject: `${champName || "Tournament"} — invitation (test)`,
-          body: buildInviteBody(),
-          url: previewUrl,
-          ctaLabel: "Accept / Register",
-          recipientName: previewMember.name,
-        },
-      });
-      if (sendError || (sendData as any)?.ok === false) {
-        throw new Error(await edgeErrorMessage(sendError, sendData, "The test invite could not be sent."));
+      const delivered: string[] = [];
+
+      if (parsedEmail) {
+        // Tenant-branded: send through the CLUB's own email settings when the
+        // club has SMTP configured; the backend falls back to the platform
+        // sender only when the club has none.
+        const { data: sendData, error: sendError } = await supabase.functions.invoke("email-notifications", {
+          body: {
+            action: "club-send",
+            clubId,
+            to: parsedEmail,
+            subject: `${champName || "Tournament"} — invitation (test)`,
+            body: buildInviteBody(),
+            url: previewUrl,
+            ctaLabel: "Accept / Register",
+            recipientName: previewMember.name,
+          },
+        });
+        if (sendError || (sendData as any)?.ok === false) {
+          throw new Error(await edgeErrorMessage(sendError, sendData, "The test invite could not be sent."));
+        }
+        if ((sendData as any)?.fallbackUsed) {
+          toast.warning((sendData as any)?.warning || "Your club's own email settings did not work, so the email was sent from the SquashHub address instead.");
+        }
+        delivered.push(`email ${parsedEmail}`);
       }
 
-      if ((sendData as any)?.fallbackUsed) {
-        toast.warning((sendData as any)?.warning || "Your club's own email settings did not work, so the email was sent from the SquashHub address instead.");
+      if (parsedPhone) {
+        // Same template, variables and personal link as the real WhatsApp
+        // invite — only the recipient is the number you typed, and nothing is
+        // recorded on the player's registration.
+        const needsPayment = paymentRequired && entryFeeAmount > 0;
+        const details = needsPayment
+          ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+          : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+        const wa = await sendWhatsApp({
+          clubId,
+          recipients: [{ phone: parsedPhone }],
+          kind: "champ_invite_test",
+          category: "utility",
+          templateKey: "tournament_invite",
+          templateVariables: {
+            player: previewMember.name,
+            event: champName || "our tournament",
+            details,
+            link: previewUrl,
+          },
+          body: `TEST INVITATION\n\n${buildInviteBody()}\n\n${details}\n${previewUrl}`,
+          interaction: { kind: "champ_entry", targetId: champId, prompt: `TEST entry for ${champName || "tournament"}\n${previewUrl}` },
+        });
+        const waResult = wa.results?.[0];
+        if (waResult?.status !== "sent") {
+          throw new Error(waResult?.error || "The WhatsApp test could not be sent.");
+        }
+        delivered.push(`WhatsApp ${parsedPhone}`);
       }
-      toast.success(`Test invite for ${previewMember.name} sent to ${parsedEmail.data} from ${(sendData as any)?.sender === "platform" ? "the SquashHub address" : ((sendData as any)?.sender || "your club address")}. The secure link is the same one that player will receive.`);
+
+      if (delivered.length === 0) {
+        throw new Error("No test was delivered — check the selected channels and contact details.");
+      }
+      toast.success(`Test invite for ${previewMember.name} sent to ${delivered.join(" and ")}. The secure link is the same one that player will receive; nothing was registered or marked as sent.`);
 
       setTestInviteDialogOpen(false);
       setTestInviteEmail("");
+      setTestInvitePhone("");
       setTestInvitePreviewAs(null);
     } catch (e: any) {
       toast.error(e?.message || "Failed to send test invite");

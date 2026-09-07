@@ -55,7 +55,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical } from "lucide-react";
+import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog } from "lucide-react";
+import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
 
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 import { buildPlayoffMatches, type StandingEntity } from "@/lib/tournament-playoffs";
@@ -781,6 +782,7 @@ export default function ClubChampsView() {
   const navigate = useNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);
   const [noShowMatch, setNoShowMatch] = useState<any | null>(null);
+  const [replaceMatch, setReplaceMatch] = useState<any | null>(null);
   const [resultMatch, setResultMatch] = useState<any | null>(null);
   const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
 
@@ -1884,6 +1886,23 @@ export default function ClubChampsView() {
         
       />
 
+      <ReplacePlayerDialog
+        open={!!replaceMatch}
+        onOpenChange={(o) => { if (!o) setReplaceMatch(null); }}
+        clubId={(champ as any)?.club_id}
+        match={replaceMatch}
+        isDoubles={(champ as any)?.match_type === "doubles" || (champ as any)?.match_type === "mixed"}
+        getName={(memberId) => {
+          if (!memberId || !replaceMatch) return "";
+          if (memberId === replaceMatch.player_a_member_id) return getPlayerName(replaceMatch.player_a);
+          if (memberId === replaceMatch.player_b_member_id) return getPlayerName(replaceMatch.player_b);
+          if (memberId === replaceMatch.partner_a_member_id) return getPlayerName(replaceMatch.partner_a);
+          if (memberId === replaceMatch.partner_b_member_id) return getPlayerName(replaceMatch.partner_b);
+          return "";
+        }}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
+      />
+
     </div>
   );
 
@@ -2122,6 +2141,12 @@ export default function ClubChampsView() {
                     <CalendarClock className="h-3.5 w-3.5 mr-2" />
                     {scheduleActionLabel(m)}
                   </DropdownMenuItem>
+                  {canManage && !completed && (m.side_a_points ?? 0) === 0 && (m.side_b_points ?? 0) === 0 && (
+                    <DropdownMenuItem onClick={() => setReplaceMatch(m)}>
+                      <UserCog className="h-3.5 w-3.5 mr-2" />
+                      Replace a player
+                    </DropdownMenuItem>
+                  )}
                   {canUnscheduleFixture(m, myMemberId, { canManage }).allowed && (
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"

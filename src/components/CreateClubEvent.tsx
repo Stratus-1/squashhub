@@ -214,6 +214,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     light_fee_split: "creator",
     is_club_booking: false,
     booking_member_ids: [] as string[],
+    reserve_courts: "" as "" | "yes" | "no",
     court_ids: [] as number[],
     lights_auto_on: false,
   });
@@ -565,7 +566,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     mutationFn: async () => {
       if (!user || !clubId) throw new Error("Not authenticated");
       if (!form.title.trim()) throw new Error("Title is required");
-      if (form.court_ids.length === 0) throw new Error("Select at least one court");
+      if (form.reserve_courts === "") throw new Error("Choose whether courts must be booked for this event");
+      if (form.reserve_courts === "yes" && form.court_ids.length === 0) throw new Error("Select at least one court");
       if (!bookingLimit.ok) throw new Error(bookingLimit.message);
 
 
@@ -987,6 +989,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       light_fee_split: e.light_fee_split || "creator",
       is_club_booking: e.is_club_booking || false,
       booking_member_ids: [],
+      reserve_courts: courtIds.length > 0 ? "yes" : "no",
       court_ids: courtIds,
       lights_auto_on: false,
     });
@@ -999,7 +1002,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     mutationFn: async () => {
       if (!user || !clubId || !editingEventId) throw new Error("Not authenticated");
       if (!form.title.trim()) throw new Error("Title is required");
-      if (form.court_ids.length === 0) throw new Error("Select at least one court");
+      if (form.reserve_courts === "yes" && form.court_ids.length === 0) throw new Error("Select at least one court");
       if (!bookingLimit.ok) throw new Error(bookingLimit.message);
 
       const dayOfWeek = new Date(form.event_date + "T00:00:00").getDay();
@@ -1178,6 +1181,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       light_fee_split: "creator",
       is_club_booking: false,
       booking_member_ids: selfId ? [selfId] : [],
+      reserve_courts: "",
       court_ids: [],
       lights_auto_on: false,
     });
@@ -1205,7 +1209,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   };
 
   const canGoStep2 = form.event_date && form.start_time && form.end_time;
-  const canGoStep3 = !!form.title.trim() && form.court_ids.length > 0 && bookingLimit.ok;
+  const canGoStep3 =
+    !!form.title.trim() &&
+    form.reserve_courts !== "" &&
+    (form.reserve_courts === "no" || (form.court_ids.length > 0 && bookingLimit.ok));
 
   return (
     <div className="space-y-3">

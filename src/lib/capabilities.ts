@@ -69,13 +69,15 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     slug: "access_control",
     label: "Door Access",
     question: "Does the app open your clubhouse or court doors?",
-    description: "Shelly relay, remote trigger, tap card, PIN or face recognition.",
+    description:
+      "Tap card, PIN or face recognition. Shelly door relays are registered under Club Admin → IoT / Shelly (Access card).",
     group: "facilities",
     requires: [],
-    worksWith: ["bookings"],
+    worksWith: ["bookings", "gadgets"],
     defaultOn: false,
     tabs: ["access"],
   },
+
   wifi: {
     slug: "wifi",
     label: "Member Wi-Fi",

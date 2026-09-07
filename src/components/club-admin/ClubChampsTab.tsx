@@ -11209,12 +11209,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         onOpenChange={setShowInvitePreview}
         clubId={clubId}
         tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
-        description={description}
         builtBody={buildInviteBody()}
-        descriptionCustom={descriptionCustom}
         paymentRequired={paymentRequired}
         inviteShortMessage={inviteShortMessage}
         methods={inviteMethods}
+        entryFeeRand={entryFeeRand}
+        inviteExtraDetails={inviteExtraDetails}
         footer={
           editingChampId ? (
             <div className="rounded-md border border-dashed border-border/60 p-3 space-y-2">
@@ -11253,29 +11253,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </div>
           ) : null
         }
-        gender={gender}
-        matchType={matchType}
-        scoringMode={scoringMode}
-        roundFormat={roundFormat}
-        byeHandling={byeHandling}
-        partnerMode={partnerMode}
-        startDate={startDate}
-        endDate={endDate}
-        startTime={startTime}
-        endTime={endTime}
-        customizeDailySchedule={customizeDailySchedule}
-        daySchedules={daySchedules}
-        registrationOpensAt={registrationOpensAt}
-        registrationClosesAt={registrationClosesAt}
-        entryFeeRand={entryFeeRand}
-        pointsPerGame={pointsPerGame}
-        bestOf={bestOf}
-        registrationRequired={registrationRequired}
-        registrationMode={registrationMode}
-        divisionFormats={inviteDivisionFormats()}
-        selfScheduled={schedulingMode === "self"}
-        roundDeadlines={roundDeadlines}
-        inviteExtraDetails={inviteExtraDetails}
       />
 
       <ShadowRankPromptDialog
@@ -11449,34 +11426,11 @@ function InvitePreviewDialog({
   onOpenChange,
   clubId,
   tournamentName,
-  description,
   builtBody,
-  descriptionCustom,
   paymentRequired,
   inviteShortMessage,
   methods,
-  gender,
-  matchType,
-  scoringMode,
-  roundFormat,
-  byeHandling,
-  partnerMode,
-  startDate,
-  endDate,
-  startTime,
-  endTime,
-  customizeDailySchedule,
-  daySchedules,
-  registrationOpensAt,
-  registrationClosesAt,
   entryFeeRand,
-  pointsPerGame,
-  bestOf,
-  registrationRequired,
-  registrationMode,
-  divisionFormats,
-  selfScheduled,
-  roundDeadlines,
   inviteExtraDetails,
   footer,
 }: {
@@ -11484,38 +11438,15 @@ function InvitePreviewDialog({
   onOpenChange: (v: boolean) => void;
   clubId?: string;
   tournamentName: string;
-  description: string;
   /** Exact body the send path (buildInviteBody) will use — preview must show this verbatim. */
   builtBody: string;
-  descriptionCustom: boolean;
   paymentRequired: boolean;
   inviteShortMessage: boolean;
   methods: Set<"app" | "email" | "whatsapp">;
+  entryFeeRand: string;
+  inviteExtraDetails?: string;
   /** Test-invite controls live under the preview, never on the messaging step. */
   footer?: React.ReactNode;
-  gender: GenderCategory;
-  matchType: "singles" | "doubles";
-  scoringMode: string;
-  roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss";
-  byeHandling: "" | "no_match" | "walkover_win" | "neutral";
-  partnerMode: "" | "admin" | "players";
-  startDate: string;
-  endDate: string;
-  startTime?: string;
-  endTime?: string;
-  customizeDailySchedule?: boolean;
-  daySchedules?: { date: string; start_time: string; end_time: string }[];
-  registrationOpensAt: string;
-  registrationClosesAt: string;
-  entryFeeRand: string;
-  pointsPerGame: number;
-  bestOf: number;
-  registrationRequired?: boolean;
-  registrationMode?: "" | "open" | "invite";
-  divisionFormats?: string[];
-  selfScheduled?: boolean;
-  roundDeadlines?: { label: string; date: string }[];
-  inviteExtraDetails?: string;
 }) {
   const { data: previewClub } = useQuery({
     queryKey: ["invite-preview-club", clubId],
@@ -11636,12 +11567,10 @@ function InvitePreviewDialog({
                 <div className="rounded-lg rounded-tl-none border bg-muted/40 p-3">
                   <p className="text-sm whitespace-pre-wrap">{waBody}</p>
                 </div>
-                {!waNeedsPayment && (
-                  <div className="flex gap-2 mt-2">
-                    <span className="text-xs px-3 py-1 rounded-full border">Yes</span>
-                    <span className="text-xs px-3 py-1 rounded-full border">No</span>
-                  </div>
-                )}
+                <div className="flex gap-2 mt-2">
+                  <span className="text-xs px-3 py-1 rounded-full border">Yes</span>
+                  <span className="text-xs px-3 py-1 rounded-full border">No</span>
+                </div>
               </div>
               <p className={`text-[11px] ${waOverLimit ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                 {waLength} / 1024 characters
@@ -11656,7 +11585,7 @@ function InvitePreviewDialog({
                   Sent via an approved WhatsApp template — the wording of the fixed
                   opening and closing lines can't change per message.
                   {waNeedsPayment
-                    ? " Entry fee applies, so there are no Yes/No buttons — members register and pay via their link."
+                    ? " A YES reply sends the member their personal invitation link so they can register and pay; NO records a decline."
                     : " Free entry — a YES reply enters them automatically."}
                 </p>
               )}

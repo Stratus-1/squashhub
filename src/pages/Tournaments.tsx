@@ -25,6 +25,8 @@ import { useState, useMemo, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FinalizeTournamentSetupDialog } from "@/components/tournaments/FinalizeTournamentSetupDialog";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
+import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
+import { eliminatedMemberIds } from "@/lib/tournaments/survivors";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { getBucketColor, buildBucketColorMap } from "@/lib/tournament-colors";
@@ -58,6 +60,7 @@ export default function Tournaments() {
   const canManageChamps = useHasPermission("champs");
   const [resultMatch, setResultMatch] = useState<any | null>(null);
   const [scheduleMatch, setScheduleMatch] = useState<any | null>(null);
+  const [replaceMatch, setReplaceMatch] = useState<any | null>(null);
   const { user } = useAuth();
   const [takeover, setTakeover] = useState<
     { matchId: string; markRoute: string; label: string; markerName: string } | null
@@ -996,6 +999,11 @@ export default function Tournaments() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
+              {!isPlaceholder && m.status !== "completed" && (m.side_a_points ?? 0) === 0 && (m.side_b_points ?? 0) === 0 && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setReplaceMatch(m); }}>
+                  <User className="w-3.5 h-3.5 mr-2" /> Replace a player
+                </DropdownMenuItem>
+              )}
               {!isPlaceholder && (
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); markSlotEmpty(m); }}>
                   <Eraser className="w-3.5 h-3.5 mr-2" /> Mark as empty (no game)
@@ -1576,6 +1584,43 @@ export default function Tournaments() {
         allowedCourtIds={(scheduleChamp as any)?.court_ids ?? []}
         opponentName={scheduleMatch ? `${sideLabel(scheduleMatch.player_a, scheduleMatch.partner_a, scheduleMatch.placeholder_a, (scheduleChamp as any)?.match_type === "doubles")} vs ${sideLabel(scheduleMatch.player_b, scheduleMatch.partner_b, scheduleMatch.placeholder_b, (scheduleChamp as any)?.match_type === "doubles")}` : undefined}
         durationMinutes={(scheduleChamp as any)?.match_duration_minutes ?? undefined}
+      />
+
+      <ReplacePlayerDialog
+        open={!!replaceMatch}
+        onOpenChange={(o) => { if (!o) setReplaceMatch(null); }}
+        clubId={clubId}
+        match={replaceMatch}
+        isDoubles={replaceMatch ? champById.get(replaceMatch.champ_id)?.match_type === "doubles" || champById.get(replaceMatch.champ_id)?.match_type === "mixed" : false}
+        candidates={(() => {
+          if (!replaceMatch) return [];
+          const champMatches = (allMatches as any[]).filter((x: any) => x.champ_id === replaceMatch.champ_id);
+          const out = eliminatedMemberIds(champMatches);
+          const gn = (replaceMatch as any).group_number ?? null;
+          const seen = new Set<string>();
+          const list: { id: string; name: string }[] = [];
+          (allEntries as any[])
+            .filter((e: any) => e.champ_id === replaceMatch.champ_id)
+            .forEach((e: any) => {
+              if (gn != null && e.group_number != null && e.group_number !== gn) return;
+              [e.club_members, e.partner].forEach((pl: any) => {
+                if (!pl?.id || seen.has(pl.id) || out.has(pl.id)) return;
+                seen.add(pl.id);
+                list.push({ id: pl.id, name: pl.profiles?.name || pl.name || "Player" });
+              });
+            });
+          return list.sort((a, b) => a.name.localeCompare(b.name));
+        })()}
+        getName={(memberId) => {
+          if (!memberId || !replaceMatch) return "";
+          const p = [replaceMatch.player_a, replaceMatch.player_b, replaceMatch.partner_a, replaceMatch.partner_b]
+            .find((x: any) => x?.id === memberId);
+          return p?.profiles?.name || p?.name || "";
+        }}
+        onSaved={() => {
+          setReplaceMatch(null);
+          qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });
+        }}
       />
 
       <EnterResultDialog

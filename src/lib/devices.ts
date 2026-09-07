@@ -192,3 +192,8 @@ export function describeDeviceSchedule(
   const dayLabel = days.length === 7 ? "daily" : `${days.length} day${days.length === 1 ? "" : "s"}/week`;
   return `${dayLabel} ${device.schedule_on_time.slice(0, 5)}-${device.schedule_off_time.slice(0, 5)}`;
 }
+
+/** Default dashboard visibility for a newly added device. */
+export function defaultShowOnDashboard(category: DeviceCategory): boolean {
+  return category === "access";
+}

@@ -55,7 +55,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical } from "lucide-react";
+import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog } from "lucide-react";
+import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
 
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 import { buildPlayoffMatches, type StandingEntity } from "@/lib/tournament-playoffs";

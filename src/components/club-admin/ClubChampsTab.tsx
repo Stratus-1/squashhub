@@ -11567,12 +11567,10 @@ function InvitePreviewDialog({
                 <div className="rounded-lg rounded-tl-none border bg-muted/40 p-3">
                   <p className="text-sm whitespace-pre-wrap">{waBody}</p>
                 </div>
-                {!waNeedsPayment && (
-                  <div className="flex gap-2 mt-2">
-                    <span className="text-xs px-3 py-1 rounded-full border">Yes</span>
-                    <span className="text-xs px-3 py-1 rounded-full border">No</span>
-                  </div>
-                )}
+                <div className="flex gap-2 mt-2">
+                  <span className="text-xs px-3 py-1 rounded-full border">Yes</span>
+                  <span className="text-xs px-3 py-1 rounded-full border">No</span>
+                </div>
               </div>
               <p className={`text-[11px] ${waOverLimit ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                 {waLength} / 1024 characters
@@ -11587,7 +11585,7 @@ function InvitePreviewDialog({
                   Sent via an approved WhatsApp template — the wording of the fixed
                   opening and closing lines can't change per message.
                   {waNeedsPayment
-                    ? " Entry fee applies, so there are no Yes/No buttons — members register and pay via their link."
+                    ? " A YES reply sends the member their personal invitation link so they can register and pay; NO records a decline."
                     : " Free entry — a YES reply enters them automatically."}
                 </p>
               )}

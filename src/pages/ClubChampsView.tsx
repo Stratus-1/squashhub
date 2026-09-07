@@ -38,7 +38,7 @@ import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrect
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { looksLikePhone } from "@/lib/member-display";
-import { hasKnockoutStage, winnerMemberIds, winnerRows } from "@/lib/tournaments/survivors";
+import { hasKnockoutStage, winnerMemberIds, winnerRows, eliminatedMemberIds } from "@/lib/tournaments/survivors";
 
 
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
@@ -1892,6 +1892,22 @@ export default function ClubChampsView() {
         clubId={(champ as any)?.club_id}
         match={replaceMatch}
         isDoubles={(champ as any)?.match_type === "doubles" || (champ as any)?.match_type === "mixed"}
+        candidates={(() => {
+          if (!replaceMatch) return [];
+          const out = eliminatedMemberIds(matches as any[]);
+          const gn = (replaceMatch as any).group_number ?? null;
+          const seen = new Set<string>();
+          const list: { id: string; name: string }[] = [];
+          (entries as any[]).forEach((e: any) => {
+            if (gn != null && e.group_number != null && e.group_number !== gn) return;
+            [e.club_members, e.partner].forEach((p: any) => {
+              if (!p?.id || seen.has(p.id) || out.has(p.id)) return;
+              seen.add(p.id);
+              list.push({ id: p.id, name: p.profiles?.name || p.name || "Player" });
+            });
+          });
+          return list.sort((a, b) => a.name.localeCompare(b.name));
+        })()}
         getName={(memberId) => {
           if (!memberId || !replaceMatch) return "";
           if (memberId === replaceMatch.player_a_member_id) return getPlayerName(replaceMatch.player_a);

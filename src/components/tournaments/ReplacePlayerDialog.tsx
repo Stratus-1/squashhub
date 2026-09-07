@@ -11,12 +11,20 @@ import { cn } from "@/lib/utils";
 
 type Slot = "player_a" | "player_b" | "partner_a" | "partner_b";
 
+export interface ReplaceCandidate {
+  id: string;
+  name: string;
+  member_number?: string | number | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clubId?: string | null;
   match: any | null;
   isDoubles?: boolean;
+  /** Players still in the competition — offered first. */
+  candidates?: ReplaceCandidate[];
   /** Display name for a member id already in the fixture. */
   getName: (memberId?: string | null) => string;
   onSaved?: () => void;
@@ -29,19 +37,24 @@ interface Props {
  * changes. The backend refuses the change once the match has points, a score
  * or a winner, and notifies everyone involved.
  */
-export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubles = false, getName, onSaved }: Props) {
+export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubles = false, candidates, getName, onSaved }: Props) {
   const [slot, setSlot] = useState<Slot>("player_a");
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  const hasCandidates = (candidates?.length ?? 0) > 0;
 
   useEffect(() => {
-    if (open) { setSlot("player_a"); setSearch(""); setPicked(null); }
+    if (open) { setSlot("player_a"); setSearch(""); setPicked(null); setShowAll(false); }
   }, [open, match?.id]);
+
+  const useClubList = showAll || !hasCandidates;
 
   const { data: members = [], isLoading } = useQuery({
     queryKey: ["replace-player-members", clubId],
-    enabled: open && !!clubId,
+    enabled: open && !!clubId && useClubList,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("club_members")
@@ -65,12 +78,13 @@ export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubl
 
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return members
+    const source: any[] = useClubList ? members : (candidates || []);
+    return source
       .filter((m) => !inMatch.has(m.id))
       .filter((m) => (m.status || "active") !== "resigned")
       .filter((m) => !q || String(m.name || "").toLowerCase().includes(q) || String(m.member_number || "").includes(q))
-      .slice(0, 40);
-  }, [members, search, inMatch]);
+      .slice(0, 60);
+  }, [members, candidates, useClubList, search, inMatch]);
 
   const slots: { key: Slot; label: string; memberId?: string | null }[] = [
     { key: "player_a", label: "Side A player", memberId: match?.player_a_member_id },
@@ -134,7 +148,20 @@ export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubl
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs">Who should be playing instead?</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs">
+                {useClubList ? "Who should be playing instead?" : "Players still in this competition"}
+              </Label>
+              {hasCandidates && (
+                <button
+                  type="button"
+                  className="text-[11px] underline text-muted-foreground hover:text-foreground"
+                  onClick={() => { setShowAll((v) => !v); setPicked(null); }}
+                >
+                  {showAll ? "Only players still in" : "Show all club members"}
+                </button>
+              )}
+            </div>
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -148,7 +175,9 @@ export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubl
                 </div>
               )}
               {!isLoading && results.length === 0 && (
-                <div className="p-3 text-xs text-muted-foreground">No matching player.</div>
+                <div className="p-3 text-xs text-muted-foreground">
+                  {useClubList ? "No matching player." : "Nobody else is still in this competition — use \u201cShow all club members\u201d."}
+                </div>
               )}
               {results.map((m) => (
                 <button

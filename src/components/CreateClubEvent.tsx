@@ -570,6 +570,35 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       if (form.reserve_courts === "yes" && form.court_ids.length === 0) throw new Error("Select at least one court");
       if (!bookingLimit.ok) throw new Error(bookingLimit.message);
 
+      // Hard stop: never book over an existing active booking (league nights,
+      // members' games, other events). Re-check live so a stale view can't slip
+      // a clash through — the database rejects overlaps as well.
+      if (form.reserve_courts === "yes" && !editingEventId) {
+        const dates = getInstanceDates();
+        const { data: clashes } = await supabase
+          .from("bookings")
+          .select("court_id, date, start_time, end_time, guest_name")
+          .in("court_id", form.court_ids)
+          .in("date", dates)
+          .eq("status", "active")
+          .lt("start_time", form.end_time + ":00")
+          .gt("end_time", form.start_time + ":00");
+        if (clashes && clashes.length > 0) {
+          const names = new Map((courts || []).map((c: any) => [c.id, c.name]));
+          const list = clashes
+            .slice(0, 4)
+            .map(
+              (c: any) =>
+                `${names.get(c.court_id) || `Court ${c.court_id}`} on ${c.date} at ${String(c.start_time).slice(0, 5)}${c.guest_name ? ` (${c.guest_name})` : ""}`,
+            )
+            .join("; ");
+          throw new Error(
+            `These courts are already booked: ${list}${clashes.length > 4 ? ` and ${clashes.length - 4} more` : ""}. Pick another time, other courts, or cancel the existing bookings first.`,
+          );
+        }
+      }
+
+
 
       // Enforce per-member monthly event cap (admins exempt)
       if (!adminBypass && !editingEventId) {

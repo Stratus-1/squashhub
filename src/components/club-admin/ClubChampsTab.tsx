@@ -11357,6 +11357,21 @@ function InvitePreviewDialog({
     `Additional details: ${waCallToAction}\n\n` +
     `Please reply using the buttons below so that we can finalise the arrangements. Thank you.`;
 
+  // WhatsApp templates are capped at 1024 characters once the variables are
+  // filled in; anything longer is trimmed automatically before sending.
+  const waLength = waBody.length;
+  const waOverLimit = waLength > 1024;
+
+  // SMS is plain text with no formatting, so we show a condensed version and
+  // the segment count (160 chars per segment, 153 when concatenated).
+  const smsBody =
+    `${clubLabel}: ${tournamentName}. ` +
+    (extras ? `${extras.replace(/\n+/g, " ")} ` : "") +
+    (waNeedsPayment
+      ? "Register and pay via your invitation link: https://squashhub.co.za/i/…"
+      : "Reply YES to enter or NO to decline. Details: https://squashhub.co.za/i/…");
+  const smsLength = smsBody.length;
+  const smsSegments = smsLength <= 160 ? 1 : Math.ceil(smsLength / 153);
 
 
   return (

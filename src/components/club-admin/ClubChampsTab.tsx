@@ -1,4 +1,5 @@
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
+import { RankingScope } from "@/lib/rankings/provisional";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -1507,6 +1508,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
   // Weight multiplier applied to ranking points earned in this competition.
   const [rankingWeight, setRankingWeight] = useState<number>(1);
+  // Which ranking list this tournament feeds. null = the owner's default
+  // (club event → club ranking, association → regional, federation → national).
+  const [rankingScopeOverride, setRankingScopeOverride] = useState<RankingScope | null>(null);
   // null = follow the club's ladder setting; true/false = override for this event only.
   const [ladderAffects, setLadderAffects] = useState<boolean | null>(null);
   // Tournament category / capacity / seeding — stored on the tournaments row.
@@ -2359,6 +2363,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       invite_extra_details: inviteExtraDetails.trim() || null,
       affects_ranking_points: affectsRankingPoints,
       ranking_weight: rankingWeight,
+      ranking_scope: rankingScopeOverride,
       ladder_affects: ladderAffects,
       day_schedules: customizeDailySchedule ? daySchedules : [],
       court_ids: Array.from(selectedCourtIds),
@@ -4556,6 +4561,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             invite_extra_details: inviteExtraDetails.trim() || null,
             affects_ranking_points: affectsRankingPoints,
       ranking_weight: rankingWeight,
+      ranking_scope: rankingScopeOverride,
             ladder_affects: ladderAffects,
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
@@ -4640,6 +4646,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             invite_extra_details: inviteExtraDetails.trim() || null,
             affects_ranking_points: affectsRankingPoints,
       ranking_weight: rankingWeight,
+      ranking_scope: rankingScopeOverride,
             ladder_affects: ladderAffects,
             day_schedules: customizeDailySchedule ? daySchedules : [],
             court_ids: Array.from(selectedCourtIds),
@@ -5967,6 +5974,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return pending[0] || null;
   }, [inviteeRows, memberNameById, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
 
+  /** Everyone who could receive a test copy — simple picker under the preview. */
+  const inviteeOptions = useMemo(() => {
+    const out: { memberId: string; name: string }[] = [];
+    const seen = new Set<string>();
+    (inviteeRows as any[])
+      .filter((r) => r.club_member_id && !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()))
+      .forEach((r) => {
+        if (seen.has(r.club_member_id)) return;
+        seen.add(r.club_member_id);
+        out.push({ memberId: r.club_member_id, name: memberNameById.get(r.club_member_id) || "Unknown member" });
+      });
+    structureLeagueIds.forEach((leagueId) => {
+      (registrationsByLeague.get(leagueId) || []).forEach((memberId: string) => {
+        if (inviteExcludedMemberIds.has(memberId) || seen.has(memberId)) return;
+        seen.add(memberId);
+        out.push({ memberId, name: memberNameById.get(memberId) || "Unknown member" });
+      });
+    });
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }, [inviteeRows, memberNameById, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
   const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);
@@ -6130,6 +6158,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setDescriptionCustom(false);
     setInviteExtraDetails("");
     setAffectsRankingPoints(false);
+    setRankingScopeOverride(null);
     setLadderAffects(null);
     setEventType(scope === "club" ? "club_championship" : "open_tournament");
     setEligibilityScope(scope === "club" ? "club" : "open");
@@ -6269,6 +6298,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteExtraDetails((champ as any).invite_extra_details || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
     setRankingWeight(Number((champ as any).ranking_weight ?? 1) || 1);
+    setRankingScopeOverride(((champ as any).ranking_scope as RankingScope | null) ?? null);
     setLadderAffects(
       (champ as any).ladder_affects === null || (champ as any).ladder_affects === undefined
         ? null
@@ -8649,6 +8679,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
+            {/* Ranking — set once here, never repeated on the messaging step. */}
+            <CompetitionRankingCard
+              className="mt-2"
+              clubId={clubId}
+              source="tournament"
+              ownerScope={scope}
+              rankingScope={rankingScopeOverride}
+              onRankingScopeChange={setRankingScopeOverride}
+              affects={affectsRankingPoints}
+              onAffectsChange={setAffectsRankingPoints}
+              weight={rankingWeight}
+              onWeightChange={setRankingWeight}
+            />
+
+            <div className="rounded-md border bg-muted/30 px-3 py-2 mt-2 space-y-1">
+              <Label className="text-xs font-medium">Do results move the club ladder?</Label>
+              <Select
+                value={ladderAffects === null ? "inherit" : ladderAffects ? "on" : "off"}
+                onValueChange={(v) => setLadderAffects(v === "inherit" ? null : v === "on")}
+              >
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inherit">Use the club ladder setting</SelectItem>
+                  <SelectItem value="on">Yes — move the ladder</SelectItem>
+                  <SelectItem value="off">No — leave the ladder alone</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Only club-mate singles results between two ranked members can move the ladder.
+              </p>
+            </div>
+
             <div className="rounded-lg border border-dashed p-3 bg-muted/20 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Capacity is checked later.</span>{" "}
               This structure is sized against real court time on the <strong>Dates, Times &amp; Courts</strong> step,
@@ -9521,31 +9583,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   </p>
                 )}
 
-                {editingChampId && (
-                  <div className="rounded-md border border-dashed border-border/60 p-3 space-y-1.5">
-                    <div className="text-xs font-medium">Test invite</div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={!sampleInvitee || testInviteSending}
-                      onClick={() => {
-                        if (!sampleInvitee) return;
-                        openTestInviteDialog(sampleInvitee);
-                      }}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      {testInviteSending
-                        ? "Sending test…"
-                        : sampleInvitee
-                          ? `Send test as an invited player (${sampleInvitee.name})`
-                          : "Send test as an invited player"}
-                    </Button>
-                    <p className="text-[11px] text-muted-foreground">
-                      Test only — goes to an email address you type. It does not create entries and does not notify any member.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
             )}
@@ -9695,34 +9732,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-              <CompetitionRankingCard
-                className="mt-2"
-                clubId={clubId}
-                source="tournament"
-                affects={affectsRankingPoints}
-                onAffectsChange={setAffectsRankingPoints}
-                weight={rankingWeight}
-                onWeightChange={setRankingWeight}
-              />
-
-
-              <div className="rounded-md border bg-muted/30 px-3 py-2 mt-2 space-y-1">
-                <Label className="text-xs font-medium">Do results move the club ladder?</Label>
-                <Select
-                  value={ladderAffects === null ? "inherit" : ladderAffects ? "on" : "off"}
-                  onValueChange={(v) => setLadderAffects(v === "inherit" ? null : v === "on")}
-                >
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="inherit">Use the club ladder setting</SelectItem>
-                    <SelectItem value="on">Yes — move the ladder</SelectItem>
-                    <SelectItem value="off">No — leave the ladder alone</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground">
-                  Only club-mate singles results between two ranked members can move the ladder.
-                </p>
-              </div>
 
             </div>
             </WizardSection>
@@ -11108,6 +11117,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         paymentRequired={paymentRequired}
         inviteShortMessage={inviteShortMessage}
         methods={inviteMethods}
+        footer={
+          editingChampId ? (
+            <div className="rounded-md border border-dashed border-border/60 p-3 space-y-2">
+              <div className="text-xs font-medium">Test invite — does not register anyone</div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select
+                  value={testInvitePreviewAs?.memberId ?? sampleInvitee?.memberId ?? ""}
+                  onValueChange={(v) => {
+                    const pick = inviteeOptions.find((o) => o.memberId === v) || null;
+                    setTestInvitePreviewAs(pick);
+                  }}
+                >
+                  <SelectTrigger className="h-9 sm:w-64">
+                    <SelectValue placeholder="Send as which invited player?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {inviteeOptions.map((o) => (
+                      <SelectItem key={o.memberId} value={o.memberId}>{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!(testInvitePreviewAs || sampleInvitee) || testInviteSending}
+                  onClick={() => openTestInviteDialog(testInvitePreviewAs || sampleInvitee)}
+                >
+                  <Eye className="w-4 h-4 mr-1" />
+                  {testInviteSending ? "Sending test…" : "Send test invite"}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Clearly marked as a test: it goes to an email address you type, creates no entry and notifies no member.
+              </p>
+            </div>
+          ) : null
+        }
         gender={gender}
         matchType={matchType}
         scoringMode={scoringMode}
@@ -11333,6 +11380,7 @@ function InvitePreviewDialog({
   selfScheduled,
   roundDeadlines,
   inviteExtraDetails,
+  footer,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -11345,6 +11393,8 @@ function InvitePreviewDialog({
   paymentRequired: boolean;
   inviteShortMessage: boolean;
   methods: Set<"app" | "email" | "whatsapp">;
+  /** Test-invite controls live under the preview, never on the messaging step. */
+  footer?: React.ReactNode;
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;
@@ -11531,6 +11581,8 @@ function InvitePreviewDialog({
             </div>
           </div>
         </div>
+
+        {footer}
 
         <DialogFooter className="mt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>

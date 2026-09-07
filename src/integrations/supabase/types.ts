@@ -489,6 +489,9 @@ export type Database = {
           opponent_scale: number
           position_step: number
           position_top_weight: number
+          provisional_enabled: boolean
+          provisional_min_matches: number
+          provisional_start_points: number
           reserve_factor: number
           season_decay: Json
           updated_at: string
@@ -505,6 +508,9 @@ export type Database = {
           opponent_scale?: number
           position_step?: number
           position_top_weight?: number
+          provisional_enabled?: boolean
+          provisional_min_matches?: number
+          provisional_start_points?: number
           reserve_factor?: number
           season_decay?: Json
           updated_at?: string
@@ -521,6 +527,9 @@ export type Database = {
           opponent_scale?: number
           position_step?: number
           position_top_weight?: number
+          provisional_enabled?: boolean
+          provisional_min_matches?: number
+          provisional_start_points?: number
           reserve_factor?: number
           season_decay?: Json
           updated_at?: string
@@ -5040,6 +5049,9 @@ export type Database = {
           points_upset_bonus_per_rank: number
           public_applications_enabled: boolean
           ranking_points_enabled: boolean
+          ranking_provisional_enabled: boolean
+          ranking_provisional_min_matches: number
+          ranking_provisional_start_points: number
           roster_seeded_at: string | null
           secretary_member_id: string | null
           shelly_integration_enabled: boolean
@@ -5172,6 +5184,9 @@ export type Database = {
           points_upset_bonus_per_rank?: number
           public_applications_enabled?: boolean
           ranking_points_enabled?: boolean
+          ranking_provisional_enabled?: boolean
+          ranking_provisional_min_matches?: number
+          ranking_provisional_start_points?: number
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean
@@ -5304,6 +5319,9 @@ export type Database = {
           points_upset_bonus_per_rank?: number
           public_applications_enabled?: boolean
           ranking_points_enabled?: boolean
+          ranking_provisional_enabled?: boolean
+          ranking_provisional_min_matches?: number
+          ranking_provisional_start_points?: number
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean
@@ -9209,6 +9227,9 @@ export type Database = {
           notes: string | null
           org_id: string
           payout_reference: string | null
+          provisional_enabled: boolean
+          provisional_min_matches: number
+          provisional_start_points: number
           require_competitive_licence: boolean
           require_sanctioning: boolean
           updated_at: string
@@ -9224,6 +9245,9 @@ export type Database = {
           notes?: string | null
           org_id: string
           payout_reference?: string | null
+          provisional_enabled?: boolean
+          provisional_min_matches?: number
+          provisional_start_points?: number
           require_competitive_licence?: boolean
           require_sanctioning?: boolean
           updated_at?: string
@@ -9239,6 +9263,9 @@ export type Database = {
           notes?: string | null
           org_id?: string
           payout_reference?: string | null
+          provisional_enabled?: boolean
+          provisional_min_matches?: number
+          provisional_start_points?: number
           require_competitive_licence?: boolean
           require_sanctioning?: boolean
           updated_at?: string
@@ -12514,6 +12541,7 @@ export type Database = {
           no_show_player_points: number
           play_all_games: boolean
           points_per_game: number
+          ranking_scope: string | null
           ranking_weight: number
           round_format: string
           scoring_mode: string
@@ -12535,6 +12563,7 @@ export type Database = {
           no_show_player_points?: number
           play_all_games?: boolean
           points_per_game?: number
+          ranking_scope?: string | null
           ranking_weight?: number
           round_format?: string
           scoring_mode?: string
@@ -12556,6 +12585,7 @@ export type Database = {
           no_show_player_points?: number
           play_all_games?: boolean
           points_per_game?: number
+          ranking_scope?: string | null
           ranking_weight?: number
           round_format?: string
           scoring_mode?: string
@@ -13471,6 +13501,7 @@ export type Database = {
           points_per_game: number | null
           pool_allocation: string | null
           pool_sizes: Json | null
+          ranking_scope: string | null
           ranking_weight: number | null
           refund_cutoff_date: string | null
           refund_policy: string | null
@@ -14114,6 +14145,13 @@ export type Database = {
         Returns: boolean
       }
       club_has_no_admin: { Args: { _club_id: string }; Returns: boolean }
+      club_ranked_match_counts: {
+        Args: { _club_id: string }
+        Returns: {
+          matches: number
+          member_id: string
+        }[]
+      }
       club_submit_association_roster: {
         Args: {
           _association_id: string

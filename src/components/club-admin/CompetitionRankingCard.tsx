@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RankingScope, RANKING_SCOPE_LABELS, defaultRankingScopeForOwner } from "@/lib/rankings/provisional";
 
 export interface ClubRankingSettings {
   ranking_points_enabled: boolean;
@@ -42,12 +45,20 @@ interface Props {
   onAffectsChange: (v: boolean) => void;
   weight: number;
   onWeightChange: (v: number) => void;
+  /** Who owns this competition — decides which ranking list it feeds by default. */
+  ownerScope?: "club" | "association" | "federation";
+  /** Explicit override of the ranking list; null = use the owner's default. */
+  rankingScope?: RankingScope | null;
+  onRankingScopeChange?: (v: RankingScope | null) => void;
   className?: string;
 }
 
 /**
- * Single place where a competition (league or championship) is linked to the
- * club ranking system: on/off plus how heavily its results count.
+ * Single place where a competition (league or championship) is linked to a
+ * ranking system: which list it feeds, on/off, and how heavily it counts.
+ * The owner decides the default list — club events use the club ladder rules,
+ * association events the regional list, federation events the national list —
+ * and the override section is only opened when something needs changing.
  */
 export function CompetitionRankingCard({
   clubId,
@@ -56,20 +67,29 @@ export function CompetitionRankingCard({
   onAffectsChange,
   weight,
   onWeightChange,
+  ownerScope,
+  rankingScope,
+  onRankingScopeChange,
   className,
 }: Props) {
   const { data: club } = useClubRankingSettings(clubId);
   const sourceLabel = source === "league" ? "league" : "tournament";
+  const [overrideOpen, setOverrideOpen] = useState(false);
+
+  const defaultScope = defaultRankingScopeForOwner(ownerScope ?? "club");
+  const effectiveScope: RankingScope = rankingScope ?? defaultScope;
+  const showSummary = !!ownerScope;
 
   const clubOff = club && !club.ranking_points_enabled;
   const sourceOff =
     club &&
     club.ranking_points_enabled &&
     (source === "league" ? !club.points_from_leagues : !club.points_from_tournaments);
-  const warn = affects && (clubOff || sourceOff);
+  const warn = affects && effectiveScope === "club" && (clubOff || sourceOff);
 
-  return (
-    <div className={`rounded-md border bg-muted/30 px-3 py-2 space-y-2 ${className ?? ""}`}>
+
+  const controls = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Label className="text-xs font-medium">Affects official ranking points?</Label>
@@ -79,6 +99,29 @@ export function CompetitionRankingCard({
         </div>
         <Switch checked={affects} onCheckedChange={onAffectsChange} />
       </div>
+
+      {showSummary && affects && (
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <Label className="text-xs font-medium">Ranking list</Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Each list is independent — a player can be official on one and provisional on another.
+            </p>
+          </div>
+          <Select
+            value={rankingScope ?? "default"}
+            onValueChange={(v) => onRankingScopeChange?.(v === "default" ? null : (v as RankingScope))}
+          >
+            <SelectTrigger className="h-9 w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Owner default ({RANKING_SCOPE_LABELS[defaultScope]})</SelectItem>
+              <SelectItem value="club">{RANKING_SCOPE_LABELS.club}</SelectItem>
+              <SelectItem value="association">{RANKING_SCOPE_LABELS.association}</SelectItem>
+              <SelectItem value="national">{RANKING_SCOPE_LABELS.national}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {affects && (
         <div className="flex items-center justify-between gap-3">
@@ -98,6 +141,37 @@ export function CompetitionRankingCard({
           </Select>
         </div>
       )}
+    </>
+  );
+
+  return (
+    <div className={`rounded-md border bg-muted/30 px-3 py-2 space-y-2 ${className ?? ""}`}>
+      {showSummary ? (
+        <>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-xs">
+              <span className="font-medium">Using {RANKING_SCOPE_LABELS[effectiveScope].toLowerCase()} rules</span>
+              <span className="text-muted-foreground">
+                {" "}· {affects ? `results count, ${weight ?? 1}× weight` : "results do not count towards ranking points"}
+              </span>
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-[11px] shrink-0"
+              onClick={() => setOverrideOpen((v) => !v)}
+            >
+              {overrideOpen ? "Hide" : "Override"}
+              <ChevronDown className={`ml-1 h-3.5 w-3.5 transition-transform ${overrideOpen ? "rotate-180" : ""}`} />
+            </Button>
+          </div>
+          {overrideOpen && <div className="space-y-2 pt-1 border-t">{controls}</div>}
+        </>
+      ) : (
+        controls
+      )}
+
 
       {warn && (
         <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5">

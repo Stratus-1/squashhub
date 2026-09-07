@@ -3035,6 +3035,45 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     return [...years].sort((a, b) => b - a);
   }, [clubLeagues, year]);
 
+  // Edit mode: this club already has teams for the selected season. The form
+  // is prefilled with them and saving only ADDS missing teams — existing rows
+  // are never duplicated or deleted here (removals happen on the team cards).
+  const seasonTeams = useMemo(
+    () => (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(year) && !l.is_reserve),
+    [clubLeagues, year],
+  );
+  const editMode = seasonTeams.length > 0;
+
+  const genderKeyOf = (category: string): "men" | "ladies" | "mixed" | null =>
+    category === "mens" || category === "men" ? "men" : category === "ladies" ? "ladies" : category === "mixed" ? "mixed" : null;
+
+  const selectionsFrom = (src: any[]) => {
+    const sel: Record<"men" | "ladies" | "mixed", string[]> = { men: [], ladies: [], mixed: [] };
+    const counts: Record<"men" | "ladies" | "mixed", Record<string, number>> = { men: {}, ladies: {}, mixed: {} };
+    for (const l of src) {
+      const key = genderKeyOf(l.category);
+      const lvl = Number(l.level);
+      if (!key || !Number.isFinite(lvl) || lvl < 1 || lvl > LEAGUE_OPTIONS.length) continue;
+      const label = LEAGUE_OPTIONS[lvl - 1];
+      if (!sel[key].includes(label)) sel[key].push(label);
+      counts[key][label] = Math.min(3, (counts[key][label] ?? 0) + 1);
+    }
+    return { sel, counts };
+  };
+
+  // Prefill once the season's teams load, without clobbering later edits.
+  const prefilledFor = useRef("");
+  useEffect(() => {
+    if (!open) { prefilledFor.current = ""; return; }
+    const key = `${associationId}|${year}`;
+    if (!editMode || prefilledFor.current === key) return;
+    prefilledFor.current = key;
+    const { sel, counts } = selectionsFrom(seasonTeams);
+    setSelectedMen(sel.men); setSelectedLadies(sel.ladies); setSelectedMixed(sel.mixed);
+    setTeamCounts(counts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editMode, associationId, year, seasonTeams]);
+
   const [copyFromYear, setCopyFromYear] = useState<string>("");
   const [copyPlayers, setCopyPlayers] = useState(true);
 
@@ -3042,16 +3081,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     setCopyFromYear(yr);
     if (!yr) return;
     const src = (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(yr) && !l.is_reserve);
-    const sel: Record<"men" | "ladies" | "mixed", string[]> = { men: [], ladies: [], mixed: [] };
-    const counts: Record<"men" | "ladies" | "mixed", Record<string, number>> = { men: {}, ladies: {}, mixed: {} };
-    for (const l of src) {
-      const key = l.category === "mens" || l.category === "men" ? "men" : l.category === "ladies" ? "ladies" : l.category === "mixed" ? "mixed" : null;
-      const lvl = Number(l.level);
-      if (!key || !Number.isFinite(lvl) || lvl < 1 || lvl > LEAGUE_OPTIONS.length) continue;
-      const label = LEAGUE_OPTIONS[lvl - 1];
-      if (!sel[key].includes(label)) sel[key].push(label);
-      counts[key][label] = Math.min(3, (counts[key][label] ?? 0) + 1);
-    }
+    const { sel, counts } = selectionsFrom(src);
     setSelectedMen(sel.men); setSelectedLadies(sel.ladies); setSelectedMixed(sel.mixed);
     setTeamCounts(counts);
   };

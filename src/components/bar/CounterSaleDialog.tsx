@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubCurrency } from "@/hooks/use-currency";
-import { BarPinDialog } from "@/components/bar/BarPinDialog";
+import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { CreditCard, Loader2, Minus, Search, ShoppingCart, User, Users, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
@@ -146,14 +146,14 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
   };
 
   /** Member account charge — posted only after the member verifies. */
-  const chargeMemberAccount = async ({ secret, method, signature }: { secret: string; method: "pin" | "otp"; signature?: string | null }) => {
+  const chargeMemberAccount = async ({ secret, method }: { secret: string; method: "otp" }) => {
     const { error } = await (supabase as any).rpc("charge_bar_to_member", {
       _club_member_id: selected!.id,
       _lines: lines,
       _secret: secret,
       _method: method,
       _source: "counter",
-      _signature: signature || null,
+      _signature: null,
     });
     if (error) throw error;
     toast.success(`${money(total)} charged to ${selected!.name}'s account.`);
@@ -453,14 +453,13 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
       </Dialog>
 
       {selected && (
-        <BarPinDialog
+        <BarOtpDialog
           open={pinOpen}
           onOpenChange={setPinOpen}
           clubMemberId={selected.id}
           memberName={selected.name}
           amountLabel={money(total)}
           mode="counter"
-          captureSignature
           onVerified={chargeMemberAccount}
         />
       )}

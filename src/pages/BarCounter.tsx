@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { BarPinDialog } from "@/components/bar/BarPinDialog";
+import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { toast } from "sonner";
 import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2 } from "lucide-react";
@@ -595,14 +595,15 @@ export default function BarCounter() {
           </Dialog>
 
           {identified && (
-            <BarPinDialog
+            <BarOtpDialog
               open={pinOpen}
               onOpenChange={(o) => { setPinOpen(o); if (!o) setIdentified(null); }}
               clubMemberId={identified.id}
               memberName={identified.display_name}
               amountLabel={money(activeTab.total)}
               mode="counter"
-              pinOnly
+              counterToken={token}
+              tabToken={activeTab.token}
               onVerified={chargeMemberAccount}
             />
           )}

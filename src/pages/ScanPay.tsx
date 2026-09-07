@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { Loader2, Minus, Plus, CreditCard, Wallet, CheckCircle2, ArrowLeft, ShoppingCart, X, Receipt, Store, ScanBarcode } from "lucide-react";
 import { formatMoney } from "@/lib/qr-shortcodes";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
-import { BarPinDialog } from "@/components/bar/BarPinDialog";
+import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 
 
@@ -448,7 +448,6 @@ export default function ScanPay() {
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
       if (!row?.id) throw new Error("No active member with that number at this club.");
-      if (!row.has_pin) throw new Error("That member has no Bar PIN yet — set one in Settings → Bar PIN first.");
       setIdentified({ id: row.id, display_name: row.display_name, has_pin: row.has_pin });
       setPinOpen(true);
     } catch (err: any) {
@@ -491,7 +490,7 @@ export default function ScanPay() {
     setCart({});
   };
 
-  const confirmAccountCharge = async ({ secret, method }: { secret: string; method: "pin" | "otp" }) => {
+  const confirmAccountCharge = async ({ secret, method }: { secret: string; method: "otp" }) => {
     const { error } = await (supabase as any).rpc("charge_bar_to_member", {
       _club_member_id: member!.id,
       _lines: cartLines.map((l) => ({ bar_item_id: l.item.id, quantity: l.qty })),
@@ -1009,23 +1008,24 @@ export default function ScanPay() {
         onItem={(item) => bump(item.id, 1)}
       />
       {!member && identified && (
-        <BarPinDialog
+        <BarOtpDialog
           open={pinOpen}
           onOpenChange={(o) => { setPinOpen(o); if (!o) setIdentified(null); }}
           clubMemberId={identified.id}
           memberName={identified.display_name}
           amountLabel={formatMoney(accountChargeTarget === "tab" && tab ? tab.total : total, currency)}
-          pinOnly
+          tabToken={tab?.token ?? null}
           onVerified={confirmGuestAccountCharge}
         />
       )}
       {member && (
-        <BarPinDialog
+        <BarOtpDialog
           open={pinOpen}
           onOpenChange={setPinOpen}
           clubMemberId={member.id}
           memberName={member.name}
           amountLabel={formatMoney(total, currency)}
+          mode="self"
           onVerified={confirmAccountCharge}
         />
       )}

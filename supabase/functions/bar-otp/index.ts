@@ -1,10 +1,15 @@
 // Sends a one-time bar verification code to a member's registered mobile
-// number. Used only as the recovery route when a member has no Bar PIN, has
-// forgotten it, or the PIN has been temporarily locked after failed attempts.
+// number so a charge can be posted to their member account.
 //
-// Authorisation is delegated to the database: the caller's own JWT is used to
-// call `get_bar_pin_status`, which allows the member themselves or club staff
-// with the Bar permission for that same club — nobody else.
+// These are SYSTEM (transactional) messages: they are always sent by WhatsApp
+// or SMS, whether or not the club has switched member messaging on. The club
+// messaging switch only governs optional communications — never security or
+// payment codes. Usage is still logged and billed to the club.
+//
+// Authorisation is either:
+//   • an unlocked till/counter session token, or an open guest-tab token, for
+//     the same club as the member (the cashier flow), or
+//   • the caller's own JWT via `get_bar_pin_status` (member or bar staff).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendAppEmail } from "../_shared/send-app-email.ts";
 
@@ -22,7 +27,7 @@ const json = (body: unknown, status = 200) =>
 
 function maskPhone(raw: string) {
   const digits = String(raw).replace(/\D/g, "");
-  if (digits.length < 4) return "your registered number";
+  if (digits.length < 4) return "their registered number";
   return `••• ••• ${digits.slice(-3)}`;
 }
 
@@ -34,24 +39,16 @@ Deno.serve(async (req) => {
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     const authHeader = req.headers.get("Authorization") || "";
-    if (!authHeader) return json({ error: "Please sign in" }, 401);
-
-    const { club_member_id } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const club_member_id = body?.club_member_id as string | undefined;
+    const counter_token = (body?.counter_token as string | undefined) || null;
+    const tab_token = (body?.tab_token as string | undefined) || null;
+    const requested = String(body?.channel || "").toLowerCase();
+    const channelWanted: "whatsapp" | "sms" = requested === "sms" ? "sms" : "whatsapp";
     if (!club_member_id) return json({ error: "Missing member" }, 400);
 
-    // Caller-scoped client — the RPC enforces who may ask for this member.
-    const caller = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: status, error: statusErr } = await caller.rpc("get_bar_pin_status", {
-      _club_member_id: club_member_id,
-    });
-    if (statusErr) return json({ error: statusErr.message }, 403);
-    if (!(status as any)?.has_phone) {
-      return json({ error: "No mobile number is on file for this member — please ask the club to add one." }, 400);
-    }
-
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
     const { data: member } = await admin
       .from("club_members")
       .select("id, club_id, name, phone, email")
@@ -59,9 +56,44 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!member) return json({ error: "Member not found" }, 404);
 
+    // ---- who may ask for a code for this member ----------------------------
+    let allowed = false;
+    if (counter_token) {
+      const { data: sess } = await admin
+        .from("bar_counter_sessions")
+        .select("club_id, revoked_at")
+        .eq("token", counter_token)
+        .maybeSingle();
+      allowed = !!sess && !sess.revoked_at && sess.club_id === member.club_id;
+    }
+    if (!allowed && tab_token) {
+      const { data: tab } = await admin
+        .from("bar_guest_tabs")
+        .select("club_id, status")
+        .eq("token", tab_token)
+        .maybeSingle();
+      allowed = !!tab && tab.status === "open" && tab.club_id === member.club_id;
+    }
+    if (!allowed) {
+      if (!authHeader) return json({ error: "Please sign in" }, 401);
+      const caller = createClient(SUPABASE_URL, ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: status, error: statusErr } = await caller.rpc("get_bar_pin_status", {
+        _club_member_id: club_member_id,
+      });
+      if (statusErr) return json({ error: statusErr.message }, 403);
+      allowed = !!status;
+    }
+    if (!allowed) return json({ error: "Not allowed" }, 403);
+
+    if (!member.phone && !member.email) {
+      return json({ error: "No mobile number is on file for this member — please ask the club to add one." }, 400);
+    }
+
     const { data: club } = await admin
       .from("clubs")
-      .select("id, name, logo_url, whatsapp_enabled")
+      .select("id, name, logo_url")
       .eq("id", member.club_id)
       .maybeSingle();
 
@@ -76,8 +108,7 @@ Deno.serve(async (req) => {
       `${code} is your ${club?.name || "club"} bar verification code. ` +
       `It expires in 10 minutes. Never share it with anyone, including bar staff.`;
 
-    let channel: "whatsapp" | "email" | null = null;
-    if (club?.whatsapp_enabled) {
+    const sendWhatsApp = async () => {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
         method: "POST",
         headers: {
@@ -93,11 +124,44 @@ Deno.serve(async (req) => {
           template_variables: { code, minutes: "10" },
           kind: "bar_otp",
           category: "utility",
+          system: true,
         }),
       });
       const out = await res.json().catch(() => ({}));
-      if (res.ok && (out?.sent ?? 0) >= 1) channel = "whatsapp";
-      else console.warn("bar-otp whatsapp send failed", out?.error);
+      if (res.ok && (out?.sent ?? 0) >= 1) return true;
+      console.warn("bar-otp whatsapp send failed", out?.error);
+      return false;
+    };
+
+    const sendSms = async () => {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/send-sms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_KEY}`,
+          apikey: SERVICE_KEY,
+        },
+        body: JSON.stringify({
+          club_id: member.club_id,
+          recipients: [{ member_id: member.id, phone: member.phone }],
+          body: message,
+          kind: "bar_otp",
+          critical: true,
+          system: true,
+        }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (res.ok && (out?.sent ?? 0) >= 1) return true;
+      console.warn("bar-otp sms send failed", out?.error);
+      return false;
+    };
+
+    let channel: "whatsapp" | "sms" | "email" | null = null;
+    if (member.phone) {
+      const primary = channelWanted === "sms" ? sendSms : sendWhatsApp;
+      const secondary = channelWanted === "sms" ? sendWhatsApp : sendSms;
+      if (await primary()) channel = channelWanted;
+      else if (await secondary()) channel = channelWanted === "sms" ? "whatsapp" : "sms";
     }
 
     if (!channel && member.email) {
@@ -117,10 +181,14 @@ Deno.serve(async (req) => {
     }
 
     if (!channel) {
-      return json({ error: "We could not send a verification code right now — please use your Bar PIN." }, 502);
+      return json({ error: "We could not send a verification code right now — please try the other channel." }, 502);
     }
 
-    return json({ ok: true, channel, sent_to: channel === "whatsapp" ? maskPhone(member.phone || "") : "your email" });
+    return json({
+      ok: true,
+      channel,
+      sent_to: channel === "email" ? "their email" : maskPhone(member.phone || ""),
+    });
   } catch (e) {
     console.error("bar-otp error", e);
     return json({ error: (e as Error)?.message || "Unexpected error" }, 500);

@@ -16,6 +16,7 @@ import FederationPeopleTab from "@/components/admin/FederationPeopleTab";
 import { FederationTreeTab } from "@/components/admin/FederationTreeTab";
 import FederationOrgChart from "@/components/admin/FederationOrgChart";
 import { TournamentsPanel } from "@/components/tournaments/TournamentsPanel";
+import { ProvisionalRankingSettingsCard } from "@/components/rankings/ProvisionalRankingSettingsCard";
 
 
 

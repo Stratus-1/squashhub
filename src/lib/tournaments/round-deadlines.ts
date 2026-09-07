@@ -74,7 +74,41 @@ export function serializeRoundDeadlines(list: RoundDeadline[]): RoundDeadline[] 
   return clean.length ? clean : null;
 }
 
-/** Deadline that applies to a given round number (1-based); falls back to the last one. */
+/**
+ * Rounds created later from the draw (`club_champs_rounds`) are the live truth
+ * for a round's name and play-by date. The tournament's own `round_play_by`
+ * list is only what was planned up front, so it goes stale as soon as an
+ * organiser sets up round 4 from the knockout screen. Merging the two keeps the
+ * setup screen and the "book your court by …" nudges on the real date.
+ */
+export function mergeRoundDeadlines(
+  planned: RoundDeadline[],
+  rounds: Array<{ round_number?: number | null; label?: string | null; play_by?: string | null }> = [],
+): RoundDeadline[] {
+  const out = [...planned];
+  const latest = new Map<number, { label?: string | null; date: string }>();
+  for (const r of rounds || []) {
+    const n = Number(r?.round_number);
+    const date = typeof r?.play_by === "string" ? r.play_by.slice(0, 10) : "";
+    if (!Number.isFinite(n) || n < 1 || !isDate(date)) continue;
+    const prev = latest.get(n);
+    // Several sections share a round number — keep the latest deadline.
+    if (!prev || date > prev.date) latest.set(n, { label: r.label, date });
+  }
+  for (const [n, v] of latest) {
+    const i = n - 1;
+    while (out.length < i) out.push({ label: defaultRoundLabel(out.length), date: "" });
+    const existing = out[i];
+    out[i] = {
+      ...(existing || {}),
+      label: (existing?.label || "").trim() || String(v.label || "").trim() || defaultRoundLabel(i),
+      date: v.date,
+    };
+  }
+  return out;
+}
+
+
 export function deadlineForRound(list: RoundDeadline[], roundNumber?: number | null): string | null {
   const clean = serializeRoundDeadlines(list) || [];
   if (clean.length === 0) return null;

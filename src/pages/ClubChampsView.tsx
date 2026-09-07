@@ -33,7 +33,7 @@ import { TournamentNextActionBar } from "@/components/tournaments/TournamentNext
 
 
 import { useChampRounds } from "@/hooks/use-champ-rounds";
-import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+import { parseRoundDeadlines, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
@@ -2743,7 +2743,7 @@ export default function ClubChampsView() {
           championScope={(champ as any)?.champion_scope || undefined}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           playByForRound={(round) =>
-            parseRoundDeadlines((champ as any)?.round_play_by)[round - 1]?.date ?? null
+            mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[])[round - 1]?.date ?? null
           }
           mode="detail"
           onFocusFixtures={() =>
@@ -2786,7 +2786,7 @@ export default function ClubChampsView() {
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
           playByForRound={(round) =>
-            parseRoundDeadlines((champ as any)?.round_play_by)[round - 1]?.date ?? null
+            mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[])[round - 1]?.date ?? null
           }
         />
         {playoffCard}

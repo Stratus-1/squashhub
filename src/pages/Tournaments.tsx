@@ -39,7 +39,7 @@ import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
-import { parseRoundDeadlines, deadlineForRound, playByNudge } from "@/lib/tournaments/round-deadlines";
+import { parseRoundDeadlines, deadlineForRound, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
 import { useHasPermission } from "@/hooks/use-club-permissions";
@@ -166,8 +166,31 @@ export default function Tournaments() {
     refetchInterval: 10000,
   });
 
+  // Rounds created later from the draw hold the live play-by dates (round 4
+  // added after setup, etc.) — they beat the plan captured in the wizard.
+  const { data: allRounds = [] } = useQuery({
+    queryKey: ["tournaments-all-rounds", champIds],
+    queryFn: async () => {
+      if (!champIds.length) return [];
+      const { data, error } = await fromExt("club_champs_rounds")
+        .select("champ_id, round_number, label, play_by")
+        .in("champ_id", champIds);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: champIds.length > 0,
+  });
+  const roundsByChamp = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const r of allRounds as any[]) {
+      if (!map.has(r.champ_id)) map.set(r.champ_id, []);
+      map.get(r.champ_id)!.push(r);
+    }
+    return map;
+  }, [allRounds]);
 
   const today = todayStr;
+
   // Marker presence drives the LIVE chip: a game is only "live" while someone
   // is actually scoring it (fresh heartbeat in champ_marker_locks). When the
   // marker walks away the game stays in_progress with its score intact, but is
@@ -694,7 +717,13 @@ export default function Tournaments() {
     // fixture that still has no court/time so players know their booking cut-off.
     const playBy = !m.scheduled_date && !isPlaceholder
       ? playByNudge(
-          deadlineForRound(parseRoundDeadlines((champ as any)?.round_play_by), m.round_number),
+          deadlineForRound(
+            mergeRoundDeadlines(
+              parseRoundDeadlines((champ as any)?.round_play_by),
+              roundsByChamp.get(m.champ_id) || [],
+            ),
+            m.round_number,
+          ),
           todayISO(),
         )
       : null;

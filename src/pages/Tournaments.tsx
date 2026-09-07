@@ -985,7 +985,7 @@ export default function Tournaments() {
           />
         )}
 
-        {isClubAdmin && (
+        {(isClubAdmin || canManageChamps) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

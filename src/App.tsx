@@ -91,6 +91,7 @@ const SuperAdminSubscriptions = lazy(() => import("./pages/admin/SuperAdminSubsc
 const SuperAdminSettings = lazy(() => import("./pages/admin/SuperAdminSettings"));
 const SuperAdminLeagues = lazy(() => import("./pages/admin/SuperAdminLeagues"));
 const SuperAdminOutreach = lazy(() => import("./pages/admin/SuperAdminOutreach"));
+const SuperAdminPlatformUpdates = lazy(() => import("./pages/admin/SuperAdminPlatformUpdates"));
 const SuperAdminOutreachCampaigns = lazy(() => import("./pages/admin/SuperAdminOutreachCampaigns"));
 const SuperAdminOutreachCampaignEditor = lazy(() => import("./pages/admin/SuperAdminOutreachCampaignEditor"));
 const MyAccount = lazy(() => import("./pages/MyAccount"));
@@ -519,6 +520,7 @@ function AppRoutes() {
           <Route path="outreach" element={<SuperAdminOutreach />} />
           <Route path="outreach/campaigns" element={<SuperAdminOutreachCampaigns />} />
           <Route path="outreach/campaigns/:id" element={<SuperAdminOutreachCampaignEditor />} />
+          <Route path="platform-updates" element={<SuperAdminPlatformUpdates />} />
           <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
           <Route path="settings" element={<SuperAdminSettings />} />
           <Route path="support" element={<AdminSupport />} />

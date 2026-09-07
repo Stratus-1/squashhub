@@ -1,6 +1,7 @@
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 import { RankingScope } from "@/lib/rankings/provisional";
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
@@ -5646,6 +5647,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // that the trigger actually fired and how many people it reached.
   const [lastInviteSend, setLastInviteSend] = useState<{ at: string; count: number; mode: InviteSendMode } | null>(null);
   const [testInviteSending, setTestInviteSending] = useState(false);
+  const { user: authUser } = useAuth();
   const [testInviteDialogOpen, setTestInviteDialogOpen] = useState(false);
   const [testInviteEmail, setTestInviteEmail] = useState("");
   const [testInviteEmailError, setTestInviteEmailError] = useState("");
@@ -9175,70 +9177,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               complete={inviteMethods.size > 0}
               defaultOpen={true}
             >
-            {/* Tournament description / invite body */}
             <div className="space-y-2">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="flex-1 min-w-0 space-y-2">
-                  <Label className="text-sm">Tournament details (shown in invites)</Label>
-                  <Textarea
-                    rows={10}
-                    placeholder={`The tournament details block is filled in automatically from your setup. Add anything extra below it, like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
-                    value={description}
-                    onChange={(e) => {
-                      setDescription(e.target.value);
-                      setDescriptionCustom(true);
-                    }}
-                  />
-                </div>
-                <div className="flex flex-row md:flex-col gap-2 md:w-44 shrink-0">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 md:flex-none"
-                    onClick={() => setShowInvitePreview(true)}
-                  >
-                    <Eye className="w-4 h-4 mr-1" /> Preview invite
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="flex-1 md:flex-none"
-                    onClick={() => {
-                      setDescription(autoDetailBlock);
-                      setDescriptionCustom(false);
-                      toast.success("Invite text rebuilt from the tournament settings");
-                    }}
-                  >
-                    <RefreshCw className="w-4 h-4 mr-1" /> Generate fresh
-                  </Button>
-                </div>
+            <section className="rounded-lg border bg-card p-4 space-y-3">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">1</span>
+                  Who do you want to invite?
+                </h3>
+                <p className="text-xs text-muted-foreground">Pick anyone inside the eligibility you set in Step 1 — a region-wide event does not have to invite the whole region.</p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {descriptionCustom
-                  ? "You've edited this text, so it is saved and sent exactly as you typed it — it will not be overwritten when you change other tournament settings. Click Generate fresh to replace it with an up-to-date details block."
-                  : "This details block is generated automatically from the tournament settings and refreshes when you change the category, format, dates, registration window or fee. The moment you edit it, your wording is kept as-is."}
-                {" "}Saving the tournament does NOT notify anyone — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
-              </p>
-
-              <div className="space-y-2 pt-2">
-                <Label className="text-sm">Extra invite details</Label>
-                <Textarea
-                  rows={4}
-                  placeholder={`Add extra details that should appear inside the automatic tournament details block, such as:\nCo-hosted by SquashApp and CSIR Squash Club.\nThe club sponsors balls, courts, lights and a league braai with chicken pregos and wors — a thank-you to league players for their season.\nFood and refreshments will be provided.`}
-                  value={inviteExtraDetails}
-                  onChange={(e) => setInviteExtraDetails(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  These lines are merged into the auto-generated details block and will appear in every invite. Keep it short and factual.
-                </p>
-              </div>
-
-            </div>
-
-            <div className="space-y-2">
-            {/* INVITATION AUDIENCE — independent of the Structure/draw source and of entry method */}
             <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-3">
 
 
@@ -9415,10 +9362,84 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   Anyone who accepts but has no league mapping is still accepted and lands in <strong>Needs division assignment</strong> for you to place.
                 </p>
               </div>
+            </section>
+            <section className="rounded-lg border bg-card p-4 space-y-3">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">2</span>
+                  What do you want to send?
+                </h3>
+                <p className="text-xs text-muted-foreground">Start from the automatic invitation and edit it if you want. Your wording is kept.</p>
+              </div>
+            <div className="space-y-2">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <Label className="text-sm">Tournament details (shown in invites)</Label>
+                  <Textarea
+                    rows={10}
+                    placeholder={`The tournament details block is filled in automatically from your setup. Add anything extra below it, like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
+                    value={description}
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      setDescriptionCustom(true);
+                    }}
+                  />
+                </div>
+                <div className="flex flex-row md:flex-col gap-2 md:w-44 shrink-0">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 md:flex-none"
+                    onClick={() => setShowInvitePreview(true)}
+                  >
+                    <Eye className="w-4 h-4 mr-1" /> Preview invite
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="flex-1 md:flex-none"
+                    onClick={() => {
+                      setDescription(autoDetailBlock);
+                      setDescriptionCustom(false);
+                      toast.success("Invite text rebuilt from the tournament settings");
+                    }}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-1" /> Generate fresh
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {descriptionCustom
+                  ? "You've edited this text, so it is saved and sent exactly as you typed it — it will not be overwritten when you change other tournament settings. Click Generate fresh to replace it with an up-to-date details block."
+                  : "This details block is generated automatically from the tournament settings and refreshes when you change the category, format, dates, registration window or fee. The moment you edit it, your wording is kept as-is."}
+                {" "}Saving the tournament does NOT notify anyone — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
+              </p>
 
+              <div className="space-y-2 pt-2">
+                <Label className="text-sm">Extra invite details</Label>
+                <Textarea
+                  rows={4}
+                  placeholder={`Add extra details that should appear inside the automatic tournament details block, such as:\nCo-hosted by SquashApp and CSIR Squash Club.\nThe club sponsors balls, courts, lights and a league braai with chicken pregos and wors — a thank-you to league players for their season.\nFood and refreshments will be provided.`}
+                  value={inviteExtraDetails}
+                  onChange={(e) => setInviteExtraDetails(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  These lines are merged into the auto-generated details block and will appear in every invite. Keep it short and factual.
+                </p>
+              </div>
 
-
-            {/* Invite methods — always shown so admins control delivery channel */}
+            </div>
+            </section>
+            <section className="rounded-lg border bg-card p-4 space-y-3">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">3</span>
+                  How should we send it?
+                </h3>
+                <p className="text-xs text-muted-foreground">Pick one or more channels. Unavailable channels are shown greyed out.</p>
+              </div>
             <div className="space-y-2">
               <Label className="text-sm">Invite delivery method</Label>
               <div className="flex flex-wrap items-center gap-4">
@@ -9492,9 +9513,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </p>
               )}
             </div>
-
-            {/* Invite send timing — only when invites/registration are used */}
-            {registrationRequired && (
+            </section>
+            <section className="rounded-lg border bg-card p-4 space-y-3">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">4</span>
+                  When should it go out?
+                </h3>
+                <p className="text-xs text-muted-foreground">Nothing is sent by saving.</p>
+              </div>
+            {registrationRequired ? (
             <div className="space-y-2">
               <Label className="text-sm">When to send invites</Label>
               <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -9544,8 +9572,64 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   Saving never notifies anyone. Nothing goes out until you click <strong>Send invites now</strong>.
                 </p>
               )}
+            </div>
+            ) : null}
+            </section>
+            <section className="rounded-lg border-2 border-primary/30 bg-card p-4 space-y-3">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">5</span>
+                  Review, preview and send
+                </h3>
+                <p className="text-xs text-muted-foreground">Check exactly what goes out, send yourself a test, then send for real.</p>
+              </div>
 
-              {/* The one and only bulk trigger + test invite */}
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <div className="flex justify-between gap-2 sm:block">
+                  <dt className="text-muted-foreground">Event</dt>
+                  <dd className="font-medium truncate">{champName || "Untitled tournament"}</dd>
+                </div>
+                <div className="flex justify-between gap-2 sm:block">
+                  <dt className="text-muted-foreground">Going to</dt>
+                  <dd className="font-medium">{resolvedAudience.summary}</dd>
+                </div>
+                <div className="flex justify-between gap-2 sm:block">
+                  <dt className="text-muted-foreground">Channels</dt>
+                  <dd className="font-medium capitalize">
+                    {Array.from(inviteMethods.size ? inviteMethods : new Set(["app"]))
+                      .map((m) => (m === "app" ? "In-app" : m === "email" ? "Email" : "WhatsApp/SMS"))
+                      .join(", ")}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-2 sm:block">
+                  <dt className="text-muted-foreground">Timing</dt>
+                  <dd className="font-medium">
+                    {inviteTiming === "now"
+                      ? "Immediately on save"
+                      : inviteTiming === "scheduled"
+                        ? (inviteScheduledAt ? new Date(inviteScheduledAt).toLocaleString() : "Scheduled — pick a date")
+                        : "Manual — when you press send"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-2 sm:block">
+                  <dt className="text-muted-foreground">Message</dt>
+                  <dd className="font-medium">
+                    {inviteShortMessage ? "Quick invitation (link carries the detail)" : "Detailed invitation"}
+                    {descriptionCustom ? " · your own wording" : " · default wording"}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowInvitePreview(true)}>
+                  <Eye className="w-4 h-4 mr-1" /> Preview &amp; send a test
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                The preview shows the in-app, email, WhatsApp and SMS versions exactly as they will be sent, and holds the
+                clearly-marked test send — a test never creates an entry, RSVP or payment for anyone.
+              </p>
+
               <div className="pt-2 border-t border-border/50 space-y-3">
                 {editingChampId ? (
                   <div className="space-y-1.5">
@@ -9584,8 +9668,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 )}
 
               </div>
-            </div>
-            )}
+            </section>
+
 
 
 
@@ -9692,7 +9776,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         Previewing the secure invitation journey for {sampleInvitee.name}.
                       </p>
                     )}
-                    <Label htmlFor="test-invite-email">Recipient email address</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="test-invite-email">Recipient email address</Label>
+                      {authUser?.email && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[11px]"
+                          onClick={() => { setTestInviteEmail(authUser.email as string); setTestInviteEmailError(""); }}
+                        >
+                          Send to me
+                        </Button>
+                      )}
+                    </div>
                     <Input
                       id="test-invite-email"
                       type="email"
@@ -9707,7 +9804,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     />
                     {testInviteEmailError && <p className="text-xs text-destructive">{testInviteEmailError}</p>}
                     <p className="text-xs text-muted-foreground">
-                      Email only. The link identifies the invited player, but the test does not mark it as sent or record a response.
+                      TEST INVITATION — no registration or RSVP is recorded. Email only. The link identifies the invited
+                      player so you see the real journey, but nothing is marked as sent and no response is stored.
                     </p>
                   </div>
                   <DialogFooter>

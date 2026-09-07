@@ -1,0 +1,4 @@
+UPDATE public.club_champs_rounds SET play_by = '2026-09-05' WHERE champ_id = '8c405b3f-1b90-4a22-9d8a-54856ec21c33' AND round_number = 2;
+UPDATE public.club_champs_rounds SET play_by = '2026-09-09' WHERE champ_id = '8c405b3f-1b90-4a22-9d8a-54856ec21c33' AND round_number = 3;
+UPDATE public.club_champs_rounds SET play_by = '2026-09-12' WHERE champ_id = '8c405b3f-1b90-4a22-9d8a-54856ec21c33' AND round_number = 4;
+UPDATE public.tournaments SET round_play_by = '[{"label":"1st Round","date":"2026-08-29"},{"label":"Round 2","date":"2026-09-05"},{"label":"Round 3","date":"2026-09-09"},{"label":"Round 4","date":"2026-09-12"}]'::jsonb WHERE id = '8c405b3f-1b90-4a22-9d8a-54856ec21c33';

@@ -11460,6 +11460,10 @@ function InvitePreviewDialog({
                   </div>
                 )}
               </div>
+              <p className={`text-[11px] ${waOverLimit ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                {waLength} / 1024 characters
+                {waOverLimit ? " — too long: it will be trimmed automatically, which may cut off the end." : ""}
+              </p>
               {!methods.has("whatsapp") ? (
                 <p className="text-[11px] text-muted-foreground italic">
                   Not sent via WhatsApp — WhatsApp is not selected.

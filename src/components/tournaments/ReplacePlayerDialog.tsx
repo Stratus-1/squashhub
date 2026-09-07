@@ -37,19 +37,24 @@ interface Props {
  * changes. The backend refuses the change once the match has points, a score
  * or a winner, and notifies everyone involved.
  */
-export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubles = false, getName, onSaved }: Props) {
+export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubles = false, candidates, getName, onSaved }: Props) {
   const [slot, setSlot] = useState<Slot>("player_a");
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  const hasCandidates = (candidates?.length ?? 0) > 0;
 
   useEffect(() => {
-    if (open) { setSlot("player_a"); setSearch(""); setPicked(null); }
+    if (open) { setSlot("player_a"); setSearch(""); setPicked(null); setShowAll(false); }
   }, [open, match?.id]);
+
+  const useClubList = showAll || !hasCandidates;
 
   const { data: members = [], isLoading } = useQuery({
     queryKey: ["replace-player-members", clubId],
-    enabled: open && !!clubId,
+    enabled: open && !!clubId && useClubList,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("club_members")

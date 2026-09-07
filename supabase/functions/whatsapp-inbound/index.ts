@@ -249,30 +249,17 @@ Deno.serve(async (req) => {
         reply = answer === "yes" ? "You're in — see you there!" : "No problem, we've marked you as unavailable.";
       } else if (interaction.kind === "champ_entry") {
         if (answer === "yes") {
-          // Acceptance and payment are separate concerns: only ask for money
-          // when the tournament actually charges an entry fee.
-          const { data: champ } = await admin
-            .from("club_champs")
-            .select("entry_fee_cents, payment_required")
-            .eq("id", interaction.target_id)
-            .maybeSingle();
-          const fee = Number((champ as any)?.entry_fee_cents ?? 0);
-          const needsPayment = fee > 0 && (champ as any)?.payment_required !== false;
-          const { error } = await admin.from("club_champs_registrations").upsert(
-            {
-              champ_id: interaction.target_id,
-              club_member_id: interaction.member_id,
-              status: needsPayment ? "pending_payment" : "paid",
-              confirmation_source: "rsvp",
-              confirmed_at: new Date().toISOString(),
-            },
-            { onConflict: "champ_id,club_member_id" },
-          );
-          applied = !error;
-          if (error) console.error("champ entry failed", error);
-          reply = needsPayment
-            ? "You're entered. Open SquashHub to pick your partner and settle the entry fee."
-            : "You're entered — see you on court!";
+          // Link-first entry: a YES never creates the tournament entry itself,
+          // because the player still has choices to make on the invitation
+          // page (singles/doubles, division, partner, entry-fee payment).
+          // Instead we hand back their personal invitation link — it was
+          // stored on the interaction prompt when the invite went out.
+          const linkMatch = (interaction.prompt ?? "").match(/https?:\/\/\S+/);
+          const link = linkMatch?.[0] ?? null;
+          applied = true;
+          reply = link
+            ? `Great! To complete your entry, open your personal invitation and choose your category:\n${link}`
+            : "Great! To complete your entry, open the invitation link in the message above and choose your category.";
         } else {
           const { error } = await admin.from("club_champs_registrations").upsert(
             {

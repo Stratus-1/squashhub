@@ -2859,6 +2859,7 @@ export type Database = {
           control_mode: string
           created_at: string
           created_by: string | null
+          dashboard_role_ids: string[]
           enabled: boolean
           icon: string | null
           id: string
@@ -2880,6 +2881,7 @@ export type Database = {
           schedule_timezone: string
           shelly_channel: number
           shelly_device_id: string | null
+          show_on_dashboard: boolean
           sort_order: number
           updated_at: string
         }
@@ -2891,6 +2893,7 @@ export type Database = {
           control_mode?: string
           created_at?: string
           created_by?: string | null
+          dashboard_role_ids?: string[]
           enabled?: boolean
           icon?: string | null
           id?: string
@@ -2912,6 +2915,7 @@ export type Database = {
           schedule_timezone?: string
           shelly_channel?: number
           shelly_device_id?: string | null
+          show_on_dashboard?: boolean
           sort_order?: number
           updated_at?: string
         }
@@ -2923,6 +2927,7 @@ export type Database = {
           control_mode?: string
           created_at?: string
           created_by?: string | null
+          dashboard_role_ids?: string[]
           enabled?: boolean
           icon?: string | null
           id?: string
@@ -2944,6 +2949,7 @@ export type Database = {
           schedule_timezone?: string
           shelly_channel?: number
           shelly_device_id?: string | null
+          show_on_dashboard?: boolean
           sort_order?: number
           updated_at?: string
         }
@@ -4981,10 +4987,12 @@ export type Database = {
           currency_symbol: string
           door_auto_unlock_enabled: boolean
           door_auto_unlock_radius_m: number
+          door_dashboard_role_ids: string[]
           door_geofence_enabled: boolean
           door_geofence_radius_m: number
           door_latitude: number | null
           door_longitude: number | null
+          door_show_on_dashboard: boolean
           dynamic_court_reflow_enabled: boolean
           email: string | null
           email_disclaimer: string | null
@@ -5116,10 +5124,12 @@ export type Database = {
           currency_symbol?: string
           door_auto_unlock_enabled?: boolean
           door_auto_unlock_radius_m?: number
+          door_dashboard_role_ids?: string[]
           door_geofence_enabled?: boolean
           door_geofence_radius_m?: number
           door_latitude?: number | null
           door_longitude?: number | null
+          door_show_on_dashboard?: boolean
           dynamic_court_reflow_enabled?: boolean
           email?: string | null
           email_disclaimer?: string | null
@@ -5251,10 +5261,12 @@ export type Database = {
           currency_symbol?: string
           door_auto_unlock_enabled?: boolean
           door_auto_unlock_radius_m?: number
+          door_dashboard_role_ids?: string[]
           door_geofence_enabled?: boolean
           door_geofence_radius_m?: number
           door_latitude?: number | null
           door_longitude?: number | null
+          door_show_on_dashboard?: boolean
           dynamic_court_reflow_enabled?: boolean
           email?: string | null
           email_disclaimer?: string | null
@@ -13958,6 +13970,10 @@ export type Database = {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
       }
+      can_open_club_door: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_operate_device: {
         Args: { _device_id: string; _user_id: string }
         Returns: boolean
@@ -14728,6 +14744,10 @@ export type Database = {
       }
       member_has_permission: {
         Args: { _member_id: string; _permission: string }
+        Returns: boolean
+      }
+      member_in_permission_roles: {
+        Args: { _club_id: string; _role_ids: string[]; _user_id: string }
         Returns: boolean
       }
       merge_people: {

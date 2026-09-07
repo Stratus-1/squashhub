@@ -226,14 +226,11 @@ export default function ClubAdmin() {
       case "champs": return <TournamentPlanner mode="club" clubId={club.id} />;
       case "bar": return <HonestyBarTab club={club} clubId={club.id} />;
       case "access": return <AccessControlTab club={club} clubId={club.id} />;
-      // IoT owns device registration; door access policy (system type, geofence)
-      // lives in the same tab so it stays reachable without a second tile.
-      case "devices": return (
-        <div className="space-y-6">
-          <DevicesTab clubId={club.id} />
-          <AccessControlTab club={club} clubId={club.id} />
-        </div>
-      );
+      // IoT owns device registration end to end: each door/gate/gadget keeps
+      // its own Shelly details, dashboard visibility and door location in its
+      // device card. The Access Control tile only holds non-device access
+      // policy (access method, face-recognition providers).
+      case "devices": return <DevicesTab clubId={club.id} />;
       case "awards": return <LeagueAwardsTab clubId={club.id} />;
       case "comms": return <CommunicationsTab clubId={club.id} />;
       case "updates": return <PlatformUpdatesInbox clubId={club.id} />;

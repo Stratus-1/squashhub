@@ -52,6 +52,11 @@ export interface ClubDevice {
   pulse_ms: number;
   ble_mac: string | null;
   auto_off_minutes: number | null;
+  /** Eligible to appear as a manual control on the member/admin dashboard. */
+  show_on_dashboard?: boolean | null;
+  /** Optional permission roles allowed to see/use the dashboard control. */
+  dashboard_role_ids?: string[] | null;
+
   schedule_enabled?: boolean | null;
   schedule_timezone?: string | null;
   schedule_days?: number[] | null;
@@ -186,4 +191,9 @@ export function describeDeviceSchedule(
   const days = device.schedule_days?.length ? device.schedule_days : [1, 2, 3, 4, 5, 6, 7];
   const dayLabel = days.length === 7 ? "daily" : `${days.length} day${days.length === 1 ? "" : "s"}/week`;
   return `${dayLabel} ${device.schedule_on_time.slice(0, 5)}-${device.schedule_off_time.slice(0, 5)}`;
+}
+
+/** Default dashboard visibility for a newly added device. */
+export function defaultShowOnDashboard(category: DeviceCategory): boolean {
+  return category === "access";
 }

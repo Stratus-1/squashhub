@@ -18,6 +18,7 @@ import { useMyBookings } from "@/hooks/use-data";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { useDoorProximity } from "@/hooks/use-door-proximity";
 import { useHasCapability } from "@/hooks/use-club-capabilities";
+import { useMemberPermission } from "@/hooks/use-club-permissions";
 
 const errorMessage = (e: unknown, fallback: string) =>
   e instanceof Error ? e.message : fallback;
@@ -60,6 +61,8 @@ export function useDoorControl(): DoorControl {
     door_longitude?: number | null;
     door_geofence_radius_m?: number | null;
     door_auto_unlock_radius_m?: number | null;
+    door_show_on_dashboard?: boolean | null;
+    door_dashboard_role_ids?: string[] | null;
   } | undefined;
 
   const accessOn = useHasCapability("access_control", club?.id);
@@ -101,8 +104,19 @@ export function useDoorControl(): DoorControl {
   const isVisitorRole = String((activeMember as any)?.role || "").toLowerCase() === "visitor";
   const visitorBlocked = isVisitorRole && !club?.visitors_access_control;
 
+  // Manual dashboard control: admins always keep it, members only when the
+  // door is shown on the dashboard and they hold one of the chosen roles.
+  const { data: myPermission } = useMemberPermission(activeMember?.id);
+  const doorRoleIds = club?.door_dashboard_role_ids || [];
+  const roleAllowed =
+    doorRoleIds.length === 0 ||
+    !!myPermission?.is_full_admin ||
+    (!!myPermission?.permission_role_id && doorRoleIds.includes(myPermission.permission_role_id));
+  const dashboardAllowed =
+    isClubAdmin || (club?.door_show_on_dashboard !== false && roleAllowed);
+
   const configured =
-    !!club?.id && accessOn && doorEnabled && !doorBlocked && !visitorBlocked;
+    !!club?.id && accessOn && doorEnabled && !doorBlocked && !visitorBlocked && dashboardAllowed;
   // Geofenced clubs only surface the control once the member is actually at
   // the door; admins and staff keep remote access.
   const available = configured && !(proximity.active && !nearDoor);

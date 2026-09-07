@@ -11449,34 +11449,11 @@ function InvitePreviewDialog({
   onOpenChange,
   clubId,
   tournamentName,
-  description,
   builtBody,
-  descriptionCustom,
   paymentRequired,
   inviteShortMessage,
   methods,
-  gender,
-  matchType,
-  scoringMode,
-  roundFormat,
-  byeHandling,
-  partnerMode,
-  startDate,
-  endDate,
-  startTime,
-  endTime,
-  customizeDailySchedule,
-  daySchedules,
-  registrationOpensAt,
-  registrationClosesAt,
   entryFeeRand,
-  pointsPerGame,
-  bestOf,
-  registrationRequired,
-  registrationMode,
-  divisionFormats,
-  selfScheduled,
-  roundDeadlines,
   inviteExtraDetails,
   footer,
 }: {
@@ -11484,38 +11461,15 @@ function InvitePreviewDialog({
   onOpenChange: (v: boolean) => void;
   clubId?: string;
   tournamentName: string;
-  description: string;
   /** Exact body the send path (buildInviteBody) will use — preview must show this verbatim. */
   builtBody: string;
-  descriptionCustom: boolean;
   paymentRequired: boolean;
   inviteShortMessage: boolean;
   methods: Set<"app" | "email" | "whatsapp">;
+  entryFeeRand: string;
+  inviteExtraDetails?: string;
   /** Test-invite controls live under the preview, never on the messaging step. */
   footer?: React.ReactNode;
-  gender: GenderCategory;
-  matchType: "singles" | "doubles";
-  scoringMode: string;
-  roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss";
-  byeHandling: "" | "no_match" | "walkover_win" | "neutral";
-  partnerMode: "" | "admin" | "players";
-  startDate: string;
-  endDate: string;
-  startTime?: string;
-  endTime?: string;
-  customizeDailySchedule?: boolean;
-  daySchedules?: { date: string; start_time: string; end_time: string }[];
-  registrationOpensAt: string;
-  registrationClosesAt: string;
-  entryFeeRand: string;
-  pointsPerGame: number;
-  bestOf: number;
-  registrationRequired?: boolean;
-  registrationMode?: "" | "open" | "invite";
-  divisionFormats?: string[];
-  selfScheduled?: boolean;
-  roundDeadlines?: { label: string; date: string }[];
-  inviteExtraDetails?: string;
 }) {
   const { data: previewClub } = useQuery({
     queryKey: ["invite-preview-club", clubId],

@@ -2601,11 +2601,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
 
-      // Auto-register every allocated player. Once admin places a member into a
-      // pair / group they are considered confirmed for the tournament — no
-      // separate payment / registration step is required.
+      // Register allocated players. IMPORTANT: a player who was merely INVITED
+      // and has not responded must NEVER be flipped to "paid"/entered by an
+      // allocation save — free tournaments included. Doing so made their invite
+      // link think they had already accepted. Only rows the organiser creates
+      // directly here (no outstanding invite) are marked as entered.
       const uniqueIds = Array.from(new Set(allocatedMemberIds));
       if (uniqueIds.length > 0) {
+        const { data: existingRows } = await fromExt("club_champs_registrations")
+          .select("club_member_id, status, confirmed_at")
+          .eq("champ_id", champIdToUse)
+          .in("club_member_id", uniqueIds);
+        // Awaiting a reply = invited / awaiting payment with no acceptance yet.
+        const awaitingReply = new Set(
+          ((existingRows || []) as any[])
+            .filter((r) => {
+              const s = String(r.status || "").toLowerCase();
+              return !r.confirmed_at && ["invited", "pending", "pending_payment", "pending_eft"].includes(s);
+            })
+            .map((r) => r.club_member_id),
+        );
         const pairedPartnerByMember = isDoubles && partnerMode === "admin"
           ? new Map(
               (groups as DoublePair[][]).flatMap((groupPairs) =>
@@ -2617,32 +2632,47 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               )
             )
           : new Map<string, string>();
-        const regRows = uniqueIds.map((memberId) => ({
-          champ_id: champIdToUse,
-          club_member_id: memberId,
-          ...(pairedPartnerByMember.has(memberId)
-            ? { partner_member_id: pairedPartnerByMember.get(memberId), partner_confirmed: true }
-            : {}),
-          status: "paid",
-          // Do NOT set invited_by_admin here — the notify_champ_registration_event
-          // trigger fires "Tournament invitation" notifications on INSERT when this
-          // flag is true. Allocating players into groups is not the same as sending
-          // invites; notifications must only go out when the admin explicitly clicks
-          // "Send invites" (which sets invited_by_admin=true via UPDATE, not INSERT).
-          invited_by_admin: false,
-          fee_paid_cents: 0,
-        }));
-        await fromExt("club_champs_registrations").upsert(regRows, {
-          onConflict: "champ_id,club_member_id",
-        } as any);
-        // Force-promote any existing pending rows to paid (upsert may not
-        // overwrite status on conflict in all environments).
-        await fromExt("club_champs_registrations")
-          .update({ status: "paid" })
-          .eq("champ_id", champIdToUse)
-          .in("club_member_id", uniqueIds)
-          .in("status", ["pending_payment", "pending_eft", "invited"]);
+        const regRows = uniqueIds
+          .filter((memberId) => !awaitingReply.has(memberId))
+          .map((memberId) => ({
+            champ_id: champIdToUse,
+            club_member_id: memberId,
+            ...(pairedPartnerByMember.has(memberId)
+              ? { partner_member_id: pairedPartnerByMember.get(memberId), partner_confirmed: true }
+              : {}),
+            status: "paid",
+            // Do NOT set invited_by_admin here — the notify_champ_registration_event
+            // trigger fires "Tournament invitation" notifications on INSERT when this
+            // flag is true. Allocating players into groups is not the same as sending
+            // invites; notifications must only go out when the admin explicitly clicks
+            // "Send invites" (which sets invited_by_admin=true via UPDATE, not INSERT).
+            invited_by_admin: false,
+            fee_paid_cents: 0,
+          }));
+        // Pairing info still belongs on rows awaiting a reply, but their status
+        // stays untouched.
+        const pairOnlyUpdates = uniqueIds
+          .filter((memberId) => awaitingReply.has(memberId) && pairedPartnerByMember.has(memberId));
+        if (regRows.length > 0) {
+          await fromExt("club_champs_registrations").upsert(regRows, {
+            onConflict: "champ_id,club_member_id",
+          } as any);
+          // Force-promote pending rows that HAVE been accepted (upsert may not
+          // overwrite status on conflict in all environments).
+          await fromExt("club_champs_registrations")
+            .update({ status: "paid" })
+            .eq("champ_id", champIdToUse)
+            .in("club_member_id", regRows.map((r) => r.club_member_id))
+            .in("status", ["pending_payment", "pending_eft", "invited"]);
+        }
+        for (const memberId of pairOnlyUpdates) {
+          await fromExt("club_champs_registrations")
+            .update({ partner_member_id: pairedPartnerByMember.get(memberId), partner_confirmed: true })
+            .eq("champ_id", champIdToUse)
+            .eq("club_member_id", memberId);
+        }
       }
+
 
       // Keep division_choices in step with the saved allocation so the change
       // sticks after a reload (and players who were moved out of a division

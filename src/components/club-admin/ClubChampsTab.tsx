@@ -4543,6 +4543,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             entry_source: entrySource,
             approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
+            invite_short_message: inviteShortMessage,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
             handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
@@ -4626,6 +4627,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             entry_source: entrySource,
             approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
+            invite_short_message: inviteShortMessage,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
             handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
@@ -6088,6 +6090,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setApprovalGate("none");
     setPaymentTiming("on_entry");
     setInviteIncludeReserves(true);
+    setInviteShortMessage(false);
     setInviteExcludedMemberIds(new Set());
     setHandicapMode("none");
     setHandicapDivider(1);
@@ -6215,6 +6218,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setApprovalGate((((champ as any).approval_gate as any) || "none"));
     setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
+    setInviteShortMessage((champ as any).invite_short_message === true);
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
     setInviteAudience((((champ as any).invite_audience as InviteAudienceMode) || "all_club"));
     setAudienceLeagueIds(new Set(((champ as any).invite_audience_league_ids as string[]) || []));

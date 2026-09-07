@@ -2122,6 +2122,12 @@ export default function ClubChampsView() {
                     <CalendarClock className="h-3.5 w-3.5 mr-2" />
                     {scheduleActionLabel(m)}
                   </DropdownMenuItem>
+                  {canManage && !completed && (m.side_a_points ?? 0) === 0 && (m.side_b_points ?? 0) === 0 && (
+                    <DropdownMenuItem onClick={() => setReplaceMatch(m)}>
+                      <UserCog className="h-3.5 w-3.5 mr-2" />
+                      Replace a player
+                    </DropdownMenuItem>
+                  )}
                   {canUnscheduleFixture(m, myMemberId, { canManage }).allowed && (
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"

@@ -159,6 +159,35 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // Server-side authorisation: hiding the button is not security. Club
+    // admins / access managers always pass; ordinary members only when the
+    // main door is shown on the dashboard and they hold a permitted role.
+    const { data: doorAllowed, error: doorPermErr } = await admin.rpc("can_open_club_door", {
+      _user_id: userId,
+      _club_id: club_id,
+    });
+    if (doorPermErr) {
+      // Older projects without the function fall back to plain membership.
+      if (!doorPermErr.message?.toLowerCase().includes("can_open_club_door")) throw doorPermErr;
+      const { data: fallbackMember } = await admin
+        .from("club_members")
+        .select("id")
+        .eq("club_id", club_id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!fallbackMember) {
+        return new Response(JSON.stringify({ error: "You are not allowed to open this door" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else if (!doorAllowed) {
+      return new Response(JSON.stringify({ error: "You are not allowed to open this door" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: secrets, error: secErr } = await admin
       .from("club_secrets")
       .select(

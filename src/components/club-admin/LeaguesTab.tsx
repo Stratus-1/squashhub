@@ -3260,9 +3260,11 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {lockedAssociationId
-                ? `Create teams for ${associations.find((a) => a.id === lockedAssociationId)?.name ?? "this league"}`
-                : "Create System League Teams"}
+              {editMode
+                ? `Edit ${year} teams — ${associations.find((a) => a.id === (associationId || lockedAssociationId))?.name ?? "this league"}`
+                : lockedAssociationId
+                  ? `Create teams for ${associations.find((a) => a.id === lockedAssociationId)?.name ?? "this league"}`
+                  : "Create System League Teams"}
             </DialogTitle>
           </DialogHeader>
         <div className="space-y-4">
@@ -3338,7 +3340,12 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
             </p>
           )}
 
-          {priorSeasons.length > 0 && (
+          {editMode && (
+            <p className="text-xs text-muted-foreground rounded-md border bg-muted/40 px-3 py-2">
+              Existing {year} teams are prefilled below. Unticking a league or lowering a team count does NOT delete teams here — remove or rename them from the team cards on the league tab. Saving only adds new teams.
+            </p>
+          )}
+          {!editMode && priorSeasons.length > 0 && (
             <div className="rounded-md border p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <Label className="text-sm">Duplicate teams from a previous season</Label>
@@ -3412,8 +3419,8 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
             </div>
           )}
 
-          <Button onClick={handleSave} className="w-full" disabled={entries.length === 0}>
-            Add {entries.length} League(s)
+          <Button onClick={handleSave} className="w-full" disabled={!editMode && entries.length === 0}>
+            {editMode ? (entries.length > 0 ? `Add ${entries.length} new team(s)` : "Done — no changes") : `Add ${entries.length} League(s)`}
           </Button>
         </div>
       </DialogContent>

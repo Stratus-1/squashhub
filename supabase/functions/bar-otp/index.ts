@@ -44,7 +44,10 @@ Deno.serve(async (req) => {
     const counter_token = (body?.counter_token as string | undefined) || null;
     const tab_token = (body?.tab_token as string | undefined) || null;
     const requested = String(body?.channel || "").toLowerCase();
-    const channelWanted: "whatsapp" | "sms" = requested === "sms" ? "sms" : "whatsapp";
+    // SMS is the default route: the WhatsApp authentication template is not
+    // approved on the shared business number yet, so WhatsApp is a fallback.
+    const channelWanted: "whatsapp" | "sms" = requested === "whatsapp" ? "whatsapp" : "sms";
+
     if (!club_member_id) return json({ error: "Missing member" }, 400);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);

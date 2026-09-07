@@ -14165,6 +14165,31 @@ export type Database = {
         Returns: boolean
       }
       club_has_no_admin: { Args: { _club_id: string }; Returns: boolean }
+      club_member_email_id_conflict: {
+        Args: {
+          _club_id: string
+          _email: string
+          _exclude_member_id?: string
+          _id_number: string
+        }
+        Returns: boolean
+      }
+      club_member_id_number_taken: {
+        Args: {
+          _club_id: string
+          _exclude_member_id?: string
+          _id_number: string
+        }
+        Returns: boolean
+      }
+      club_member_private_fields: {
+        Args: { _club_id: string }
+        Returns: {
+          address: string
+          id_number: string
+          member_id: string
+        }[]
+      }
       club_ranked_match_counts: {
         Args: { _club_id: string }
         Returns: {

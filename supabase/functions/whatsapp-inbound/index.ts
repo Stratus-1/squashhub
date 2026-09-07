@@ -192,7 +192,13 @@ Deno.serve(async (req) => {
       return twiml("You will no longer receive WhatsApp messages from SquashHub.");
     }
 
-    if (!interaction) return twiml();
+    if (!interaction) {
+      // No active invitation or question — remind the member this is an automated channel.
+      return twiml(
+        "This is an automated SquashHub service number. Please don't reply here — follow the link in your message, or contact your club directly.",
+      );
+    }
+
 
     if (answer === "unknown") {
       // Never guess: leave the interaction pending, flag it for an admin and

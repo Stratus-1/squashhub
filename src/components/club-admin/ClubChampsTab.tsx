@@ -11467,21 +11467,21 @@ function InvitePreviewDialog({
   // wording and the short-message option are reflected verbatim here.
   const appBody = builtBody;
 
-  // WhatsApp preview mirrors the approved rsvp_question template and the
-  // send logic in sendChampInvites: entry is link-first — YES hands the
-  // player their personal link (so they can pick a category/partner), and
-  // only a NO reply records a decline.
+  // WhatsApp preview mirrors the approved tournament_invite template and the
+  // send logic in sendChampInvites: entry is link-only (no Yes button), and a
+  // typed NO reply records a decline.
   // Must match sendChampInvites: paymentRequired && entryFeeAmount > 0.
   const waNeedsPayment = !!paymentRequired && Number(entryFeeRand || 0) > 0;
   const waCallToAction = waNeedsPayment
-    ? `To enter, open your personal invitation link to register and pay the entry fee.\nhttps://squashhub.co.za/i/… (your personal invitation link)\nReply NO to decline.`
-    : `To enter, open your personal invitation link and choose your category.\nhttps://squashhub.co.za/i/… (your personal invitation link)\nReply NO to decline.`;
+    ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+    : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
   const waBody =
-    `Hello from *${clubLabel}* on SquashHub.\n\n` +
-    `Please see the following club activity:\n\n` +
-    `${appBody}\n\n` +
-    `Additional details: ${waCallToAction}\n\n` +
-    `Please reply using the buttons below so that we can finalise the arrangements. Thank you.`;
+    `Hello Player, this is a message from *${clubLabel}* on SquashHub.\n\n` +
+    `You are invited to take part in our upcoming tournament: ${tournamentName}.\n\n` +
+    `Event details: ${waCallToAction}\n\n` +
+    `To accept the invitation and complete your entry, please open the following link: https://squashhub.co.za/i/… (personal link)\n\n` +
+    `We hope to see you on court.`;
+
 
   // WhatsApp templates are capped at 1024 characters once the variables are
   // filled in; anything longer is trimmed automatically before sending.

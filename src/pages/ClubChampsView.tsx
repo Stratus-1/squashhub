@@ -14,6 +14,7 @@ import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, Chec
 import { format, eachDayOfInterval, getDay } from "date-fns";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useHasPermission } from "@/hooks/use-club-permissions";
+import { useIsClubAdmin } from "@/hooks/use-club";
 import { TournamentRegisterCard } from "@/components/TournamentRegisterCard";
 import { toast } from "sonner";
 import { isVoidResult } from "@/lib/tournaments/forfeit";
@@ -777,7 +778,9 @@ export default function ClubChampsView() {
     URL.revokeObjectURL(url);
   };
 
-  const canManage = useHasPermission("champs");
+  const hasChampsPermission = useHasPermission("champs");
+  const isClubAdminUser = useIsClubAdmin();
+  const canManage = hasChampsPermission || isClubAdminUser;
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [confirmationsOpen, setConfirmationsOpen] = useState(false);

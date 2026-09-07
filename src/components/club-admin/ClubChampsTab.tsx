@@ -5571,15 +5571,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
 
-      // WhatsApp channel.
+      // WhatsApp channel — link-first entry.
       //
-      // Free tournaments: a YES reply is enough to enter, so we keep the
-      // reply-driven flow (whatsapp-inbound writes the entry back).
-      //
-      // Paid tournaments: a YES reply cannot create a valid entry because the
-      // entry fee must be settled first. We therefore drop the yes/no question
-      // entirely and send them to their invitation link to complete
-      // registration and payment.
+      // A bare YES reply used to create the entry immediately, but entrants
+      // still have choices to make on the invitation page (singles/doubles,
+      // division, doubles partner, payment). A YES therefore now means
+      // "I'm interested" and the webhook replies with the player's personal
+      // link to complete the entry properly. Only a NO reply is written back
+      // directly, as a decline.
       if (methods.includes("whatsapp")) {
         const needsPayment = paymentRequired && entryFeeAmount > 0;
         // Each recipient gets their own canonical invitation link, so the
@@ -5587,8 +5586,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         for (const r of rows as any[]) {
           const link = urlForRegistration(r.id);
           const callToAction = needsPayment
-            ? `Please follow the link to complete your registration and pay the entry fee.\n${link}`
-            : `Reply YES to enter or NO to decline.\n${link}`;
+            ? `To enter, open your personal invitation link to register and pay the entry fee.\n${link}\nReply NO to decline.`
+            : `To enter, open your personal invitation link and choose your category.\n${link}\nReply NO to decline.`;
           try {
             await sendWhatsApp({
               clubId,
@@ -5603,13 +5602,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 details: callToAction,
               },
               body: `${msg}\n\n${callToAction}`,
-              interaction: needsPayment
-                ? undefined
-                : {
-                    kind: "champ_entry",
-                    targetId: champId,
-                    prompt: `Entry for ${champName || "tournament"}`,
-                  },
+              interaction: {
+                kind: "champ_entry",
+                targetId: champId,
+                // The link travels with the interaction so the inbound
+                // webhook can hand it back on a YES reply.
+                prompt: `Entry for ${champName || "tournament"}\n${link}`,
+              },
             });
           } catch (waErr: any) {
             toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);

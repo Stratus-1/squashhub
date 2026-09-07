@@ -678,7 +678,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         ? `${club?.name || "Club"} — ${form.title.trim()}`
         : form.title.trim();
 
-      for (const date of instanceDates) {
+      for (const date of form.reserve_courts === "yes" ? instanceDates : []) {
         for (const cid of form.court_ids) {
           bookingRows.push({
             court_id: cid,
@@ -1106,7 +1106,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         const rebookRows: any[] = [];
         const rebookAsClub = adminBypass;
 
-        for (const date of rebookDates) {
+        for (const date of form.reserve_courts === "yes" ? rebookDates : []) {
           for (const cid of form.court_ids) {
             rebookRows.push({
               court_id: cid,

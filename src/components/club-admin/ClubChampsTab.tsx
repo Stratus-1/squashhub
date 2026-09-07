@@ -7747,7 +7747,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                           <div>
                             <Label className="text-xs">Notes (optional)</Label>
                             <Textarea
-                              value={(d as any).notes ?? ""}
+                              value={d.notes ?? ""}
                               rows={1}
                               placeholder="Shown with this round's fixtures"
                               onChange={(e) =>

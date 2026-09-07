@@ -2209,7 +2209,7 @@ export default function Bookings() {
                         <Mail className="w-3.5 h-3.5" /> Share
                       </Button>
                   )}
-                  {(isBooker || isGoBookBooking) && (() => {
+                  {(canManageBooking || isGoBookBooking) && (() => {
                     const bd: any = bookingDetails;
                     if (isGoBookBooking && !gobookRowPermission(bd).allowed) return null;
                     return (
@@ -2227,7 +2227,7 @@ export default function Bookings() {
                       </Button>
                     );
                   })()}
-                  {(isBooker || isGoBookBooking) && (
+                  {(canManageBooking || isGoBookBooking) && (
                     <>
                       {isGoBookBooking ? (() => {
                         const bd: any = bookingDetails;

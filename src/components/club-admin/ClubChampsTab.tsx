@@ -5488,7 +5488,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const rows = resolved.rows as any[];
 
       if (opts?.confirm) {
-        const names = rows.map((r) => memberNameById.get(r.club_member_id) || "Unknown member");
+        // Names come from the cached member pool, but the resolved audience can
+        // include members outside that cache (freshly promoted visitor rows,
+        // audience members from clubs not in the pool). Fetch any missing names
+        // on demand so the confirm never shows "Unknown member" for a real person.
+        const missingIds = Array.from(
+          new Set(
+            rows
+              .map((r) => r.club_member_id)
+              .filter((id): id is string => !!id && !memberNameById.get(id)),
+          ),
+        );
+        const extraNames = new Map<string, string>();
+        if (missingIds.length > 0) {
+          const { data: extra } = await fromExt("club_members")
+            .select("id, name, profiles:user_id(name)")
+            .in("id", missingIds);
+          for (const p of (extra || []) as any[]) {
+            const n = p.name || p.profiles?.name;
+            if (n) extraNames.set(p.id, n);
+          }
+        }
+        const names = rows.map(
+          (r) => memberNameById.get(r.club_member_id) || extraNames.get(r.club_member_id) || "Unknown member",
+        );
         if (!confirm(inviteConfirmSummary(mode, names))) return;
       }
 

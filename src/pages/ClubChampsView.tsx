@@ -511,7 +511,9 @@ export default function ClubChampsView() {
           <thead>
             <tr className="border-b text-left">
               <th className="pb-2 font-medium">#</th>
-              <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
+              <th className="pb-2 font-medium">
+                {isDoubles || standings.some((s: any) => !!s.partner_member_id) ? "Team" : "Player"}
+              </th>
               {showPool && <th className="pb-2 font-medium text-center" title="Pool / section">Pool</th>}
 
               {isBells ? (

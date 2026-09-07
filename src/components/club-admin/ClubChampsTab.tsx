@@ -9873,48 +9873,95 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         Previewing the secure invitation journey for {sampleInvitee.name}.
                       </p>
                     )}
-                    <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="test-invite-email">Recipient email address</Label>
-                      {authUser?.email && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 text-[11px]"
-                          onClick={() => { setTestInviteEmail(authUser.email as string); setTestInviteEmailError(""); }}
-                        >
-                          Send to me
-                        </Button>
-                      )}
-                    </div>
-                    <Input
-                      id="test-invite-email"
-                      type="email"
-                      autoComplete="email"
-                      maxLength={255}
-                      placeholder="name@example.com"
-                      value={testInviteEmail}
-                      onChange={(event) => {
-                        setTestInviteEmail(event.target.value);
-                        if (testInviteEmailError) setTestInviteEmailError("");
-                      }}
-                    />
-                    {testInviteEmailError && <p className="text-xs text-destructive">{testInviteEmailError}</p>}
+                    {inviteMethods.has("email") && (
+                      <>
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="test-invite-email">Recipient email address</Label>
+                          {authUser?.email && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-[11px]"
+                              onClick={() => { setTestInviteEmail(authUser.email as string); setTestInviteEmailError(""); }}
+                            >
+                              Send to me
+                            </Button>
+                          )}
+                        </div>
+                        <Input
+                          id="test-invite-email"
+                          type="email"
+                          autoComplete="email"
+                          maxLength={255}
+                          placeholder="name@example.com"
+                          value={testInviteEmail}
+                          onChange={(event) => {
+                            setTestInviteEmail(event.target.value);
+                            if (testInviteEmailError) setTestInviteEmailError("");
+                          }}
+                        />
+                        {testInviteEmailError && <p className="text-xs text-destructive">{testInviteEmailError}</p>}
+                      </>
+                    )}
+                    {inviteMethods.has("whatsapp") && (
+                      <>
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="test-invite-phone">Recipient cell number (WhatsApp)</Label>
+                          {String((myMember as any)?.phone || (myMember as any)?.cell || "").trim() && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-[11px]"
+                              onClick={() => { setTestInvitePhone(String((myMember as any)?.phone || (myMember as any)?.cell || "").trim()); setTestInvitePhoneError(""); }}
+                            >
+                              Send to me
+                            </Button>
+                          )}
+                        </div>
+                        <Input
+                          id="test-invite-phone"
+                          type="tel"
+                          autoComplete="tel"
+                          maxLength={20}
+                          placeholder="e.g. 0821234567"
+                          value={testInvitePhone}
+                          onChange={(event) => {
+                            setTestInvitePhone(event.target.value);
+                            if (testInvitePhoneError) setTestInvitePhoneError("");
+                          }}
+                        />
+                        {testInvitePhoneError && <p className="text-xs text-destructive">{testInvitePhoneError}</p>}
+                      </>
+                    )}
+                    {!inviteMethods.has("email") && !inviteMethods.has("whatsapp") && (
+                      <p className="text-xs text-muted-foreground">
+                        Only the in-app channel is selected — use the in-app/email test from the “Send to me” shortcut, or tick Email / WhatsApp above.
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      TEST INVITATION — no registration or RSVP is recorded. Email only. The link identifies the invited
-                      player so you see the real journey, but nothing is marked as sent and no response is stored.
+                      TEST INVITATION — no registration or RSVP is recorded. It goes out on the same channel(s) you selected
+                      for the real send. The link identifies the invited player so you see the real journey, but nothing is
+                      marked as sent and no response is stored.
                     </p>
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setTestInviteDialogOpen(false)}>Cancel</Button>
                     <Button
                       type="button"
-                      disabled={testInviteSending || !testInviteEmail.trim()}
+                      disabled={
+                        testInviteSending ||
+                        (inviteMethods.has("email") && !testInviteEmail.trim()) ||
+                        (inviteMethods.has("whatsapp") && !testInvitePhone.trim()) ||
+                        (!inviteMethods.has("email") && !inviteMethods.has("whatsapp"))
+                      }
                       onClick={() => {
                         if (!editingChampId) return;
                         void sendTestInvite(editingChampId, testInviteEmail, {
                           asMemberId: testInvitePreviewAs?.memberId,
                           asName: testInvitePreviewAs?.name,
+                          recipientPhone: testInvitePhone,
                         });
                       }}
                     >

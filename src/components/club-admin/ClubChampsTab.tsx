@@ -11209,12 +11209,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         onOpenChange={setShowInvitePreview}
         clubId={clubId}
         tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
-        description={description}
         builtBody={buildInviteBody()}
-        descriptionCustom={descriptionCustom}
         paymentRequired={paymentRequired}
         inviteShortMessage={inviteShortMessage}
         methods={inviteMethods}
+        entryFeeRand={entryFeeRand}
+        inviteExtraDetails={inviteExtraDetails}
         footer={
           editingChampId ? (
             <div className="rounded-md border border-dashed border-border/60 p-3 space-y-2">
@@ -11253,29 +11253,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             </div>
           ) : null
         }
-        gender={gender}
-        matchType={matchType}
-        scoringMode={scoringMode}
-        roundFormat={roundFormat}
-        byeHandling={byeHandling}
-        partnerMode={partnerMode}
-        startDate={startDate}
-        endDate={endDate}
-        startTime={startTime}
-        endTime={endTime}
-        customizeDailySchedule={customizeDailySchedule}
-        daySchedules={daySchedules}
-        registrationOpensAt={registrationOpensAt}
-        registrationClosesAt={registrationClosesAt}
-        entryFeeRand={entryFeeRand}
-        pointsPerGame={pointsPerGame}
-        bestOf={bestOf}
-        registrationRequired={registrationRequired}
-        registrationMode={registrationMode}
-        divisionFormats={inviteDivisionFormats()}
-        selfScheduled={schedulingMode === "self"}
-        roundDeadlines={roundDeadlines}
-        inviteExtraDetails={inviteExtraDetails}
       />
 
       <ShadowRankPromptDialog

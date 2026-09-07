@@ -11,12 +11,20 @@ import { cn } from "@/lib/utils";
 
 type Slot = "player_a" | "player_b" | "partner_a" | "partner_b";
 
+export interface ReplaceCandidate {
+  id: string;
+  name: string;
+  member_number?: string | number | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clubId?: string | null;
   match: any | null;
   isDoubles?: boolean;
+  /** Players still in the competition — offered first. */
+  candidates?: ReplaceCandidate[];
   /** Display name for a member id already in the fixture. */
   getName: (memberId?: string | null) => string;
   onSaved?: () => void;

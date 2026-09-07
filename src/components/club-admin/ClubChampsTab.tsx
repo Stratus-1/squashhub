@@ -157,6 +157,7 @@ import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck"
 import {
   type RoundDeadline,
   parseRoundDeadlines,
+  mergeRoundDeadlines,
   serializeRoundDeadlines,
   deadlineForRound,
   defaultRoundLabel,

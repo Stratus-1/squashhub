@@ -127,11 +127,9 @@ export default function Dashboard() {
   const barEnabled = capOn("bar");
   const hasLeagues = capOn("leagues") && (clubLeagueAssociations || []).length > 0;
   // One-time intro toast for clubs where the Bar / POS module is live.
-  // Currently rolled out to Riverside only; shows once per member (localStorage).
+  // Shows once per member (localStorage).
   useEffect(() => {
     if (!barEnabled || !clubId || !myMemberId) return;
-    const clubSub = (effectiveClub as any)?.subdomain || subdomain;
-    if (clubSub !== "riverside") return;
     const key = `sh.barIntro.${clubId}.${myMemberId}`;
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, "1");

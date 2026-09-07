@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
+import { clubManifestsPlugin } from "./vite-plugin-club-manifests";
 
 const buildId =
   process.env.VERCEL_GIT_COMMIT_SHA ||
@@ -29,6 +30,7 @@ export default defineConfig(() => ({
   plugins: [
     react(),
     ...(!isWindows ? [mcpPlugin()] : []),
+    clubManifestsPlugin(),
     VitePWA({
       // Use injectManifest? No — generateSW is simpler. Use existing manifest.webmanifest.
       strategies: "generateSW",

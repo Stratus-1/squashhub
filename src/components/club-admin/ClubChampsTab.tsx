@@ -1530,6 +1530,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Invite by league (just for the initial roster — admin can still sub from any league later)
   const [inviteSource, setInviteSource] = useState<"manual" | "leagues">("manual");
   const [inviteIncludeReserves, setInviteIncludeReserves] = useState<boolean>(true);
+  // Short invites: the WhatsApp/SMS/email message stays brief and the personal
+  // link carries the full tournament details (they're rendered on /i/:token).
+  const [inviteShortMessage, setInviteShortMessage] = useState<boolean>(false);
   const [inviteExcludedMemberIds, setInviteExcludedMemberIds] = useState<Set<string>>(new Set());
 
   /**
@@ -2343,6 +2346,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       entry_source: entrySource,
       approval_gate: approvalGate,
       invite_include_reserves: inviteIncludeReserves,
+      invite_short_message: inviteShortMessage,
       invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
       handicap_mode: matchType === "singles" ? handicapMode : "none",
       handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
@@ -4539,6 +4543,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             entry_source: entrySource,
             approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
+            invite_short_message: inviteShortMessage,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
             handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
@@ -4622,6 +4627,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             entry_source: entrySource,
             approval_gate: approvalGate,
             invite_include_reserves: inviteIncludeReserves,
+            invite_short_message: inviteShortMessage,
             invite_excluded_member_ids: Array.from(inviteExcludedMemberIds),
             handicap_mode: matchType === "singles" ? handicapMode : "none",
             handicap_divider: matchType === "singles" ? Math.max(1, Number(handicapDivider) || 1) : 1,
@@ -5326,6 +5332,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const detailsBlock = detailLines.length
       ? `— Tournament details —\n${detailLines.map((l) => `• ${l}`).join("\n")}\n— End details —`
       : "";
+    if (inviteShortMessage) {
+      // Short mode: the message stays brief — the personal link below carries
+      // the full details (the /i/:token page renders them from the tournament).
+      return `You have been invited to ${champName || "a tournament"}.` +
+        (extras ? `\n\n${extras}` : "") +
+        `\n\nTap your link for the full details and to respond.`;
+    }
     return `You have been invited to ${champName || "a tournament"}.` +
       (extras ? `\n\n${extras}` : "") +
       (detailsBlock ? `\n\n${detailsBlock}` : "") +
@@ -6084,6 +6097,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setApprovalGate("none");
     setPaymentTiming("on_entry");
     setInviteIncludeReserves(true);
+    setInviteShortMessage(false);
     setInviteExcludedMemberIds(new Set());
     setHandicapMode("none");
     setHandicapDivider(1);
@@ -6211,6 +6225,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setApprovalGate((((champ as any).approval_gate as any) || "none"));
     setPaymentTiming((((champ as any).payment_timing as any) || "on_entry"));
     setInviteIncludeReserves((champ as any).invite_include_reserves !== false);
+    setInviteShortMessage((champ as any).invite_short_message === true);
     setInviteExcludedMemberIds(new Set(((champ as any).invite_excluded_member_ids as string[]) || []));
     setInviteAudience((((champ as any).invite_audience as InviteAudienceMode) || "all_club"));
     setAudienceLeagueIds(new Set(((champ as any).invite_audience_league_ids as string[]) || []));
@@ -9383,6 +9398,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {inviteMethods.has("whatsapp") && " Tournament invites need a reply, so WhatsApp is used when messaging is on — billed to your club."}
                 {!whatsappEnabled && " WhatsApp/SMS is inactive — activate Member messaging in Club Admin → Messaging to reach members by phone."}
               </p>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox checked={inviteShortMessage} onCheckedChange={(c) => setInviteShortMessage(!!c)} />
+                Send a short message — the personal link shows the full details
+              </label>
+              {inviteShortMessage && (
+                <p className="text-xs text-muted-foreground">
+                  WhatsApp, SMS and email will be just a line or two plus the link — ideal when WhatsApp messages get too long. The link page shows the full details and your own wording.
+                </p>
+              )}
             </div>
 
             {/* Invite send timing — only when invites/registration are used */}

@@ -11103,6 +11103,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         clubId={clubId}
         tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
         description={description}
+        builtBody={buildInviteBody()}
+        descriptionCustom={descriptionCustom}
+        paymentRequired={paymentRequired}
+        inviteShortMessage={inviteShortMessage}
         methods={inviteMethods}
         gender={gender}
         matchType={matchType}
@@ -11301,6 +11305,10 @@ function InvitePreviewDialog({
   clubId,
   tournamentName,
   description,
+  builtBody,
+  descriptionCustom,
+  paymentRequired,
+  inviteShortMessage,
   methods,
   gender,
   matchType,
@@ -11331,6 +11339,11 @@ function InvitePreviewDialog({
   clubId?: string;
   tournamentName: string;
   description: string;
+  /** Exact body the send path (buildInviteBody) will use — preview must show this verbatim. */
+  builtBody: string;
+  descriptionCustom: boolean;
+  paymentRequired: boolean;
+  inviteShortMessage: boolean;
   methods: Set<"app" | "email" | "whatsapp">;
   gender: GenderCategory;
   matchType: "singles" | "doubles";
@@ -11366,34 +11379,20 @@ function InvitePreviewDialog({
     },
   });
   const clubLabel = previewClub || "Your club";
-  const descHasDetails = /— Tournament details —/.test(description || "");
   const extras = inviteExtraDetails?.trim()
     ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
     : "";
-  const detailLines = descHasDetails ? [] : buildInviteDetailLines({
-    gender, matchType, scoringMode, roundFormat, byeHandling, partnerMode,
-    startDate, endDate, startTime, endTime, customizeDailySchedule, daySchedules,
-    registrationOpensAt, registrationClosesAt, entryFeeRand,
-    pointsPerGame, bestOf,
-    registrationRequired, registrationMode,
-    tournamentName, divisionFormats,
-    selfScheduled, roundDeadlines,
-  });
-  const detailsBlock = detailLines.length
-    ? `— Tournament details —\n${detailLines.map((l) => `• ${l}`).join("\n")}\n— End details —`
-    : "";
-
-  const appBody =
-    `You have been invited to ${tournamentName}.` +
-    (extras ? `\n\n${extras}` : "") +
-    (detailsBlock ? `\n\n${detailsBlock}` : "") +
-    (description?.trim() ? `\n\n${description.trim()}` : "");
+  // The preview must show exactly what will be sent: `builtBody` is produced by
+  // the same buildInviteBody() the send path uses, so custom (hand-edited)
+  // wording and the short-message option are reflected verbatim here.
+  const appBody = builtBody;
 
   // WhatsApp preview mirrors the approved rsvp_question template and the
   // send logic in sendChampInvites: entry is link-first — YES hands the
   // player their personal link (so they can pick a category/partner), and
   // only a NO reply records a decline.
-  const waNeedsPayment = !!registrationRequired && Number(entryFeeRand || 0) > 0;
+  // Must match sendChampInvites: paymentRequired && entryFeeAmount > 0.
+  const waNeedsPayment = !!paymentRequired && Number(entryFeeRand || 0) > 0;
   const waCallToAction = waNeedsPayment
     ? `To enter, open your personal invitation link to register and pay the entry fee.\nhttps://squashhub.co.za/i/… (your personal invitation link)\nReply NO to decline.`
     : `To enter, open your personal invitation link and choose your category.\nhttps://squashhub.co.za/i/… (your personal invitation link)\nReply NO to decline.`;
@@ -11463,22 +11462,11 @@ function InvitePreviewDialog({
                 <p className="font-semibold">You're invited: {tournamentName}</p>
                 <Separator />
                 <p>Hi there,</p>
-                <p>You've been invited to take part in <strong>{tournamentName}</strong>.</p>
-                {extras && (
-                  <div className="text-sm whitespace-pre-wrap text-muted-foreground">
-                    {extras}
-                  </div>
-                )}
-                {detailLines.length > 0 && (
-                  <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-0.5">
-                    {detailLines.map((l, i) => <li key={i}>{l}</li>)}
-                  </ul>
-                )}
-                {description?.trim() && !descHasDetails && (
-                  <div className="text-sm whitespace-pre-wrap border-l-2 border-primary/40 pl-3 text-muted-foreground">
-                    {description.trim()}
-                  </div>
-                )}
+                {/* The email body is the exact same message that will be sent,
+                    so custom edits and short-message mode are shown verbatim. */}
+                <div className="text-sm whitespace-pre-wrap text-muted-foreground">
+                  {builtBody}
+                </div>
                 <p>Tap the button below to register or decline.</p>
                 <span className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
                   Accept / Register

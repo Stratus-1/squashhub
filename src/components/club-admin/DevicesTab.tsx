@@ -248,6 +248,22 @@ export function DevicesTab({ clubId }: { clubId: string }) {
     },
     enabled: !!clubId,
   });
+  const { data: permissionRoles = [] } = usePermissionRoles(clubId);
+  const { data: clubDoor } = useQuery({
+    queryKey: ["iot-club-door", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("clubs")
+        .select(
+          "id, door_show_on_dashboard, door_dashboard_role_ids, door_geofence_enabled, door_latitude, door_longitude, door_geofence_radius_m, door_auto_unlock_radius_m, door_auto_unlock_enabled",
+        )
+        .eq("id", clubId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+    enabled: !!clubId,
+  });
+
   const save = useSaveDevice();
   const del = useDeleteDevice(clubId);
   const control = useDeviceControl(clubId);
@@ -367,7 +383,18 @@ export function DevicesTab({ clubId }: { clubId: string }) {
 
   const openEditor = (device: IoTDevice) => {
     setSelectedDevice(null);
-    setForm(toForm(device));
+    const next = toForm(device);
+    if (device.source === "main-access" && clubDoor) {
+      next.show_on_dashboard = clubDoor.door_show_on_dashboard !== false;
+      next.dashboard_role_ids = clubDoor.door_dashboard_role_ids || [];
+      next.geofence_enabled = !!clubDoor.door_geofence_enabled;
+      next.geofence_lat = clubDoor.door_latitude == null ? "" : String(clubDoor.door_latitude);
+      next.geofence_lng = clubDoor.door_longitude == null ? "" : String(clubDoor.door_longitude);
+      next.geofence_radius = String(clubDoor.door_geofence_radius_m ?? 150);
+      next.geofence_auto_radius = String(clubDoor.door_auto_unlock_radius_m ?? 5);
+      next.geofence_auto = !!clubDoor.door_auto_unlock_enabled;
+    }
+    setForm(next);
   };
 
   const handleSave = async () => {
@@ -443,6 +470,25 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       }
 
       if (form.source === "main-access") {
+        const lat = parseFloat(form.geofence_lat);
+        const lng = parseFloat(form.geofence_lng);
+        const { error: clubErr } = await fromExt("clubs")
+          .update({
+            door_show_on_dashboard: form.show_on_dashboard,
+            door_dashboard_role_ids: form.dashboard_role_ids,
+            door_geofence_enabled: form.geofence_enabled,
+            door_latitude: Number.isFinite(lat) ? lat : null,
+            door_longitude: Number.isFinite(lng) ? lng : null,
+            door_geofence_radius_m: Number(form.geofence_radius) || 150,
+            door_auto_unlock_radius_m: Number(form.geofence_auto_radius) || 5,
+            door_auto_unlock_enabled: form.geofence_auto,
+          })
+          .eq("id", clubId);
+        if (clubErr) throw clubErr;
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["iot-club-door", clubId] }),
+          queryClient.invalidateQueries({ queryKey: ["my-club"] }),
+        ]);
         await updateSecrets.mutateAsync({
           club_id: clubId,
           shelly_auth_key: form.auth_key.trim(),
@@ -478,6 +524,8 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         location: form.location.trim() || null,
         notes: form.notes.trim() || null,
         enabled: form.enabled,
+        show_on_dashboard: form.show_on_dashboard,
+        dashboard_role_ids: form.dashboard_role_ids,
         control_mode: form.control_mode,
         provider: form.provider,
         shelly_device_id: form.shelly_device_id.trim() || null,

@@ -11416,7 +11416,7 @@ function InvitePreviewDialog({
     (extras ? `${extras.replace(/\n+/g, " ")} ` : "") +
     (waNeedsPayment
       ? "Register and pay via your invitation link: https://squashhub.co.za/i/…"
-      : "Reply YES to enter or NO to decline. Details: https://squashhub.co.za/i/…");
+      : "Enter via your invitation link: https://squashhub.co.za/i/… Reply NO on WhatsApp to decline.");
   const smsLength = smsBody.length;
   const smsSegments = smsLength <= 160 ? 1 : Math.ceil(smsLength / 153);
 

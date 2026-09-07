@@ -13704,6 +13704,10 @@ export type Database = {
         Args: { gender_filter: string; player_ids: string[] }
         Returns: undefined
       }
+      admin_replace_champ_player: {
+        Args: { p_match_id: string; p_new_member_id: string; p_slot: string }
+        Returns: Json
+      }
       admin_reverse_journal_group: {
         Args: { _journal_ref: string; _note?: string }
         Returns: Json

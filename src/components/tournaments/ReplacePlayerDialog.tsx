@@ -175,7 +175,9 @@ export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubl
                 </div>
               )}
               {!isLoading && results.length === 0 && (
-                <div className="p-3 text-xs text-muted-foreground">No matching player.</div>
+                <div className="p-3 text-xs text-muted-foreground">
+                  {useClubList ? "No matching player." : "Nobody else is still in this competition — use \u201cShow all club members\u201d."}
+                </div>
               )}
               {results.map((m) => (
                 <button

@@ -1886,6 +1886,23 @@ export default function ClubChampsView() {
         
       />
 
+      <ReplacePlayerDialog
+        open={!!replaceMatch}
+        onOpenChange={(o) => { if (!o) setReplaceMatch(null); }}
+        clubId={(champ as any)?.club_id}
+        match={replaceMatch}
+        isDoubles={(champ as any)?.match_type === "doubles" || (champ as any)?.match_type === "mixed"}
+        getName={(memberId) => {
+          if (!memberId || !replaceMatch) return "";
+          if (memberId === replaceMatch.player_a_member_id) return getPlayerName(replaceMatch.player_a);
+          if (memberId === replaceMatch.player_b_member_id) return getPlayerName(replaceMatch.player_b);
+          if (memberId === replaceMatch.partner_a_member_id) return getPlayerName(replaceMatch.partner_a);
+          if (memberId === replaceMatch.partner_b_member_id) return getPlayerName(replaceMatch.partner_b);
+          return "";
+        }}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
+      />
+
     </div>
   );
 

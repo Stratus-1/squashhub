@@ -126,6 +126,23 @@ export default function Dashboard() {
   const eventsEnabled = capOn("events");
   const barEnabled = capOn("bar");
   const hasLeagues = capOn("leagues") && (clubLeagueAssociations || []).length > 0;
+  // One-time intro toast for clubs where the Bar / POS module is live.
+  // Currently rolled out to Riverside only; shows once per member (localStorage).
+  useEffect(() => {
+    if (!barEnabled || !clubId || !myMemberId) return;
+    const clubSub = (effectiveClub as any)?.subdomain || subdomain;
+    if (clubSub !== "riverside") return;
+    const key = `sh.barIntro.${clubId}.${myMemberId}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+    const num = (activeMember?.club_member_number?.match(/\d/g) || []).join("") || activeMember?.club_member_number;
+    toast("🍻 Your club bar is on SquashHub!", {
+      duration: 12000,
+      description: num
+        ? `Your member number is #${num}, shown at the top of your dashboard — give it at the bar to put items on your account. If you're logged in, you can simply tap items and select "Add to My Account".`
+        : `Give your member number (shown at the top of your dashboard) at the bar to put items on your account. If you're logged in, you can simply tap items and select "Add to My Account".`,
+    });
+  }, [barEnabled, clubId, myMemberId]);
   // Nightly knockout round-up toast ("Well done with your wins" / "Sorry to see you go").
   useChampDailyToast(clubId, tournamentsEnabled);
   // "Please make your court booking for your next upcoming game" nudge.

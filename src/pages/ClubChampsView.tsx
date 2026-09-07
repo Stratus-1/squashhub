@@ -238,6 +238,26 @@ export default function ClubChampsView() {
     return `${getPlayerName(player)} & ${getPlayerName(partner)}`;
   };
 
+  /**
+   * Doubles is decided per division, not per tournament: a single event can hold
+   * a "Doubles Bells" league alongside a "Singles Bells" one. We trust the
+   * configured match type, and fall back to the entries themselves (a division
+   * whose entries carry partners is a doubles division) so mislabelled setups
+   * still show both names of a pair.
+   */
+  const leagueMatchTypes: Record<string, string> =
+    ((champ as any)?.league_match_types as Record<string, string>) || {};
+  const isDoublesLeague = (gn: number | null | undefined) => {
+    if (isDoubles) return true;
+    if (gn == null) return false;
+    const cfg = String(leagueMatchTypes[String(gn)] || "").toLowerCase();
+    if (cfg === "doubles") return true;
+    return (entries as any[]).some(
+      (e: any) => e.group_number === gn && !!e.partner_member_id,
+    );
+  };
+
+
   // Build standings per league (includes substitutes who appear in completed matches but were not in original entries)
   const byeHandling: string = (champ as any)?.bye_handling || "no_match";
   const tournamentFormat = getTournamentFormat((champ as any)?.scoring_mode);
@@ -291,6 +311,8 @@ export default function ClubChampsView() {
 
 
   const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
+    // Per-division doubles: a "Doubles Bells" league must list both names.
+    const isDoubles = isDoublesLeague(groupNum);
     let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
     // Pool-scoped filtering (Swiss with multiple pools per league).
     if (poolNumber != null && isSwissForLeague(groupNum)) {
@@ -489,7 +511,9 @@ export default function ClubChampsView() {
           <thead>
             <tr className="border-b text-left">
               <th className="pb-2 font-medium">#</th>
-              <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
+              <th className="pb-2 font-medium">
+                {isDoubles || standings.some((s: any) => !!s.partner_member_id) ? "Team" : "Player"}
+              </th>
               {showPool && <th className="pb-2 font-medium text-center" title="Pool / section">Pool</th>}
 
               {isBells ? (
@@ -701,13 +725,15 @@ export default function ClubChampsView() {
     const n = Number(h) || 0;
     return n !== 0 ? ` (HCP ${n > 0 ? "+" : ""}${n})` : "";
   };
+  const matchIsDoubles = (m: any) =>
+    !!m?.partner_a_member_id || !!m?.partner_b_member_id || isDoublesLeague(m?.group_number);
   const getMatchTeamA = (m: any) =>
     (m.player_a_member_id
-      ? (isDoubles ? getTeamName(m.player_a, m.partner_a) : getPlayerName(m.player_a))
+      ? (matchIsDoubles(m) ? getTeamName(m.player_a, m.partner_a) : getPlayerName(m.player_a))
       : (m.placeholder_a || "TBD")) + hcLabel(m.handicap_a);
   const getMatchTeamB = (m: any) =>
     (m.player_b_member_id
-      ? (isDoubles ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b))
+      ? (matchIsDoubles(m) ? getTeamName(m.player_b, m.partner_b) : getPlayerName(m.player_b))
       : (m.placeholder_b || "TBD")) + hcLabel(m.handicap_b);
 
   /**

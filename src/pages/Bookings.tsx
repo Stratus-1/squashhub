@@ -734,6 +734,7 @@ export default function Bookings() {
       (b: any) => !b.status || b.status === "active"
     );
     const merged = new Map<string, any>();
+    const claimedMatchIds = new Set<string>();
     const overlaps = (a: any, b: any) => {
       if (a.court_id !== b.court_id || a.date !== b.date) return false;
       const aStart = timeToMinutes(String(a.start_time || "").slice(0, 5));
@@ -760,6 +761,10 @@ export default function Bookings() {
         merged.set(key, b);
         continue;
       }
+      // Remember which fixtures already have a real booking row so the
+      // read-only fixture tile never shadows the owner's cancellable booking.
+      if (matchingTournament.champ_match_id) claimedMatchIds.add(String(matchingTournament.champ_match_id));
+      if (linkedMatchId) claimedMatchIds.add(String(linkedMatchId));
       // A directly linked match is authoritative; an overlapping court block
       // only fills in a title when the booking has none of its own.
       const adoptNames = !!linkedMatchId || !b.guest_name;
@@ -777,9 +782,12 @@ export default function Bookings() {
 
 
     for (const cb of champsBookings as any[]) {
+      if (cb.champ_match_id && claimedMatchIds.has(String(cb.champ_match_id))) continue;
       const key = `${cb.court_id}-${String(cb.start_time || "").slice(0, 5)}-${String(cb.end_time || "").slice(0, 5)}`;
-      if (!merged.has(key)) merged.set(key, cb);
+      const alreadyCovered = Array.from(merged.values()).some((b: any) => overlaps(b, cb));
+      if (!merged.has(key) && !alreadyCovered) merged.set(key, cb);
     }
+
 
     return Array.from(merged.values());
   }, [bookings, champsBookings]);

@@ -5974,6 +5974,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return pending[0] || null;
   }, [inviteeRows, memberNameById, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
 
+  /** Everyone who could receive a test copy — simple picker under the preview. */
+  const inviteeOptions = useMemo(() => {
+    const out: { memberId: string; name: string }[] = [];
+    const seen = new Set<string>();
+    (inviteeRows as any[])
+      .filter((r) => r.club_member_id && !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()))
+      .forEach((r) => {
+        if (seen.has(r.club_member_id)) return;
+        seen.add(r.club_member_id);
+        out.push({ memberId: r.club_member_id, name: memberNameById.get(r.club_member_id) || "Unknown member" });
+      });
+    structureLeagueIds.forEach((leagueId) => {
+      (registrationsByLeague.get(leagueId) || []).forEach((memberId: string) => {
+        if (inviteExcludedMemberIds.has(memberId) || seen.has(memberId)) return;
+        seen.add(memberId);
+        out.push({ memberId, name: memberNameById.get(memberId) || "Unknown member" });
+      });
+    });
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }, [inviteeRows, memberNameById, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);
   const [registrationsChamp, setRegistrationsChamp] = useState<any | null>(null);
@@ -9562,31 +9583,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   </p>
                 )}
 
-                {editingChampId && (
-                  <div className="rounded-md border border-dashed border-border/60 p-3 space-y-1.5">
-                    <div className="text-xs font-medium">Test invite</div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={!sampleInvitee || testInviteSending}
-                      onClick={() => {
-                        if (!sampleInvitee) return;
-                        openTestInviteDialog(sampleInvitee);
-                      }}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      {testInviteSending
-                        ? "Sending test…"
-                        : sampleInvitee
-                          ? `Send test as an invited player (${sampleInvitee.name})`
-                          : "Send test as an invited player"}
-                    </Button>
-                    <p className="text-[11px] text-muted-foreground">
-                      Test only — goes to an email address you type. It does not create entries and does not notify any member.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
             )}
@@ -11121,6 +11117,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         paymentRequired={paymentRequired}
         inviteShortMessage={inviteShortMessage}
         methods={inviteMethods}
+        footer={
+          editingChampId ? (
+            <div className="rounded-md border border-dashed border-border/60 p-3 space-y-2">
+              <div className="text-xs font-medium">Test invite — does not register anyone</div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select
+                  value={testInvitePreviewAs?.memberId ?? sampleInvitee?.memberId ?? ""}
+                  onValueChange={(v) => {
+                    const pick = inviteeOptions.find((o) => o.memberId === v) || null;
+                    setTestInvitePreviewAs(pick);
+                  }}
+                >
+                  <SelectTrigger className="h-9 sm:w-64">
+                    <SelectValue placeholder="Send as which invited player?" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {inviteeOptions.map((o) => (
+                      <SelectItem key={o.memberId} value={o.memberId}>{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!(testInvitePreviewAs || sampleInvitee) || testInviteSending}
+                  onClick={() => openTestInviteDialog(testInvitePreviewAs || sampleInvitee)}
+                >
+                  <Eye className="w-4 h-4 mr-1" />
+                  {testInviteSending ? "Sending test…" : "Send test invite"}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Clearly marked as a test: it goes to an email address you type, creates no entry and notifies no member.
+              </p>
+            </div>
+          ) : null
+        }
         gender={gender}
         matchType={matchType}
         scoringMode={scoringMode}
@@ -11346,6 +11380,7 @@ function InvitePreviewDialog({
   selfScheduled,
   roundDeadlines,
   inviteExtraDetails,
+  footer,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -11358,6 +11393,8 @@ function InvitePreviewDialog({
   paymentRequired: boolean;
   inviteShortMessage: boolean;
   methods: Set<"app" | "email" | "whatsapp">;
+  /** Test-invite controls live under the preview, never on the messaging step. */
+  footer?: React.ReactNode;
   gender: GenderCategory;
   matchType: "singles" | "doubles";
   scoringMode: string;
@@ -11544,6 +11581,8 @@ function InvitePreviewDialog({
             </div>
           </div>
         </div>
+
+        {footer}
 
         <DialogFooter className="mt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>

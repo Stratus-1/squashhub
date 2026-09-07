@@ -51,16 +51,27 @@ export async function applyDynamicManifest(): Promise<void> {
     const sub = getClubSubdomain();
     if (!sub) return; // root host — keep default SquashHub manifest
 
-    // Distinct manifest URL per tenant, but still a real static same-origin
-    // file so Chrome's installability check passes.
-    setManifestHref(`${BASE_MANIFEST_URL}?club=${encodeURIComponent(sub)}`);
+    // Real, same-origin, per-club manifest generated at build time
+    // (/club-manifests/<subdomain>.webmanifest). Only swap the link once we
+    // know the file exists, so installability never breaks on a 404/SPA HTML.
+    const clubManifestUrl = `/club-manifests/${encodeURIComponent(sub.toLowerCase())}.webmanifest`;
+    try {
+      const res = await fetch(clubManifestUrl, { headers: { Accept: "application/manifest+json" } });
+      const type = res.headers.get("content-type") || "";
+      if (res.ok && !type.includes("text/html")) {
+        setManifestHref(clubManifestUrl);
+      } else {
+        setManifestHref(`${BASE_MANIFEST_URL}?club=${encodeURIComponent(sub)}`);
+      }
+    } catch {
+      setManifestHref(`${BASE_MANIFEST_URL}?club=${encodeURIComponent(sub)}`);
+    }
 
     const club = await getPublicClubBySubdomain(sub);
     const clubName = club?.name?.trim();
     if (!clubName) return;
 
-    // iOS reads its home-screen label from the document, so this one is safe
-    // to personalise without touching the manifest.
+    // iOS reads its home-screen label from the document, not the manifest.
     setAppleTitle(clubName.length > 12 ? clubName.slice(0, 12).trim() : clubName);
     document.title = clubName;
   } catch (err) {

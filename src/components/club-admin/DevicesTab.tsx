@@ -46,7 +46,9 @@ import {
   describeDeviceSchedule,
   deviceIcon,
   describeDeviceBehaviour,
+  defaultShowOnDashboard,
 } from "@/lib/devices";
+import { usePermissionRoles } from "@/hooks/use-club-permissions";
 import {
   useClubDevices,
   useDeleteDevice,
@@ -101,6 +103,14 @@ type DeviceForm = {
   sort_order: string;
   server_url: string;
   auth_key: string;
+  show_on_dashboard: boolean;
+  dashboard_role_ids: string[];
+  geofence_enabled: boolean;
+  geofence_lat: string;
+  geofence_lng: string;
+  geofence_radius: string;
+  geofence_auto_radius: string;
+  geofence_auto: boolean;
 };
 
 const emptyForm = (category: DeviceCategory): DeviceForm => ({
@@ -126,6 +136,14 @@ const emptyForm = (category: DeviceCategory): DeviceForm => ({
   sort_order: "0",
   server_url: "",
   auth_key: "",
+  show_on_dashboard: defaultShowOnDashboard(category),
+  dashboard_role_ids: [],
+  geofence_enabled: false,
+  geofence_lat: "",
+  geofence_lng: "",
+  geofence_radius: "150",
+  geofence_auto_radius: "5",
+  geofence_auto: false,
 });
 
 const toForm = (d: IoTDevice): DeviceForm => ({
@@ -153,6 +171,14 @@ const toForm = (d: IoTDevice): DeviceForm => ({
   sort_order: String(d.sort_order ?? 0),
   server_url: d.server_url || "",
   auth_key: d.auth_key || "",
+  show_on_dashboard: d.show_on_dashboard !== false,
+  dashboard_role_ids: d.dashboard_role_ids || [],
+  geofence_enabled: false,
+  geofence_lat: "",
+  geofence_lng: "",
+  geofence_radius: "150",
+  geofence_auto_radius: "5",
+  geofence_auto: false,
 });
 
 const ADD_OPTIONS: Array<{ category: DeviceCategory; title: string; description: string }> = [

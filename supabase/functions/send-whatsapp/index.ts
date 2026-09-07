@@ -74,6 +74,32 @@ function sanitiseVar(raw: unknown, max = 900): string {
   return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
 }
 
+/**
+ * WhatsApp caps a rendered template body at 1024 characters. Twilio rejects the
+ * whole send (error 63021) when the substituted text goes over, so the longest
+ * variables are trimmed until the rendered message fits.
+ */
+const WA_BODY_LIMIT = 1024;
+function fitTemplateVariables(
+  templateBody: string | null,
+  vars: Record<string, string>,
+): Record<string, string> {
+  if (!templateBody) return vars;
+  const render = (v: Record<string, string>) =>
+    templateBody.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => v[k] ?? "");
+  const out = { ...vars };
+  for (let guard = 0; guard < 12; guard++) {
+    const over = render(out).length - WA_BODY_LIMIT;
+    if (over <= 0) break;
+    const longest = Object.keys(out).sort((a, b) => out[b].length - out[a].length)[0];
+    if (!longest) break;
+    const keep = Math.max(1, out[longest].length - over - 1);
+    if (keep >= out[longest].length) break;
+    out[longest] = `${out[longest].slice(0, keep).trimEnd()}\u2026`;
+  }
+  return out;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -151,15 +177,17 @@ Deno.serve(async (req) => {
     let contentSid = payload.content_sid ?? null;
     let contentVariables: Record<string, string> | null = payload.content_variables ?? null;
     let templateOrder: string[] | null = null;
+    let templateBody: string | null = null;
     if (!contentSid && payload.template_key) {
       const { data: tpl } = await admin
         .from("whatsapp_templates")
-        .select("content_sid, approval_status, variables")
+        .select("content_sid, approval_status, variables, body")
         .eq("key", payload.template_key)
         .maybeSingle();
       if (tpl?.content_sid && tpl.approval_status === "approved") {
         contentSid = tpl.content_sid;
         templateOrder = Array.isArray(tpl.variables) ? (tpl.variables as string[]) : [];
+        templateBody = (tpl as { body?: string | null }).body ?? null;
       }
 
       // Self-healing: a template that is missing or not approved yet is pushed
@@ -170,12 +198,13 @@ Deno.serve(async (req) => {
         if (tpl) void requestTemplateSync(admin, supabaseUrl, [payload.template_key]);
         const { data: generic } = await admin
           .from("whatsapp_templates")
-          .select("content_sid, approval_status, variables")
+          .select("content_sid, approval_status, variables, body")
           .eq("key", "club_notice")
           .maybeSingle();
         if (generic?.content_sid && generic.approval_status === "approved" && payload.body) {
           contentSid = generic.content_sid;
           templateOrder = Array.isArray(generic.variables) ? (generic.variables as string[]) : [];
+          templateBody = (generic as { body?: string | null }).body ?? null;
         }
       }
       // Not approved yet: fall back to free-form text, which Twilio only
@@ -225,7 +254,7 @@ Deno.serve(async (req) => {
         const v = sanitiseVar(named[name]);
         numbered[String(i + 1)] = v || "-";
       });
-      contentVariables = numbered;
+      contentVariables = fitTemplateVariables(templateBody, numbered);
     }
 
     if (!(await clubHasCapability(admin, clubId, "whatsapp"))) {
@@ -342,6 +371,7 @@ Deno.serve(async (req) => {
             for (const [k, v] of Object.entries(r.variables)) vars[k] = sanitiseVar(v);
           }
         }
+        vars = fitTemplateVariables(templateBody, vars);
         form.set("ContentVariables", JSON.stringify(vars));
         logBody = JSON.stringify(vars);
       } else {

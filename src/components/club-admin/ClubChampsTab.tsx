@@ -11585,7 +11585,6 @@ function InvitePreviewDialog({
                 </p>
               )}
 
-              )}
             </div>
 
             {/* SMS preview */}

@@ -2781,6 +2781,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   useEffect(() => {
     if (!autoDetailBlock) return;
+    // The organiser's own wording wins — never overwrite it.
+    if (descriptionCustom) return;
     setDescription((prev) => {
       const extra = prev
         .replace(/^[\s\S]*?— Tournament details —\n([\s\S]*?)\n— End details —\n?/m, "")
@@ -2788,7 +2790,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const next = extra ? `${autoDetailBlock}\n\n${extra}` : autoDetailBlock;
       return next === prev ? prev : next;
     });
-  }, [autoDetailBlock]);
+  }, [autoDetailBlock, descriptionCustom]);
 
 
   const goToStep = (s: WizardStep) => {

@@ -43,7 +43,12 @@ export function DashboardDeviceControls({ className }: { className?: string }) {
   const grouped = groupDevices((devices || []) as ClubDevice[]);
   // Dashboard actions are only for direct-access devices and staff gadgets.
   // Court lights are intentionally booking-driven so light fees stay billable.
-  const enabledIn = (c: DeviceCategory) => grouped[c].filter((d) => d.enabled);
+  // "Show on dashboard" is the admin's switch for whether a configured device
+  // gets a manual control here at all. RLS + can_operate_device enforce who may
+  // actually use it; this only decides what we draw.
+  const enabledIn = (c: DeviceCategory) =>
+    grouped[c].filter((d) => d.enabled && d.show_on_dashboard !== false);
+
 
   const groupHasContent = (c: DeviceCategory) => {
     if (c === "lights") return courtLightsOn;

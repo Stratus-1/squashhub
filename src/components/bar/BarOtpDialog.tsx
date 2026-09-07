@@ -131,15 +131,16 @@ export function BarOtpDialog({
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-2">
+          <Button className="h-11 gap-2" disabled={!!sending || busy} onClick={() => sendCode("sms")}>
+            {sending === "sms" ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+            SMS
+          </Button>
           <Button variant="outline" className="h-11 gap-2" disabled={!!sending || busy} onClick={() => sendCode("whatsapp")}>
             {sending === "whatsapp" ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
             WhatsApp
           </Button>
-          <Button variant="outline" className="h-11 gap-2" disabled={!!sending || busy} onClick={() => sendCode("sms")}>
-            {sending === "sms" ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
-            SMS
-          </Button>
         </div>
+
 
         <p className="text-[11px] text-muted-foreground">
           {sentTo

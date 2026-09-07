@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Save } from "lucide-react";
+import { ProvisionalRankingSettingsCard } from "@/components/rankings/ProvisionalRankingSettingsCard";
 
 interface Props {
   clubId: string;
@@ -88,6 +89,8 @@ export function AssociationSetupTab({ clubId }: Props) {
 
 
 
+
+      <ProvisionalRankingSettingsCard scope="association" ownerId={clubId} />
 
       <div className="flex justify-end">
         <Button onClick={save} disabled={saving}>

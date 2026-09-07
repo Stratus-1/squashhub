@@ -28,7 +28,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useProfile } from "@/hooks/use-data";
-import { useMyClubMember, useMyClub, useFeeCategories, SKILL_LEVELS } from "@/hooks/use-club";
+import { useMyClubMember, useMyClub, useFeeCategories, SKILL_LEVELS, CLUB_MEMBER_COLUMNS, fetchClubMemberPrivateFields } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";

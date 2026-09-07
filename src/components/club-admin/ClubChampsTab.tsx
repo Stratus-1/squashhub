@@ -5579,23 +5579,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
 
-      // WhatsApp channel — link-first entry.
+      // WhatsApp channel — link-first entry, no Yes button.
       //
-      // A bare YES reply used to create the entry immediately, but entrants
-      // still have choices to make on the invitation page (singles/doubles,
-      // division, doubles partner, payment). A YES therefore now means
-      // "I'm interested" and the webhook replies with the player's personal
-      // link to complete the entry properly. Only a NO reply is written back
-      // directly, as a decline.
+      // Saying "yes" on WhatsApp cannot capture the choices an entry needs
+      // (singles / doubles, division, partner, payment), so the invitation
+      // uses the buttonless tournament_invite template: the only way in is the
+      // personal link. A typed NO is still written back as a decline.
       if (methods.includes("whatsapp")) {
         const needsPayment = paymentRequired && entryFeeAmount > 0;
         // Each recipient gets their own canonical invitation link, so the
         // WhatsApp message carries exactly the same URL as email / in-app.
         for (const r of rows as any[]) {
           const link = urlForRegistration(r.id);
-          const callToAction = needsPayment
-            ? `To enter, open your personal invitation link to register and pay the entry fee.\n${link}\nReply NO to decline.`
-            : `To enter, open your personal invitation link and choose your category.\n${link}\nReply NO to decline.`;
+          const details = needsPayment
+            ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+            : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
           try {
             await sendWhatsApp({
               clubId,
@@ -5604,20 +5602,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               category: "utility",
               // Cold WhatsApp sends must use an approved template; the free-form
               // body is only used inside a 24h reply window.
-              templateKey: "rsvp_question",
+              templateKey: "tournament_invite",
               templateVariables: {
-                question: `${msg}`,
-                details: callToAction,
+                player: memberNameById.get(r.club_member_id) || "player",
+                event: champName || "our tournament",
+                details,
+                link,
               },
-              body: `${msg}\n\n${callToAction}`,
+              body: `${msg}\n\n${details}\n${link}`,
               interaction: {
                 kind: "champ_entry",
                 targetId: champId,
                 // The link travels with the interaction so the inbound
-                // webhook can hand it back on a YES reply.
+                // webhook can hand it back if the player replies.
                 prompt: `Entry for ${champName || "tournament"}\n${link}`,
               },
             });
+
           } catch (waErr: any) {
             toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);
             break;

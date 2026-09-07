@@ -91,25 +91,27 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
     slug: "lights",
     label: "Court Lights",
     question: "Does the app switch court lights on and off?",
-    description: "Smart relay control and optional per-hour light fees.",
+    description:
+      "Smart relay control and optional per-hour light fees. Set up under Club Admin → IoT / Shelly (Lights card).",
     group: "facilities",
     requires: ["bookings"],
-    worksWith: ["finance"],
+    worksWith: ["finance", "gadgets"],
     defaultOn: false,
     tabs: [],
   },
   gadgets: {
     slug: "gadgets",
-    label: "Gadgets & Devices",
-    question: "Do you switch other equipment — a geyser, pump or heater — from the app?",
+    label: "IoT / Shelly",
+    question: "Do you control smart devices — lights, doors, geysers, pumps or gates — from the app?",
     description:
-      "Smart-relay control for geysers, pumps, heaters, gates and club lights, grouped on the dashboard. Admin and staff only.",
+      "Opens the IoT / Shelly menu item in Club Admin, where all smart relays are registered and the Lights, Access and Gadgets cards live.",
     group: "facilities",
     requires: [],
     worksWith: ["access_control", "lights"],
     defaultOn: false,
     tabs: ["devices"],
   },
+
   membership_fees: {
     slug: "membership_fees",
     label: "Membership & Fees",

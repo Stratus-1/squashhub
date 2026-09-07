@@ -79,10 +79,15 @@ export default function Profile() {
     queryKey: ["club-member-by-id", activeMemberId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("*, fee_category:fee_category_id(id, name, annual_fee)")
+        .select(`${CLUB_MEMBER_COLUMNS}, fee_category:fee_category_id(id, name, annual_fee)`)
         .eq("id", activeMemberId!)
         .maybeSingle();
       if (error) throw error;
+      if (data && (data as any).club_id) {
+        const priv = await fetchClubMemberPrivateFields((data as any).club_id);
+        const p = priv.get((data as any).id);
+        if (p) Object.assign(data as any, { id_number: p.id_number ?? null, address: p.address ?? null });
+      }
       return data;
     },
     enabled: !!activeMemberId && activeMemberId !== defaultClubMember?.id,

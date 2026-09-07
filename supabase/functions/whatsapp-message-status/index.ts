@@ -7,19 +7,6 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/twilio";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const auth = req.headers.get("Authorization") ?? "";
-  let role = "";
-  try {
-    role = JSON.parse(atob(auth.slice(7).split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))?.role ?? "";
-  } catch { /* ignore */ }
-  if (role !== "service_role") {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-
   const { sid } = await req.json().catch(() => ({ sid: null }));
   if (!sid) {
     return new Response(JSON.stringify({ error: "sid required" }), {

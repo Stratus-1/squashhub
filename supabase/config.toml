@@ -78,3 +78,6 @@ verify_jwt = false
 # Outbound SMS gateway (platform-configured provider).
 [functions.send-sms]
 verify_jwt = false
+
+[functions.whatsapp-message-status]
+verify_jwt = false

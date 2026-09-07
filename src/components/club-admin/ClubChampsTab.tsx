@@ -9101,10 +9101,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   >
                     <Eye className="w-4 h-4 mr-1" /> Preview invite
                   </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="flex-1 md:flex-none"
+                    onClick={() => {
+                      setDescription(autoDetailBlock);
+                      setDescriptionCustom(false);
+                      toast.success("Invite text rebuilt from the tournament settings");
+                    }}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-1" /> Generate fresh
+                  </Button>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                The details block at the top is generated automatically from this tournament's settings and refreshes on its own whenever you change the category, format, dates, registration window or fee — anything you type below it is kept. Creating or saving the tournament does NOT auto-notify — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
+                {descriptionCustom
+                  ? "You've edited this text, so it is saved and sent exactly as you typed it — it will not be overwritten when you change other tournament settings. Click Generate fresh to replace it with an up-to-date details block."
+                  : "This details block is generated automatically from the tournament settings and refreshes when you change the category, format, dates, registration window or fee. The moment you edit it, your wording is kept as-is."}
+                {" "}Saving the tournament does NOT notify anyone — nothing goes out until you click <strong>Send invites now</strong> in <em>When to send invites</em> below.
               </p>
 
               <div className="space-y-2 pt-2">

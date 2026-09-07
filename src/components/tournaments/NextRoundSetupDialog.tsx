@@ -32,6 +32,11 @@ import {
   validateNextRoundSetup,
   type NextRoundSetup,
 } from "@/lib/tournaments/next-round-setup";
+import {
+  mergeRoundDeadlines,
+  parseRoundDeadlines,
+  serializeRoundDeadlines,
+} from "@/lib/tournaments/round-deadlines";
 
 export type NextRoundReady = NextRoundSetup & { roundId: string | null; roundNumber: number };
 
@@ -115,6 +120,20 @@ export function NextRoundSetupDialog({
           .maybeSingle();
         if (error) throw error;
         roundId = (data as any)?.id ?? null;
+      }
+      // Keep the tournament's own round plan in step, so the setup screen and
+      // the "book your court by …" nudges show this round too.
+      if (setup.playBy) {
+        const { data: t } = await fromExt("tournaments")
+          .select("round_play_by")
+          .eq("id", champId)
+          .maybeSingle();
+        const merged = serializeRoundDeadlines(
+          mergeRoundDeadlines(parseRoundDeadlines((t as any)?.round_play_by), [
+            { round_number: roundNumber, label: setup.label, play_by: setup.playBy },
+          ]),
+        );
+        if (merged) await fromExt("tournaments").update({ round_play_by: merged } as any).eq("id", champId);
       }
       qc.invalidateQueries({ queryKey: ["club-champ-rounds", champId] });
       onOpenChange(false);

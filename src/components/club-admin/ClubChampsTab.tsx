@@ -1499,6 +1499,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [inviteTiming, setInviteTiming] = useState<"manual" | "now" | "scheduled">("manual");
   const [inviteScheduledAt, setInviteScheduledAt] = useState<string>("");
   const [description, setDescription] = useState("");
+  // Once the organiser edits the invite text themselves it becomes theirs: we
+  // stop re-generating it from the tournament settings until they explicitly
+  // ask for a fresh version.
+  const [descriptionCustom, setDescriptionCustom] = useState(false);
   const [inviteExtraDetails, setInviteExtraDetails] = useState("");
   const [affectsRankingPoints, setAffectsRankingPoints] = useState<boolean>(false);
   // Weight multiplier applied to ranking points earned in this competition.

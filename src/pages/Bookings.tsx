@@ -2151,8 +2151,10 @@ export default function Bookings() {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {bookingDetails && (() => {
               const isBooker = bookingDetails.user_id === user?.id || (!!activeMember?.id && (bookingDetails as any).club_member_id === activeMember.id);
-              const isOpponent = !!(user?.id && (bookingDetails as any).opponent_id === user.id);
+              const isOpponent = !!(user?.id && (bookingDetails as any).opponent_id === user.id)
+                || (!!activeMember?.id && (bookingDetails as any).opponent_member_id === activeMember.id);
               const isAdmin = isMemberAdmin;
+
               const isGoBookBooking = (bookingDetails as any).source === 'gobook';
               const bookingDateStr = String(bookingDetails.date);
               const endTimeStr = String(bookingDetails.end_time || "23:59:59").slice(0, 5);

@@ -52,6 +52,11 @@ export interface ClubDevice {
   pulse_ms: number;
   ble_mac: string | null;
   auto_off_minutes: number | null;
+  /** Eligible to appear as a manual control on the member/admin dashboard. */
+  show_on_dashboard?: boolean | null;
+  /** Optional permission roles allowed to see/use the dashboard control. */
+  dashboard_role_ids?: string[] | null;
+
   schedule_enabled?: boolean | null;
   schedule_timezone?: string | null;
   schedule_days?: number[] | null;

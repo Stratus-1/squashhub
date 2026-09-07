@@ -9570,6 +9570,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   Saving never notifies anyone. Nothing goes out until you click <strong>Send invites now</strong>.
                 </p>
               )}
+            </div>
             ) : null}
             </section>
             <section className="rounded-lg border-2 border-primary/30 bg-card p-4 space-y-3">

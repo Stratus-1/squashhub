@@ -5332,6 +5332,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const detailsBlock = detailLines.length
       ? `— Tournament details —\n${detailLines.map((l) => `• ${l}`).join("\n")}\n— End details —`
       : "";
+    if (inviteShortMessage) {
+      // Short mode: the message stays brief — the personal link below carries
+      // the full details (the /i/:token page renders them from the tournament).
+      return `You have been invited to ${champName || "a tournament"}.` +
+        (extras ? `\n\n${extras}` : "") +
+        `\n\nTap your link for the full details and to respond.`;
+    }
     return `You have been invited to ${champName || "a tournament"}.` +
       (extras ? `\n\n${extras}` : "") +
       (detailsBlock ? `\n\n${detailsBlock}` : "") +
@@ -9391,6 +9398,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {inviteMethods.has("whatsapp") && " Tournament invites need a reply, so WhatsApp is used when messaging is on — billed to your club."}
                 {!whatsappEnabled && " WhatsApp/SMS is inactive — activate Member messaging in Club Admin → Messaging to reach members by phone."}
               </p>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox checked={inviteShortMessage} onCheckedChange={(c) => setInviteShortMessage(!!c)} />
+                Send a short message — the personal link shows the full details
+              </label>
+              {inviteShortMessage && (
+                <p className="text-xs text-muted-foreground">
+                  WhatsApp, SMS and email will be just a line or two plus the link — ideal when WhatsApp messages get too long. The link page shows the full details and your own wording.
+                </p>
+              )}
             </div>
 
             {/* Invite send timing — only when invites/registration are used */}

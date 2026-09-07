@@ -214,6 +214,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     light_fee_split: "creator",
     is_club_booking: false,
     booking_member_ids: [] as string[],
+    reserve_courts: "" as "" | "yes" | "no",
     court_ids: [] as number[],
     lights_auto_on: false,
   });
@@ -565,7 +566,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     mutationFn: async () => {
       if (!user || !clubId) throw new Error("Not authenticated");
       if (!form.title.trim()) throw new Error("Title is required");
-      if (form.court_ids.length === 0) throw new Error("Select at least one court");
+      if (form.reserve_courts === "") throw new Error("Choose whether courts must be booked for this event");
+      if (form.reserve_courts === "yes" && form.court_ids.length === 0) throw new Error("Select at least one court");
       if (!bookingLimit.ok) throw new Error(bookingLimit.message);
 
 
@@ -615,10 +617,14 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
       const eventId = event.id;
 
-      // Insert courts
-      const courtRows = form.court_ids.map((cid) => ({ event_id: eventId, court_id: cid }));
-      const { error: courtError } = await fromExt("club_event_courts").insert(courtRows);
-      if (courtError) throw courtError;
+      // Insert courts (only when the organiser asked for court bookings)
+      const courtRows = form.reserve_courts === "yes"
+        ? form.court_ids.map((cid) => ({ event_id: eventId, court_id: cid }))
+        : [];
+      if (courtRows.length > 0) {
+        const { error: courtError } = await fromExt("club_event_courts").insert(courtRows);
+        if (courtError) throw courtError;
+      }
 
       // Create instances
       const instanceDates = getInstanceDates();
@@ -676,7 +682,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         ? `${club?.name || "Club"} — ${form.title.trim()}`
         : form.title.trim();
 
-      for (const date of instanceDates) {
+      for (const date of form.reserve_courts === "yes" ? instanceDates : []) {
         for (const cid of form.court_ids) {
           bookingRows.push({
             court_id: cid,
@@ -987,6 +993,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       light_fee_split: e.light_fee_split || "creator",
       is_club_booking: e.is_club_booking || false,
       booking_member_ids: [],
+      reserve_courts: courtIds.length > 0 ? "yes" : "no",
       court_ids: courtIds,
       lights_auto_on: false,
     });
@@ -999,7 +1006,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     mutationFn: async () => {
       if (!user || !clubId || !editingEventId) throw new Error("Not authenticated");
       if (!form.title.trim()) throw new Error("Title is required");
-      if (form.court_ids.length === 0) throw new Error("Select at least one court");
+      if (form.reserve_courts === "yes" && form.court_ids.length === 0) throw new Error("Select at least one court");
       if (!bookingLimit.ok) throw new Error(bookingLimit.message);
 
       const dayOfWeek = new Date(form.event_date + "T00:00:00").getDay();
@@ -1103,7 +1110,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         const rebookRows: any[] = [];
         const rebookAsClub = adminBypass;
 
-        for (const date of rebookDates) {
+        for (const date of form.reserve_courts === "yes" ? rebookDates : []) {
           for (const cid of form.court_ids) {
             rebookRows.push({
               court_id: cid,
@@ -1178,6 +1185,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       light_fee_split: "creator",
       is_club_booking: false,
       booking_member_ids: selfId ? [selfId] : [],
+      reserve_courts: "",
       court_ids: [],
       lights_auto_on: false,
     });
@@ -1205,7 +1213,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   };
 
   const canGoStep2 = form.event_date && form.start_time && form.end_time;
-  const canGoStep3 = !!form.title.trim() && form.court_ids.length > 0 && bookingLimit.ok;
+  const canGoStep3 =
+    !!form.title.trim() &&
+    form.reserve_courts !== "" &&
+    (form.reserve_courts === "no" || (form.court_ids.length > 0 && bookingLimit.ok));
 
   return (
     <div className="space-y-3">
@@ -1578,34 +1589,65 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Courts</Label>
+                <Label className="text-xs">Must courts be booked for this event?</Label>
                 <div className="flex flex-wrap gap-2">
-                  {(courts || []).map((c) => (
-                    <Button
-                      key={c.id}
-                      type="button"
-                      size="sm"
-                      variant={form.court_ids.includes(c.id) ? "default" : "outline"}
-                      className="h-8 text-xs"
-                      onClick={() => toggleCourt(c.id)}
-                    >
-                      {c.name}
-                    </Button>
-                  ))}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={form.reserve_courts === "yes" ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => setForm((f) => ({ ...f, reserve_courts: "yes" }))}
+                  >
+                    Yes, book courts
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={form.reserve_courts === "no" ? "default" : "outline"}
+                    className="h-8 text-xs"
+                    onClick={() => setForm((f) => ({ ...f, reserve_courts: "no", court_ids: [] }))}
+                  >
+                    No courts needed
+                  </Button>
                 </div>
-                {adminBypass ? (
-                  <p className="text-[11px] text-muted-foreground">
-                    Booked under {club?.name || "the club"} — free, no booking limits.
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">
-                    Members may book 1 peak-hour and 1 off-peak court slot per occurrence.
-                  </p>
-                )}
-                {!bookingLimit.ok && (
-                  <p className="text-[11px] text-destructive">{bookingLimit.message}</p>
-                )}
+                <p className="text-[11px] text-muted-foreground">
+                  {form.reserve_courts === "no"
+                    ? "No court bookings will be made for this event."
+                    : "Choose \"Yes\" only if courts must be reserved on the app for this event."}
+                </p>
               </div>
+
+              {form.reserve_courts === "yes" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Courts</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(courts || []).map((c) => (
+                      <Button
+                        key={c.id}
+                        type="button"
+                        size="sm"
+                        variant={form.court_ids.includes(c.id) ? "default" : "outline"}
+                        className="h-8 text-xs"
+                        onClick={() => toggleCourt(c.id)}
+                      >
+                        {c.name}
+                      </Button>
+                    ))}
+                  </div>
+                  {adminBypass ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Booked under {club?.name || "the club"} — free, no booking limits.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      Members may book 1 peak-hour and 1 off-peak court slot per occurrence.
+                    </p>
+                  )}
+                  {!bookingLimit.ok && (
+                    <p className="text-[11px] text-destructive">{bookingLimit.message}</p>
+                  )}
+                </div>
+              )}
 
 
               </div>
@@ -1884,7 +1926,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   </p>
                 )}
                 <p className="text-[11px] text-muted-foreground">
-                  Courts: {form.court_ids.length} · Lights: {form.light_fee_split === "attendees" ? "Split among attendees" : form.light_fee_split === "none" ? "No light fees" : "Club pays"}
+                  Courts: {form.reserve_courts === "yes" ? form.court_ids.length : "not booked"} · Lights: {form.light_fee_split === "attendees" ? "Split among attendees" : form.light_fee_split === "none" ? "No light fees" : "Club pays"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   Courts booked under: {adminBypass ? `${club?.name || "Club"} (courts free — light fees still apply)` : (activeMember?.name || "you")}

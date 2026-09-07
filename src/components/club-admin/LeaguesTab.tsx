@@ -3035,6 +3035,45 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     return [...years].sort((a, b) => b - a);
   }, [clubLeagues, year]);
 
+  // Edit mode: this club already has teams for the selected season. The form
+  // is prefilled with them and saving only ADDS missing teams — existing rows
+  // are never duplicated or deleted here (removals happen on the team cards).
+  const seasonTeams = useMemo(
+    () => (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(year) && !l.is_reserve),
+    [clubLeagues, year],
+  );
+  const editMode = seasonTeams.length > 0;
+
+  const genderKeyOf = (category: string): "men" | "ladies" | "mixed" | null =>
+    category === "mens" || category === "men" ? "men" : category === "ladies" ? "ladies" : category === "mixed" ? "mixed" : null;
+
+  const selectionsFrom = (src: any[]) => {
+    const sel: Record<"men" | "ladies" | "mixed", string[]> = { men: [], ladies: [], mixed: [] };
+    const counts: Record<"men" | "ladies" | "mixed", Record<string, number>> = { men: {}, ladies: {}, mixed: {} };
+    for (const l of src) {
+      const key = genderKeyOf(l.category);
+      const lvl = Number(l.level);
+      if (!key || !Number.isFinite(lvl) || lvl < 1 || lvl > LEAGUE_OPTIONS.length) continue;
+      const label = LEAGUE_OPTIONS[lvl - 1];
+      if (!sel[key].includes(label)) sel[key].push(label);
+      counts[key][label] = Math.min(3, (counts[key][label] ?? 0) + 1);
+    }
+    return { sel, counts };
+  };
+
+  // Prefill once the season's teams load, without clobbering later edits.
+  const prefilledFor = useRef("");
+  useEffect(() => {
+    if (!open) { prefilledFor.current = ""; return; }
+    const key = `${associationId}|${year}`;
+    if (!editMode || prefilledFor.current === key) return;
+    prefilledFor.current = key;
+    const { sel, counts } = selectionsFrom(seasonTeams);
+    setSelectedMen(sel.men); setSelectedLadies(sel.ladies); setSelectedMixed(sel.mixed);
+    setTeamCounts(counts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editMode, associationId, year, seasonTeams]);
+
   const [copyFromYear, setCopyFromYear] = useState<string>("");
   const [copyPlayers, setCopyPlayers] = useState(true);
 
@@ -3042,16 +3081,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     setCopyFromYear(yr);
     if (!yr) return;
     const src = (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(yr) && !l.is_reserve);
-    const sel: Record<"men" | "ladies" | "mixed", string[]> = { men: [], ladies: [], mixed: [] };
-    const counts: Record<"men" | "ladies" | "mixed", Record<string, number>> = { men: {}, ladies: {}, mixed: {} };
-    for (const l of src) {
-      const key = l.category === "mens" || l.category === "men" ? "men" : l.category === "ladies" ? "ladies" : l.category === "mixed" ? "mixed" : null;
-      const lvl = Number(l.level);
-      if (!key || !Number.isFinite(lvl) || lvl < 1 || lvl > LEAGUE_OPTIONS.length) continue;
-      const label = LEAGUE_OPTIONS[lvl - 1];
-      if (!sel[key].includes(label)) sel[key].push(label);
-      counts[key][label] = Math.min(3, (counts[key][label] ?? 0) + 1);
-    }
+    const { sel, counts } = selectionsFrom(src);
     setSelectedMen(sel.men); setSelectedLadies(sel.ladies); setSelectedMixed(sel.mixed);
     setTeamCounts(counts);
   };
@@ -3107,11 +3137,20 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     // Expand each selected league by its team count. When a club enters
     // multiple teams in the same league they share the level; the name gets a
     // Team A / Team B / Team C suffix and each gets its own sequential code.
+    // In edit mode, teams that already exist for this season are skipped so
+    // saving can never duplicate them — only genuinely new teams are added.
+    const existingCount = (gender: "men" | "ladies" | "mixed", label: string) =>
+      editMode
+        ? seasonTeams.filter((l) => genderKeyOf(l.category) === gender && Number(l.level) === parseNum(label)).length
+        : 0;
     const expand = (sorted: string[], genderLabel: string, gender: "men" | "ladies" | "mixed", next: () => string | null) =>
       sorted.flatMap(label => {
         const count = Math.min(3, Math.max(1, teamCounts[gender]?.[label] ?? 1));
-        return Array.from({ length: count }, (_, i) => ({
-          name: `${genderLabel} ${label} League ${year}${count > 1 ? ` — Team ${String.fromCharCode(65 + i)}` : ""}`,
+        const have = existingCount(gender, label);
+        const toAdd = count - have;
+        if (toAdd <= 0) return [];
+        return Array.from({ length: toAdd }, (_, i) => ({
+          name: `${genderLabel} ${label} League ${year}${count > 1 ? ` — Team ${String.fromCharCode(65 + have + i)}` : ""}`,
           code: next(),
           // Category + division must be stored: the unique code index is scoped
           // by (association, season, division, category), so leaving them null
@@ -3140,7 +3179,13 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
   const entries = buildEntries();
 
   const handleSave = async () => {
-    if (entries.length === 0) return;
+    if (entries.length === 0) {
+      if (editMode) {
+        toast.info("No new teams to add — existing teams were kept as-is. Rename or remove teams from the team list instead.");
+        onOpenChange(false);
+      }
+      return;
+    }
     const { data: inserted, error } = await fromExt("leagues").insert(entries).select("id,category,level,name");
     if (error) { toast.error(error.message); return; }
 
@@ -3148,7 +3193,7 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     // with codes already used by other seasons/associations).
 
     let copied = 0;
-    if (copyFromYear && copyPlayers && Array.isArray(inserted)) {
+    if (!editMode && copyFromYear && copyPlayers && Array.isArray(inserted)) {
       try {
         const src = (clubLeagues as any[]).filter((l) => Number(l.season_year) === Number(copyFromYear));
         const srcIds = src.map((l) => l.id);
@@ -3215,9 +3260,11 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {lockedAssociationId
-                ? `Create teams for ${associations.find((a) => a.id === lockedAssociationId)?.name ?? "this league"}`
-                : "Create System League Teams"}
+              {editMode
+                ? `Edit ${year} teams — ${associations.find((a) => a.id === (associationId || lockedAssociationId))?.name ?? "this league"}`
+                : lockedAssociationId
+                  ? `Create teams for ${associations.find((a) => a.id === lockedAssociationId)?.name ?? "this league"}`
+                  : "Create System League Teams"}
             </DialogTitle>
           </DialogHeader>
         <div className="space-y-4">
@@ -3293,7 +3340,12 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
             </p>
           )}
 
-          {priorSeasons.length > 0 && (
+          {editMode && (
+            <p className="text-xs text-muted-foreground rounded-md border bg-muted/40 px-3 py-2">
+              Existing {year} teams are prefilled below. Unticking a league or lowering a team count does NOT delete teams here — remove or rename them from the team cards on the league tab. Saving only adds new teams.
+            </p>
+          )}
+          {!editMode && priorSeasons.length > 0 && (
             <div className="rounded-md border p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <Label className="text-sm">Duplicate teams from a previous season</Label>
@@ -3367,8 +3419,8 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
             </div>
           )}
 
-          <Button onClick={handleSave} className="w-full" disabled={entries.length === 0}>
-            Add {entries.length} League(s)
+          <Button onClick={handleSave} className="w-full" disabled={!editMode && entries.length === 0}>
+            {editMode ? (entries.length > 0 ? `Add ${entries.length} new team(s)` : "Done — no changes") : `Add ${entries.length} League(s)`}
           </Button>
         </div>
       </DialogContent>

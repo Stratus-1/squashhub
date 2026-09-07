@@ -193,6 +193,9 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
   const [breakWeekOff, setBreakWeekOff] = useState(false);
   // Dates the admin deliberately ticked back on, so auto-skip never re-skips them.
   const [manualOn, setManualOn] = useState<string[]>([]);
+  // Dates the admin deliberately unticked, so removing an auto-skip reason
+  // (unticking the holiday/break switches) doesn't silently bring them back.
+  const [manualOff, setManualOff] = useState<string[]>([]);
 
   // Weekly matchday preview from the start date, honouring the selected play
   // days. Admins untick holiday weeks; those land in `skip_dates`.
@@ -245,13 +248,19 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
     return notes;
   })();
 
-  // Apply the calendar rules to skip_dates, respecting manual re-ticks.
-  const autoKey = `${Array.from(calendarNotes.keys()).sort().join(",")}|${manualOn.join(",")}`;
+  // Recompute skip_dates from the calendar rules plus the admin's manual
+  // overrides. This replaces (not unions) so unticking a holiday/break switch
+  // restores the weeks it had auto-skipped, while dates the admin personally
+  // unticked stay skipped.
+  const autoKey = `${Array.from(calendarNotes.keys()).sort().join(",")}|${manualOn.join(",")}|${manualOff.join(",")}|${upcomingPlayDates.join(",")}`;
   useEffect(() => {
     if (!open) return;
     setDraft((prev) => {
+      const inRange = new Set(upcomingPlayDates);
+      const preserved = prev.skip_dates.filter((d) => !inRange.has(d));
       const auto = Array.from(calendarNotes.keys()).filter((d) => !manualOn.includes(d));
-      const next = Array.from(new Set([...prev.skip_dates, ...auto])).sort();
+      const manual = manualOff.filter((d) => inRange.has(d));
+      const next = Array.from(new Set([...preserved, ...auto, ...manual])).sort();
       return next.join(",") === [...prev.skip_dates].sort().join(",") ? prev : { ...prev, skip_dates: next };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -446,14 +455,14 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
               <label className="flex items-center gap-2 rounded border p-2 text-xs">
                 <Checkbox
                   checked={holidayWeekOff}
-                  onCheckedChange={(v) => { setHolidayWeekOff(!!v); setManualOn([]); }}
+                  onCheckedChange={(v) => setHolidayWeekOff(!!v)}
                 />
                 Skip the whole week when a public holiday falls in it
               </label>
               <label className="flex items-center gap-2 rounded border p-2 text-xs">
                 <Checkbox
                   checked={breakWeekOff}
-                  onCheckedChange={(v) => { setBreakWeekOff(!!v); setManualOn([]); }}
+                  onCheckedChange={(v) => setBreakWeekOff(!!v)}
                 />
                 Also skip school-holiday weeks
               </label>
@@ -470,15 +479,15 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
                     <Checkbox
                       checked={!skipped}
                       onCheckedChange={() => {
-                        setManualOn((prev) =>
-                          skipped ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d),
-                        );
-                        setDraft((prev) => ({
-                          ...prev,
-                          skip_dates: skipped
-                            ? prev.skip_dates.filter((x) => x !== d)
-                            : [...prev.skip_dates, d].sort(),
-                        }));
+                        if (skipped) {
+                          // Re-tick: override any auto-skip, clear manual skip.
+                          setManualOn((prev) => Array.from(new Set([...prev, d])));
+                          setManualOff((prev) => prev.filter((x) => x !== d));
+                        } else {
+                          // Untick: manual skip, clear any re-tick override.
+                          setManualOff((prev) => Array.from(new Set([...prev, d])));
+                          setManualOn((prev) => prev.filter((x) => x !== d));
+                        }
                       }}
                     />
                     <span className={skipped ? "line-through text-muted-foreground" : ""}>

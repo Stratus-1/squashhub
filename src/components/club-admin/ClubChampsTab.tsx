@@ -145,7 +145,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
-import { Users as UsersIcon, ShieldCheck, RefreshCw, Shuffle } from "lucide-react";
+import { Users as UsersIcon, ShieldCheck, RefreshCw, Shuffle, Smartphone } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { getTournamentFormat } from "@/lib/tournament-formats";
@@ -11357,6 +11357,21 @@ function InvitePreviewDialog({
     `Additional details: ${waCallToAction}\n\n` +
     `Please reply using the buttons below so that we can finalise the arrangements. Thank you.`;
 
+  // WhatsApp templates are capped at 1024 characters once the variables are
+  // filled in; anything longer is trimmed automatically before sending.
+  const waLength = waBody.length;
+  const waOverLimit = waLength > 1024;
+
+  // SMS is plain text with no formatting, so we show a condensed version and
+  // the segment count (160 chars per segment, 153 when concatenated).
+  const smsBody =
+    `${clubLabel}: ${tournamentName}. ` +
+    (extras ? `${extras.replace(/\n+/g, " ")} ` : "") +
+    (waNeedsPayment
+      ? "Register and pay via your invitation link: https://squashhub.co.za/i/…"
+      : "Reply YES to enter or NO to decline. Details: https://squashhub.co.za/i/…");
+  const smsLength = smsBody.length;
+  const smsSegments = smsLength <= 160 ? 1 : Math.ceil(smsLength / 153);
 
 
   return (
@@ -11445,6 +11460,10 @@ function InvitePreviewDialog({
                   </div>
                 )}
               </div>
+              <p className={`text-[11px] ${waOverLimit ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                {waLength} / 1024 characters
+                {waOverLimit ? " — too long: it will be trimmed automatically, which may cut off the end." : ""}
+              </p>
               {!methods.has("whatsapp") ? (
                 <p className="text-[11px] text-muted-foreground italic">
                   Not sent via WhatsApp — WhatsApp is not selected.
@@ -11458,6 +11477,22 @@ function InvitePreviewDialog({
                     : " Free entry — a YES reply enters them automatically."}
                 </p>
               )}
+            </div>
+
+            {/* SMS preview */}
+            <div className="rounded-lg border bg-card p-3 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <Smartphone className="w-3.5 h-3.5" /> SMS fallback
+              </div>
+              <div className="rounded-md border bg-background p-3">
+                <p className="text-sm whitespace-pre-wrap">{smsBody}</p>
+              </div>
+              <p className={`text-[11px] ${smsSegments > 2 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                {smsLength} characters · {smsSegments} SMS segment{smsSegments === 1 ? "" : "s"} (billed per segment)
+              </p>
+              <p className="text-[11px] text-muted-foreground italic">
+                SMS is used automatically when WhatsApp isn't available or selected — it carries no buttons or formatting, so members follow the link to respond.
+              </p>
             </div>
           </div>
         </div>

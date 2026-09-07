@@ -2162,6 +2162,9 @@ export default function Bookings() {
               const isPastBooking = bookingEnd < new Date();
               const isBlocked = !!(bookingDetails as any).is_blocked;
               const canEnterResult = isPastBooking && !isBlocked && (isBooker || isOpponent || isAdmin);
+              // Either player on the booking (and club admins) may move or cancel it,
+              // not just whoever clicked "book" first.
+              const canManageBooking = isBooker || isOpponent || isAdmin;
 
               return (
                 <>

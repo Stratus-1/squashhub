@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.prevent_overlapping_bookings() FROM PUBLIC, anon, authenticated;

@@ -5652,24 +5652,55 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [testInviteDialogOpen, setTestInviteDialogOpen] = useState(false);
   const [testInviteEmail, setTestInviteEmail] = useState("");
   const [testInviteEmailError, setTestInviteEmailError] = useState("");
+  const [testInvitePhone, setTestInvitePhone] = useState("");
+  const [testInvitePhoneError, setTestInvitePhoneError] = useState("");
   const [testInvitePreviewAs, setTestInvitePreviewAs] = useState<{ memberId: string; name: string } | null>(null);
   const testInviteEmailSchema = z.string().trim().email("Enter a valid email address").max(255, "Email address is too long");
+  const testInvitePhoneSchema = z.string().trim().regex(/^\+?[0-9\s()-]{7,20}$/, "Enter a valid cell number");
 
   function openTestInviteDialog(previewAs?: { memberId: string; name: string } | null) {
     setTestInvitePreviewAs(previewAs || null);
     setTestInviteEmailError("");
+    setTestInvitePhoneError("");
+    // Pre-fill with the organiser's own contact details where we have them.
+    if (!testInviteEmail && authUser?.email) setTestInviteEmail(authUser.email as string);
+    if (!testInvitePhone) {
+      const myPhone = String((myMember as any)?.phone || (myMember as any)?.cell || "").trim();
+      if (myPhone) setTestInvitePhone(myPhone);
+    }
     setTestInviteDialogOpen(true);
   }
 
   async function sendTestInvite(
     champId: string,
     recipientEmail: string,
-    opts?: { asMemberId?: string; asName?: string },
+    opts?: { asMemberId?: string; asName?: string; recipientPhone?: string },
   ) {
     if (testInviteSending) return;
-    const parsedEmail = testInviteEmailSchema.safeParse(recipientEmail);
-    if (!parsedEmail.success) {
-      setTestInviteEmailError(parsedEmail.error.issues[0]?.message || "Enter a valid email address");
+    // The test follows the SAME channels as the real send: email needs an
+    // email address, WhatsApp needs a cell number. At least one must be valid.
+    const wantsEmail = inviteMethods.has("email");
+    const wantsWhatsApp = inviteMethods.has("whatsapp");
+    let parsedEmail: string | null = null;
+    let parsedPhone: string | null = null;
+    if (wantsEmail) {
+      const p = testInviteEmailSchema.safeParse(recipientEmail);
+      if (!p.success) {
+        setTestInviteEmailError(p.error.issues[0]?.message || "Enter a valid email address");
+        return;
+      }
+      parsedEmail = p.data;
+    }
+    if (wantsWhatsApp) {
+      const p = testInvitePhoneSchema.safeParse(opts?.recipientPhone ?? "");
+      if (!p.success) {
+        setTestInvitePhoneError(p.error.issues[0]?.message || "Enter a valid cell number");
+        return;
+      }
+      parsedPhone = p.data;
+    }
+    if (!wantsEmail && !wantsWhatsApp && !inviteMethods.has("app")) {
+      toast.error("Select a delivery channel above to send a test.");
       return;
     }
     setTestInviteSending(true);
@@ -5710,32 +5741,71 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       if (!previewToken) throw new Error(`Could not create a secure invitation link for ${previewMember.name}.`);
       const previewUrl = buildInviteUrl(previewToken, sub);
 
-      // Tenant-branded: send through the CLUB's own email settings when the
-      // club has SMTP configured; the backend falls back to the platform
-      // sender only when the club has none.
-      const { data: sendData, error: sendError } = await supabase.functions.invoke("email-notifications", {
-        body: {
-          action: "club-send",
-          clubId,
-          to: parsedEmail.data,
-          subject: `${champName || "Tournament"} — invitation (test)`,
-          body: buildInviteBody(),
-          url: previewUrl,
-          ctaLabel: "Accept / Register",
-          recipientName: previewMember.name,
-        },
-      });
-      if (sendError || (sendData as any)?.ok === false) {
-        throw new Error(await edgeErrorMessage(sendError, sendData, "The test invite could not be sent."));
+      const delivered: string[] = [];
+
+      if (parsedEmail) {
+        // Tenant-branded: send through the CLUB's own email settings when the
+        // club has SMTP configured; the backend falls back to the platform
+        // sender only when the club has none.
+        const { data: sendData, error: sendError } = await supabase.functions.invoke("email-notifications", {
+          body: {
+            action: "club-send",
+            clubId,
+            to: parsedEmail,
+            subject: `${champName || "Tournament"} — invitation (test)`,
+            body: buildInviteBody(),
+            url: previewUrl,
+            ctaLabel: "Accept / Register",
+            recipientName: previewMember.name,
+          },
+        });
+        if (sendError || (sendData as any)?.ok === false) {
+          throw new Error(await edgeErrorMessage(sendError, sendData, "The test invite could not be sent."));
+        }
+        if ((sendData as any)?.fallbackUsed) {
+          toast.warning((sendData as any)?.warning || "Your club's own email settings did not work, so the email was sent from the SquashHub address instead.");
+        }
+        delivered.push(`email ${parsedEmail}`);
       }
 
-      if ((sendData as any)?.fallbackUsed) {
-        toast.warning((sendData as any)?.warning || "Your club's own email settings did not work, so the email was sent from the SquashHub address instead.");
+      if (parsedPhone) {
+        // Same template, variables and personal link as the real WhatsApp
+        // invite — only the recipient is the number you typed, and nothing is
+        // recorded on the player's registration.
+        const needsPayment = paymentRequired && entryFeeAmount > 0;
+        const details = needsPayment
+          ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+          : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+        const wa = await sendWhatsApp({
+          clubId,
+          recipients: [{ phone: parsedPhone }],
+          kind: "champ_invite_test",
+          category: "utility",
+          templateKey: "tournament_invite",
+          templateVariables: {
+            player: previewMember.name,
+            event: champName || "our tournament",
+            details,
+            link: previewUrl,
+          },
+          body: `TEST INVITATION\n\n${buildInviteBody()}\n\n${details}\n${previewUrl}`,
+          interaction: { kind: "champ_entry", targetId: champId, prompt: `TEST entry for ${champName || "tournament"}\n${previewUrl}` },
+        });
+        const waResult = wa.results?.[0];
+        if (waResult?.status !== "sent") {
+          throw new Error(waResult?.error || "The WhatsApp test could not be sent.");
+        }
+        delivered.push(`WhatsApp ${parsedPhone}`);
       }
-      toast.success(`Test invite for ${previewMember.name} sent to ${parsedEmail.data} from ${(sendData as any)?.sender === "platform" ? "the SquashHub address" : ((sendData as any)?.sender || "your club address")}. The secure link is the same one that player will receive.`);
+
+      if (delivered.length === 0) {
+        throw new Error("No test was delivered — check the selected channels and contact details.");
+      }
+      toast.success(`Test invite for ${previewMember.name} sent to ${delivered.join(" and ")}. The secure link is the same one that player will receive; nothing was registered or marked as sent.`);
 
       setTestInviteDialogOpen(false);
       setTestInviteEmail("");
+      setTestInvitePhone("");
       setTestInvitePreviewAs(null);
     } catch (e: any) {
       toast.error(e?.message || "Failed to send test invite");
@@ -5816,7 +5886,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
       if (methods.includes("whatsapp")) {
-        toast.info("WhatsApp test invitations aren't wired up yet — the in-app/email test uses the same link.");
+        const myPhone = String((myMember as any)?.phone || (myMember as any)?.cell || "").trim();
+        if (!myPhone) {
+          toast.warning("No cell number on your club profile — the WhatsApp test was skipped.");
+        } else {
+          const needsPayment = paymentRequired && entryFeeAmount > 0;
+          const details = needsPayment
+            ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+            : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+          const wa = await sendWhatsApp({
+            clubId,
+            recipients: [{ phone: myPhone }],
+            kind: "champ_invite_test",
+            category: "utility",
+            templateKey: "tournament_invite",
+            templateVariables: {
+              player: String((myMember as any)?.name || "").trim() || "player",
+              event: champName || "our tournament",
+              details,
+              link: testUrl,
+            },
+            body: `TEST INVITATION\n\n${body}\n\n${details}\n${testUrl}`,
+          });
+          if (wa.results?.[0]?.status !== "sent") {
+            throw new Error(wa.results?.[0]?.error || "The WhatsApp test could not be sent.");
+          }
+          delivered.push(`WhatsApp ${myPhone}`);
+        }
       }
 
       if (delivered.length === 0) throw new Error("No deliverable channel available for a test invitation.");
@@ -9777,48 +9873,95 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         Previewing the secure invitation journey for {sampleInvitee.name}.
                       </p>
                     )}
-                    <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="test-invite-email">Recipient email address</Label>
-                      {authUser?.email && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 text-[11px]"
-                          onClick={() => { setTestInviteEmail(authUser.email as string); setTestInviteEmailError(""); }}
-                        >
-                          Send to me
-                        </Button>
-                      )}
-                    </div>
-                    <Input
-                      id="test-invite-email"
-                      type="email"
-                      autoComplete="email"
-                      maxLength={255}
-                      placeholder="name@example.com"
-                      value={testInviteEmail}
-                      onChange={(event) => {
-                        setTestInviteEmail(event.target.value);
-                        if (testInviteEmailError) setTestInviteEmailError("");
-                      }}
-                    />
-                    {testInviteEmailError && <p className="text-xs text-destructive">{testInviteEmailError}</p>}
+                    {inviteMethods.has("email") && (
+                      <>
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="test-invite-email">Recipient email address</Label>
+                          {authUser?.email && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-[11px]"
+                              onClick={() => { setTestInviteEmail(authUser.email as string); setTestInviteEmailError(""); }}
+                            >
+                              Send to me
+                            </Button>
+                          )}
+                        </div>
+                        <Input
+                          id="test-invite-email"
+                          type="email"
+                          autoComplete="email"
+                          maxLength={255}
+                          placeholder="name@example.com"
+                          value={testInviteEmail}
+                          onChange={(event) => {
+                            setTestInviteEmail(event.target.value);
+                            if (testInviteEmailError) setTestInviteEmailError("");
+                          }}
+                        />
+                        {testInviteEmailError && <p className="text-xs text-destructive">{testInviteEmailError}</p>}
+                      </>
+                    )}
+                    {inviteMethods.has("whatsapp") && (
+                      <>
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="test-invite-phone">Recipient cell number (WhatsApp)</Label>
+                          {String((myMember as any)?.phone || (myMember as any)?.cell || "").trim() && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-[11px]"
+                              onClick={() => { setTestInvitePhone(String((myMember as any)?.phone || (myMember as any)?.cell || "").trim()); setTestInvitePhoneError(""); }}
+                            >
+                              Send to me
+                            </Button>
+                          )}
+                        </div>
+                        <Input
+                          id="test-invite-phone"
+                          type="tel"
+                          autoComplete="tel"
+                          maxLength={20}
+                          placeholder="e.g. 0821234567"
+                          value={testInvitePhone}
+                          onChange={(event) => {
+                            setTestInvitePhone(event.target.value);
+                            if (testInvitePhoneError) setTestInvitePhoneError("");
+                          }}
+                        />
+                        {testInvitePhoneError && <p className="text-xs text-destructive">{testInvitePhoneError}</p>}
+                      </>
+                    )}
+                    {!inviteMethods.has("email") && !inviteMethods.has("whatsapp") && (
+                      <p className="text-xs text-muted-foreground">
+                        Only the in-app channel is selected — use the in-app/email test from the “Send to me” shortcut, or tick Email / WhatsApp above.
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
-                      TEST INVITATION — no registration or RSVP is recorded. Email only. The link identifies the invited
-                      player so you see the real journey, but nothing is marked as sent and no response is stored.
+                      TEST INVITATION — no registration or RSVP is recorded. It goes out on the same channel(s) you selected
+                      for the real send. The link identifies the invited player so you see the real journey, but nothing is
+                      marked as sent and no response is stored.
                     </p>
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setTestInviteDialogOpen(false)}>Cancel</Button>
                     <Button
                       type="button"
-                      disabled={testInviteSending || !testInviteEmail.trim()}
+                      disabled={
+                        testInviteSending ||
+                        (inviteMethods.has("email") && !testInviteEmail.trim()) ||
+                        (inviteMethods.has("whatsapp") && !testInvitePhone.trim()) ||
+                        (!inviteMethods.has("email") && !inviteMethods.has("whatsapp"))
+                      }
                       onClick={() => {
                         if (!editingChampId) return;
                         void sendTestInvite(editingChampId, testInviteEmail, {
                           asMemberId: testInvitePreviewAs?.memberId,
                           asName: testInvitePreviewAs?.name,
+                          recipientPhone: testInvitePhone,
                         });
                       }}
                     >
@@ -11249,7 +11392,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Clearly marked as a test: it goes to an email address you type, creates no entry and notifies no member.
+                Clearly marked as a test: it goes to the email address and/or cell number you type, on the same channels as the real send — creates no entry and notifies no member.
               </p>
             </div>
           ) : null

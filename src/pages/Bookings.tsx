@@ -2151,8 +2151,10 @@ export default function Bookings() {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {bookingDetails && (() => {
               const isBooker = bookingDetails.user_id === user?.id || (!!activeMember?.id && (bookingDetails as any).club_member_id === activeMember.id);
-              const isOpponent = !!(user?.id && (bookingDetails as any).opponent_id === user.id);
+              const isOpponent = !!(user?.id && (bookingDetails as any).opponent_id === user.id)
+                || (!!activeMember?.id && (bookingDetails as any).opponent_member_id === activeMember.id);
               const isAdmin = isMemberAdmin;
+
               const isGoBookBooking = (bookingDetails as any).source === 'gobook';
               const bookingDateStr = String(bookingDetails.date);
               const endTimeStr = String(bookingDetails.end_time || "23:59:59").slice(0, 5);
@@ -2160,6 +2162,9 @@ export default function Bookings() {
               const isPastBooking = bookingEnd < new Date();
               const isBlocked = !!(bookingDetails as any).is_blocked;
               const canEnterResult = isPastBooking && !isBlocked && (isBooker || isOpponent || isAdmin);
+              // Either player on the booking (and club admins) may move or cancel it,
+              // not just whoever clicked "book" first.
+              const canManageBooking = isBooker || isOpponent || isAdmin;
 
               return (
                 <>
@@ -2204,7 +2209,7 @@ export default function Bookings() {
                         <Mail className="w-3.5 h-3.5" /> Share
                       </Button>
                   )}
-                  {(isBooker || isGoBookBooking) && (() => {
+                  {(canManageBooking || isGoBookBooking) && (() => {
                     const bd: any = bookingDetails;
                     if (isGoBookBooking && !gobookRowPermission(bd).allowed) return null;
                     return (
@@ -2222,7 +2227,7 @@ export default function Bookings() {
                       </Button>
                     );
                   })()}
-                  {(isBooker || isGoBookBooking) && (
+                  {(canManageBooking || isGoBookBooking) && (
                     <>
                       {isGoBookBooking ? (() => {
                         const bd: any = bookingDetails;

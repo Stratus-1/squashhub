@@ -38,7 +38,7 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
   const remaining = totalRounds && totalRounds >= current ? totalRounds - current + 1 : null;
   const stage = roundStageLabel(current, remaining);
   const row = deadlines[current - 1] || { label: stage, date: "" };
-  const played = progress.filter((p) => p.complete);
+  const played = progress.filter((p) => p.roundNumber < current);
   const currentProgress = progress.find((p) => p.roundNumber === current);
   const ready = nextRoundReady(progress);
 
@@ -55,21 +55,23 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
     <div className="space-y-2">
       {played.length > 0 && (
         <div className="rounded-lg border bg-muted/30 p-2 space-y-1">
-          <div className="text-xs font-medium text-muted-foreground">Completed rounds</div>
+          <div className="text-xs font-medium text-muted-foreground">Earlier rounds</div>
           {played.map((p) => {
             const d = deadlines[p.roundNumber - 1];
             return (
               <div key={p.roundNumber} className="flex items-center gap-2 text-xs">
-                <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                <CheckCircle2 className={`w-3.5 h-3.5 ${p.complete ? "text-primary" : "text-muted-foreground"}`} />
                 <span className="font-medium">{d?.label || `Round ${p.roundNumber}`}</span>
                 <span className="text-muted-foreground">
                   {d?.date ? `played by ${d.date}` : "no deadline recorded"} · {p.completed}/{p.total} games
+                  {p.complete ? "" : " · still outstanding"}
                 </span>
               </div>
             );
           })}
         </div>
       )}
+
 
       <div className="rounded-lg border border-primary/40 bg-primary/5 p-2.5 space-y-2">
         <div className="flex items-center gap-2">

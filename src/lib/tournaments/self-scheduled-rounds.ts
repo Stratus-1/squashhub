@@ -71,17 +71,19 @@ export function roundProgress(rows: RoundMatchRow[]): RoundProgress[] {
 }
 
 /**
- * The round the organiser may configure right now: the first round that is
- * not finished. When every generated round is finished the NEXT round becomes
- * configurable (it is about to be generated). With no matches yet it is
- * Round 1.
+ * The round the organiser may configure right now: the LATEST round that has
+ * fixtures generated. Later rounds are only ever created once the draw has
+ * moved on, so a straggler unplayed match in an earlier round (a division that
+ * is running behind) must not keep the page stuck on that earlier round.
+ * When every generated round is finished the NEXT round becomes configurable.
+ * With no matches yet it is Round 1.
  */
 export function currentRoundNumber(progress: RoundProgress[]): number {
   if (progress.length === 0) return 1;
-  const pending = progress.find((p) => !p.complete);
-  if (pending) return pending.roundNumber;
-  return progress[progress.length - 1].roundNumber + 1;
+  const last = progress[progress.length - 1];
+  return last.complete ? last.roundNumber + 1 : last.roundNumber;
 }
+
 
 /** Is the next round ready to be created (current round played out)? */
 export function nextRoundReady(progress: RoundProgress[]): boolean {

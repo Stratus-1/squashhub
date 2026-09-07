@@ -3137,11 +3137,20 @@ function LeagueDialog({ clubId, associations, open, onOpenChange, hideTrigger, l
     // Expand each selected league by its team count. When a club enters
     // multiple teams in the same league they share the level; the name gets a
     // Team A / Team B / Team C suffix and each gets its own sequential code.
+    // In edit mode, teams that already exist for this season are skipped so
+    // saving can never duplicate them — only genuinely new teams are added.
+    const existingCount = (gender: "men" | "ladies" | "mixed", label: string) =>
+      editMode
+        ? seasonTeams.filter((l) => genderKeyOf(l.category) === gender && Number(l.level) === parseNum(label)).length
+        : 0;
     const expand = (sorted: string[], genderLabel: string, gender: "men" | "ladies" | "mixed", next: () => string | null) =>
       sorted.flatMap(label => {
         const count = Math.min(3, Math.max(1, teamCounts[gender]?.[label] ?? 1));
-        return Array.from({ length: count }, (_, i) => ({
-          name: `${genderLabel} ${label} League ${year}${count > 1 ? ` — Team ${String.fromCharCode(65 + i)}` : ""}`,
+        const have = existingCount(gender, label);
+        const toAdd = count - have;
+        if (toAdd <= 0) return [];
+        return Array.from({ length: toAdd }, (_, i) => ({
+          name: `${genderLabel} ${label} League ${year}${count > 1 ? ` — Team ${String.fromCharCode(65 + have + i)}` : ""}`,
           code: next(),
           // Category + division must be stored: the unique code index is scoped
           // by (association, season, division, category), so leaving them null

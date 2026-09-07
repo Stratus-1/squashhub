@@ -1,6 +1,7 @@
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 import { RankingScope } from "@/lib/rankings/provisional";
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
@@ -5646,6 +5647,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // that the trigger actually fired and how many people it reached.
   const [lastInviteSend, setLastInviteSend] = useState<{ at: string; count: number; mode: InviteSendMode } | null>(null);
   const [testInviteSending, setTestInviteSending] = useState(false);
+  const { user: authUser } = useAuth();
   const [testInviteDialogOpen, setTestInviteDialogOpen] = useState(false);
   const [testInviteEmail, setTestInviteEmail] = useState("");
   const [testInviteEmailError, setTestInviteEmailError] = useState("");
@@ -9774,7 +9776,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         Previewing the secure invitation journey for {sampleInvitee.name}.
                       </p>
                     )}
-                    <Label htmlFor="test-invite-email">Recipient email address</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="test-invite-email">Recipient email address</Label>
+                      {authUser?.email && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[11px]"
+                          onClick={() => { setTestInviteEmail(authUser.email as string); setTestInviteEmailError(""); }}
+                        >
+                          Send to me
+                        </Button>
+                      )}
+                    </div>
                     <Input
                       id="test-invite-email"
                       type="email"
@@ -9789,7 +9804,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     />
                     {testInviteEmailError && <p className="text-xs text-destructive">{testInviteEmailError}</p>}
                     <p className="text-xs text-muted-foreground">
-                      Email only. The link identifies the invited player, but the test does not mark it as sent or record a response.
+                      TEST INVITATION — no registration or RSVP is recorded. Email only. The link identifies the invited
+                      player so you see the real journey, but nothing is marked as sent and no response is stored.
                     </p>
                   </div>
                   <DialogFooter>

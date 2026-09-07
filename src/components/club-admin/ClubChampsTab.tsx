@@ -11392,7 +11392,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Clearly marked as a test: it goes to an email address you type, creates no entry and notifies no member.
+                Clearly marked as a test: it goes to the email address and/or cell number you type, on the same channels as the real send — creates no entry and notifies no member.
               </p>
             </div>
           ) : null

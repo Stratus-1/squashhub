@@ -5414,7 +5414,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         const newRegs = audienceMemberIds.map((memberId) => ({
           champ_id: champId,
           club_member_id: memberId,
-          status: fee > 0 && paymentRequired ? "pending_payment" : "paid",
+          // An invitation must always be answerable: never pre-mark an invitee
+          // as entered, otherwise their personal link only says "you're in".
+          status: fee > 0 && paymentRequired ? "pending_payment" : "invited",
           invited_by_admin: false,
           fee_paid_cents: 0,
         }));
@@ -5434,6 +5436,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           .in("club_member_id", audienceMemberIds)
           .eq("status", "cancelled");
         if (reopenErr) throw reopenErr;
+        // Players auto-registered when the organiser allocated them, but who
+        // have never answered, must still be able to confirm from their link.
+        const { error: reopenPaidErr } = await fromExt("club_champs_registrations")
+          .update({ status: fee > 0 && paymentRequired ? "pending_payment" : "invited" })
+          .eq("champ_id", champId)
+          .in("club_member_id", audienceMemberIds)
+          .is("confirmed_at", null)
+          .is("paid_at", null)
+          .eq("fee_paid_cents", 0)
+          .in("status", ["paid", "waived"]);
+        if (reopenPaidErr) throw reopenPaidErr;
+
       }
 
 

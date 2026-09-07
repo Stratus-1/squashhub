@@ -38,7 +38,7 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
   const remaining = totalRounds && totalRounds >= current ? totalRounds - current + 1 : null;
   const stage = roundStageLabel(current, remaining);
   const row = deadlines[current - 1] || { label: stage, date: "" };
-  const played = progress.filter((p) => p.complete);
+  const played = progress.filter((p) => p.roundNumber < current);
   const currentProgress = progress.find((p) => p.roundNumber === current);
   const ready = nextRoundReady(progress);
 

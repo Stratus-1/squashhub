@@ -7367,363 +7367,59 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </div>
             </div>
 
-            <div className="rounded-lg border p-3 space-y-2">
-              {simplifiedKnockoutSchedule && (
-                <div className="pt-1">
-                  <SelfScheduledRounds
-                    deadlines={roundDeadlines}
-                    onChange={setRoundDeadlines}
-                    progress={knockoutProgress}
-                    totalRounds={knockoutRoundCount(
-                      Math.max(0, ...(groups as any[][]).map((g) => (g?.length ?? 0))),
-                    )}
-                    minDate={startDate || undefined}
-                  />
-                </div>
-              )}
-              {schedulingMode === "self" && !simplifiedKnockoutSchedule && (
-                <div className="pt-1 space-y-2">
-                  <Label className="text-sm">Play-by deadlines per round</Label>
-                  <p className="text-[11px] text-muted-foreground">
-                    Players arrange their own court and time — you only set the date each round must be
-                    finished by. These lines appear in the invitation and on every fixture.
-                  </p>
-                  <div className="space-y-2">
-                    {roundDeadlines.map((d, i) => (
-                      <div key={i} className="flex flex-wrap items-center gap-2">
-                        <Input
-                          value={d.label}
-                          placeholder={defaultRoundLabel(i)}
-                          onChange={(e) =>
-                            setRoundDeadlines((prev) =>
-                              prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
-                            )
-                          }
-                          className="w-40"
-                        />
-                        <span className="text-xs text-muted-foreground">must be played by</span>
-                        <Input
-                          type="date"
-                          value={d.date}
-                          min={startDate || undefined}
-                          onChange={(e) =>
-                            setRoundDeadlines((prev) =>
-                              prev.map((x, j) => (j === i ? { ...x, date: e.target.value } : x)),
-                            )
-                          }
-                          className="w-44"
-                        />
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => setRoundDeadlines((prev) => prev.filter((_, j) => j !== i))}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setRoundDeadlines((prev) => [
-                        ...prev,
-                        { label: defaultRoundLabel(prev.length), date: "" },
-                      ])
-                    }
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Add round deadline
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    Add one per round (Round 1, Round 2, Semi-finals, Final…). Nothing is scheduled and no
-                    courts are booked for this tournament.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Full club-scheduling controls. Also shown when a self-scheduled
-                knockout's current stage (semi/final) has been flipped to
-                club-scheduled courts and times. */}
+            {/* ── Tournament window ── */}
             {schedulingMode === "club" || currentRoundClubScheduled ? (
-            <>
-            <WizardSection
-              title={"Dates & times"}
-              summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}
-              complete={!!startDate && !!endDate && playDays.size > 0}
-              defaultOpen={true}
-            >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Tournament starts</Label>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-sm">Tournament ends</Label>
-                <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Daily start time</Label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-sm">Daily end time</Label>
-                <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm">Play days</Label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {DAY_NAMES.map((name, i) => (
-                  <label key={i} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={playDays.has(i)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(playDays);
-                        checked ? next.add(i) : next.delete(i);
-                        setPlayDays(next);
-                      }}
-                    />
-                    <span className="text-sm">{name}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                For a one-day tournament tick just that day. For a weekend, tick both.
-              </p>
-            </div>
-            </WizardSection>
-
-            <WizardSection
-              title={"Courts & daily schedule"}
-              summary={`${selectedCourtIds.size} court${selectedCourtIds.size === 1 ? "" : "s"}${customizeDailySchedule ? " · per-day times" : ""}`}
-              complete={selectedCourtIds.size > 0}
-              defaultOpen={true}
-            >
-            <div>
-              <Label className="text-sm">Courts used by the tournament</Label>
-              {(() => {
-                const homeCourts = courts.filter((c) => !c.is_external);
-                const externalCourts = courts.filter((c) => c.is_external);
-                const externalByVenue = externalCourts.reduce<Record<string, typeof externalCourts>>((acc, c) => {
-                  const key = c.venue_name || "External venue";
-                  (acc[key] ||= []).push(c);
-                  return acc;
-                }, {});
-                const renderCheckbox = (c: typeof courts[number]) => (
-                  <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
-                    <Checkbox
-                      checked={selectedCourtIds.has(c.id)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selectedCourtIds);
-                        checked ? next.add(c.id) : next.delete(c.id);
-                        setSelectedCourtIds(next);
-                      }}
-                    />
-                    <span className="text-sm">{c.name}</span>
-                  </label>
-                );
-                return (
-                  <div className="space-y-2 mt-1">
-                    {homeCourts.length > 0 && (
-                      <div className="flex flex-wrap gap-2">{homeCourts.map(renderCheckbox)}</div>
-                    )}
-                    {Object.entries(externalByVenue).map(([venue, list]) => (
-                      <div key={venue} className="rounded-md border border-dashed p-2">
-                        <div className="text-[11px] font-semibold text-muted-foreground mb-1">📍 {venue}</div>
-                        <div className="flex flex-wrap gap-2">{list.map(renderCheckbox)}</div>
-                      </div>
-                    ))}
-                    {courts.length === 0 && (
-                      <span className="text-xs text-muted-foreground">No courts configured for this club yet.</span>
-                    )}
-                    {externalCourts.length === 0 && homeCourts.length > 0 && (
-                      <p className="text-[10px] text-muted-foreground">
-                        Need more courts? Add external venues in <strong>Admin → Courts → External / Tournament Venues</strong>.
-                      </p>
-                    )}
+              <WizardSection
+                title={"Dates & times"}
+                summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}
+                complete={!!startDate && !!endDate && playDays.size > 0}
+                defaultOpen={true}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm">Tournament starts</Label>
+                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                   </div>
-                );
-              })()}
-            </div>
+                  <div>
+                    <Label className="text-sm">Tournament ends</Label>
+                    <Input type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
+                  </div>
+                </div>
 
-            {/* Per-day schedule overrides — supports multiple time windows per date
-                (e.g. Sat 10:00–12:00 AND Sat 14:00–16:00, Sun different hours). */}
-            <div className="rounded-lg border p-3 space-y-3">
-              <label className="flex items-start gap-2 text-sm cursor-pointer">
-                <Checkbox
-                  checked={customizeDailySchedule}
-                  onCheckedChange={(v) => {
-                    const on = !!v;
-                    setCustomizeDailySchedule(on);
-                    if (on && daySchedules.length === 0 && startDate && endDate) {
-                      const dates = eachDayOfInterval({
-                        start: parseISO(startDate),
-                        end: parseISO(endDate),
-                      }).filter((d) => playDays.size === 0 || playDays.has(getDay(d)));
-                      setDaySchedules(
-                        dates.map((d) => ({
-                          date: format(d, "yyyy-MM-dd"),
-                          start_time: startTime,
-                          end_time: endTime,
-                          court_ids: null,
-                        }))
-                      );
-                    }
-                  }}
-                />
-                <span>
-                  <span className="font-medium">Customize times per day</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Set different time windows (and optionally specific courts) for each play-day — e.g. Saturday 10:00–12:00 and 14:00–16:00, Sunday different hours.
-                  </span>
-                </span>
-              </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm">Daily start time</Label>
+                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Daily end time</Label>
+                    <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  </div>
+                </div>
 
-              {customizeDailySchedule && (
-                <div className="space-y-2">
-                  {daySchedules.length === 0 && (
-                    <p className="text-xs text-muted-foreground">Pick dates and play days above, then add a window.</p>
-                  )}
-                  {daySchedules.map((d, idx) => {
-                    const allCourts = d.court_ids === null;
-                    return (
-                      <div key={idx} className="rounded border p-2 bg-muted/20 space-y-2">
-                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
-                          <div>
-                            <Label className="text-xs">Date</Label>
-                            <Input
-                              type="date"
-                              value={d.date}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, date: v } : x));
-                              }}
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Start</Label>
-                            <Input
-                              type="time"
-                              value={d.start_time}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, start_time: v } : x));
-                              }}
-                              className="h-8 text-sm w-28"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">End</Label>
-                            <Input
-                              type="time"
-                              value={d.end_time}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, end_time: v } : x));
-                              }}
-                              className="h-8 text-sm w-28"
-                            />
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8"
-                            onClick={() => setDaySchedules((prev) => prev.filter((_, i) => i !== idx))}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Checkbox
-                              checked={allCourts}
-                              onCheckedChange={(v) => {
-                                setDaySchedules((prev) => prev.map((x, i) =>
-                                  i === idx
-                                    ? { ...x, court_ids: v ? null : Array.from(selectedCourtIds) }
-                                    : x
-                                ));
-                              }}
-                            />
-                            <span className="text-xs">All selected courts</span>
-                          </div>
-                          {!allCourts && (
-                            <div className="flex flex-wrap gap-1.5">
-                              {Array.from(selectedCourtIds).map((cid) => {
-                                const active = d.court_ids?.includes(cid);
-                                return (
-                                  <button
-                                    key={cid}
-                                    type="button"
-                                    onClick={() => {
-                                      setDaySchedules((prev) => prev.map((x, i) => {
-                                        if (i !== idx) return x;
-                                        const cur = x.court_ids ?? [];
-                                        const next = cur.includes(cid)
-                                          ? cur.filter((c) => c !== cid)
-                                          : [...cur, cid];
-                                        return { ...x, court_ids: next };
-                                      }));
-                                    }}
-                                    className={`px-2 py-0.5 rounded text-xs border ${
-                                      active
-                                        ? "bg-primary text-primary-foreground border-primary"
-                                        : "bg-background hover:bg-muted border-border"
-                                    }`}
-                                  >
-                                    {getCourtName(cid)}
-                                  </button>
-                                );
-                              })}
-                              {selectedCourtIds.size === 0 && (
-                                <span className="text-xs text-muted-foreground">Tick courts above first.</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const last = daySchedules[daySchedules.length - 1];
-                      setDaySchedules((prev) => [
-                        ...prev,
-                        {
-                          date: last?.date || startDate || format(new Date(), "yyyy-MM-dd"),
-                          start_time: startTime,
-                          end_time: endTime,
-                          court_ids: null,
-                        },
-                      ]);
-                    }}
-                  >
-                    + Add time window
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">
-                    Add the same date more than once to create multiple sessions on that day (e.g. morning + afternoon). When customized, the global Start/End times above are ignored.
+                <div>
+                  <Label className="text-sm">Play days</Label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {DAY_NAMES.map((name, i) => (
+                      <label key={i} className="flex items-center gap-1.5 cursor-pointer">
+                        <Checkbox
+                          checked={playDays.has(i)}
+                          onCheckedChange={(checked) => {
+                            const next = new Set(playDays);
+                            checked ? next.add(i) : next.delete(i);
+                            setPlayDays(next);
+                          }}
+                        />
+                        <span className="text-sm">{name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    For a one-day tournament tick just that day. For a weekend, tick both.
                   </p>
                 </div>
-              )}
-            </div>
-            </WizardSection>
-            </>
+              </WizardSection>
             ) : (
-              /* Self-scheduled: no fixture times, no play days, no courts — just the
-                 window the tournament runs in. Everything else is the players' call. */
               <div className="rounded-lg border p-3 space-y-3">
                 <Label className="text-sm font-medium">Tournament window</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -7749,39 +7445,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </div>
             )}
 
-            {/* Capacity validation — lives here because it needs BOTH the structure
-                (leagues, formats, pools, match length) and the schedule (dates,
-                windows, courts). Advisory only: it never blocks setup. */}
-            {schedulingMode === "club" && (
-            <WizardSection
-
-              title={"Capacity check"}
-              summary={"Does the plan fit in the court time you have?"}
-              complete={true}
-              autoCollapse={false}
-              defaultOpen={true}
-            >
-              <CapacityCheck
-                customizeDailySchedule={customizeDailySchedule}
-                daySchedules={daySchedules}
-                startDate={startDate}
-                endDate={endDate}
-                playDays={Array.from(playDays)}
-                startTime={startTime}
-                endTime={endTime}
-                selectedCourtIds={Array.from(selectedCourtIds)}
-                leagues={capacityLeagues}
-                isDoubles={isDoubles}
-                crossLeague={roundFormat === "cross_league"}
-                parallelLeagues={parallelLeagues}
-                onParallelLeaguesChange={setParallelLeagues}
-                playoffBreakMinutes={playoffBreakMinutes}
-              />
-            </WizardSection>
-            )}
-
-
-
+            {/* ── Registration window ── */}
             <WizardSection
               title={"Registration window"}
               summary={registrationWindowApplies
@@ -7790,23 +7454,371 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               complete={!registrationWindowApplies || (!!registrationOpensAt && !!registrationClosesAt)}
               defaultOpen={registrationWindowApplies}
             >
-            {registrationWindowApplies ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-sm">Registration opens</Label>
-                  <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
+              {registrationWindowApplies ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm">Registration opens</Label>
+                    <Input type="datetime-local" value={registrationOpensAt} onChange={(e) => setRegistrationOpensAt(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Registration closes</Label>
+                    <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-sm">Registration closes</Label>
-                  <Input type="datetime-local" value={registrationClosesAt} onChange={(e) => setRegistrationClosesAt(e.target.value)} />
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                The organiser picks the field for this tournament, so there is no public registration window to set.
-              </p>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  The organiser picks the field for this tournament, so there is no public registration window to set.
+                </p>
+              )}
             </WizardSection>
+
+            {/* ── Courts & rounds ── */}
+            {schedulingMode === "club" || currentRoundClubScheduled ? (
+              <WizardSection
+                title={"Courts & daily schedule"}
+                summary={`${selectedCourtIds.size} court${selectedCourtIds.size === 1 ? "" : "s"}${customizeDailySchedule ? " · per-day times" : ""}`}
+                complete={selectedCourtIds.size > 0}
+                defaultOpen={true}
+              >
+                <div>
+                  <Label className="text-sm">Courts used by the tournament</Label>
+                  {(() => {
+                    const homeCourts = courts.filter((c) => !c.is_external);
+                    const externalCourts = courts.filter((c) => c.is_external);
+                    const externalByVenue = externalCourts.reduce<Record<string, typeof externalCourts>>((acc, c) => {
+                      const key = c.venue_name || "External venue";
+                      (acc[key] ||= []).push(c);
+                      return acc;
+                    }, {});
+                    const renderCheckbox = (c: typeof courts[number]) => (
+                      <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
+                        <Checkbox
+                          checked={selectedCourtIds.has(c.id)}
+                          onCheckedChange={(checked) => {
+                            const next = new Set(selectedCourtIds);
+                            checked ? next.add(c.id) : next.delete(c.id);
+                            setSelectedCourtIds(next);
+                          }}
+                        />
+                        <span className="text-sm">{c.name}</span>
+                      </label>
+                    );
+                    return (
+                      <div className="space-y-2 mt-1">
+                        {homeCourts.length > 0 && (
+                          <div className="flex flex-wrap gap-2">{homeCourts.map(renderCheckbox)}</div>
+                        )}
+                        {Object.entries(externalByVenue).map(([venue, list]) => (
+                          <div key={venue} className="rounded-md border border-dashed p-2">
+                            <div className="text-[11px] font-semibold text-muted-foreground mb-1">📍 {venue}</div>
+                            <div className="flex flex-wrap gap-2">{list.map(renderCheckbox)}</div>
+                          </div>
+                        ))}
+                        {courts.length === 0 && (
+                          <span className="text-xs text-muted-foreground">No courts configured for this club yet.</span>
+                        )}
+                        {externalCourts.length === 0 && homeCourts.length > 0 && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Need more courts? Add external venues in <strong>Admin → Courts → External / Tournament Venues</strong>.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Per-day schedule overrides — supports multiple time windows per date
+                    (e.g. Sat 10:00–12:00 AND Sat 14:00–16:00, Sun different hours). */}
+                <div className="rounded-lg border p-3 space-y-3">
+                  <label className="flex items-start gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={customizeDailySchedule}
+                      onCheckedChange={(v) => {
+                        const on = !!v;
+                        setCustomizeDailySchedule(on);
+                        if (on && daySchedules.length === 0 && startDate && endDate) {
+                          const dates = eachDayOfInterval({
+                            start: parseISO(startDate),
+                            end: parseISO(endDate),
+                          }).filter((d) => playDays.size === 0 || playDays.has(getDay(d)));
+                          setDaySchedules(
+                            dates.map((d) => ({
+                              date: format(d, "yyyy-MM-dd"),
+                              start_time: startTime,
+                              end_time: endTime,
+                              court_ids: null,
+                            }))
+                          );
+                        }
+                      }}
+                    />
+                    <span>
+                      <span className="font-medium">Customize times per day</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Set different time windows (and optionally specific courts) for each play-day — e.g. Saturday 10:00–12:00 and 14:00–16:00, Sunday different hours.
+                      </span>
+                    </span>
+                  </label>
+
+                  {customizeDailySchedule && (
+                    <div className="space-y-2">
+                      {daySchedules.length === 0 && (
+                        <p className="text-xs text-muted-foreground">Pick dates and play days above, then add a window.</p>
+                      )}
+                      {daySchedules.map((d, idx) => {
+                        const allCourts = d.court_ids === null;
+                        return (
+                          <div key={idx} className="rounded border p-2 bg-muted/20 space-y-2">
+                            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                              <div>
+                                <Label className="text-xs">Date</Label>
+                                <Input
+                                  type="date"
+                                  value={d.date}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, date: v } : x));
+                                  }}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Start</Label>
+                                <Input
+                                  type="time"
+                                  value={d.start_time}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, start_time: v } : x));
+                                  }}
+                                  className="h-8 text-sm w-28"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">End</Label>
+                                <Input
+                                  type="time"
+                                  value={d.end_time}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setDaySchedules((prev) => prev.map((x, i) => i === idx ? { ...x, end_time: v } : x));
+                                  }}
+                                  className="h-8 text-sm w-28"
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8"
+                                onClick={() => setDaySchedules((prev) => prev.filter((_, i) => i !== idx))}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <Checkbox
+                                  checked={allCourts}
+                                  onCheckedChange={(v) => {
+                                    setDaySchedules((prev) => prev.map((x, i) =>
+                                      i === idx
+                                        ? { ...x, court_ids: v ? null : Array.from(selectedCourtIds) }
+                                        : x
+                                    ));
+                                  }}
+                                />
+                                <span className="text-xs">All selected courts</span>
+                              </div>
+                              {!allCourts && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {Array.from(selectedCourtIds).map((cid) => {
+                                    const active = d.court_ids?.includes(cid);
+                                    return (
+                                      <button
+                                        key={cid}
+                                        type="button"
+                                        onClick={() => {
+                                          setDaySchedules((prev) => prev.map((x, i) => {
+                                            if (i !== idx) return x;
+                                            const cur = x.court_ids ?? [];
+                                            const next = cur.includes(cid)
+                                              ? cur.filter((c) => c !== cid)
+                                              : [...cur, cid];
+                                            return { ...x, court_ids: next };
+                                          }));
+                                        }}
+                                        className={`px-2 py-0.5 rounded text-xs border ${
+                                          active
+                                            ? "bg-primary text-primary-foreground border-primary"
+                                            : "bg-background hover:bg-muted border-border"
+                                        }`}
+                                      >
+                                        {getCourtName(cid)}
+                                      </button>
+                                    );
+                                  })}
+                                  {selectedCourtIds.size === 0 && (
+                                    <span className="text-xs text-muted-foreground">Tick courts above first.</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const last = daySchedules[daySchedules.length - 1];
+                          setDaySchedules((prev) => [
+                            ...prev,
+                            {
+                              date: last?.date || startDate || format(new Date(), "yyyy-MM-dd"),
+                              start_time: startTime,
+                              end_time: endTime,
+                              court_ids: null,
+                            },
+                          ]);
+                        }}
+                      >
+                        + Add time window
+                      </Button>
+                      <p className="text-[11px] text-muted-foreground">
+                        Add the same date more than once to create multiple sessions on that day (e.g. morning + afternoon). When customized, the global Start/End times above are ignored.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </WizardSection>
+            ) : (
+              <div className="rounded-lg border p-3 space-y-2">
+                {simplifiedKnockoutSchedule && (
+                  <div className="pt-1">
+                    <SelfScheduledRounds
+                      deadlines={roundDeadlines}
+                      onChange={setRoundDeadlines}
+                      progress={knockoutProgress}
+                      totalRounds={knockoutRoundCount(
+                        Math.max(0, ...(groups as any[][]).map((g) => (g?.length ?? 0))),
+                      )}
+                      minDate={startDate || undefined}
+                    />
+                  </div>
+                )}
+                {schedulingMode === "self" && !simplifiedKnockoutSchedule && (
+                  <div className="pt-1 space-y-2">
+                    <Label className="text-sm">Play-by deadlines per round</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Players arrange their own court and time — you only set the date each round must be finished by.
+                    </p>
+                    <div className="space-y-2">
+                      {roundDeadlines.map((d, i) => (
+                        <div key={i} className="grid gap-2 lg:grid-cols-[1fr_1fr_1.5fr_auto]">
+                          <div>
+                            <Label className="text-xs">Round name</Label>
+                            <Input
+                              value={d.label}
+                              placeholder={defaultRoundLabel(i)}
+                              onChange={(e) =>
+                                setRoundDeadlines((prev) =>
+                                  prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                                )
+                              }
+                              className="h-8"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Must be played by</Label>
+                            <Input
+                              type="date"
+                              value={d.date}
+                              min={startDate || undefined}
+                              onChange={(e) =>
+                                setRoundDeadlines((prev) =>
+                                  prev.map((x, j) => (j === i ? { ...x, date: e.target.value } : x)),
+                                )
+                              }
+                              className="h-8"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Notes (optional)</Label>
+                            <Textarea
+                              value={d.notes ?? ""}
+                              rows={1}
+                              placeholder="Shown with this round's fixtures"
+                              onChange={(e) =>
+                                setRoundDeadlines((prev) =>
+                                  prev.map((x, j) => (j === i ? { ...x, notes: e.target.value } : x)),
+                                )
+                              }
+                              className="min-h-8 h-8 py-1.5 text-sm resize-none"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => setRoundDeadlines((prev) => prev.filter((_, j) => j !== i))}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setRoundDeadlines((prev) => [
+                          ...prev,
+                          { label: defaultRoundLabel(prev.length), date: "" },
+                        ])
+                      }
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Add round
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Capacity validation — lives here because it needs BOTH the structure
+                (leagues, formats, pools, match length) and the schedule (dates,
+                windows, courts). Advisory only: it never blocks setup. */}
+            {schedulingMode === "club" && (
+              <WizardSection
+                title={"Capacity check"}
+                summary={"Does the plan fit in the court time you have?"}
+                complete={true}
+                autoCollapse={false}
+                defaultOpen={true}
+              >
+                <CapacityCheck
+                  customizeDailySchedule={customizeDailySchedule}
+                  daySchedules={daySchedules}
+                  startDate={startDate}
+                  endDate={endDate}
+                  playDays={Array.from(playDays)}
+                  startTime={startTime}
+                  endTime={endTime}
+                  selectedCourtIds={Array.from(selectedCourtIds)}
+                  leagues={capacityLeagues}
+                  isDoubles={isDoubles}
+                  crossLeague={roundFormat === "cross_league"}
+                  parallelLeagues={parallelLeagues}
+                  onParallelLeaguesChange={setParallelLeagues}
+                  playoffBreakMinutes={playoffBreakMinutes}
+                />
+              </WizardSection>
+            )}
           </CardContent>
         </Card>
       )}

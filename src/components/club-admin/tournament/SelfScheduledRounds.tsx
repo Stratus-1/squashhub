@@ -52,9 +52,9 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
     onChange(patchRound(ensureRound(deadlines, nextNumber, nextStage), nextNumber, p));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {played.length > 0 && (
-        <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+        <div className="rounded-lg border bg-muted/30 p-2 space-y-1">
           <div className="text-xs font-medium text-muted-foreground">Completed rounds</div>
           {played.map((p) => {
             const d = deadlines[p.roundNumber - 1];
@@ -71,31 +71,29 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
         </div>
       )}
 
-      <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-3">
+      <div className="rounded-lg border border-primary/40 bg-primary/5 p-2.5 space-y-2">
         <div className="flex items-center gap-2">
           <CalendarClock className="w-4 h-4 text-primary" />
-          <div>
+          <div className="min-w-0">
             <div className="text-sm font-medium">
               {ready ? "Next round" : "Current round"}: {row.label?.trim() || stage}
             </div>
             <div className="text-[11px] text-muted-foreground">
-              Players arrange their own court, date and time — you only set the date this round must be
-              finished by.
               {currentProgress
-                ? ` ${currentProgress.completed}/${currentProgress.total} games played.`
-                : " No games generated for this round yet."}
+                ? `${currentProgress.completed}/${currentProgress.total} games played.`
+                : "No games generated for this round yet."}
             </div>
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2 lg:grid-cols-[1fr_1fr_1.5fr]">
           <div>
             <Label className="text-xs">Round name</Label>
             <Input
               value={row.label ?? ""}
               placeholder={stage}
               onChange={(e) => patch({ label: e.target.value })}
-              className="h-9"
+              className="h-8"
             />
           </div>
           <div>
@@ -105,23 +103,19 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
               value={row.date ?? ""}
               min={minDate || undefined}
               onChange={(e) => patch({ date: e.target.value })}
-              className="h-9"
+              className="h-8"
             />
           </div>
-        </div>
-
-        <div>
-          <Label className="text-xs">Notes to players (optional)</Label>
-          <Textarea
-            value={row.notes ?? ""}
-            rows={2}
-            placeholder="e.g. Book your own court through the app and capture the result the same day."
-            onChange={(e) => patch({ notes: e.target.value })}
-            className="text-sm"
-          />
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Shown with this round's fixtures and in reminders.
-          </p>
+          <div>
+            <Label className="text-xs">Notes to players (optional)</Label>
+            <Textarea
+              value={row.notes ?? ""}
+              rows={1}
+              placeholder="e.g. Book your own court through the app and capture the result the same day."
+              onChange={(e) => patch({ notes: e.target.value })}
+              className="min-h-8 h-8 py-1.5 text-sm resize-none"
+            />
+          </div>
         </div>
 
         {isFinalsStage(remaining) && (
@@ -134,7 +128,7 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
               <span className="font-medium">Club schedules this stage on booked courts</span>
               <span className="block text-[11px] text-muted-foreground">
                 Switch the {stage.toLowerCase()} to a fixed club-run date, time and court instead of leaving it
-                to the players. The full court and time controls appear once this is ticked.
+                to the players.
               </span>
             </span>
           </label>
@@ -142,21 +136,22 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
       </div>
 
       {remaining !== 1 && (
-      <div className="rounded-lg border border-dashed p-3 space-y-3">
-        <div className="text-sm font-medium">Plan ahead: {nextRow.label?.trim() || nextStage}</div>
-        <p className="text-[11px] text-muted-foreground">
-          Optional — you can already name the next round and set its play-by date while{" "}
-          <strong>{row.label?.trim() || stage}</strong> is still being played. The fixtures themselves are
-          only generated from the winners once this round is complete.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
+      <div className="rounded-lg border border-dashed p-2.5 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-medium">Plan ahead: {nextRow.label?.trim() || nextStage}</div>
+          <span className="text-[11px] text-muted-foreground hidden sm:inline">
+            <Lock className="w-3 h-3 inline-block align-text-bottom mr-1" />
+            Matchups unlock once this round finishes
+          </span>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
           <div>
             <Label className="text-xs">Next round name</Label>
             <Input
               value={nextRow.label ?? ""}
               placeholder={nextStage}
               onChange={(e) => patchNext({ label: e.target.value })}
-              className="h-9"
+              className="h-8"
             />
           </div>
           <div>
@@ -166,13 +161,9 @@ export function SelfScheduledRounds({ deadlines, onChange, progress, totalRounds
               value={nextRow.date ?? ""}
               min={row.date || minDate || undefined}
               onChange={(e) => patchNext({ date: e.target.value })}
-              className="h-9"
+              className="h-8"
             />
           </div>
-        </div>
-        <div className="flex items-start gap-2 text-[11px] text-muted-foreground">
-          <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          <span>Matchups for later rounds unlock as each round finishes — no need to plan the whole draw upfront.</span>
         </div>
       </div>
       )}

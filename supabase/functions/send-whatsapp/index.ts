@@ -40,6 +40,12 @@ type Payload = {
   /** Message category — drives the per-message rate charged to the club. */
   category?: "utility" | "service" | "marketing";
   /**
+   * Transactional system message (bar one-time codes, security codes).
+   * Bypasses the club's WhatsApp opt-in and the member's opt-out — still
+   * logged and billed. Internal (service-role) callers only.
+   */
+  system?: boolean;
+  /**
    * Ask a question whose reply (Yes/No button or text) should be written back
    * into the app. e.g. { kind: 'event_rsvp', target_id: '<event id>' }
    */
@@ -349,7 +355,7 @@ Deno.serve(async (req) => {
 
     for (const r of recipients) {
       const member = r.member_id ? memberMap.get(r.member_id) : undefined;
-      if (member?.whatsapp_opt_out) {
+      if (member?.whatsapp_opt_out && !isSystem) {
         results.push({ member_id: r.member_id, status: "skipped", error: "opted out" });
         continue;
       }

@@ -311,6 +311,8 @@ export default function ClubChampsView() {
 
 
   const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
+    // Per-division doubles: a "Doubles Bells" league must list both names.
+    const isDoubles = isDoublesLeague(groupNum);
     let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
     // Pool-scoped filtering (Swiss with multiple pools per league).
     if (poolNumber != null && isSwissForLeague(groupNum)) {

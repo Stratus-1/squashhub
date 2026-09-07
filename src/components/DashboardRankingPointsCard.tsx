@@ -4,6 +4,9 @@ import { Card } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Minus, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
+import { useProvisionalSettings, useClubRankedMatchCounts } from "@/hooks/use-provisional-ranking";
+import { ProvisionalBadge } from "@/components/rankings/ProvisionalBadge";
+import { DEFAULT_PROVISIONAL } from "@/lib/rankings/provisional";
 
 interface Props {
   clubId: string | null;
@@ -56,6 +59,12 @@ export function DashboardRankingPointsCard({ clubId, memberId }: Props) {
   const prev = memberId ? movement.data?.byMember.get(memberId) : undefined;
   const delta = data ? rankDelta(data.rank, prev?.previousRank) : null;
 
+  // Club ranking status only — regional and national lists are independent.
+  const { data: provisional } = useProvisionalSettings("club", clubId);
+  const { data: matchCounts } = useClubRankedMatchCounts(clubId);
+  const settings = provisional ?? DEFAULT_PROVISIONAL;
+  const myMatches = memberId ? (matchCounts?.get(memberId) ?? 0) : 0;
+
   if (!data) return null;
 
   return (
@@ -66,7 +75,10 @@ export function DashboardRankingPointsCard({ clubId, memberId }: Props) {
             <Trophy className="w-5 h-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Club Ranking Points</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              Club Ranking Points
+              <ProvisionalBadge matchesPlayed={myMatches} settings={settings} scopeLabel="Club ranking" />
+            </p>
             <p className="text-lg font-heading font-bold text-foreground tabular-nums leading-tight">
               {data.points.toFixed(2)} pts
               <span className="text-sm font-medium text-muted-foreground"> · #{data.rank}</span>

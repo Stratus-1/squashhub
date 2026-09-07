@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Sparkles, CheckCircle2, XCircle, ShieldAlert, Camera } from "lucide-react";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
+import { useClubRankedMatchCounts } from "@/hooks/use-provisional-ranking";
+import { ProvisionalBadge } from "@/components/rankings/ProvisionalBadge";
 import { RankingSimulatorCard } from "./RankingSimulatorCard";
 import { RankingLedgerDialog } from "./RankingLedgerDialog";
 import { RankingCorrectionsCard } from "./RankingCorrectionsCard";
@@ -31,7 +33,7 @@ export function RankingPointsTab({ clubId }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("id, ranking_points_enabled, points_base_win, points_upset_bonus_per_rank, points_favourite_win_min, points_loser_deduction, points_from_challenges, points_from_leagues, points_from_tournaments")
+        .select("id, ranking_points_enabled, points_base_win, points_upset_bonus_per_rank, points_favourite_win_min, points_loser_deduction, points_from_challenges, points_from_leagues, points_from_tournaments, ranking_provisional_enabled, ranking_provisional_start_points, ranking_provisional_min_matches")
         .eq("id", clubId)
         .maybeSingle();
       if (error) throw error;
@@ -48,6 +50,10 @@ export function RankingPointsTab({ clubId }: Props) {
   const [fromChallenges, setFromChallenges] = useState(true);
   const [fromLeagues, setFromLeagues] = useState(true);
   const [fromTournaments, setFromTournaments] = useState(true);
+  // Provisional status — this club's ranking system only.
+  const [provEnabled, setProvEnabled] = useState(true);
+  const [provStart, setProvStart] = useState("600");
+  const [provMatches, setProvMatches] = useState("5");
 
   useEffect(() => {
     if (!club) return;
@@ -59,7 +65,17 @@ export function RankingPointsTab({ clubId }: Props) {
     setFromChallenges((club as any).points_from_challenges !== false);
     setFromLeagues((club as any).points_from_leagues !== false);
     setFromTournaments((club as any).points_from_tournaments !== false);
+    setProvEnabled((club as any).ranking_provisional_enabled !== false);
+    setProvStart(String((club as any).ranking_provisional_start_points ?? "600"));
+    setProvMatches(String((club as any).ranking_provisional_min_matches ?? "5"));
   }, [club]);
+
+  const provSettings = {
+    enabled: provEnabled,
+    startPoints: Number(provStart) || 0,
+    minMatches: Number(provMatches) || 0,
+  };
+  const { data: matchCounts } = useClubRankedMatchCounts(clubId);
 
   // ===== Monthly snapshots / movement =====
   const { data: movement, refetch: refetchMovement } = useRankingMovement(clubId);
@@ -93,6 +109,9 @@ export function RankingPointsTab({ clubId }: Props) {
           points_from_challenges: fromChallenges,
           points_from_leagues: fromLeagues,
           points_from_tournaments: fromTournaments,
+          ranking_provisional_enabled: provEnabled,
+          ranking_provisional_start_points: Number(provStart) || 0,
+          ranking_provisional_min_matches: Number(provMatches) || 0,
         } as any)
         .eq("id", clubId);
       if (error) throw error;
@@ -280,6 +299,32 @@ export function RankingPointsTab({ clubId }: Props) {
               </p>
             </div>
 
+            {/* Provisional status — independent of the regional and national lists. */}
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium">Provisional players</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    New players start on a set value and show a “Provisional” badge until they have played enough
+                    ranked matches here. Regional and national lists have their own separate settings.
+                  </p>
+                </div>
+                <Switch checked={provEnabled} onCheckedChange={setProvEnabled} />
+              </div>
+              {provEnabled && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Starting points</Label>
+                    <Input type="number" step="1" value={provStart} onChange={(e) => setProvStart(e.target.value)} className="h-8" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Matches to become official</Label>
+                    <Input type="number" step="1" value={provMatches} onChange={(e) => setProvMatches(e.target.value)} className="h-8" />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="text-[11px] text-muted-foreground bg-muted/40 rounded p-2">
               <p><strong>Formula:</strong> Winner gets <em>base + (upset bonus × rank gap)</em> if they were the underdog,
               or <em>max(base − 0.02 × gap, floor)</em> if they were the favourite.</p>
@@ -457,7 +502,16 @@ export function RankingPointsTab({ clubId }: Props) {
                           <span className="text-destructive">▼{Math.abs(delta)}</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs font-medium">{m.name}</TableCell>
+                      <TableCell className="text-xs font-medium">
+                        <span className="inline-flex items-center gap-1.5">
+                          {m.name}
+                          <ProvisionalBadge
+                            matchesPlayed={matchCounts?.get(m.id) ?? 0}
+                            settings={provSettings}
+                            scopeLabel="Club ranking"
+                          />
+                        </span>
+                      </TableCell>
                       <TableCell className="text-right font-mono text-xs">{Number(m.ranking_points ?? 0).toFixed(2)}</TableCell>
                       <TableCell className="text-center text-[11px] text-muted-foreground">{m.ladder_position ?? "—"}</TableCell>
                     </TableRow>

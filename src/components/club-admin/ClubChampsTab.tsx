@@ -2604,7 +2604,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Register allocated players. IMPORTANT: a player who was merely INVITED
       // and has not responded must NEVER be flipped to "paid"/entered by an
       // allocation save — free tournaments included. Doing so made their invite
-      // link think they had already accepted. Only rows the organiser创 creates
+      // link think they had already accepted. Only rows the organiser creates
       // directly here (no outstanding invite) are marked as entered.
       const uniqueIds = Array.from(new Set(allocatedMemberIds));
       if (uniqueIds.length > 0) {

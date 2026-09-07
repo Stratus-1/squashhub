@@ -78,12 +78,13 @@ export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubl
 
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return members
+    const source: any[] = useClubList ? members : (candidates || []);
+    return source
       .filter((m) => !inMatch.has(m.id))
       .filter((m) => (m.status || "active") !== "resigned")
       .filter((m) => !q || String(m.name || "").toLowerCase().includes(q) || String(m.member_number || "").includes(q))
-      .slice(0, 40);
-  }, [members, search, inMatch]);
+      .slice(0, 60);
+  }, [members, candidates, useClubList, search, inMatch]);
 
   const slots: { key: Slot; label: string; memberId?: string | null }[] = [
     { key: "player_a", label: "Side A player", memberId: match?.player_a_member_id },

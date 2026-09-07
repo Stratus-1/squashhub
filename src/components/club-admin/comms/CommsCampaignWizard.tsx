@@ -63,7 +63,7 @@ export function CommsCampaignWizard({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("club_members")
-        .select("id,name,email,phone,user_id,club_member_number,id_number,skills,volunteer_willing")
+        .select("id,name,email,phone,user_id,club_member_number,skills,volunteer_willing")
         .eq("club_id", clubId)
         .order("name");
       if (error) throw error;

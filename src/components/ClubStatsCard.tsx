@@ -27,11 +27,11 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
       // and those shadow member rows (tournament imports create shadow members
       // without a matching club_visitors row), de-duplicated by name.
       const [totalRes, activeRes, suspendedRes, resignedRes, leagueRes, visitorRowsRes, visitorMembersRes] = await Promise.all([
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).neq("role", "visitor"),
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "active").neq("role", "visitor"),
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "suspended").neq("role", "visitor"),
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "resigned").neq("role", "visitor"),
-        supabase.from("club_members").select("*", { count: "exact", head: true }).eq("club_id", clubId).eq("plays_league", true).neq("role", "visitor"),
+        supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).neq("role", "visitor"),
+        supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "active").neq("role", "visitor"),
+        supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "suspended").neq("role", "visitor"),
+        supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "resigned").neq("role", "visitor"),
+        supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).eq("plays_league", true).neq("role", "visitor"),
         supabase.from("club_visitors").select("first_name, last_name").eq("club_id", clubId),
         supabase.from("club_members").select("name").eq("club_id", clubId).eq("role", "visitor"),
       ]);

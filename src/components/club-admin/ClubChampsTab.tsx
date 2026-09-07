@@ -5309,7 +5309,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Builds the invitation body shared by in-app / email / WhatsApp channels.
   function buildInviteBody() {
-    const descHasDetails = /— Tournament details —/.test(description);
+    // A hand-edited invite is used exactly as typed — no auto details block.
+    const descHasDetails = descriptionCustom || /— Tournament details —/.test(description);
     const extras = inviteExtraDetails?.trim()
       ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
       : "";
@@ -6090,6 +6091,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setInviteTiming("manual");
     setInviteScheduledAt("");
     setDescription("");
+    setDescriptionCustom(false);
     setInviteExtraDetails("");
     setAffectsRankingPoints(false);
     setLadderAffects(null);
@@ -6226,6 +6228,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setDaySchedules(Array.isArray(loadedDay) ? loadedDay : []);
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
     setDescription(champ.description || "");
+    setDescriptionCustom(!!(champ.description || "").trim());
     setInviteExtraDetails((champ as any).invite_extra_details || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
     setRankingWeight(Number((champ as any).ranking_weight ?? 1) || 1);
@@ -9082,7 +9085,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     rows={10}
                     placeholder={`The tournament details block is filled in automatically from your setup. Add anything extra below it, like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      setDescriptionCustom(true);
+                    }}
                   />
                 </div>
                 <div className="flex flex-row md:flex-col gap-2 md:w-44 shrink-0">

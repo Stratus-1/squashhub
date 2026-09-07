@@ -701,17 +701,41 @@ Deno.serve(async (req) => {
           : surnameMatches.length === 1 ? surnameMatches[0]
           : null;
         const bookerName = member?.name ?? naturalName;
-        const { error } = await admin.from("bookings").upsert({
+        const rowPayload = {
           club_id: clubId, court_id: court.id, date,
           start_time: `${startTime}:00`, end_time: `${endTime}:00`,
           status: "active", source: "gobook", external_id: externalId,
           external_booker_name: bookerName, user_id: member?.user_id ?? null,
           club_member_id: member?.id ?? null, is_friendly: true,
-        }, { onConflict: "club_id,source,external_id" });
-        if (error) throw error;
+        };
+        const { error } = await admin.from("bookings").upsert(rowPayload, { onConflict: "club_id,source,external_id" });
+        if (error) {
+          // Another booking already occupies this slot (unique/exclusion clash).
+          // If it's an older GoBook mirror row, refresh it in place; otherwise
+          // leave the local booking alone and keep syncing the rest of the day.
+          const clash = error.code === "23505" || error.code === "23P01";
+          if (!clash) throw error;
+          const { data: occupying } = await admin
+            .from("bookings")
+            .select("id, source, external_id")
+            .eq("club_id", clubId).eq("court_id", court.id).eq("date", date)
+            .eq("start_time", `${startTime}:00`).eq("status", "active")
+            .limit(1).maybeSingle();
+          if (occupying?.source === "gobook") {
+            const { error: updateError } = await admin.from("bookings").update(rowPayload).eq("id", occupying.id);
+            if (updateError) throw updateError;
+            seen.add(externalId);
+            if (occupying.external_id) seen.add(occupying.external_id);
+            synced++;
+            continue;
+          }
+          skipped++;
+          continue;
+        }
         seen.add(externalId);
         synced++;
       }
+
 
       const { data: existing, error: existingError } = await admin.from("bookings").select("id, external_id").eq("club_id", clubId).eq("date", date).eq("source", "gobook").like("external_id", "gobook:%").eq("status", "active");
       if (existingError) throw existingError;

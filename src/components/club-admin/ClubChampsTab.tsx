@@ -5674,12 +5674,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   async function sendTestInvite(
     champId: string,
     recipientEmail: string,
-    opts?: { asMemberId?: string; asName?: string },
+    opts?: { asMemberId?: string; asName?: string; recipientPhone?: string },
   ) {
     if (testInviteSending) return;
-    const parsedEmail = testInviteEmailSchema.safeParse(recipientEmail);
-    if (!parsedEmail.success) {
-      setTestInviteEmailError(parsedEmail.error.issues[0]?.message || "Enter a valid email address");
+    // The test follows the SAME channels as the real send: email needs an
+    // email address, WhatsApp needs a cell number. At least one must be valid.
+    const wantsEmail = inviteMethods.has("email");
+    const wantsWhatsApp = inviteMethods.has("whatsapp");
+    let parsedEmail: string | null = null;
+    let parsedPhone: string | null = null;
+    if (wantsEmail) {
+      const p = testInviteEmailSchema.safeParse(recipientEmail);
+      if (!p.success) {
+        setTestInviteEmailError(p.error.issues[0]?.message || "Enter a valid email address");
+        return;
+      }
+      parsedEmail = p.data;
+    }
+    if (wantsWhatsApp) {
+      const p = testInvitePhoneSchema.safeParse(opts?.recipientPhone ?? "");
+      if (!p.success) {
+        setTestInvitePhoneError(p.error.issues[0]?.message || "Enter a valid cell number");
+        return;
+      }
+      parsedPhone = p.data;
+    }
+    if (!wantsEmail && !wantsWhatsApp && !inviteMethods.has("app")) {
+      toast.error("Select a delivery channel above to send a test.");
       return;
     }
     setTestInviteSending(true);

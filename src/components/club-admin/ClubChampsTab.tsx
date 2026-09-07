@@ -6339,6 +6339,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setChampionScope(((champ as any).champion_scope as any) === "pool" ? "pool" : "division");
     setPoolAllocation(normalisePoolAllocation((champ as any).pool_allocation));
     setRoundDeadlines(parseRoundDeadlines((champ as any).round_play_by));
+    // Rounds added later from the knockout screen (e.g. round 4) live in
+    // club_champs_rounds — pull them in so the setup screen shows them too.
+    void (async () => {
+      const { data: liveRounds } = await fromExt("club_champs_rounds")
+        .select("round_number, label, play_by")
+        .eq("champ_id", champ.id);
+      if (liveRounds?.length) {
+        setRoundDeadlines((prev) => mergeRoundDeadlines(prev, liveRounds as any[]));
+      }
+    })();
 
     setPlayoffBreakMinutes(Number((champ as any).playoff_break_minutes) || 0);
     setPlayoffDate(((champ as any).playoff_date as string) || "");

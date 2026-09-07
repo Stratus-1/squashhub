@@ -39,7 +39,7 @@ import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
-import { parseRoundDeadlines, deadlineForRound, playByNudge } from "@/lib/tournaments/round-deadlines";
+import { parseRoundDeadlines, deadlineForRound, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
 import { useHasPermission } from "@/hooks/use-club-permissions";
@@ -717,7 +717,13 @@ export default function Tournaments() {
     // fixture that still has no court/time so players know their booking cut-off.
     const playBy = !m.scheduled_date && !isPlaceholder
       ? playByNudge(
-          deadlineForRound(parseRoundDeadlines((champ as any)?.round_play_by), m.round_number),
+          deadlineForRound(
+            mergeRoundDeadlines(
+              parseRoundDeadlines((champ as any)?.round_play_by),
+              roundsByChamp.get(m.champ_id) || [],
+            ),
+            m.round_number,
+          ),
           todayISO(),
         )
       : null;

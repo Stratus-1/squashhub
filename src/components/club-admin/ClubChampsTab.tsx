@@ -5652,12 +5652,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [testInviteDialogOpen, setTestInviteDialogOpen] = useState(false);
   const [testInviteEmail, setTestInviteEmail] = useState("");
   const [testInviteEmailError, setTestInviteEmailError] = useState("");
+  const [testInvitePhone, setTestInvitePhone] = useState("");
+  const [testInvitePhoneError, setTestInvitePhoneError] = useState("");
   const [testInvitePreviewAs, setTestInvitePreviewAs] = useState<{ memberId: string; name: string } | null>(null);
   const testInviteEmailSchema = z.string().trim().email("Enter a valid email address").max(255, "Email address is too long");
+  const testInvitePhoneSchema = z.string().trim().regex(/^\+?[0-9\s()-]{7,20}$/, "Enter a valid cell number");
 
   function openTestInviteDialog(previewAs?: { memberId: string; name: string } | null) {
     setTestInvitePreviewAs(previewAs || null);
     setTestInviteEmailError("");
+    setTestInvitePhoneError("");
+    // Pre-fill with the organiser's own contact details where we have them.
+    if (!testInviteEmail && authUser?.email) setTestInviteEmail(authUser.email as string);
+    if (!testInvitePhone) {
+      const myPhone = String((myMember as any)?.phone || (myMember as any)?.cell || "").trim();
+      if (myPhone) setTestInvitePhone(myPhone);
+    }
     setTestInviteDialogOpen(true);
   }
 

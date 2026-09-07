@@ -76,7 +76,7 @@ export function KnockoutCard({
     () => (matches || []).filter((m: any) => (m.stage || "") === "ko"),
     [matches],
   );
-  const names = useMemo(() => buildNameMap(matches || []), [matches]);
+  const embeddedNames = useMemo(() => buildNameMap(matches || []), [matches]);
   const states = useMemo(() => sectionProgression(koMatches, rounds), [koMatches, rounds]);
 
   const leagues = useMemo(() => {

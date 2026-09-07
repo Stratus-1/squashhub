@@ -10438,6 +10438,202 @@ export type Database = {
           },
         ]
       }
+      platform_update_campaigns: {
+        Row: {
+          action_label: string | null
+          action_url: string | null
+          audience_association_id: string | null
+          audience_club_ids: string[]
+          audience_member_ids: string[]
+          audience_plan_id: string | null
+          audience_type: string
+          body_html: string
+          channels: string[]
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          id: string
+          last_error: string | null
+          name: string
+          sent_at: string | null
+          sent_count: number
+          skipped_count: number
+          status: string
+          subject: string
+          targeted_club_ids: string[]
+          template_id: string | null
+          total_recipients: number
+          updated_at: string
+        }
+        Insert: {
+          action_label?: string | null
+          action_url?: string | null
+          audience_association_id?: string | null
+          audience_club_ids?: string[]
+          audience_member_ids?: string[]
+          audience_plan_id?: string | null
+          audience_type?: string
+          body_html?: string
+          channels?: string[]
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          last_error?: string | null
+          name: string
+          sent_at?: string | null
+          sent_count?: number
+          skipped_count?: number
+          status?: string
+          subject?: string
+          targeted_club_ids?: string[]
+          template_id?: string | null
+          total_recipients?: number
+          updated_at?: string
+        }
+        Update: {
+          action_label?: string | null
+          action_url?: string | null
+          audience_association_id?: string | null
+          audience_club_ids?: string[]
+          audience_member_ids?: string[]
+          audience_plan_id?: string | null
+          audience_type?: string
+          body_html?: string
+          channels?: string[]
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          last_error?: string | null
+          name?: string
+          sent_at?: string | null
+          sent_count?: number
+          skipped_count?: number
+          status?: string
+          subject?: string
+          targeted_club_ids?: string[]
+          template_id?: string | null
+          total_recipients?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_update_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "platform_update_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_update_recipients: {
+        Row: {
+          action_label: string | null
+          action_url: string | null
+          body: string | null
+          campaign_id: string
+          channel: string
+          club_id: string | null
+          club_member_id: string | null
+          club_name: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          read_at: string | null
+          recipient_name: string | null
+          sent_at: string | null
+          status: string
+          subject: string | null
+          target: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_label?: string | null
+          action_url?: string | null
+          body?: string | null
+          campaign_id: string
+          channel: string
+          club_id?: string | null
+          club_member_id?: string | null
+          club_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          read_at?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          target?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_label?: string | null
+          action_url?: string | null
+          body?: string | null
+          campaign_id?: string
+          channel?: string
+          club_id?: string | null
+          club_member_id?: string | null
+          club_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          read_at?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          target?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_update_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "platform_update_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_update_templates: {
+        Row: {
+          action_label: string | null
+          action_url: string | null
+          body_html: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          action_label?: string | null
+          action_url?: string | null
+          body_html?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          subject?: string
+          updated_at?: string
+        }
+        Update: {
+          action_label?: string | null
+          action_url?: string | null
+          body_html?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       player_availability: {
         Row: {
           created_at: string

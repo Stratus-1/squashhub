@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
 
 import { Navigate } from "react-router-dom";
-import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap, ChevronsUpDown, Info } from "lucide-react";
+import { Building2, Users, Trophy, DollarSign, Settings, ListOrdered, Medal, Landmark, LayoutGrid, Banknote, Beer, UserCheck, Globe, ShieldCheck, Mail, Sparkles, CreditCard, MessageCircle, Router, ScrollText, HeartHandshake, Zap, ChevronsUpDown, Info, Megaphone } from "lucide-react";
 import { useSetupStatus, type SetupStatusMap } from "@/hooks/use-setup-status";
 import { RankingPointsTab } from "@/components/club-admin/RankingPointsTab";
 import { RulesTab } from "@/components/club-admin/RulesTab";
@@ -31,6 +31,7 @@ import { UsersTab } from "@/components/club-admin/UsersTab";
 import { VisitorsTab } from "@/components/club-admin/VisitorsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
+import { PlatformUpdatesInbox } from "@/components/club-admin/PlatformUpdatesInbox";
 import { SubscriptionTab } from "@/components/club-admin/SubscriptionTab";
 import { MessagingCard } from "@/components/club-admin/MessagingCard";
 import { WhatsAppBillingCard } from "@/components/club-admin/WhatsAppBillingCard";
@@ -104,6 +105,7 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "leagues", label: "Leagues", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
+  { value: "updates", label: "Updates from SquashHub", icon: Megaphone, permission: "communications", color: "rose", noStatus: true },
   { value: "emails", label: "Email Log", icon: Mail, permission: "communications", color: "sky", noStatus: true },
   // AI Assistant tab hidden while the feature is being reworked.
 ];
@@ -234,6 +236,7 @@ export default function ClubAdmin() {
       );
       case "awards": return <LeagueAwardsTab clubId={club.id} />;
       case "comms": return <CommunicationsTab clubId={club.id} />;
+      case "updates": return <PlatformUpdatesInbox clubId={club.id} />;
       case "ai": return <AiAssistantTab clubId={club.id} />;
       case "emails": return <EmailLogTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;

@@ -5579,23 +5579,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
 
-      // WhatsApp channel — link-first entry.
+      // WhatsApp channel — link-first entry, no Yes button.
       //
-      // A bare YES reply used to create the entry immediately, but entrants
-      // still have choices to make on the invitation page (singles/doubles,
-      // division, doubles partner, payment). A YES therefore now means
-      // "I'm interested" and the webhook replies with the player's personal
-      // link to complete the entry properly. Only a NO reply is written back
-      // directly, as a decline.
+      // Saying "yes" on WhatsApp cannot capture the choices an entry needs
+      // (singles / doubles, division, partner, payment), so the invitation
+      // uses the buttonless tournament_invite template: the only way in is the
+      // personal link. A typed NO is still written back as a decline.
       if (methods.includes("whatsapp")) {
         const needsPayment = paymentRequired && entryFeeAmount > 0;
         // Each recipient gets their own canonical invitation link, so the
         // WhatsApp message carries exactly the same URL as email / in-app.
         for (const r of rows as any[]) {
           const link = urlForRegistration(r.id);
-          const callToAction = needsPayment
-            ? `To enter, open your personal invitation link to register and pay the entry fee.\n${link}\nReply NO to decline.`
-            : `To enter, open your personal invitation link and choose your category.\n${link}\nReply NO to decline.`;
+          const details = needsPayment
+            ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+            : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
           try {
             await sendWhatsApp({
               clubId,
@@ -5604,20 +5602,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               category: "utility",
               // Cold WhatsApp sends must use an approved template; the free-form
               // body is only used inside a 24h reply window.
-              templateKey: "rsvp_question",
+              templateKey: "tournament_invite",
               templateVariables: {
-                question: `${msg}`,
-                details: callToAction,
+                player: memberNameById.get(r.club_member_id) || "player",
+                event: champName || "our tournament",
+                details,
+                link,
               },
-              body: `${msg}\n\n${callToAction}`,
+              body: `${msg}\n\n${details}\n${link}`,
               interaction: {
                 kind: "champ_entry",
                 targetId: champId,
                 // The link travels with the interaction so the inbound
-                // webhook can hand it back on a YES reply.
+                // webhook can hand it back if the player replies.
                 prompt: `Entry for ${champName || "tournament"}\n${link}`,
               },
             });
+
           } catch (waErr: any) {
             toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);
             break;
@@ -11466,21 +11467,21 @@ function InvitePreviewDialog({
   // wording and the short-message option are reflected verbatim here.
   const appBody = builtBody;
 
-  // WhatsApp preview mirrors the approved rsvp_question template and the
-  // send logic in sendChampInvites: entry is link-first — YES hands the
-  // player their personal link (so they can pick a category/partner), and
-  // only a NO reply records a decline.
+  // WhatsApp preview mirrors the approved tournament_invite template and the
+  // send logic in sendChampInvites: entry is link-only (no Yes button), and a
+  // typed NO reply records a decline.
   // Must match sendChampInvites: paymentRequired && entryFeeAmount > 0.
   const waNeedsPayment = !!paymentRequired && Number(entryFeeRand || 0) > 0;
   const waCallToAction = waNeedsPayment
-    ? `To enter, open your personal invitation link to register and pay the entry fee.\nhttps://squashhub.co.za/i/… (your personal invitation link)\nReply NO to decline.`
-    : `To enter, open your personal invitation link and choose your category.\nhttps://squashhub.co.za/i/… (your personal invitation link)\nReply NO to decline.`;
+    ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+    : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
   const waBody =
-    `Hello from *${clubLabel}* on SquashHub.\n\n` +
-    `Please see the following club activity:\n\n` +
-    `${appBody}\n\n` +
-    `Additional details: ${waCallToAction}\n\n` +
-    `Please reply using the buttons below so that we can finalise the arrangements. Thank you.`;
+    `Hello Player, this is a message from *${clubLabel}* on SquashHub.\n\n` +
+    `You are invited to take part in our upcoming tournament: ${tournamentName}.\n\n` +
+    `Event details: ${waCallToAction}\n\n` +
+    `To accept the invitation and complete your entry, please open the following link: https://squashhub.co.za/i/… (personal link)\n\n` +
+    `We hope to see you on court.`;
+
 
   // WhatsApp templates are capped at 1024 characters once the variables are
   // filled in; anything longer is trimmed automatically before sending.
@@ -11567,10 +11568,6 @@ function InvitePreviewDialog({
                 <div className="rounded-lg rounded-tl-none border bg-muted/40 p-3">
                   <p className="text-sm whitespace-pre-wrap">{waBody}</p>
                 </div>
-                <div className="flex gap-2 mt-2">
-                  <span className="text-xs px-3 py-1 rounded-full border">Yes</span>
-                  <span className="text-xs px-3 py-1 rounded-full border">No</span>
-                </div>
               </div>
               <p className={`text-[11px] ${waOverLimit ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                 {waLength} / 1024 characters
@@ -11582,13 +11579,12 @@ function InvitePreviewDialog({
                 </p>
               ) : (
                 <p className="text-[11px] text-muted-foreground italic">
-                  Sent via an approved WhatsApp template — the wording of the fixed
-                  opening and closing lines can't change per message.
-                  {waNeedsPayment
-                    ? " A YES reply sends the member their personal invitation link so they can register and pay; NO records a decline."
-                    : " Free entry — a YES reply enters them automatically."}
+                  Sent via an approved WhatsApp template with no Yes button — the only
+                  way to enter is the personal link, where the player picks their
+                  category{waNeedsPayment ? " and pays" : ""}. A typed NO reply records a decline.
                 </p>
               )}
+
             </div>
 
             {/* SMS preview */}

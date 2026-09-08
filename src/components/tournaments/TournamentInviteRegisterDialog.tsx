@@ -400,7 +400,7 @@ export function TournamentInviteRegisterDialog({
           )}
 
           {/* Step 2 — partner (required for every doubles entry) */}
-          {playerPicksPartner && accepted && (
+          {canPickPartner && (
             <div className={registration.partner_member_id
               ? "pt-2 border-t border-border/60 space-y-1.5"
               : "rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-1.5"}>

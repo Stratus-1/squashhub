@@ -974,20 +974,18 @@ function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }
   const selected = EXTERNAL_PROVIDERS.find((p) => p.value === form.provider);
   const placeholder = (selected as any)?.placeholder ?? "https://your-booking-system.example.com";
 
+  const trimmedUrl = form.url.trim();
+  const urlValid = (() => {
+    if (!trimmedUrl) return false;
+    try { new URL(trimmedUrl); return true; } catch { return false; }
+  })();
+  const incomplete =
+    enabled && (!urlValid || (form.provider === "other" && !form.label.trim()));
+
   const handleSave = async () => {
-    if (enabled) {
-      if (!form.url.trim()) {
-        toast.error("Please enter your booking URL");
-        return;
-      }
-      try { new URL(form.url.trim()); } catch {
-        toast.error("Please enter a valid URL (including https://)");
-        return;
-      }
-      if (form.provider === "other" && !form.label.trim()) {
-        toast.error("Please enter a display name for your booking system");
-        return;
-      }
+    if (enabled && trimmedUrl && !urlValid) {
+      toast.error("That booking link doesn't look right — include https://");
+      return;
     }
 
     const labelMap: Record<ProviderValue, string> = {
@@ -1004,17 +1002,24 @@ function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }
       await updateClub.mutateAsync({
         id: clubId,
         external_booking_provider: enabled ? form.provider : null,
-        external_booking_url: enabled ? form.url.trim() : null,
-        external_booking_label: enabled ? labelMap[form.provider] : null,
+        external_booking_url: enabled && trimmedUrl ? trimmedUrl : null,
+        external_booking_label: enabled ? (labelMap[form.provider] || null) : null,
         // Keep legacy fields in sync so older code paths still work
         uses_gobook: form.provider === "gobook",
-        gobook_url: form.provider === "gobook" ? form.url.trim() : null,
+        gobook_url: form.provider === "gobook" && trimmedUrl ? trimmedUrl : null,
       } as any);
-      toast.success("External booking settings saved");
+      if (incomplete) {
+        toast.warning(
+          "Saved — but setup isn't finished. Members can start booking, though some details are still missing.",
+        );
+      } else {
+        toast.success("External booking settings saved");
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     }
   };
+
 
   return (
     <Card className="p-4 space-y-3">

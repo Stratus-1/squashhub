@@ -638,11 +638,11 @@ export function LadderTab({ clubId }: { clubId: string }) {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           <GenderLadder
-            title="Men's Ladder"
-            players={menMembers}
-            order={menOrder}
-            setOrder={setMenOrder}
-            genderFilter="male"
+            title="Ladies' Ladder"
+            players={ladiesMembers}
+            order={ladiesOrder}
+            setOrder={setLadiesOrder}
+            genderFilter="female"
             saving={saving}
             onSave={handleSave}
             searchQuery={searchQuery}
@@ -652,11 +652,11 @@ export function LadderTab({ clubId }: { clubId: string }) {
             onAllocated={handleAllocated}
           />
           <GenderLadder
-            title="Ladies' Ladder"
-            players={ladiesMembers}
-            order={ladiesOrder}
-            setOrder={setLadiesOrder}
-            genderFilter="female"
+            title="Men's Ladder"
+            players={menMembers}
+            order={menOrder}
+            setOrder={setMenOrder}
+            genderFilter="male"
             saving={saving}
             onSave={handleSave}
             searchQuery={searchQuery}

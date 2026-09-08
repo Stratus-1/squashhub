@@ -1,6 +1,6 @@
 // Sends a Stitch bank-account onboarding application to Stitch (Beon Pienaar)
 // via Lovable managed email delivery. A copy is
-// sent to the club's main contact and to admin@stratsol.co.za for record.
+// sent to the club's main contact, admin@stratsol.co.za and support@squashhub.co.za for record.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendAppEmail } from '../_shared/send-app-email.ts'
 
@@ -14,6 +14,7 @@ const STITCH_EMAIL = "beon.pienaar@stitch.money";
 const STITCH_NAME = "Beon Pienaar";
 const STITCH_PHONE = "+27 68 921 4245";
 const STRATSOL_EMAIL = "admin@stratsol.co.za";
+const SUPPORT_EMAIL = "support@squashhub.co.za";
 
 type FileRef = { label: string; path: string; filename?: string };
 
@@ -85,8 +86,9 @@ Deno.serve(async (req) => {
       { email: STITCH_EMAIL, tag: "stitch" },
       { email: contact_email, tag: "contact" },
       { email: STRATSOL_EMAIL, tag: "stratsol" },
+      { email: SUPPORT_EMAIL, tag: "support" },
     ];
-    const copiedTo = [contact_email, STRATSOL_EMAIL];
+    const copiedTo = [contact_email, STRATSOL_EMAIL, SUPPORT_EMAIL];
     const stamp = Date.now();
 
     const results = await Promise.all(recipients.map((r) =>
@@ -123,7 +125,7 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       sent_to: STITCH_EMAIL,
-      cc: [contact_email, STRATSOL_EMAIL],
+      cc: [contact_email, STRATSOL_EMAIL, SUPPORT_EMAIL],
       failed,
       stitch_contact: { name: STITCH_NAME, phone: STITCH_PHONE, email: STITCH_EMAIL },
     });

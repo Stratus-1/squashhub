@@ -385,7 +385,7 @@ export function TournamentInviteRegisterDialog({
             </div>
           )}
 
-          {/* Step 2 — partner */}
+          {/* Step 2 — partner (required for every doubles entry) */}
           {playerPicksPartner && accepted && (
             <div className={registration.partner_member_id
               ? "pt-2 border-t border-border/60 space-y-1.5"
@@ -393,18 +393,31 @@ export function TournamentInviteRegisterDialog({
               <p className={registration.partner_member_id
                 ? "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                 : "text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"}>
-                Step 2 — select your doubles partner
+                Step 2 — select your doubles partner (required)
               </p>
               {registration.partner_member_id ? (
                 <p className="text-xs flex items-center gap-1">
                   <Check className="w-3 h-3 text-primary" /> {getName(registration.partner) || "Partner selected"}
                 </p>
-              ) : !canPickPartner ? (
-                <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                  Settle your entry fee first — you can select your partner as soon as your payment is confirmed.
-                </p>
+              ) : doublesPickerDivisions.length > 0 ? (
+                <>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Your doubles entry is only complete once you name a partner.
+                    {paymentRequired
+                      ? " You'll also say who is paying — if your partner pays their own entry we send them a confirmation with a payment link."
+                      : ""}
+                  </p>
+                  <DoublesPartnerPicker
+                    champId={String(champ.id)}
+                    clubId={clubId}
+                    divisions={doublesPickerDivisions}
+                  />
+                </>
               ) : (
                 <>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Your doubles entry is only complete once you name a partner.
+                  </p>
                   <div className="flex items-center gap-2">
                     <Popover open={partnerOpen} onOpenChange={setPartnerOpen}>
                       <PopoverTrigger asChild>

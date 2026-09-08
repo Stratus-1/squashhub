@@ -803,8 +803,8 @@ export default function Ladder() {
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
                 {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
+                {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
               </div>
             )
           }
@@ -821,8 +821,8 @@ export default function Ladder() {
         </div>
       ) : (
         <div className="px-4 mt-3 mb-4 grid grid-cols-1 gap-4">
-          {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
           {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
+          {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
         </div>
       )}
 

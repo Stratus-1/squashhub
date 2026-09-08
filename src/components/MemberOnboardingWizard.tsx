@@ -245,7 +245,7 @@ export function MemberOnboardingWizard({
       // Try by user_id first, then email
       let member: any = null;
       const { data: byUserId } = await fromExt("club_members")
-        .select("*")
+        .select(CLUB_MEMBER_COLUMNS)
         .eq("club_id", clubId)
         .eq("user_id", user.id)
         .maybeSingle();
@@ -261,7 +261,7 @@ export function MemberOnboardingWizard({
         // Fetch ALL rows matching this email (there can be duplicates from prior signups)
         // and prefer the one with a real (non-code) name so we don't pre-fill the form with a phone number.
         const { data: byEmailRows } = await fromExt("club_members")
-          .select("*")
+          .select(CLUB_MEMBER_COLUMNS)
           .eq("club_id", clubId)
           .eq("email", user.email.toLowerCase());
         if (byEmailRows && byEmailRows.length > 0) {
@@ -287,7 +287,7 @@ export function MemberOnboardingWizard({
           const affMemberIds = (affRows || []).map((r: any) => r.club_member_id).filter(Boolean);
           if (affMemberIds.length > 0) {
             const { data: candidateRows } = await fromExt("club_members")
-              .select("*")
+              .select(CLUB_MEMBER_COLUMNS)
               .eq("club_id", clubId)
               .in("id", affMemberIds);
             if (candidateRows && candidateRows.length > 0) {

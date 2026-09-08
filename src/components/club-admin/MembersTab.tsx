@@ -232,7 +232,11 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
     <Card className={`p-2 space-y-1.5 ${inactive ? "opacity-60 border-dashed" : ""}`}>
       {/* Row 1: Name, status, role, actions — single compact line */}
       <div className="flex items-center gap-1.5">
-        <span className={`font-medium text-[12px] truncate flex-1 min-w-0 ${status === "resigned" ? "line-through" : ""}`}>{displayName}</span>
+        <span className={`font-medium text-[12px] truncate min-w-0 ${status === "resigned" ? "line-through" : ""}`}>{displayName}</span>
+        {m.fee_category?.name && (
+          <span className="text-[10px] text-muted-foreground truncate flex-1 min-w-0">– {m.fee_category.name}</span>
+        )}
+        {!m.fee_category?.name && <span className="flex-1 min-w-0" />}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

@@ -433,7 +433,7 @@ export function TournamentInviteRegisterDialog({
                           <CommandInput placeholder="Type a name…" className="h-9 text-xs" />
                           <CommandList>
                             <CommandEmpty className="py-4 text-xs text-center text-muted-foreground">
-                              {paymentRequired ? "No registered and paid player available yet." : "No available member found."}
+                              {paymentRequired ? "No player in this tournament available yet." : "No available member found."}
                             </CommandEmpty>
                             <CommandGroup>
                               {eligiblePartners.map((m: any) => (

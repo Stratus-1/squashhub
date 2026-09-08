@@ -197,7 +197,10 @@ function DraggablePlayerRow({
         <PlayerAvatar initials={getInitials(player.name)} size="sm" avatarUrl={player.avatar_url} />
 
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold truncate">{player.name}</p>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className="text-xs font-semibold truncate">{player.name}</p>
+            <SportyHqRatingBadge rating={sportyHqRating} />
+          </div>
           {currentAffiliations.size > 0 && (
             <p className="text-[10px] text-muted-foreground truncate">
               {leagues
@@ -308,10 +311,11 @@ interface GenderLadderProps {
   searchQuery: string;
   leagues: LeagueOption[];
   affiliationsByMember: Map<string, Set<string>>;
+  sportyHqRatings?: Map<string, SportyHqRating>;
   onAllocated: () => void;
 }
 
-function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, onAllocated }: GenderLadderProps) {
+function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, onAllocated }: GenderLadderProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
@@ -373,6 +377,7 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
                   total={list.length}
                   leagues={leagues}
                   currentAffiliations={currentAffiliations}
+                  sportyHqRating={sportyHqRatings?.get(player.id)}
                   onAllocated={onAllocated}
                   onMoveTo={(playerId, targetIndex) => {
                     const fromIdx = list.findIndex((p) => p.id === playerId);

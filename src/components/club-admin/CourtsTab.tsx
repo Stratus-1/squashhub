@@ -1096,6 +1096,15 @@ function ExternalBookingSection({ club, clubId }: { club: Club; clubId: string }
         </>
       )}
 
+      {enabled && incomplete && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 flex gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            Setup not complete. You can save now and finish later — members can keep booking, but they'll see a "setup not complete" notice until the details above are filled in.
+          </p>
+        </div>
+      )}
+
       {enabled && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2 flex gap-2">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />

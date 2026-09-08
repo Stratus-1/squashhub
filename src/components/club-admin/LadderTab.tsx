@@ -31,6 +31,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { LadderConfigCard } from "@/components/club-admin/LadderConfigCard";
 import { LadderPendingMovesCard } from "@/components/club-admin/LadderPendingMovesCard";
+import { SportyHqRatingBadge } from "@/components/SportyHqRatingBadge";
+import { useSportyHqRatings, type SportyHqRating } from "@/hooks/use-sportyhq-ratings";
 
 
 interface LadderMember {
@@ -626,6 +628,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             searchQuery={searchQuery}
             leagues={leagues}
             affiliationsByMember={affiliationsByMember}
+            sportyHqRatings={sportyHqRatings}
             onAllocated={handleAllocated}
           />
         </div>
@@ -642,6 +645,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             searchQuery={searchQuery}
             leagues={leagues}
             affiliationsByMember={affiliationsByMember}
+            sportyHqRatings={sportyHqRatings}
             onAllocated={handleAllocated}
           />
           <GenderLadder
@@ -655,6 +659,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             searchQuery={searchQuery}
             leagues={leagues}
             affiliationsByMember={affiliationsByMember}
+            sportyHqRatings={sportyHqRatings}
             onAllocated={handleAllocated}
           />
         </div>

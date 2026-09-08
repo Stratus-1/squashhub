@@ -384,6 +384,11 @@ export default function Bookings() {
   // Official GoBook API mode: one club-level API account, no member logins.
   const gobookApiMode = externalProvider === "gobook" && !!(myClub as any)?.gobook_api_enabled;
   const bookingProviderActive = gobookApiMode || usesExternalBooking;
+  // Admin picked an external provider but hasn't finished the setup (no URL,
+  // or GoBook chosen without the API connection enabled yet).
+  const externalSetupIncomplete =
+    !!externalProvider && externalProvider !== "none" &&
+    (!externalUrl || (externalProvider === "gobook" && !gobookApiMode));
 
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;

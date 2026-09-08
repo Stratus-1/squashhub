@@ -116,8 +116,13 @@ export function TournamentInviteRegisterDialog({
   const accepted = !!registration?.confirmed_at;
   const settled = status === "paid" || status === "waived";
   const feeOutstanding = paymentRequired && !settled;
-  // Option 1 gate: with a fee, partners may only be picked once you are paid.
-  const canPickPartner = playerPicksPartner && accepted && (!paymentRequired || settled);
+  /**
+   * A doubles entry is only a real entry once a partner is named, so partner
+   * selection is required as soon as the player has accepted — with or without
+   * an outstanding entry fee. When a fee applies the pair simply stays unlocked
+   * until both entries are paid, and the player says who is paying.
+   */
+  const canPickPartner = playerPicksPartner && accepted;
 
   // Who is already in the draw (used to hide paired-up members and, when a fee
   // applies, to restrict the list to players who registered and paid).

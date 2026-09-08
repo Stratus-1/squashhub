@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateChallenge, useSquashTotals, useHeadToHead } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
+import { useSportyHqRatings } from "@/hooks/use-sportyhq-ratings";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

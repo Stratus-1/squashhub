@@ -69,6 +69,7 @@ function DraggablePlayerRow({
   onMoveTo: (playerId: string, targetIndex: number) => void;
   leagues: LeagueOption[];
   currentAffiliations: Set<string>;
+  sportyHqRating,
   onAllocated: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id });

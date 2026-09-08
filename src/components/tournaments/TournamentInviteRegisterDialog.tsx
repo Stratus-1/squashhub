@@ -147,13 +147,14 @@ export function TournamentInviteRegisterDialog({
         taken.add(r.club_member_id);
         taken.add(r.partner_member_id);
       }
-      if (r.status === "paid" || r.status === "waived") registeredPaid.add(r.club_member_id);
+      if (r.status !== "cancelled" && r.status !== "declined") registeredPaid.add(r.club_member_id);
     });
     let list = (members as any[]).filter((m) => m.id !== memberId && !taken.has(m.id));
     const g = champ?.gender;
     if (g === "men") list = list.filter((m) => m.gender && ["men", "male", "m"].includes(String(m.gender).toLowerCase()));
     else if (g === "ladies") list = list.filter((m) => m.gender && ["ladies", "female", "f", "women"].includes(String(m.gender).toLowerCase()));
-    // With an entry fee, only players who have registered and paid can be picked.
+    // With an entry fee, partners are picked from players in this tournament —
+    // they do not have to have paid yet; the pair locks once both fees are in.
     if (paymentRequired) list = list.filter((m) => registeredPaid.has(m.id));
     return list;
   }, [others, members, memberId, champ?.gender, paymentRequired]);

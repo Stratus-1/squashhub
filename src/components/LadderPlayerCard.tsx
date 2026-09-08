@@ -40,6 +40,7 @@ interface Props {
   challengeBlocked: boolean;
   highlightChallengeable?: boolean;
   leagues?: LeagueChip[];
+  sportyHqRating?: SportyHqRating;
   onLeagueClick?: (leagueId: string) => void;
   activeLeagueFilter?: string | null;
 }
@@ -53,6 +54,7 @@ export function LadderPlayerCard({
   challengeBlocked,
   highlightChallengeable,
   leagues = [],
+  sportyHqRating,
   onLeagueClick,
   activeLeagueFilter,
 }: Props) {
@@ -98,6 +100,7 @@ export function LadderPlayerCard({
             {isMe && (
               <Badge variant="secondary" className="text-[9px] shrink-0 px-1 py-0">You</Badge>
             )}
+            <SportyHqRatingBadge rating={sportyHqRating} />
             {leagues.length > 0 ? (
               leagues.map((lg) => {
                 const isActive = activeLeagueFilter === lg.id;

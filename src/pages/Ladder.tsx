@@ -450,6 +450,11 @@ export default function Ladder() {
   const challengeLevelsUp = config.challenge_levels_up;
   const allPlayers = useMemo(() => (players || []) as LadderPlayer[], [players]);
 
+  // National strength (SportyHQ) shown beside each member on the ladder.
+  const { data: sportyHqRatings } = useSportyHqRatings(
+    useMemo(() => allPlayers.map((p) => p.club_member_id).filter(Boolean) as string[], [allPlayers]),
+  );
+
   // How many open challenges I already have (drives the same limit the DB enforces)
   const { data: myOpenOutgoing = 0 } = useQuery({
     queryKey: ["ladder-open-outgoing", myMemberId],
@@ -652,6 +657,7 @@ export default function Ladder() {
               challengeBlocked={!isChallengeable(player)}
               highlightChallengeable={isChallengeable(player)}
               leagues={getPlayerLeagues(player)}
+              sportyHqRating={sportyHqRatings?.get(player.club_member_id)}
               onLeagueClick={handleLeagueClick}
               activeLeagueFilter={activeLeagueFilter}
             />
@@ -716,6 +722,7 @@ export default function Ladder() {
                     challengeBlocked={!isChallengeable(player)}
                     highlightChallengeable={isChallengeable(player)}
                     leagues={getPlayerLeagues(player)}
+                    sportyHqRating={sportyHqRatings?.get(player.club_member_id)}
                     onLeagueClick={handleLeagueClick}
                     activeLeagueFilter={activeLeagueFilter}
                   />

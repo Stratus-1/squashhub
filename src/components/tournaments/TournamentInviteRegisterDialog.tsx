@@ -125,6 +125,19 @@ export function TournamentInviteRegisterDialog({
    */
   const canPickPartner = playerPicksPartner && accepted;
 
+  /** Doubles divisions this player entered — one partner slot each. */
+  const doublesPickerDivisions = useMemo(
+    () =>
+      (divisionOptions as any[])
+        .filter(
+          (d) =>
+            (chosenDivisions.length === 0 || chosenDivisions.includes(d.group_number)) &&
+            (String(d.match_type || "").toLowerCase() === "doubles" || (isDoubles && !d.match_type)),
+        )
+        .map((d) => ({ group_number: d.group_number, label: d.label, match_type: "doubles" as const })),
+    [divisionOptions, chosenDivisions, isDoubles],
+  );
+
   // Who is already in the draw (used to hide paired-up members and, when a fee
   // applies, to restrict the list to players who registered and paid).
   const { data: others = [] } = useQuery({

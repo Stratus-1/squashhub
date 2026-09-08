@@ -632,11 +632,20 @@ export function MemberOnboardingWizard({
       }
     }
     if (idNumber.trim()) {
-      const { data: dupIdRows } = await fromExt("club_members")
+      // id_number is a restricted column, so the match runs through the
+      // security-definer matcher instead of a direct filtered select.
+      const { data: ownRows } = await fromExt("club_members")
         .select("id, user_id, email")
         .eq("club_id", clubId)
-        .eq("id_number", idNumber.trim());
-      const conflict = (dupIdRows || []).find((r: any) => !isOwnRow(r));
+        .or(`user_id.eq.${user.id}${userEmailLower ? `,email.eq.${userEmailLower}` : ""}`);
+      const ownIds = new Set((ownRows || []).filter(isOwnRow).map((r: any) => r.id));
+      const { data: idMatches } = await (supabase as any).rpc("find_existing_club_member", {
+        _club_id: clubId,
+        _id_number: idNumber.trim(),
+      });
+      const conflict = ((idMatches || []) as any[]).find(
+        (m) => m.match_kind === "id_number" && !ownIds.has(m.member_id),
+      );
       if (conflict) {
         toast.error("This ID number is already registered in the club");
         return;

@@ -8561,54 +8561,6 @@ export type Database = {
           },
         ]
       }
-      member_import_staging: {
-        Row: {
-          bal: number | null
-          catname: string | null
-          club_id: string
-          created_at: string
-          email: string | null
-          gender: string | null
-          id: string
-          idnum: string | null
-          matchname: string | null
-          memno: string | null
-          name: string | null
-          occ: string | null
-          phone: string | null
-        }
-        Insert: {
-          bal?: number | null
-          catname?: string | null
-          club_id: string
-          created_at?: string
-          email?: string | null
-          gender?: string | null
-          id?: string
-          idnum?: string | null
-          matchname?: string | null
-          memno?: string | null
-          name?: string | null
-          occ?: string | null
-          phone?: string | null
-        }
-        Update: {
-          bal?: number | null
-          catname?: string | null
-          club_id?: string
-          created_at?: string
-          email?: string | null
-          gender?: string | null
-          id?: string
-          idnum?: string | null
-          matchname?: string | null
-          memno?: string | null
-          name?: string | null
-          occ?: string | null
-          phone?: string | null
-        }
-        Relationships: []
-      }
       member_league_registrations: {
         Row: {
           club_member_id: string

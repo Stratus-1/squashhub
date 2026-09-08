@@ -56,7 +56,15 @@ export function useSetupStatus(clubId?: string, club?: any): SetupStatusMap {
     s.smtp_user &&
     s.smtp_pass
   );
-  const courtsComplete = courtsCount > 0;
+  // Courts is only "ready" when courts exist AND the booking provider choice is
+  // fully configured. Choosing an external provider (e.g. GoBook) without a
+  // booking URL or a working API connection leaves booking half set up.
+  const provider: string = club?.external_booking_provider || (club?.uses_gobook ? "gobook" : "squashhub");
+  const isExternalProvider = !!provider && provider !== "squashhub" && provider !== "none";
+  const externalBookingConfigured = isExternalProvider
+    ? !!(club?.external_booking_url || (provider === "gobook" && club?.gobook_api_enabled))
+    : true;
+  const courtsComplete = courtsCount > 0 && externalBookingConfigured;
   const feesComplete = feesCount > 0;
   const bankingComplete = !!(
     s.bank_name &&

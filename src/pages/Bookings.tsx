@@ -1489,6 +1489,27 @@ export default function Bookings() {
         </div>
       </div>
 
+      {/* External provider selected but setup incomplete — warn members, keep booking usable */}
+      {externalSetupIncomplete && (
+        <div className="px-4 mt-3">
+          <Card className="border-amber-500/50 bg-amber-500/10">
+            <CardContent className="p-3 flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">
+                  {externalLabel} setup isn't complete yet
+                </p>
+                <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+                  Your club is moving bookings to {externalLabel}, but the setup isn't finished. You can keep booking here for now — your club admin has been asked to complete the connection.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* GoBook API mode: no separate calendar — the core grid below IS the
           calendar. GoBook occupancy is mirrored into it, including booker names. */}
       {gobookApiMode && externalProvider === "gobook" && (

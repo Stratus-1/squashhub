@@ -460,6 +460,12 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
 
   const itemForm = (
     <div className="rounded-lg border p-3 space-y-3">
+      <div className="rounded-md bg-muted/50 border p-2.5 flex items-start gap-2">
+        <ScanBarcode className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+        <p className="text-xs text-muted-foreground leading-snug">
+          You can scan the barcode printed on each product when adding or editing an item. Tap the camera icon next to the barcode field, or type the number in manually.
+        </p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <Label className="text-xs">Item name</Label>

@@ -1502,7 +1502,7 @@ export default function Bookings() {
                   {externalLabel} setup isn't complete yet
                 </p>
                 <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
-                  Your club is moving bookings to {externalLabel}, but the setup isn't finished. You can keep booking here for now — your club admin has been asked to complete the connection.
+                  Your club takes court bookings on {externalLabel}, so please book there — the link isn't set up here yet. Any slots shown below may not reflect {externalLabel}. Your club admin has been asked to finish the connection.
                 </p>
               </div>
             </CardContent>

@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Wallet, CreditCard, Building2, CheckCircle2, XCircle, Copy, ChevronRight } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useMemberContext } from "@/contexts/MemberContext";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, CLUB_MEMBER_COLUMNS } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { fromExt } from "@/lib/supabase-ext";
@@ -97,7 +97,7 @@ export default function MyAccount() {
       const targetId = viewAsMemberId || activeMember!.id;
       const targetClubId = (viewedMember as any)?.club_id || club.id;
       const { data, error } = await fromExt("club_members")
-        .select("*, fee_category:fee_category_id(id, name, annual_fee)")
+        .select(`${CLUB_MEMBER_COLUMNS}, fee_category:fee_category_id(id, name, annual_fee)`)
         .eq("id", targetId)
         .eq("club_id", targetClubId)
         .maybeSingle();

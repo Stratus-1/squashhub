@@ -118,7 +118,7 @@ import { countAllocatedEntries } from "@/lib/tournaments/entry-counts";
 
 
 
-import { useClubMembers, useIsSuperAdmin, useMyClubMember, type ClubMember } from "@/hooks/use-club";
+import { useClubMembers, useIsSuperAdmin, useMyClubMember, CLUB_MEMBER_COLUMNS, type ClubMember } from "@/hooks/use-club";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
 import { Button } from "@/components/ui/button";
@@ -821,7 +821,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     queryKey: ["tournament-member-pool", playerPoolClubIds],
     queryFn: async () => {
       const { data, error } = await fromExt("club_members")
-        .select("*, profiles:user_id(name, email, phone, avatar_url), club:club_id(name)")
+        .select(`${CLUB_MEMBER_COLUMNS}, profiles:user_id(name, email, phone, avatar_url), club:club_id(name)`)
         .in("club_id", playerPoolClubIds)
         .order("name");
       if (error) throw error;

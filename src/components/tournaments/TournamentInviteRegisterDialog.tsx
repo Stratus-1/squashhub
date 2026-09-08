@@ -14,6 +14,7 @@ import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { isSupportedGateway, startClubCheckout, pollStitchPayment, clearPendingClubSession, type GatewayId } from "@/lib/club-payments";
 import { CalendarClock, Check, CheckCircle, CreditCard, Landmark, Loader2, Search, Users } from "lucide-react";
+import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
 import { toast } from "sonner";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };

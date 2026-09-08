@@ -31,6 +31,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { LadderConfigCard } from "@/components/club-admin/LadderConfigCard";
 import { LadderPendingMovesCard } from "@/components/club-admin/LadderPendingMovesCard";
+import { SportyHqRatingBadge } from "@/components/SportyHqRatingBadge";
+import { useSportyHqRatings, type SportyHqRating } from "@/hooks/use-sportyhq-ratings";
 
 
 interface LadderMember {
@@ -61,6 +63,7 @@ function DraggablePlayerRow({
   onMoveTo,
   leagues,
   currentAffiliations,
+  sportyHqRating,
   onAllocated,
 }: {
   player: LadderMember;
@@ -69,6 +72,7 @@ function DraggablePlayerRow({
   onMoveTo: (playerId: string, targetIndex: number) => void;
   leagues: LeagueOption[];
   currentAffiliations: Set<string>;
+  sportyHqRating?: SportyHqRating;
   onAllocated: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: player.id });
@@ -195,7 +199,10 @@ function DraggablePlayerRow({
         <PlayerAvatar initials={getInitials(player.name)} size="sm" avatarUrl={player.avatar_url} />
 
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold truncate">{player.name}</p>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className="text-xs font-semibold truncate">{player.name}</p>
+            <SportyHqRatingBadge rating={sportyHqRating} />
+          </div>
           {currentAffiliations.size > 0 && (
             <p className="text-[10px] text-muted-foreground truncate">
               {leagues
@@ -306,10 +313,11 @@ interface GenderLadderProps {
   searchQuery: string;
   leagues: LeagueOption[];
   affiliationsByMember: Map<string, Set<string>>;
+  sportyHqRatings?: Map<string, SportyHqRating>;
   onAllocated: () => void;
 }
 
-function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, onAllocated }: GenderLadderProps) {
+function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, onAllocated }: GenderLadderProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
@@ -371,6 +379,7 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
                   total={list.length}
                   leagues={leagues}
                   currentAffiliations={currentAffiliations}
+                  sportyHqRating={sportyHqRatings?.get(player.id)}
                   onAllocated={onAllocated}
                   onMoveTo={(playerId, targetIndex) => {
                     const fromIdx = list.findIndex((p) => p.id === playerId);
@@ -393,6 +402,9 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
 
 export function LadderTab({ clubId }: { clubId: string }) {
   const { data: members = [], isLoading, error } = useClubMembers(clubId);
+  const { data: sportyHqRatings } = useSportyHqRatings(
+    useMemo(() => (members as { id: string }[]).map((m) => m.id), [members]),
+  );
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderMember[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderMember[] | null>(null);
@@ -619,6 +631,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             searchQuery={searchQuery}
             leagues={leagues}
             affiliationsByMember={affiliationsByMember}
+            sportyHqRatings={sportyHqRatings}
             onAllocated={handleAllocated}
           />
         </div>
@@ -635,6 +648,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             searchQuery={searchQuery}
             leagues={leagues}
             affiliationsByMember={affiliationsByMember}
+            sportyHqRatings={sportyHqRatings}
             onAllocated={handleAllocated}
           />
           <GenderLadder
@@ -648,6 +662,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             searchQuery={searchQuery}
             leagues={leagues}
             affiliationsByMember={affiliationsByMember}
+            sportyHqRatings={sportyHqRatings}
             onAllocated={handleAllocated}
           />
         </div>

@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { Swords, TrendingUp } from "lucide-react";
+import { SportyHqRatingBadge } from "@/components/SportyHqRatingBadge";
+import type { SportyHqRating } from "@/hooks/use-sportyhq-ratings";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 

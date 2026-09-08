@@ -398,6 +398,11 @@ export default function TournamentInvite() {
           {divisionError && <p className="text-[11px] text-destructive">{divisionError}</p>}
         </div>
       )}
+      {hasDoublesChoice && (
+        <p className="text-xs text-muted-foreground">
+          This is a doubles entry — after you accept you must pick your partner right here to complete it.
+        </p>
+      )}
       {feeCents > 0 && (
         <p className="text-xs text-muted-foreground">
           Accepting reserves your place — you'll go straight to the entry fee payment page.

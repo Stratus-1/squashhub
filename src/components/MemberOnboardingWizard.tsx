@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClubContext } from "@/contexts/ClubContext";
-import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory, SKILL_LEVELS } from "@/hooks/use-club";
+import { useMyClub, useFeeCategories, useLeagueAssociations, useNationalBodyFees, MemberFeeCategory, SKILL_LEVELS, CLUB_MEMBER_COLUMNS } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { LeagueParticipationPicker, applyLeagueSelections, LeagueSelection } from "@/components/LeagueParticipationPicker";
 import { fromExt } from "@/lib/supabase-ext";
@@ -245,7 +245,7 @@ export function MemberOnboardingWizard({
       // Try by user_id first, then email
       let member: any = null;
       const { data: byUserId } = await fromExt("club_members")
-        .select("*")
+        .select(CLUB_MEMBER_COLUMNS)
         .eq("club_id", clubId)
         .eq("user_id", user.id)
         .maybeSingle();
@@ -261,7 +261,7 @@ export function MemberOnboardingWizard({
         // Fetch ALL rows matching this email (there can be duplicates from prior signups)
         // and prefer the one with a real (non-code) name so we don't pre-fill the form with a phone number.
         const { data: byEmailRows } = await fromExt("club_members")
-          .select("*")
+          .select(CLUB_MEMBER_COLUMNS)
           .eq("club_id", clubId)
           .eq("email", user.email.toLowerCase());
         if (byEmailRows && byEmailRows.length > 0) {
@@ -287,7 +287,7 @@ export function MemberOnboardingWizard({
           const affMemberIds = (affRows || []).map((r: any) => r.club_member_id).filter(Boolean);
           if (affMemberIds.length > 0) {
             const { data: candidateRows } = await fromExt("club_members")
-              .select("*")
+              .select(CLUB_MEMBER_COLUMNS)
               .eq("club_id", clubId)
               .in("id", affMemberIds);
             if (candidateRows && candidateRows.length > 0) {
@@ -632,11 +632,20 @@ export function MemberOnboardingWizard({
       }
     }
     if (idNumber.trim()) {
-      const { data: dupIdRows } = await fromExt("club_members")
+      // id_number is a restricted column, so the match runs through the
+      // security-definer matcher instead of a direct filtered select.
+      const { data: ownRows } = await fromExt("club_members")
         .select("id, user_id, email")
         .eq("club_id", clubId)
-        .eq("id_number", idNumber.trim());
-      const conflict = (dupIdRows || []).find((r: any) => !isOwnRow(r));
+        .or(`user_id.eq.${user.id}${userEmailLower ? `,email.eq.${userEmailLower}` : ""}`);
+      const ownIds = new Set((ownRows || []).filter(isOwnRow).map((r: any) => r.id));
+      const { data: idMatches } = await (supabase as any).rpc("find_existing_club_member", {
+        _club_id: clubId,
+        _id_number: idNumber.trim(),
+      });
+      const conflict = ((idMatches || []) as any[]).find(
+        (m) => m.match_kind === "id_number" && !ownIds.has(m.member_id),
+      );
       if (conflict) {
         toast.error("This ID number is already registered in the club");
         return;

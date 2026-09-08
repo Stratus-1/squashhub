@@ -197,6 +197,16 @@ export function RoundConfigDialog({ open, onOpenChange, clubId, associationId, i
   // (unticking the holiday/break switches) doesn't silently bring them back.
   const [manualOff, setManualOff] = useState<string[]>([]);
 
+  // Re-opening a saved round must keep the weeks the admin already excluded:
+  // treat every stored skip date as a deliberate manual exclusion.
+  useEffect(() => {
+    if (!open) return;
+    const saved = (initial?.skip_dates ?? []).map((d) => String(d).slice(0, 10));
+    setManualOff(saved);
+    setManualOn([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   // Weekly matchday preview from the start date, honouring the selected play
   // days. Admins untick holiday weeks; those land in `skip_dates`.
   const upcomingPlayDates = (() => {

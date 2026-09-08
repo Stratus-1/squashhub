@@ -374,15 +374,32 @@ export default function Bookings() {
   const myClub = myClubData?.club;
   const { format: fmtMoney } = useClubCurrency();
   const money = (n: number) => fmtMoney(n, 2);
-  const externalProvider = ((myClub as any)?.external_booking_provider as string | null) ||
-    ((myClub as any)?.uses_gobook ? "gobook" : null);
-  const externalUrl = ((myClub as any)?.external_booking_url as string | undefined) ||
-    ((myClub as any)?.gobook_url as string | undefined);
-  const externalLabel = ((myClub as any)?.external_booking_label as string | undefined) ||
+  // Booking-provider settings are read straight from the club row. The club
+  // object handed to this page can come from several sources (membership join,
+  // tenant context) and some of those carry a reduced column set, which used to
+  // make the "setup not finished" warning vanish after a hard refresh.
+  const { data: bookingSettings } = useQuery({
+    queryKey: ["club-booking-provider", myClub?.id],
+    queryFn: async () => {
+      const { data } = await fromExt("clubs")
+        .select("external_booking_provider, external_booking_url, external_booking_label, uses_gobook, gobook_url, gobook_api_enabled")
+        .eq("id", myClub!.id)
+        .maybeSingle();
+      return (data as any) || null;
+    },
+    enabled: !!myClub?.id,
+    staleTime: 60_000,
+  });
+  const clubBooking: any = bookingSettings || (myClub as any) || {};
+  const externalProvider = (clubBooking.external_booking_provider as string | null) ||
+    (clubBooking.uses_gobook ? "gobook" : null);
+  const externalUrl = (clubBooking.external_booking_url as string | undefined) ||
+    (clubBooking.gobook_url as string | undefined);
+  const externalLabel = (clubBooking.external_booking_label as string | undefined) ||
     (externalProvider === "gobook" ? "GoBook" : externalProvider === "courtmanager" ? "Court Manager" : "the booking system");
   const usesExternalBooking = !!externalProvider && externalProvider !== "none" && !!externalUrl;
   // Official GoBook API mode: one club-level API account, no member logins.
-  const gobookApiMode = externalProvider === "gobook" && !!(myClub as any)?.gobook_api_enabled;
+  const gobookApiMode = externalProvider === "gobook" && !!clubBooking.gobook_api_enabled;
   const bookingProviderActive = gobookApiMode || usesExternalBooking;
   // Admin picked an external provider but hasn't finished the setup (no URL,
   // or GoBook chosen without the API connection enabled yet).

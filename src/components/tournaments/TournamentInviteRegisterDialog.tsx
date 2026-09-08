@@ -14,6 +14,7 @@ import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { isSupportedGateway, startClubCheckout, pollStitchPayment, clearPendingClubSession, type GatewayId } from "@/lib/club-payments";
 import { CalendarClock, Check, CheckCircle, CreditCard, Landmark, Loader2, Search, Users } from "lucide-react";
+import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
 import { toast } from "sonner";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -116,8 +117,26 @@ export function TournamentInviteRegisterDialog({
   const accepted = !!registration?.confirmed_at;
   const settled = status === "paid" || status === "waived";
   const feeOutstanding = paymentRequired && !settled;
-  // Option 1 gate: with a fee, partners may only be picked once you are paid.
-  const canPickPartner = playerPicksPartner && accepted && (!paymentRequired || settled);
+  /**
+   * A doubles entry is only a real entry once a partner is named, so partner
+   * selection is required as soon as the player has accepted — with or without
+   * an outstanding entry fee. When a fee applies the pair simply stays unlocked
+   * until both entries are paid, and the player says who is paying.
+   */
+  const canPickPartner = playerPicksPartner && accepted;
+
+  /** Doubles divisions this player entered — one partner slot each. */
+  const doublesPickerDivisions = useMemo(
+    () =>
+      (divisionOptions as any[])
+        .filter(
+          (d) =>
+            (chosenDivisions.length === 0 || chosenDivisions.includes(d.group_number)) &&
+            (String(d.match_type || "").toLowerCase() === "doubles" || (isDoubles && !d.match_type)),
+        )
+        .map((d) => ({ group_number: d.group_number, label: d.label, match_type: "doubles" as const })),
+    [divisionOptions, chosenDivisions, isDoubles],
+  );
 
   // Who is already in the draw (used to hide paired-up members and, when a fee
   // applies, to restrict the list to players who registered and paid).
@@ -142,13 +161,14 @@ export function TournamentInviteRegisterDialog({
         taken.add(r.club_member_id);
         taken.add(r.partner_member_id);
       }
-      if (r.status === "paid" || r.status === "waived") registeredPaid.add(r.club_member_id);
+      if (r.status !== "cancelled" && r.status !== "declined") registeredPaid.add(r.club_member_id);
     });
     let list = (members as any[]).filter((m) => m.id !== memberId && !taken.has(m.id));
     const g = champ?.gender;
     if (g === "men") list = list.filter((m) => m.gender && ["men", "male", "m"].includes(String(m.gender).toLowerCase()));
     else if (g === "ladies") list = list.filter((m) => m.gender && ["ladies", "female", "f", "women"].includes(String(m.gender).toLowerCase()));
-    // With an entry fee, only players who have registered and paid can be picked.
+    // With an entry fee, partners are picked from players in this tournament —
+    // they do not have to have paid yet; the pair locks once both fees are in.
     if (paymentRequired) list = list.filter((m) => registeredPaid.has(m.id));
     return list;
   }, [others, members, memberId, champ?.gender, paymentRequired]);
@@ -379,26 +399,39 @@ export function TournamentInviteRegisterDialog({
             </div>
           )}
 
-          {/* Step 2 — partner */}
-          {playerPicksPartner && accepted && (
+          {/* Step 2 — partner (required for every doubles entry) */}
+          {canPickPartner && (
             <div className={registration.partner_member_id
               ? "pt-2 border-t border-border/60 space-y-1.5"
               : "rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-1.5"}>
               <p className={registration.partner_member_id
                 ? "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                 : "text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400"}>
-                Step 2 — select your doubles partner
+                Step 2 — select your doubles partner (required)
               </p>
               {registration.partner_member_id ? (
                 <p className="text-xs flex items-center gap-1">
                   <Check className="w-3 h-3 text-primary" /> {getName(registration.partner) || "Partner selected"}
                 </p>
-              ) : !canPickPartner ? (
-                <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                  Settle your entry fee first — you can select your partner as soon as your payment is confirmed.
-                </p>
+              ) : doublesPickerDivisions.length > 0 ? (
+                <>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Your doubles entry is only complete once you name a partner.
+                    {paymentRequired
+                      ? " You'll also say who is paying — if your partner pays their own entry we send them a confirmation with a payment link."
+                      : ""}
+                  </p>
+                  <DoublesPartnerPicker
+                    champId={String(champ.id)}
+                    clubId={clubId}
+                    divisions={doublesPickerDivisions}
+                  />
+                </>
               ) : (
                 <>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Your doubles entry is only complete once you name a partner.
+                  </p>
                   <div className="flex items-center gap-2">
                     <Popover open={partnerOpen} onOpenChange={setPartnerOpen}>
                       <PopoverTrigger asChild>
@@ -414,7 +447,7 @@ export function TournamentInviteRegisterDialog({
                           <CommandInput placeholder="Type a name…" className="h-9 text-xs" />
                           <CommandList>
                             <CommandEmpty className="py-4 text-xs text-center text-muted-foreground">
-                              {paymentRequired ? "No registered and paid player available yet." : "No available member found."}
+                              {paymentRequired ? "No player in this tournament available yet." : "No available member found."}
                             </CommandEmpty>
                             <CommandGroup>
                               {eligiblePartners.map((m: any) => (
@@ -435,8 +468,8 @@ export function TournamentInviteRegisterDialog({
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     {paymentRequired
-                      ? "Only players who have already registered and paid can be selected. If your partner isn't listed yet, ask them to register first — or come back and pick them later."
-                      : "Pick any eligible club member — they don't have to register first. Not ready yet? Close this and select your partner later from the tournament page or your invite."}
+                      ? "Pick a player from this tournament — they don't have to have paid yet. Your partner gets a confirmation with a payment link, and the pair locks once both entry fees are in."
+                      : "Pick any eligible club member — they don't have to register first. They'll get a confirmation of the pair."}
                   </p>
                 </>
               )}

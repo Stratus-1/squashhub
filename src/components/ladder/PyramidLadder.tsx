@@ -46,7 +46,7 @@ export function PyramidLadder({ entries, rowSizes, onSelect, title }: Props) {
                 onClick={() => onSelect?.(e)}
                 title={`#${e.position} ${e.name}`}
                 className={cn(
-                  "flex flex-col items-center justify-center rounded-md border px-2 py-1 min-w-[74px] max-w-[110px] transition-colors",
+                  "flex flex-col items-center justify-center rounded border px-1 py-0.5 min-w-[62px] max-w-[92px] transition-colors leading-tight",
                   e.isMe
                     ? "bg-primary text-primary-foreground border-primary"
                     : e.challengeable
@@ -54,19 +54,19 @@ export function PyramidLadder({ entries, rowSizes, onSelect, title }: Props) {
                       : "bg-card border-border hover:bg-muted/40",
                 )}
               >
-                <span className="text-[10px] font-bold tabular-nums opacity-70">#{e.position}</span>
-                <span className="text-[11px] font-medium truncate w-full text-center">{e.name}</span>
+                <span className="text-[9px] font-bold tabular-nums opacity-70">#{e.position}</span>
+                <span className="text-[10px] font-medium break-words w-full text-center hyphens-auto">{e.name}</span>
               </button>
             ))}
           </div>
         ))}
       </div>
-      <div className="flex items-center justify-center gap-3 pt-1 text-[10px] text-muted-foreground">
+      <div className="flex items-center justify-center gap-3 pt-1 text-[9px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-sm bg-primary inline-block" /> You
+          <span className="w-2 h-2 rounded-sm bg-primary inline-block" /> You
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-sm bg-accent/40 border border-accent inline-block" /> Can challenge
+          <span className="w-2 h-2 rounded-sm bg-accent/40 border border-accent inline-block" /> Can challenge
         </span>
       </div>
     </div>

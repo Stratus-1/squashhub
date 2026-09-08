@@ -402,6 +402,9 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
 
 export function LadderTab({ clubId }: { clubId: string }) {
   const { data: members = [], isLoading, error } = useClubMembers(clubId);
+  const { data: sportyHqRatings } = useSportyHqRatings(
+    useMemo(() => (members as { id: string }[]).map((m) => m.id), [members]),
+  );
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderMember[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderMember[] | null>(null);

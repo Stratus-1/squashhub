@@ -159,9 +159,17 @@ export default function TournamentInvite() {
   const partnerSection =
     !isTest && data?.champ_id && hasDoublesChoice ? (
       <div className="space-y-2 pt-1">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Doubles partner
-        </p>
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+            Doubles partner required
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Your doubles entry is only complete once you name a partner.
+            {feeCents > 0
+              ? " You'll also say who is paying — if your partner pays their own entry, we send them a confirmation with a payment link."
+              : ""}
+          </p>
+        </div>
         <DoublesPartnerPicker
           champId={String(data.champ_id)}
           divisions={enteredDivisions}

@@ -802,7 +802,7 @@ export default function Ladder() {
                 {groupByLeague ? renderGrouped("Club Ladder", allPlayers) : renderColumn("Club Ladder", allPlayers)}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
                 {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
               </div>
@@ -820,7 +820,7 @@ export default function Ladder() {
           {groupByLeague ? renderGrouped("Club Ladder", allPlayers) : renderColumn("Club Ladder", allPlayers)}
         </div>
       ) : (
-        <div className="px-4 mt-3 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="px-4 mt-3 mb-4 grid grid-cols-1 gap-4">
           {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
           {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
         </div>

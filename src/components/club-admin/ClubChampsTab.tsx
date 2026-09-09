@@ -10021,9 +10021,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <DialogHeader>
                     <DialogTitle>Choose individual invitees</DialogTitle>
                     <DialogDescription>
-                      Only members who can receive an invite (email on file or a SquashHub login) are listed.
-                      Picking members only builds the audience — nothing is sent until you click “Send invites now”.
+                      Everyone already on the invitation list starts ticked — untick anyone you want to leave out.
+                      Players from other clubs in the region are included. Only members who can actually be reached
+                      (email or cell number on file) are listed. Nothing is sent until you click “Send invites now”.
                     </DialogDescription>
+
                   </DialogHeader>
                   <div className="space-y-3">
                     <Input

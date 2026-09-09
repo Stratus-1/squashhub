@@ -11968,10 +11968,19 @@ function InvitePreviewDialog({
   const waCallToAction = waNeedsPayment
     ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
     : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+  // Mirrors buildWhatsAppDetails(): full details ride along unless short mode is on.
+  const waFullDetails = builtBody
+    .replace(/^You have been invited to [^\n]*\n*/, "")
+    .replace(/—\s*Tournament details\s*—/g, "")
+    .replace(/—\s*End details\s*—/g, "")
+    .trim();
+  const waDetails = inviteShortMessage || !waFullDetails
+    ? waCallToAction
+    : `${waFullDetails}\n\n${waCallToAction}`;
   const waBody =
     `Hello Player, this is a message from *${clubLabel}* on SquashHub.\n\n` +
     `You are invited to take part in our upcoming tournament: ${tournamentName}.\n\n` +
-    `Event details: ${waCallToAction}\n\n` +
+    `Event details: ${waDetails}\n\n` +
     `To accept the invitation and complete your entry, please open the following link: https://squashhub.co.za/i/… (personal link)\n\n` +
     `We hope to see you on court.`;
 

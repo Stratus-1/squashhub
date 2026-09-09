@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
 const DEFAULT_SHELLY_SERVER = "https://shelly-44-eu.shelly.cloud";
@@ -129,24 +129,9 @@ Deno.serve(async (req) => {
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Identify the caller from the JWT (so we can log who opened the door).
-    const authHeader = req.headers.get("Authorization") || "";
-    const userClient = createClient(url, anon, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data: userData } = await userClient.auth.getUser();
-    const userId = userData?.user?.id ?? null;
-    if (!userId) {
-      return new Response(JSON.stringify({ error: "Not authenticated" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const body = await req.json().catch(() => ({}));
-    const { club_id, door_name = "Main door", device_id: overrideDeviceId } =
-      body as { club_id?: string; door_name?: string; device_id?: string };
+    const { club_id, door_name = "Main door", device_id: overrideDeviceId, source_user_id, source_member_id } =
+      body as { club_id?: string; door_name?: string; device_id?: string; source_user_id?: string; source_member_id?: string };
     if (!club_id) {
       return new Response(JSON.stringify({ error: "Missing club_id" }), {
         status: 400,
@@ -159,33 +144,92 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    // Server-side authorisation: hiding the button is not security. Club
-    // admins / access managers always pass; ordinary members only when the
-    // main door is shown on the dashboard and they hold a permitted role.
-    const { data: doorAllowed, error: doorPermErr } = await admin.rpc("can_open_club_door", {
-      _user_id: userId,
-      _club_id: club_id,
+    // Identify the caller from the normal Supabase JWT. The standalone player
+    // app signs into its own mobile auth bridge, so it calls this function with
+    // the same internal secret used by the existing lights/access backend jobs.
+    const authHeader = req.headers.get("Authorization") || "";
+    const userClient = createClient(url, anon, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false, autoRefreshToken: false },
     });
-    if (doorPermErr) {
-      // Older projects without the function fall back to plain membership.
-      if (!doorPermErr.message?.toLowerCase().includes("can_open_club_door")) throw doorPermErr;
-      const { data: fallbackMember } = await admin
-        .from("club_members")
-        .select("id")
-        .eq("club_id", club_id)
-        .eq("user_id", userId)
+    const { data: userData } = await userClient.auth.getUser();
+    let userId = userData?.user?.id ?? null;
+    let memberId: string | null = null;
+    let usingInternalBridge = false;
+
+    if (!userId) {
+      const internalSecret = req.headers.get("x-internal-secret") || "";
+      const { data: secretRow } = await admin
+        .from("app_settings")
+        .select("value")
+        .eq("key", "lights_private_internal_secret")
         .maybeSingle();
-      if (!fallbackMember) {
+
+      if (!secretRow?.value || secretRow.value !== internalSecret) {
+        return new Response(JSON.stringify({ error: "Not authenticated" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      usingInternalBridge = true;
+
+      if (source_member_id) {
+        const { data: member, error: memberErr } = await admin
+          .from("club_members")
+          .select("id, user_id")
+          .eq("id", source_member_id)
+          .eq("club_id", club_id)
+          .maybeSingle();
+        if (memberErr) throw memberErr;
+        if (!member) {
+          return new Response(JSON.stringify({ error: "Member is not linked to this club" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        memberId = member.id;
+        userId = member.user_id ?? source_user_id ?? null;
+      } else if (source_user_id) {
+        userId = source_user_id;
+      }
+    }
+
+    if (!userId && !memberId) {
+      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!usingInternalBridge && userId) {
+      // Server-side authorisation: hiding the button is not security. Club
+      // admins / access managers always pass; ordinary members only when the
+      // main door is shown on the dashboard and they hold a permitted role.
+      const { data: doorAllowed, error: doorPermErr } = await admin.rpc("can_open_club_door", {
+        _user_id: userId,
+        _club_id: club_id,
+      });
+      if (doorPermErr) {
+        // Older projects without the function fall back to plain membership.
+        if (!doorPermErr.message?.toLowerCase().includes("can_open_club_door")) throw doorPermErr;
+        const { data: fallbackMember } = await admin
+          .from("club_members")
+          .select("id")
+          .eq("club_id", club_id)
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (!fallbackMember) {
+          return new Response(JSON.stringify({ error: "You are not allowed to open this door" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else if (!doorAllowed) {
         return new Response(JSON.stringify({ error: "You are not allowed to open this door" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-    } else if (!doorAllowed) {
-      return new Response(JSON.stringify({ error: "You are not allowed to open this door" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     const { data: secrets, error: secErr } = await admin
@@ -202,12 +246,15 @@ Deno.serve(async (req) => {
     if (!deviceId) throw new Error("Shelly door device ID not configured");
 
     // Resolve the calling member (best-effort — used for the audit trail).
-    const { data: member } = await admin
-      .from("club_members")
-      .select("id")
-      .eq("club_id", club_id)
-      .eq("user_id", userId)
-      .maybeSingle();
+    if (!memberId && userId) {
+      const { data: member } = await admin
+        .from("club_members")
+        .select("id")
+        .eq("club_id", club_id)
+        .eq("user_id", userId)
+        .maybeSingle();
+      memberId = member?.id ?? null;
+    }
 
     const channel = Number(secrets.shelly_door_channel ?? 0);
     const pulseMs = Number(secrets.shelly_door_pulse_ms ?? 3000);
@@ -246,7 +293,7 @@ Deno.serve(async (req) => {
     if (verification.online === false || verification.output !== true) {
       await admin.from("access_events").insert({
         club_id,
-        club_member_id: member?.id ?? null,
+        club_member_id: memberId,
         door_name,
         event_type: "shelly_pulse_failed",
         occurred_at: new Date().toISOString(),
@@ -267,7 +314,7 @@ Deno.serve(async (req) => {
 
     await admin.from("access_events").insert({
       club_id,
-      club_member_id: member?.id ?? null,
+      club_member_id: memberId,
       door_name,
       event_type: "shelly_pulse",
       occurred_at: new Date().toISOString(),

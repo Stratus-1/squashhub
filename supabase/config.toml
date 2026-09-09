@@ -67,6 +67,13 @@ verify_jwt = false
 [functions.device-control]
 verify_jwt = true
 
+# Member door opening still accepts a normal Supabase user JWT from the web app.
+# The standalone player app calls it through the Player API with the protected
+# internal lights/access secret, so the edge gateway must allow the request to
+# reach the function body.
+[functions.shelly-door-trigger]
+verify_jwt = false
+
 # Issues + emails the affiliation invoice after a club submits its roster.
 [functions.issue-association-invoice]
 verify_jwt = true

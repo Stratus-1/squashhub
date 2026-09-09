@@ -1083,9 +1083,12 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
 
 
-  // Start editing an event — pre-fill form
-  const startEdit = (e: any) => {
+  // Start editing an event — pre-fill form with everything that was saved:
+  // schedule, courts, the people who were invited and the chosen channels.
+  const startEdit = async (e: any) => {
     const courtIds = (e.club_event_courts || []).map((c: any) => c.court_id);
+    // Don't let the scope pre-tick effects wipe the saved guest list.
+    skipScopePretick.current = true;
     setEditingEventId(e.id);
     setForm({
       title: e.title || "",
@@ -1100,18 +1103,32 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       invite_scope: e.invite_scope || "all",
       invite_scope_id: e.invite_scope_id || "",
       selected_member_ids: [],
-      notify_push: true,
-      notify_email: true,
-      notify_whatsapp: false,
+      notify_push: e.notify_push ?? true,
+      notify_email: e.notify_email ?? true,
+      notify_whatsapp: e.notify_whatsapp ?? false,
       light_fee_split: e.light_fee_split || "creator",
       is_club_booking: e.is_club_booking || false,
       booking_member_ids: [],
       reserve_courts: courtIds.length > 0 ? "yes" : "no",
       court_ids: courtIds,
-      lights_auto_on: false,
+      lights_auto_on: e.lights_auto_on ?? false,
     });
     setStep(1);
     setCreateOpen(true);
+
+    // Load the existing guest list so an edit never silently re-invites a
+    // different group.
+    try {
+      const { data: rsvps } = await fromExt("club_event_rsvps")
+        .select("club_member_id")
+        .eq("event_id", e.id);
+      const ids = Array.from(new Set((rsvps || []).map((r: any) => String(r.club_member_id))));
+      if (ids.length > 0) {
+        setForm((f) => ({ ...f, selected_member_ids: ids, booking_member_ids: ids }));
+      }
+    } catch (err) {
+      console.warn("[CreateClubEvent] could not load existing invitees:", err);
+    }
   };
 
   // Edit mutation — update event and rebook courts if times/courts changed

@@ -567,15 +567,12 @@ export default function Admin() {
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["admin", "events"],
     queryFn: async () => {
-      const { data, error } = await fromExt("events")
-        .select("*")
-        .order("starts_at", { ascending: true })
-        .limit(200);
-      if (error) throw error;
-      return (data || []) as unknown as AdminEventRow[];
+      const rows = await fetchAdminEvents(200);
+      return rows as unknown as AdminEventRow[];
     },
     enabled: isAdmin || isManager,
   });
+
 
   const { data: rsvpAudienceUserIds } = useQuery({
     queryKey: ["admin", "event-rsvp-audience", broadcast.eventId],

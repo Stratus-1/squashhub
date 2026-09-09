@@ -128,11 +128,12 @@ export function CompetitionRankingCard({
       {affects && (
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <Label className="text-xs font-medium">Ranking weight</Label>
+            <Label className="text-xs font-medium">Rating weight</Label>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Multiplies the points earned here — use a higher weight for stronger competitions.
+              Multiplies the rating earned here — use a higher weight for stronger competitions.
             </p>
           </div>
+
           <Select value={String(weight ?? 1)} onValueChange={(v) => onWeightChange(Number(v))}>
             <SelectTrigger className="h-9 w-24"><SelectValue /></SelectTrigger>
             <SelectContent>

@@ -448,7 +448,7 @@ export default function Home() {
                 {[
                   { icon: Lightbulb, text: "Auto court lights that switch on with bookings" },
                   { icon: ScanFace, text: "Access control that knows who is on court" },
-                  { icon: Check, text: "One simple solution for lights, bookings, and member access" },
+                  { icon: Check, text: "One simple solution for lights, bookings, member access, and billing of court or light fees" },
                   { icon: Check, text: "Very affordable compared to traditional court systems" },
                 ].map((item, i) => (
                   <motion.li

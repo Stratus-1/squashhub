@@ -9664,16 +9664,45 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       />
                       Also invite individually picked members
                     </label>
-                    {inviteTeamBreakdown.length > 0 && (
-                      <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-40 overflow-auto">
-                        {inviteTeamBreakdown.map((t) => (
-                          <div key={t.id} className="flex items-center justify-between text-[11px]">
-                            <span className="truncate">{t.name}</span>
-                            <span className={t.count === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
-                              {t.count} player{t.count === 1 ? "" : "s"}
-                            </span>
-                          </div>
-                        ))}
+                    {inviteTeamRosters.length > 0 && (
+                      <div className="rounded border border-border/50 bg-background/60 p-2 space-y-2 max-h-72 overflow-auto">
+                        <p className="text-[11px] text-muted-foreground">
+                          Everyone below is ticked and will be invited — untick anyone you want to leave out.
+                        </p>
+                        {inviteTeamRosters.map((t) => {
+                          const included = t.players.filter((p) => !inviteExcludedMemberIds.has(p.memberId)).length;
+                          return (
+                            <div key={t.id} className="space-y-0.5">
+                              <div className="flex items-center justify-between text-[11px] font-medium">
+                                <span className="truncate">{t.name}</span>
+                                <span className={included === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
+                                  {included} of {t.players.length} player{t.players.length === 1 ? "" : "s"}
+                                </span>
+                              </div>
+                              {t.players.length === 0 ? (
+                                <p className="text-[11px] text-muted-foreground pl-1">No reachable players in this team.</p>
+                              ) : (
+                                t.players.map((p) => (
+                                  <label
+                                    key={`${t.id}-${p.memberId}`}
+                                    className="flex items-center gap-2 pl-1 text-[11px] cursor-pointer hover:bg-muted/40 rounded"
+                                  >
+                                    <Checkbox
+                                      checked={!inviteExcludedMemberIds.has(p.memberId)}
+                                      onCheckedChange={(c) => toggleInviteMember(p.memberId, !!c)}
+                                    />
+                                    <span className="truncate">
+                                      {p.name}
+                                      {p.clubName ? (
+                                        <span className="text-muted-foreground"> — {p.clubName}</span>
+                                      ) : null}
+                                    </span>
+                                  </label>
+                                ))
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

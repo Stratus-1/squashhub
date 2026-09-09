@@ -196,7 +196,11 @@ Deno.serve(async (req) => {
     if (!p.club_member_id) continue;
     if (p.sportyhq_user_id) memberByShqId.set(Number(p.sportyhq_user_id), p.club_member_id);
     const slug = String(p.profile_path ?? "").toLowerCase().match(/\/ranking\/user\/([^/?]+)/)?.[1];
-    if (slug) memberBySlug.set(slug, p.club_member_id);
+    if (slug) {
+      memberBySlug.set(slug, p.club_member_id);
+      // Result links sometimes carry a duplicate suffix (e.g. "-1").
+      memberBySlug.set(slug.replace(/-\d+$/, ""), p.club_member_id);
+    }
   }
 
   let imported = 0;

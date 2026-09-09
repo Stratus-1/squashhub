@@ -5492,9 +5492,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    * the WhatsApp message too, exactly like email / in-app.
    */
   function buildWhatsAppDetails(needsPayment: boolean) {
+    // Category choice only applies when the tournament has more than one
+    // league set up in the fixture/structure step — with a single league
+    // there is nothing to choose, so don't promise it.
+    const hasMultipleLeagues = (numGroups || 0) > 1;
+    const chooseStep = hasMultipleLeagues ? "choose your category and " : "";
     const cta = needsPayment
-      ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
-      : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+      ? `Open your personal link to ${chooseStep}pay the entry fee. Reply NO to decline.`
+      : `Open your personal link to ${chooseStep}confirm. Reply NO to decline.`;
     if (inviteShortMessage) return cta;
     const full = buildInviteBody()
       .replace(/^You have been invited to [^\n]*\n*/, "")
@@ -11991,9 +11996,12 @@ function InvitePreviewDialog({
   // typed NO reply records a decline.
   // Must match sendChampInvites: paymentRequired && entryFeeAmount > 0.
   const waNeedsPayment = !!paymentRequired && Number(entryFeeRand || 0) > 0;
+  // Mirrors buildWhatsAppDetails(): only promise category choice when the
+  // fixture setup actually holds more than one league.
+  const waChooseStep = (numGroups || 0) > 1 ? "choose your category and " : "";
   const waCallToAction = waNeedsPayment
-    ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
-    : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+    ? `Open your personal link to ${waChooseStep}pay the entry fee. Reply NO to decline.`
+    : `Open your personal link to ${waChooseStep}confirm. Reply NO to decline.`;
   // Mirrors buildWhatsAppDetails(): full details ride along unless short mode is on.
   const waFullDetails = builtBody
     .replace(/^You have been invited to [^\n]*\n*/, "")

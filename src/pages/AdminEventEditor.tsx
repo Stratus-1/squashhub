@@ -214,7 +214,7 @@ export default function AdminEventEditor() {
 
       return await saveAdminEvent({
         id: eventId,
-        clubId: myClub?.id || null,
+        clubId: myClub?.club?.id || null,
         title: cleanTitle,
         description: description.trim() || null,
         startsAtLocal: startsAtLocal.slice(0, 16),

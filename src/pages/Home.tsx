@@ -637,7 +637,7 @@ export default function Home() {
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs">
-                  {tenantsLoading ? "…" : liveClubs.length} Live Clubs
+                  {tenantsLoading ? "…" : liveClubs.length} Clubs
                 </span>
                 <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-100 text-xs">
                   {tenantsLoading ? "…" : nsaClubs.length} NSA Clubs

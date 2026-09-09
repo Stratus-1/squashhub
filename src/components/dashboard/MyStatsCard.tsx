@@ -33,9 +33,12 @@ export function MyStatsCard({ memberId }: Props) {
   // Default to the newest season with data, until the member chooses.
   const activeSeason = season === undefined ? (seasonOptions[0] ?? null) : season;
 
-  const { data: stats } = useMemberStatsSummary(memberId, activeSeason);
+  const { data: summary } = useMemberStatsSummary(memberId, activeSeason);
+  const stats = summary?.byCategory;
+  const computedAt = summary?.computedAt ?? null;
 
   const total = stats?.total;
+
 
   return (
     <Card className="p-3 rounded-2xl">
@@ -123,6 +126,17 @@ export function MyStatsCard({ memberId }: Props) {
         })}
       </div>
 
+      {computedAt && (
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          Updated{" "}
+          {new Date(computedAt).toLocaleDateString(undefined, {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })}
+        </p>
+      )}
+
       <MatchHistorySheet
         open={openCategory !== null}
         onOpenChange={(v) => !v && setOpenCategory(null)}
@@ -133,3 +147,4 @@ export function MyStatsCard({ memberId }: Props) {
     </Card>
   );
 }
+

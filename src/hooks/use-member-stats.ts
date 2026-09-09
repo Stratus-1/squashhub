@@ -49,28 +49,43 @@ export interface MemberMatchRow {
   won: boolean;
 }
 
-/** `null` season = All Time. */
+export interface MemberStatsSummary {
+  byCategory: Record<StatCategory, MemberStatRow>;
+  /** When these figures were last worked out and stored. */
+  computedAt: string | null;
+}
+
+/**
+ * `null` season = All Time.
+ *
+ * Reads the stored (cached) figures written by `refresh_member_stats_cache`.
+ * The database refreshes them on demand only when they are missing or older
+ * than a week; a weekly Sunday job and club-result triggers keep them current,
+ * so logging in never re-pulls everything from SportyHQ/NSA.
+ */
 export function useMemberStatsSummary(memberId?: string | null, seasonYear?: number | null) {
-  return useQuery<Record<StatCategory, MemberStatRow>>({
+  return useQuery<MemberStatsSummary>({
     queryKey: ["member-stats-summary", memberId, seasonYear ?? "all"],
     enabled: !!memberId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("get_member_stats_summary", {
+      const { data, error } = await (supabase as any).rpc("get_member_stats_cached", {
         _member_id: memberId!,
         _season_year: seasonYear ?? null,
       });
       if (error) throw error;
-      const out = {} as Record<StatCategory, MemberStatRow>;
+      const byCategory = {} as Record<StatCategory, MemberStatRow>;
       for (const c of STAT_CATEGORY_ORDER) {
-        out[c] = { category: c, played: 0, won: 0, lost: 0, winRate: 0 };
+        byCategory[c] = { category: c, played: 0, won: 0, lost: 0, winRate: 0 };
       }
+      let computedAt: string | null = null;
       for (const r of (data ?? []) as any[]) {
+        computedAt = computedAt ?? r.computed_at ?? null;
         const cat = r.category as StatCategory;
-        if (!out[cat]) continue;
+        if (!byCategory[cat]) continue;
         const played = Number(r.played ?? 0);
         const won = Number(r.won ?? 0);
-        out[cat] = {
+        byCategory[cat] = {
           category: cat,
           played,
           won,
@@ -78,7 +93,7 @@ export function useMemberStatsSummary(memberId?: string | null, seasonYear?: num
           winRate: played > 0 ? Math.round((won / played) * 100) : 0,
         };
       }
-      return out;
+      return { byCategory, computedAt };
     },
   });
 }
@@ -88,9 +103,9 @@ export function useMemberStatSeasons(memberId?: string | null) {
   return useQuery<number[]>({
     queryKey: ["member-stat-seasons", memberId],
     enabled: !!memberId,
-    staleTime: 30 * 60 * 1000,
+    staleTime: 60 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("get_member_stat_seasons", {
+      const { data, error } = await (supabase as any).rpc("get_member_stat_seasons_cached", {
         _member_id: memberId!,
       });
       if (error) throw error;
@@ -100,6 +115,7 @@ export function useMemberStatSeasons(memberId?: string | null) {
     },
   });
 }
+
 
 export function useMemberMatchHistory(
   memberId?: string | null,

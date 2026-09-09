@@ -8771,6 +8771,39 @@ export type Database = {
           },
         ]
       }
+      member_stats_cache: {
+        Row: {
+          category: string
+          computed_at: string | null
+          lost: number
+          member_id: string
+          played: number
+          season_year: number
+          updated_at: string
+          won: number
+        }
+        Insert: {
+          category: string
+          computed_at?: string | null
+          lost?: number
+          member_id: string
+          played?: number
+          season_year: number
+          updated_at?: string
+          won?: number
+        }
+        Update: {
+          category?: string
+          computed_at?: string | null
+          lost?: number
+          member_id?: string
+          played?: number
+          season_year?: number
+          updated_at?: string
+          won?: number
+        }
+        Relationships: []
+      }
       member_suspension_log: {
         Row: {
           automatic: boolean
@@ -14635,6 +14668,22 @@ export type Database = {
           season_year: number
         }[]
       }
+      get_member_stat_seasons_cached: {
+        Args: { _member_id: string }
+        Returns: {
+          season_year: number
+        }[]
+      }
+      get_member_stats_cached: {
+        Args: { _member_id: string; _season_year?: number }
+        Returns: {
+          category: string
+          computed_at: string
+          lost: number
+          played: number
+          won: number
+        }[]
+      }
       get_member_stats_summary: {
         Args: { _member_id: string; _season_year?: number }
         Returns: {
@@ -15103,6 +15152,11 @@ export type Database = {
         Args: { _mandate_id: string }
         Returns: Json
       }
+      refresh_member_stats_cache: {
+        Args: { _member_id: string }
+        Returns: string
+      }
+      refresh_stale_member_stats: { Args: { _limit?: number }; Returns: number }
       register_doubles_pair: {
         Args: {
           _champ_id: string

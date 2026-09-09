@@ -201,53 +201,21 @@ export default function AdminEventEditor() {
       const cleanTitle = title.trim();
       if (!cleanTitle) throw new Error("Title is required");
       if (!startsAtLocal.trim()) throw new Error("Start time is required");
-
-      const startsAtIso = new Date(startsAtLocal).toISOString();
-      const endsAtIso = endsAtLocal.trim() ? new Date(endsAtLocal).toISOString() : null;
-      const deadlineIso = rsvpDeadlineLocal.trim() ? new Date(rsvpDeadlineLocal).toISOString() : null;
       const cap = capacity.trim() ? Number(capacity) : null;
       if (cap != null && (!Number.isFinite(cap) || cap < 1 || cap > 5000)) throw new Error("Capacity must be 1–5000");
 
-      const payload: any = {
+      return await saveAdminEvent({
+        id: eventId,
+        clubId: myClub?.id || null,
         title: cleanTitle,
         description: description.trim() || null,
-        starts_at: startsAtIso,
-        ends_at: endsAtIso,
-        location: location.trim() || null,
-        court_id: courtId ? Number(courtId) : null,
-        capacity: cap == null ? null : Math.trunc(cap),
-        rsvp_deadline: deadlineIso,
-        visibility,
+        startsAtLocal: startsAtLocal.slice(0, 16),
+        endsAtLocal: endsAtLocal.trim() ? endsAtLocal.slice(0, 16) : null,
         status,
-      };
-
-      // Optional season/kind columns (newer schema). Retry without if DB not migrated yet.
-      payload.kind = kind;
-      payload.season_id = isSeasonEvent ? (seasonId || null) : null;
-
-      const upsert = async (row: any) => {
-        const { data, error } = await (supabase as any)
-          .from("events")
-          .upsert(eventId ? { ...row, id: eventId } : row, { onConflict: "id" })
-          .select("id")
-          .single();
-        if (error) throw error;
-        return data as { id: string };
-      };
-
-      try {
-        return await upsert(payload);
-      } catch (e: any) {
-        const code = e?.code || e?.details?.code;
-        const msg = String(e?.message || "");
-        const maybeMissingColumn = code === "42703" || msg.includes("column") || msg.includes("PGRST");
-        if (!maybeMissingColumn) throw e;
-        const fallback = { ...payload };
-        delete fallback.kind;
-        delete fallback.season_id;
-        return await upsert(fallback);
-      }
+        createdBy: userId,
+      });
     },
+
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
       await queryClient.invalidateQueries({ queryKey: ["events"] });

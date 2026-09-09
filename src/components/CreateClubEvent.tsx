@@ -673,6 +673,23 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       // event + bookings are saved.
       const inviteeIds = await getInviteeIds();
 
+      // The organiser is part of the group too — make sure they are on the
+      // invite list so they get the same reminders as everyone else.
+      if (inviteeIds.length > 0) {
+        try {
+          const { data: creatorMembers } = await supabase
+            .from("club_members")
+            .select("id")
+            .eq("club_id", clubId)
+            .eq("user_id", user.id);
+          for (const cm of creatorMembers || []) {
+            if (!inviteeIds.includes(cm.id)) inviteeIds.push(cm.id);
+          }
+        } catch (e) {
+          console.warn("[CreateClubEvent] could not add organiser to invite list:", e);
+        }
+      }
+
       if (inviteeIds.length > 0) {
         (async () => {
           try {

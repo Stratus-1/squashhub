@@ -138,7 +138,7 @@ export function RankingSimulatorCard({ settings, members, enabled, dirty }: Prop
 
           {!enabled && (
             <p className="text-[11px] text-amber-600">
-              The ranking points system is currently switched off, so real results would award nothing.
+              The rating system is currently switched off, so real results would award nothing.
             </p>
           )}
           <Button

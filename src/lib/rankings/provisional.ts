@@ -15,6 +15,14 @@ export const RANKING_SCOPE_LABELS: Record<RankingScope, string> = {
   national: "National ranking",
 };
 
+/** Short level names for member-facing UI — never repeat the word "ranking". */
+export const RANKING_SCOPE_SHORT_LABELS: Record<RankingScope, string> = {
+  club: "Club",
+  association: "Regional",
+  national: "National",
+};
+
+
 export interface ProvisionalSettings {
   /** When false every player is treated as official immediately. */
   enabled: boolean;

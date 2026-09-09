@@ -92,13 +92,15 @@ export function CompetitionRankingCard({
     <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Label className="text-xs font-medium">Affects official ranking points?</Label>
+          <Label className="text-xs font-medium">Counts towards {RANKING_SCOPE_LABELS[effectiveScope].toLowerCase()}?</Label>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            When on, completed {sourceLabel} results queue point movements for admin approval.
+            Results affect player ratings and may change ranking positions. Completed {sourceLabel}{" "}
+            results queue rating changes for admin approval.
           </p>
         </div>
         <Switch checked={affects} onCheckedChange={onAffectsChange} />
       </div>
+
 
       {showSummary && affects && (
         <div className="flex items-center justify-between gap-3">
@@ -126,11 +128,12 @@ export function CompetitionRankingCard({
       {affects && (
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <Label className="text-xs font-medium">Ranking weight</Label>
+            <Label className="text-xs font-medium">Rating weight</Label>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Multiplies the points earned here — use a higher weight for stronger competitions.
+              Multiplies the rating earned here — use a higher weight for stronger competitions.
             </p>
           </div>
+
           <Select value={String(weight ?? 1)} onValueChange={(v) => onWeightChange(Number(v))}>
             <SelectTrigger className="h-9 w-24"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -150,11 +153,12 @@ export function CompetitionRankingCard({
         <>
           <div className="flex items-start justify-between gap-3">
             <p className="text-xs">
-              <span className="font-medium">Using {RANKING_SCOPE_LABELS[effectiveScope].toLowerCase()} rules</span>
+              <span className="font-medium">Counts towards {RANKING_SCOPE_LABELS[effectiveScope].toLowerCase()}</span>
               <span className="text-muted-foreground">
-                {" "}· {affects ? `results count, ${weight ?? 1}× weight` : "results do not count towards ranking points"}
+                {" "}· {affects ? `results change ratings, ${weight ?? 1}× weight` : "results do not change ratings"}
               </span>
             </p>
+
             <Button
               type="button"
               variant="ghost"
@@ -178,8 +182,9 @@ export function CompetitionRankingCard({
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-destructive" />
           <p className="text-[11px] text-destructive">
             {clubOff
-              ? "Ranking points are switched off for this club, so no points will be awarded. Turn them on under Ladder & Ranking."
-              : `Ranking points from ${sourceLabel} results are switched off for this club, so nothing will be awarded. Enable it under Ladder & Ranking.`}
+              ? "Ratings are switched off for this club, so no rating changes will be awarded. Turn them on under Ladder & Ranking."
+              : `Rating changes from ${sourceLabel} results are switched off for this club, so nothing will be awarded. Enable it under Ladder & Ranking.`}
+
           </p>
         </div>
       )}

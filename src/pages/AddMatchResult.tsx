@@ -852,7 +852,7 @@ export default function AddMatchResult() {
             {rankingEnabled && player1.clubMemberId && player2.clubMemberId && (
               <div className="flex items-start justify-between gap-3 rounded-md border bg-muted/30 px-3 py-2">
                 <div className="min-w-0">
-                  <Label className="text-xs font-medium">Affects ranking points?</Label>
+                  <Label className="text-xs font-medium">Counts towards ranking (changes rating)?</Label>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     Submits a pending points movement for admin approval.
                   </p>

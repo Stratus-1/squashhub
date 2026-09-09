@@ -7,7 +7,20 @@ import { useMemberRankings, useNearbyRankings } from "@/hooks/use-member-ranking
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { useProvisionalSettings, useClubRankedMatchCounts } from "@/hooks/use-provisional-ranking";
 import { ProvisionalBadge } from "@/components/rankings/ProvisionalBadge";
-import { DEFAULT_PROVISIONAL, RANKING_SCOPE_LABELS, RankingScope } from "@/lib/rankings/provisional";
+import {
+  DEFAULT_PROVISIONAL,
+  RANKING_SCOPE_LABELS,
+  RANKING_SCOPE_SHORT_LABELS,
+  RankingScope,
+} from "@/lib/rankings/provisional";
+
+/** Rating = the numeric points value behind a ranking position. */
+function formatRating(points: number) {
+  return points >= 100
+    ? Math.round(points).toLocaleString()
+    : points.toFixed(2);
+}
+
 
 interface Props {
   clubId: string | null;
@@ -88,35 +101,45 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
                 onClick={() => tappable && setDetail(scope)}
                 className="w-full flex items-center justify-between gap-3 py-2 text-left disabled:cursor-default"
               >
-                <div className="min-w-0">
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    {RANKING_SCOPE_LABELS[scope]}
-                    {scope === "club" && r && (
-                      <ProvisionalBadge
-                        matchesPlayed={myMatches}
-                        settings={clubSettings}
-                        scopeLabel={RANKING_SCOPE_LABELS.club}
-                      />
-                    )}
-                  </div>
+                <div className="min-w-0 flex items-center gap-2">
+                  <span className="w-16 shrink-0 text-[11px] font-semibold text-foreground">
+                    {RANKING_SCOPE_SHORT_LABELS[scope]}
+                  </span>
                   {r ? (
-                    <p className="text-base font-heading font-bold text-foreground tabular-nums leading-tight">
-                      #{r.rank}
-                      <span className="text-[12px] font-medium text-muted-foreground">
-                        {" "}
-                        · {r.points.toFixed(2)} pts
+                    <span className="flex items-baseline gap-3 min-w-0">
+                      <span className="leading-tight">
+                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground mr-1">
+                          Rank
+                        </span>
+                        <span className="text-base font-heading font-bold tabular-nums text-foreground">
+                          #{r.rank}
+                        </span>
                       </span>
-                    </p>
+                      <span className="leading-tight">
+                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground mr-1">
+                          Rating
+                        </span>
+                        <span className="text-[13px] font-semibold tabular-nums text-foreground/80">
+                          {formatRating(r.points)}
+                        </span>
+                      </span>
+                    </span>
                   ) : (
-                    <p className="text-base font-heading font-bold text-muted-foreground leading-tight">
-                      —
-                    </p>
+                    <span className="text-[12px] text-muted-foreground">Not ranked yet</span>
+                  )}
+                  {scope === "club" && r && (
+                    <ProvisionalBadge
+                      matchesPlayed={myMatches}
+                      settings={clubSettings}
+                      scopeLabel={RANKING_SCOPE_SHORT_LABELS.club}
+                    />
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Movement delta={delta} />
                   {tappable && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                 </div>
+
               </button>
             );
           })}
@@ -132,15 +155,18 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
           </SheetHeader>
           {detail === "club" ? (
             <p className="py-4 text-[13px] text-muted-foreground">
-              You are <strong className="text-foreground">#{rankings?.club?.rank}</strong> on the
-              club points list with{" "}
-              <strong className="text-foreground">{rankings?.club?.points.toFixed(2)}</strong>{" "}
-              points.{" "}
+              You are ranked <strong className="text-foreground">#{rankings?.club?.rank}</strong> at
+              the club with a rating of{" "}
+              <strong className="text-foreground">
+                {formatRating(rankings?.club?.points ?? 0)}
+              </strong>
+              .{" "}
               <a href="/ladder" className="text-primary hover:underline">
                 Open the club ladder
               </a>
               .
             </p>
+
           ) : nearby.isLoading ? (
             <div className="py-8 grid place-items-center">
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />

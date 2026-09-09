@@ -124,9 +124,9 @@ export function LadderConfigCard({ clubId }: Props) {
 
       <div className="flex items-center gap-3 rounded-md border p-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium">Challenges affect club ranking points</p>
+          <p className="text-sm font-medium">Challenges affect club ratings</p>
           <p className="text-[11px] text-muted-foreground">
-            Off by default — ladder position and ranking points stay independent.
+            Off by default — ladder position and player ratings stay independent.
           </p>
         </div>
         <Switch
@@ -137,32 +137,32 @@ export function LadderConfigCard({ clubId }: Props) {
 
       {draft.affects_club_ranking && (
         <div className="rounded-md border p-3 space-y-3">
-          <p className="text-sm font-medium">Ranking sync</p>
+          <p className="text-sm font-medium">Rating sync</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">How challenges award points</Label>
+              <Label className="text-xs">How challenges change ratings</Label>
               <Select
                 value={draft.ranking_sync_mode}
                 onValueChange={(v) => set("ranking_sync_mode", v as LadderConfig["ranking_sync_mode"])}
               >
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="formula">Club points formula</SelectItem>
+                  <SelectItem value="formula">Club rating formula</SelectItem>
                   <SelectItem value="mirror">Mirror the ladder</SelectItem>
-                  <SelectItem value="none">No points from challenges</SelectItem>
+                  <SelectItem value="none">No rating change from challenges</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-muted-foreground">
                 {draft.ranking_sync_mode === "mirror"
-                  ? "Winner's points are lifted just above the beaten player, so points follow the ladder exactly."
+                  ? "Winner's rating is lifted just above the beaten player, so ratings follow the ladder exactly."
                   : draft.ranking_sync_mode === "none"
                     ? "Challenges move the ladder only."
-                    : "Uses the club's base / upset / floor formula from Ranking Points."}
+                    : "Uses the club's base / upset / floor formula from Player Ratings."}
               </p>
             </div>
 
             {draft.ranking_sync_mode === "mirror" &&
-              numberField("Mirror margin (points)", "ranking_mirror_margin", "Points added above the beaten player.", 0, 100)}
+              numberField("Mirror margin (rating)", "ranking_mirror_margin", "Rating added above the beaten player.", 0, 100)}
           </div>
         </div>
       )}
@@ -171,8 +171,8 @@ export function LadderConfigCard({ clubId }: Props) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Apply results automatically</p>
           <p className="text-[11px] text-muted-foreground">
-            Single setting for approvals: on = ladder moves and ranking points post straight away.
-            Off = both wait for admin approval in "Pending ladder moves" and "Pending ranking points".
+            Single setting for approvals: on = ladder moves and rating changes post straight away.
+            Off = both wait for admin approval in "Pending ladder moves" and "Pending rating changes".
           </p>
         </div>
         <Switch

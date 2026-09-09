@@ -192,8 +192,8 @@ export const CAPABILITY_META: Record<Capability, CapabilityMeta> = {
   },
   ranking_points: {
     slug: "ranking_points",
-    label: "Ranking Points",
-    question: "Do you award ranking points for matches?",
+    label: "Player Ratings",
+    question: "Do you award player ratings for matches?",
     description: "Points ledger and awarding rules on top of the ladder.",
     group: "competition",
     requires: ["ladder"],

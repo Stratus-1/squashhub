@@ -149,9 +149,11 @@ Deno.serve(async (req) => {
     const classification: ReplyClassification = classifyReply(buttonPayload, text);
     const answer = classification.intent;
 
-    // Log the inbound message. Replies land inside the free 24h service window,
-    // so they are recorded at the (cheaper) service rate.
+    // Log every inbound message, even when we cannot resolve a club, so replies
+    // always leave an audit trail. Replies land inside the free 24h service
+    // window, so they are recorded at the (cheaper) service rate.
     let unitCost = 0;
+    let ownMode = false;
     if (clubId) {
       // Clubs on their own WhatsApp Business account are billed by their own
       // provider, never by SquashHub.
@@ -160,7 +162,7 @@ Deno.serve(async (req) => {
         .select("whatsapp_sender_mode")
         .eq("id", clubId)
         .maybeSingle();
-      const ownMode = clubRow?.whatsapp_sender_mode === "own";
+      ownMode = clubRow?.whatsapp_sender_mode === "own";
       if (!ownMode) {
         const { data: rate } = await admin.rpc("whatsapp_rate", {
           _club_id: clubId,
@@ -168,22 +170,30 @@ Deno.serve(async (req) => {
         });
         unitCost = Number(rate ?? 0);
       }
-      await admin.from("whatsapp_send_log").insert({
-        club_id: clubId,
-        member_id: memberId,
-        to_phone: from,
-        from_phone: from,
-        direction: "in",
-        kind: buttonPayload ? "button_reply" : "reply",
-        category: "service",
-        unit_cost: unitCost,
-        billable: !ownMode,
-        body: buttonPayload || text,
-        provider_sid: sid,
-        status: "received",
-        payload: { ...params, intent: answer, intent_reason: classification.reason },
-      });
     }
+    const { error: logErr } = await admin.from("whatsapp_send_log").insert({
+      club_id: clubId,
+      member_id: memberId,
+      to_phone: normalisePhone(params.To) ?? from,
+      from_phone: from,
+      direction: "in",
+      kind: buttonPayload ? "button_reply" : "reply",
+      category: "service",
+      unit_cost: unitCost,
+      billable: Boolean(clubId) && !ownMode,
+      body: buttonPayload || text,
+      provider_sid: sid,
+      status: "received",
+      payload: {
+        ...params,
+        intent: answer,
+        intent_reason: classification.reason,
+        interaction_kind: interaction?.kind ?? null,
+        interaction_target_id: interaction?.target_id ?? null,
+      },
+    });
+    if (logErr) console.error("inbound log failed", logErr);
+
 
     if (answer === "stop") {
       if (memberId) {

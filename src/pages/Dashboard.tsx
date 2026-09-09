@@ -844,11 +844,8 @@ export default function Dashboard() {
 
       <div className="px-4 mt-3 space-y-3">
         <MyStatsCard memberId={myMemberId} />
-        <DashboardSportyhqCard
-          memberId={myMemberId}
-          personId={(activeMember as any)?.person_id ?? (myClubMember as any)?.person_id ?? null}
-        />
         <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+
 
       </div>
 

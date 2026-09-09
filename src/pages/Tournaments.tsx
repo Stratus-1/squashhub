@@ -40,6 +40,8 @@ import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
 import { parseRoundDeadlines, deadlineForRound, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
+
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
 import { useHasPermission } from "@/hooks/use-club-permissions";
@@ -385,13 +387,18 @@ export default function Tournaments() {
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
-  const [groupBySlot, setGroupBySlot] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("tournaments.groupBySlot") === "1";
+  // "round" (default) | "slot" | "flat"
+  const [groupMode, setGroupMode] = useState<"round" | "slot" | "flat">(() => {
+    if (typeof window === "undefined") return "round";
+    const saved = window.localStorage.getItem("tournaments.groupMode");
+    if (saved === "round" || saved === "slot" || saved === "flat") return saved;
+    // Migrate the old boolean toggle.
+    return window.localStorage.getItem("tournaments.groupBySlot") === "1" ? "slot" : "round";
   });
   useEffect(() => {
-    try { window.localStorage.setItem("tournaments.groupBySlot", groupBySlot ? "1" : "0"); } catch {}
-  }, [groupBySlot]);
+    try { window.localStorage.setItem("tournaments.groupMode", groupMode); } catch {}
+  }, [groupMode]);
+
 
 
   const availableDates = useMemo(() => {
@@ -607,10 +614,96 @@ export default function Tournaments() {
     return COURT_TINTS[idx];
   };
 
+  // Round name + play-by date for a given match, taken from the round plan
+  // merged with the rounds actually created from the draw.
+  const roundMeta = (champId: string, roundNumber?: number | null) => {
+    const champ = champs.find((c: any) => c.id === champId);
+    const list = mergeRoundDeadlines(
+      parseRoundDeadlines((champ as any)?.round_play_by),
+      roundsByChamp.get(champId) || [],
+    );
+    const n = Number(roundNumber);
+    const entry = Number.isFinite(n) && n >= 1 ? list[n - 1] : undefined;
+    return {
+      label: (entry?.label || "").trim() || (Number.isFinite(n) ? `Round ${n}` : ""),
+      date: deadlineForRound(list, roundNumber),
+      notes: entry?.notes || "",
+    };
+  };
+
+  const renderRoundGroups = (list: any[]) => {
+    const groups = new Map<number, any[]>();
+    list.forEach((m) => {
+      const n = Number(m.round_number);
+      const key = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(m);
+    });
+    const keys = Array.from(groups.keys()).sort((a, b) => (a === 0 ? 1 : b === 0 ? -1 : a - b));
+    return (
+      <div className="space-y-2">
+        {keys.map((n) => {
+          const items = groups.get(n)!;
+          // Progress is measured against every game of that round, not just
+          // the filtered view.
+          const all = (allMatches as any[]).filter((m: any) => {
+            const r = Number(m.round_number);
+            const k = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
+            return k === n && m.status !== "placeholder";
+          });
+          const done = all.filter((m: any) => isTerminalMatchStatus(m.status)).length;
+          const outstanding = all.length - done;
+          const labels = Array.from(
+            new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).label).filter(Boolean)),
+          );
+          const heading = n === 0 ? "Pool games" : labels.join(" / ") || `Round ${n}`;
+          const dates = Array.from(
+            new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).date).filter(Boolean)),
+          ).sort() as string[];
+          const playBy = dates[0] || null;
+          const notes = Array.from(
+            new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).notes).filter(Boolean)),
+          );
+          return (
+            <details key={n} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
+              <summary className="cursor-pointer select-none flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
+                <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
+                <span className="uppercase tracking-wider">{heading}</span>
+                <span className="text-muted-foreground font-normal">
+                  {all.length > 0 && outstanding > 0
+                    ? `${outstanding} game${outstanding === 1 ? "" : "s"} left of ${all.length}`
+                    : `${items.length} game${items.length === 1 ? "" : "s"}`}
+                </span>
+                {n !== 0 && outstanding > 0 && done > 0 && (
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/60 text-amber-700 dark:text-amber-300">
+                    still outstanding
+                  </Badge>
+                )}
+                {playBy && (
+                  <span className="ml-auto font-normal text-[11px] text-amber-700 dark:text-amber-300">
+                    Please book your court and play by {format(new Date(`${playBy}T00:00:00`), "EEE dd MMM")}
+                  </span>
+                )}
+              </summary>
+              {notes.length > 0 && (
+                <p className="px-3 pt-2 text-[11px] text-muted-foreground">{notes.join(" · ")}</p>
+              )}
+              <div className="p-2 space-y-1.5">{items.map((m, i) => renderMatchRow(m, i, items))}</div>
+            </details>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderMatchList = (list: any[]) => {
-    if (!groupBySlot) {
+    if (groupMode === "round") {
+      return renderRoundGroups(list);
+    }
+    if (groupMode === "flat") {
       return <div className="space-y-1.5">{list.map(renderMatchRow)}</div>;
     }
+
     // Group by date + time slot
     const groups = new Map<string, any[]>();
     list.forEach((m) => {
@@ -715,7 +808,7 @@ export default function Tournaments() {
 
     // Self-scheduled rounds carry a "must be played by" date. Show it on any
     // fixture that still has no court/time so players know their booking cut-off.
-    const playBy = !m.scheduled_date && !isPlaceholder
+    const playBy = !m.scheduled_date && !isPlaceholder && groupMode !== "round"
       ? playByNudge(
           deadlineForRound(
             mergeRoundDeadlines(
@@ -1413,15 +1506,26 @@ export default function Tournaments() {
                           </SelectContent>
                         </Select>
                       )}
-                      <Button
-                        variant={groupBySlot ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setGroupBySlot((v) => !v)}
-                        title="Toggle grouping by time slot"
-                      >
-                        {groupBySlot ? "Grouped by slot" : "Group by slot"}
-                      </Button>
+                      <div className="inline-flex rounded-md border overflow-hidden">
+                        {([
+                          { v: "round", l: "By round" },
+                          { v: "slot", l: "By slot" },
+                          { v: "flat", l: "List" },
+                        ] as const).map((o) => (
+                          <button
+                            key={o.v}
+                            type="button"
+                            onClick={() => setGroupMode(o.v)}
+                            className={cn(
+                              "h-8 px-2.5 text-xs font-medium",
+                              groupMode === o.v ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted",
+                            )}
+                          >
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+
                       {(poolFilter !== "all" || dateFilter !== "all") && (
                         <Button
                           variant="ghost"

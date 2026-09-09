@@ -9818,7 +9818,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     checked={inviteTiming === "now"}
                     onChange={() => setInviteTiming("now")}
                   />
-                  Send immediately on save
+                  Remind me to send as soon as it's saved
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input

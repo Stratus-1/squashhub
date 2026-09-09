@@ -1506,15 +1506,26 @@ export default function Tournaments() {
                           </SelectContent>
                         </Select>
                       )}
-                      <Button
-                        variant={groupBySlot ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setGroupBySlot((v) => !v)}
-                        title="Toggle grouping by time slot"
-                      >
-                        {groupBySlot ? "Grouped by slot" : "Group by slot"}
-                      </Button>
+                      <div className="inline-flex rounded-md border overflow-hidden">
+                        {([
+                          { v: "round", l: "By round" },
+                          { v: "slot", l: "By slot" },
+                          { v: "flat", l: "List" },
+                        ] as const).map((o) => (
+                          <button
+                            key={o.v}
+                            type="button"
+                            onClick={() => setGroupMode(o.v)}
+                            className={cn(
+                              "h-8 px-2.5 text-xs font-medium",
+                              groupMode === o.v ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted",
+                            )}
+                          >
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+
                       {(poolFilter !== "all" || dateFilter !== "all") && (
                         <Button
                           variant="ghost"

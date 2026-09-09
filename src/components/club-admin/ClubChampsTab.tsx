@@ -6203,6 +6203,75 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     entryFeeAmount,
   ]);
 
+  /**
+   * Inline team rosters for the invite step. The names live directly under each
+   * ticked team so the roster and the selection are the same thing — no
+   * separate pop-up list to reconcile. Cross-club names come from the secure
+   * directory RPC (name + club + contactability only, never contact details).
+   */
+  const teamRosterMemberIdKey = useMemo(() => {
+    const ids = new Set<string>();
+    audienceLeagueIds.forEach((leagueId) => {
+      (audienceRegistrationsByLeague.get(leagueId) || []).forEach((id) => id && ids.add(id));
+    });
+    return Array.from(ids).sort().join(",");
+  }, [audienceLeagueIds, audienceRegistrationsByLeague]);
+
+  const { data: teamRosterDirectory = new Map<string, { name: string; clubName: string | null; contactable: boolean }>() } =
+    useQuery({
+      queryKey: ["champ-team-roster-directory", editingChampId, clubId, teamRosterMemberIdKey],
+      queryFn: async () => {
+        const map = new Map<string, { name: string; clubName: string | null; contactable: boolean }>();
+        const ids = teamRosterMemberIdKey ? teamRosterMemberIdKey.split(",") : [];
+        if (!ids.length) return map;
+        const { data, error } = await (supabase as any).rpc("tournament_invite_member_directory", {
+          p_tournament_id: editingChampId,
+          p_club_id: clubId,
+          p_member_ids: ids,
+        });
+        if (error) throw error;
+        for (const row of (data || []) as any[]) {
+          map.set(row.member_id, {
+            name: row.full_name || "Unknown member",
+            clubName: row.club_name || null,
+            contactable: !!row.contactable,
+          });
+        }
+        return map;
+      },
+      enabled: !!clubId && !!teamRosterMemberIdKey,
+      staleTime: 60_000,
+      retry: false,
+    });
+
+  const inviteTeamRosters = useMemo(() => {
+    const dir = teamRosterDirectory as Map<string, { name: string; clubName: string | null; contactable: boolean }>;
+    return inviteTeamBreakdown.map((t) => ({
+      id: t.id,
+      name: t.name,
+      players: (audienceRegistrationsByLeague.get(t.id) || [])
+        .map((memberId) => {
+          const remote = dir.get(memberId);
+          return {
+            memberId,
+            name: memberNameById.get(memberId) || remote?.name || "Unknown member",
+            clubName: remote?.clubName || null,
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+  }, [inviteTeamBreakdown, audienceRegistrationsByLeague, teamRosterDirectory, memberNameById]);
+
+  const toggleInviteMember = (memberId: string, include: boolean) => {
+    setInviteExcludedMemberIds((prev) => {
+      const next = new Set(prev);
+      if (include) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  };
+
+
 
   function inviteeStatusLabel(r: { status: string; invited: boolean; category?: any }) {
     const category =
@@ -9595,16 +9664,45 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       />
                       Also invite individually picked members
                     </label>
-                    {inviteTeamBreakdown.length > 0 && (
-                      <div className="rounded border border-border/50 bg-background/60 p-2 space-y-0.5 max-h-40 overflow-auto">
-                        {inviteTeamBreakdown.map((t) => (
-                          <div key={t.id} className="flex items-center justify-between text-[11px]">
-                            <span className="truncate">{t.name}</span>
-                            <span className={t.count === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
-                              {t.count} player{t.count === 1 ? "" : "s"}
-                            </span>
-                          </div>
-                        ))}
+                    {inviteTeamRosters.length > 0 && (
+                      <div className="rounded border border-border/50 bg-background/60 p-2 space-y-2 max-h-72 overflow-auto">
+                        <p className="text-[11px] text-muted-foreground">
+                          Everyone below is ticked and will be invited — untick anyone you want to leave out.
+                        </p>
+                        {inviteTeamRosters.map((t) => {
+                          const included = t.players.filter((p) => !inviteExcludedMemberIds.has(p.memberId)).length;
+                          return (
+                            <div key={t.id} className="space-y-0.5">
+                              <div className="flex items-center justify-between text-[11px] font-medium">
+                                <span className="truncate">{t.name}</span>
+                                <span className={included === 0 ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground"}>
+                                  {included} of {t.players.length} player{t.players.length === 1 ? "" : "s"}
+                                </span>
+                              </div>
+                              {t.players.length === 0 ? (
+                                <p className="text-[11px] text-muted-foreground pl-1">No reachable players in this team.</p>
+                              ) : (
+                                t.players.map((p) => (
+                                  <label
+                                    key={`${t.id}-${p.memberId}`}
+                                    className="flex items-center gap-2 pl-1 text-[11px] cursor-pointer hover:bg-muted/40 rounded"
+                                  >
+                                    <Checkbox
+                                      checked={!inviteExcludedMemberIds.has(p.memberId)}
+                                      onCheckedChange={(c) => toggleInviteMember(p.memberId, !!c)}
+                                    />
+                                    <span className="truncate">
+                                      {p.name}
+                                      {p.clubName ? (
+                                        <span className="text-muted-foreground"> — {p.clubName}</span>
+                                      ) : null}
+                                    </span>
+                                  </label>
+                                ))
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -9612,18 +9710,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                 {(inviteAudience === "individuals" || (inviteAudience === "leagues" && audienceIncludeIndividuals)) && (
                   <div className="space-y-1.5 pt-1">
-                    {editingChampId && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => void openInviteePicker()}
-                      >
-                        <Users className="w-3.5 h-3.5 mr-1" />
-                        Pick from the tournament roster
-                      </Button>
-                    )}
                     <Input
                       value={audienceSearch}
                       onChange={(e) => setAudienceSearch(e.target.value)}

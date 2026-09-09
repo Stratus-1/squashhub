@@ -1,0 +1,1 @@
+UPDATE public.clubs SET history_import_enabled = true WHERE id = 'e41098d4-9b19-4fc0-a082-d43ac13ff32b';

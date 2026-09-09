@@ -15046,6 +15046,7 @@ export type Database = {
       }
       request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
+      reset_event_invites: { Args: { _event_id: string }; Returns: number }
       resolve_qr_short_code: { Args: { _code: string }; Returns: Json }
       respond_doubles_pair: {
         Args: {

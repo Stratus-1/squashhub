@@ -808,7 +808,7 @@ export default function Tournaments() {
 
     // Self-scheduled rounds carry a "must be played by" date. Show it on any
     // fixture that still has no court/time so players know their booking cut-off.
-    const playBy = !m.scheduled_date && !isPlaceholder
+    const playBy = !m.scheduled_date && !isPlaceholder && groupMode !== "round"
       ? playByNudge(
           deadlineForRound(
             mergeRoundDeadlines(

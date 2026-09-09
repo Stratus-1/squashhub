@@ -131,10 +131,7 @@ Deno.serve(async (req) => {
 
   // --- Authorisation: service role, platform admin, or an admin of this club.
   const bearer = (req.headers.get("Authorization") ?? "").replace("Bearer ", "").trim();
-  const maintenanceSecret = Deno.env.get("HISTORY_IMPORT_ADMIN_SECRET") ?? "";
-  const maintenanceHeader = req.headers.get("x-import-secret") ?? "";
-  const isMaintenance = maintenanceSecret.length > 0 && maintenanceHeader === maintenanceSecret;
-  const isServiceRole = isMaintenance || bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const isServiceRole = bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!isServiceRole) {
     const { data: userData } = await supabase.auth.getUser(bearer);
     const uid = userData?.user?.id ?? null;

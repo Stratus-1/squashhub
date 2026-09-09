@@ -385,13 +385,18 @@ export default function Tournaments() {
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
-  const [groupBySlot, setGroupBySlot] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("tournaments.groupBySlot") === "1";
+  // "round" (default) | "slot" | "flat"
+  const [groupMode, setGroupMode] = useState<"round" | "slot" | "flat">(() => {
+    if (typeof window === "undefined") return "round";
+    const saved = window.localStorage.getItem("tournaments.groupMode");
+    if (saved === "round" || saved === "slot" || saved === "flat") return saved;
+    // Migrate the old boolean toggle.
+    return window.localStorage.getItem("tournaments.groupBySlot") === "1" ? "slot" : "round";
   });
   useEffect(() => {
-    try { window.localStorage.setItem("tournaments.groupBySlot", groupBySlot ? "1" : "0"); } catch {}
-  }, [groupBySlot]);
+    try { window.localStorage.setItem("tournaments.groupMode", groupMode); } catch {}
+  }, [groupMode]);
+
 
 
   const availableDates = useMemo(() => {

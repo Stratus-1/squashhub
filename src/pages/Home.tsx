@@ -417,6 +417,17 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-slate-200/95 dark:bg-slate-900/90 backdrop-blur-sm" />
         <div className="relative max-w-6xl mx-auto px-4 py-16">
+          <figure className="mb-10">
+            <img
+              src={legacyVsSmartImg.url}
+              alt="Old squash club control room with tangled wiring and an ageing keypad beside a clean wall with a small wireless smart relay"
+              loading="lazy"
+              className="w-full rounded-2xl border border-slate-900/10 dark:border-white/10 object-cover shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)]"
+            />
+            <figcaption className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 italic text-center">
+              Leave legacy behind — from cluttered legacy hardware to one small smart device.
+            </figcaption>
+          </figure>
           <div className="grid lg:grid-cols-2 gap-10 items-center">
             <div className="space-y-5">
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/5 dark:bg-white/10 border border-slate-900/15 dark:border-white/20 text-slate-900 dark:text-slate-100 text-xs font-semibold">

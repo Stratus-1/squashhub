@@ -86,8 +86,14 @@ export function readyNextRoundScopes(states: SectionProgression[]): NextRoundSco
     .filter((state) => state.section > 0 && state.canGenerateNext && state.currentRoundComplete)
     .map((state) => {
       const qualifierIds = Array.from(
-        new Set(state.currentRoundMatches.map((match) => winnerOf(match)).filter(Boolean) as string[]),
+        new Set([
+          ...(state.currentRoundMatches.map((match) => winnerOf(match)).filter(Boolean) as string[]),
+          // Still in the draw but not part of the round just played (e.g. taken
+          // out of a fixture by an organiser correction) — they must not vanish.
+          ...strandedAliveIds(state),
+        ]),
       );
+
       const roundNumber = state.nextRound?.round_number ?? state.currentRound + 1;
       return {
         key: `${state.groupNumber}-${state.section}`,

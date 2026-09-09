@@ -95,7 +95,7 @@ export default function MatchTracker() {
 
         const { data: bookingRow, error: bookingError } = await supabase
           .from("bookings")
-          .select("id,user_id,opponent_id,is_friendly,challenge_id,court_id,date,start_time,end_time")
+          .select("id,user_id,opponent_id,is_friendly,challenge_id,court_id,date,start_time,end_time,court:court_id(name)")
           .eq("id", bookingId)
           .single();
         if (bookingError) throw bookingError;
@@ -200,7 +200,7 @@ export default function MatchTracker() {
 
   return (
     <div className="bottom-nav-safe">
-      <PageHeader title="Match Tracker" subtitle={`Court ${booking.court_id} · ${booking.date}`} />
+      <PageHeader title="Match Tracker" subtitle={`${(booking as any).court?.name || "Court"} · ${booking.date}`} />
 
       <div className="px-4 mt-3 space-y-3 mb-4">
         <Card className="p-4">

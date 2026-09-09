@@ -204,6 +204,17 @@ export function useBookings(date: string, clubId?: string) {
         memberMap = new Map((members || []).map((m: any) => [m.id, m]));
       }
 
+      // Resolve court display names (never expose internal court ids)
+      const earlyCourtIds = [...new Set(bookings.map((b: any) => b.court_id).filter(Boolean))];
+      let earlyCourtNameMap = new Map<number, string>();
+      if (earlyCourtIds.length > 0) {
+        const { data: courts } = await (supabase as any)
+          .from("courts")
+          .select("id, name")
+          .in("id", earlyCourtIds);
+        earlyCourtNameMap = new Map((courts || []).map((c: any) => [c.id, c.name]));
+      }
+
       // Fetch profile names as fallback
       if (userIds.length === 0) return bookings.map((b: any) => {
         const bookerMember = b.club_member_id ? memberMap.get(b.club_member_id) : null;
@@ -213,8 +224,10 @@ export function useBookings(date: string, clubId?: string) {
           ...b,
           player_name: isTournamentOrClubEvent ? b.guest_name : (bookerMember?.name || b.external_booker_name || b.guest_name || null),
           opponent_name: isTournamentOrClubEvent ? null : (b.guest_name || opponentMember?.name || null),
+          court_name: earlyCourtNameMap.get(b.court_id) || null,
         };
       });
+
 
 
       const { data: profiles } = await supabase
@@ -244,16 +257,9 @@ export function useBookings(date: string, clubId?: string) {
         return null;
       };
 
-      // Fetch court names for display
-      const courtIds = [...new Set(bookings.map((b: any) => b.court_id).filter(Boolean))];
-      let courtNameMap = new Map<number, string>();
-      if (courtIds.length > 0) {
-        const { data: courts } = await (supabase as any)
-          .from("courts")
-          .select("id, name")
-          .in("id", courtIds);
-        courtNameMap = new Map((courts || []).map((c: any) => [c.id, c.name]));
-      }
+      // Court display names (already resolved above)
+      const courtNameMap = earlyCourtNameMap;
+
 
       return bookings.map(b => {
         // Prioritise club_member_id name (supports family/switched accounts)
@@ -533,7 +539,7 @@ export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?
           const profileName = b.opponent_id ? opponentProfileMap.get(b.opponent_id)?.name : null;
           return {
             ...b,
-            court_name: courtNameMap.get(b.court_id) || `Court ${b.court_id}`,
+            court_name: courtNameMap.get(b.court_id) || "Court",
             opponent_name: b.guest_name || memberName || profileName || (b.opponent_id ? "Unknown" : null),
             opponent_rank: null,
           };

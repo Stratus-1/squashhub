@@ -265,7 +265,7 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
                       {(b.club_short_code || b.club_name || "Club").slice(0, 6).toUpperCase()}
                     </Badge>
                     <span className="text-sm text-foreground truncate">
-                      {b.court_name || `Court ${b.court_id}`}
+                      {b.court_name || "Court"}
                     </span>
                     <span className="text-xs tabular-nums text-muted-foreground">
                       {b.start_time?.slice(0, 5)} - {b.end_time?.slice(0, 5)}

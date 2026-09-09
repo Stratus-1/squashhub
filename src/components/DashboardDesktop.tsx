@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,12 +10,13 @@ import {
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
-import { useClubAnalytics } from "@/hooks/use-analytics";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { DashboardDeviceControls } from "@/components/DashboardDeviceControls";
 import { DashboardWifiCard } from "@/components/DashboardWifiCard";
 import { DashboardRouterCard } from "@/components/DashboardRouterCard";
+import { MyStatsCard } from "@/components/dashboard/MyStatsCard";
+import { MyRankingsCard } from "@/components/dashboard/MyRankingsCard";
 import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
 
 interface DashboardDesktopProps {
@@ -24,7 +24,7 @@ interface DashboardDesktopProps {
   clubLogoUrl?: string | null;
   clubId?: string;
   firstName: string;
-  // stats
+  // stats (kept for callers; personal stats now render via MyStatsCard/MyRankingsCard)
   played: number;
   wins: number;
   losses: number;
@@ -49,8 +49,6 @@ interface DashboardDesktopProps {
   eventsSlot?: React.ReactNode;
 }
 
-type StatsScope = "me" | "club";
-
 type Tile = {
   title: string;
   url: string;
@@ -62,35 +60,7 @@ type Tile = {
 
 export function DashboardDesktop(props: DashboardDesktopProps) {
   const navigate = useNavigate();
-  const [scope, setScope] = useState<StatsScope>("me");
-  const { data: clubStats } = useClubAnalytics(30);
-
   const flags = useSidebarFlags();
-  const winRate = Math.max(0, Math.min(100, Math.round(props.winRate)));
-  // Club "win rate" = confirmation rate over last 30 days
-  const clubConfirmRate =
-    clubStats && clubStats.total_matches > 0
-      ? Math.round((clubStats.confirmed_matches / clubStats.total_matches) * 100)
-      : 0;
-  const displayedRate = scope === "club" ? clubConfirmRate : winRate;
-  // Radial conic gradient ring
-  const ringStyle = useMemo(
-    () => ({
-      background: `conic-gradient(hsl(var(--primary)) ${displayedRate * 3.6}deg, hsl(var(--muted-foreground) / 0.25) 0deg)`,
-    }),
-    [displayedRate]
-  );
-
-  // dashboard-01 style stat card: gradient surface, muted label, tabular value.
-  const StatTile = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div
-      data-slot="card"
-      className="rounded-xl border border-border bg-gradient-to-t from-primary/5 to-card shadow-xs backdrop-blur-md p-4 flex flex-col justify-between min-h-[110px]"
-    >
-      <span className="text-xs text-muted-foreground uppercase tracking-wider">{label}</span>
-      <span className="text-3xl font-heading font-bold text-foreground tabular-nums">{value}</span>
-    </div>
-  );
 
   return (
     <div className="@container/main min-h-[calc(100vh-2.5rem)] relative font-sans">

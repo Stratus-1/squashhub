@@ -580,15 +580,21 @@ export default function Admin() {
     queryKey: ["admin", "event-rsvp-audience", broadcast.eventId],
     queryFn: async () => {
       if (!broadcast.eventId) return [] as string[];
-      const { data, error } = await fromExt("event_rsvps")
-        .select("user_id,status")
+      const { data, error } = await supabase
+        .from("club_event_rsvps")
+        .select("status, club_members!inner(user_id)")
         .eq("event_id", broadcast.eventId)
-        .in("status", ["going", "maybe"]);
+        .in("status", ["confirmed", "invited"]);
       if (error) throw error;
-      return [...new Set((data || []).map((r: any) => String(r.user_id)))];
+      const ids = (data || [])
+        .map((r: any) => r?.club_members?.user_id)
+        .filter(Boolean)
+        .map((v: any) => String(v));
+      return [...new Set(ids)];
     },
     enabled: (isAdmin || isManager) && broadcast.audience === "rsvp_event" && !!broadcast.eventId,
   });
+
 
   const { data: auditLog, isLoading: auditLoading } = useQuery({
     queryKey: ["admin", "audit-log"],

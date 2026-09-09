@@ -764,36 +764,16 @@ export default function Admin() {
     queryKey: ["admin", "season-events", viewingSeasonId],
     queryFn: async () => {
       if (!viewingSeasonId) return [] as AdminEventRow[];
-      try {
-        const { data, error } = await fromExt("events")
-          .select("id,title,starts_at,status,visibility,kind,season_id,created_by,created_at,updated_at,ends_at,location,court_id,capacity,rsvp_deadline,description")
-          .eq("season_id", viewingSeasonId)
-          .order("starts_at", { ascending: true })
-          .limit(250);
-        if (error) throw error;
-        return (data || []) as unknown as AdminEventRow[];
-      } catch (e: any) {
-        const code = e?.code || e?.details?.code;
-        const msg = String(e?.message || "");
-        const maybeMissingColumn = code === "42703" || msg.includes("season_id");
-        if (!maybeMissingColumn) throw e;
-
-        // Fallback: if season_id doesn't exist (older DB), approximate by date range.
-        const from = viewingSeason?.starts_on as string | undefined;
-        const to = (viewingSeason?.ends_on as string | null) || new Date().toISOString().slice(0, 10);
-        if (!from) return [] as AdminEventRow[];
-        const { data, error } = await fromExt("events")
-          .select("*")
-          .gte("starts_at", `${from}T00:00:00.000Z`)
-          .lte("starts_at", `${to}T23:59:59.999Z`)
-          .order("starts_at", { ascending: true })
-          .limit(250);
-        if (error) throw error;
-        return (data || []) as unknown as AdminEventRow[];
-      }
+      // Club events have no season column; scope by the season's date range.
+      const from = viewingSeason?.starts_on as string | undefined;
+      const to = (viewingSeason?.ends_on as string | null) || new Date().toISOString().slice(0, 10);
+      if (!from) return [] as AdminEventRow[];
+      const rows = await fetchAdminEventsInRange(from, to, 250);
+      return rows as unknown as AdminEventRow[];
     },
     enabled: (isAdmin || isManager) && !!viewingSeasonId,
   });
+
 
   const seasonMemberRows = useMemo(() => {
     const byUserId = new Map((seasonSnapshot || []).map((r: any) => [String(r.user_id), r]));

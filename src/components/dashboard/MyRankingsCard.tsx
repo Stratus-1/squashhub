@@ -50,8 +50,16 @@ function Movement({ delta }: { delta: number | null }) {
  * lives in MyStatsCard.
  */
 export function MyRankingsCard({ clubId, memberId }: Props) {
-  const { data: rankings, isLoading } = useMemberRankings(clubId, memberId);
+  const { data: rankings, isLoading, refetch } = useMemberRankings(clubId, memberId);
   const [detail, setDetail] = useState<RankingScope | null>(null);
+
+  useSportyhqAutoLink(
+    memberId,
+    !!(rankings?.association || rankings?.national),
+    !isLoading && !!rankings,
+    refetch,
+  );
+
 
   const movement = useRankingMovement(clubId, !!rankings?.club);
   const prev = memberId ? movement.data?.byMember.get(memberId) : undefined;

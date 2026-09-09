@@ -72,9 +72,10 @@ function parseResults(html: string): ParsedResult[] {
     const scoreCell = stripTags(cells[4] ?? "");
     const score = scoreCell.match(/\d+\s*-\s*\d+/)?.[0]?.replace(/\s+/g, "") ?? "";
 
-    // The leading cell carries the win/loss colour for the profile owner.
-    const won = /table-success/.test(cells[0] ?? "");
-    const lost = /table-danger/.test(cells[0] ?? "");
+    // The leading cell's own tag carries the win/loss colour for the profile owner.
+    const firstCellTag = row.match(/<td\b[^>]*>/)?.[0] ?? "";
+    const won = /table-success/.test(firstCellTag);
+    const lost = /table-danger/.test(firstCellTag);
     if (!won && !lost) continue; // retired / unresolved rows
     if (!opponentName) continue;
 
@@ -126,7 +127,10 @@ Deno.serve(async (req) => {
 
   // --- Authorisation: service role, platform admin, or an admin of this club.
   const bearer = (req.headers.get("Authorization") ?? "").replace("Bearer ", "").trim();
-  const isServiceRole = bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const maintenanceSecret = Deno.env.get("HISTORY_IMPORT_ADMIN_SECRET") ?? "";
+  const maintenanceHeader = req.headers.get("x-import-secret") ?? "";
+  const isMaintenance = maintenanceSecret.length > 0 && maintenanceHeader === maintenanceSecret;
+  const isServiceRole = isMaintenance || bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!isServiceRole) {
     const { data: userData } = await supabase.auth.getUser(bearer);
     const uid = userData?.user?.id ?? null;
@@ -206,6 +210,9 @@ Deno.serve(async (req) => {
     }
     const rows = parseResults(html);
     scanned += rows.length;
+    if (rows.length === 0) {
+      errors.push(`no rows for ${shqId} (html ${html.length}, markers ${(html.match(/result-row/g) ?? []).length})`);
+    }
 
     for (const r of rows) {
       const externalId = `result:${r.result_id}`;

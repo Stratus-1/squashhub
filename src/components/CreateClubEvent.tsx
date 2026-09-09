@@ -1453,6 +1453,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
   const resetForm = () => {
     const selfId = activeMember?.id;
+    skipScopePretick.current = false;
     setEditingEventId(null);
     setForm({
       title: "",

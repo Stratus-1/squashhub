@@ -15619,6 +15619,20 @@ export type Database = {
           season_year: number
         }[]
       }
+      tournament_invite_member_directory: {
+        Args: {
+          p_club_id?: string
+          p_member_ids?: string[]
+          p_tournament_id?: string
+        }
+        Returns: {
+          club_id: string
+          club_name: string
+          contactable: boolean
+          full_name: string
+          member_id: string
+        }[]
+      }
       tournament_invite_member_ids: {
         Args: {
           p_club_id?: string

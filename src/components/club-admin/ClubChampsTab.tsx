@@ -6086,10 +6086,46 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     enabled: !!editingChampId,
   });
 
+  // Names/home clubs for invitee rows that belong to OTHER clubs in the region.
+  // The browser cannot read those club_members rows directly (RLS), so a secure
+  // directory RPC returns name + club + contactability only — never contact details.
+  const inviteeMemberIdKey = useMemo(
+    () =>
+      Array.from(
+        new Set((inviteeRows as any[]).map((r) => r.club_member_id).filter(Boolean) as string[]),
+      )
+        .sort()
+        .join(","),
+    [inviteeRows],
+  );
+  const { data: inviteeDirectory = new Map<string, { name: string; clubName: string | null; contactable: boolean }>() } =
+    useQuery({
+      queryKey: ["champ-invitee-directory", editingChampId, inviteeMemberIdKey],
+      queryFn: async () => {
+        const ids = inviteeMemberIdKey ? inviteeMemberIdKey.split(",") : [];
+        const map = new Map<string, { name: string; clubName: string | null; contactable: boolean }>();
+        if (!ids.length) return map;
+        const { data, error } = await (supabase as any).rpc("tournament_invite_member_directory", {
+          p_tournament_id: editingChampId,
+          p_club_id: clubId,
+          p_member_ids: ids,
+        });
+        if (error) throw error;
+        for (const row of (data || []) as any[]) {
+          map.set(row.member_id, {
+            name: row.full_name || "Unknown member",
+            clubName: row.club_name || null,
+            contactable: !!row.contactable,
+          });
+        }
+        return map;
+      },
+      enabled: !!editingChampId && !!inviteeMemberIdKey,
+    });
+
   const [inviteePickerPreparing, setInviteePickerPreparing] = useState(false);
   async function openInviteePicker() {
     if (!editingChampId) return;
-    setSelectedInviteeRegIds(new Set());
     setInviteeSearch("");
     setInviteePickerOpen(true);
     setInviteePickerPreparing(true);
@@ -6100,13 +6136,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // retain that as a compatibility fallback rather than materialising an
       // empty audience.
       await saveEntriesDraft(editingChampId, undefined, { inviteRosterOnly: true, materializeAudience: true });
-      await refetchInvitees();
+      const refreshed = await refetchInvitees();
+      // Everyone already in the audience starts ticked — the picker narrows an
+      // existing list, it never starts from nothing.
+      const rows = ((refreshed?.data || inviteeRows) as any[]).filter((r) => r.club_member_id);
+      const staged = audienceMemberIds;
+      const preselect = staged.size
+        ? rows.filter((r) => staged.has(r.club_member_id))
+        : rows;
+      setSelectedInviteeRegIds(new Set(preselect.map((r) => r.id as string)));
     } catch (error: any) {
       toast.error(error?.message || "Could not load the selected league members");
     } finally {
       setInviteePickerPreparing(false);
     }
   }
+
 
   const memberNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -6126,19 +6171,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   const inviteeList = useMemo(() => {
     const q = inviteeSearch.trim().toLowerCase();
+    const dir = inviteeDirectory as Map<string, { name: string; clubName: string | null; contactable: boolean }>;
     return (inviteeRows as any[])
-      .filter((r) => r.club_member_id && reachableMemberIds.has(r.club_member_id))
-      .map((r) => ({
-        id: r.id as string,
-        memberId: r.club_member_id as string,
-        name: memberNameById.get(r.club_member_id) || "Unknown member",
-        status: String(r.status || "").toLowerCase(),
-        invited: !!r.invited_by_admin,
-        category: classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }),
-      }))
-      .filter((r) => !q || r.name.toLowerCase().includes(q))
+      .filter((r) => {
+        if (!r.club_member_id) return false;
+        const remote = dir.get(r.club_member_id);
+        // Local roster knowledge first; otherwise trust the secure directory.
+        return remote ? remote.contactable : reachableMemberIds.has(r.club_member_id);
+      })
+      .map((r) => {
+        const remote = dir.get(r.club_member_id);
+        return {
+          id: r.id as string,
+          memberId: r.club_member_id as string,
+          name: memberNameById.get(r.club_member_id) || remote?.name || "Unknown member",
+          clubName: remote?.clubName || null,
+          status: String(r.status || "").toLowerCase(),
+          invited: !!r.invited_by_admin,
+          category: classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }),
+        };
+      })
+      .filter((r) => !q || r.name.toLowerCase().includes(q) || (r.clubName || "").toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [inviteeRows, inviteeSearch, memberNameById, reachableMemberIds, paymentRequired, entryFeeAmount]);
+  }, [
+    inviteeRows,
+    inviteeSearch,
+    memberNameById,
+    reachableMemberIds,
+    inviteeDirectory,
+    paymentRequired,
+    entryFeeAmount,
+  ]);
+
 
   function inviteeStatusLabel(r: { status: string; invited: boolean; category?: any }) {
     const category =
@@ -9957,9 +10021,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <DialogHeader>
                     <DialogTitle>Choose individual invitees</DialogTitle>
                     <DialogDescription>
-                      Only members who can receive an invite (email on file or a SquashHub login) are listed.
-                      Picking members only builds the audience — nothing is sent until you click “Send invites now”.
+                      Everyone already on the invitation list starts ticked — untick anyone you want to leave out.
+                      Players from other clubs in the region are included. Only members who can actually be reached
+                      (email or cell number on file) are listed. Nothing is sent until you click “Send invites now”.
                     </DialogDescription>
+
                   </DialogHeader>
                   <div className="space-y-3">
                     <Input
@@ -10008,8 +10074,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 });
                               }}
                             />
-                            <span className="flex-1 min-w-0 truncate">{r.name}</span>
+                            <span className="flex-1 min-w-0 truncate">
+                              {r.name}
+                              {r.clubName ? <span className="text-[11px] text-muted-foreground"> — {r.clubName}</span> : null}
+                            </span>
                             <span className="text-[11px] text-muted-foreground shrink-0">{inviteeStatusLabel(r)}</span>
+
                           </label>
                         );
                       })}

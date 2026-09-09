@@ -10074,8 +10074,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 });
                               }}
                             />
-                            <span className="flex-1 min-w-0 truncate">{r.name}</span>
+                            <span className="flex-1 min-w-0 truncate">
+                              {r.name}
+                              {r.clubName ? <span className="text-[11px] text-muted-foreground"> — {r.clubName}</span> : null}
+                            </span>
                             <span className="text-[11px] text-muted-foreground shrink-0">{inviteeStatusLabel(r)}</span>
+
                           </label>
                         );
                       })}

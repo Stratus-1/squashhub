@@ -155,15 +155,18 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
           </SheetHeader>
           {detail === "club" ? (
             <p className="py-4 text-[13px] text-muted-foreground">
-              You are <strong className="text-foreground">#{rankings?.club?.rank}</strong> on the
-              club points list with{" "}
-              <strong className="text-foreground">{rankings?.club?.points.toFixed(2)}</strong>{" "}
-              points.{" "}
+              You are ranked <strong className="text-foreground">#{rankings?.club?.rank}</strong> at
+              the club with a rating of{" "}
+              <strong className="text-foreground">
+                {formatRating(rankings?.club?.points ?? 0)}
+              </strong>
+              .{" "}
               <a href="/ladder" className="text-primary hover:underline">
                 Open the club ladder
               </a>
               .
             </p>
+
           ) : nearby.isLoading ? (
             <div className="py-8 grid place-items-center">
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />

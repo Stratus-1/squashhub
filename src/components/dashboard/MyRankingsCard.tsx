@@ -156,8 +156,12 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
         <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto rounded-t-2xl">
           <SheetHeader className="text-left">
             <SheetTitle className="text-base">
-              {detail ? RANKING_SCOPE_LABELS[detail] : ""}
+              {detail
+                ? (detail === "association" && rankings?.association?.label) ||
+                  RANKING_SCOPE_LABELS[detail]
+                : ""}
             </SheetTitle>
+
           </SheetHeader>
           {detail === "club" ? (
             <p className="py-4 text-[13px] text-muted-foreground">

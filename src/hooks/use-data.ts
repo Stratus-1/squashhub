@@ -257,16 +257,9 @@ export function useBookings(date: string, clubId?: string) {
         return null;
       };
 
-      // Fetch court names for display
-      const courtIds = [...new Set(bookings.map((b: any) => b.court_id).filter(Boolean))];
-      let courtNameMap = new Map<number, string>();
-      if (courtIds.length > 0) {
-        const { data: courts } = await (supabase as any)
-          .from("courts")
-          .select("id, name")
-          .in("id", courtIds);
-        courtNameMap = new Map((courts || []).map((c: any) => [c.id, c.name]));
-      }
+      // Court display names (already resolved above)
+      const courtNameMap = earlyCourtNameMap;
+
 
       return bookings.map(b => {
         // Prioritise club_member_id name (supports family/switched accounts)

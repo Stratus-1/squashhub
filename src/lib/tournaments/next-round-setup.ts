@@ -15,7 +15,7 @@
  */
 import type { DrawBoard } from "./draw-board";
 import { winnerOf } from "./knockout";
-import { strandedAliveIds } from "./round-draw";
+import { strandedAliveIds, losersInRound } from "./round-draw";
 import type { SectionProgression } from "./knockout-progression";
 
 

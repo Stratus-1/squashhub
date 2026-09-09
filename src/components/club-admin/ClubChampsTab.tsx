@@ -5484,6 +5484,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       (description.trim() ? `\n\n${description.trim()}` : "");
   }
 
+  /**
+   * Text placed in the WhatsApp template's {{details}} slot.
+   *
+   * Short mode keeps it to the call-to-action only (the link page carries the
+   * detail). When short mode is OFF the full tournament details travel inside
+   * the WhatsApp message too, exactly like email / in-app.
+   */
+  function buildWhatsAppDetails(needsPayment: boolean) {
+    const cta = needsPayment
+      ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+      : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+    if (inviteShortMessage) return cta;
+    const full = buildInviteBody()
+      .replace(/^You have been invited to [^\n]*\n*/, "")
+      .replace(/—\s*Tournament details\s*—/g, "")
+      .replace(/—\s*End details\s*—/g, "")
+      .trim();
+    return full ? `${full}\n\n${cta}` : cta;
+  }
+
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.
   // Used by the post-create prompt and the "Invite actions" menu.
   // `mode` is explicit: "selected" NEVER widens to the full roster, for any reason.

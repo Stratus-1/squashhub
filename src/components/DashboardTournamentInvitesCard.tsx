@@ -18,9 +18,12 @@ export function DashboardTournamentInvitesCard() {
     queryFn: async () => {
       if (memberIds.length === 0) return [];
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("id, champ_id, status, partner_confirmed, invited_by_admin, champ:champ_id(id, name, status)")
+        .select("id, champ_id, status, partner_confirmed, invited_by_admin, invited_at, champ:champ_id(id, name, status)")
         .in("club_member_id", memberIds)
-        .eq("invited_by_admin", true);
+        .eq("invited_by_admin", true)
+        // Only invitations the organiser actually sent — a prepared audience
+        // list (no `invited_at`) must never surface on a member's dashboard.
+        .not("invited_at", "is", null);
       if (error) throw error;
       const rows = (data || []) as any[];
       return rows.filter((r) => {

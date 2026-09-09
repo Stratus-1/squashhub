@@ -443,13 +443,16 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: linkedMemberIds.length > 0 && eventIds.length > 0,
   });
 
-  // Pre-tick league/category members when selection changes
+  // Pre-tick league/category members when selection changes — but never when we
+  // have just loaded a saved event's own guest list.
   useEffect(() => {
+    if (skipScopePretick.current) return;
     if (form.invite_scope === "league" && leagueMemberIds) {
       setForm((f) => ({ ...f, selected_member_ids: leagueMemberIds }));
     }
   }, [leagueMemberIds, form.invite_scope]);
   useEffect(() => {
+    if (skipScopePretick.current) return;
     if (form.invite_scope === "category" && categoryMemberIds) {
       setForm((f) => ({ ...f, selected_member_ids: categoryMemberIds }));
     }
@@ -457,6 +460,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
 
   useEffect(() => {
+    if (editingEventId || skipScopePretick.current) return;
     if (activeMember?.id && form.selected_member_ids.length === 0) {
       setForm((f) => ({
         ...f,
@@ -464,7 +468,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         booking_member_ids: [activeMember.id],
       }));
     }
-  }, [activeMember?.id]);
+  }, [activeMember?.id, editingEventId]);
 
   // Calculate instance dates based on recurrence
   const getInstanceDates = (): string[] => {

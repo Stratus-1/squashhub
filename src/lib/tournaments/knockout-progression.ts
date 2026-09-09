@@ -237,12 +237,23 @@ export function sectionProgression(
 
     const states = entrantStates(rows);
     const winners = currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[];
+    // Anyone still alive who was not part of the round just played (e.g. taken
+    // out of a fixture by an organiser correction) still contests the next round.
+    const inCurrentRound = new Set(
+      currentRoundMatches.flatMap((m) =>
+        [m.player_a_member_id, m.player_b_member_id].filter(Boolean).map(String),
+      ),
+    );
+    const strandedAlive = states
+      .filter((s) => !s.eliminated && !inCurrentRound.has(s.memberId))
+      .map((s) => s.memberId);
     // How many entrants will contest the NEXT round. Once the round is played
     // out this is exact; while it is running each match still yields one
     // survivor, so the match count is the honest projection.
     const activeCount = currentRoundComplete
-      ? new Set(winners).size
-      : currentRoundMatches.length || states.filter((s) => !s.eliminated).length;
+      ? new Set([...winners, ...strandedAlive]).size
+      : currentRoundMatches.length + strandedAlive.length || states.filter((s) => !s.eliminated).length;
+
 
     const nextRoundNumber = currentRound + 1;
     const planned = plan.find((r) => r.round_number === nextRoundNumber) || null;

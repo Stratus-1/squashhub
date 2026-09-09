@@ -59,18 +59,58 @@ export function qualifierIds(roundMatches: KnockoutMatchLike[]): string[] {
   return out;
 }
 
+const SLOT_KEYS = [
+  "player_a_member_id",
+  "player_b_member_id",
+  "partner_a_member_id",
+  "partner_b_member_id",
+] as const;
+
 /**
- * Board population for the next round: ONLY the qualifiers, seeded by bracket
- * position. An eliminated player has no entrant row at all, so the draw board
- * cannot offer them and `validateDrawBoard` rejects them if one is injected.
+ * Players who are STILL IN the draw but do not appear in the round just
+ * completed — for example someone who was taken out of a fixture by the
+ * organiser's "replace a player" correction, or who sat out a round.
+ *
+ * They never lost, so they must still be offered for the next round; without
+ * this they would silently vanish from the bracket.
+ */
+export function strandedAliveIds(
+  section: Pick<SectionProgression, "currentRoundMatches"> & Partial<Pick<SectionProgression, "entrants">>,
+): string[] {
+  const inRound = new Set<string>();
+  for (const m of section.currentRoundMatches || []) {
+    for (const key of SLOT_KEYS) {
+      const id = (m as any)[key];
+      if (id) inRound.add(String(id));
+    }
+  }
+  return (section.entrants || [])
+    .filter((e) => !e.eliminated && !inRound.has(e.memberId))
+    .map((e) => e.memberId);
+}
+
+/**
+ * Board population for the next round: the qualifiers of the completed round
+ * PLUS anyone still alive who was not part of it. An eliminated player has no
+ * entrant row at all, so the draw board cannot offer them and
+ * `validateDrawBoard` rejects them if one is injected.
  */
 export function qualifierEntrants(
-  section: Pick<SectionProgression, "currentRoundComplete" | "currentRoundMatches">,
+  section: Pick<SectionProgression, "currentRoundComplete" | "currentRoundMatches"> &
+    Partial<Pick<SectionProgression, "entrants">>,
   nameOf: (id: string) => string,
 ): DrawEntrant[] {
   if (!section.currentRoundComplete) return [];
-  return winnersAsEntrants(section.currentRoundMatches as KnockoutMatchLike[], nameOf);
+  const out = winnersAsEntrants(section.currentRoundMatches as KnockoutMatchLike[], nameOf);
+  const placed = new Set(out.map((e) => e.id));
+  for (const id of strandedAliveIds(section)) {
+    if (placed.has(id)) continue;
+    placed.add(id);
+    out.push({ id, name: nameOf(id), seed: out.length + 1 });
+  }
+  return out;
 }
+
 
 /** Guard used before persisting: nobody outside the qualifier set may appear. */
 export function illegalEntrants(placedIds: (string | null)[], allowed: string[]): string[] {

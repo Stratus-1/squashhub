@@ -539,7 +539,7 @@ export function useMyBookings(overrideUserId?: string | null, opts?: { memberId?
           const profileName = b.opponent_id ? opponentProfileMap.get(b.opponent_id)?.name : null;
           return {
             ...b,
-            court_name: courtNameMap.get(b.court_id) || `Court ${b.court_id}`,
+            court_name: courtNameMap.get(b.court_id) || "Court",
             opponent_name: b.guest_name || memberName || profileName || (b.opponent_id ? "Unknown" : null),
             opponent_rank: null,
           };

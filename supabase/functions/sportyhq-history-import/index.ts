@@ -26,6 +26,7 @@ interface ParsedResult {
   played_on: string; // yyyy-mm-dd
   opponent_name: string;
   opponent_user_id: number | null;
+  opponent_slug: string | null;
   score: string;
   won: boolean;
   type_label: string;
@@ -67,14 +68,17 @@ function parseResults(html: string): ParsedResult[] {
     const opponentName =
       stripTags(opponentCell.match(/<a href="[^"]*\/ranking\/user\/[^"]*">([\s\S]*?)<\/a>/)?.[1] ?? "");
     const opponentUserId = Number(opponentCell.match(/\/user\/photo\/(\d+)\//)?.[1] ?? 0) || null;
+    // Most rows show a default avatar, so also keep the profile slug for linking.
+    const opponentSlug = (opponentCell.match(/\/ranking\/user\/([^"/?]+)/)?.[1] ?? "").toLowerCase() || null;
 
     const formatLabel = stripTags(cells[3] ?? "") || null;
     const scoreCell = stripTags(cells[4] ?? "");
     const score = scoreCell.match(/\d+\s*-\s*\d+/)?.[0]?.replace(/\s+/g, "") ?? "";
 
-    // The leading cell carries the win/loss colour for the profile owner.
-    const won = /table-success/.test(cells[0] ?? "");
-    const lost = /table-danger/.test(cells[0] ?? "");
+    // The leading cell's own tag carries the win/loss colour for the profile owner.
+    const firstCellTag = row.match(/<td\b[^>]*>/)?.[0] ?? "";
+    const won = /table-success/.test(firstCellTag);
+    const lost = /table-danger/.test(firstCellTag);
     if (!won && !lost) continue; // retired / unresolved rows
     if (!opponentName) continue;
 
@@ -83,6 +87,7 @@ function parseResults(html: string): ParsedResult[] {
       played_on: playedOn,
       opponent_name: opponentName,
       opponent_user_id: opponentUserId,
+      opponent_slug: opponentSlug,
       score,
       won,
       type_label: typeLabel,
@@ -176,15 +181,23 @@ Deno.serve(async (req) => {
     return json({ done: true, processed: 0, imported: 0, next_cursor: null });
   }
 
-  // Map every SportyHQ user id in this club so both sides of a match can link.
+  // Map every SportyHQ id and profile slug in this club so both sides can link.
   const { data: allProfiles } = await supabase
     .from("sportyhq_profiles")
-    .select("sportyhq_user_id, club_member_id, club_members!inner(club_id)")
+    .select("sportyhq_user_id, profile_path, club_member_id, club_members!inner(club_id)")
     .eq("club_members.club_id", clubId)
     .not("club_member_id", "is", null);
   const memberByShqId = new Map<number, string>();
+  const memberBySlug = new Map<string, string>();
   for (const p of allProfiles ?? []) {
-    if (p.sportyhq_user_id && p.club_member_id) memberByShqId.set(Number(p.sportyhq_user_id), p.club_member_id);
+    if (!p.club_member_id) continue;
+    if (p.sportyhq_user_id) memberByShqId.set(Number(p.sportyhq_user_id), p.club_member_id);
+    const slug = String(p.profile_path ?? "").toLowerCase().match(/\/ranking\/user\/([^/?]+)/)?.[1];
+    if (slug) {
+      memberBySlug.set(slug, p.club_member_id);
+      // Result links sometimes carry a duplicate suffix (e.g. "-1").
+      memberBySlug.set(slug.replace(/-\d+$/, ""), p.club_member_id);
+    }
   }
 
   let imported = 0;
@@ -206,6 +219,9 @@ Deno.serve(async (req) => {
     }
     const rows = parseResults(html);
     scanned += rows.length;
+    if (rows.length === 0) {
+      errors.push(`no rows for ${shqId} (html ${html.length}, markers ${(html.match(/result-row/g) ?? []).length})`);
+    }
 
     for (const r of rows) {
       const externalId = `result:${r.result_id}`;
@@ -225,7 +241,13 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const opponentMemberId = r.opponent_user_id ? memberByShqId.get(r.opponent_user_id) ?? null : null;
+      const opponentMemberId =
+        (r.opponent_user_id ? memberByShqId.get(r.opponent_user_id) ?? null : null) ??
+        (r.opponent_slug
+          ? memberBySlug.get(r.opponent_slug) ??
+            memberBySlug.get(r.opponent_slug.replace(/-\d+$/, "")) ??
+            null
+          : null);
       const level = levelFor(r.type_label);
       const eventLabel = [r.type_label, r.format_label].filter(Boolean).join(" — ");
 

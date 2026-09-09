@@ -5,6 +5,8 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAdminEvents, fetchAdminEventsInRange, saveAdminEvent } from "@/lib/events/admin-events";
+
 const fromExt = (table: string) => (supabase as any).from(table);
 const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
@@ -1016,30 +1018,22 @@ export default function Admin() {
       description: string | null;
       starts_at: string;
       ends_at: string | null;
-      location: string | null;
-      court_id: number | null;
-      capacity: number | null;
-      rsvp_deadline: string | null;
-      visibility: "public" | "members";
-      status: "draft" | "published" | "cancelled";
+      location?: string | null;
+      court_id?: number | null;
+      capacity?: number | null;
+      rsvp_deadline?: string | null;
+      visibility?: "public" | "members";
+      status: "draft" | "published" | "cancelled" | string;
     }) => {
-      const row: any = {
-        ...(payload.id ? { id: payload.id } : {}),
+      await saveAdminEvent({
+        id: payload.id || null,
         title: payload.title,
         description: payload.description,
-        starts_at: payload.starts_at,
-        ends_at: payload.ends_at,
-        location: payload.location,
-        court_id: payload.court_id,
-        capacity: payload.capacity,
-        rsvp_deadline: payload.rsvp_deadline,
-        visibility: payload.visibility,
+        startsAtLocal: (payload.starts_at || "").slice(0, 16),
+        endsAtLocal: payload.ends_at ? payload.ends_at.slice(0, 16) : null,
         status: payload.status,
-        created_by: user?.id || null,
-      };
-
-      const { error } = await fromExt("events").upsert(row, { onConflict: "id" });
-      if (error) throw error;
+        createdBy: user?.id || null,
+      });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
@@ -1048,6 +1042,7 @@ export default function Admin() {
     },
     onError: (e: any) => toast.error(e?.message || "Failed to save event"),
   });
+
 
   const sendBroadcast = useMutation({
     mutationFn: async (payload: { recipients: string[]; title: string; message: string; url: string; type?: string; data?: any }) => {

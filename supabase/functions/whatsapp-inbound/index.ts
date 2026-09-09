@@ -273,9 +273,19 @@ Deno.serve(async (req) => {
           const linkMatch = (interaction.prompt ?? "").match(/https?:\/\/\S+/);
           const link = linkMatch?.[0] ?? null;
           applied = true;
+          // Only mention choosing a category when the tournament actually has
+          // more than one league/division set up.
+          const { data: champRow } = await admin
+            .from("tournaments")
+            .select("num_groups")
+            .eq("id", interaction.target_id)
+            .maybeSingle();
+          const multi = Number(champRow?.num_groups ?? 0) > 1;
+          const step = multi ? " and choose your category" : "";
           reply = link
-            ? `Great! To complete your entry, open your personal invitation and choose your category:\n${link}`
-            : "Great! To complete your entry, open the invitation link in the message above and choose your category.";
+            ? `Great! To complete your entry, open your personal invitation${step}:\n${link}`
+            : `Great! To complete your entry, open the invitation link in the message above${step}.`;
+
         } else {
           const { error } = await admin.from("club_champs_registrations").upsert(
             {

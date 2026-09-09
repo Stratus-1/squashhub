@@ -153,11 +153,12 @@ export function CompetitionRankingCard({
         <>
           <div className="flex items-start justify-between gap-3">
             <p className="text-xs">
-              <span className="font-medium">Using {RANKING_SCOPE_LABELS[effectiveScope].toLowerCase()} rules</span>
+              <span className="font-medium">Counts towards {RANKING_SCOPE_LABELS[effectiveScope].toLowerCase()}</span>
               <span className="text-muted-foreground">
-                {" "}· {affects ? `results count, ${weight ?? 1}× weight` : "results do not count towards ranking points"}
+                {" "}· {affects ? `results change ratings, ${weight ?? 1}× weight` : "results do not change ratings"}
               </span>
             </p>
+
             <Button
               type="button"
               variant="ghost"

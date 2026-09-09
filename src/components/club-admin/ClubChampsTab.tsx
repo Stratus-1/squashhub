@@ -5936,9 +5936,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // invite — only the recipient is the number you typed, and nothing is
         // recorded on the player's registration.
         const needsPayment = paymentRequired && entryFeeAmount > 0;
-        const details = needsPayment
-          ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
-          : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+        const details = buildWhatsAppDetails(needsPayment);
         const wa = await sendWhatsApp({
           clubId,
           recipients: [{ phone: parsedPhone }],

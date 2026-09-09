@@ -11740,6 +11740,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         methods={inviteMethods}
         entryFeeRand={entryFeeRand}
         inviteExtraDetails={inviteExtraDetails}
+        hasMultipleLeagues={(numGroups || 0) > 1}
         footer={
           editingChampId ? (
             <div className="rounded-md border border-dashed border-border/60 p-3 space-y-2">
@@ -11957,6 +11958,7 @@ function InvitePreviewDialog({
   methods,
   entryFeeRand,
   inviteExtraDetails,
+  hasMultipleLeagues,
   footer,
 }: {
   open: boolean;
@@ -11970,6 +11972,8 @@ function InvitePreviewDialog({
   methods: Set<"app" | "email" | "whatsapp">;
   entryFeeRand: string;
   inviteExtraDetails?: string;
+  /** True when the fixture setup holds more than one league — only then does the CTA offer a category choice. */
+  hasMultipleLeagues?: boolean;
   /** Test-invite controls live under the preview, never on the messaging step. */
   footer?: React.ReactNode;
 }) {

@@ -87,6 +87,7 @@ function parseResults(html: string): ParsedResult[] {
       played_on: playedOn,
       opponent_name: opponentName,
       opponent_user_id: opponentUserId,
+      opponent_slug: opponentSlug,
       score,
       won,
       type_label: typeLabel,

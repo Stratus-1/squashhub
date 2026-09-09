@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useMemberRankings, useNearbyRankings } from "@/hooks/use-member-rankings";
+import { useSportyhqAutoLink } from "@/hooks/use-sportyhq-autolink";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { useProvisionalSettings, useClubRankedMatchCounts } from "@/hooks/use-provisional-ranking";
 import { ProvisionalBadge } from "@/components/rankings/ProvisionalBadge";
@@ -50,8 +51,16 @@ function Movement({ delta }: { delta: number | null }) {
  * lives in MyStatsCard.
  */
 export function MyRankingsCard({ clubId, memberId }: Props) {
-  const { data: rankings, isLoading } = useMemberRankings(clubId, memberId);
+  const { data: rankings, isLoading, refetch } = useMemberRankings(clubId, memberId);
   const [detail, setDetail] = useState<RankingScope | null>(null);
+
+  useSportyhqAutoLink(
+    memberId,
+    !!(rankings?.association || rankings?.national),
+    !isLoading && !!rankings,
+    refetch,
+  );
+
 
   const movement = useRankingMovement(clubId, !!rankings?.club);
   const prev = memberId ? movement.data?.byMember.get(memberId) : undefined;
@@ -102,8 +111,13 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
                 className="w-full flex items-center justify-between gap-3 py-2 text-left disabled:cursor-default"
               >
                 <div className="min-w-0 flex items-center gap-2">
-                  <span className="w-16 shrink-0 text-[11px] font-semibold text-foreground">
-                    {RANKING_SCOPE_SHORT_LABELS[scope]}
+                  <span
+                    className="w-24 shrink-0 text-[11px] font-semibold text-foreground truncate"
+                    title={r?.label || RANKING_SCOPE_SHORT_LABELS[scope]}
+                  >
+                    {scope === "association" && r?.label
+                      ? r.label
+                      : RANKING_SCOPE_SHORT_LABELS[scope]}
                   </span>
                   {r ? (
                     <span className="flex items-baseline gap-3 min-w-0">
@@ -120,13 +134,14 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
                           Rating
                         </span>
                         <span className="text-[13px] font-semibold tabular-nums text-foreground/80">
-                          {formatRating(r.points)}
+                          {r.points != null ? formatRating(r.points) : "—"}
                         </span>
                       </span>
                     </span>
                   ) : (
                     <span className="text-[12px] text-muted-foreground">Not ranked yet</span>
                   )}
+
                   {scope === "club" && r && (
                     <ProvisionalBadge
                       matchesPlayed={myMatches}
@@ -150,8 +165,12 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
         <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto rounded-t-2xl">
           <SheetHeader className="text-left">
             <SheetTitle className="text-base">
-              {detail ? RANKING_SCOPE_LABELS[detail] : ""}
+              {detail
+                ? (detail === "association" && rankings?.association?.label) ||
+                  RANKING_SCOPE_LABELS[detail]
+                : ""}
             </SheetTitle>
+
           </SheetHeader>
           {detail === "club" ? (
             <p className="py-4 text-[13px] text-muted-foreground">

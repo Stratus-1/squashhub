@@ -25,7 +25,6 @@ import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { MyStatsCard } from "@/components/dashboard/MyStatsCard";
 
-import { DashboardSportyhqCard } from "@/components/DashboardSportyhqCard";
 import { MyRankingsCard } from "@/components/dashboard/MyRankingsCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap, Hash } from "lucide-react";
@@ -844,11 +843,8 @@ export default function Dashboard() {
 
       <div className="px-4 mt-3 space-y-3">
         <MyStatsCard memberId={myMemberId} />
-        <DashboardSportyhqCard
-          memberId={myMemberId}
-          personId={(activeMember as any)?.person_id ?? (myClubMember as any)?.person_id ?? null}
-        />
         <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+
 
       </div>
 

@@ -6343,14 +6343,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // First real invitee on the list — used for "send a test as an invited player"
   // so an organiser who isn't part of any team can still preview the exact
   // invitation an entrant receives. Sending still goes to the organiser only.
+  /**
+   * Names for the test picker. Cross-club invitees are not readable from the
+   * browser, so fall back to the secure directory RPCs before giving up — an
+   * entry with no resolvable name is left out rather than shown as "Unknown".
+   */
+  const resolveInviteeName = useMemo(() => {
+    const inviteDir = inviteeDirectory as Map<string, { name: string; clubName: string | null }>;
+    const teamDir = teamRosterDirectory as Map<string, { name: string; clubName: string | null }>;
+    return (memberId: string): { name: string; clubName: string | null } | null => {
+      const local = memberNameById.get(memberId);
+      if (local && local !== "Unknown member") return { name: local, clubName: null };
+      const remote = inviteDir.get(memberId) || teamDir.get(memberId);
+      if (remote?.name && remote.name !== "Unknown member") {
+        return { name: remote.name, clubName: remote.clubName || null };
+      }
+      return null;
+    };
+  }, [memberNameById, inviteeDirectory, teamRosterDirectory]);
+
   const sampleInvitee = useMemo(() => {
     const saved = (inviteeRows as any[])
       .filter((r) => r.club_member_id && !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()))
-      .map((r) => ({
-        memberId: r.club_member_id as string,
-        name: memberNameById.get(r.club_member_id) || "Unknown member",
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .map((r) => {
+        const resolved = resolveInviteeName(r.club_member_id);
+        return resolved ? { memberId: r.club_member_id as string, name: resolved.name } : null;
+      })
+      .filter(Boolean) as { memberId: string; name: string }[];
+    saved.sort((a, b) => a.name.localeCompare(b.name));
     if (saved.length > 0) return saved[0];
     const pending: { memberId: string; name: string }[] = [];
     const seen = new Set<string>();
@@ -6358,33 +6378,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       (registrationsByLeague.get(leagueId) || []).forEach((memberId) => {
         if (inviteExcludedMemberIds.has(memberId) || seen.has(memberId)) return;
         seen.add(memberId);
-        pending.push({ memberId, name: memberNameById.get(memberId) || "Unknown member" });
+        const resolved = resolveInviteeName(memberId);
+        if (resolved) pending.push({ memberId, name: resolved.name });
       });
     });
     pending.sort((a, b) => a.name.localeCompare(b.name));
     return pending[0] || null;
-  }, [inviteeRows, memberNameById, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+  }, [inviteeRows, resolveInviteeName, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
 
   /** Everyone who could receive a test copy — simple picker under the preview. */
   const inviteeOptions = useMemo(() => {
     const out: { memberId: string; name: string }[] = [];
     const seen = new Set<string>();
+    const push = (memberId: string) => {
+      if (!memberId || seen.has(memberId)) return;
+      const resolved = resolveInviteeName(memberId);
+      if (!resolved) return;
+      seen.add(memberId);
+      out.push({
+        memberId,
+        name: resolved.clubName ? `${resolved.name} — ${resolved.clubName}` : resolved.name,
+      });
+    };
     (inviteeRows as any[])
       .filter((r) => r.club_member_id && !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()))
-      .forEach((r) => {
-        if (seen.has(r.club_member_id)) return;
-        seen.add(r.club_member_id);
-        out.push({ memberId: r.club_member_id, name: memberNameById.get(r.club_member_id) || "Unknown member" });
-      });
+      .forEach((r) => push(r.club_member_id));
     structureLeagueIds.forEach((leagueId) => {
       (registrationsByLeague.get(leagueId) || []).forEach((memberId: string) => {
-        if (inviteExcludedMemberIds.has(memberId) || seen.has(memberId)) return;
-        seen.add(memberId);
-        out.push({ memberId, name: memberNameById.get(memberId) || "Unknown member" });
+        if (inviteExcludedMemberIds.has(memberId)) return;
+        push(memberId);
       });
     });
     return out.sort((a, b) => a.name.localeCompare(b.name));
-  }, [inviteeRows, memberNameById, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+  }, [inviteeRows, resolveInviteeName, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
 
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);

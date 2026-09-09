@@ -11180,6 +11180,36 @@ export type Database = {
           },
         ]
       }
+      reminder_log: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          ref_id: string | null
+          ref_table: string | null
+          scheduled_for: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          ref_id?: string | null
+          ref_table?: string | null
+          scheduled_for?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          ref_id?: string | null
+          ref_table?: string | null
+          scheduled_for?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       season_awards: {
         Row: {
           award_label: string

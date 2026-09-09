@@ -127,7 +127,10 @@ export function qualifierEntrants(
   nameOf: (id: string) => string,
 ): DrawEntrant[] {
   if (!section.currentRoundComplete) return [];
-  const out = winnersAsEntrants(section.currentRoundMatches as KnockoutMatchLike[], nameOf);
+  const lost = losersInRound(section.currentRoundMatches as KnockoutMatchLike[]);
+  const out = winnersAsEntrants(section.currentRoundMatches as KnockoutMatchLike[], nameOf)
+    .filter((e) => !lost.has(e.id))
+    .map((e, i) => ({ ...e, seed: i + 1 }));
   const placed = new Set(out.map((e) => e.id));
   for (const id of strandedAliveIds(section)) {
     if (placed.has(id)) continue;

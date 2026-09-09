@@ -1280,6 +1280,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               status: "active",
               club_id: clubId,
               source: "club_event",
+              event_id: editingEventId,
             });
           }
         }
@@ -1291,7 +1292,25 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           const failures: BookingFailure[] = [];
           for (const row of rebookRows) {
             const { error: reErr } = await supabase.from("bookings").insert(row as any);
-            if (reErr) failures.push({ row, message: reErr.message });
+            if (!reErr) continue;
+            // The slot may still hold this event's own just-cancelled booking —
+            // revive it instead of reporting a clash against ourselves.
+            const { data: revived } = await supabase
+              .from("bookings")
+              .update({
+                status: "active",
+                end_time: row.end_time,
+                guest_name: row.guest_name,
+                lights_requested: row.lights_requested,
+                event_id: editingEventId,
+              })
+              .eq("court_id", row.court_id)
+              .eq("date", row.date)
+              .eq("start_time", row.start_time)
+              .eq("club_id", clubId)
+              .neq("status", "active")
+              .select("id");
+            if (!revived || revived.length === 0) failures.push({ row, message: reErr.message });
           }
           const courtNames = (courts || []).reduce(
             (acc, c) => ({ ...acc, [c.id]: c.name }),

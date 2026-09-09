@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Info } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
@@ -9,6 +9,7 @@ import {
   useMemberStatSeasons,
   useMemberStatsSummary,
 } from "@/hooks/use-member-stats";
+import { useMyClub } from "@/hooks/use-club";
 import { MatchHistorySheet } from "./MatchHistorySheet";
 
 interface Props {

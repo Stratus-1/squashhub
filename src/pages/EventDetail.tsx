@@ -2,144 +2,140 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { SEO } from "@/components/SEO";
 import { absoluteUrl } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
-const fromExt = (table: string) => (supabase as any).from(table);
-const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemberContext } from "@/contexts/MemberContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check, X } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-type EventRow = {
+type ClubEventRow = {
   id: string;
+  club_id: string;
   title: string;
   description: string | null;
-  starts_at: string;
-  ends_at: string | null;
-  location: string | null;
-  court_id: number | null;
-  capacity: number | null;
-  rsvp_deadline: string | null;
-  visibility: "public" | "members";
-  status: "draft" | "published" | "cancelled";
+  start_date: string;
+  start_time: string;
+  end_time: string;
+  recurrence: string;
+  event_type: string;
+  status: string;
 };
 
-type MyRsvpRow = {
+type RsvpRow = {
   id: string;
   event_id: string;
-  user_id: string;
-  status: "going" | "maybe" | "not_going";
-  guests: number;
-  notes: string | null;
+  club_member_id: string;
+  status: string;
 };
+
+function localDate(date: string, time: string | null) {
+  if (!date) return null;
+  const d = new Date(`${date}T${(time || "00:00").slice(0, 5)}:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 export default function EventDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { linkedMembers } = useMemberContext();
 
-  const [guests, setGuests] = useState("0");
-  const [notes, setNotes] = useState("");
+  const memberIds = useMemo(
+    () => Array.from(new Set((linkedMembers || []).map((m: any) => m?.id).filter(Boolean))) as string[],
+    [linkedMembers]
+  );
 
   const { data: event, isLoading, error } = useQuery({
-    queryKey: ["event", id, user?.id ? "authed" : "anon"],
+    queryKey: ["club-event", id],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await fromExt("events").select("*").eq("id", id).single();
+      const { data, error } = await supabase
+        .from("club_events")
+        .select("id,club_id,title,description,start_date,start_time,end_time,recurrence,event_type,status")
+        .eq("id", id)
+        .maybeSingle();
       if (error) throw error;
-      return data as unknown as EventRow;
+      return (data || null) as unknown as ClubEventRow | null;
     },
     enabled: !!id,
   });
 
-  const { data: counts } = useQuery({
-    queryKey: ["event-rsvp-counts", id, user?.id ? "authed" : "anon"],
+  // Next upcoming occurrence for recurring events.
+  const { data: nextInstance } = useQuery({
+    queryKey: ["club-event-next-instance", id],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await rpcExt("get_event_rsvp_counts", { target_event_id: id });
+      const today = new Date().toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("club_event_instances")
+        .select("id,instance_date,status")
+        .eq("event_id", id)
+        .gte("instance_date", today)
+        .order("instance_date", { ascending: true })
+        .limit(1);
       if (error) throw error;
-      return data as any;
+      return (data || [])[0] || null;
     },
     enabled: !!id && !!event,
   });
 
-  const { data: myRsvp } = useQuery({
-    queryKey: ["event-rsvp", id, user?.id],
+  const { data: rsvps = [] } = useQuery({
+    queryKey: ["club-event-rsvps-data", id, memberIds.join(",")],
     queryFn: async () => {
-      if (!id || !user?.id) return null;
-      const { data, error } = await fromExt("event_rsvps")
-        .select("*")
+      if (!id || memberIds.length === 0) return [] as RsvpRow[];
+      const { data, error } = await supabase
+        .from("club_event_rsvps")
+        .select("id,event_id,club_member_id,status")
         .eq("event_id", id)
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .in("club_member_id", memberIds);
       if (error) throw error;
-      return (data || null) as unknown as MyRsvpRow | null;
+      return (data || []) as unknown as RsvpRow[];
     },
-    enabled: !!id && !!user?.id && !!event,
+    enabled: !!id && !!event && memberIds.length > 0,
   });
 
-  const deadline = useMemo(() => (event?.rsvp_deadline ? new Date(event.rsvp_deadline) : null), [event?.rsvp_deadline]);
-  const rsvpClosed = useMemo(() => (deadline ? deadline.getTime() < Date.now() : false), [deadline]);
-
-  const upsertRsvp = useMutation({
-    mutationFn: async (status: MyRsvpRow["status"]) => {
-      if (!id) throw new Error("Missing event");
-      if (!user?.id) throw new Error("Please log in to RSVP");
-
-      const g = guests.trim() ? Number(guests) : 0;
-      if (!Number.isFinite(g) || g < 0 || g > 20) throw new Error("Guests must be 0–20");
-
-      const { error } = await fromExt("event_rsvps")
-        .upsert(
-          {
-            event_id: id,
-            user_id: user.id,
-            status,
-            guests: Math.trunc(g),
-            notes: notes.trim() || null,
-          } as any,
-          { onConflict: "event_id,user_id" }
-        );
+  const { data: counts } = useQuery({
+    queryKey: ["club-event-rsvp-counts", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from("club_event_rsvps")
+        .select("status")
+        .eq("event_id", id);
       if (error) throw error;
+      const rows = (data || []) as { status: string }[];
+      return {
+        confirmed: rows.filter((r) => String(r.status).toLowerCase() === "confirmed").length,
+        invited: rows.filter((r) => String(r.status).toLowerCase() === "invited").length,
+        declined: rows.filter((r) => String(r.status).toLowerCase() === "declined").length,
+      };
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["event-rsvp", id, user?.id] });
-      await queryClient.invalidateQueries({ queryKey: ["event-rsvp-counts", id] });
-      toast.success("RSVP saved");
-    },
-    onError: (e: any) => toast.error(e?.message || "Failed to RSVP"),
+    enabled: !!id && !!event,
   });
 
-  const deleteRsvp = useMutation({
-    mutationFn: async () => {
-      if (!id) throw new Error("Missing event");
-      if (!user?.id) throw new Error("Please log in");
-      const { error } = await fromExt("event_rsvps").delete().eq("event_id", id).eq("user_id", user.id);
+  const respond = useMutation({
+    mutationFn: async ({ rsvpId, status }: { rsvpId: string; status: string }) => {
+      const { error } = await supabase
+        .from("club_event_rsvps")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("id", rsvpId);
       if (error) throw error;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["event-rsvp", id, user?.id] });
-      await queryClient.invalidateQueries({ queryKey: ["event-rsvp-counts", id] });
-      toast.success("RSVP removed");
+    onSuccess: async (_d, vars) => {
+      await queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
+      await queryClient.invalidateQueries({ queryKey: ["club-event-rsvp-counts", id] });
+      await queryClient.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
+      toast.success(vars.status === "confirmed" ? "You're confirmed — see you there!" : "RSVP declined");
     },
-    onError: (e: any) => toast.error(e?.message || "Failed to remove RSVP"),
+    onError: (e: any) => toast.error(e?.message || "Failed to update your RSVP"),
   });
-
-  // hydrate inputs from existing RSVP
-  useEffect(() => {
-    if (!myRsvp) return;
-    setGuests(String(myRsvp.guests ?? 0));
-    setNotes(String(myRsvp.notes || ""));
-  }, [myRsvp]);
 
   if (isLoading) {
     return (
@@ -167,57 +163,16 @@ export default function EventDetail() {
     );
   }
 
-  const starts = new Date(event.starts_at);
-  const ends = event.ends_at ? new Date(event.ends_at) : null;
-  const isIndexable = event.status === "published" && event.visibility === "public";
-  const seoDescription = (() => {
-    const raw = (event.description || "").replace(/\s+/g, " ").trim();
-    if (raw) return raw.slice(0, 160);
-    return "Upcoming squash event.";
-  })();
+  const displayDate = (nextInstance as any)?.instance_date || event.start_date;
+  const starts = localDate(displayDate, event.start_time);
+  const ends = localDate(displayDate, event.end_time);
+  const cancelled = String(event.status).toLowerCase() === "cancelled";
   const eventUrlPath = `/events/${event.id}`;
+  const seoDescription = (event.description || "").replace(/\s+/g, " ").trim().slice(0, 160) || "Upcoming club event.";
 
   return (
     <div className="bottom-nav-safe">
-      <SEO
-        title={event.title}
-        description={seoDescription}
-        path={eventUrlPath}
-        type="article"
-        noIndex={!isIndexable}
-        jsonLd={
-          isIndexable
-            ? {
-                "@context": "https://schema.org",
-                "@type": "Event",
-                name: event.title,
-                description: seoDescription,
-                startDate: starts.toISOString(),
-                endDate: ends ? ends.toISOString() : undefined,
-                eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-                eventStatus:
-                  event.status === "cancelled"
-                    ? "https://schema.org/EventCancelled"
-                    : "https://schema.org/EventScheduled",
-                location: {
-                  "@type": "Place",
-                  name: event.location || "Squash Club",
-                  address: {
-                    "@type": "PostalAddress",
-                    addressCountry: "ZA",
-                  },
-                },
-                organizer: {
-                  "@type": "Organization",
-                  name: "SquashHub",
-                  url: absoluteUrl("/"),
-                },
-                url: absoluteUrl(eventUrlPath),
-                image: [absoluteUrl("/pwa-512x512.png")],
-              }
-            : undefined
-        }
-      />
+      <SEO title={event.title} description={seoDescription} path={eventUrlPath} type="article" noIndex />
       <PageHeader title="Event" subtitle={event.title} />
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-3 space-y-3 mb-20">
@@ -226,110 +181,77 @@ export default function EventDetail() {
             <div className="min-w-0">
               <p className="text-sm font-semibold font-heading">{event.title}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {format(starts, "EEE, d MMM yyyy · HH:mm")}
+                {starts ? format(starts, "EEE, d MMM yyyy · HH:mm") : "Date to be confirmed"}
                 {ends ? ` – ${format(ends, "HH:mm")}` : ""}
-                {event.court_id ? ` · Court ${event.court_id}` : ""}
-                {event.location ? ` · ${event.location}` : ""}
               </p>
             </div>
-            {event.visibility === "public" ? <Badge variant="secondary">Public</Badge> : <Badge variant="secondary" className="bg-muted text-muted-foreground">Members</Badge>}
+            {cancelled ? (
+              <Badge variant="secondary" className="bg-destructive/10 text-destructive">Cancelled</Badge>
+            ) : (
+              <Badge variant="secondary">{event.recurrence === "once" ? "One-off" : "Recurring"}</Badge>
+            )}
           </div>
 
           {event.description ? (
             <p className="text-sm text-muted-foreground mt-3 whitespace-pre-line">{event.description}</p>
           ) : null}
 
-          <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-            <span>{deadline ? `RSVP by ${format(deadline, "d MMM yyyy HH:mm")}` : "RSVP open"}</span>
-            {event.capacity ? <span>· Capacity {event.capacity}</span> : null}
-            {counts ? (
-              <span>
-                · {counts.going} going, {counts.maybe} maybe
-                {counts.guests_total ? ` (+${counts.guests_total} guests)` : ""}
-              </span>
-            ) : null}
-          </div>
+          {counts ? (
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              {counts.confirmed} confirmed · {counts.invited} awaiting reply · {counts.declined} declined
+            </p>
+          ) : null}
         </Card>
 
         <Card className="p-4">
-          <p className="text-sm font-semibold font-heading">RSVP</p>
+          <p className="text-sm font-semibold font-heading">Your reply</p>
+
           {!user ? (
             <div className="mt-2 text-sm text-muted-foreground">
-              <Link to="/auth" className="text-primary underline">
-                Log in
-              </Link>{" "}
-              to RSVP.
+              <Link to="/auth" className="text-primary underline">Log in</Link> to reply.
             </div>
+          ) : cancelled ? (
+            <p className="mt-2 text-xs text-muted-foreground">This event has been cancelled.</p>
+          ) : rsvps.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              You haven't been invited to this event.
+            </p>
           ) : (
-            <div className="mt-3 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Guests</Label>
-                  <Input
-                    inputMode="numeric"
-                    value={guests}
-                    onChange={(e) => setGuests(e.target.value)}
-                    disabled={rsvpClosed}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Notes (optional)</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="min-h-[80px]"
-                    disabled={rsvpClosed}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  className="h-9 text-xs"
-                  disabled={rsvpClosed || upsertRsvp.isPending}
-                  onClick={() => upsertRsvp.mutate("going")}
-                >
-                  {upsertRsvp.isPending ? "Saving…" : "Going"}
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="h-9 text-xs"
-                  disabled={rsvpClosed || upsertRsvp.isPending}
-                  onClick={() => upsertRsvp.mutate("maybe")}
-                >
-                  Maybe
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-9 text-xs"
-                  disabled={rsvpClosed || upsertRsvp.isPending}
-                  onClick={() => upsertRsvp.mutate("not_going")}
-                >
-                  Can't make it
-                </Button>
-                {myRsvp ? (
-                  <Button
-                    variant="ghost"
-                    className="h-9 text-xs text-muted-foreground"
-                    disabled={deleteRsvp.isPending}
-                    onClick={() => deleteRsvp.mutate()}
-                  >
-                    Remove RSVP
-                  </Button>
-                ) : null}
-              </div>
-
-              {rsvpClosed ? (
-                <p className="text-[11px] text-muted-foreground">
-                  RSVPs are closed for this event.
-                </p>
-              ) : null}
-
-              {myRsvp ? (
-                <p className="text-[11px] text-muted-foreground">
-                  Your RSVP: <span className="font-medium">{myRsvp.status.replace("_", " ")}</span>
-                </p>
-              ) : null}
+            <div className="mt-3 space-y-2">
+              {rsvps.map((r) => {
+                const member = (linkedMembers || []).find((m: any) => m.id === r.club_member_id) as any;
+                const status = String(r.status || "").toLowerCase();
+                return (
+                  <div key={r.id} className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-xs font-medium">
+                      {member?.name || "You"}
+                      {status === "confirmed" || status === "declined" ? (
+                        <span className="ml-1.5 text-muted-foreground font-normal">
+                          · {status === "confirmed" ? "Confirmed" : "Declined"}
+                        </span>
+                      ) : null}
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={status === "confirmed" ? "default" : "outline"}
+                        disabled={respond.isPending}
+                        onClick={() => respond.mutate({ rsvpId: r.id, status: "confirmed" })}
+                      >
+                        <Check className="w-3.5 h-3.5 mr-1" /> Confirm
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={status === "declined" ? "destructive" : "outline"}
+                        disabled={respond.isPending}
+                        onClick={() => respond.mutate({ rsvpId: r.id, status: "declined" })}
+                      >
+                        <X className="w-3.5 h-3.5 mr-1" /> Decline
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </Card>

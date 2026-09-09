@@ -68,6 +68,8 @@ function parseResults(html: string): ParsedResult[] {
     const opponentName =
       stripTags(opponentCell.match(/<a href="[^"]*\/ranking\/user\/[^"]*">([\s\S]*?)<\/a>/)?.[1] ?? "");
     const opponentUserId = Number(opponentCell.match(/\/user\/photo\/(\d+)\//)?.[1] ?? 0) || null;
+    // Most rows show a default avatar, so also keep the profile slug for linking.
+    const opponentSlug = (opponentCell.match(/\/ranking\/user\/([^"/?]+)/)?.[1] ?? "").toLowerCase() || null;
 
     const formatLabel = stripTags(cells[3] ?? "") || null;
     const scoreCell = stripTags(cells[4] ?? "");

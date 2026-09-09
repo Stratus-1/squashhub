@@ -82,16 +82,13 @@ export default function AdminEventEditor() {
     queryKey: ["admin-event-editor", "event", eventId],
     queryFn: async () => {
       if (!eventId) return null;
-      const { data, error } = await (supabase as any)
-        .from("events")
-        .select("*")
-        .eq("id", eventId)
-        .single();
-      if (error) throw error;
-      return data as EventRow;
+      const row = await fetchAdminEvent(eventId);
+      if (!row) throw new Error("Event not found");
+      return row as unknown as EventRow;
     },
     enabled: !!eventId,
   });
+
 
   const { data: requestRow } = useQuery({
     queryKey: ["admin-event-editor", "event-request", requestId],

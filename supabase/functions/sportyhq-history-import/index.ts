@@ -26,6 +26,7 @@ interface ParsedResult {
   played_on: string; // yyyy-mm-dd
   opponent_name: string;
   opponent_user_id: number | null;
+  opponent_slug: string | null;
   score: string;
   won: boolean;
   type_label: string;

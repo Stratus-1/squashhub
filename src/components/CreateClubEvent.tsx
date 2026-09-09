@@ -1129,7 +1129,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       const { data: rsvps } = await fromExt("club_event_rsvps")
         .select("club_member_id")
         .eq("event_id", e.id);
-      const ids = Array.from(new Set((rsvps || []).map((r: any) => String(r.club_member_id))));
+      const ids: string[] = Array.from(new Set(((rsvps || []) as any[]).map((r: any) => String(r.club_member_id))));
       if (ids.length > 0) {
         setForm((f) => ({ ...f, selected_member_ids: ids, booking_member_ids: ids }));
       }

@@ -8070,8 +8070,11 @@ export type Database = {
           created_at: string
           disputed: boolean
           duration_s: number | null
+          event_label: string | null
+          external_opponent_name: string | null
           game_scores: string | null
           id: string
+          is_imported: boolean
           match_date: string
           notes: string | null
           player_a: string | null
@@ -8094,8 +8097,11 @@ export type Database = {
           created_at?: string
           disputed?: boolean
           duration_s?: number | null
+          event_label?: string | null
+          external_opponent_name?: string | null
           game_scores?: string | null
           id?: string
+          is_imported?: boolean
           match_date?: string
           notes?: string | null
           player_a?: string | null
@@ -8118,8 +8124,11 @@ export type Database = {
           created_at?: string
           disputed?: boolean
           duration_s?: number | null
+          event_label?: string | null
+          external_opponent_name?: string | null
           game_scores?: string | null
           id?: string
+          is_imported?: boolean
           match_date?: string
           notes?: string | null
           player_a?: string | null
@@ -12753,6 +12762,7 @@ export type Database = {
           avoid_back_to_back: boolean
           champion_scope: string
           club_id: string
+          competition_level: string | null
           court_ids: number[]
           court_rotation_minutes: number | null
           created_at: string
@@ -12841,6 +12851,7 @@ export type Database = {
           avoid_back_to_back?: boolean
           champion_scope?: string
           club_id: string
+          competition_level?: string | null
           court_ids?: number[]
           court_rotation_minutes?: number | null
           created_at?: string
@@ -12929,6 +12940,7 @@ export type Database = {
           avoid_back_to_back?: boolean
           champion_scope?: string
           club_id?: string
+          competition_level?: string | null
           court_ids?: number[]
           court_rotation_minutes?: number | null
           created_at?: string
@@ -14935,6 +14947,7 @@ export type Database = {
       }
       norm_person_name: { Args: { _name: string }; Returns: string }
       norm_phone_tail: { Args: { _phone: string }; Returns: string }
+      normalise_competition_level: { Args: { _raw: string }; Returns: string }
       notify_champ_round_draw: {
         Args: {
           p_champ_id: string

@@ -6171,19 +6171,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   const inviteeList = useMemo(() => {
     const q = inviteeSearch.trim().toLowerCase();
+    const dir = inviteeDirectory as Map<string, { name: string; clubName: string | null; contactable: boolean }>;
     return (inviteeRows as any[])
-      .filter((r) => r.club_member_id && reachableMemberIds.has(r.club_member_id))
-      .map((r) => ({
-        id: r.id as string,
-        memberId: r.club_member_id as string,
-        name: memberNameById.get(r.club_member_id) || "Unknown member",
-        status: String(r.status || "").toLowerCase(),
-        invited: !!r.invited_by_admin,
-        category: classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }),
-      }))
-      .filter((r) => !q || r.name.toLowerCase().includes(q))
+      .filter((r) => {
+        if (!r.club_member_id) return false;
+        const remote = dir.get(r.club_member_id);
+        // Local roster knowledge first; otherwise trust the secure directory.
+        return remote ? remote.contactable : reachableMemberIds.has(r.club_member_id);
+      })
+      .map((r) => {
+        const remote = dir.get(r.club_member_id);
+        return {
+          id: r.id as string,
+          memberId: r.club_member_id as string,
+          name: memberNameById.get(r.club_member_id) || remote?.name || "Unknown member",
+          clubName: remote?.clubName || null,
+          status: String(r.status || "").toLowerCase(),
+          invited: !!r.invited_by_admin,
+          category: classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }),
+        };
+      })
+      .filter((r) => !q || r.name.toLowerCase().includes(q) || (r.clubName || "").toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [inviteeRows, inviteeSearch, memberNameById, reachableMemberIds, paymentRequired, entryFeeAmount]);
+  }, [
+    inviteeRows,
+    inviteeSearch,
+    memberNameById,
+    reachableMemberIds,
+    inviteeDirectory,
+    paymentRequired,
+    entryFeeAmount,
+  ]);
+
 
   function inviteeStatusLabel(r: { status: string; invited: boolean; category?: any }) {
     const category =

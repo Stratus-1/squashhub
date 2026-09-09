@@ -102,8 +102,13 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
                 className="w-full flex items-center justify-between gap-3 py-2 text-left disabled:cursor-default"
               >
                 <div className="min-w-0 flex items-center gap-2">
-                  <span className="w-16 shrink-0 text-[11px] font-semibold text-foreground">
-                    {RANKING_SCOPE_SHORT_LABELS[scope]}
+                  <span
+                    className="w-24 shrink-0 text-[11px] font-semibold text-foreground truncate"
+                    title={r?.label || RANKING_SCOPE_SHORT_LABELS[scope]}
+                  >
+                    {scope === "association" && r?.label
+                      ? r.label
+                      : RANKING_SCOPE_SHORT_LABELS[scope]}
                   </span>
                   {r ? (
                     <span className="flex items-baseline gap-3 min-w-0">
@@ -120,13 +125,14 @@ export function MyRankingsCard({ clubId, memberId }: Props) {
                           Rating
                         </span>
                         <span className="text-[13px] font-semibold tabular-nums text-foreground/80">
-                          {formatRating(r.points)}
+                          {r.points != null ? formatRating(r.points) : "—"}
                         </span>
                       </span>
                     </span>
                   ) : (
                     <span className="text-[12px] text-muted-foreground">Not ranked yet</span>
                   )}
+
                   {scope === "club" && r && (
                     <ProvisionalBadge
                       matchesPlayed={myMatches}

@@ -113,7 +113,7 @@ export function useMemberRankings(clubId?: string | null, memberId?: string | nu
           scope: scope === "association" ? "association" : "national",
           rank: Number(entry.rank),
           previousRank: entry.previous_rank != null ? Number(entry.previous_rank) : null,
-          points: Number(entry.score ?? 0),
+          points: entry.score != null ? Number(entry.score) : null,
           snapshotId: snap.id,
           associationId: assocId,
           playerCode: entry.player_code ?? null,
@@ -123,8 +123,49 @@ export function useMemberRankings(clubId?: string | null, memberId?: string | nu
       if (associationId) await loadScope("association", associationId);
       await loadScope("national", null);
 
+      // ---- Fallback: imported SportyHQ ranking lists ----------------------
+      // Same central data the old SportyHQ block used, mapped onto the
+      // regional / national levels instead of shown as its own system.
+      if (!out.association || !out.national) {
+        const filters = [
+          me.person_id ? `person_id.eq.${me.person_id}` : null,
+          `club_member_id.eq.${memberId}`,
+        ].filter(Boolean) as string[];
+        const { data: profile } = await (supabase as any)
+          .from("sportyhq_profiles")
+          .select("rankings")
+          .or(filters.join(","))
+          .limit(1)
+          .maybeSingle();
+
+        const lists = (Array.isArray(profile?.rankings) ? profile!.rankings : []) as any[];
+        const valid = lists.filter((r) => typeof r?.position === "number" && r.position > 0);
+        const isNational = (r: any) => /national|south africa/i.test(String(r?.label ?? ""));
+
+        const toStanding = (r: any, scope: "association" | "national"): MemberRankingStanding => ({
+          scope,
+          rank: Number(r.position),
+          previousRank: null,
+          points: typeof r.points === "number" && r.points > 0 ? Number(r.points) : null,
+          label: r.label ?? null,
+          total: typeof r.people === "number" && r.people > 0 ? Number(r.people) : null,
+          snapshotId: null,
+          associationId: null,
+          playerCode: null,
+        });
+
+        const nationalRow = valid.find(isNational);
+        const regionalRow = valid
+          .filter((r) => !isNational(r))
+          .sort((a, b) => (a.position || 99999) - (b.position || 99999))[0];
+
+        if (!out.national && nationalRow) out.national = toStanding(nationalRow, "national");
+        if (!out.association && regionalRow) out.association = toStanding(regionalRow, "association");
+      }
+
       return out;
     },
+
   });
 }
 

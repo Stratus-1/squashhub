@@ -145,94 +145,10 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
 
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
-        {/* STATS card */}
-        <div className="col-span-12 xl:col-span-7">
-          <Card className="bg-card/95 border-border backdrop-blur-md p-5 rounded-2xl">
-            {/* Toggle pill */}
-            <div className="grid grid-cols-2 rounded-xl overflow-hidden border border-border mb-5">
-              <button
-                onClick={() => setScope("me")}
-                className={cn(
-                  "py-2.5 text-sm font-heading uppercase tracking-[0.18em] transition-colors",
-                  scope === "me"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-transparent text-foreground/70 hover:bg-muted/50"
-                )}
-              >
-                My Stats
-              </button>
-              <button
-                onClick={() => setScope("club")}
-                className={cn(
-                  "py-2.5 text-sm font-heading uppercase tracking-[0.18em] transition-colors",
-                  scope === "club"
-                    ? "bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]"
-                    : "bg-transparent text-foreground/80"
-                )}
-              >
-                Club
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              {/* Rate radial */}
-              <div className="rounded-xl bg-muted/40 border border-border p-4 flex flex-col justify-between row-span-2 min-h-[230px]">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                  {scope === "club" ? "Confirmed rate" : "Win rate"}
-                </span>
-                <div className="flex-1 flex items-center justify-center">
-                  <div
-                    className="w-28 h-28 rounded-full grid place-items-center"
-                    style={ringStyle}
-                  >
-                    <div className="w-[88px] h-[88px] rounded-full bg-card grid place-items-center">
-                      <span className="text-2xl font-heading font-bold text-foreground">
-                        {displayedRate}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {scope === "me" ? (
-                <>
-                  <StatTile label="Played" value={props.played} />
-                  <StatTile label="Wins" value={props.wins} />
-                  <StatTile label="Losses" value={props.losses} />
-                  <StatTile label="Rank" value={props.rank != null ? `#${props.rank}` : "—"} />
-                </>
-              ) : (
-                <>
-                  <StatTile label="Total Matches" value={clubStats?.total_matches ?? 0} />
-                  <StatTile label="Active Players" value={clubStats?.active_players ?? 0} />
-                  <StatTile
-                    label="Avg Duration"
-                    value={clubStats?.avg_duration_min != null ? `${Math.round(clubStats.avg_duration_min)}m` : "—"}
-                  />
-                  <StatTile label="Confirmed" value={clubStats?.confirmed_matches ?? 0} />
-                </>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                  {scope === "club" ? "Club Bookings (30d)" : "Total Bookings"}
-                </span>
-                <span className="text-2xl font-heading font-bold text-foreground tabular-nums">
-                  {scope === "club" ? clubStats?.total_bookings ?? 0 : props.totalBookings}
-                </span>
-              </div>
-              <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                  {scope === "club" ? "Top Players" : "Courts Used"}
-                </span>
-                <span className="text-2xl font-heading font-bold text-foreground tabular-nums">
-                  {scope === "club" ? (clubStats?.top_players?.length ?? 0) : props.courtsUsed}
-                </span>
-              </div>
-            </div>
-          </Card>
+        {/* MY STATS + MY RANKINGS — same personal blocks as mobile */}
+        <div className="col-span-12 xl:col-span-7 space-y-5">
+          <MyStatsCard memberId={props.myMemberId} />
+          <MyRankingsCard clubId={props.clubId ?? null} memberId={props.myMemberId} />
         </div>
 
         {/* BOOKINGS card */}

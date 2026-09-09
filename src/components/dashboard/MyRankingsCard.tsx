@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useMemberRankings, useNearbyRankings } from "@/hooks/use-member-rankings";
+import { useSportyhqAutoLink } from "@/hooks/use-sportyhq-autolink";
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { useProvisionalSettings, useClubRankedMatchCounts } from "@/hooks/use-provisional-ranking";
 import { ProvisionalBadge } from "@/components/rankings/ProvisionalBadge";

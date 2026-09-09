@@ -141,6 +141,15 @@ export function MyStatsCard({ memberId }: Props) {
         </p>
       )}
 
+      {!statsActivated && (
+        <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-muted/40 border border-border px-2.5 py-2">
+          <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-[10px] leading-snug text-muted-foreground">
+            Full stats will be activated once your club subscribes to SquashHub.
+          </p>
+        </div>
+      )}
+
       <MatchHistorySheet
         open={openCategory !== null}
         onOpenChange={(v) => !v && setOpenCategory(null)}

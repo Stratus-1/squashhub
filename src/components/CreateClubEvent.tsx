@@ -1174,6 +1174,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         light_fee_split: form.light_fee_split,
         reminder_hours: parseInt(form.reminder_hours),
         num_instances: form.recurrence === "once" ? 1 : form.num_instances,
+        notify_push: form.notify_push,
+        notify_email: form.notify_email,
+        notify_whatsapp: form.notify_whatsapp,
+        lights_auto_on: form.lights_auto_on,
         updated_at: new Date().toISOString(),
       }).eq("id", editingEventId);
       if (updateErr) throw updateErr;

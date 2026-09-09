@@ -1155,6 +1155,7 @@ export type Database = {
           created_at: string
           date: string
           end_time: string
+          event_id: string | null
           external_booker_name: string | null
           external_id: string | null
           guest_name: string | null
@@ -1183,6 +1184,7 @@ export type Database = {
           created_at?: string
           date: string
           end_time: string
+          event_id?: string | null
           external_booker_name?: string | null
           external_id?: string | null
           guest_name?: string | null
@@ -1211,6 +1213,7 @@ export type Database = {
           created_at?: string
           date?: string
           end_time?: string
+          event_id?: string | null
           external_booker_name?: string | null
           external_id?: string | null
           guest_name?: string | null
@@ -1250,6 +1253,13 @@ export type Database = {
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "club_events"
             referencedColumns: ["id"]
           },
           {
@@ -3294,6 +3304,10 @@ export type Database = {
           invite_scope_id: string | null
           is_club_booking: boolean
           light_fee_split: string
+          lights_auto_on: boolean
+          notify_email: boolean
+          notify_push: boolean
+          notify_whatsapp: boolean
           num_instances: number
           recurrence: string
           reminder_hours: number
@@ -3317,6 +3331,10 @@ export type Database = {
           invite_scope_id?: string | null
           is_club_booking?: boolean
           light_fee_split?: string
+          lights_auto_on?: boolean
+          notify_email?: boolean
+          notify_push?: boolean
+          notify_whatsapp?: boolean
           num_instances?: number
           recurrence?: string
           reminder_hours?: number
@@ -3340,6 +3358,10 @@ export type Database = {
           invite_scope_id?: string | null
           is_club_booking?: boolean
           light_fee_split?: string
+          lights_auto_on?: boolean
+          notify_email?: boolean
+          notify_push?: boolean
+          notify_whatsapp?: boolean
           num_instances?: number
           recurrence?: string
           reminder_hours?: number

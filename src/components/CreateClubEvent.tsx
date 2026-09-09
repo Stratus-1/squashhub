@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { Card, CardContent } from "@/components/ui/card";
@@ -191,6 +191,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
   const [createOpen, setCreateOpen] = useState(!!onClose);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  // True right after loading a saved event, so the automatic "tick everyone in
+  // this league/category" helpers don't overwrite the saved guest list.
+  const skipScopePretick = useRef(false);
   const [step, setStep] = useState(1);
   const [deleteBookings, setDeleteBookings] = useState(true);
   const [memberSearch, setMemberSearch] = useState("");
@@ -443,13 +446,16 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     enabled: linkedMemberIds.length > 0 && eventIds.length > 0,
   });
 
-  // Pre-tick league/category members when selection changes
+  // Pre-tick league/category members when selection changes — but never when we
+  // have just loaded a saved event's own guest list.
   useEffect(() => {
+    if (skipScopePretick.current) return;
     if (form.invite_scope === "league" && leagueMemberIds) {
       setForm((f) => ({ ...f, selected_member_ids: leagueMemberIds }));
     }
   }, [leagueMemberIds, form.invite_scope]);
   useEffect(() => {
+    if (skipScopePretick.current) return;
     if (form.invite_scope === "category" && categoryMemberIds) {
       setForm((f) => ({ ...f, selected_member_ids: categoryMemberIds }));
     }
@@ -457,6 +463,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
 
   useEffect(() => {
+    if (editingEventId || skipScopePretick.current) return;
     if (activeMember?.id && form.selected_member_ids.length === 0) {
       setForm((f) => ({
         ...f,
@@ -464,7 +471,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         booking_member_ids: [activeMember.id],
       }));
     }
-  }, [activeMember?.id]);
+  }, [activeMember?.id, editingEventId]);
 
   // Calculate instance dates based on recurrence
   const getInstanceDates = (): string[] => {
@@ -485,10 +492,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   // Check court availability for the selected dates/times/courts
   const instanceDatesForCheck = useMemo(() => getInstanceDates(), [form.event_date, form.recurrence, form.num_instances]);
   const { data: courtConflicts } = useQuery({
-    queryKey: ["court-conflicts", form.court_ids, instanceDatesForCheck, form.start_time, form.end_time],
+    queryKey: ["court-conflicts", form.court_ids, instanceDatesForCheck, form.start_time, form.end_time, editingEventId],
     queryFn: async () => {
       if (form.court_ids.length === 0 || instanceDatesForCheck.length === 0) return [];
-      const { data, error } = await supabase
+      let q = supabase
         .from("bookings")
         .select("id, court_id, date, start_time, end_time, guest_name, status")
         .in("court_id", form.court_ids)
@@ -496,6 +503,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         .eq("status", "active")
         .lt("start_time", form.end_time + ":00")
         .gt("end_time", form.start_time + ":00");
+      // When editing, this event's own court bookings are not a clash.
+      if (editingEventId) q = q.or(`event_id.is.null,event_id.neq.${editingEventId}`);
+      const { data, error } = await q;
       if (error) throw error;
       return data || [];
     },
@@ -641,6 +651,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         light_fee_split: form.light_fee_split,
         reminder_hours: parseInt(form.reminder_hours),
         num_instances: form.recurrence === "once" ? 1 : form.num_instances,
+        notify_push: form.notify_push,
+        notify_email: form.notify_email,
+        notify_whatsapp: form.notify_whatsapp,
+        lights_auto_on: form.lights_auto_on,
       }).select("id").single();
       if (eventError) throw eventError;
 
@@ -742,6 +756,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             status: "active",
             club_id: clubId,
             source: "club_event",
+            event_id: eventId,
           });
         }
       }
@@ -1075,9 +1090,12 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   });
 
 
-  // Start editing an event — pre-fill form
-  const startEdit = (e: any) => {
+  // Start editing an event — pre-fill form with everything that was saved:
+  // schedule, courts, the people who were invited and the chosen channels.
+  const startEdit = async (e: any) => {
     const courtIds = (e.club_event_courts || []).map((c: any) => c.court_id);
+    // Don't let the scope pre-tick effects wipe the saved guest list.
+    skipScopePretick.current = true;
     setEditingEventId(e.id);
     setForm({
       title: e.title || "",
@@ -1092,18 +1110,32 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       invite_scope: e.invite_scope || "all",
       invite_scope_id: e.invite_scope_id || "",
       selected_member_ids: [],
-      notify_push: true,
-      notify_email: true,
-      notify_whatsapp: false,
+      notify_push: e.notify_push ?? true,
+      notify_email: e.notify_email ?? true,
+      notify_whatsapp: e.notify_whatsapp ?? false,
       light_fee_split: e.light_fee_split || "creator",
       is_club_booking: e.is_club_booking || false,
       booking_member_ids: [],
       reserve_courts: courtIds.length > 0 ? "yes" : "no",
       court_ids: courtIds,
-      lights_auto_on: false,
+      lights_auto_on: e.lights_auto_on ?? false,
     });
     setStep(1);
     setCreateOpen(true);
+
+    // Load the existing guest list so an edit never silently re-invites a
+    // different group.
+    try {
+      const { data: rsvps } = await fromExt("club_event_rsvps")
+        .select("club_member_id")
+        .eq("event_id", e.id);
+      const ids: string[] = Array.from(new Set(((rsvps || []) as any[]).map((r: any) => String(r.club_member_id))));
+      if (ids.length > 0) {
+        setForm((f) => ({ ...f, selected_member_ids: ids, booking_member_ids: ids }));
+      }
+    } catch (err) {
+      console.warn("[CreateClubEvent] could not load existing invitees:", err);
+    }
   };
 
   // Edit mutation — update event and rebook courts if times/courts changed
@@ -1142,6 +1174,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         light_fee_split: form.light_fee_split,
         reminder_hours: parseInt(form.reminder_hours),
         num_instances: form.recurrence === "once" ? 1 : form.num_instances,
+        notify_push: form.notify_push,
+        notify_email: form.notify_email,
+        notify_whatsapp: form.notify_whatsapp,
+        lights_auto_on: form.lights_auto_on,
         updated_at: new Date().toISOString(),
       }).eq("id", editingEventId);
       if (updateErr) throw updateErr;
@@ -1153,6 +1189,40 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         const courtRows = form.court_ids.map((cid) => ({ event_id: editingEventId, court_id: cid }));
         await fromExt("club_event_courts").insert(courtRows);
       }
+
+      // Add anyone newly ticked on the guest list. Existing invitations and
+      // their answers are left untouched.
+      try {
+        const wanted = await getInviteeIds();
+        if (wanted.length > 0) {
+          const { data: existingRsvps } = await fromExt("club_event_rsvps")
+            .select("club_member_id")
+            .eq("event_id", editingEventId);
+          const have = new Set((existingRsvps || []).map((r: any) => String(r.club_member_id)));
+          const toAdd = wanted.filter((id) => !have.has(id));
+          if (toAdd.length > 0) {
+            for (let i = 0; i < toAdd.length; i += 500) {
+              await fromExt("club_event_rsvps").insert(
+                toAdd.slice(i, i + 500).map((mid) => ({ event_id: editingEventId, club_member_id: mid, status: "invited" })),
+              );
+            }
+            const { data: insts } = await fromExt("club_event_instances")
+              .select("id")
+              .eq("event_id", editingEventId);
+            const instRows: any[] = [];
+            for (const inst of insts || []) {
+              for (const mid of toAdd) instRows.push({ instance_id: (inst as any).id, club_member_id: mid, status: "invited" });
+            }
+            for (let i = 0; i < instRows.length; i += 500) {
+              await fromExt("club_event_instance_rsvps").insert(instRows.slice(i, i + 500));
+            }
+          }
+        }
+      } catch (inviteErr) {
+        console.warn("[CreateClubEvent] could not update guest list (non-blocking):", inviteErr);
+      }
+
+
 
       // Check if times or courts changed — rebook if so
       const timesChanged = oldEvent &&
@@ -1171,7 +1241,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           .select("instance_date")
           .eq("event_id", editingEventId);
 
-        // Cancel old bookings on old courts/times (future dates only)
+        // Cancel this event's own future bookings — they are re-made below at
+        // the new time/courts. Matching on the event link is exact, so other
+        // people's bookings are never touched.
+        await supabase
+          .from("bookings")
+          .update({ status: "cancelled" })
+          .eq("event_id", editingEventId)
+          .gte("date", todayStr)
+          .eq("status", "active");
+
+        // Legacy events created before bookings were linked: fall back to the
+        // old court/time match.
         if (oldEvent && oldCourtIds.length && instances?.length) {
           const dates = instances
             .map((i: any) => i.instance_date)
@@ -1180,6 +1261,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             await supabase
               .from("bookings")
               .update({ status: "cancelled" })
+              .is("event_id", null)
+              .eq("source", "club_event")
               .in("court_id", [...new Set([...oldCourtIds, ...form.court_ids])])
               .eq("date", date)
               .gte("start_time", oldEvent.start_time)
@@ -1231,6 +1314,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               status: "active",
               club_id: clubId,
               source: "club_event",
+              event_id: editingEventId,
             });
           }
         }
@@ -1242,7 +1326,25 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           const failures: BookingFailure[] = [];
           for (const row of rebookRows) {
             const { error: reErr } = await supabase.from("bookings").insert(row as any);
-            if (reErr) failures.push({ row, message: reErr.message });
+            if (!reErr) continue;
+            // The slot may still hold this event's own just-cancelled booking —
+            // revive it instead of reporting a clash against ourselves.
+            const { data: revived } = await supabase
+              .from("bookings")
+              .update({
+                status: "active",
+                end_time: row.end_time,
+                guest_name: row.guest_name,
+                lights_requested: row.lights_requested,
+                event_id: editingEventId,
+              })
+              .eq("court_id", row.court_id)
+              .eq("date", row.date)
+              .eq("start_time", row.start_time)
+              .eq("club_id", clubId)
+              .neq("status", "active")
+              .select("id");
+            if (!revived || revived.length === 0) failures.push({ row, message: reErr.message });
           }
           const courtNames = (courts || []).reduce(
             (acc, c) => ({ ...acc, [c.id]: c.name }),
@@ -1351,6 +1453,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
   const resetForm = () => {
     const selfId = activeMember?.id;
+    skipScopePretick.current = false;
     setEditingEventId(null);
     setForm({
       title: "",
@@ -1860,7 +1963,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               {/* Invite Scope */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Invite</Label>
-                <Select value={form.invite_scope} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope: v, invite_scope_id: "", selected_member_ids: [] }))}>
+                <Select value={form.invite_scope} onValueChange={(v) => { skipScopePretick.current = false; setForm((f) => ({ ...f, invite_scope: v, invite_scope_id: "", selected_member_ids: [] })); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Members</SelectItem>
@@ -1962,7 +2065,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               {form.invite_scope === "category" && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">Category</Label>
-                  <Select value={form.invite_scope_id} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope_id: v }))}>
+                  <Select value={form.invite_scope_id} onValueChange={(v) => { skipScopePretick.current = false; setForm((f) => ({ ...f, invite_scope_id: v })); }}>
                     <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                     <SelectContent>
                       {(feeCategories || []).map((c) => (
@@ -1976,7 +2079,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               {form.invite_scope === "league" && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">League</Label>
-                  <Select value={form.invite_scope_id} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope_id: v }))}>
+                  <Select value={form.invite_scope_id} onValueChange={(v) => { skipScopePretick.current = false; setForm((f) => ({ ...f, invite_scope_id: v })); }}>
                     <SelectTrigger><SelectValue placeholder="Select league" /></SelectTrigger>
                     <SelectContent>
                       {(leagues || []).map((l) => (

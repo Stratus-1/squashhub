@@ -191,6 +191,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
   const [createOpen, setCreateOpen] = useState(!!onClose);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  // True right after loading a saved event, so the automatic "tick everyone in
+  // this league/category" helpers don't overwrite the saved guest list.
+  const skipScopePretick = useRef(false);
   const [step, setStep] = useState(1);
   const [deleteBookings, setDeleteBookings] = useState(true);
   const [memberSearch, setMemberSearch] = useState("");

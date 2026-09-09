@@ -255,10 +255,12 @@ export function RankingPointsTab({ clubId }: Props) {
           <Card className="p-4 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold">Ranking Points System</h3>
+                <h3 className="text-sm font-semibold">Player Rating System</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  ATP-style points that run alongside the pyramid ladder. All point movements require admin approval.
+                  ATP-style ratings that run alongside the pyramid ladder. Results change a player's rating,
+                  which in turn sets their ranking position. All rating changes require admin approval.
                 </p>
+
               </div>
               <Switch checked={enabled} onCheckedChange={setEnabled} />
             </div>

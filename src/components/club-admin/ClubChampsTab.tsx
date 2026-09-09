@@ -6203,6 +6203,75 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     entryFeeAmount,
   ]);
 
+  /**
+   * Inline team rosters for the invite step. The names live directly under each
+   * ticked team so the roster and the selection are the same thing — no
+   * separate pop-up list to reconcile. Cross-club names come from the secure
+   * directory RPC (name + club + contactability only, never contact details).
+   */
+  const teamRosterMemberIdKey = useMemo(() => {
+    const ids = new Set<string>();
+    audienceLeagueIds.forEach((leagueId) => {
+      (audienceRegistrationsByLeague.get(leagueId) || []).forEach((id) => id && ids.add(id));
+    });
+    return Array.from(ids).sort().join(",");
+  }, [audienceLeagueIds, audienceRegistrationsByLeague]);
+
+  const { data: teamRosterDirectory = new Map<string, { name: string; clubName: string | null; contactable: boolean }>() } =
+    useQuery({
+      queryKey: ["champ-team-roster-directory", editingChampId, clubId, teamRosterMemberIdKey],
+      queryFn: async () => {
+        const map = new Map<string, { name: string; clubName: string | null; contactable: boolean }>();
+        const ids = teamRosterMemberIdKey ? teamRosterMemberIdKey.split(",") : [];
+        if (!ids.length) return map;
+        const { data, error } = await (supabase as any).rpc("tournament_invite_member_directory", {
+          p_tournament_id: editingChampId,
+          p_club_id: clubId,
+          p_member_ids: ids,
+        });
+        if (error) throw error;
+        for (const row of (data || []) as any[]) {
+          map.set(row.member_id, {
+            name: row.full_name || "Unknown member",
+            clubName: row.club_name || null,
+            contactable: !!row.contactable,
+          });
+        }
+        return map;
+      },
+      enabled: !!clubId && !!teamRosterMemberIdKey,
+      staleTime: 60_000,
+      retry: false,
+    });
+
+  const inviteTeamRosters = useMemo(() => {
+    const dir = teamRosterDirectory as Map<string, { name: string; clubName: string | null; contactable: boolean }>;
+    return inviteTeamBreakdown.map((t) => ({
+      id: t.id,
+      name: t.name,
+      players: (audienceRegistrationsByLeague.get(t.id) || [])
+        .map((memberId) => {
+          const remote = dir.get(memberId);
+          return {
+            memberId,
+            name: memberNameById.get(memberId) || remote?.name || "Unknown member",
+            clubName: remote?.clubName || null,
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+  }, [inviteTeamBreakdown, audienceRegistrationsByLeague, teamRosterDirectory, memberNameById]);
+
+  const toggleInviteMember = (memberId: string, include: boolean) => {
+    setInviteExcludedMemberIds((prev) => {
+      const next = new Set(prev);
+      if (include) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  };
+
+
 
   function inviteeStatusLabel(r: { status: string; invited: boolean; category?: any }) {
     const category =

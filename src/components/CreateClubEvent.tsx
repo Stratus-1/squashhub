@@ -1550,6 +1550,20 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                           size="icon"
                           variant="ghost"
                           className="h-6 w-6"
+                          title="Re-send invitation with the current date and time"
+                          disabled={resendMutation.isPending}
+                          onClick={() => resendMutation.mutate(e)}
+                        >
+                          {resendMutation.isPending
+                            ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                            : <Send className="w-3 h-3 text-muted-foreground" />}
+                        </Button>
+                      )}
+                      {(isCreator || isAdmin) && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
                           onClick={() => startEdit(e)}
                         >
                           <Pencil className="w-3 h-3 text-muted-foreground" />

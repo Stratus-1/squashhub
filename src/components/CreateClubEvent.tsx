@@ -1190,6 +1190,40 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         await fromExt("club_event_courts").insert(courtRows);
       }
 
+      // Add anyone newly ticked on the guest list. Existing invitations and
+      // their answers are left untouched.
+      try {
+        const wanted = await getInviteeIds();
+        if (wanted.length > 0) {
+          const { data: existingRsvps } = await fromExt("club_event_rsvps")
+            .select("club_member_id")
+            .eq("event_id", editingEventId);
+          const have = new Set((existingRsvps || []).map((r: any) => String(r.club_member_id)));
+          const toAdd = wanted.filter((id) => !have.has(id));
+          if (toAdd.length > 0) {
+            for (let i = 0; i < toAdd.length; i += 500) {
+              await fromExt("club_event_rsvps").insert(
+                toAdd.slice(i, i + 500).map((mid) => ({ event_id: editingEventId, club_member_id: mid, status: "invited" })),
+              );
+            }
+            const { data: insts } = await fromExt("club_event_instances")
+              .select("id")
+              .eq("event_id", editingEventId);
+            const instRows: any[] = [];
+            for (const inst of insts || []) {
+              for (const mid of toAdd) instRows.push({ instance_id: (inst as any).id, club_member_id: mid, status: "invited" });
+            }
+            for (let i = 0; i < instRows.length; i += 500) {
+              await fromExt("club_event_instance_rsvps").insert(instRows.slice(i, i + 500));
+            }
+          }
+        }
+      } catch (inviteErr) {
+        console.warn("[CreateClubEvent] could not update guest list (non-blocking):", inviteErr);
+      }
+
+
+
       // Check if times or courts changed — rebook if so
       const timesChanged = oldEvent &&
         (oldEvent.start_time !== form.start_time + ":00" ||

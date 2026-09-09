@@ -485,10 +485,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   // Check court availability for the selected dates/times/courts
   const instanceDatesForCheck = useMemo(() => getInstanceDates(), [form.event_date, form.recurrence, form.num_instances]);
   const { data: courtConflicts } = useQuery({
-    queryKey: ["court-conflicts", form.court_ids, instanceDatesForCheck, form.start_time, form.end_time],
+    queryKey: ["court-conflicts", form.court_ids, instanceDatesForCheck, form.start_time, form.end_time, editingEventId],
     queryFn: async () => {
       if (form.court_ids.length === 0 || instanceDatesForCheck.length === 0) return [];
-      const { data, error } = await supabase
+      let q = supabase
         .from("bookings")
         .select("id, court_id, date, start_time, end_time, guest_name, status")
         .in("court_id", form.court_ids)
@@ -496,6 +496,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         .eq("status", "active")
         .lt("start_time", form.end_time + ":00")
         .gt("end_time", form.start_time + ":00");
+      // When editing, this event's own court bookings are not a clash.
+      if (editingEventId) q = q.or(`event_id.is.null,event_id.neq.${editingEventId}`);
+      const { data, error } = await q;
       if (error) throw error;
       return data || [];
     },
@@ -641,6 +644,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         light_fee_split: form.light_fee_split,
         reminder_hours: parseInt(form.reminder_hours),
         num_instances: form.recurrence === "once" ? 1 : form.num_instances,
+        notify_push: form.notify_push,
+        notify_email: form.notify_email,
+        notify_whatsapp: form.notify_whatsapp,
+        lights_auto_on: form.lights_auto_on,
       }).select("id").single();
       if (eventError) throw eventError;
 
@@ -742,6 +749,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             status: "active",
             club_id: clubId,
             source: "club_event",
+            event_id: eventId,
           });
         }
       }

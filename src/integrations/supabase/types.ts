@@ -11180,6 +11180,36 @@ export type Database = {
           },
         ]
       }
+      reminder_log: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          ref_id: string | null
+          ref_table: string | null
+          scheduled_for: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          ref_id?: string | null
+          ref_table?: string | null
+          scheduled_for?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          ref_id?: string | null
+          ref_table?: string | null
+          scheduled_for?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       season_awards: {
         Row: {
           award_label: string
@@ -15046,6 +15076,7 @@ export type Database = {
       }
       request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
+      reset_event_invites: { Args: { _event_id: string }; Returns: number }
       resolve_qr_short_code: { Args: { _code: string }; Returns: Json }
       respond_doubles_pair: {
         Args: {

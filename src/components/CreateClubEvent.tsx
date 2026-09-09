@@ -1195,17 +1195,98 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
 
       }
 
+      // If the date or time moved, everybody who was invited must be asked
+      // again — with the corrected time. Old answers are reset, already-sent
+      // reminders are cleared, and a fresh invite goes out on every channel
+      // the organiser picked.
+      const scheduleChanged = !!oldEvent &&
+        (oldEvent.start_time !== form.start_time + ":00" ||
+         oldEvent.end_time !== form.end_time + ":00" ||
+         oldEvent.start_date !== form.event_date);
+
+      if (scheduleChanged) {
+        try {
+          await (supabase as any).rpc("reset_event_invites", { _event_id: editingEventId });
+        } catch (resetErr) {
+          console.warn("[CreateClubEvent] could not reset invitations:", resetErr);
+        }
+
+        const { data: rsvpRows } = await fromExt("club_event_rsvps")
+          .select("club_member_id")
+          .eq("event_id", editingEventId);
+        const inviteeIds: string[] = Array.from(
+          new Set((rsvpRows || []).map((r: any) => String(r.club_member_id))),
+        );
+
+        const whenText = `${format(new Date(form.event_date + "T00:00:00"), "EEE d MMM")} at ${String(form.start_time).slice(0, 5)}`;
+
+        if (inviteeIds.length > 0 && (form.notify_push || form.notify_email)) {
+          try {
+            const { data: memberData } = await supabase
+              .from("club_members")
+              .select("id, user_id")
+              .in("id", inviteeIds);
+            const notifRows = (memberData || []).map((m) => ({
+              user_id: m.user_id || "00000000-0000-0000-0000-000000000000",
+              club_member_id: m.id,
+              title: `📅 Updated invitation — ${form.title.trim()}`,
+              message: `The time has changed. "${form.title.trim()}" is now on ${whenText}. Please confirm or decline again.`,
+              type: "booking",
+              url: `/events`,
+              data: JSON.stringify({
+                event_id: editingEventId,
+                suppress_email: form.notify_email ? "false" : "true",
+                suppress_push: form.notify_push ? "false" : "true",
+              }),
+            }));
+            for (let i = 0; i < notifRows.length; i += 50) {
+              await fromExt("notifications").insert(notifRows.slice(i, i + 50));
+            }
+          } catch (notifErr) {
+            console.warn("[CreateClubEvent] update notification failed (non-blocking):", notifErr);
+          }
+        }
+
+        if (inviteeIds.length > 0 && form.notify_whatsapp && canUseClubWhatsApp && clubId) {
+          try {
+            const questionText = `CHANGED TIME — are you joining "${form.title.trim()}" on ${whenText}?`;
+            const detailsText = "Please reply again: YES to confirm or NO to decline. (Your earlier answer was for the old time.)";
+            await sendWhatsApp({
+              clubId,
+              recipients: inviteeIds.map((id) => ({ member_id: id })),
+              kind: "event_invite",
+              category: "utility",
+              templateKey: "rsvp_question",
+              templateVariables: { question: questionText, details: detailsText },
+              body: `${questionText}\n\n${detailsText}`,
+              interaction: {
+                kind: "event_rsvp",
+                targetId: editingEventId,
+                prompt: `RSVP for ${form.title.trim()}`,
+              },
+            });
+          } catch (waErr) {
+            console.warn("[CreateClubEvent] WhatsApp update invite failed (non-blocking):", waErr);
+          }
+        }
+      }
+
       return editingEventId;
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["club-events"] });
       queryClient.invalidateQueries({ queryKey: ["club-events-list"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
       toast.success("Event updated!");
       setCreateOpen(false);
       setEditingEventId(null);
       resetForm();
       onClose?.();
     },
+
     onError: (err: any) => toast.error(err.message || "Failed to update event"),
   });
 

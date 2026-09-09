@@ -5236,22 +5236,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       qc.invalidateQueries({ queryKey: ["bookings"] });
       qc.invalidateQueries({ queryKey: ["my-bookings"] });
 
-      // For newly-created invite-mode tournaments, decide what to do with invites
-      // based on the admin's chosen timing.
+      // Invitations are NEVER sent as a side-effect of saving a tournament.
+      // Saving only prepares the invitation list; the organiser must press
+      // "Send invitations" (here or under Invite actions) before anybody is
+      // notified. This is deliberate — a half-finished tournament must never
+      // mail the players.
       const isNewInvite = !editingChampId && awaitingPlayerPairs && registrationUsesInviteList;
       const inviteeCount = Array.from(selectedPlayerIds).filter((id) => !id.startsWith("visitor-")).length;
       if (isNewInvite && inviteeCount > 0 && data?.id) {
+        const who = `${inviteeCount} member${inviteeCount === 1 ? "" : "s"}`;
         if (inviteTiming === "now") {
-          if (confirm(`Tournament created with ${inviteeCount} invitee${inviteeCount === 1 ? "" : "s"}.\n\nSend invite notification/email now?`)) {
-            await sendChampInvites(data.id);
-          }
+          toast.info(`Tournament saved with ${who} on the invitation list. Nothing has been sent yet.`, {
+            duration: 12000,
+            action: {
+              label: "Send invitations now",
+              onClick: () => { void sendChampInvites(data.id, { confirm: true, mode: "all" }); },
+            },
+          });
         } else if (inviteTiming === "scheduled" && inviteScheduledAt) {
           const when = new Date(inviteScheduledAt);
-          toast.info(`Reminder: send invites on ${when.toLocaleString()} via the edit dialog → “Invite actions”.`, { duration: 8000 });
+          toast.info(`Nothing sent yet. Reminder: send invites on ${when.toLocaleString()} via the edit dialog → “Invite actions”.`, { duration: 8000 });
         } else {
-          toast.info(`Tournament saved. Open the edit dialog and click “Invite actions” when you're ready to notify ${inviteeCount} member${inviteeCount === 1 ? "" : "s"}.`, { duration: 7000 });
+          toast.info(`Tournament saved. Nothing has been sent. Open the edit dialog and click “Invite actions” when you're ready to notify ${who}.`, { duration: 7000 });
         }
       }
+
 
       // For real schedule generation (not just saving a shell awaiting player
       // pairs), keep the wizard open on a Preview step so the admin can review

@@ -33,9 +33,12 @@ export function MyStatsCard({ memberId }: Props) {
   // Default to the newest season with data, until the member chooses.
   const activeSeason = season === undefined ? (seasonOptions[0] ?? null) : season;
 
-  const { data: stats } = useMemberStatsSummary(memberId, activeSeason);
+  const { data: summary } = useMemberStatsSummary(memberId, activeSeason);
+  const stats = summary?.byCategory;
+  const computedAt = summary?.computedAt ?? null;
 
   const total = stats?.total;
+
 
   return (
     <Card className="p-3 rounded-2xl">

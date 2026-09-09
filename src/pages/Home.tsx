@@ -32,6 +32,7 @@ import playersMatchImg from "@/assets/players-match.jpg";
 import shellyImg from "@/assets/shelly-pro-4pm.jpg";
 import lightsAccessVideo from "@/assets/lights-access-demo-v3.mp4.asset.json";
 import doorAccessImg from "@/assets/club-door-access.png";
+import legacyVsSmartImg from "@/assets/legacy-vs-smart.png.asset.json";
 import appShowcaseImg from "@/assets/app-showcase.png";
 import appHomePhoneImg from "@/assets/app-home-phone.png";
 import shLogoFull from "@/assets/shub-logo-white.png";

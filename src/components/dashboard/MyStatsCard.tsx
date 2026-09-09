@@ -37,6 +37,9 @@ export function MyStatsCard({ memberId }: Props) {
   const { data: summary } = useMemberStatsSummary(memberId, activeSeason);
   const stats = summary?.byCategory;
   const computedAt = summary?.computedAt ?? null;
+  const { data: clubData } = useMyClub();
+  const club = clubData?.club;
+  const statsActivated = !!club?.sla_accepted_at;
 
   const total = stats?.total;
 

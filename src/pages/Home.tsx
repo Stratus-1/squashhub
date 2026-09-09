@@ -424,6 +424,9 @@ export default function Home() {
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold font-heading uppercase tracking-tight text-slate-900 dark:text-slate-50">
                 Convert your club to the latest technology
               </h2>
+              <p className="text-lg sm:text-xl font-medium text-amber-700 dark:text-amber-300 leading-relaxed max-w-xl">
+                Leave legacy behind. Step into smarter technology and simplify club control.
+              </p>
               <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed max-w-xl">
                 Simplified automated court lighting and access control — all through one
                 affordable platform. No separate systems, no complicated wiring, and no

@@ -15,8 +15,6 @@ import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { DashboardDeviceControls } from "@/components/DashboardDeviceControls";
 import { DashboardWifiCard } from "@/components/DashboardWifiCard";
 import { DashboardRouterCard } from "@/components/DashboardRouterCard";
-import { MyStatsCard } from "@/components/dashboard/MyStatsCard";
-import { MyRankingsCard } from "@/components/dashboard/MyRankingsCard";
 import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
 
 interface DashboardDesktopProps {
@@ -115,15 +113,9 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
 
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
-        {/* MY STATS + MY RANKINGS — same personal blocks as mobile */}
-        <div className="col-span-12 xl:col-span-7 space-y-5">
-          <MyStatsCard memberId={props.myMemberId} />
-          <MyRankingsCard clubId={props.clubId ?? null} memberId={props.myMemberId} />
-        </div>
-
         {/* BOOKINGS card */}
         {flags.bookingsEnabled && (
-        <div className="col-span-12 xl:col-span-5">
+        <div className="col-span-12">
           <Card className="bg-card/95 border-border backdrop-blur-md p-5 rounded-2xl h-full">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-heading font-bold text-foreground uppercase tracking-[0.14em]">

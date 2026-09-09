@@ -15588,6 +15588,37 @@ export type Database = {
           ranking_points: number
         }[]
       }
+      tournament_invite_league_member_ids: {
+        Args: {
+          p_club_id?: string
+          p_contactable_only?: boolean
+          p_include_reserves?: boolean
+          p_league_ids?: string[]
+          p_scope?: string
+          p_tournament_id?: string
+        }
+        Returns: {
+          club_id: string
+          is_reserve: boolean
+          league_id: string
+          member_id: string
+        }[]
+      }
+      tournament_invite_league_tree: {
+        Args: { p_club_id?: string; p_scope?: string; p_tournament_id?: string }
+        Returns: {
+          association_name: string
+          club_id: string
+          club_name: string
+          contactable_count: number
+          is_reserve: boolean
+          league_id: string
+          league_name: string
+          level: number
+          player_count: number
+          season_year: number
+        }[]
+      }
       tournament_invite_member_ids: {
         Args: {
           p_club_id?: string

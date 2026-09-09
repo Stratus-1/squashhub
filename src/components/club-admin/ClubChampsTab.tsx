@@ -16,6 +16,12 @@ import {
   type InviteAudienceMode,
 } from "@/lib/tournaments/invite-audience";
 import { fetchScopeMemberIds, fetchScopeTree } from "@/lib/tournaments/invite-scope-tree";
+import {
+  buildScopeLeagueTree,
+  fetchScopeLeagueMemberIds,
+  fetchScopeLeagueTree,
+} from "@/lib/tournaments/invite-league-tree";
+
 import { InviteScopeTree } from "@/components/tournaments/InviteScopeTree";
 
 import {
@@ -1902,6 +1908,50 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return filterTreeBySeason(full, sourceSeason);
   }, [availableLeagues, leagueResolution, sourceSeason]);
 
+  /**
+   * Region / federation league teams. A regional tournament invites league
+   * players from EVERY club in the region, so the audience picker must not be
+   * limited to the host club's own teams. Counts and ids only — the RPC applies
+   * the same eligibility scope and organiser rights, and returns no contact data.
+   */
+  const { data: scopeLeagueRows = [], isFetching: scopeLeaguesLoading } = useQuery({
+    queryKey: ["tournament-invite-league-tree", editingChampId, clubId, eligibilityScope],
+    queryFn: () => fetchScopeLeagueTree({ tournamentId: editingChampId, clubId, scope: eligibilityScope }),
+    enabled: !!clubId && showWizard && scopeIsWide,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const scopeLeagueTree = useMemo(() => buildScopeLeagueTree(scopeLeagueRows as any[]), [scopeLeagueRows]);
+
+  /** The tree the INVITE step shows: region-wide when the scope is wider than the club. */
+  const audienceLeagueTree = scopeIsWide ? scopeLeagueTree : leagueTree;
+
+  /** Cross-club players behind the ticked teams, resolved server-side. */
+  const { data: scopeLeagueMembersByLeague = new Map<string, string[]>() } = useQuery({
+    queryKey: [
+      "tournament-invite-league-members",
+      editingChampId,
+      clubId,
+      eligibilityScope,
+      Array.from(audienceLeagueIds).sort().join(","),
+      inviteIncludeReserves,
+    ],
+    queryFn: () =>
+      fetchScopeLeagueMemberIds({
+        tournamentId: editingChampId,
+        clubId,
+        scope: eligibilityScope,
+        leagueIds: Array.from(audienceLeagueIds),
+        includeReserves: inviteIncludeReserves,
+      }),
+    enabled: !!clubId && showWizard && scopeIsWide && audienceLeagueIds.size > 0,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+
+
 
 
 
@@ -1992,6 +2042,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return out;
   }, [leagueSources, numGroups]);
 
+  /**
+   * Registrations behind the ticked teams. Club-scoped tournaments use the
+   * club's own registrations; region/federation tournaments use the server-
+   * resolved cross-club list so other clubs' teams really are invitable.
+   */
+  const audienceRegistrationsByLeague = scopeIsWide
+    ? (scopeLeagueMembersByLeague as Map<string, string[]>)
+    : registrationsByLeague;
+
+  const trustedLeagueMemberIds = useMemo(() => {
+    const out = new Set<string>();
+    if (!scopeIsWide) return out;
+    (scopeLeagueMembersByLeague as Map<string, string[]>).forEach((ids) =>
+      ids.forEach((id) => out.add(id)),
+    );
+    return out;
+  }, [scopeIsWide, scopeLeagueMembersByLeague]);
+
   /** The people who will receive the invitation — explicit organiser choice. */
   const resolvedAudience = useMemo(
     () =>
@@ -1999,22 +2067,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         mode: effectiveAudienceMode,
         members: audienceMemberPool as any[],
         leagueIds: Array.from(audienceLeagueIds),
-        registrationsByLeague,
+        registrationsByLeague: audienceRegistrationsByLeague,
         individualIds: Array.from(audienceMemberIds),
         includeIndividuals: audienceIncludeIndividuals,
         clubIds: effectiveAudienceClubIds,
         memberIdsByClub: scopeMemberIdsByClub as Map<string, string[]>,
+        trustedMemberIds: trustedLeagueMemberIds,
         excludedIds: inviteExcludedMemberIds,
       }),
     [
       effectiveAudienceMode,
       audienceMemberPool,
       audienceLeagueIds,
-      registrationsByLeague,
+      audienceRegistrationsByLeague,
       audienceMemberIds,
       audienceIncludeIndividuals,
       effectiveAudienceClubIds,
       scopeMemberIdsByClub,
+      trustedLeagueMemberIds,
       inviteExcludedMemberIds,
     ],
 
@@ -2022,14 +2092,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   /** Team-by-team breakdown of who the audience league selection reaches. */
   const inviteTeamBreakdown = useMemo(() => {
+    const scopeNameById = new Map<string, string>(
+      (scopeLeagueRows as any[]).map((r: any) => [r.league_id, `${r.club_name} — ${r.league_name}`]),
+    );
     return Array.from(audienceLeagueIds)
       .map((id) => ({
         id,
-        name: leagueNameById.get(id) || "Unknown team",
-        count: (registrationsByLeague.get(id) || []).filter((mid) => !inviteExcludedMemberIds.has(mid)).length,
+        name: scopeNameById.get(id) || leagueNameById.get(id) || "Unknown team",
+        count: (audienceRegistrationsByLeague.get(id) || []).filter((mid) => !inviteExcludedMemberIds.has(mid)).length,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [audienceLeagueIds, leagueNameById, registrationsByLeague, inviteExcludedMemberIds]);
+  }, [audienceLeagueIds, leagueNameById, scopeLeagueRows, audienceRegistrationsByLeague, inviteExcludedMemberIds]);
+
 
 
 
@@ -2484,19 +2558,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       let audienceIds = resolvedAudience.memberIds;
       if (inviteAudience === "leagues" && audienceLeagueIds.size > 0) {
         // Re-read at save time so the roster is canonical even if the cached
-        // registration query is stale.
-        const { data: audienceRegs, error: audienceRegsErr } = await fromExt("member_league_registrations")
-          .select("club_member_id, is_reserve")
-          .in("league_id", Array.from(audienceLeagueIds));
-        if (audienceRegsErr) throw audienceRegsErr;
+        // registration query is stale. Region/federation tournaments resolve
+        // cross-club teams through the scoped RPC (RLS blocks a direct read).
         const fresh = new Set(audienceIds);
-        (audienceRegs || []).forEach((r: any) => {
-          if (!r.club_member_id || inviteExcludedMemberIds.has(r.club_member_id)) return;
-          if (!inviteIncludeReserves && r.is_reserve) return;
-          fresh.add(r.club_member_id);
-        });
+        if (scopeIsWide) {
+          const byLeague = await fetchScopeLeagueMemberIds({
+            tournamentId: champIdToUse,
+            clubId,
+            scope: eligibilityScope,
+            leagueIds: Array.from(audienceLeagueIds),
+            includeReserves: inviteIncludeReserves,
+          });
+          byLeague.forEach((ids) =>
+            ids.forEach((id) => {
+              if (!inviteExcludedMemberIds.has(id)) fresh.add(id);
+            }),
+          );
+        } else {
+          const { data: audienceRegs, error: audienceRegsErr } = await fromExt("member_league_registrations")
+            .select("club_member_id, is_reserve")
+            .in("league_id", Array.from(audienceLeagueIds));
+          if (audienceRegsErr) throw audienceRegsErr;
+          (audienceRegs || []).forEach((r: any) => {
+            if (!r.club_member_id || inviteExcludedMemberIds.has(r.club_member_id)) return;
+            if (!inviteIncludeReserves && r.is_reserve) return;
+            fresh.add(r.club_member_id);
+          });
+        }
         audienceIds = Array.from(fresh);
       }
+
       // Open (self-registration) tournaments with an "all club members"
       // audience are not materialised as rows on save — the roster is created
       // when the organiser actually sends invitations.
@@ -9400,14 +9491,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                 {inviteAudience === "leagues" && (
                   <div className="space-y-2 pt-1">
-                    <Label className="text-xs text-muted-foreground">Pick which league teams to invite</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      {scopeIsWide
+                        ? "Pick which league teams to invite — every club that plays in this region"
+                        : "Pick which league teams to invite"}
+                    </Label>
+                    {scopeIsWide && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Tick a league level (e.g. 6th League) to invite that team at every club in the region.
+                        Counts show players who can actually be reached — an email address or a phone number on file.
+                        {scopeLeaguesLoading ? " Loading teams…" : ""}
+                      </p>
+                    )}
                     <div className="rounded border border-border/50 bg-background/60 p-2">
                       <LeagueSourceTree
-                        groups={leagueTree}
+                        groups={audienceLeagueTree}
                         selected={Array.from(audienceLeagueIds)}
                         onChange={(ids) => setAudienceLeagueIds(new Set(ids))}
                       />
                     </div>
+
                     <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
                       <Checkbox checked={inviteIncludeReserves} onCheckedChange={(c) => setInviteIncludeReserves(!!c)} />
                       Include reserves

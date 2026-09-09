@@ -84,7 +84,15 @@ export function resolveInviteAudience(input: {
    * active non-visitor members, so they are trusted without a local pool row.
    */
   memberIdsByClub?: Map<string, string[]>;
+  /**
+   * leagues mode: member references resolved SERVER-SIDE for teams that belong
+   * to OTHER clubs in the region (`tournament_invite_league_member_ids`). Those
+   * rows are already filtered to real, active, contactable members, so they are
+   * trusted even though the browser holds no local roster row for them.
+   */
+  trustedMemberIds?: Iterable<string>;
   excludedIds?: Iterable<string>;
+
 
 }): ResolvedAudience {
   const invitable = new Map<string, AudienceMemberRow>();
@@ -176,7 +184,15 @@ export function resolveInviteAudience(input: {
     (input.registrationsByLeague?.get(lid) || []).forEach((mid) => fromLeagues.add(mid));
   });
   const extras = input.includeIndividuals ? input.individualIds || [] : [];
-  const ids = keep([...fromLeagues, ...extras]);
+  const trusted = new Set(Array.from(input.trustedMemberIds || []));
+  const known = new Set((input.members || []).map((m) => m?.id).filter(Boolean) as string[]);
+  const ids = Array.from(new Set([...fromLeagues, ...extras])).filter((id) => {
+    if (!id || excluded.has(id)) return false;
+    if (invitable.has(id)) return true;
+    // Cross-club players resolved server-side have no local roster row.
+    return trusted.has(id) && !known.has(id);
+  });
+
   const extraCount = ids.filter((id) => !fromLeagues.has(id)).length;
   return {
     memberIds: ids,

@@ -9491,14 +9491,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                 {inviteAudience === "leagues" && (
                   <div className="space-y-2 pt-1">
-                    <Label className="text-xs text-muted-foreground">Pick which league teams to invite</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      {scopeIsWide
+                        ? "Pick which league teams to invite — every club that plays in this region"
+                        : "Pick which league teams to invite"}
+                    </Label>
+                    {scopeIsWide && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Tick a league level (e.g. 6th League) to invite that team at every club in the region.
+                        Counts show players who can actually be reached — an email address or a phone number on file.
+                        {scopeLeaguesLoading ? " Loading teams…" : ""}
+                      </p>
+                    )}
                     <div className="rounded border border-border/50 bg-background/60 p-2">
                       <LeagueSourceTree
-                        groups={leagueTree}
+                        groups={audienceLeagueTree}
                         selected={Array.from(audienceLeagueIds)}
                         onChange={(ids) => setAudienceLeagueIds(new Set(ids))}
                       />
                     </div>
+
                     <label className="flex items-center gap-2 text-sm cursor-pointer pt-1">
                       <Checkbox checked={inviteIncludeReserves} onCheckedChange={(c) => setInviteIncludeReserves(!!c)} />
                       Include reserves

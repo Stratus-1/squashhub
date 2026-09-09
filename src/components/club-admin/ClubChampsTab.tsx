@@ -5484,6 +5484,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       (description.trim() ? `\n\n${description.trim()}` : "");
   }
 
+  /**
+   * Text placed in the WhatsApp template's {{details}} slot.
+   *
+   * Short mode keeps it to the call-to-action only (the link page carries the
+   * detail). When short mode is OFF the full tournament details travel inside
+   * the WhatsApp message too, exactly like email / in-app.
+   */
+  function buildWhatsAppDetails(needsPayment: boolean) {
+    const cta = needsPayment
+      ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
+      : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+    if (inviteShortMessage) return cta;
+    const full = buildInviteBody()
+      .replace(/^You have been invited to [^\n]*\n*/, "")
+      .replace(/—\s*Tournament details\s*—/g, "")
+      .replace(/—\s*End details\s*—/g, "")
+      .trim();
+    return full ? `${full}\n\n${cta}` : cta;
+  }
+
   // Shared helper: send invite notifications (and flag rows as invited) for a champ.
   // Used by the post-create prompt and the "Invite actions" menu.
   // `mode` is explicit: "selected" NEVER widens to the full roster, for any reason.
@@ -5736,9 +5756,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // WhatsApp message carries exactly the same URL as email / in-app.
         for (const r of rows as any[]) {
           const link = urlForRegistration(r.id);
-          const details = needsPayment
-            ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
-            : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+          const details = buildWhatsAppDetails(needsPayment);
           try {
             await sendWhatsApp({
               clubId,
@@ -5918,9 +5936,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // invite — only the recipient is the number you typed, and nothing is
         // recorded on the player's registration.
         const needsPayment = paymentRequired && entryFeeAmount > 0;
-        const details = needsPayment
-          ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
-          : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+        const details = buildWhatsAppDetails(needsPayment);
         const wa = await sendWhatsApp({
           clubId,
           recipients: [{ phone: parsedPhone }],
@@ -6036,9 +6052,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           toast.warning("No cell number on your club profile — the WhatsApp test was skipped.");
         } else {
           const needsPayment = paymentRequired && entryFeeAmount > 0;
-          const details = needsPayment
-            ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
-            : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+          const details = buildWhatsAppDetails(needsPayment);
           const wa = await sendWhatsApp({
             clubId,
             recipients: [{ phone: myPhone }],
@@ -11954,10 +11968,19 @@ function InvitePreviewDialog({
   const waCallToAction = waNeedsPayment
     ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
     : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+  // Mirrors buildWhatsAppDetails(): full details ride along unless short mode is on.
+  const waFullDetails = builtBody
+    .replace(/^You have been invited to [^\n]*\n*/, "")
+    .replace(/—\s*Tournament details\s*—/g, "")
+    .replace(/—\s*End details\s*—/g, "")
+    .trim();
+  const waDetails = inviteShortMessage || !waFullDetails
+    ? waCallToAction
+    : `${waFullDetails}\n\n${waCallToAction}`;
   const waBody =
     `Hello Player, this is a message from *${clubLabel}* on SquashHub.\n\n` +
     `You are invited to take part in our upcoming tournament: ${tournamentName}.\n\n` +
-    `Event details: ${waCallToAction}\n\n` +
+    `Event details: ${waDetails}\n\n` +
     `To accept the invitation and complete your entry, please open the following link: https://squashhub.co.za/i/… (personal link)\n\n` +
     `We hope to see you on court.`;
 

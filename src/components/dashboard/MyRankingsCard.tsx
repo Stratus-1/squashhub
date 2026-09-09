@@ -7,7 +7,20 @@ import { useMemberRankings, useNearbyRankings } from "@/hooks/use-member-ranking
 import { useRankingMovement, rankDelta } from "@/hooks/use-ranking-movement";
 import { useProvisionalSettings, useClubRankedMatchCounts } from "@/hooks/use-provisional-ranking";
 import { ProvisionalBadge } from "@/components/rankings/ProvisionalBadge";
-import { DEFAULT_PROVISIONAL, RANKING_SCOPE_LABELS, RankingScope } from "@/lib/rankings/provisional";
+import {
+  DEFAULT_PROVISIONAL,
+  RANKING_SCOPE_LABELS,
+  RANKING_SCOPE_SHORT_LABELS,
+  RankingScope,
+} from "@/lib/rankings/provisional";
+
+/** Rating = the numeric points value behind a ranking position. */
+function formatRating(points: number) {
+  return points >= 100
+    ? Math.round(points).toLocaleString()
+    : points.toFixed(2);
+}
+
 
 interface Props {
   clubId: string | null;

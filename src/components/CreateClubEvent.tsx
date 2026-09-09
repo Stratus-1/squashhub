@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { sendWhatsApp } from "@/lib/whatsapp-send";
 import { useWhatsAppEnabled } from "@/hooks/use-whatsapp-enabled";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1892,7 +1892,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               {/* Invite Scope */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Invite</Label>
-                <Select value={form.invite_scope} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope: v, invite_scope_id: "", selected_member_ids: [] }))}>
+                <Select value={form.invite_scope} onValueChange={(v) => { skipScopePretick.current = false; setForm((f) => ({ ...f, invite_scope: v, invite_scope_id: "", selected_member_ids: [] })); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Members</SelectItem>
@@ -1994,7 +1994,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               {form.invite_scope === "category" && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">Category</Label>
-                  <Select value={form.invite_scope_id} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope_id: v }))}>
+                  <Select value={form.invite_scope_id} onValueChange={(v) => { skipScopePretick.current = false; setForm((f) => ({ ...f, invite_scope_id: v })); }}>
                     <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                     <SelectContent>
                       {(feeCategories || []).map((c) => (
@@ -2008,7 +2008,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               {form.invite_scope === "league" && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">League</Label>
-                  <Select value={form.invite_scope_id} onValueChange={(v) => setForm((f) => ({ ...f, invite_scope_id: v }))}>
+                  <Select value={form.invite_scope_id} onValueChange={(v) => { skipScopePretick.current = false; setForm((f) => ({ ...f, invite_scope_id: v })); }}>
                     <SelectTrigger><SelectValue placeholder="Select league" /></SelectTrigger>
                     <SelectContent>
                       {(leagues || []).map((l) => (

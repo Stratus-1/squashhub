@@ -183,15 +183,19 @@ Deno.serve(async (req) => {
     return json({ done: true, processed: 0, imported: 0, next_cursor: null });
   }
 
-  // Map every SportyHQ user id in this club so both sides of a match can link.
+  // Map every SportyHQ id and profile slug in this club so both sides can link.
   const { data: allProfiles } = await supabase
     .from("sportyhq_profiles")
-    .select("sportyhq_user_id, club_member_id, club_members!inner(club_id)")
+    .select("sportyhq_user_id, profile_path, club_member_id, club_members!inner(club_id)")
     .eq("club_members.club_id", clubId)
     .not("club_member_id", "is", null);
   const memberByShqId = new Map<number, string>();
+  const memberBySlug = new Map<string, string>();
   for (const p of allProfiles ?? []) {
-    if (p.sportyhq_user_id && p.club_member_id) memberByShqId.set(Number(p.sportyhq_user_id), p.club_member_id);
+    if (!p.club_member_id) continue;
+    if (p.sportyhq_user_id) memberByShqId.set(Number(p.sportyhq_user_id), p.club_member_id);
+    const slug = String(p.profile_path ?? "").toLowerCase().match(/\/ranking\/user\/([^/?]+)/)?.[1];
+    if (slug) memberBySlug.set(slug, p.club_member_id);
   }
 
   let imported = 0;

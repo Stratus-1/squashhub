@@ -182,8 +182,9 @@ export function CompetitionRankingCard({
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-destructive" />
           <p className="text-[11px] text-destructive">
             {clubOff
-              ? "Ranking points are switched off for this club, so no points will be awarded. Turn them on under Ladder & Ranking."
-              : `Ranking points from ${sourceLabel} results are switched off for this club, so nothing will be awarded. Enable it under Ladder & Ranking.`}
+              ? "Ratings are switched off for this club, so no rating changes will be awarded. Turn them on under Ladder & Ranking."
+              : `Rating changes from ${sourceLabel} results are switched off for this club, so nothing will be awarded. Enable it under Ladder & Ranking.`}
+
           </p>
         </div>
       )}

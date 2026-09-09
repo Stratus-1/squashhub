@@ -246,7 +246,11 @@ Deno.serve(async (req) => {
 
       const opponentMemberId =
         (r.opponent_user_id ? memberByShqId.get(r.opponent_user_id) ?? null : null) ??
-        (r.opponent_slug ? memberBySlug.get(r.opponent_slug) ?? null : null);
+        (r.opponent_slug
+          ? memberBySlug.get(r.opponent_slug) ??
+            memberBySlug.get(r.opponent_slug.replace(/-\d+$/, "")) ??
+            null
+          : null);
       const level = levelFor(r.type_label);
       const eventLabel = [r.type_label, r.format_label].filter(Boolean).join(" — ");
 

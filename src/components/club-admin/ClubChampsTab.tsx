@@ -12002,7 +12002,7 @@ function InvitePreviewDialog({
   const waNeedsPayment = !!paymentRequired && Number(entryFeeRand || 0) > 0;
   // Mirrors buildWhatsAppDetails(): only promise category choice when the
   // fixture setup actually holds more than one league.
-  const waChooseStep = (numGroups || 0) > 1 ? "choose your category and " : "";
+  const waChooseStep = hasMultipleLeagues ? "choose your category and " : "";
   const waCallToAction = waNeedsPayment
     ? `Open your personal link to ${waChooseStep}pay the entry fee. Reply NO to decline.`
     : `Open your personal link to ${waChooseStep}confirm. Reply NO to decline.`;

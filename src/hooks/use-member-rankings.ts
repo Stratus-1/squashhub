@@ -13,12 +13,18 @@ export interface MemberRankingStanding {
   scope: RankingScope;
   rank: number;
   previousRank: number | null;
-  points: number;
+  /** Rating = numeric points value. Null when the source has no rating. */
+  points: number | null;
+  /** Real ranking-list name, e.g. "Men Northerns Squash Association". */
+  label?: string | null;
+  /** Number of players on the list, when known. */
+  total?: number | null;
   /** Snapshot / owner the standing came from, used for the drill-down. */
   snapshotId: string | null;
   associationId: string | null;
   playerCode: string | null;
 }
+
 
 /** Club + regional + national standing for one member. */
 export function useMemberRankings(clubId?: string | null, memberId?: string | null) {

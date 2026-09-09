@@ -47,24 +47,50 @@ export function prepareDrawTitle(stageLabel?: string | null, roundNumber?: numbe
  * Qualifiers
  * ------------------------------------------------------------------ */
 
-/** Ids that legitimately came through the completed feeder round. */
-export function qualifierIds(roundMatches: KnockoutMatchLike[]): string[] {
-  const out: string[] = [];
-  for (const m of [...roundMatches].sort(
-    (a, b) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0),
-  )) {
-    const w = winnerOf(m);
-    if (w && !out.includes(w)) out.push(w);
-  }
-  return out;
-}
-
 const SLOT_KEYS = [
   "player_a_member_id",
   "player_b_member_id",
   "partner_a_member_id",
   "partner_b_member_id",
 ] as const;
+
+const A_SIDE = ["player_a_member_id", "partner_a_member_id"] as const;
+const B_SIDE = ["player_b_member_id", "partner_b_member_id"] as const;
+
+/**
+ * Everyone who LOST a real fixture in this round. A loss always wins over any
+ * other appearance in the same round: after an organiser swaps a player into
+ * someone else's fixture, that player can hold both a bye win and a genuine
+ * defeat in the same round — the defeat is what counts, so they go out.
+ */
+export function losersInRound(roundMatches: KnockoutMatchLike[]): Set<string> {
+  const out = new Set<string>();
+  for (const m of roundMatches || []) {
+    if ((m as any).is_bye) continue;
+    const w = winnerOf(m);
+    if (!w) continue;
+    const winnerOnA = A_SIDE.some((k) => (m as any)[k] === w);
+    const losingKeys = winnerOnA ? B_SIDE : A_SIDE;
+    for (const k of losingKeys) {
+      const id = (m as any)[k];
+      if (id) out.add(String(id));
+    }
+  }
+  return out;
+}
+
+/** Ids that legitimately came through the completed feeder round. */
+export function qualifierIds(roundMatches: KnockoutMatchLike[]): string[] {
+  const lost = losersInRound(roundMatches);
+  const out: string[] = [];
+  for (const m of [...roundMatches].sort(
+    (a, b) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0),
+  )) {
+    const w = winnerOf(m);
+    if (w && !lost.has(w) && !out.includes(w)) out.push(w);
+  }
+  return out;
+}
 
 /**
  * Players who are STILL IN the draw but do not appear in the round just
@@ -101,7 +127,10 @@ export function qualifierEntrants(
   nameOf: (id: string) => string,
 ): DrawEntrant[] {
   if (!section.currentRoundComplete) return [];
-  const out = winnersAsEntrants(section.currentRoundMatches as KnockoutMatchLike[], nameOf);
+  const lost = losersInRound(section.currentRoundMatches as KnockoutMatchLike[]);
+  const out = winnersAsEntrants(section.currentRoundMatches as KnockoutMatchLike[], nameOf)
+    .filter((e) => !lost.has(e.id))
+    .map((e, i) => ({ ...e, seed: i + 1 }));
   const placed = new Set(out.map((e) => e.id));
   for (const id of strandedAliveIds(section)) {
     if (placed.has(id)) continue;

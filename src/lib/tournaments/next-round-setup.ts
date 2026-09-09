@@ -15,7 +15,7 @@
  */
 import type { DrawBoard } from "./draw-board";
 import { winnerOf } from "./knockout";
-import { strandedAliveIds } from "./round-draw";
+import { strandedAliveIds, losersInRound } from "./round-draw";
 import type { SectionProgression } from "./knockout-progression";
 
 
@@ -87,6 +87,10 @@ export function readyNextRoundScopes(states: SectionProgression[]): NextRoundSco
   return states
     .filter((state) => state.section > 0 && state.canGenerateNext && state.currentRoundComplete)
     .map((state) => {
+      // A defeat in this round always beats any other appearance in it: a
+      // player swapped into someone else's fixture can hold a bye win and a
+      // real loss in the same round — the loss puts them out.
+      const lost = losersInRound(state.currentRoundMatches as any);
       const qualifierIds = Array.from(
         new Set([
           ...(state.currentRoundMatches.map((match) => winnerOf(match)).filter(Boolean) as string[]),
@@ -94,7 +98,7 @@ export function readyNextRoundScopes(states: SectionProgression[]): NextRoundSco
           // out of a fixture by an organiser correction) — they must not vanish.
           ...strandedAliveIds(state),
         ]),
-      );
+      ).filter((id) => !lost.has(id));
 
       const roundNumber = state.nextRound?.round_number ?? state.currentRound + 1;
       return {

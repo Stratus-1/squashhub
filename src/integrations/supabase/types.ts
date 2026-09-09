@@ -5013,6 +5013,8 @@ export type Database = {
           gobook_provider_id: number | null
           gobook_service_id: number | null
           gobook_url: string | null
+          history_import_enabled: boolean
+          history_imported_at: string | null
           honesty_bar_enabled: boolean
           host_cleaning_fee_cents_per_day: number
           host_court_fee_cents_per_hour: number
@@ -5150,6 +5152,8 @@ export type Database = {
           gobook_provider_id?: number | null
           gobook_service_id?: number | null
           gobook_url?: string | null
+          history_import_enabled?: boolean
+          history_imported_at?: string | null
           honesty_bar_enabled?: boolean
           host_cleaning_fee_cents_per_day?: number
           host_court_fee_cents_per_hour?: number
@@ -5287,6 +5291,8 @@ export type Database = {
           gobook_provider_id?: number | null
           gobook_service_id?: number | null
           gobook_url?: string | null
+          history_import_enabled?: boolean
+          history_imported_at?: string | null
           honesty_bar_enabled?: boolean
           host_cleaning_fee_cents_per_day?: number
           host_court_fee_cents_per_hour?: number
@@ -8051,6 +8057,8 @@ export type Database = {
           player_b: string | null
           player_b_member_id: string | null
           score: string | null
+          season_year: number | null
+          source_type: string | null
           submitted_by: string | null
           submitted_by_member_id: string | null
           winner_id: string | null
@@ -8073,6 +8081,8 @@ export type Database = {
           player_b?: string | null
           player_b_member_id?: string | null
           score?: string | null
+          season_year?: number | null
+          source_type?: string | null
           submitted_by?: string | null
           submitted_by_member_id?: string | null
           winner_id?: string | null
@@ -8095,6 +8105,8 @@ export type Database = {
           player_b?: string | null
           player_b_member_id?: string | null
           score?: string | null
+          season_year?: number | null
+          source_type?: string | null
           submitted_by?: string | null
           submitted_by_member_id?: string | null
           winner_id?: string | null
@@ -14008,6 +14020,7 @@ export type Database = {
         Args: { _device_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_member_stats: { Args: { _member_id: string }; Returns: boolean }
       can_view_org: {
         Args: { _org_id: string; _user_id: string }
         Returns: boolean
@@ -14562,6 +14575,41 @@ export type Database = {
               winner_member_id: string
             }[]
           }
+      get_member_match_history: {
+        Args: {
+          _category?: string
+          _member_id: string
+          _opponent_member_id?: string
+          _season_year?: number
+        }
+        Returns: {
+          category: string
+          event_label: string
+          match_id: string
+          opponent_member_id: string
+          opponent_name: string
+          played_on: string
+          score: string
+          season_year: number
+          source: string
+          won: boolean
+        }[]
+      }
+      get_member_stat_seasons: {
+        Args: { _member_id: string }
+        Returns: {
+          season_year: number
+        }[]
+      }
+      get_member_stats_summary: {
+        Args: { _member_id: string; _season_year?: number }
+        Returns: {
+          category: string
+          lost: number
+          played: number
+          won: number
+        }[]
+      }
       get_next_member_number: { Args: { _club_id: string }; Returns: string }
       get_or_create_venue_qr_code: {
         Args: { _club_id: string }

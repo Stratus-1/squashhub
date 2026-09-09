@@ -114,3 +114,6 @@
 - [x] Member Bar PIN settings card, member approval keypad dialog, staff Counter Sale screen
 - [ ] Counter sale: add "member identifies himself" mode — member types membership number + Bar PIN instead of staff searching (PIN alone is not unique/secure, so it is paired with the membership number)
 - [ ] Wire ScanPay member-account charge through the PIN/OTP dialog
+
+## Member dashboard
+- [ ] Historical SportyHQ match import per club (gated on SLA / history_import_enabled, idempotent via external_ids) — not built yet

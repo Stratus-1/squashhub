@@ -23,9 +23,10 @@ import AssociationDashboard from "@/pages/AssociationDashboard";
 import { ProfileCompletionMeter } from "@/components/ProfileCompletionMeter";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
-import { DashboardMyStatsCard } from "@/components/DashboardMyStatsCard";
+import { MyStatsCard } from "@/components/dashboard/MyStatsCard";
+
 import { DashboardSportyhqCard } from "@/components/DashboardSportyhqCard";
-import { DashboardRankingPointsCard } from "@/components/DashboardRankingPointsCard";
+import { MyRankingsCard } from "@/components/dashboard/MyRankingsCard";
 import { FaceEnrolmentDialog } from "@/components/FaceEnrolmentDialog";
 import { Calendar, CalendarDays, Trophy, ChevronRight, Loader2, LifeBuoy, Settings, ShieldCheck, Wallet, Crosshair, History, Check, X, Wine, Play, GraduationCap, Hash } from "lucide-react";
 import { hasActiveMarkerSession } from "@/lib/marker-storage";
@@ -703,9 +704,11 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className="mt-3">
-            <DashboardRankingPointsCard clubId={clubId} memberId={myMemberId} />
+          <div className="mt-3 space-y-3">
+            <MyStatsCard memberId={myMemberId} />
+            <MyRankingsCard clubId={clubId} memberId={myMemberId} />
           </div>
+
         </div>
 
 
@@ -840,36 +843,13 @@ export default function Dashboard() {
       </div>
 
       <div className="px-4 mt-3 space-y-3">
-        {(() => {
-          const myLadderEntry = (ladder || []).find((p: any) =>
-            (myMemberId && p.club_member_id === myMemberId) ||
-            (user?.id && (p.user_id === user.id || p.id === user.id))
-          ) as any;
-          const ladderWins = myLadderEntry?.wins ?? 0;
-          const ladderLosses = myLadderEntry?.losses ?? 0;
-          const ladderPlayed = myLadderEntry?.matches_played ?? (ladderWins + ladderLosses);
-          const wins = ladderWins + (tournamentStats?.wins ?? 0);
-          const losses = ladderLosses + (tournamentStats?.losses ?? 0);
-          const played = ladderPlayed + (tournamentStats?.played ?? 0);
-          const winRate = played > 0 ? (wins / played) * 100 : 0;
-          const courtsUsed = new Set((myBookings || []).map((b: any) => b.court_id)).size;
-          return (
-            <DashboardMyStatsCard
-              played={played}
-              wins={wins}
-              losses={losses}
-              winRate={winRate}
-              rank={myLadderPosition}
-              totalBookings={(myBookings || []).length}
-              courtsUsed={courtsUsed}
-            />
-          );
-        })()}
+        <MyStatsCard memberId={myMemberId} />
         <DashboardSportyhqCard
           memberId={myMemberId}
           personId={(activeMember as any)?.person_id ?? (myClubMember as any)?.person_id ?? null}
         />
-        <DashboardRankingPointsCard clubId={clubId} memberId={myMemberId} />
+        <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+
       </div>
 
 

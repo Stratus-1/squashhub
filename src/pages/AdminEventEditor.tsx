@@ -13,6 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAdminEvent, saveAdminEvent } from "@/lib/events/admin-events";
+import { useMyClub } from "@/hooks/use-club";
+import { useAuth } from "@/contexts/AuthContext";
+
 
 type SeasonRow = {
   id: string;
@@ -56,6 +60,10 @@ export default function AdminEventEditor() {
   const locationObj = useLocation();
   const params = useParams();
   const queryClient = useQueryClient();
+  const { data: myClub } = useMyClub();
+  const { user } = useAuth();
+  const userId = user?.id || null;
+
   const eventId = params.id || null;
   const requestId = useMemo(() => new URLSearchParams(locationObj.search).get("requestId"), [locationObj.search]);
   const preselectSeasonId = useMemo(() => new URLSearchParams(locationObj.search).get("seasonId"), [locationObj.search]);
@@ -82,16 +90,13 @@ export default function AdminEventEditor() {
     queryKey: ["admin-event-editor", "event", eventId],
     queryFn: async () => {
       if (!eventId) return null;
-      const { data, error } = await (supabase as any)
-        .from("events")
-        .select("*")
-        .eq("id", eventId)
-        .single();
-      if (error) throw error;
-      return data as EventRow;
+      const row = await fetchAdminEvent(eventId);
+      if (!row) throw new Error("Event not found");
+      return row as unknown as EventRow;
     },
     enabled: !!eventId,
   });
+
 
   const { data: requestRow } = useQuery({
     queryKey: ["admin-event-editor", "event-request", requestId],
@@ -204,53 +209,21 @@ export default function AdminEventEditor() {
       const cleanTitle = title.trim();
       if (!cleanTitle) throw new Error("Title is required");
       if (!startsAtLocal.trim()) throw new Error("Start time is required");
-
-      const startsAtIso = new Date(startsAtLocal).toISOString();
-      const endsAtIso = endsAtLocal.trim() ? new Date(endsAtLocal).toISOString() : null;
-      const deadlineIso = rsvpDeadlineLocal.trim() ? new Date(rsvpDeadlineLocal).toISOString() : null;
       const cap = capacity.trim() ? Number(capacity) : null;
       if (cap != null && (!Number.isFinite(cap) || cap < 1 || cap > 5000)) throw new Error("Capacity must be 1–5000");
 
-      const payload: any = {
+      return await saveAdminEvent({
+        id: eventId,
+        clubId: myClub?.club?.id || null,
         title: cleanTitle,
         description: description.trim() || null,
-        starts_at: startsAtIso,
-        ends_at: endsAtIso,
-        location: location.trim() || null,
-        court_id: courtId ? Number(courtId) : null,
-        capacity: cap == null ? null : Math.trunc(cap),
-        rsvp_deadline: deadlineIso,
-        visibility,
+        startsAtLocal: startsAtLocal.slice(0, 16),
+        endsAtLocal: endsAtLocal.trim() ? endsAtLocal.slice(0, 16) : null,
         status,
-      };
-
-      // Optional season/kind columns (newer schema). Retry without if DB not migrated yet.
-      payload.kind = kind;
-      payload.season_id = isSeasonEvent ? (seasonId || null) : null;
-
-      const upsert = async (row: any) => {
-        const { data, error } = await (supabase as any)
-          .from("events")
-          .upsert(eventId ? { ...row, id: eventId } : row, { onConflict: "id" })
-          .select("id")
-          .single();
-        if (error) throw error;
-        return data as { id: string };
-      };
-
-      try {
-        return await upsert(payload);
-      } catch (e: any) {
-        const code = e?.code || e?.details?.code;
-        const msg = String(e?.message || "");
-        const maybeMissingColumn = code === "42703" || msg.includes("column") || msg.includes("PGRST");
-        if (!maybeMissingColumn) throw e;
-        const fallback = { ...payload };
-        delete fallback.kind;
-        delete fallback.season_id;
-        return await upsert(fallback);
-      }
+        createdBy: userId,
+      });
     },
+
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
       await queryClient.invalidateQueries({ queryKey: ["events"] });

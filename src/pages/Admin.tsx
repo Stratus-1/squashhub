@@ -5,6 +5,8 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAdminEvents, fetchAdminEventsInRange, saveAdminEvent } from "@/lib/events/admin-events";
+
 const fromExt = (table: string) => (supabase as any).from(table);
 const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
@@ -567,29 +569,32 @@ export default function Admin() {
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["admin", "events"],
     queryFn: async () => {
-      const { data, error } = await fromExt("events")
-        .select("*")
-        .order("starts_at", { ascending: true })
-        .limit(200);
-      if (error) throw error;
-      return (data || []) as unknown as AdminEventRow[];
+      const rows = await fetchAdminEvents(200);
+      return rows as unknown as AdminEventRow[];
     },
     enabled: isAdmin || isManager,
   });
+
 
   const { data: rsvpAudienceUserIds } = useQuery({
     queryKey: ["admin", "event-rsvp-audience", broadcast.eventId],
     queryFn: async () => {
       if (!broadcast.eventId) return [] as string[];
-      const { data, error } = await fromExt("event_rsvps")
-        .select("user_id,status")
+      const { data, error } = await supabase
+        .from("club_event_rsvps")
+        .select("status, club_members!inner(user_id)")
         .eq("event_id", broadcast.eventId)
-        .in("status", ["going", "maybe"]);
+        .in("status", ["confirmed", "invited"]);
       if (error) throw error;
-      return [...new Set((data || []).map((r: any) => String(r.user_id)))];
+      const ids = (data || [])
+        .map((r: any) => r?.club_members?.user_id)
+        .filter(Boolean)
+        .map((v: any) => String(v));
+      return [...new Set(ids)];
     },
     enabled: (isAdmin || isManager) && broadcast.audience === "rsvp_event" && !!broadcast.eventId,
   });
+
 
   const { data: auditLog, isLoading: auditLoading } = useQuery({
     queryKey: ["admin", "audit-log"],
@@ -767,36 +772,16 @@ export default function Admin() {
     queryKey: ["admin", "season-events", viewingSeasonId],
     queryFn: async () => {
       if (!viewingSeasonId) return [] as AdminEventRow[];
-      try {
-        const { data, error } = await fromExt("events")
-          .select("id,title,starts_at,status,visibility,kind,season_id,created_by,created_at,updated_at,ends_at,location,court_id,capacity,rsvp_deadline,description")
-          .eq("season_id", viewingSeasonId)
-          .order("starts_at", { ascending: true })
-          .limit(250);
-        if (error) throw error;
-        return (data || []) as unknown as AdminEventRow[];
-      } catch (e: any) {
-        const code = e?.code || e?.details?.code;
-        const msg = String(e?.message || "");
-        const maybeMissingColumn = code === "42703" || msg.includes("season_id");
-        if (!maybeMissingColumn) throw e;
-
-        // Fallback: if season_id doesn't exist (older DB), approximate by date range.
-        const from = viewingSeason?.starts_on as string | undefined;
-        const to = (viewingSeason?.ends_on as string | null) || new Date().toISOString().slice(0, 10);
-        if (!from) return [] as AdminEventRow[];
-        const { data, error } = await fromExt("events")
-          .select("*")
-          .gte("starts_at", `${from}T00:00:00.000Z`)
-          .lte("starts_at", `${to}T23:59:59.999Z`)
-          .order("starts_at", { ascending: true })
-          .limit(250);
-        if (error) throw error;
-        return (data || []) as unknown as AdminEventRow[];
-      }
+      // Club events have no season column; scope by the season's date range.
+      const from = viewingSeason?.starts_on as string | undefined;
+      const to = (viewingSeason?.ends_on as string | null) || new Date().toISOString().slice(0, 10);
+      if (!from) return [] as AdminEventRow[];
+      const rows = await fetchAdminEventsInRange(from, to, 250);
+      return rows as unknown as AdminEventRow[];
     },
     enabled: (isAdmin || isManager) && !!viewingSeasonId,
   });
+
 
   const seasonMemberRows = useMemo(() => {
     const byUserId = new Map((seasonSnapshot || []).map((r: any) => [String(r.user_id), r]));
@@ -1039,30 +1024,22 @@ export default function Admin() {
       description: string | null;
       starts_at: string;
       ends_at: string | null;
-      location: string | null;
-      court_id: number | null;
-      capacity: number | null;
-      rsvp_deadline: string | null;
-      visibility: "public" | "members";
-      status: "draft" | "published" | "cancelled";
+      location?: string | null;
+      court_id?: number | null;
+      capacity?: number | null;
+      rsvp_deadline?: string | null;
+      visibility?: "public" | "members";
+      status: "draft" | "published" | "cancelled" | string;
     }) => {
-      const row: any = {
-        ...(payload.id ? { id: payload.id } : {}),
+      await saveAdminEvent({
+        id: payload.id || null,
         title: payload.title,
         description: payload.description,
-        starts_at: payload.starts_at,
-        ends_at: payload.ends_at,
-        location: payload.location,
-        court_id: payload.court_id,
-        capacity: payload.capacity,
-        rsvp_deadline: payload.rsvp_deadline,
-        visibility: payload.visibility,
+        startsAtLocal: (payload.starts_at || "").slice(0, 16),
+        endsAtLocal: payload.ends_at ? payload.ends_at.slice(0, 16) : null,
         status: payload.status,
-        created_by: user?.id || null,
-      };
-
-      const { error } = await fromExt("events").upsert(row, { onConflict: "id" });
-      if (error) throw error;
+        createdBy: user?.id || null,
+      });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "events"] });
@@ -1071,6 +1048,7 @@ export default function Admin() {
     },
     onError: (e: any) => toast.error(e?.message || "Failed to save event"),
   });
+
 
   const sendBroadcast = useMutation({
     mutationFn: async (payload: { recipients: string[]; title: string; message: string; url: string; type?: string; data?: any }) => {

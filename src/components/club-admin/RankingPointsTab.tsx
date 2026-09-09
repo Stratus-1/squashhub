@@ -132,7 +132,7 @@ export function RankingPointsTab({ clubId }: Props) {
   const [unrankedDefault, setUnrankedDefault] = useState("500");
 
   const seed = async () => {
-    if (!confirm("Seed every member's ranking points from their current ladder position? This overwrites existing balances.")) return;
+    if (!confirm("Seed every member's rating from their current ladder position? This overwrites existing balances.")) return;
     setSeeding(true);
     try {
       const { data, error } = await supabase.rpc("seed_ranking_points_from_ladder" as any, {
@@ -285,7 +285,7 @@ export function RankingPointsTab({ clubId }: Props) {
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-medium">Which results earn points</p>
+              <p className="text-xs font-medium">Which results change ratings</p>
               {([
                 ["Ladder challenges", fromChallenges, setFromChallenges],
                 ["League matches", fromLeagues, setFromLeagues],
@@ -297,7 +297,7 @@ export function RankingPointsTab({ clubId }: Props) {
                 </div>
               ))}
               <p className="text-[10px] text-muted-foreground">
-                Club ranking points are separate from imported SportyHQ ratings — those are never changed here.
+                Club ratings are separate from imported SportyHQ ratings — those are never changed here.
               </p>
             </div>
 
@@ -480,7 +480,7 @@ export function RankingPointsTab({ clubId }: Props) {
                   <TableHead className="w-10 text-center">#</TableHead>
                   <TableHead className="w-14 text-center text-[10px]">Move</TableHead>
                   <TableHead>Player</TableHead>
-                  <TableHead className="text-right w-24">Points</TableHead>
+                  <TableHead className="text-right w-24">Rating</TableHead>
                   <TableHead className="text-center w-20 text-[10px]">Ladder</TableHead>
                 </TableRow>
               </TableHeader>
@@ -492,7 +492,7 @@ export function RankingPointsTab({ clubId }: Props) {
                       key={m.id}
                       className="cursor-pointer"
                       onClick={() => setLedgerFor({ id: m.id, name: m.name })}
-                      title="See where these points came from"
+                      title="See where this rating came from"
                     >
                       <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
                       <TableCell className="text-center text-[11px] font-mono">

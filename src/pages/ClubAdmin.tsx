@@ -86,7 +86,7 @@ const SETUP_TABS: AdminTab[] = [
   { value: "banking", label: "Banking & Payments", icon: Banknote, permission: "banking", color: "green", capability: "payments" },
   { value: "devices", label: "IoT / Shelly", icon: Zap, permission: "devices", color: "sky", noStatus: true, capability: "gadgets" },
   { value: "ladder", label: "Ladder & Ranking", icon: ListOrdered, permission: "ladder", color: "orange", noStatus: true, capability: "ladder" },
-  { value: "ranking-points", label: "Ranking Points", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true, capability: "ranking_points" },
+  { value: "ranking-points", label: "Player Ratings", icon: Sparkles, permission: "ladder", color: "yellow", noStatus: true, capability: "ranking_points" },
 
   { value: "bar", label: "Bar / POS", icon: Beer, permission: "bar", color: "rose", noStatus: true, capability: "bar" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, color: "red", noStatus: true },

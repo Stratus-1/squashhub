@@ -76,7 +76,7 @@ function RankingTabs({
         <TabsList className="mb-3">
           <TabsTrigger value="pyramid">Pyramid Ladder</TabsTrigger>
           <TabsTrigger value="points" className="gap-1.5">
-            <BarChart3 className="w-3.5 h-3.5" /> Ranking Points
+            <BarChart3 className="w-3.5 h-3.5" /> Ratings
           </TabsTrigger>
         </TabsList>
         <TabsContent value="pyramid">{pyramidContent}</TabsContent>

@@ -85,3 +85,7 @@ verify_jwt = false
 # Outbound SMS gateway (platform-configured provider).
 [functions.send-sms]
 verify_jwt = false
+
+# Historical SportyHQ result import (club admin / platform admin only).
+[functions.sportyhq-history-import]
+verify_jwt = true

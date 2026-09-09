@@ -40,6 +40,8 @@ import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
 import { parseRoundDeadlines, deadlineForRound, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
+
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
 import { useHasPermission } from "@/hooks/use-club-permissions";

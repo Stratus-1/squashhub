@@ -2558,19 +2558,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       let audienceIds = resolvedAudience.memberIds;
       if (inviteAudience === "leagues" && audienceLeagueIds.size > 0) {
         // Re-read at save time so the roster is canonical even if the cached
-        // registration query is stale.
-        const { data: audienceRegs, error: audienceRegsErr } = await fromExt("member_league_registrations")
-          .select("club_member_id, is_reserve")
-          .in("league_id", Array.from(audienceLeagueIds));
-        if (audienceRegsErr) throw audienceRegsErr;
+        // registration query is stale. Region/federation tournaments resolve
+        // cross-club teams through the scoped RPC (RLS blocks a direct read).
         const fresh = new Set(audienceIds);
-        (audienceRegs || []).forEach((r: any) => {
-          if (!r.club_member_id || inviteExcludedMemberIds.has(r.club_member_id)) return;
-          if (!inviteIncludeReserves && r.is_reserve) return;
-          fresh.add(r.club_member_id);
-        });
+        if (scopeIsWide) {
+          const byLeague = await fetchScopeLeagueMemberIds({
+            tournamentId: champIdToUse,
+            clubId,
+            scope: eligibilityScope,
+            leagueIds: Array.from(audienceLeagueIds),
+            includeReserves: inviteIncludeReserves,
+          });
+          byLeague.forEach((ids) =>
+            ids.forEach((id) => {
+              if (!inviteExcludedMemberIds.has(id)) fresh.add(id);
+            }),
+          );
+        } else {
+          const { data: audienceRegs, error: audienceRegsErr } = await fromExt("member_league_registrations")
+            .select("club_member_id, is_reserve")
+            .in("league_id", Array.from(audienceLeagueIds));
+          if (audienceRegsErr) throw audienceRegsErr;
+          (audienceRegs || []).forEach((r: any) => {
+            if (!r.club_member_id || inviteExcludedMemberIds.has(r.club_member_id)) return;
+            if (!inviteIncludeReserves && r.is_reserve) return;
+            fresh.add(r.club_member_id);
+          });
+        }
         audienceIds = Array.from(fresh);
       }
+
       // Open (self-registration) tournaments with an "all club members"
       // audience are not materialised as rows on save — the roster is created
       // when the organiser actually sends invitations.

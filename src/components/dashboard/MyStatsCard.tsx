@@ -126,6 +126,17 @@ export function MyStatsCard({ memberId }: Props) {
         })}
       </div>
 
+      {computedAt && (
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          Updated{" "}
+          {new Date(computedAt).toLocaleDateString(undefined, {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })}
+        </p>
+      )}
+
       <MatchHistorySheet
         open={openCategory !== null}
         onOpenChange={(v) => !v && setOpenCategory(null)}
@@ -136,3 +147,4 @@ export function MyStatsCard({ memberId }: Props) {
     </Card>
   );
 }
+

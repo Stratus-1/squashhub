@@ -6086,10 +6086,46 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     enabled: !!editingChampId,
   });
 
+  // Names/home clubs for invitee rows that belong to OTHER clubs in the region.
+  // The browser cannot read those club_members rows directly (RLS), so a secure
+  // directory RPC returns name + club + contactability only — never contact details.
+  const inviteeMemberIdKey = useMemo(
+    () =>
+      Array.from(
+        new Set((inviteeRows as any[]).map((r) => r.club_member_id).filter(Boolean) as string[]),
+      )
+        .sort()
+        .join(","),
+    [inviteeRows],
+  );
+  const { data: inviteeDirectory = new Map<string, { name: string; clubName: string | null; contactable: boolean }>() } =
+    useQuery({
+      queryKey: ["champ-invitee-directory", editingChampId, inviteeMemberIdKey],
+      queryFn: async () => {
+        const ids = inviteeMemberIdKey ? inviteeMemberIdKey.split(",") : [];
+        const map = new Map<string, { name: string; clubName: string | null; contactable: boolean }>();
+        if (!ids.length) return map;
+        const { data, error } = await (supabase as any).rpc("tournament_invite_member_directory", {
+          p_tournament_id: editingChampId,
+          p_club_id: clubId,
+          p_member_ids: ids,
+        });
+        if (error) throw error;
+        for (const row of (data || []) as any[]) {
+          map.set(row.member_id, {
+            name: row.full_name || "Unknown member",
+            clubName: row.club_name || null,
+            contactable: !!row.contactable,
+          });
+        }
+        return map;
+      },
+      enabled: !!editingChampId && !!inviteeMemberIdKey,
+    });
+
   const [inviteePickerPreparing, setInviteePickerPreparing] = useState(false);
   async function openInviteePicker() {
     if (!editingChampId) return;
-    setSelectedInviteeRegIds(new Set());
     setInviteeSearch("");
     setInviteePickerOpen(true);
     setInviteePickerPreparing(true);
@@ -6100,13 +6136,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // retain that as a compatibility fallback rather than materialising an
       // empty audience.
       await saveEntriesDraft(editingChampId, undefined, { inviteRosterOnly: true, materializeAudience: true });
-      await refetchInvitees();
+      const refreshed = await refetchInvitees();
+      // Everyone already in the audience starts ticked — the picker narrows an
+      // existing list, it never starts from nothing.
+      const rows = ((refreshed?.data || inviteeRows) as any[]).filter((r) => r.club_member_id);
+      const staged = audienceMemberIds;
+      const preselect = staged.size
+        ? rows.filter((r) => staged.has(r.club_member_id))
+        : rows;
+      setSelectedInviteeRegIds(new Set(preselect.map((r) => r.id as string)));
     } catch (error: any) {
       toast.error(error?.message || "Could not load the selected league members");
     } finally {
       setInviteePickerPreparing(false);
     }
   }
+
 
   const memberNameById = useMemo(() => {
     const m = new Map<string, string>();

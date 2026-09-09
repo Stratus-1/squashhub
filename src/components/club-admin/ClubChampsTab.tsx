@@ -5756,9 +5756,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // WhatsApp message carries exactly the same URL as email / in-app.
         for (const r of rows as any[]) {
           const link = urlForRegistration(r.id);
-          const details = needsPayment
-            ? `Open your personal link to choose your category and pay the entry fee. Reply NO to decline.`
-            : `Open your personal link to choose your category and confirm. Reply NO to decline.`;
+          const details = buildWhatsAppDetails(needsPayment);
           try {
             await sendWhatsApp({
               clubId,

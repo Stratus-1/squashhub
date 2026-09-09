@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarPlus, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil, Info } from "lucide-react";
+import { CalendarPlus, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil, Info, Send } from "lucide-react";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -942,6 +942,65 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     },
   });
 
+  // Re-send the invitation to everybody on the list, with the event's current
+  // date and time. Used when an invite went out with the wrong details.
+  const resendMutation = useMutation({
+    mutationFn: async (evt: any) => {
+      const { data: rsvpRows } = await fromExt("club_event_rsvps")
+        .select("club_member_id")
+        .eq("event_id", evt.id);
+      const inviteeIds: string[] = Array.from(
+        new Set((rsvpRows || []).map((r: any) => String(r.club_member_id))),
+      );
+      if (inviteeIds.length === 0) throw new Error("Nobody is on the invite list yet");
+
+      const whenText = `${format(new Date(String(evt.start_date) + "T00:00:00"), "EEE d MMM")} at ${String(evt.start_time || "").slice(0, 5)}`;
+
+      const { data: memberData } = await supabase
+        .from("club_members")
+        .select("id, user_id")
+        .in("id", inviteeIds);
+      const notifRows = (memberData || []).map((m) => ({
+        user_id: m.user_id || "00000000-0000-0000-0000-000000000000",
+        club_member_id: m.id,
+        title: `📅 Invitation — ${evt.title}`,
+        message: `You're invited to "${evt.title}" on ${whenText}. Please confirm or decline.`,
+        type: "booking",
+        url: `/events`,
+        data: JSON.stringify({ event_id: evt.id }),
+      }));
+      for (let i = 0; i < notifRows.length; i += 50) {
+        await fromExt("notifications").insert(notifRows.slice(i, i + 50));
+      }
+
+      let waSent = 0;
+      if (canUseClubWhatsApp && clubId) {
+        const questionText = `Are you joining "${evt.title}" on ${whenText}?`;
+        const detailsText = "Reply YES to confirm or NO to decline.";
+        const res = await sendWhatsApp({
+          clubId,
+          recipients: inviteeIds.map((id) => ({ member_id: id })),
+          kind: "event_invite",
+          category: "utility",
+          templateKey: "rsvp_question",
+          templateVariables: { question: questionText, details: detailsText },
+          body: `${questionText}\n\n${detailsText}`,
+          interaction: {
+            kind: "event_rsvp",
+            targetId: evt.id,
+            prompt: `RSVP for ${evt.title}`,
+          },
+        });
+        waSent = res?.sent ?? 0;
+      }
+      return { total: inviteeIds.length, waSent };
+    },
+    onSuccess: (r: any) => {
+      toast.success(`Invitation re-sent to ${r.total} member${r.total === 1 ? "" : "s"}${r.waSent ? ` (${r.waSent} on WhatsApp)` : ""}`);
+    },
+    onError: (err: any) => toast.error(err.message || "Could not re-send the invitation"),
+  });
+
   const cancelMutation = useMutation({
     mutationFn: async ({ eventId, cancelBookings }: { eventId: string; cancelBookings: boolean }) => {
       // Get event details to find associated bookings
@@ -1486,6 +1545,20 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                           {linkedMembers.length > 1 ? `${r.memberName}: ${r.status}` : r.status}
                         </Badge>
                       ))}
+                      {(isCreator || isAdmin) && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          title="Re-send invitation with the current date and time"
+                          disabled={resendMutation.isPending}
+                          onClick={() => resendMutation.mutate(e)}
+                        >
+                          {resendMutation.isPending
+                            ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                            : <Send className="w-3 h-3 text-muted-foreground" />}
+                        </Button>
+                      )}
                       {(isCreator || isAdmin) && (
                         <Button
                           size="icon"

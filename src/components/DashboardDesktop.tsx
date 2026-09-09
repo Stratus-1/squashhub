@@ -22,7 +22,7 @@ interface DashboardDesktopProps {
   clubLogoUrl?: string | null;
   clubId?: string;
   firstName: string;
-  // stats (kept for callers; personal stats now render via MyStatsCard/MyRankingsCard)
+  // stats props kept for callers; personal My Stats/My Rankings render in the page above
   played: number;
   wins: number;
   losses: number;

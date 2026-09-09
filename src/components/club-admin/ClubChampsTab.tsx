@@ -9881,10 +9881,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <dt className="text-muted-foreground">Timing</dt>
                   <dd className="font-medium">
                     {inviteTiming === "now"
-                      ? "Immediately on save"
+                      ? "Prompt to send right after saving"
                       : inviteTiming === "scheduled"
                         ? (inviteScheduledAt ? new Date(inviteScheduledAt).toLocaleString() : "Scheduled — pick a date")
                         : "Manual — when you press send"}
+
                   </dd>
                 </div>
                 <div className="flex justify-between gap-2 sm:block">

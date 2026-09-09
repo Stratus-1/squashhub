@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,12 +10,13 @@ import {
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import squashCourtBg from "@/assets/squash-court-bg.jpg";
-import { useClubAnalytics } from "@/hooks/use-analytics";
 import { ClubStatsCard } from "@/components/ClubStatsCard";
 import { ClubSetsPlayedCard } from "@/components/ClubSetsPlayedCard";
 import { DashboardDeviceControls } from "@/components/DashboardDeviceControls";
 import { DashboardWifiCard } from "@/components/DashboardWifiCard";
 import { DashboardRouterCard } from "@/components/DashboardRouterCard";
+import { MyStatsCard } from "@/components/dashboard/MyStatsCard";
+import { MyRankingsCard } from "@/components/dashboard/MyRankingsCard";
 import { useSidebarFlags } from "@/hooks/use-sidebar-flags";
 
 interface DashboardDesktopProps {
@@ -24,7 +24,7 @@ interface DashboardDesktopProps {
   clubLogoUrl?: string | null;
   clubId?: string;
   firstName: string;
-  // stats
+  // stats (kept for callers; personal stats now render via MyStatsCard/MyRankingsCard)
   played: number;
   wins: number;
   losses: number;
@@ -49,8 +49,6 @@ interface DashboardDesktopProps {
   eventsSlot?: React.ReactNode;
 }
 
-type StatsScope = "me" | "club";
-
 type Tile = {
   title: string;
   url: string;
@@ -62,35 +60,7 @@ type Tile = {
 
 export function DashboardDesktop(props: DashboardDesktopProps) {
   const navigate = useNavigate();
-  const [scope, setScope] = useState<StatsScope>("me");
-  const { data: clubStats } = useClubAnalytics(30);
-
   const flags = useSidebarFlags();
-  const winRate = Math.max(0, Math.min(100, Math.round(props.winRate)));
-  // Club "win rate" = confirmation rate over last 30 days
-  const clubConfirmRate =
-    clubStats && clubStats.total_matches > 0
-      ? Math.round((clubStats.confirmed_matches / clubStats.total_matches) * 100)
-      : 0;
-  const displayedRate = scope === "club" ? clubConfirmRate : winRate;
-  // Radial conic gradient ring
-  const ringStyle = useMemo(
-    () => ({
-      background: `conic-gradient(hsl(var(--primary)) ${displayedRate * 3.6}deg, hsl(var(--muted-foreground) / 0.25) 0deg)`,
-    }),
-    [displayedRate]
-  );
-
-  // dashboard-01 style stat card: gradient surface, muted label, tabular value.
-  const StatTile = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div
-      data-slot="card"
-      className="rounded-xl border border-border bg-gradient-to-t from-primary/5 to-card shadow-xs backdrop-blur-md p-4 flex flex-col justify-between min-h-[110px]"
-    >
-      <span className="text-xs text-muted-foreground uppercase tracking-wider">{label}</span>
-      <span className="text-3xl font-heading font-bold text-foreground tabular-nums">{value}</span>
-    </div>
-  );
 
   return (
     <div className="@container/main min-h-[calc(100vh-2.5rem)] relative font-sans">
@@ -145,94 +115,10 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
 
 
       <div className="px-8 pb-8 grid grid-cols-12 gap-5">
-        {/* STATS card */}
-        <div className="col-span-12 xl:col-span-7">
-          <Card className="bg-card/95 border-border backdrop-blur-md p-5 rounded-2xl">
-            {/* Toggle pill */}
-            <div className="grid grid-cols-2 rounded-xl overflow-hidden border border-border mb-5">
-              <button
-                onClick={() => setScope("me")}
-                className={cn(
-                  "py-2.5 text-sm font-heading uppercase tracking-[0.18em] transition-colors",
-                  scope === "me"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-transparent text-foreground/70 hover:bg-muted/50"
-                )}
-              >
-                My Stats
-              </button>
-              <button
-                onClick={() => setScope("club")}
-                className={cn(
-                  "py-2.5 text-sm font-heading uppercase tracking-[0.18em] transition-colors",
-                  scope === "club"
-                    ? "bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]"
-                    : "bg-transparent text-foreground/80"
-                )}
-              >
-                Club
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              {/* Rate radial */}
-              <div className="rounded-xl bg-muted/40 border border-border p-4 flex flex-col justify-between row-span-2 min-h-[230px]">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                  {scope === "club" ? "Confirmed rate" : "Win rate"}
-                </span>
-                <div className="flex-1 flex items-center justify-center">
-                  <div
-                    className="w-28 h-28 rounded-full grid place-items-center"
-                    style={ringStyle}
-                  >
-                    <div className="w-[88px] h-[88px] rounded-full bg-card grid place-items-center">
-                      <span className="text-2xl font-heading font-bold text-foreground">
-                        {displayedRate}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {scope === "me" ? (
-                <>
-                  <StatTile label="Played" value={props.played} />
-                  <StatTile label="Wins" value={props.wins} />
-                  <StatTile label="Losses" value={props.losses} />
-                  <StatTile label="Rank" value={props.rank != null ? `#${props.rank}` : "—"} />
-                </>
-              ) : (
-                <>
-                  <StatTile label="Total Matches" value={clubStats?.total_matches ?? 0} />
-                  <StatTile label="Active Players" value={clubStats?.active_players ?? 0} />
-                  <StatTile
-                    label="Avg Duration"
-                    value={clubStats?.avg_duration_min != null ? `${Math.round(clubStats.avg_duration_min)}m` : "—"}
-                  />
-                  <StatTile label="Confirmed" value={clubStats?.confirmed_matches ?? 0} />
-                </>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                  {scope === "club" ? "Club Bookings (30d)" : "Total Bookings"}
-                </span>
-                <span className="text-2xl font-heading font-bold text-foreground tabular-nums">
-                  {scope === "club" ? clubStats?.total_bookings ?? 0 : props.totalBookings}
-                </span>
-              </div>
-              <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                  {scope === "club" ? "Top Players" : "Courts Used"}
-                </span>
-                <span className="text-2xl font-heading font-bold text-foreground tabular-nums">
-                  {scope === "club" ? (clubStats?.top_players?.length ?? 0) : props.courtsUsed}
-                </span>
-              </div>
-            </div>
-          </Card>
+        {/* MY STATS + MY RANKINGS — same personal blocks as mobile */}
+        <div className="col-span-12 xl:col-span-7 space-y-5">
+          <MyStatsCard memberId={props.myMemberId} />
+          <MyRankingsCard clubId={props.clubId ?? null} memberId={props.myMemberId} />
         </div>
 
         {/* BOOKINGS card */}

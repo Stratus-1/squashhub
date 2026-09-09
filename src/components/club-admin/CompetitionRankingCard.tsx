@@ -92,13 +92,15 @@ export function CompetitionRankingCard({
     <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Label className="text-xs font-medium">Affects official ranking points?</Label>
+          <Label className="text-xs font-medium">Counts towards {RANKING_SCOPE_LABELS[effectiveScope].toLowerCase()}?</Label>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            When on, completed {sourceLabel} results queue point movements for admin approval.
+            Results affect player ratings and may change ranking positions. Completed {sourceLabel}{" "}
+            results queue rating changes for admin approval.
           </p>
         </div>
         <Switch checked={affects} onCheckedChange={onAffectsChange} />
       </div>
+
 
       {showSummary && affects && (
         <div className="flex items-center justify-between gap-3">

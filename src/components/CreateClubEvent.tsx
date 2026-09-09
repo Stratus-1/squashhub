@@ -1207,7 +1207,18 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           .select("instance_date")
           .eq("event_id", editingEventId);
 
-        // Cancel old bookings on old courts/times (future dates only)
+        // Cancel this event's own future bookings — they are re-made below at
+        // the new time/courts. Matching on the event link is exact, so other
+        // people's bookings are never touched.
+        await supabase
+          .from("bookings")
+          .update({ status: "cancelled" })
+          .eq("event_id", editingEventId)
+          .gte("date", todayStr)
+          .eq("status", "active");
+
+        // Legacy events created before bookings were linked: fall back to the
+        // old court/time match.
         if (oldEvent && oldCourtIds.length && instances?.length) {
           const dates = instances
             .map((i: any) => i.instance_date)
@@ -1216,6 +1227,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             await supabase
               .from("bookings")
               .update({ status: "cancelled" })
+              .is("event_id", null)
+              .eq("source", "club_event")
               .in("court_id", [...new Set([...oldCourtIds, ...form.court_ids])])
               .eq("date", date)
               .gte("start_time", oldEvent.start_time)

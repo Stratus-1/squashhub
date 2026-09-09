@@ -1277,12 +1277,16 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["club-events"] });
       queryClient.invalidateQueries({ queryKey: ["club-events-list"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
       toast.success("Event updated!");
       setCreateOpen(false);
       setEditingEventId(null);
       resetForm();
       onClose?.();
     },
+
     onError: (err: any) => toast.error(err.message || "Failed to update event"),
   });
 

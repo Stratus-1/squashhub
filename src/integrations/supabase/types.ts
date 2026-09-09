@@ -14857,6 +14857,10 @@ export type Database = {
         Args: { _dup_id: string; _keep_id: string }
         Returns: undefined
       }
+      mobile_tournament_sync_payload: {
+        Args: { sync_secret: string }
+        Returns: Json
+      }
       move_player_to_league_pool: {
         Args: {
           p_club_id: string

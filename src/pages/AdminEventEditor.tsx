@@ -13,6 +13,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAdminEvent, saveAdminEvent } from "@/lib/events/admin-events";
+import { useMyClub } from "@/hooks/use-club";
+import { useAuth } from "@/contexts/AuthContext";
+
 
 type SeasonRow = {
   id: string;
@@ -56,6 +60,10 @@ export default function AdminEventEditor() {
   const locationObj = useLocation();
   const params = useParams();
   const queryClient = useQueryClient();
+  const { data: myClub } = useMyClub();
+  const { user } = useAuth();
+  const userId = user?.id || null;
+
   const eventId = params.id || null;
   const requestId = useMemo(() => new URLSearchParams(locationObj.search).get("requestId"), [locationObj.search]);
   const preselectSeasonId = useMemo(() => new URLSearchParams(locationObj.search).get("seasonId"), [locationObj.search]);

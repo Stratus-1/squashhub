@@ -1723,6 +1723,42 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                           {linkedMembers.length > 1 ? `${r.memberName}: ${r.status}` : r.status}
                         </Badge>
                       ))}
+                      {/* Leave the group entirely — no further invites */}
+                      {myRsvpList.map(r => (
+                        <AlertDialog key={`leave-${r.id}`}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-[10px] px-2 text-muted-foreground"
+                              disabled={leaveMutation.isPending}
+                            >
+                              <LogOut className="w-3 h-3 mr-0.5" />
+                              {linkedMembers.length > 1 ? `${r.memberName}: Leave` : "Leave"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Leave this event?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {linkedMembers.length > 1 ? `${r.memberName} will be` : "You'll be"} taken off
+                                "{e.title}" and won't get any more invitations or reminders for it. The organiser
+                                can add {linkedMembers.length > 1 ? "them" : "you"} again later.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  leaveMutation.mutate({ eventId: e.id, memberId: r.club_member_id })
+                                }
+                              >
+                                Leave event
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      ))}
                       {(isCreator || isAdmin) && (
                         <Button
                           size="icon"

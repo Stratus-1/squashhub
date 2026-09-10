@@ -340,7 +340,7 @@ const TILE_STYLES: Record<string, { chipBg: string; chipText: string }> = {
 function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigate }: QuickAccessProps) {
   const flags = useSidebarFlags();
   const home: Tile[] = [
-    { title: "Stats",    url: "/analytics", icon: BarChart3,  color: "sky" },
+    { title: "My Account", url: "/my-account", icon: Wallet, color: "teal" },
     ...(flags.bookingsEnabled
       ? [{ title: "Court Bookings", url: "/bookings", icon: Calendar, color: "blue" } as Tile]
       : []),
@@ -363,7 +363,6 @@ function QuickAccess({ hasLeagues, honestyBarEnabled, hasAnyAdminAccess, navigat
     ...(honestyBarEnabled
       ? [{ title: "Bar / POS", url: "/honesty-bar", icon: Wine, color: "rose" } as Tile]
       : []),
-    { title: "My Account",        url: "/my-account",   icon: Wallet,      color: "teal" },
     { title: "Help & Tutorials",  url: "/help",         icon: GraduationCap, color: "sky" },
   ];
 

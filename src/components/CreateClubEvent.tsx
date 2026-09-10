@@ -2248,7 +2248,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   </p>
                 )}
                 <p className="text-[11px] text-muted-foreground">
-                  Courts: {form.reserve_courts === "yes" ? form.court_ids.length : "not booked"} · Lights: {form.light_fee_split === "attendees" ? "Split among attendees" : form.light_fee_split === "none" ? "No light fees" : "Club pays"}
+                  Courts: {form.reserve_courts === "yes" ? form.court_ids.length : "not booked"} · Lights: {form.light_fee_split === "attendees" ? "Split among attendees" : form.light_fee_split === "none" ? "No light fees (club covers)" : "Event creator pays"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   Courts booked under: {adminBypass ? `${club?.name || "Club"} (courts free — light fees still apply)` : (activeMember?.name || "you")}

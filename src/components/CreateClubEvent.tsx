@@ -961,6 +961,27 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     },
   });
 
+  // A member who wasn't invited joining an open event themselves. The backend
+  // checks the event is open, in the same club, and owned by the caller.
+  const joinMutation = useMutation({
+    mutationFn: async ({ eventId, memberId }: { eventId: string; memberId: string }) => {
+      const { error } = await (supabase as any).rpc("join_club_event", {
+        _event_id: eventId,
+        _club_member_id: memberId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvp-counts"] });
+      toast.success("You're in — see you there!");
+    },
+    onError: (err: any) => toast.error(err?.message || "Could not join this event"),
+  });
+
+
+
   // Re-send the invitation to everybody on the list, with the event's current
   // date and time. Used when an invite went out with the wrong details.
   const resendMutation = useMutation({

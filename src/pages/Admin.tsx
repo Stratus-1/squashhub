@@ -1035,7 +1035,7 @@ export default function Admin() {
     }) => {
       await saveAdminEvent({
         id: payload.id || null,
-        clubId: myClub?.id || null,
+        clubId: myClub?.club?.id || null,
         title: payload.title,
         description: payload.description,
         startsAtLocal: (payload.starts_at_local || "").slice(0, 16),
@@ -2457,7 +2457,7 @@ export default function Admin() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <Select value={e.status} onValueChange={(value) => {
-                              saveEvent.mutate({ id: e.id, title: e.title, description: e.description || null, starts_at: e.starts_at, ends_at: e.ends_at || null, location: e.location || null, court_id: e.court_id ?? null, capacity: e.capacity ?? null, rsvp_deadline: e.rsvp_deadline || null, visibility: e.visibility, status: value as any });
+                              saveEvent.mutate({ id: e.id, title: e.title, description: e.description || null, starts_at_local: e.starts_at, ends_at_local: e.ends_at || null, location: e.location || null, court_id: e.court_id ?? null, capacity: e.capacity ?? null, rsvp_deadline: e.rsvp_deadline || null, visibility: e.visibility, status: value as any });
                             }}>
                               <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>

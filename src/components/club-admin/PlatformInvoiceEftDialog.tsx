@@ -116,7 +116,7 @@ export function PlatformInvoiceEftDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Landmark className="h-4 w-4 text-primary" /> Pay by EFT
@@ -164,24 +164,34 @@ export function PlatformInvoiceEftDialog({
               </div>
             )}
 
-            <div className="space-y-2 border-t pt-3">
+            <div className="sticky bottom-0 space-y-2 border-t bg-background pt-3">
               <Label className="text-xs">Proof of payment (PDF or image)</Label>
               <Input
                 type="file"
                 accept="application/pdf,image/*"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
+              {file && (
+                <p className="text-[11px] text-muted-foreground truncate">
+                  Selected: <span className="text-foreground">{file.name}</span>
+                </p>
+              )}
               <Button className="w-full" disabled={!file || uploading} onClick={handleUpload}>
                 {uploading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…
                   </>
                 ) : (
                   <>
-                    <Upload className="mr-2 h-4 w-4" /> Upload proof of payment
+                    <Upload className="mr-2 h-4 w-4" /> Submit proof of payment
                   </>
                 )}
               </Button>
+              {!file && (
+                <p className="text-[11px] text-muted-foreground">
+                  Choose your proof file above, then tap Submit proof of payment.
+                </p>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 Use invoice number <strong>{invoice.invoice_number}</strong> as your payment reference so we can
                 allocate it correctly.

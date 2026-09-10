@@ -11,6 +11,7 @@ const fromExt = (table: string) => (supabase as any).from(table);
 const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
 import { AppRole, useMyRoles } from "@/hooks/use-data";
+import { useMyClub } from "@/hooks/use-club";
 import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

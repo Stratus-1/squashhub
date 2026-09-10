@@ -980,6 +980,27 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     onError: (err: any) => toast.error(err?.message || "Could not join this event"),
   });
 
+  // Leaving the group: the member stops getting invitations and reminders for
+  // this event and all its future occurrences.
+  const leaveMutation = useMutation({
+    mutationFn: async ({ eventId, memberId }: { eventId: string; memberId: string }) => {
+      const { error } = await (supabase as any).rpc("leave_club_event", {
+        _event_id: eventId,
+        _club_member_id: memberId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvp-counts"] });
+      toast.success("You've left this event — no more invites for it");
+    },
+    onError: (err: any) => toast.error(err?.message || "Could not leave this event"),
+  });
+
+
+
 
 
   // Re-send the invitation to everybody on the list, with the event's current

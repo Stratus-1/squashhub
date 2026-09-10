@@ -269,6 +269,7 @@ export default function Admin() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: myRoles } = useMyRoles();
+  const { data: myClub } = useMyClub();
 
   const isAdmin = (myRoles || []).includes("admin");
   const isManager = (myRoles || []).includes("moderator");

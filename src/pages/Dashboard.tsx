@@ -842,9 +842,13 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Primary Actions — Book, Ladder, Profile */}
+      {/* Primary Actions — My Account first, then Book, Ladder, Profile */}
       <div className="px-4 mt-4">
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
+            <Wallet className="w-5 h-5" />
+            <span className="text-xs font-medium leading-tight text-center">My Account</span>
+          </Button>
           {bookingsEnabled && (
 <Button className="flex-col h-auto py-3 gap-1.5 bg-primary text-primary-foreground border border-border bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => navigate("/bookings")}>
             <Calendar className="w-5 h-5" />
@@ -901,11 +905,7 @@ export default function Dashboard() {
               <span className="text-xs font-medium leading-tight text-center">Bar / POS</span>
             </Button>
           )}
-          {/* My Profile still desktop-only; My Account shown on all viewports per request */}
-          <Button variant="outline" className="flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-teal-500/40 bg-teal-500/10 text-teal-700 dark:text-teal-400 hover:bg-teal-500/20" onClick={() => navigate("/my-account")}>
-            <Wallet className="w-5 h-5" />
-            <span className="text-xs font-medium leading-tight text-center">My Account</span>
-          </Button>
+          {/* My Profile still desktop-only */}
           <Button variant="outline" className="hidden sm:flex flex-col h-auto py-3 gap-1.5 bg-card text-foreground border-border border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-500/20" onClick={() => openProfile("/profile?edit=1")}>
             <Settings className="w-5 h-5" />
             <span className="text-xs font-medium leading-tight text-center">My Profile</span>

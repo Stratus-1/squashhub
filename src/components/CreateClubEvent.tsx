@@ -1483,6 +1483,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       notify_push: true,
       notify_email: true,
       notify_whatsapp: false,
+      allow_self_join: false,
+      notify_on_change: false,
       light_fee_split: "creator",
       is_club_booking: false,
       booking_member_ids: selfId ? [selfId] : [],

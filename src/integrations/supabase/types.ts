@@ -3291,6 +3291,7 @@ export type Database = {
       }
       club_events: {
         Row: {
+          allow_self_join: boolean
           booked_by_member_id: string | null
           club_id: string
           created_at: string
@@ -3318,6 +3319,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_self_join?: boolean
           booked_by_member_id?: string | null
           club_id: string
           created_at?: string
@@ -3345,6 +3347,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_self_join?: boolean
           booked_by_member_id?: string | null
           club_id?: string
           created_at?: string
@@ -14843,6 +14846,10 @@ export type Database = {
       is_public_club_document: { Args: { _path: string }; Returns: boolean }
       is_rankable_member: { Args: { _member_id: string }; Returns: boolean }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
+      join_club_event: {
+        Args: { _club_member_id: string; _event_id: string }
+        Returns: string
+      }
       ladder_move_apply_now: {
         Args: {
           _club_id: string

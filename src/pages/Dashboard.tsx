@@ -935,6 +935,10 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="px-4 mt-3 space-y-3">
+        <MyStatsCard memberId={myMemberId} />
+        <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+      </div>
 
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />

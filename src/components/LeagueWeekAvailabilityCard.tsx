@@ -153,6 +153,7 @@ export function LeagueWeekAvailabilityCard() {
   if (!clubId || !memberId) return null;
   if (!isLeaguePlayer) return null;
   if (!hasFixture) return null;
+  if (status === "available") return null;
 
   const niceRange = `${format(new Date(weekStartStr), "EEE d MMM")} – ${format(new Date(weekEndStr), "EEE d MMM")}`;
 
@@ -162,14 +163,9 @@ export function LeagueWeekAvailabilityCard() {
         <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
           <CalendarCheck className="w-4 h-4 text-primary" />
         </div>
-        <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold leading-tight">League — next week</p>
-            {status === "available" && (
-              <Badge variant="secondary" className="text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-                You're in
-              </Badge>
-            )}
             {status === "unavailable" && (
               <Badge variant="secondary" className="text-[10px] bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30">
                 Not available
@@ -177,16 +173,16 @@ export function LeagueWeekAvailabilityCard() {
             )}
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            {status
-              ? `Updated for ${niceRange}. Tap to change.`
+            {status === "unavailable"
+              ? `Marked unavailable for ${niceRange}. Tap to change.`
               : `Confirm for ${niceRange} so your captain can fill the team.`}
           </p>
           <div className="flex gap-2 mt-2">
             <Button
               size="sm"
-              variant={status === "available" ? "default" : "outline"}
+              variant="outline"
               className="h-8 text-xs flex-1 disabled:opacity-50"
-              disabled={respond.isPending || status === "available"}
+              disabled={respond.isPending}
               onClick={() => respond.mutate("available")}
             >
               <ThumbsUp className="w-3.5 h-3.5 mr-1.5" />

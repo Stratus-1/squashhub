@@ -1653,6 +1653,23 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     </div>
 
                     <div className="flex items-center gap-1">
+                      {/* Not invited, but the organiser left the event open to everyone */}
+                      {myRsvpList.length === 0 && e.allow_self_join && (activeMember?.id || linkedMembers[0]?.id) && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-6 text-[10px] px-2"
+                          disabled={joinMutation.isPending}
+                          onClick={() =>
+                            joinMutation.mutate({
+                              eventId: e.id,
+                              memberId: String(activeMember?.id || linkedMembers[0]?.id),
+                            })
+                          }
+                        >
+                          <Check className="w-3 h-3 mr-0.5" /> Join group
+                        </Button>
+                      )}
                       {/* Show confirm/decline for each linked member with pending invite */}
                       {myRsvpList.filter(r => r.status === "invited").map(r => (
                         <span key={r.id} className="inline-flex items-center gap-0.5">

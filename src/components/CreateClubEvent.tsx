@@ -1373,12 +1373,16 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
          oldEvent.end_time !== form.end_time + ":00" ||
          oldEvent.start_date !== form.event_date);
 
-      if (scheduleChanged && form.notify_on_change) {
+      if (scheduleChanged) {
         try {
           await (supabase as any).rpc("reset_event_invites", { _event_id: editingEventId });
         } catch (resetErr) {
           console.warn("[CreateClubEvent] could not reset invitations:", resetErr);
         }
+      }
+
+      if (scheduleChanged && form.notify_on_change) {
+
 
         const { data: rsvpRows } = await fromExt("club_event_rsvps")
           .select("club_member_id")

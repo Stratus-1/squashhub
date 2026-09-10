@@ -214,6 +214,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     notify_push: true,
     notify_email: true,
     notify_whatsapp: false,
+    allow_self_join: false,
+    /** Only when the organiser explicitly asks for it does saving send messages. */
+    notify_on_change: false,
     light_fee_split: "creator",
     is_club_booking: false,
     booking_member_ids: [] as string[],
@@ -654,6 +657,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         notify_push: form.notify_push,
         notify_email: form.notify_email,
         notify_whatsapp: form.notify_whatsapp,
+        allow_self_join: form.allow_self_join,
         lights_auto_on: form.lights_auto_on,
       }).select("id").single();
       if (eventError) throw eventError;
@@ -957,6 +961,27 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     },
   });
 
+  // A member who wasn't invited joining an open event themselves. The backend
+  // checks the event is open, in the same club, and owned by the caller.
+  const joinMutation = useMutation({
+    mutationFn: async ({ eventId, memberId }: { eventId: string; memberId: string }) => {
+      const { error } = await (supabase as any).rpc("join_club_event", {
+        _event_id: eventId,
+        _club_member_id: memberId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvp-counts"] });
+      toast.success("You're in — see you there!");
+    },
+    onError: (err: any) => toast.error(err?.message || "Could not join this event"),
+  });
+
+
+
   // Re-send the invitation to everybody on the list, with the event's current
   // date and time. Used when an invite went out with the wrong details.
   const resendMutation = useMutation({
@@ -1113,6 +1138,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       notify_push: e.notify_push ?? true,
       notify_email: e.notify_email ?? true,
       notify_whatsapp: e.notify_whatsapp ?? false,
+      allow_self_join: e.allow_self_join ?? false,
+      notify_on_change: false,
       light_fee_split: e.light_fee_split || "creator",
       is_club_booking: e.is_club_booking || false,
       booking_member_ids: [],
@@ -1177,6 +1204,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         notify_push: form.notify_push,
         notify_email: form.notify_email,
         notify_whatsapp: form.notify_whatsapp,
+        allow_self_join: form.allow_self_join,
         lights_auto_on: form.lights_auto_on,
         updated_at: new Date().toISOString(),
       }).eq("id", editingEventId);
@@ -1357,9 +1385,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       }
 
       // If the date or time moved, everybody who was invited must be asked
-      // again — with the corrected time. Old answers are reset, already-sent
-      // reminders are cleared, and a fresh invite goes out on every channel
-      // the organiser picked.
+      // again — with the corrected time. Old answers are reset and already-sent
+      // reminders are cleared, so the normal reminder (e.g. 24h before) asks
+      // again. Saving NEVER messages anyone unless the organiser ticked
+      // "Tell everyone about this change now".
       const scheduleChanged = !!oldEvent &&
         (oldEvent.start_time !== form.start_time + ":00" ||
          oldEvent.end_time !== form.end_time + ":00" ||
@@ -1371,6 +1400,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         } catch (resetErr) {
           console.warn("[CreateClubEvent] could not reset invitations:", resetErr);
         }
+      }
+
+      if (scheduleChanged && form.notify_on_change) {
+
 
         const { data: rsvpRows } = await fromExt("club_event_rsvps")
           .select("club_member_id")
@@ -1471,6 +1504,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       notify_push: true,
       notify_email: true,
       notify_whatsapp: false,
+      allow_self_join: false,
+      notify_on_change: false,
       light_fee_split: "creator",
       is_club_booking: false,
       booking_member_ids: selfId ? [selfId] : [],
@@ -1618,6 +1653,23 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     </div>
 
                     <div className="flex items-center gap-1">
+                      {/* Not invited, but the organiser left the event open to everyone */}
+                      {myRsvpList.length === 0 && e.allow_self_join && (activeMember?.id || linkedMembers[0]?.id) && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-6 text-[10px] px-2"
+                          disabled={joinMutation.isPending}
+                          onClick={() =>
+                            joinMutation.mutate({
+                              eventId: e.id,
+                              memberId: String(activeMember?.id || linkedMembers[0]?.id),
+                            })
+                          }
+                        >
+                          <Check className="w-3 h-3 mr-0.5" /> Join group
+                        </Button>
+                      )}
                       {/* Show confirm/decline for each linked member with pending invite */}
                       {myRsvpList.filter(r => r.status === "invited").map(r => (
                         <span key={r.id} className="inline-flex items-center gap-0.5">
@@ -2058,8 +2110,39 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       WhatsApp messages are billed to your club. Replies update the RSVP automatically.
                     </p>
                   )}
+                  {editingEventId && (
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <Label htmlFor="notify-change" className="text-xs font-normal cursor-pointer pr-3">
+                        Tell everyone about this change now
+                        <span className="block text-[11px] text-muted-foreground font-normal">
+                          Off: nobody is messaged when you save — they get the normal reminder before the event.
+                        </span>
+                      </Label>
+                      <Switch
+                        id="notify-change"
+                        checked={form.notify_on_change}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, notify_on_change: v }))}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
+
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <Label htmlFor="allow-self-join" className="text-xs font-normal cursor-pointer pr-3">
+                  Let other members join
+                  <span className="block text-[11px] text-muted-foreground font-normal">
+                    Members who weren't invited can see this event and tap "Join group".
+                  </span>
+                </Label>
+                <Switch
+                  id="allow-self-join"
+                  checked={form.allow_self_join}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, allow_self_join: v }))}
+                />
+              </div>
+
+
 
 
               {form.invite_scope === "category" && (
@@ -2163,7 +2246,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   <p className="text-[11px] text-muted-foreground">
                     Courts are booked under <strong>{club?.name || "the club"}</strong> — courts are free, any time, any number of
                     courts and occurrences. Light fees follow the "Light Fees" setting
-                    {form.light_fee_split === "attendees" ? " — split among confirmed attendees." : form.light_fee_split === "none" ? " — no light fees." : " — carried by the club."}
+                    {form.light_fee_split === "attendees" ? " — split among confirmed attendees." : form.light_fee_split === "none" ? " — no light fees, the club covers them." : " — charged to you as the event creator."}
                   </p>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">
@@ -2194,6 +2277,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 {form.light_fee_split === "attendees" && (
                   <p className="text-[11px] text-muted-foreground">
                     Light fees will be split equally among all confirmed attendees when the session ends.
+                  </p>
+                )}
+                {form.light_fee_split === "creator" && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Light fees for this event are charged to you as the event creator.
                   </p>
                 )}
                 {form.light_fee_split === "none" && (
@@ -2229,7 +2317,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   </p>
                 )}
                 <p className="text-[11px] text-muted-foreground">
-                  Courts: {form.reserve_courts === "yes" ? form.court_ids.length : "not booked"} · Lights: {form.light_fee_split === "attendees" ? "Split among attendees" : form.light_fee_split === "none" ? "No light fees" : "Club pays"}
+                  Courts: {form.reserve_courts === "yes" ? form.court_ids.length : "not booked"} · Lights: {form.light_fee_split === "attendees" ? "Split among attendees" : form.light_fee_split === "none" ? "No light fees (club covers)" : "Event creator pays"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   Courts booked under: {adminBypass ? `${club?.name || "Club"} (courts free — light fees still apply)` : (activeMember?.name || "you")}

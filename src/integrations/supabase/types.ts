@@ -3291,6 +3291,7 @@ export type Database = {
       }
       club_events: {
         Row: {
+          allow_self_join: boolean
           booked_by_member_id: string | null
           club_id: string
           created_at: string
@@ -3318,6 +3319,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_self_join?: boolean
           booked_by_member_id?: string | null
           club_id: string
           created_at?: string
@@ -3345,6 +3347,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_self_join?: boolean
           booked_by_member_id?: string | null
           club_id?: string
           created_at?: string
@@ -14843,6 +14846,10 @@ export type Database = {
       is_public_club_document: { Args: { _path: string }; Returns: boolean }
       is_rankable_member: { Args: { _member_id: string }; Returns: boolean }
       issue_member_invoice: { Args: { _fee_payment_id: string }; Returns: Json }
+      join_club_event: {
+        Args: { _club_member_id: string; _event_id: string }
+        Returns: string
+      }
       ladder_move_apply_now: {
         Args: {
           _club_id: string
@@ -14940,8 +14947,54 @@ export type Database = {
         Args: { _dup_id: string; _keep_id: string }
         Returns: undefined
       }
+      mobile_complete_tournament_score: {
+        Args: {
+          p_club_id: string
+          p_duration_s: number
+          p_game_scores: string
+          p_match_id: string
+          p_member_id: string
+          p_score: string
+          p_sync_secret: string
+          p_winner_side: string
+        }
+        Returns: Json
+      }
+      mobile_get_tournament_scoring_match: {
+        Args: {
+          p_club_id: string
+          p_match_id: string
+          p_member_id: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
+      mobile_internal_secret_ok: {
+        Args: { p_sync_secret: string }
+        Returns: boolean
+      }
+      mobile_scoreable_tournament_matches: {
+        Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
+        Returns: Json
+      }
+      mobile_scoring_side_label: {
+        Args: { p_partner: string; p_primary: string }
+        Returns: string
+      }
       mobile_tournament_sync_payload: {
         Args: { sync_secret: string }
+        Returns: Json
+      }
+      mobile_update_tournament_live_score: {
+        Args: {
+          p_club_id: string
+          p_game_scores: string
+          p_match_id: string
+          p_member_id: string
+          p_side_a_points: number
+          p_side_b_points: number
+          p_sync_secret: string
+        }
         Returns: Json
       }
       move_player_to_league_pool: {

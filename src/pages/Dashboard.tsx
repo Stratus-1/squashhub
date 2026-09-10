@@ -703,11 +703,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className="mt-3 space-y-3">
-            <MyStatsCard memberId={myMemberId} />
-            <MyRankingsCard clubId={clubId} memberId={myMemberId} />
-          </div>
-
         </div>
 
 

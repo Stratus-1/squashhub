@@ -11,6 +11,7 @@ const fromExt = (table: string) => (supabase as any).from(table);
 const rpcExt: any = supabase.rpc.bind(supabase);
 import { useAuth } from "@/contexts/AuthContext";
 import { AppRole, useMyRoles } from "@/hooks/use-data";
+import { useMyClub } from "@/hooks/use-club";
 import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -268,6 +269,7 @@ export default function Admin() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: myRoles } = useMyRoles();
+  const { data: myClub } = useMyClub();
 
   const isAdmin = (myRoles || []).includes("admin");
   const isManager = (myRoles || []).includes("moderator");
@@ -1022,8 +1024,8 @@ export default function Admin() {
       id?: string;
       title: string;
       description: string | null;
-      starts_at: string;
-      ends_at: string | null;
+      starts_at_local: string;
+      ends_at_local: string | null;
       location?: string | null;
       court_id?: number | null;
       capacity?: number | null;
@@ -1033,10 +1035,11 @@ export default function Admin() {
     }) => {
       await saveAdminEvent({
         id: payload.id || null,
+        clubId: myClub?.id || null,
         title: payload.title,
         description: payload.description,
-        startsAtLocal: (payload.starts_at || "").slice(0, 16),
-        endsAtLocal: payload.ends_at ? payload.ends_at.slice(0, 16) : null,
+        startsAtLocal: (payload.starts_at_local || "").slice(0, 16),
+        endsAtLocal: payload.ends_at_local ? payload.ends_at_local.slice(0, 16) : null,
         status: payload.status,
         createdBy: user?.id || null,
       });
@@ -2792,8 +2795,8 @@ export default function Admin() {
                     if (!title) throw new Error("Title is required");
                     if (!eventEdit.startsAtLocal.trim()) throw new Error("Start time is required");
 
-                    const startsAtIso = new Date(eventEdit.startsAtLocal).toISOString();
-                    const endsAtIso = eventEdit.endsAtLocal.trim() ? new Date(eventEdit.endsAtLocal).toISOString() : null;
+                    const startsAtLocal = eventEdit.startsAtLocal.slice(0, 16);
+                    const endsAtLocal = eventEdit.endsAtLocal.trim() ? eventEdit.endsAtLocal.slice(0, 16) : null;
                     const deadlineIso = eventEdit.rsvpDeadlineLocal.trim() ? new Date(eventEdit.rsvpDeadlineLocal).toISOString() : null;
                     const cap = eventEdit.capacity.trim() ? Number(eventEdit.capacity) : null;
                     if (cap != null && (!Number.isFinite(cap) || cap < 1 || cap > 5000)) {
@@ -2804,8 +2807,8 @@ export default function Admin() {
                       id: eventEdit.event?.id,
                       title,
                       description: eventEdit.description.trim() || null,
-                      starts_at: startsAtIso,
-                      ends_at: endsAtIso,
+                      starts_at_local: startsAtLocal,
+                      ends_at_local: endsAtLocal,
                       location: eventEdit.location.trim() || null,
                       court_id: eventEdit.courtId ? Number(eventEdit.courtId) : null,
                       capacity: cap == null ? null : Math.trunc(cap),

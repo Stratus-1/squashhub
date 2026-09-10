@@ -282,6 +282,17 @@ export default function StitchOnboardingCard({
               ))}
               . Stitch will reach out directly to progress the account opening.
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11px] mt-2"
+              onClick={() => {
+                setSent(null);
+                setExpanded(true);
+              }}
+            >
+              Edit and resubmit
+            </Button>
           </div>
         </div>
       ) : loadingDraft ? (

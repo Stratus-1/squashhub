@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarPlus, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil, Info, Send } from "lucide-react";
+import { CalendarPlus, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil, Info, Send, LogOut } from "lucide-react";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -980,6 +980,27 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     onError: (err: any) => toast.error(err?.message || "Could not join this event"),
   });
 
+  // Leaving the group: the member stops getting invitations and reminders for
+  // this event and all its future occurrences.
+  const leaveMutation = useMutation({
+    mutationFn: async ({ eventId, memberId }: { eventId: string; memberId: string }) => {
+      const { error } = await (supabase as any).rpc("leave_club_event", {
+        _event_id: eventId,
+        _club_member_id: memberId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["club-event-my-rsvps"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvps-data"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-rsvp-counts"] });
+      toast.success("You've left this event — no more invites for it");
+    },
+    onError: (err: any) => toast.error(err?.message || "Could not leave this event"),
+  });
+
+
+
 
 
   // Re-send the invitation to everybody on the list, with the event's current
@@ -1590,7 +1611,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         <div className="space-y-2">
           {upcomingEvents.map((e: any) => {
             const counts = rsvpCounts?.[e.id];
-            const myRsvpList = myRsvps?.[e.id] || [];
+            // Members who left the group keep a "left" row so they are never
+            // re-invited — treat them as if they aren't on the list.
+            const myRsvpList = (myRsvps?.[e.id] || []).filter((r: any) => r.status !== "left");
             const courtNames = (e.club_event_courts || []).map((c: any) => (courts || []).find((ct: any) => ct.id === c.court_id)?.name || `Court ${c.court_id}`).join(", ");
             const isCreator = e.created_by === user?.id;
             const recLabel = e.recurrence && e.recurrence !== "once" ? e.recurrence : null;
@@ -1699,6 +1722,42 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                         <Badge key={r.id} variant={r.status === "confirmed" ? "default" : "outline"} className="text-[9px] capitalize">
                           {linkedMembers.length > 1 ? `${r.memberName}: ${r.status}` : r.status}
                         </Badge>
+                      ))}
+                      {/* Leave the group entirely — no further invites */}
+                      {myRsvpList.map(r => (
+                        <AlertDialog key={`leave-${r.id}`}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-[10px] px-2 text-muted-foreground"
+                              disabled={leaveMutation.isPending}
+                            >
+                              <LogOut className="w-3 h-3 mr-0.5" />
+                              {linkedMembers.length > 1 ? `${r.memberName}: Leave` : "Leave"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Leave this event?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {linkedMembers.length > 1 ? `${r.memberName} will be` : "You'll be"} taken off
+                                "{e.title}" and won't get any more invitations or reminders for it. The organiser
+                                can add {linkedMembers.length > 1 ? "them" : "you"} again later.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  leaveMutation.mutate({ eventId: e.id, memberId: r.club_member_id })
+                                }
+                              >
+                                Leave event
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       ))}
                       {(isCreator || isAdmin) && (
                         <Button

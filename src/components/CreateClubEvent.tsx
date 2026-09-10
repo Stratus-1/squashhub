@@ -2210,6 +2210,11 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     Light fees will be split equally among all confirmed attendees when the session ends.
                   </p>
                 )}
+                {form.light_fee_split === "creator" && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Light fees for this event are charged to you as the event creator.
+                  </p>
+                )}
                 {form.light_fee_split === "none" && (
                   <p className="text-[11px] text-muted-foreground">
                     No light fees will be charged — the club covers the cost.

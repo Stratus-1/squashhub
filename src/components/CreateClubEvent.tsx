@@ -1183,6 +1183,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         notify_push: form.notify_push,
         notify_email: form.notify_email,
         notify_whatsapp: form.notify_whatsapp,
+        allow_self_join: form.allow_self_join,
         lights_auto_on: form.lights_auto_on,
         updated_at: new Date().toISOString(),
       }).eq("id", editingEventId);

@@ -1590,7 +1590,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         <div className="space-y-2">
           {upcomingEvents.map((e: any) => {
             const counts = rsvpCounts?.[e.id];
-            const myRsvpList = myRsvps?.[e.id] || [];
+            // Members who left the group keep a "left" row so they are never
+            // re-invited — treat them as if they aren't on the list.
+            const myRsvpList = (myRsvps?.[e.id] || []).filter((r: any) => r.status !== "left");
             const courtNames = (e.club_event_courts || []).map((c: any) => (courts || []).find((ct: any) => ct.id === c.court_id)?.name || `Court ${c.court_id}`).join(", ");
             const isCreator = e.created_by === user?.id;
             const recLabel = e.recurrence && e.recurrence !== "once" ? e.recurrence : null;

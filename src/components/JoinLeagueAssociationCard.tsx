@@ -112,6 +112,25 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
     },
   });
 
+  // Already registered in a league team, or already affiliated to a league?
+  const { data: alreadyInLeague } = useQuery({
+    queryKey: ["my-league-involvement", activeMember?.id],
+    enabled: !!activeMember?.id,
+    queryFn: async () => {
+      const [regs, affs] = await Promise.all([
+        fromExt("member_league_registrations")
+          .select("id")
+          .eq("club_member_id", activeMember!.id)
+          .limit(1),
+        fromExt("member_association_affiliations")
+          .select("id")
+          .eq("club_member_id", activeMember!.id)
+          .limit(1),
+      ]);
+      return ((regs.data || []).length + (affs.data || []).length) > 0;
+    },
+  });
+
   // Hide league_associations whose linked tenant the user already joined
   const excludeIds = useMemo(() => {
     const out: string[] = [];
@@ -122,7 +141,8 @@ export function JoinLeagueAssociationCard({ clubId, variant = "card", className 
   }, [tenantsByLeagueAssoc, existingTenantAssocIds]);
 
   const remainingCount = leagueAssocs.length - excludeIds.length;
-  const hideEntirely = !activeMember || myMemberFlag || remainingCount <= 0 || dismissed;
+  const hideEntirely =
+    !activeMember || myMemberFlag || alreadyInLeague || remainingCount <= 0 || dismissed;
 
   const join = useMutation({
     mutationFn: async () => {

@@ -787,8 +787,7 @@ export default function Dashboard() {
 
       
 
-      {/* Prompt members to join an affiliated league association */}
-      <JoinLeagueAssociationCard clubId={clubId} variant="banner" />
+      {/* League opt-in prompt lives on My Account (not the dashboard) */}
 
       {/* Confirm next week's league availability */}
       {hasLeagues && (

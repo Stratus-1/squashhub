@@ -842,16 +842,6 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="px-4 mt-3 space-y-3">
-        <MyStatsCard memberId={myMemberId} />
-        <MyRankingsCard clubId={clubId} memberId={myMemberId} />
-
-
-      </div>
-
-
-
-
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">

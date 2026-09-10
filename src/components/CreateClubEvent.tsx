@@ -214,6 +214,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     notify_push: true,
     notify_email: true,
     notify_whatsapp: false,
+    allow_self_join: false,
+    /** Only when the organiser explicitly asks for it does saving send messages. */
+    notify_on_change: false,
     light_fee_split: "creator",
     is_club_booking: false,
     booking_member_ids: [] as string[],

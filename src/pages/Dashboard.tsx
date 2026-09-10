@@ -703,11 +703,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className="mt-3 space-y-3">
-            <MyStatsCard memberId={myMemberId} />
-            <MyRankingsCard clubId={clubId} memberId={myMemberId} />
-          </div>
-
         </div>
 
 
@@ -734,6 +729,12 @@ export default function Dashboard() {
           hasAnyAdminAccess={hasAnyAdminAccess}
           isVisitor={(myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor"}
           eventsSlot={<CreateClubEvent />}
+          statsSlot={
+            <div className="space-y-3">
+              <MyStatsCard memberId={myMemberId} />
+              <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+            </div>
+          }
         />
       </div>
     );
@@ -841,16 +842,6 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="px-4 mt-3 space-y-3">
-        <MyStatsCard memberId={myMemberId} />
-        <MyRankingsCard clubId={clubId} memberId={myMemberId} />
-
-
-      </div>
-
-
-
-
       {/* Primary Actions — Book, Ladder, Profile */}
       <div className="px-4 mt-4">
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -944,6 +935,10 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="px-4 mt-3 space-y-3">
+        <MyStatsCard memberId={myMemberId} />
+        <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+      </div>
 
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />

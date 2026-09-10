@@ -14940,8 +14940,54 @@ export type Database = {
         Args: { _dup_id: string; _keep_id: string }
         Returns: undefined
       }
+      mobile_complete_tournament_score: {
+        Args: {
+          p_club_id: string
+          p_duration_s: number
+          p_game_scores: string
+          p_match_id: string
+          p_member_id: string
+          p_score: string
+          p_sync_secret: string
+          p_winner_side: string
+        }
+        Returns: Json
+      }
+      mobile_get_tournament_scoring_match: {
+        Args: {
+          p_club_id: string
+          p_match_id: string
+          p_member_id: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
+      mobile_internal_secret_ok: {
+        Args: { p_sync_secret: string }
+        Returns: boolean
+      }
+      mobile_scoreable_tournament_matches: {
+        Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
+        Returns: Json
+      }
+      mobile_scoring_side_label: {
+        Args: { p_partner: string; p_primary: string }
+        Returns: string
+      }
       mobile_tournament_sync_payload: {
         Args: { sync_secret: string }
+        Returns: Json
+      }
+      mobile_update_tournament_live_score: {
+        Args: {
+          p_club_id: string
+          p_game_scores: string
+          p_match_id: string
+          p_member_id: string
+          p_side_a_points: number
+          p_side_b_points: number
+          p_sync_secret: string
+        }
         Returns: Json
       }
       move_player_to_league_pool: {

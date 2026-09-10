@@ -2072,8 +2072,39 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                       WhatsApp messages are billed to your club. Replies update the RSVP automatically.
                     </p>
                   )}
+                  {editingEventId && (
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <Label htmlFor="notify-change" className="text-xs font-normal cursor-pointer pr-3">
+                        Tell everyone about this change now
+                        <span className="block text-[11px] text-muted-foreground font-normal">
+                          Off: nobody is messaged when you save — they get the normal reminder before the event.
+                        </span>
+                      </Label>
+                      <Switch
+                        id="notify-change"
+                        checked={form.notify_on_change}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, notify_on_change: v }))}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
+
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <Label htmlFor="allow-self-join" className="text-xs font-normal cursor-pointer pr-3">
+                  Let other members join
+                  <span className="block text-[11px] text-muted-foreground font-normal">
+                    Members who weren't invited can see this event and tap "Join group".
+                  </span>
+                </Label>
+                <Switch
+                  id="allow-self-join"
+                  checked={form.allow_self_join}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, allow_self_join: v }))}
+                />
+              </div>
+
+
 
 
               {form.invite_scope === "category" && (

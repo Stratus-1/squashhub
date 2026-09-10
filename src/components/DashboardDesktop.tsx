@@ -45,6 +45,7 @@ interface DashboardDesktopProps {
   isVisitor?: boolean;
   // children for slot-in components (events list, etc.)
   eventsSlot?: React.ReactNode;
+  statsSlot?: React.ReactNode;
 }
 
 type Tile = {
@@ -101,6 +102,12 @@ export function DashboardDesktop(props: DashboardDesktopProps) {
           navigate={navigate}
         />
       </div>
+
+      {props.statsSlot && (
+        <div className="px-8 pb-3 space-y-3">
+          {props.statsSlot}
+        </div>
+      )}
 
 
       <div className="px-8 pb-3">

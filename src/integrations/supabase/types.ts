@@ -14863,6 +14863,10 @@ export type Database = {
         Args: { _position: number; _row_sizes?: Json }
         Returns: number
       }
+      leave_club_event: {
+        Args: { _club_member_id: string; _event_id: string }
+        Returns: number
+      }
       list_doubles_partner_options: {
         Args: {
           p_champ_id: string

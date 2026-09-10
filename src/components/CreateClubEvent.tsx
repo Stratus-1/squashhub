@@ -2303,14 +2303,19 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                 <Label className="text-xs font-medium">Court booking</Label>
                 {adminBypass ? (
                   <p className="text-[11px] text-muted-foreground">
-                    Courts are booked under <strong>{club?.name || "the club"}</strong> — courts are free, any time, any number of
-                    courts and occurrences. Light fees follow the "Light Fees" setting
-                    {form.light_fee_split === "attendees" ? " — split among confirmed attendees." : form.light_fee_split === "none" ? " — no light fees, the club covers them." : " — charged to you as the event creator."}
+                    This is a club event arranged by club management, so the courts are booked under{" "}
+                    <strong>{club?.name || "the club"}</strong> — no court fees, and no limit on the time, number of
+                    courts or occurrences. Light fees are separate and follow your choice below
+                    {form.light_fee_split === "attendees"
+                      ? " — you chose to split them equally among the confirmed attendees."
+                      : form.light_fee_split === "none"
+                        ? " — you chose to have the club cover them."
+                        : " — you chose to pay them yourself as the organiser."}
                   </p>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">
-                    Courts are booked in your name. Members may book <strong>1 peak-hour</strong> and{" "}
-                    <strong>1 off-peak</strong> court slot per occurrence.
+                    Courts are booked in your name, so the club's normal court fees and booking limits apply — members
+                    may book <strong>1 peak-hour</strong> and <strong>1 off-peak</strong> court slot per occurrence.
                   </p>
                 )}
                 {!bookingLimit.ok && (
@@ -2379,7 +2384,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   Courts: {form.reserve_courts === "yes" ? form.court_ids.length : "not booked"} · Lights: {form.light_fee_split === "attendees" ? "Split among attendees" : form.light_fee_split === "none" ? "No light fees (club covers)" : "Event creator pays"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Courts booked under: {adminBypass ? `${club?.name || "Club"} (courts free — light fees still apply)` : (activeMember?.name || "you")}
+                  Courts booked under: {adminBypass ? `${club?.name || "Club"} (club event — no court fees; light fees as chosen above)` : (activeMember?.name || "you")}
                 </p>
 
                 <p className="text-[11px] text-muted-foreground">

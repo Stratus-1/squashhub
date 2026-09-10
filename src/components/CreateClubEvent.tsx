@@ -2177,7 +2177,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   <p className="text-[11px] text-muted-foreground">
                     Courts are booked under <strong>{club?.name || "the club"}</strong> — courts are free, any time, any number of
                     courts and occurrences. Light fees follow the "Light Fees" setting
-                    {form.light_fee_split === "attendees" ? " — split among confirmed attendees." : form.light_fee_split === "none" ? " — no light fees." : " — carried by the club."}
+                    {form.light_fee_split === "attendees" ? " — split among confirmed attendees." : form.light_fee_split === "none" ? " — no light fees, the club covers them." : " — charged to you as the event creator."}
                   </p>
                 ) : (
                   <p className="text-[11px] text-muted-foreground">

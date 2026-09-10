@@ -1024,8 +1024,8 @@ export default function Admin() {
       id?: string;
       title: string;
       description: string | null;
-      starts_at: string;
-      ends_at: string | null;
+      starts_at_local: string;
+      ends_at_local: string | null;
       location?: string | null;
       court_id?: number | null;
       capacity?: number | null;
@@ -1035,10 +1035,11 @@ export default function Admin() {
     }) => {
       await saveAdminEvent({
         id: payload.id || null,
+        clubId: myClub?.id || null,
         title: payload.title,
         description: payload.description,
-        startsAtLocal: (payload.starts_at || "").slice(0, 16),
-        endsAtLocal: payload.ends_at ? payload.ends_at.slice(0, 16) : null,
+        startsAtLocal: (payload.starts_at_local || "").slice(0, 16),
+        endsAtLocal: payload.ends_at_local ? payload.ends_at_local.slice(0, 16) : null,
         status: payload.status,
         createdBy: user?.id || null,
       });

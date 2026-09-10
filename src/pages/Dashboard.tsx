@@ -729,6 +729,12 @@ export default function Dashboard() {
           hasAnyAdminAccess={hasAnyAdminAccess}
           isVisitor={(myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor"}
           eventsSlot={<CreateClubEvent />}
+          statsSlot={
+            <div className="space-y-3">
+              <MyStatsCard memberId={myMemberId} />
+              <MyRankingsCard clubId={clubId} memberId={myMemberId} />
+            </div>
+          }
         />
       </div>
     );

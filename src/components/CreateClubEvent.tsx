@@ -1364,15 +1364,16 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       }
 
       // If the date or time moved, everybody who was invited must be asked
-      // again — with the corrected time. Old answers are reset, already-sent
-      // reminders are cleared, and a fresh invite goes out on every channel
-      // the organiser picked.
+      // again — with the corrected time. Old answers are reset and already-sent
+      // reminders are cleared, so the normal reminder (e.g. 24h before) asks
+      // again. Saving NEVER messages anyone unless the organiser ticked
+      // "Tell everyone about this change now".
       const scheduleChanged = !!oldEvent &&
         (oldEvent.start_time !== form.start_time + ":00" ||
          oldEvent.end_time !== form.end_time + ":00" ||
          oldEvent.start_date !== form.event_date);
 
-      if (scheduleChanged) {
+      if (scheduleChanged && form.notify_on_change) {
         try {
           await (supabase as any).rpc("reset_event_invites", { _event_id: editingEventId });
         } catch (resetErr) {

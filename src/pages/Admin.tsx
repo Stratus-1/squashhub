@@ -2795,8 +2795,8 @@ export default function Admin() {
                     if (!title) throw new Error("Title is required");
                     if (!eventEdit.startsAtLocal.trim()) throw new Error("Start time is required");
 
-                    const startsAtIso = new Date(eventEdit.startsAtLocal).toISOString();
-                    const endsAtIso = eventEdit.endsAtLocal.trim() ? new Date(eventEdit.endsAtLocal).toISOString() : null;
+                    const startsAtLocal = eventEdit.startsAtLocal.slice(0, 16);
+                    const endsAtLocal = eventEdit.endsAtLocal.trim() ? eventEdit.endsAtLocal.slice(0, 16) : null;
                     const deadlineIso = eventEdit.rsvpDeadlineLocal.trim() ? new Date(eventEdit.rsvpDeadlineLocal).toISOString() : null;
                     const cap = eventEdit.capacity.trim() ? Number(eventEdit.capacity) : null;
                     if (cap != null && (!Number.isFinite(cap) || cap < 1 || cap > 5000)) {
@@ -2807,8 +2807,8 @@ export default function Admin() {
                       id: eventEdit.event?.id,
                       title,
                       description: eventEdit.description.trim() || null,
-                      starts_at: startsAtIso,
-                      ends_at: endsAtIso,
+                      starts_at_local: startsAtLocal,
+                      ends_at_local: endsAtLocal,
                       location: eventEdit.location.trim() || null,
                       court_id: eventEdit.courtId ? Number(eventEdit.courtId) : null,
                       capacity: cap == null ? null : Math.trunc(cap),

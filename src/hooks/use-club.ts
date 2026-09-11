@@ -648,6 +648,9 @@ export function useUpdateClub() {
       qc.invalidateQueries({ queryKey: ["my-club"] });
       qc.invalidateQueries({ queryKey: ["club-by-subdomain"] });
       qc.invalidateQueries({ queryKey: ["club-delegates"] });
+      // The Club Admin screen reads its own copy of the club row; without this
+      // the switches on that page snap back to the old value after a save.
+      qc.invalidateQueries({ queryKey: ["admin-club"] });
     },
   });
 }

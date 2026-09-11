@@ -80,8 +80,9 @@ export default function BarCounter() {
 
 
 
-  const clubId: string | null = code ? null : activeClub?.id ?? null;
+  const clubId: string | null = code ? null : (contextClub?.id ?? (myClub as any)?.id ?? null);
   const enabled = Boolean(token || clubId);
+
 
   const { data: board, isLoading, error: boardError, refetch } = useQuery({
     queryKey: ["bar-counter-board", token, clubId],

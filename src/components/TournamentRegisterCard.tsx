@@ -418,9 +418,13 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
                 size="sm"
                 variant="outline"
                 className="text-xs h-8"
-                onClick={() => toast.success(`${money(entryFee)} was added to your member account. You can settle it later in My Account.`)}
+                disabled={chargeToAccount.isPending}
+                onClick={() => chargeToAccount.mutate(myReg.id)}
               >
-                <CreditCard className="w-3 h-3 mr-1" /> {accountChargeLabel(Math.round(entryFee * 100))}
+                {chargeToAccount.isPending
+                  ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  : <CreditCard className="w-3 h-3 mr-1" />}
+                {accountChargeLabel(Math.round(entryFee * 100))}
               </Button>
             )}
           </div>

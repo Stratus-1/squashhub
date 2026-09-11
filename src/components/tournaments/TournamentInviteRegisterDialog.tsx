@@ -240,6 +240,29 @@ export function TournamentInviteRegisterDialog({
     onSuccess: refresh,
   });
 
+  const chargeToAccount = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await (supabase as any).rpc("charge_tournament_entry_to_account", {
+        p_registration_id: registration.id,
+      });
+      if (error) throw error;
+      return data as any;
+    },
+    onSuccess: (res) => {
+      if (res?.charged === false) {
+        toast.info("No entry fee is payable for this tournament.");
+      } else {
+        toast.success(`${money(entryFeeCents)} was added to your member account. You can settle it later in My Account.`);
+      }
+      qc.invalidateQueries({ queryKey: ["member-fees"] });
+      qc.invalidateQueries({ queryKey: ["member-account"] });
+      refresh();
+      onOpenChange(false);
+      onDone?.();
+    },
+    onError: (e: any) => toast.error(e.message || "Could not add the entry fee to your account"),
+  });
+
   const saveProof = async (path: string) => {
     const { data: auth } = await supabase.auth.getUser();
     const { error } = await fromExt("club_champs_registrations").update({
@@ -403,13 +426,13 @@ export function TournamentInviteRegisterDialog({
                   size="sm"
                   variant="outline"
                   className="w-full h-8 text-xs"
-                  onClick={() => {
-                    toast.success(`${money(entryFeeCents)} was added to your member account. You can settle it later in My Account.`);
-                    onOpenChange(false);
-                    onDone?.();
-                  }}
+                  disabled={chargeToAccount.isPending}
+                  onClick={() => chargeToAccount.mutate()}
                 >
-                  <CreditCard className="w-3 h-3 mr-1" /> {accountChargeLabel(entryFeeCents)}
+                  {chargeToAccount.isPending
+                    ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    : <CreditCard className="w-3 h-3 mr-1" />}
+                  {accountChargeLabel(entryFeeCents)}
                 </Button>
               )}
               {acceptsAccount && status !== "pending_eft" && (

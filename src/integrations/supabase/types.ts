@@ -14173,6 +14173,10 @@ export type Database = {
         }
         Returns: Json
       }
+      charge_tournament_entry_to_account: {
+        Args: { p_registration_id: string }
+        Returns: Json
+      }
       check_ledger_integrity: {
         Args: { p_club_id?: string }
         Returns: {
@@ -14366,6 +14370,10 @@ export type Database = {
       }
       ensure_platform_association_for_league: {
         Args: { _association_id: string }
+        Returns: string
+      }
+      ensure_tournament_entry_fee: {
+        Args: { p_registration_id: string }
         Returns: string
       }
       ensure_tournament_invite_tokens: {

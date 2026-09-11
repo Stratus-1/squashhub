@@ -195,10 +195,7 @@ export default function ClubAdmin() {
     return myPermissions.has(tab.permission);
   };
   // Capability filter — core tabs (no capability) are always visible.
-  const capFilter = (tab: AdminTab) => {
-    if (tab.value === "devices" && (isAdmin || myPermissions.has("devices"))) return true;
-    return isTabVisible(tab, enabledCaps, hasCapRows);
-  };
+  const capFilter = (tab: AdminTab) => isTabVisible(tab, enabledCaps, hasCapRows);
   const visibleSetup = SETUP_TABS.filter(permFilter).filter(capFilter);
   const visibleOps = OPERATIONS_TABS.filter(permFilter).filter(capFilter);
   const visibleTabs = [...visibleSetup, ...visibleOps];

@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { CAPABILITY_META } from "@/lib/capabilities";
 import { ChevronRight, CircleCheck, CircleDashed, Eye, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";

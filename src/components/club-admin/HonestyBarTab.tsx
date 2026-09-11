@@ -199,10 +199,16 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
                 <p className="text-[11px] text-muted-foreground leading-tight">{opt.hint}</p>
               </div>
               <Switch
+                disabled={updateClub.isPending}
                 checked={opt.defaultOff ? (club as any)?.[opt.key] === true : (club as any)?.[opt.key] !== false}
-                onCheckedChange={(v) =>
-                  updateClub.mutate({ id: club.id, [opt.key]: v } as any)
-                }
+                onCheckedChange={async (v) => {
+                  try {
+                    await updateClub.mutateAsync({ id: club.id, [opt.key]: v } as any);
+                    toast.success(`${opt.label} ${v ? "switched on" : "switched off"}`);
+                  } catch (err: any) {
+                    toast.error(err?.message || `Could not change "${opt.label}"`);
+                  }
+                }}
               />
             </div>
           ))}

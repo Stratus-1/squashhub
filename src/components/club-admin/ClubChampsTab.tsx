@@ -11797,8 +11797,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   type="button"
                   size="sm"
                   variant="outline"
-                  disabled={!(testInvitePreviewAs || sampleInvitee) || testInviteSending}
-                  onClick={() => openTestInviteDialog(testInvitePreviewAs || sampleInvitee)}
+                  disabled={!(testInvitePreviewAs || sampleInvitee || inviteeOptions[0]) || testInviteSending}
+                  onClick={() => openTestInviteDialog(testInvitePreviewAs || sampleInvitee || inviteeOptions[0])}
                 >
                   <Eye className="w-4 h-4 mr-1" />
                   {testInviteSending ? "Sending test…" : "Send test invite"}

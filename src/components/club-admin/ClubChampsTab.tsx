@@ -11778,7 +11778,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <div className="text-xs font-medium">Test invite — does not register anyone</div>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Select
-                  value={testInvitePreviewAs?.memberId ?? sampleInvitee?.memberId ?? ""}
+                  value={testInvitePreviewAs?.memberId ?? sampleInvitee?.memberId ?? inviteeOptions[0]?.memberId ?? ""}
                   onValueChange={(v) => {
                     const pick = inviteeOptions.find((o) => o.memberId === v) || null;
                     setTestInvitePreviewAs(pick);

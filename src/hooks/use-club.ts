@@ -637,13 +637,27 @@ export function useUpdateClub() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Club> & { id: string }) => {
-      const { data, error } = await fromExt("clubs").update(updates).eq("id", id).select().maybeSingle();
-      if (error) throw error;
+      // Network blips (sleeping preview tab, flaky mobile data) surface as
+      // "Failed to fetch"; retry once before bothering the user.
+      const run = async () =>
+        await fromExt("clubs").update(updates).eq("id", id).select().maybeSingle();
+      let { data, error } = await run();
+      if (error && /failed to fetch|network/i.test(error.message || "")) {
+        await new Promise((r) => setTimeout(r, 700));
+        ({ data, error } = await run());
+      }
+      if (error) {
+        if (/failed to fetch|network/i.test(error.message || "")) {
+          throw new Error("Could not reach the server — check your connection and try again.");
+        }
+        throw error;
+      }
       if (!data) {
         throw new Error("You don't have permission to change club settings. Ask a club admin to grant you the 'club' permission.");
       }
       return data as Club;
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-club"] });
       qc.invalidateQueries({ queryKey: ["club-by-subdomain"] });

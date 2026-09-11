@@ -108,7 +108,7 @@ export function TournamentInviteRegisterDialog({
   const paymentRequired = !!champ?.payment_required && entryFeeCents > 0;
   const methods = (champ?.payment_methods || []) as string[];
   const acceptsCard = methods.includes("card");
-  const acceptsEft = methods.includes("eft") || !acceptsCard;
+  const acceptsEft = methods.includes("eft");
   const acceptsAccount = acceptsAccountCharge(methods);
   const gatewayReady = acceptsCard && isSupportedGateway(paymentGateway);
   const isDoubles = champ?.match_type === "doubles";

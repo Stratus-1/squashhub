@@ -12,6 +12,7 @@ import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useClubContext } from "@/contexts/ClubContext";
+import { useMyClub } from "@/hooks/use-club";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -331,10 +332,24 @@ export default function BarCounter() {
     return <div className="p-6 text-sm text-muted-foreground">Select a club to use counter mode.</div>;
   }
 
+  if (boardError && !board) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm p-6 space-y-3 text-center">
+          <h1 className="text-base font-semibold">Counter mode could not open</h1>
+          <p className="text-sm text-muted-foreground">
+            {(boardError as any)?.message || "Something went wrong loading the bar counter."}
+          </p>
+          <Button className="w-full" onClick={() => refetch()}>Try again</Button>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading || !board) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div className="min-h-[50vh] flex items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="w-5 h-5 animate-spin" /> Loading the bar counter…
       </div>
     );
   }

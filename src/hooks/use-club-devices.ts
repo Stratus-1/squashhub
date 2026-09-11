@@ -43,6 +43,50 @@ export type DeviceDraft = Partial<ClubDevice> & {
   name: string;
 };
 
+/** Member-facing feature a device category belongs to. */
+const CATEGORY_CAPABILITY: Partial<Record<DeviceCategory, Capability>> = {
+  access: "access_control",
+  lights: "lights",
+};
+
+/**
+ * Registering a working relay is the club saying "we use this".
+ * Switch the matching member-facing feature on (plus IoT itself and any
+ * dependency such as bookings for lights) so the admin does not have to hunt
+ * for a second switch. Never turns anything off.
+ */
+async function activateCapabilitiesForDevice(device: ClubDevice): Promise<Capability[]> {
+  if (device.enabled === false) return [];
+  const wanted = new Set<Capability>();
+  withDependencies("gadgets", wanted);
+  const cap = CATEGORY_CAPABILITY[device.category];
+  if (cap) withDependencies(cap, wanted);
+
+  const { data: rows } = await fromExt("club_capabilities")
+    .select("capability, enabled")
+    .eq("club_id", device.club_id);
+  const already = new Set(
+    ((rows || []) as any[]).filter((r) => r.enabled).map((r) => String(r.capability))
+  );
+  const missing = [...wanted].filter((c) => !already.has(c));
+  if (missing.length === 0) return [];
+
+  const now = new Date().toISOString();
+  const { error } = await fromExt("club_capabilities").upsert(
+    missing.map((capability) => ({
+      club_id: device.club_id,
+      capability,
+      enabled: true,
+      enabled_at: now,
+      disabled_at: null,
+    })),
+    { onConflict: "club_id,capability" }
+  );
+  // A club that cannot write capabilities still gets its device saved.
+  if (error) return [];
+  return missing;
+}
+
 /** Create or update a device row. */
 export function useSaveDevice() {
   const qc = useQueryClient();

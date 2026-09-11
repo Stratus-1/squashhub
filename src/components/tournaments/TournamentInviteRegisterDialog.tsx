@@ -403,13 +403,13 @@ export function TournamentInviteRegisterDialog({
                   size="sm"
                   variant="outline"
                   className="w-full h-8 text-xs"
-                  onClick={() => {
-                    toast.success(`${money(entryFeeCents)} was added to your member account. You can settle it later in My Account.`);
-                    onOpenChange(false);
-                    onDone?.();
-                  }}
+                  disabled={chargeToAccount.isPending}
+                  onClick={() => chargeToAccount.mutate()}
                 >
-                  <CreditCard className="w-3 h-3 mr-1" /> {accountChargeLabel(entryFeeCents)}
+                  {chargeToAccount.isPending
+                    ? <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    : <CreditCard className="w-3 h-3 mr-1" />}
+                  {accountChargeLabel(entryFeeCents)}
                 </Button>
               )}
               {acceptsAccount && status !== "pending_eft" && (

@@ -1,0 +1,2 @@
+ALTER TABLE public.club_event_rsvps DROP CONSTRAINT IF EXISTS club_event_rsvps_status_check;
+ALTER TABLE public.club_event_rsvps ADD CONSTRAINT club_event_rsvps_status_check CHECK (status IN ('invited','confirmed','declined','left'));

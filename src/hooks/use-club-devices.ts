@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { extractFunctionError } from "@/lib/shelly-errors";
 import type { ClubDevice, DeviceCategory } from "@/lib/devices";
-import { type Capability, CAPABILITY_META, withDependencies } from "@/lib/capabilities";
+import { type Capability, withDependencies } from "@/lib/capabilities";
 
 /**
  * Devices for a club, ordered for display.

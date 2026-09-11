@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { CAPABILITY_META } from "@/lib/capabilities";
 import { ChevronRight, CircleCheck, CircleDashed, Eye, Loader2, Pencil, Plus, ShieldCheck, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
@@ -515,7 +516,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         });
       }
 
-      await save.mutateAsync({
+      const savedDevice = await save.mutateAsync({
         id: form.id,
         club_id: clubId,
         category: form.category,
@@ -543,6 +544,13 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         sort_order: Number(form.sort_order) || 0,
       });
       toast.success(form.id ? "Device updated" : "Device added");
+      const activated = (savedDevice as any)?.activated_capabilities as string[] | undefined;
+      if (activated?.length) {
+        const labels = activated
+          .map((slug) => (CAPABILITY_META as any)[slug]?.label || slug)
+          .join(", ");
+        toast.info(`Switched on for members: ${labels}`);
+      }
       setForm(null);
     } catch (e: any) {
       toast.error(e?.message || "Could not save the device");

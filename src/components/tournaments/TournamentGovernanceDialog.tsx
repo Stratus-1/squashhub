@@ -71,6 +71,7 @@ const FIELD_LABELS: Record<string, string> = {
   other_expenses_cents: "Other expenses",
   other_expenses_label: "Other expenses label",
   payment_required: "Payment required",
+  payment_methods: "Accepted payment methods",
   refund_policy: "Refund policy",
   refund_cutoff_date: "Refund cut-off",
 };

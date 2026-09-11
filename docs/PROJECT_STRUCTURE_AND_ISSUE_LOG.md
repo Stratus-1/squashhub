@@ -1084,6 +1084,11 @@ Regression tests: `src/test/invite-link.test.ts` (public actionable state, verif
   for declines). Acceptance stays single-transaction and idempotent, so the confirmation
   notification can no longer be emitted for a registration that failed to commit.
 
+## 2026-09-11 — Tournament fee “Add to my account” option
+- **Issue:** Accepting a paid tournament invite already created an outstanding member fee, but members only saw immediate card/EFT actions and could not explicitly choose to leave the fee on their account.
+- **Fix:** Tournament organisers can now enable **Add to member account** in Accepted payment methods. Members then see **Add R… to my account** after registration; choosing it confirms that the existing outstanding fee remains in My Account for later settlement.
+- **Guard:** The option reuses the fee created by tournament acceptance and never inserts another charge. Existing tournaments do not gain the option unless an organiser enables it.
+
 ## 2026-08-21 — Shelly BLE fallback transport hardening (preventive)
 - **Context.** The Bluetooth-only fallback (used when the club router/cloud is down) was
   confirmed working at Gordon's Bay after the service-UUID fix. These changes are

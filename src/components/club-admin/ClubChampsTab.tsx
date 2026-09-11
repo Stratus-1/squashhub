@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
+import type { TournamentPaymentMethod } from "@/lib/tournaments/payment-methods";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
 import {
   audienceLabel,
@@ -1496,7 +1497,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
-  const [paymentMethods, setPaymentMethods] = useState<Set<"card" | "eft" | "cash">>(new Set(["card"]));
+  const [paymentMethods, setPaymentMethods] = useState<Set<TournamentPaymentMethod>>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
   // When false, the registration step is collapsed (no public registration window,
   // no invite-list management) and the admin directly seeds the roster on the
@@ -6706,7 +6707,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setRegistrationOpensAt(toLocalInputValue(champ.registration_opens_at));
     setRegistrationClosesAt(toLocalInputValue(champ.registration_closes_at));
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
-    setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as ("card"|"eft"|"cash")[])));
+    setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as TournamentPaymentMethod[])));
     setPaymentRequired((champ as any).payment_required !== false);
     setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
@@ -9386,6 +9387,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       }}
                     />
                     Cash at club (admin marks paid)
+                  </label>
+
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={paymentMethods.has("account")}
+                      onCheckedChange={(c) => {
+                        const next = new Set(paymentMethods);
+                        c ? next.add("account") : next.delete("account");
+                        setPaymentMethods(next);
+                      }}
+                    />
+                    Add to member account (member settles later)
                   </label>
                 </div>
                 <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/60">

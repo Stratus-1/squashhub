@@ -81,7 +81,7 @@ export default function BarCounter() {
 
 
 
-  const clubId: string | null = code ? null : (contextClub?.id ?? (myClub as any)?.id ?? null);
+  const clubId: string | null = code ? null : (contextClub?.id ?? (myClub as any)?.club?.id ?? null);
   const enabled = Boolean(token || clubId);
 
 

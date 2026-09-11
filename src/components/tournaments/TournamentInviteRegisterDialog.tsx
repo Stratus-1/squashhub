@@ -15,6 +15,7 @@ import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { isSupportedGateway, startClubCheckout, pollStitchPayment, clearPendingClubSession, type GatewayId } from "@/lib/club-payments";
 import { CalendarClock, Check, CheckCircle, CreditCard, Landmark, Loader2, Search, Users } from "lucide-react";
 import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
+import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/payment-methods";
 import { toast } from "sonner";
 
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
@@ -108,6 +109,7 @@ export function TournamentInviteRegisterDialog({
   const methods = (champ?.payment_methods || []) as string[];
   const acceptsCard = methods.includes("card");
   const acceptsEft = methods.includes("eft") || !acceptsCard;
+  const acceptsAccount = acceptsAccountCharge(methods);
   const gatewayReady = acceptsCard && isSupportedGateway(paymentGateway);
   const isDoubles = champ?.match_type === "doubles";
   const playerPicksPartner = isDoubles && champ?.partner_mode === "players";
@@ -395,6 +397,25 @@ export function TournamentInviteRegisterDialog({
                   proofPath={registration.proof_url}
                   onProofUploaded={saveProof}
                 />
+              )}
+              {acceptsAccount && status !== "pending_eft" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-8 text-xs"
+                  onClick={() => {
+                    toast.success(`${money(entryFeeCents)} was added to your member account. You can settle it later in My Account.`);
+                    onOpenChange(false);
+                    onDone?.();
+                  }}
+                >
+                  <CreditCard className="w-3 h-3 mr-1" /> {accountChargeLabel(entryFeeCents)}
+                </Button>
+              )}
+              {acceptsAccount && status !== "pending_eft" && (
+                <p className="text-[11px] text-muted-foreground text-center">
+                  The entry fee is already listed as outstanding in My Account; this does not charge it twice.
+                </p>
               )}
             </div>
           )}

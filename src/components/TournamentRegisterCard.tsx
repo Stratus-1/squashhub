@@ -15,6 +15,7 @@ import { Trophy, Loader2, CreditCard, Check, Landmark, Copy, Search } from "luci
 import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
+import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/payment-methods";
 
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
@@ -93,6 +94,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
   const paymentRequired = !!champ?.payment_required && entryFee > 0;
   const acceptsCard = (champ?.payment_methods || []).includes("card");
   const acceptsEft = (champ?.payment_methods || []).includes("eft");
+  const acceptsAccount = acceptsAccountCharge(champ?.payment_methods);
   const isDoubles = champ?.match_type === "doubles";
   const partnerByPlayers = champ?.partner_mode === "players";
 
@@ -178,10 +180,8 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     },
     onSuccess: async (reg) => {
       qc.invalidateQueries({ queryKey: ["my-champ-reg", champ.id, memberId] });
-      if (paymentRequired && acceptsCard && isSupportedGateway(paymentGateway)) {
-        await launchPayment(reg.id);
-      } else if (paymentRequired) {
-        toast.info("Registered — please pay your entry fee.");
+      if (paymentRequired) {
+        toast.info("Registered — choose how to settle your entry fee below.");
       } else {
         toast.success("You're registered!");
       }
@@ -413,7 +413,23 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
                 <Landmark className="w-3 h-3 mr-1" /> Pay {money(entryFee)} by EFT
               </Button>
             )}
+            {acceptsAccount && myReg.status !== "pending_eft" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-8"
+                onClick={() => toast.success(`${money(entryFee)} was added to your member account. You can settle it later in My Account.`)}
+              >
+                <CreditCard className="w-3 h-3 mr-1" /> {accountChargeLabel(Math.round(entryFee * 100))}
+              </Button>
+            )}
           </div>
+
+          {acceptsAccount && myReg.status !== "pending_eft" && (
+            <p className="text-[11px] text-muted-foreground">
+              The entry fee is already listed as outstanding in My Account; this does not charge it twice.
+            </p>
+          )}
 
           {acceptsEft && (showEft || myReg.status === "pending_eft") && (
             <EftPaymentPanel

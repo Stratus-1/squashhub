@@ -39,6 +39,11 @@
 - Visitor open tab for the evening
 - [x] Tournament save fails with tournaments_invite_audience_check when invite audience = "clubs" — allow the value in DB constraint.
 
+## Completed: Tournament fee added to member account
+- [x] Let organisers enable “Add to member account” per paid tournament.
+- [x] Let members explicitly choose “Add R… to my account” without duplicating the fee created at acceptance.
+- [x] Keep card, EFT, cash and doubles payer handling unchanged.
+
 ## NEW: Tournament invite audience member tree
 - [x] Expandable member tree under every audience option (regional league / selected clubs / selected teams).
 - [x] Flat member list under each expanded node (no extra team grouping).

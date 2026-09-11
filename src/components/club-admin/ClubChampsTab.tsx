@@ -9650,21 +9650,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   ))}
                 </div>
 
-                {inviteAudience === "clubs" && (
+                {scopeIsWide && (inviteAudience === "clubs" || inviteAudience === "all_club") && (
                   <div className="space-y-2 pt-1">
                     <Label className="text-xs text-muted-foreground">
                       {eligibilityScope === "open"
-                        ? "Pick associations, clubs or individual members to invite"
-                        : "Pick which clubs and members in your region to invite"}
+                        ? "Everyone below is ticked — untick any association, club or member you want to leave out"
+                        : "Everyone below is ticked — untick any club or member you want to leave out"}
                     </Label>
                     <InviteScopeTree
                       tree={scopeTree}
-                      selectedClubIds={audienceClubIds}
-                      onChange={setAudienceClubIds}
+                      selectedClubIds={effectiveAudienceClubIds}
+                      onChange={(ids) => {
+                        // The moment the organiser edits the tree the audience
+                        // becomes an explicit club selection.
+                        setInviteAudience("clubs");
+                        setAudienceClubIds(ids);
+                      }}
                       selectedMemberIds={Array.from(audienceMemberIds)}
-                      onMemberChange={(ids) => setAudienceMemberIds(new Set(ids))}
+                      onMemberChange={(ids) => {
+                        if (inviteAudience === "all_club") {
+                          setInviteAudience("clubs");
+                          setAudienceClubIds(effectiveAudienceClubIds);
+                        }
+                        setAudienceMemberIds(new Set(ids));
+                      }}
                       excludedMemberIds={Array.from(inviteExcludedMemberIds)}
-                      onExcludedChange={(ids) => setInviteExcludedMemberIds(new Set(ids))}
+                      onExcludedChange={(ids) => {
+                        if (inviteAudience === "all_club") {
+                          setInviteAudience("clubs");
+                          setAudienceClubIds(effectiveAudienceClubIds);
+                        }
+                        setInviteExcludedMemberIds(new Set(ids));
+                      }}
                       memberIdsByClub={scopeMemberIdsByClub as Map<string, string[]>}
                       tournamentId={editingChampId}
                       scopeClubId={clubId}

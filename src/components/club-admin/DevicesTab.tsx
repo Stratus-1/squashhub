@@ -543,6 +543,13 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         sort_order: Number(form.sort_order) || 0,
       });
       toast.success(form.id ? "Device updated" : "Device added");
+      const activated = (savedDevice as any)?.activated_capabilities as string[] | undefined;
+      if (activated?.length) {
+        const labels = activated
+          .map((slug) => (CAPABILITY_META as any)[slug]?.label || slug)
+          .join(", ");
+        toast.info(`Switched on for members: ${labels}`);
+      }
       setForm(null);
     } catch (e: any) {
       toast.error(e?.message || "Could not save the device");

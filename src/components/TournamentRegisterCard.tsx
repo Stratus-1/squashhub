@@ -75,6 +75,27 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     onError: (e: any) => toast.error(e.message || "Could not update payment method"),
   });
 
+  const chargeToAccount = useMutation({
+    mutationFn: async (regId: string) => {
+      const { data, error } = await (supabase as any).rpc("charge_tournament_entry_to_account", {
+        p_registration_id: regId,
+      });
+      if (error) throw error;
+      return data as any;
+    },
+    onSuccess: (res) => {
+      if (res?.charged === false) {
+        toast.info("No entry fee is payable for this tournament.");
+      } else {
+        toast.success(`${money(entryFee)} was added to your member account. You can settle it later in My Account.`);
+      }
+      qc.invalidateQueries({ queryKey: ["my-champ-reg", champ.id, memberId] });
+      qc.invalidateQueries({ queryKey: ["member-fees"] });
+      qc.invalidateQueries({ queryKey: ["member-account"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Could not add the entry fee to your account"),
+  });
+
   const copyBankDetails = () => {
     if (!bankDetails) return;
     const ref = `${champ?.name ? champ.name.slice(0, 20) : "Tournament"}`.replace(/\s+/g, "-");

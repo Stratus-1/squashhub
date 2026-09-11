@@ -515,7 +515,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         });
       }
 
-      await save.mutateAsync({
+      const savedDevice = await save.mutateAsync({
         id: form.id,
         club_id: clubId,
         category: form.category,

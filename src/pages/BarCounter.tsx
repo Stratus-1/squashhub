@@ -49,7 +49,12 @@ const tokenKey = (code: string) => `sh.barcounter.token.${code}`;
 
 export default function BarCounter() {
   const { code } = useParams<{ code?: string }>();
-  const { activeClub } = useClubContext() as any;
+  // ClubContext only knows the club when we're on a club subdomain; signed-in
+  // staff on the main host need their own club instead (this used to read a
+  // non-existent `activeClub`, which left the page empty).
+  const { club: contextClub } = useClubContext() as any;
+  const { data: myClub } = useMyClub();
+
   const qc = useQueryClient();
 
   const [token, setToken] = useState<string | null>(() => (code ? localStorage.getItem(tokenKey(code)) : null));

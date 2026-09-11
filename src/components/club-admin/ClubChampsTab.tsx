@@ -6397,13 +6397,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const seen = new Set<string>();
     const push = (memberId: string) => {
       if (!memberId || seen.has(memberId)) return;
-      const resolved = resolveInviteeName(memberId);
-      if (!resolved) return;
       seen.add(memberId);
-      out.push({
-        memberId,
-        name: resolved.clubName ? `${resolved.name} — ${resolved.clubName}` : resolved.name,
-      });
+      const resolved = resolveInviteeName(memberId);
+      const label = resolved
+        ? resolved.clubName
+          ? `${resolved.name} — ${resolved.clubName}`
+          : resolved.name
+        : `Invited player ${memberId.slice(0, 6)}`;
+      out.push({ memberId, name: label });
     };
     (inviteeRows as any[])
       .filter((r) => r.club_member_id && !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()))
@@ -6414,8 +6415,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         push(memberId);
       });
     });
+    // The chosen invitation audience (regional / league / club trees) is the
+    // authoritative list — without it the picker is empty for cross-club events.
+    (resolvedAudience.memberIds || []).forEach((memberId: string) => {
+      if (inviteExcludedMemberIds.has(memberId)) return;
+      push(memberId);
+    });
     return out.sort((a, b) => a.name.localeCompare(b.name));
-  }, [inviteeRows, resolveInviteeName, structureLeagueIds, registrationsByLeague, inviteExcludedMemberIds]);
+  }, [
+    inviteeRows,
+    resolveInviteeName,
+    structureLeagueIds,
+    registrationsByLeague,
+    inviteExcludedMemberIds,
+    resolvedAudience,
+  ]);
 
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; withBookings: boolean } | null>(null);

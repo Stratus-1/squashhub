@@ -95,6 +95,7 @@ export function useSaveDevice() {
       // Server-owned columns are never written from the client.
       const { id, created_at, updated_at, last_state, last_state_at, last_error, ...rest } = draft;
 
+      let saved: ClubDevice;
       if (id) {
         const { data, error } = await fromExt("club_devices")
           .update(rest)
@@ -102,14 +103,22 @@ export function useSaveDevice() {
           .select()
           .single();
         if (error) throw error;
-        return data as ClubDevice;
+        saved = data as ClubDevice;
+      } else {
+        const { data, error } = await fromExt("club_devices").insert(rest).select().single();
+        if (error) throw error;
+        saved = data as ClubDevice;
       }
-      const { data, error } = await fromExt("club_devices").insert(rest).select().single();
-      if (error) throw error;
-      return data as ClubDevice;
+      const activated = await activateCapabilitiesForDevice(saved);
+      return { ...saved, activated_capabilities: activated } as ClubDevice & {
+        activated_capabilities: Capability[];
+      };
     },
     onSuccess: (device) => {
       qc.invalidateQueries({ queryKey: ["club-devices", device.club_id] });
+      qc.invalidateQueries({ queryKey: ["club-capabilities", device.club_id] });
+      qc.invalidateQueries({ queryKey: ["my-club"] });
+      qc.invalidateQueries({ queryKey: ["admin-club"] });
     },
   });
 }

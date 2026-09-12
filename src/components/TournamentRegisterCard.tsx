@@ -420,7 +420,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       {myReg && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">
           <div className="flex flex-wrap items-center gap-2">
-            {acceptsCard && paymentGateway === "yoco" && (
+            {cardReady && (
               <Button size="sm" className="text-xs h-8" onClick={() => launchPayment(myReg.id)}>
                 <CreditCard className="w-3 h-3 mr-1" /> Pay {money(entryFee)} by card
               </Button>

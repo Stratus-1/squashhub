@@ -113,9 +113,13 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
   const entryFee = Number(champ?.entry_fee_cents || 0) / 100;
   const paymentRequired = !!champ?.payment_required && entryFee > 0;
-  const acceptsCard = (champ?.payment_methods || []).includes("card");
-  const acceptsEft = (champ?.payment_methods || []).includes("eft");
+  const configuredMethods: string[] = Array.isArray(champ?.payment_methods) ? champ.payment_methods : [];
+  const hasMethodConfig = configuredMethods.length > 0;
+  const acceptsCard = configuredMethods.includes("card");
+  // If the organiser configured nothing, fall back to EFT so members always have a way to pay.
+  const acceptsEft = hasMethodConfig ? configuredMethods.includes("eft") : true;
   const acceptsAccount = acceptsAccountCharge(champ?.payment_methods);
+  const cardReady = acceptsCard && isSupportedGateway(paymentGateway);
   const isDoubles = champ?.match_type === "doubles";
   const partnerByPlayers = champ?.partner_mode === "players";
 

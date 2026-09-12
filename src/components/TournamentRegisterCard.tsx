@@ -483,7 +483,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           )}
 
 
-          {acceptsCard && paymentGateway === "yoco" && (
+          {cardReady && paymentGateway === "yoco" && (
             <FnbPaymentNotice showEftFallback={acceptsEft} />
           )}
         </div>

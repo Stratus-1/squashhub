@@ -44,6 +44,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const [overridePartnerId, setOverridePartnerId] = useState<string>("");
   const [showCancelled, setShowCancelled] = useState(false);
   const [withdrawReg, setWithdrawReg] = useState<any | null>(null);
+  const [withdrawGroup, setWithdrawGroup] = useState<string>("all");
 
   const champId = champ?.id;
   const entryFee = Number(champ?.entry_fee_cents || 0) / 100;

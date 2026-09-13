@@ -47,9 +47,7 @@ describe("round deadlines", () => {
 
 describe("mergeRoundDeadlines — a set date must never move", () => {
   it("keeps the organiser's planned date even when sections are set up later", () => {
-    const planned = parseRoundDeadlines(
-      JSON.stringify([{ label: "Round 3", date: "2026-09-12" }]),
-    );
+    const planned = parseRoundDeadlines([{ label: "Round 3", date: "2026-09-12" }]);
     const merged = mergeRoundDeadlines(planned, [
       { round_number: 1, label: "Round 3", play_by: "2026-09-09" },
       { round_number: 1, label: "Round 3", play_by: "2026-09-14" },

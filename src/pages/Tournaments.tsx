@@ -175,7 +175,7 @@ export default function Tournaments() {
     queryFn: async () => {
       if (!champIds.length) return [];
       const { data, error } = await fromExt("club_champs_rounds")
-        .select("champ_id, round_number, label, play_by")
+        .select("champ_id, round_number, group_number, section_number, label, play_by")
         .in("champ_id", champIds);
       if (error) throw error;
       return (data || []) as any[];

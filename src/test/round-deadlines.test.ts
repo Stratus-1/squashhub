@@ -5,6 +5,7 @@ import {
   deadlineForRound,
   lastDeadline,
   roundDeadlineLines,
+  mergeRoundDeadlines,
 } from "@/lib/tournaments/round-deadlines";
 
 describe("round deadlines", () => {
@@ -41,5 +42,24 @@ describe("round deadlines", () => {
     expect(roundDeadlineLines([{ label: "Round 1", date: "2026-09-15" }])[0]).toMatch(
       /^Round 1 must be played by /,
     );
+  });
+});
+
+describe("mergeRoundDeadlines — a set date must never move", () => {
+  it("keeps the organiser's planned date even when sections are set up later", () => {
+    const planned = parseRoundDeadlines([{ label: "Round 3", date: "2026-09-12" }]);
+    const merged = mergeRoundDeadlines(planned, [
+      { round_number: 1, label: "Round 3", play_by: "2026-09-09" },
+      { round_number: 1, label: "Round 3", play_by: "2026-09-14" },
+    ]);
+    expect(merged[0].date).toBe("2026-09-12");
+  });
+
+  it("fills an unplanned round with the earliest section date, not the latest", () => {
+    const merged = mergeRoundDeadlines([], [
+      { round_number: 1, label: "Round 3", play_by: "2026-09-14" },
+      { round_number: 1, label: "Round 3", play_by: "2026-09-09" },
+    ]);
+    expect(merged[0].date).toBe("2026-09-09");
   });
 });

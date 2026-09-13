@@ -124,12 +124,15 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   });
 
   /**
-   * The player pulls out of the whole tournament: the entry is cancelled and
-   * every game of theirs still to be played is closed as a walkover, so each
-   * opponent stays alive in the draw. Played games keep their real result.
+   * A player pulls out. A player may be entered in several leagues of the same
+   * tournament, so the organiser chooses ONE league (or all of them). Their
+   * place in that league is removed and every game of theirs still to be played
+   * there is closed as a walkover, so each opponent stays alive in the draw.
+   * Games already played keep their real result, and their other leagues are
+   * left untouched.
    */
   const withdrawPlayer = useMutation({
-    mutationFn: async (reg: any) => {
+    mutationFn: async ({ reg, groupNumber }: { reg: any; groupNumber: number | null }) => {
       const memberId = reg.club_member_id as string;
       const { data: matches, error: mErr } = await fromExt("club_champs_matches")
         .select(
@@ -140,24 +143,42 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
       const updates = withdrawalUpdates((matches || []) as any[], memberId, {
         bestOf: Number(champ?.best_of) || 3,
         pointsPerGame: Number(champ?.points_per_game) || 11,
+        groupNumber,
       });
       for (const u of updates) {
         const { error } = await fromExt("club_champs_matches").update(u.payload).eq("id", u.id);
         if (error) throw error;
       }
-      const { error } = await fromExt("club_champs_registrations")
-        .update({ status: "cancelled" })
-        .eq("id", reg.id);
-      if (error) throw error;
-      return updates.length;
+      // Take their place out of the league draw(s) they pulled out of.
+      let del = fromExt("club_champs_entries")
+        .delete()
+        .eq("champ_id", champId)
+        .eq("club_member_id", memberId);
+      if (groupNumber != null) del = del.eq("group_number", groupNumber);
+      const { error: eErr } = await del;
+      if (eErr) throw eErr;
+
+      // Only cancel the whole entry once no league is left.
+      const remaining = groupNumber == null ? 0 : memberLeagues(memberId).filter((g) => g !== groupNumber).length;
+      if (remaining === 0) {
+        const { error } = await fromExt("club_champs_registrations")
+          .update({ status: "cancelled" })
+          .eq("id", reg.id);
+        if (error) throw error;
+      }
+      return { closed: updates.length, remaining };
     },
-    onSuccess: (n) => {
+    onSuccess: ({ closed, remaining }) => {
       toast.success(
-        n > 0
-          ? `Player pulled out — ${n} outstanding game${n === 1 ? "" : "s"} awarded to their opponent${n === 1 ? "" : "s"}.`
-          : "Player pulled out of the tournament.",
+        closed > 0
+          ? `Player pulled out — ${closed} outstanding game${closed === 1 ? "" : "s"} awarded to their opponent${closed === 1 ? "" : "s"}.${remaining > 0 ? " Their other leagues are unchanged." : ""}`
+          : remaining > 0
+            ? "Player pulled out of that league. Their other leagues are unchanged."
+            : "Player pulled out of the tournament.",
       );
       setWithdrawReg(null);
+      setWithdrawGroup("all");
+      qc.invalidateQueries({ queryKey: ["champ-entries", champId] });
       qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
       qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
       invalidate();

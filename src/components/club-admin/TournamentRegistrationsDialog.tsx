@@ -523,6 +523,49 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={!!withdrawReg} onOpenChange={(v) => { if (!v) setWithdrawReg(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{getName(withdrawReg?.member)} pulls out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Their remaining games are given to their opponents, who stay in the draw. Games
+              already played keep their result.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {withdrawReg && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium">Pull out of</p>
+              <Select value={withdrawGroup} onValueChange={setWithdrawGroup}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {memberLeagues(withdrawReg.club_member_id).map((gn) => (
+                    <SelectItem key={gn} value={String(gn)}>{leagueLabel(gn)} only</SelectItem>
+                  ))}
+                  <SelectItem value="all">The whole tournament (every league)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep them in</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={withdrawPlayer.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!withdrawReg) return;
+                withdrawPlayer.mutate({
+                  reg: withdrawReg,
+                  groupNumber: withdrawGroup === "all" ? null : Number(withdrawGroup),
+                });
+              }}
+            >
+              {withdrawPlayer.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+              Pull out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

@@ -111,14 +111,45 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     onError: (e: any) => toast.error(e.message),
   });
 
-  const cancelReg = useMutation({
+  /**
+   * The player pulls out of the whole tournament: the entry is cancelled and
+   * every game of theirs still to be played is closed as a walkover, so each
+   * opponent stays alive in the draw. Played games keep their real result.
+   */
+  const withdrawPlayer = useMutation({
     mutationFn: async (reg: any) => {
+      const memberId = reg.club_member_id as string;
+      const { data: matches, error: mErr } = await fromExt("club_champs_matches")
+        .select(
+          "id, status, is_bye, group_number, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id",
+        )
+        .eq("champ_id", champId);
+      if (mErr) throw mErr;
+      const updates = withdrawalUpdates((matches || []) as any[], memberId, {
+        bestOf: Number(champ?.best_of) || 3,
+        pointsPerGame: Number(champ?.points_per_game) || 11,
+      });
+      for (const u of updates) {
+        const { error } = await fromExt("club_champs_matches").update(u.payload).eq("id", u.id);
+        if (error) throw error;
+      }
       const { error } = await fromExt("club_champs_registrations")
         .update({ status: "cancelled" })
         .eq("id", reg.id);
       if (error) throw error;
+      return updates.length;
     },
-    onSuccess: () => { toast.success("Registration cancelled"); invalidate(); },
+    onSuccess: (n) => {
+      toast.success(
+        n > 0
+          ? `Player pulled out — ${n} outstanding game${n === 1 ? "" : "s"} awarded to their opponent${n === 1 ? "" : "s"}.`
+          : "Player pulled out of the tournament.",
+      );
+      setWithdrawReg(null);
+      qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+      qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+      invalidate();
+    },
     onError: (e: any) => toast.error(e.message),
   });
 

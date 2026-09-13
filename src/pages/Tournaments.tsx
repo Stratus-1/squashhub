@@ -38,6 +38,7 @@ import { splitTournamentsByLifecycle, todayISO, isCancelledTournament } from "@/
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
+import { WithdrawPlayerButton } from "@/components/tournaments/WithdrawPlayerButton";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
 import { parseRoundDeadlines, deadlineForRound, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
@@ -1418,6 +1419,9 @@ export default function Tournaments() {
                         >
                           <Plus className="w-3.5 h-3.5" /> Add slot
                         </Button>
+                      )}
+                      {(isClubAdmin || canManageChamps) && champs.length > 0 && (
+                        <WithdrawPlayerButton champs={champs} />
                       )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

@@ -631,6 +631,22 @@ export default function Tournaments() {
     };
   };
 
+  /**
+   * The play-by date for ONE fixture: its own section's round row first, so a
+   * later section of the same round never changes another section's date.
+   */
+  const matchPlayBy = (m: any): string | null => {
+    const rows = roundsByChamp.get(m.champ_id) || [];
+    const exact = rows.find(
+      (r: any) =>
+        Number(r.round_number) === Number(m.round_number) &&
+        Number(r.group_number) === Number(m.group_number) &&
+        Number(r.section_number) === Number(m.section_number),
+    );
+    if (exact?.play_by) return String(exact.play_by).slice(0, 10);
+    return roundMeta(m.champ_id, m.round_number).date;
+  };
+
   const renderRoundGroups = (list: any[]) => {
     const groups = new Map<number, any[]>();
     list.forEach((m) => {

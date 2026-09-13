@@ -86,23 +86,27 @@ export function mergeRoundDeadlines(
   rounds: Array<{ round_number?: number | null; label?: string | null; play_by?: string | null }> = [],
 ): RoundDeadline[] {
   const out = [...planned];
-  const latest = new Map<number, { label?: string | null; date: string }>();
+  const earliest = new Map<number, { label?: string | null; date: string }>();
   for (const r of rounds || []) {
     const n = Number(r?.round_number);
     const date = typeof r?.play_by === "string" ? r.play_by.slice(0, 10) : "";
     if (!Number.isFinite(n) || n < 1 || !isDate(date)) continue;
-    const prev = latest.get(n);
-    // Several sections share a round number — keep the latest deadline.
-    if (!prev || date > prev.date) latest.set(n, { label: r.label, date });
+    const prev = earliest.get(n);
+    // Several sections share a round number and may be set up days apart. The
+    // round's deadline is the EARLIEST of them, so one late section can never
+    // push the whole round's date out.
+    if (!prev || date < prev.date) earliest.set(n, { label: r.label, date });
   }
-  for (const [n, v] of latest) {
+  for (const [n, v] of earliest) {
     const i = n - 1;
     while (out.length < i) out.push({ label: defaultRoundLabel(out.length), date: "" });
     const existing = out[i];
     out[i] = {
       ...(existing || {}),
       label: (existing?.label || "").trim() || String(v.label || "").trim() || defaultRoundLabel(i),
-      date: v.date,
+      // The organiser's planned date wins — only fill rounds that have none,
+      // otherwise the published date appears to move on its own.
+      date: isDate(existing?.date || "") ? existing!.date : v.date,
     };
   }
   return out;

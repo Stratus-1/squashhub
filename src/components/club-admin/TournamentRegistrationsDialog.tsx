@@ -478,8 +478,18 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         </Button>
                       )}
                       {r.status !== "cancelled" && (
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => cancelReg.mutate(r)}>
-                          <X className="w-3.5 h-3.5 text-destructive" />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-destructive"
+                          title="Player pulls out"
+                          onClick={() => {
+                            const leagues = memberLeagues(r.club_member_id);
+                            setWithdrawGroup(leagues.length === 1 ? String(leagues[0]) : "all");
+                            setWithdrawReg(r);
+                          }}
+                        >
+                          <X className="w-3.5 h-3.5 mr-1" />Pull out
                         </Button>
                       )}
                     </div>

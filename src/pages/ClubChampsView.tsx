@@ -834,10 +834,20 @@ export default function ClubChampsView() {
 
       // 2. Determine candidate slots: play days × time slots × courts
       const playDaysSet = new Set((champ.play_days as number[]) || []);
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      // Never place a game on a date that has already passed — a past slot makes
+      // the fixture look played/gone instead of still to be arranged.
       const allDates = eachDayOfInterval({
         start: new Date(champ.start_date),
         end: new Date(champ.end_date),
-      }).filter((d) => playDaysSet.has(getDay(d)));
+      })
+        .filter((d) => playDaysSet.has(getDay(d)))
+        .filter((d) => format(d, "yyyy-MM-dd") >= todayStr);
+      if (allDates.length === 0) {
+        throw new Error(
+          "All of this tournament's play dates have passed. Extend the end date first, then try again.",
+        );
+      }
 
       const matchDuration = champ.match_duration_minutes || 30;
       const [sh, sm] = (champ.start_time || "18:00").split(":").map(Number);

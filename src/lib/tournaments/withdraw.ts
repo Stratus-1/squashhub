@@ -28,13 +28,24 @@ export function sideOf(match: WithdrawMatch, memberId: string): "a" | "b" | null
   return null;
 }
 
-/** Unplayed games the withdrawal has to close out. */
-export function matchesToClose<T extends WithdrawMatch>(matches: T[], memberId: string): T[] {
+/**
+ * Unplayed games the withdrawal has to close out.
+ *
+ * A player may be entered in several leagues of the same tournament, so a
+ * withdrawal is normally scoped to ONE league (`groupNumber`). Leaving it out
+ * pulls them out of every league.
+ */
+export function matchesToClose<T extends WithdrawMatch>(
+  matches: T[],
+  memberId: string,
+  groupNumber?: number | null,
+): T[] {
   return (matches || []).filter(
     (m) =>
       !m.is_bye &&
       !FINISHED.has(String(m.status || "").toLowerCase()) &&
-      sideOf(m, memberId) !== null,
+      sideOf(m, memberId) !== null &&
+      (groupNumber == null || Number(m.group_number) === Number(groupNumber)),
   );
 }
 

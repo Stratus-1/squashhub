@@ -123,17 +123,24 @@ export function NextRoundSetupDialog({
       }
       // Keep the tournament's own round plan in step, so the setup screen and
       // the "book your court by …" nudges show this round too.
+      // Only FILL IN a round the plan does not cover yet. Sections of the same
+      // round are set up on different days, and rewriting a date the organiser
+      // already published would make the round's date appear to move.
       if (setup.playBy) {
         const { data: t } = await fromExt("tournaments")
           .select("round_play_by")
           .eq("id", champId)
           .maybeSingle();
-        const merged = serializeRoundDeadlines(
-          mergeRoundDeadlines(parseRoundDeadlines((t as any)?.round_play_by), [
-            { round_number: roundNumber, label: setup.label, play_by: setup.playBy },
-          ]),
-        );
-        if (merged) await fromExt("tournaments").update({ round_play_by: merged } as any).eq("id", champId);
+        const planned = parseRoundDeadlines((t as any)?.round_play_by);
+        const alreadyPlanned = /^\d{4}-\d{2}-\d{2}/.test(String(planned[roundNumber - 1]?.date || ""));
+        if (!alreadyPlanned) {
+          const merged = serializeRoundDeadlines(
+            mergeRoundDeadlines(planned, [
+              { round_number: roundNumber, label: setup.label, play_by: setup.playBy },
+            ]),
+          );
+          if (merged) await fromExt("tournaments").update({ round_play_by: merged } as any).eq("id", champId);
+        }
       }
       qc.invalidateQueries({ queryKey: ["club-champ-rounds", champId] });
       onOpenChange(false);

@@ -16,6 +16,17 @@ import {
   ENTRANT_CATEGORY_VARIANT,
   isParticipatingEntrant,
 } from "@/lib/tournaments/entrant-status";
+import { withdrawalUpdates } from "@/lib/tournaments/withdraw";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   open: boolean;
@@ -32,6 +43,8 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const [overrideRegId, setOverrideRegId] = useState<string | null>(null);
   const [overridePartnerId, setOverridePartnerId] = useState<string>("");
   const [showCancelled, setShowCancelled] = useState(false);
+  const [withdrawReg, setWithdrawReg] = useState<any | null>(null);
+  const [withdrawGroup, setWithdrawGroup] = useState<string>("all");
 
   const champId = champ?.id;
   const entryFee = Number(champ?.entry_fee_cents || 0) / 100;
@@ -66,6 +79,30 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     return m;
   }, [signupStatus]);
 
+
+  // Which league(s) of this tournament each player is actually in — a player
+  // may be entered in more than one, and may pull out of just one of them.
+  const { data: entries = [] } = useQuery({
+    queryKey: ["champ-entries", champId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_entries")
+        .select("club_member_id, group_number, partner_member_id")
+        .eq("champ_id", champId);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!champId && open,
+  });
+  const memberLeagues = (memberId: string): number[] =>
+    Array.from(
+      new Set(
+        entries
+          .filter((e: any) => e.club_member_id === memberId || e.partner_member_id === memberId)
+          .map((e: any) => Number(e.group_number) || 1),
+      ),
+    ).sort((a, b) => a - b);
+  const leagueLabel = (gn: number) =>
+    String((champ as any)?.group_labels?.[String(gn)] || "").trim() || `League ${gn}`;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["champ-registrations", champId] });
 
@@ -111,14 +148,66 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
     onError: (e: any) => toast.error(e.message),
   });
 
-  const cancelReg = useMutation({
-    mutationFn: async (reg: any) => {
-      const { error } = await fromExt("club_champs_registrations")
-        .update({ status: "cancelled" })
-        .eq("id", reg.id);
-      if (error) throw error;
+  /**
+   * A player pulls out. A player may be entered in several leagues of the same
+   * tournament, so the organiser chooses ONE league (or all of them). Their
+   * place in that league is removed and every game of theirs still to be played
+   * there is closed as a walkover, so each opponent stays alive in the draw.
+   * Games already played keep their real result, and their other leagues are
+   * left untouched.
+   */
+  const withdrawPlayer = useMutation({
+    mutationFn: async ({ reg, groupNumber }: { reg: any; groupNumber: number | null }) => {
+      const memberId = reg.club_member_id as string;
+      const { data: matches, error: mErr } = await fromExt("club_champs_matches")
+        .select(
+          "id, status, is_bye, group_number, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id",
+        )
+        .eq("champ_id", champId);
+      if (mErr) throw mErr;
+      const updates = withdrawalUpdates((matches || []) as any[], memberId, {
+        bestOf: Number(champ?.best_of) || 3,
+        pointsPerGame: Number(champ?.points_per_game) || 11,
+        groupNumber,
+      });
+      for (const u of updates) {
+        const { error } = await fromExt("club_champs_matches").update(u.payload).eq("id", u.id);
+        if (error) throw error;
+      }
+      // Take their place out of the league draw(s) they pulled out of.
+      let del = fromExt("club_champs_entries")
+        .delete()
+        .eq("champ_id", champId)
+        .eq("club_member_id", memberId);
+      if (groupNumber != null) del = del.eq("group_number", groupNumber);
+      const { error: eErr } = await del;
+      if (eErr) throw eErr;
+
+      // Only cancel the whole entry once no league is left.
+      const remaining = groupNumber == null ? 0 : memberLeagues(memberId).filter((g) => g !== groupNumber).length;
+      if (remaining === 0) {
+        const { error } = await fromExt("club_champs_registrations")
+          .update({ status: "cancelled" })
+          .eq("id", reg.id);
+        if (error) throw error;
+      }
+      return { closed: updates.length, remaining };
     },
-    onSuccess: () => { toast.success("Registration cancelled"); invalidate(); },
+    onSuccess: ({ closed, remaining }) => {
+      toast.success(
+        closed > 0
+          ? `Player pulled out — ${closed} outstanding game${closed === 1 ? "" : "s"} awarded to their opponent${closed === 1 ? "" : "s"}.${remaining > 0 ? " Their other leagues are unchanged." : ""}`
+          : remaining > 0
+            ? "Player pulled out of that league. Their other leagues are unchanged."
+            : "Player pulled out of the tournament.",
+      );
+      setWithdrawReg(null);
+      setWithdrawGroup("all");
+      qc.invalidateQueries({ queryKey: ["champ-entries", champId] });
+      qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] });
+      qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+      invalidate();
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -390,8 +479,18 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                         </Button>
                       )}
                       {r.status !== "cancelled" && (
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => cancelReg.mutate(r)}>
-                          <X className="w-3.5 h-3.5 text-destructive" />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-destructive"
+                          title="Player pulls out"
+                          onClick={() => {
+                            const leagues = memberLeagues(r.club_member_id);
+                            setWithdrawGroup(leagues.length === 1 ? String(leagues[0]) : "all");
+                            setWithdrawReg(r);
+                          }}
+                        >
+                          <X className="w-3.5 h-3.5 mr-1" />Pull out
                         </Button>
                       )}
                     </div>
@@ -424,6 +523,49 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={!!withdrawReg} onOpenChange={(v) => { if (!v) setWithdrawReg(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{getName(withdrawReg?.member)} pulls out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Their remaining games are given to their opponents, who stay in the draw. Games
+              already played keep their result.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {withdrawReg && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium">Pull out of</p>
+              <Select value={withdrawGroup} onValueChange={setWithdrawGroup}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {memberLeagues(withdrawReg.club_member_id).map((gn) => (
+                    <SelectItem key={gn} value={String(gn)}>{leagueLabel(gn)} only</SelectItem>
+                  ))}
+                  <SelectItem value="all">The whole tournament (every league)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep them in</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={withdrawPlayer.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!withdrawReg) return;
+                withdrawPlayer.mutate({
+                  reg: withdrawReg,
+                  groupNumber: withdrawGroup === "all" ? null : Number(withdrawGroup),
+                });
+              }}
+            >
+              {withdrawPlayer.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+              Pull out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

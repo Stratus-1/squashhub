@@ -122,3 +122,6 @@
 
 ## Member dashboard
 - [ ] Historical SportyHQ match import per club (gated on SLA / history_import_enabled, idempotent via external_ids) — not built yet
+
+- Tournament: let a player pull out of ONE league/division within a tournament (not all).
+- Fix drifting round play-by dates (per-section deadlines).

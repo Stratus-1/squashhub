@@ -175,7 +175,7 @@ export default function Tournaments() {
     queryFn: async () => {
       if (!champIds.length) return [];
       const { data, error } = await fromExt("club_champs_rounds")
-        .select("champ_id, round_number, label, play_by")
+        .select("champ_id, round_number, group_number, section_number, label, play_by")
         .in("champ_id", champIds);
       if (error) throw error;
       return (data || []) as any[];
@@ -631,6 +631,22 @@ export default function Tournaments() {
     };
   };
 
+  /**
+   * The play-by date for ONE fixture: its own section's round row first, so a
+   * later section of the same round never changes another section's date.
+   */
+  const matchPlayBy = (m: any): string | null => {
+    const rows = roundsByChamp.get(m.champ_id) || [];
+    const exact = rows.find(
+      (r: any) =>
+        Number(r.round_number) === Number(m.round_number) &&
+        Number(r.group_number) === Number(m.group_number) &&
+        Number(r.section_number) === Number(m.section_number),
+    );
+    if (exact?.play_by) return String(exact.play_by).slice(0, 10);
+    return roundMeta(m.champ_id, m.round_number).date;
+  };
+
   const renderRoundGroups = (list: any[]) => {
     const groups = new Map<number, any[]>();
     list.forEach((m) => {
@@ -658,7 +674,7 @@ export default function Tournaments() {
           );
           const heading = n === 0 ? "Pool games" : labels.join(" / ") || `Round ${n}`;
           const dates = Array.from(
-            new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).date).filter(Boolean)),
+            new Set(items.map((m: any) => matchPlayBy(m)).filter(Boolean)),
           ).sort() as string[];
           const playBy = dates[0] || null;
           const notes = Array.from(
@@ -809,16 +825,7 @@ export default function Tournaments() {
     // Self-scheduled rounds carry a "must be played by" date. Show it on any
     // fixture that still has no court/time so players know their booking cut-off.
     const playBy = !m.scheduled_date && !isPlaceholder && groupMode !== "round"
-      ? playByNudge(
-          deadlineForRound(
-            mergeRoundDeadlines(
-              parseRoundDeadlines((champ as any)?.round_play_by),
-              roundsByChamp.get(m.champ_id) || [],
-            ),
-            m.round_number,
-          ),
-          todayISO(),
-        )
+      ? playByNudge(matchPlayBy(m), todayISO())
       : null;
 
 

@@ -16,7 +16,6 @@ import { Loader2, UserMinus } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
 import { withdrawalUpdates } from "@/lib/tournaments/withdraw";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -285,14 +284,6 @@ export function WithdrawPlayerButton({ champs }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {reg && leagues.length > 0 && (
-        <span className="hidden">
-          {leagues.map((gn) => (
-            <Badge key={gn}>{leagueLabel(gn)}</Badge>
-          ))}
-        </span>
-      )}
     </>
   );
 }

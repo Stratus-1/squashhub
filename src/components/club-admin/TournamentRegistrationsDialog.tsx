@@ -16,6 +16,17 @@ import {
   ENTRANT_CATEGORY_VARIANT,
   isParticipatingEntrant,
 } from "@/lib/tournaments/entrant-status";
+import { withdrawalUpdates } from "@/lib/tournaments/withdraw";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   open: boolean;
@@ -32,6 +43,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const [overrideRegId, setOverrideRegId] = useState<string | null>(null);
   const [overridePartnerId, setOverridePartnerId] = useState<string>("");
   const [showCancelled, setShowCancelled] = useState(false);
+  const [withdrawReg, setWithdrawReg] = useState<any | null>(null);
 
   const champId = champ?.id;
   const entryFee = Number(champ?.entry_fee_cents || 0) / 100;

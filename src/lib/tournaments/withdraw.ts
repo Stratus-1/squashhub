@@ -57,10 +57,10 @@ export function matchesToClose<T extends WithdrawMatch>(
 export function withdrawalUpdates(
   matches: WithdrawMatch[],
   memberId: string,
-  opts: { bestOf?: number; pointsPerGame?: number } = {},
+  opts: { bestOf?: number; pointsPerGame?: number; groupNumber?: number | null } = {},
 ): { id: string; payload: Record<string, any> }[] {
   const out: { id: string; payload: Record<string, any> }[] = [];
-  for (const m of matchesToClose(matches, memberId)) {
+  for (const m of matchesToClose(matches, memberId, opts.groupNumber ?? null)) {
     const side = sideOf(m, memberId)!;
     const absentId = side === "a" ? m.player_a_member_id : m.player_b_member_id;
     const opponentId = side === "a" ? m.player_b_member_id : m.player_a_member_id;

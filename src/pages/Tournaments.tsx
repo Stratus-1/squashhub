@@ -674,7 +674,7 @@ export default function Tournaments() {
           );
           const heading = n === 0 ? "Pool games" : labels.join(" / ") || `Round ${n}`;
           const dates = Array.from(
-            new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).date).filter(Boolean)),
+            new Set(items.map((m: any) => matchPlayBy(m)).filter(Boolean)),
           ).sort() as string[];
           const playBy = dates[0] || null;
           const notes = Array.from(
@@ -825,16 +825,7 @@ export default function Tournaments() {
     // Self-scheduled rounds carry a "must be played by" date. Show it on any
     // fixture that still has no court/time so players know their booking cut-off.
     const playBy = !m.scheduled_date && !isPlaceholder && groupMode !== "round"
-      ? playByNudge(
-          deadlineForRound(
-            mergeRoundDeadlines(
-              parseRoundDeadlines((champ as any)?.round_play_by),
-              roundsByChamp.get(m.champ_id) || [],
-            ),
-            m.round_number,
-          ),
-          todayISO(),
-        )
+      ? playByNudge(matchPlayBy(m), todayISO())
       : null;
 
 

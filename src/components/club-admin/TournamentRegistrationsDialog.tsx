@@ -79,6 +79,30 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   }, [signupStatus]);
 
 
+  // Which league(s) of this tournament each player is actually in — a player
+  // may be entered in more than one, and may pull out of just one of them.
+  const { data: entries = [] } = useQuery({
+    queryKey: ["champ-entries", champId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_entries")
+        .select("club_member_id, group_number, partner_member_id")
+        .eq("champ_id", champId);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!champId && open,
+  });
+  const memberLeagues = (memberId: string): number[] =>
+    Array.from(
+      new Set(
+        entries
+          .filter((e: any) => e.club_member_id === memberId || e.partner_member_id === memberId)
+          .map((e: any) => Number(e.group_number) || 1),
+      ),
+    ).sort((a, b) => a - b);
+  const leagueLabel = (gn: number) =>
+    String((champ as any)?.group_labels?.[String(gn)] || "").trim() || `League ${gn}`;
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ["champ-registrations", champId] });
 
   const eligibleMembersForInvite = useMemo(() => {

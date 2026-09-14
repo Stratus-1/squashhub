@@ -49,6 +49,7 @@ import { useMyPermissions, useMemberHasAdminAccess } from "@/hooks/use-club-perm
 import { useClubContext } from "@/contexts/ClubContext";
 import { useChampDailyToast } from "@/hooks/use-champ-daily-toast";
 import { useChampBookingReminder } from "@/hooks/use-champ-booking-reminder";
+import { usePendingEftApprovalToast } from "@/hooks/use-pending-eft-toast";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";

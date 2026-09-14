@@ -145,6 +145,8 @@ export default function Dashboard() {
   useChampDailyToast(clubId, tournamentsEnabled);
   // "Please make your court booking for your next upcoming game" nudge.
   useChampBookingReminder(clubId, myMemberId, tournamentsEnabled);
+  // Sticky reminder for finance staff when EFT payments await approval.
+  usePendingEftApprovalToast(clubId);
   // Recent match results for the active member
   const { data: recentMatches } = useQuery({
     queryKey: ["club-recent-matches", myMemberId || effectiveUserId],

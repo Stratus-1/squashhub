@@ -67,7 +67,7 @@ export function usePendingEftApprovalToast(clubId?: string | null) {
           label: "Review",
           onClick: () => {
             toast.dismiss(TOAST_ID);
-            navigate("/club-admin?tab=finance&view=pending");
+            navigate("/club-admin?tab=finance");
           },
         },
       },

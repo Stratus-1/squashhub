@@ -229,11 +229,47 @@ export function EnterResultDialog({
             <ClipboardCheck className="w-4 h-4" /> Enter result
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {names.a} vs {names.b} · best of {bo}. For a match that has already been played.
+            {isBells
+              ? `${names.a} vs ${names.b} · one time-capped game. Enter the points each side scored.`
+              : `${names.a} vs ${names.b} · best of ${bo}. For a match that has already been played.`}
           </DialogDescription>
         </DialogHeader>
 
+        {isBells ? (
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Points scored</Label>
+              <div className="grid grid-cols-2 gap-3 mt-1">
+                {([
+                  { side: "a" as Side, value: bellsA, set: setBellsA },
+                  { side: "b" as Side, value: bellsB, set: setBellsB },
+                ]).map(({ side, value, set }) => (
+                  <div key={side} className="space-y-1">
+                    <p className="text-[11px] text-muted-foreground truncate">{names[side]}</p>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      className="h-10 text-center text-lg font-semibold"
+                      aria-label={`Points for ${names[side]}`}
+                      value={value}
+                      onChange={(e) => set(e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {!bellsValid
+                ? "Enter the points both sides scored."
+                : bellsPointsA === bellsPointsB
+                  ? `Tied ${bellsPointsA}-${bellsPointsB} — both sides keep their points.`
+                  : `Winner: ${bellsPointsA > bellsPointsB ? names.a : names.b} (${Math.max(bellsPointsA, bellsPointsB)}-${Math.min(bellsPointsA, bellsPointsB)}). Each player on a side is credited with that side's points.`}
+            </p>
+          </div>
+        ) : (
         <div className="space-y-3">
+
           <div>
             <Label className="text-xs">Quick score</Label>
             <div className="grid grid-cols-2 gap-3 mt-1">

@@ -2380,7 +2380,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const saveDraft = async () => {
     if (!clubId) return editingChampId;
     if (!champName.trim() && !editingChampId) return editingChampId;
-    const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
+    const defaultName = `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
     const rawPayload: Record<string, any> = {
       name: champName || defaultName,
       gender,
@@ -2420,7 +2420,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       source_league_id: Array.from(sourceLeagueIds)[0] || null,
       source_league_ids: Array.from(sourceLeagueIds),
       registration_mode: effectiveRegistrationMode,
-      partner_mode: isDoubles ? (partnerMode || "admin") : "admin",
+      partner_mode: isDoublesCategory ? (partnerMode || "admin") : "admin",
       registration_opens_at: registrationRequired ? fromLocalInputValue(registrationOpensAt) : null,
       registration_closes_at: registrationRequired ? fromLocalInputValue(registrationClosesAt) : null,
       entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
@@ -4618,7 +4618,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
       let champId: string;
       const existingChampId = draftChampId || editingChampId;
-      const defaultName = `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
+      const defaultName = `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Tournament ${new Date().getFullYear()}`;
 
       if (existingChampId) {
         // PHASE 3b GUARD: a locked draw is frozen — refuse to rebuild fixtures.
@@ -4684,7 +4684,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
             source_league_ids: Array.from(sourceLeagueIds),
             registration_mode: effectiveRegistrationMode,
-            partner_mode: isDoubles ? (partnerMode || "admin") : "admin",
+            partner_mode: isDoublesCategory ? (partnerMode || "admin") : "admin",
             registration_opens_at: registrationRequired ? fromLocalInputValue(registrationOpensAt) : null,
             registration_closes_at: registrationRequired ? fromLocalInputValue(registrationClosesAt) : null,
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
@@ -4785,7 +4785,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             source_league_id: Array.from(sourceLeagueIds)[0] || null,
             source_league_ids: Array.from(sourceLeagueIds),
             registration_mode: effectiveRegistrationMode,
-            partner_mode: isDoubles ? (partnerMode || "admin") : "admin",
+            partner_mode: isDoublesCategory ? (partnerMode || "admin") : "admin",
             registration_opens_at: registrationRequired ? fromLocalInputValue(registrationOpensAt) : null,
             registration_closes_at: registrationRequired ? fromLocalInputValue(registrationClosesAt) : null,
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
@@ -7563,7 +7563,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             <div>
               <Label>Championship Name (optional)</Label>
               <Input
-                placeholder={`${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
+                placeholder={`${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
                 value={champName}
                 onChange={(e) => setChampName(e.target.value)}
               />
@@ -11643,8 +11643,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           <CardHeader><CardTitle>Review & Generate</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm space-y-2">
-              <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
-              <p><strong>Type:</strong> {GENDER_LABELS[gender]} {isDoubles ? "Doubles" : "Singles"}</p>
+              <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
+              <p><strong>Type:</strong> {GENDER_LABELS[gender]} {isDoublesCategory ? "Doubles" : "Singles"}</p>
           <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {awaitingPlayerPairs ? `${registrationUsesInviteList ? selectedPlayerIds.size : registrationRequired ? "Open" : "No"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>
               {schedulingMode === "self" ? (
@@ -11857,7 +11857,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         open={showInvitePreview}
         onOpenChange={setShowInvitePreview}
         clubId={clubId}
-        tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoubles ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
+        tournamentName={champName || `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}
         builtBody={buildInviteBody()}
         paymentRequired={paymentRequired}
         inviteShortMessage={inviteShortMessage}

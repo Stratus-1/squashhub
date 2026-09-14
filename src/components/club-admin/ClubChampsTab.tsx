@@ -830,15 +830,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const { data: pooledMembers = [] } = useQuery({
     queryKey: ["tournament-member-pool", playerPoolClubIds],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_members")
-        .select(`${CLUB_MEMBER_COLUMNS}, profiles:user_id(name, email, phone, avatar_url), club:club_id(name)`)
-        .in("club_id", playerPoolClubIds)
-        .order("name");
-      if (error) throw error;
-      return (data || []) as ClubMember[];
+      // PostgREST caps a single response at 1000 rows. Wide (association /
+      // federation) pools are far larger than that, and the silent truncation
+      // used to cut the alphabet off mid-way — everyone after roughly "G"
+      // vanished from the player picker while still showing on the Invites
+      // step. Page through the pool so the list is always complete.
+      const PAGE = 1000;
+      const all: ClubMember[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await fromExt("club_members")
+          .select(`${CLUB_MEMBER_COLUMNS}, profiles:user_id(name, email, phone, avatar_url), club:club_id(name)`)
+          .in("club_id", playerPoolClubIds)
+          .order("name")
+          .order("id")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const rows = (data || []) as ClubMember[];
+        all.push(...rows);
+        if (rows.length < PAGE) break;
+      }
+      return all;
     },
     enabled: widePool,
   });
+
   const members = widePool ? pooledMembers : clubMembers;
   const whatsappEnabled = useWhatsAppEnabled(clubId);
   const isSuperAdmin = useIsSuperAdmin();

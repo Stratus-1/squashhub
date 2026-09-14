@@ -4922,6 +4922,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Create matches
       const matches = schedulePreview.allMatches.map((m) => {
         const isBye = !!m.isBye;
+        // Rotating doubles: both sides are ad-hoc pairs encoded in the entity id.
+        const rotA = parseRotationEntity(m.entityA);
+        const rotB = m.entityB ? parseRotationEntity(m.entityB) : null;
+        if (rotA && rotB) {
+          return {
+            champ_id: champId,
+            group_number: m.groupNum,
+            round_number: m.roundNum,
+            player_a_member_id: toDbId(rotA.player1Id),
+            partner_a_member_id: toDbId(rotA.player2Id),
+            player_b_member_id: toDbId(rotB.player1Id),
+            partner_b_member_id: toDbId(rotB.player2Id),
+            scheduled_date: m.date ?? null,
+            scheduled_time: m.time ?? null,
+            court_id: m.courtId ?? null,
+            leg: null,
+            is_bye: false,
+            status: "scheduled",
+            ...(schedulingMode === "self"
+              ? {
+                  scheduled_date: null,
+                  scheduled_time: null,
+                  court_id: null,
+                  play_by: deadlineForRound(roundDeadlines, m.roundNum) || endDate || null,
+                }
+              : {}),
+          };
+        }
         // For bye rows we use the bye entity as both player_a/player_b so RLS-friendly
         // NOT NULL columns stay populated, plus set is_bye + bye_member_id explicitly.
         if (isDoubles) {

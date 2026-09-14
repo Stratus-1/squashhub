@@ -27,6 +27,7 @@ export default function AuthCallback() {
         if (data.session) {
           const user = data.session.user;
           const meta = user.user_metadata || {};
+          const callbackRedirect = url.searchParams.get("redirectTo") || url.searchParams.get("redirect_to");
 
           // Mandatory first-time password setup (bulk-invited visitors).
           if (meta.needs_password_setup) {
@@ -61,6 +62,11 @@ export default function AuthCallback() {
               return;
             }
           } catch { /* ignore */ }
+
+          if (callbackRedirect?.startsWith("/") && !callbackRedirect.startsWith("//")) {
+            navigate(callbackRedirect, { replace: true });
+            return;
+          }
 
           // If this user signed up with club/association registration metadata, redirect to their tenant
           // Only do the sign-out + redirect flow for tenant OWNERS (not members)

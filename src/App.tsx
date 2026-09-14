@@ -66,6 +66,7 @@ const ClubLanding = lazy(() => import("./pages/ClubLanding"));
 const ClubAuth = lazy(() => import("./pages/ClubAuth"));
 const BookingResponse = lazy(() => import("./pages/BookingResponse"));
 const TournamentInvite = lazy(() => import("./pages/TournamentInvite"));
+const MobileBillingBridge = lazy(() => import("./pages/MobileBillingBridge"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const Feed = lazy(() => import("./pages/Feed"));
 const Availability = lazy(() => import("./pages/Availability"));
@@ -458,6 +459,7 @@ function AppRoutes() {
         <Route path="/lights" element={<LightsIntegration />} />
         <Route path="/auth" element={<AuthGate />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/mobile-billing" element={<MobileBillingBridge />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/set-password" element={<SetPassword />} />
         <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />

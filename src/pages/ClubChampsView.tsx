@@ -1910,6 +1910,7 @@ export default function ClubChampsView() {
         playerBName={resultMatch ? getPlayerName(resultMatch.player_b) : ""}
         bestOf={(champ as any)?.best_of ?? null}
         pointsTarget={(champ as any)?.points_per_game ?? null}
+        scoringMode={(champ as any)?.scoring_mode ?? null}
         onSaved={() => qc.invalidateQueries({ queryKey: ["club-champ-matches", champId] })}
       />
 

@@ -14963,6 +14963,83 @@ export type Database = {
         Args: { _dup_id: string; _keep_id: string }
         Returns: undefined
       }
+      mobile_booking_assert_ready: {
+        Args: {
+          p_club_id: string
+          p_court_id: number
+          p_date: string
+          p_duration_minutes: number
+          p_ignore_booking_id?: string
+          p_member_id: string
+          p_opponent_member_id?: string
+          p_start_time: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
+      mobile_booking_balance_gate: {
+        Args: { p_club_id: string; p_member_id: string }
+        Returns: Json
+      }
+      mobile_booking_cancel: {
+        Args: {
+          p_booking_id: string
+          p_club_id: string
+          p_member_id: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
+      mobile_booking_create: {
+        Args: {
+          p_club_id: string
+          p_court_id: number
+          p_date: string
+          p_duration_minutes: number
+          p_is_friendly?: boolean
+          p_light_fee_split?: string
+          p_lights_requested?: boolean
+          p_member_id: string
+          p_opponent_member_id?: string
+          p_start_time: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
+      mobile_booking_detail_payload: {
+        Args: {
+          p_booking_id: string
+          p_club_id: string
+          p_member_id: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
+      mobile_booking_history_payload: {
+        Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
+        Returns: Json
+      }
+      mobile_booking_row_payload: {
+        Args: { p_booking: Database["public"]["Tables"]["bookings"]["Row"] }
+        Returns: Json
+      }
+      mobile_booking_update: {
+        Args: {
+          p_booking_id: string
+          p_club_id: string
+          p_court_id: number
+          p_date: string
+          p_duration_minutes: number
+          p_is_friendly?: boolean
+          p_light_fee_split?: string
+          p_lights_requested?: boolean
+          p_member_id: string
+          p_opponent_member_id?: string
+          p_start_time: string
+          p_sync_secret: string
+        }
+        Returns: Json
+      }
       mobile_complete_tournament_score: {
         Args: {
           p_club_id: string
@@ -14988,6 +15065,10 @@ export type Database = {
       mobile_internal_secret_ok: {
         Args: { p_sync_secret: string }
         Returns: boolean
+      }
+      mobile_member_finance_payload: {
+        Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
+        Returns: Json
       }
       mobile_player_home_payload: {
         Args: {

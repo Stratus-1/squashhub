@@ -1494,7 +1494,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   // Registration & payment
   const [registrationMode, setRegistrationMode] = useState<"" | "open" | "invite">("");
-  const [partnerMode, setPartnerMode] = useState<"" | "admin" | "players">("");
+  const [partnerMode, setPartnerMode] = useState<"" | "admin" | "players" | "rotate">("");
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");

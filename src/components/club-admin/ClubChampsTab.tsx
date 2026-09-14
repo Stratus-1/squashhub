@@ -3865,6 +3865,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const canScheduleOn = (_entityId: string, _dateStr: string): boolean => true;
 
     const getPlayersForEntity = (entityId: string): string[] => {
+      // Rotating doubles: the "entity" is an ad-hoc pair encoded in its id, so
+      // the scheduler still sees both real players and never double-books one.
+      const rot = parseRotationEntity(entityId);
+      if (rot) return [rot.player1Id, rot.player2Id];
       if (!isDoubles) return [entityId];
       const pair = doublesPairs.find((p) => p.id === entityId);
       return pair ? [pair.player1Id, pair.player2Id] : [entityId];

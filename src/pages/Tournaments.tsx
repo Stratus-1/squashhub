@@ -637,6 +637,10 @@ export default function Tournaments() {
    * later section of the same round never changes another section's date.
    */
   const matchPlayBy = (m: any): string | null => {
+    // The round's published date is fixed for everyone in that round. Only a
+    // round the plan never dated falls back to the section's own row.
+    const planned = roundMeta(m.champ_id, m.round_number).date;
+    if (planned) return planned;
     const rows = roundsByChamp.get(m.champ_id) || [];
     const exact = rows.find(
       (r: any) =>
@@ -644,8 +648,7 @@ export default function Tournaments() {
         Number(r.group_number) === Number(m.group_number) &&
         Number(r.section_number) === Number(m.section_number),
     );
-    if (exact?.play_by) return String(exact.play_by).slice(0, 10);
-    return roundMeta(m.champ_id, m.round_number).date;
+    return exact?.play_by ? String(exact.play_by).slice(0, 10) : null;
   };
 
   const renderRoundGroups = (list: any[]) => {

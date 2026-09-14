@@ -4698,6 +4698,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           }))
           .eq("id", existingChampId);
         if (updateErr) throw updateErr;
+        // The round dates set here are THE dates players are told to play by.
+        // Push them onto every already-created section of that round so no
+        // section can keep (or show) a different deadline.
+        try {
+          const planned = serializeRoundDeadlines(roundDeadlines) || [];
+          await Promise.all(
+            planned.map((d, i) =>
+              fromExt("club_champs_rounds")
+                .update({ play_by: d.date })
+                .eq("champ_id", existingChampId)
+                .eq("round_number", i + 1),
+            ),
+          );
+        } catch (e) {
+          console.warn("[champs] could not align round dates", e);
+        }
         champId = existingChampId;
         if (!editingChampId) setEditingChampId(existingChampId);
       } else {

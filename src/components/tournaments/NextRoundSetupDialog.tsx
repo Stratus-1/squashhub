@@ -76,19 +76,29 @@ export function NextRoundSetupDialog({
   const [playBy, setPlayBy] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
+  // A round whose date was published when the tournament was planned is FIXED:
+  // players have been told to play by that date, so setting up a section may
+  // never move it.
+  const fixedPlayBy =
+    plannedPlayBy && /^\d{4}-\d{2}-\d{2}/.test(plannedPlayBy) ? plannedPlayBy.slice(0, 10) : null;
+
   useEffect(() => {
     if (!open) return;
     setLabel(suggestStageName({ plannedLabel: state.nextRound?.label, roundNumber, qualifiers }));
-    // Priority: saved round row → tournament's configured round deadline → +7d guess.
-    const planned = plannedPlayBy && /^\d{4}-\d{2}-\d{2}/.test(plannedPlayBy) ? plannedPlayBy.slice(0, 10) : null;
-    setPlayBy(state.nextRound?.play_by ? String(state.nextRound.play_by).slice(0, 10) : planned ?? defaultPlayBy());
-  }, [open, state.nextRound?.label, state.nextRound?.play_by, plannedPlayBy, roundNumber, qualifiers]);
+    // Priority: the fixed published date → saved round row → +7d guess.
+    setPlayBy(
+      fixedPlayBy ?? (state.nextRound?.play_by ? String(state.nextRound.play_by).slice(0, 10) : defaultPlayBy()),
+    );
+  }, [open, state.nextRound?.label, state.nextRound?.play_by, fixedPlayBy, roundNumber, qualifiers]);
 
   const today = new Date().toISOString().slice(0, 10);
+  // A fixed published date may already be in the past — that must not block the
+  // organiser from setting the section up.
+  const earliest = fixedPlayBy && fixedPlayBy < today ? fixedPlayBy : today;
   const setup: NextRoundSetup = { label: label.trim(), playBy: playBy || null };
   const problems = useMemo(
-    () => validateNextRoundSetup(setup, { requirePlayBy: !!selfScheduled, today }),
-    [setup.label, setup.playBy, selfScheduled, today],
+    () => validateNextRoundSetup(setup, { requirePlayBy: !!selfScheduled, today: earliest }),
+    [setup.label, setup.playBy, selfScheduled, earliest],
   );
   const options = useMemo(() => stageNameOptions(qualifiers, roundNumber), [qualifiers, roundNumber]);
 
@@ -192,15 +202,22 @@ export function NextRoundSetupDialog({
 
           <div className="space-y-1">
             <Label htmlFor="next-round-playby" className="text-xs">
-              Play by {selfScheduled ? "" : "(optional)"}
+              Play by {fixedPlayBy ? "(fixed)" : selfScheduled ? "" : "(optional)"}
             </Label>
             <Input
               id="next-round-playby"
               type="date"
               value={playBy}
-              min={today}
+              min={earliest}
+              disabled={!!fixedPlayBy}
               onChange={(e) => setPlayBy(e.target.value)}
             />
+            {fixedPlayBy && (
+              <p className="text-[11px] text-muted-foreground">
+                This round's date was set when the tournament was planned and every player has been told to play by
+                it, so it stays as it is. Change it in the tournament's round dates if it really must move.
+              </p>
+            )}
           </div>
 
           {problems.map((p) => (

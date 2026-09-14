@@ -7167,7 +7167,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
       case "registration": {
-        if (isDoubles && !partnerMode) m.push("Partner selection (Admin pairs / Players choose)");
+        if (isDoublesCategory && !partnerMode) m.push("Partner selection (Admin pairs / Players choose / Players rotate)");
         if (Number(entryFeeRand) > 0 && paymentMethods.size === 0) {
           m.push("At least one accepted payment method");
         }
@@ -7183,6 +7183,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           if (selectedPlayerIds.size < 2) m.push("Select at least 2 players");
         } else if (isDoubles) {
           if (doublesPairs.length < 2) m.push("Build at least 2 doubles pairs");
+        } else if (rotatePartners) {
+          if (selectedPlayerIds.size < 4) m.push("Select at least 4 players (rotating doubles needs a full court)");
         } else if (selectedPlayerIds.size < 3) {
           m.push("Select at least 3 players");
         }

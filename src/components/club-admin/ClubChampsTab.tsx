@@ -2252,7 +2252,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return list;
   }, [allVisitors, includeVisitors, selectedVisitorClubs, gender]);
 
-  const isDoubles = matchType === "doubles";
+  /** Doubles as a CATEGORY (labels, partner-selection UI, persisted match_type). */
+  const isDoublesCategory = matchType === "doubles";
+  /**
+   * Rotating partners: players enter individually and are re-paired every round
+   * (everyone partners everyone). There are no fixed pair entities, so the whole
+   * entity pipeline below behaves exactly like singles.
+   */
+  const rotatePartners = isDoublesCategory && partnerMode === "rotate";
+  /** Entity semantics: true only when the draw is built from FIXED pairs. */
+  const isDoubles = isDoublesCategory && !rotatePartners;
   const effectiveRegistrationMode = ((registrationMode || "open")) as "open" | "invite";
   const registrationUsesInviteList = effectiveRegistrationMode === "invite";
   const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationUsesInviteList;

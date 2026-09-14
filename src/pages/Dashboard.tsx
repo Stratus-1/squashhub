@@ -49,6 +49,7 @@ import { useMyPermissions, useMemberHasAdminAccess } from "@/hooks/use-club-perm
 import { useClubContext } from "@/contexts/ClubContext";
 import { useChampDailyToast } from "@/hooks/use-champ-daily-toast";
 import { useChampBookingReminder } from "@/hooks/use-champ-booking-reminder";
+import { usePendingEftApprovalToast } from "@/hooks/use-pending-eft-toast";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";
@@ -145,6 +146,8 @@ export default function Dashboard() {
   useChampDailyToast(clubId, tournamentsEnabled);
   // "Please make your court booking for your next upcoming game" nudge.
   useChampBookingReminder(clubId, myMemberId, tournamentsEnabled);
+  // Sticky reminder for finance staff when EFT payments await approval.
+  usePendingEftApprovalToast(clubId);
   // Recent match results for the active member
   const { data: recentMatches } = useQuery({
     queryKey: ["club-recent-matches", myMemberId || effectiveUserId],

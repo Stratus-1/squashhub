@@ -14989,6 +14989,16 @@ export type Database = {
         Args: { p_sync_secret: string }
         Returns: boolean
       }
+      mobile_player_home_payload: {
+        Args: {
+          p_club_id: string
+          p_from?: string
+          p_member_id: string
+          p_sync_secret: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       mobile_scoreable_tournament_matches: {
         Args: { p_club_id: string; p_member_id: string; p_sync_secret: string }
         Returns: Json

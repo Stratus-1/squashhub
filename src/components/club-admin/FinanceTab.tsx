@@ -451,6 +451,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
       toast.success("Payment confirmed & recorded as income");
       queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-eft-approval-count"] });
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to confirm");
@@ -465,6 +466,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       if (error) throw error;
       toast.success("Payment rejected");
       queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-eft-approval-count"] });
     } catch (err: any) {
       toast.error(err.message || "Failed to reject");
     }
@@ -724,6 +726,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       setResetConfirmText("");
       queryClient.invalidateQueries({ queryKey: ["club-journal-entries"] });
       queryClient.invalidateQueries({ queryKey: ["pending-member-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-eft-approval-count"] });
       queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
       queryClient.invalidateQueries({ queryKey: ["income-statement"] });
     } catch (e: any) {

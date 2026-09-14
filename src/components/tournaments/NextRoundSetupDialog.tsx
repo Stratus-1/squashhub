@@ -92,10 +92,13 @@ export function NextRoundSetupDialog({
   }, [open, state.nextRound?.label, state.nextRound?.play_by, fixedPlayBy, roundNumber, qualifiers]);
 
   const today = new Date().toISOString().slice(0, 10);
+  // A fixed published date may already be in the past — that must not block the
+  // organiser from setting the section up.
+  const earliest = fixedPlayBy && fixedPlayBy < today ? fixedPlayBy : today;
   const setup: NextRoundSetup = { label: label.trim(), playBy: playBy || null };
   const problems = useMemo(
-    () => validateNextRoundSetup(setup, { requirePlayBy: !!selfScheduled, today }),
-    [setup.label, setup.playBy, selfScheduled, today],
+    () => validateNextRoundSetup(setup, { requirePlayBy: !!selfScheduled, today: earliest }),
+    [setup.label, setup.playBy, selfScheduled, earliest],
   );
   const options = useMemo(() => stageNameOptions(qualifiers, roundNumber), [qualifiers, roundNumber]);
 

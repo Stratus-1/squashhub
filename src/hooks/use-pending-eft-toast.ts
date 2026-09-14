@@ -74,5 +74,9 @@ export function usePendingEftApprovalToast(clubId?: string | null) {
     );
   }, [clubId, canSeeFinance, pendingCount, navigate]);
 
-  useEffect(() => () => toast.dismiss(TOAST_ID), []);
+  useEffect(() => {
+    return () => {
+      toast.dismiss(TOAST_ID);
+    };
+  }, []);
 }

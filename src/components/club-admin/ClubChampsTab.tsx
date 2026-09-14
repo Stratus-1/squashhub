@@ -9618,12 +9618,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
             <WizardSection
               title={"Partner selection"}
-              summary={isDoubles ? (partnerMode === "admin" ? "Admin pairs players" : partnerMode === "players" ? "Players choose partners" : "Not set") : "Singles — no partners needed"}
-              complete={!isDoubles || !!partnerMode}
+              summary={isDoublesCategory ? (partnerMode === "admin" ? "Admin pairs players" : partnerMode === "players" ? "Players choose partners" : partnerMode === "rotate" ? "Players rotate automatically" : "Not set") : "Singles — no partners needed"}
+              complete={!isDoublesCategory || !!partnerMode}
               defaultOpen={true}
             >
             {/* Partner mode — doubles only */}
-            {isDoubles && (
+            {isDoublesCategory && (
               <div className="space-y-2">
                 <Label className="text-sm">Partner selection</Label>
                 <Select
@@ -9640,14 +9640,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     <SelectItem value="__placeholder" disabled>Please select</SelectItem>
                     <SelectItem value="admin">Admin pairs all players</SelectItem>
                     <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
+                    <SelectItem value="rotate">Players rotate automatically (everyone partners everyone)</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Only applies to doubles. Switch to Singles in Step 1 to hide this option.
+                  {partnerMode === "rotate"
+                    ? "No fixed pairs: just pick the players. Every round re-pairs them so each player partners every other player and faces everybody else. Points are banked per player."
+                    : "Only applies to doubles. Switch to Singles in Step 1 to hide this option."}
                 </p>
               </div>
             )}
-            {!isDoubles && (
+            {!isDoublesCategory && (
               <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
                 <strong className="text-foreground">Partner selection</strong> appears here for doubles tournaments. This tournament is set to <em>Singles</em> — go back to Step 1 (Category) and pick <em>Doubles</em> to enable partner pairing options.
               </div>

@@ -413,7 +413,7 @@ function buildInviteDetailLines(opts: {
   scoringMode: string;
   roundFormat: "" | "single_round_robin" | "double_round_robin" | "cross_league" | "swiss";
   byeHandling: "" | "no_match" | "walkover_win" | "neutral";
-  partnerMode: "" | "admin" | "players";
+  partnerMode: "" | "admin" | "players" | "rotate";
   startDate: string;
   endDate: string;
   startTime?: string;
@@ -489,6 +489,8 @@ function buildInviteDetailLines(opts: {
     lines.push(
       `Partner selection: ${opts.partnerMode === "players"
         ? "Players choose their own partner"
+        : opts.partnerMode === "rotate"
+        ? "Partners rotate every round — everyone partners everyone"
         : "Admin pairs all players"}`
     );
   }

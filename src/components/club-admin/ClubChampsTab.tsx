@@ -1659,6 +1659,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const directoryGroups = useMemo(() => groupByClub(directoryPlayers), [directoryPlayers]);
 
   /**
+   * Same privacy-safe directory, but driven by the Players step search box.
+   * Without this an organiser could find a cross-club player on the Invites
+   * step and then fail to find the very same person when picking players.
+   */
+  const { data: playerStepDirectory = [], isFetching: playerStepDirectoryLoading } = useQuery({
+    queryKey: [
+      "tournament-player-directory",
+      editingChampId,
+      clubId,
+      eligibilityScope,
+      playerSearch.trim().toLowerCase(),
+    ],
+    queryFn: () =>
+      fetchInviteDirectory({
+        tournamentId: editingChampId,
+        clubId,
+        scope: eligibilityScope,
+        search: playerSearch,
+        limit: 300,
+      }),
+    enabled: !!clubId && showWizard && playerSearch.trim().length >= 2,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+
+  /**
    * Invitable pool for audience resolution: the club roster plus any external
    * player the organiser deliberately picked from the directory.
    */

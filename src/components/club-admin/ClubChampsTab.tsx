@@ -3241,8 +3241,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       });
     }
     const sortedMembers = baseMembers.sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
-    return [...sortedMembers, ...visitorAsMembers] as any[];
-  }, [members, visitorAsMembers, selectedVisitorClubs]);
+
+    // Cross-club players the organiser can already see on the Invites step must
+    // also be pickable here. Same privacy-safe projection — no contact details.
+    const norm = (s: string | null | undefined) =>
+      (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const known = new Set<string>(sortedMembers.map((m: any) => m.id));
+    const knownNames = new Set<string>(
+      sortedMembers.map((m: any) => norm(m.name || m.profiles?.name)),
+    );
+    const external: any[] = [];
+    const pushExternal = (p: DirectoryPlayer) => {
+      if (!p.member_id || known.has(p.member_id)) return;
+      if (knownNames.has(norm(p.display_name))) return;
+      if (selectedVisitorClubs.size > 0 && p.club_name && !selectedVisitorClubs.has(p.club_name)) return;
+      known.add(p.member_id);
+      knownNames.add(norm(p.display_name));
+      external.push({
+        id: p.member_id,
+        name: p.display_name,
+        gender: p.gender,
+        ladder_position: p.ladder_position,
+        profiles: null,
+        home_club_name: p.club_name,
+        _isVisitor: true,
+        _homeClub: p.club_name || "Other club",
+      });
+    };
+    directoryPicked.forEach(pushExternal);
+    (playerStepDirectory as DirectoryPlayer[]).forEach(pushExternal);
+
+    return [...sortedMembers, ...visitorAsMembers, ...external] as any[];
+  }, [members, visitorAsMembers, selectedVisitorClubs, directoryPicked, playerStepDirectory]);
+
 
   const selectedPlayers = useMemo(
     () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),

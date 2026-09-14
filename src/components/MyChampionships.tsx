@@ -397,6 +397,7 @@ export function MyChampionships() {
         playerBName={entering?.b || ""}
         bestOf={entering?.champ?.best_of ?? null}
         pointsTarget={entering?.champ?.points_per_game ?? null}
+        scoringMode={(entering?.champ as any)?.scoring_mode ?? null}
       />
     </div>
   );

@@ -1779,6 +1779,7 @@ export default function Tournaments() {
         playerBName={resultMatch ? sideLabel(resultMatch.player_b, resultMatch.partner_b, resultMatch.placeholder_b, (resultChamp as any)?.match_type === "doubles") : ""}
         bestOf={(resultChamp as any)?.best_of}
         pointsTarget={(resultChamp as any)?.points_per_game}
+        scoringMode={(resultChamp as any)?.scoring_mode ?? null}
         onSaved={() => {
           setResultMatch(null);
           qc.invalidateQueries({ queryKey: ["tournaments-all-matches", champIds] });

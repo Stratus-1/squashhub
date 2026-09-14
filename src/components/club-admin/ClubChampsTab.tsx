@@ -10609,7 +10609,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       )
                     : allSelectablePlayers;
                   if (filtered.length === 0) {
-                    return <p className="text-sm text-muted-foreground py-4 text-center">No players match "{playerSearch}"</p>;
+                    return (
+                      <p className="text-sm text-muted-foreground py-4 text-center">
+                        {playerStepDirectoryLoading
+                          ? `Searching other clubs for "${playerSearch}"…`
+                          : `No players match "${playerSearch}"`}
+                      </p>
+                    );
                   }
                   return (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">

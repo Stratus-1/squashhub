@@ -3578,6 +3578,7 @@ export type Database = {
       club_member_fee_payments: {
         Row: {
           amount: number
+          auto_seeded: boolean
           club_member_id: string
           created_at: string
           fee_label: string
@@ -3598,6 +3599,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          auto_seeded?: boolean
           club_member_id: string
           created_at?: string
           fee_label: string
@@ -3618,6 +3620,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          auto_seeded?: boolean
           club_member_id?: string
           created_at?: string
           fee_label?: string

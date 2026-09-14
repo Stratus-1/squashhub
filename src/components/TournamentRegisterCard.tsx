@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
 import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/payment-methods";
+import { GroupEntryCard } from "@/components/tournaments/GroupEntryCard";
 
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,
@@ -499,6 +500,12 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           ) : (
             partnerPicker("Add your partner")
           )}
+        </div>
+      )}
+
+      {!notYetOpen && !isClosed && (
+        <div className="mt-2 pt-2 border-t border-border/60">
+          <GroupEntryCard champ={champ} clubId={clubId} memberId={memberId} paymentGateway={paymentGateway} />
         </div>
       )}
     </Card>

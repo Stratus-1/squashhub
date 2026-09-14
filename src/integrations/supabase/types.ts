@@ -2576,6 +2576,7 @@ export type Database = {
           invited_at: string | null
           invited_by_admin: boolean
           paid_at: string | null
+          paid_by_member_id: string | null
           partner_confirmed: boolean
           partner_member_id: string | null
           payment_ref: string | null
@@ -2604,6 +2605,7 @@ export type Database = {
           invited_at?: string | null
           invited_by_admin?: boolean
           paid_at?: string | null
+          paid_by_member_id?: string | null
           partner_confirmed?: boolean
           partner_member_id?: string | null
           payment_ref?: string | null
@@ -2632,6 +2634,7 @@ export type Database = {
           invited_at?: string | null
           invited_by_admin?: boolean
           paid_at?: string | null
+          paid_by_member_id?: string | null
           partner_confirmed?: boolean
           partner_member_id?: string | null
           payment_ref?: string | null
@@ -2668,6 +2671,13 @@ export type Database = {
             columns: ["fee_payment_id"]
             isOneToOne: false
             referencedRelation: "club_member_fee_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_registrations_paid_by_member_id_fkey"
+            columns: ["paid_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
           {
@@ -14179,6 +14189,10 @@ export type Database = {
         }
         Returns: Json
       }
+      charge_champ_entries_to_payer: {
+        Args: { p_payer_member_id: string; p_registration_ids: string[] }
+        Returns: Json
+      }
       charge_tournament_entry_to_account: {
         Args: { p_registration_id: string }
         Returns: Json
@@ -15329,6 +15343,10 @@ export type Database = {
           _member_id: string
           _partner_member_id: string
         }
+        Returns: Json
+      }
+      register_players_for_champ: {
+        Args: { p_champ_id: string; p_entries: Json; p_payer_member_id: string }
         Returns: Json
       }
       reject_club_claim: {

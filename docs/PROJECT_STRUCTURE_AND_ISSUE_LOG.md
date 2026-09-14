@@ -1387,3 +1387,11 @@ Tests: `src/test/booking-label.test.ts`.
 - **Cause:** the picker lived only in browser state; draft entry rows were derived from league assignments, so an unallocated roster produced no saved rows.
 - **Fix:** tournament drafts now store `draft_player_ids` separately. Settings autosave and Save Progress persist the checked roster, and setup restores it whenever no final entry allocation exists.
 - **Guard:** final `club_champs_entries` remain authoritative; draft roster saves do not accept invitations, alter registration/payment status, or send messages. Regression coverage verifies draft, empty, legacy, and allocated restore precedence.
+
+## 2026-09-14 — Enter and pay for other players (tournaments)
+
+Members can now enter one or more other eligible players into a tournament from the entry card, optionally choosing each player's partner, and settle all entry fees in one go (card, EFT or member account).
+
+- DB: `club_champs_registrations.paid_by_member_id`; RPCs `register_players_for_champ`, `charge_champ_entries_to_payer`; trigger `trg_fee_paid_marks_champ_entries` marks linked entries paid when the fee is settled (idempotent).
+- UI: `src/components/tournaments/GroupEntryCard.tsx` used by `TournamentRegisterCard.tsx`; helpers + tests in `src/lib/tournaments/group-entry.ts` and `src/test/group-entry.test.ts`.
+- Entered players get an in-app notification; already paid entries are never charged twice.

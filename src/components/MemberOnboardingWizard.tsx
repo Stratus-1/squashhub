@@ -571,37 +571,10 @@ export function MemberOnboardingWizard({
       }
     }
 
-    if (playsLeague) {
-      const selectedAssocIds = new Set(Object.keys(leagueSelections));
-      // League association fees — only for ticked leagues, and only when the
-      // league is NOT a tenant (tenant pass-through fees are seeded by the
-      // provision-association-member edge function on both sides).
-      for (const assoc of leagueAssocs) {
-        if (!selectedAssocIds.has(assoc.id)) continue;
-        const sel = leagueSelections[assoc.id];
-        if (!sel) continue;
-        if (sel.kind === "tenant") continue; // seeded by edge fn
-        if (sel.feeAmount > 0) {
-          items.push({
-            label: `${assoc.name}${assoc.abbreviation ? ` (${assoc.abbreviation})` : ""} Registration`,
-            amount: sel.feeAmount,
-            type: "association",
-          });
-        }
-      }
-      // National body fees (e.g. SSA) — exclude registration type
-      for (const nbf of nationalFees) {
-        if ((nbf as any).fee_type === "registration") continue;
-        if ((nbf as any).active === false) continue;
-        if (nbf.fee_annual && (nbf.fee_annual as number) > 0) {
-          items.push({
-            label: `${nbf.body_name}${nbf.abbreviation ? ` (${nbf.abbreviation})` : ""}`,
-            amount: nbf.fee_annual as number,
-            type: "national",
-          });
-        }
-      }
-    }
+    // League association (e.g. NSA) and national body (e.g. SSA) fees are NOT
+    // charged to the member here. Those are managed regionally/nationally and
+    // filtered down to the clubs, so joining never raises them.
+
     
     return items;
   }, [selectedCategory, playsLeague, leagueAssocs, leagueSelections, nationalFees, dueMonth, dueDay, isExistingMember]);

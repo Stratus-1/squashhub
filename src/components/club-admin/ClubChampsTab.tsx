@@ -91,6 +91,7 @@ import {
 } from "@/lib/tournaments/divisions";
 import { applyDivisionOrder, isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
 import { distributeIntoPools, flattenPools, moveVisual, normalisePoolAllocation, poolBlocks, poolCounts, poolLetter, type PoolAllocationMode } from "@/lib/tournaments/pools";
+import { generateRotatingDoublesSchedule, parseRotationEntity, rotationEntityId } from "@/lib/tournaments/rotating-doubles";
 import {
   collectProtectedSchedules,
   orphanedScheduleMessage,

@@ -1659,6 +1659,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const directoryGroups = useMemo(() => groupByClub(directoryPlayers), [directoryPlayers]);
 
   /**
+   * Same privacy-safe directory, but driven by the Players step search box.
+   * Without this an organiser could find a cross-club player on the Invites
+   * step and then fail to find the very same person when picking players.
+   */
+  const { data: playerStepDirectory = [], isFetching: playerStepDirectoryLoading } = useQuery({
+    queryKey: [
+      "tournament-player-directory",
+      editingChampId,
+      clubId,
+      eligibilityScope,
+      playerSearch.trim().toLowerCase(),
+    ],
+    queryFn: () =>
+      fetchInviteDirectory({
+        tournamentId: editingChampId,
+        clubId,
+        scope: eligibilityScope,
+        search: playerSearch,
+        limit: 300,
+      }),
+    enabled: !!clubId && showWizard && playerSearch.trim().length >= 2,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+
+  /**
    * Invitable pool for audience resolution: the club roster plus any external
    * player the organiser deliberately picked from the directory.
    */
@@ -3214,8 +3241,39 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       });
     }
     const sortedMembers = baseMembers.sort((a, b) => (a.ladder_position || 999) - (b.ladder_position || 999));
-    return [...sortedMembers, ...visitorAsMembers] as any[];
-  }, [members, visitorAsMembers, selectedVisitorClubs]);
+
+    // Cross-club players the organiser can already see on the Invites step must
+    // also be pickable here. Same privacy-safe projection — no contact details.
+    const norm = (s: string | null | undefined) =>
+      (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const known = new Set<string>(sortedMembers.map((m: any) => m.id));
+    const knownNames = new Set<string>(
+      sortedMembers.map((m: any) => norm(m.name || m.profiles?.name)),
+    );
+    const external: any[] = [];
+    const pushExternal = (p: DirectoryPlayer) => {
+      if (!p.member_id || known.has(p.member_id)) return;
+      if (knownNames.has(norm(p.display_name))) return;
+      if (selectedVisitorClubs.size > 0 && p.club_name && !selectedVisitorClubs.has(p.club_name)) return;
+      known.add(p.member_id);
+      knownNames.add(norm(p.display_name));
+      external.push({
+        id: p.member_id,
+        name: p.display_name,
+        gender: p.gender,
+        ladder_position: p.ladder_position,
+        profiles: null,
+        home_club_name: p.club_name,
+        _isVisitor: true,
+        _homeClub: p.club_name || "Other club",
+      });
+    };
+    directoryPicked.forEach(pushExternal);
+    (playerStepDirectory as DirectoryPlayer[]).forEach(pushExternal);
+
+    return [...sortedMembers, ...visitorAsMembers, ...external] as any[];
+  }, [members, visitorAsMembers, selectedVisitorClubs, directoryPicked, playerStepDirectory]);
+
 
   const selectedPlayers = useMemo(
     () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),
@@ -10551,7 +10609,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       )
                     : allSelectablePlayers;
                   if (filtered.length === 0) {
-                    return <p className="text-sm text-muted-foreground py-4 text-center">No players match "{playerSearch}"</p>;
+                    return (
+                      <p className="text-sm text-muted-foreground py-4 text-center">
+                        {playerStepDirectoryLoading
+                          ? `Searching other clubs for "${playerSearch}"…`
+                          : `No players match "${playerSearch}"`}
+                      </p>
+                    );
                   }
                   return (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">

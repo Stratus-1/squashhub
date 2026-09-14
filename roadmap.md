@@ -39,6 +39,11 @@
 - Visitor open tab for the evening
 - [x] Tournament save fails with tournaments_invite_audience_check when invite audience = "clubs" — allow the value in DB constraint.
 
+## Completed: Tournament player draft persistence
+- [x] Save checked players before league allocation.
+- [x] Restore the saved roster when tournament setup is reopened.
+- [x] Keep final allocations and registration/payment state authoritative and separate.
+
 ## Completed: Tournament fee added to member account
 - [x] Let organisers enable “Add to member account” per paid tournament.
 - [x] Let members explicitly choose “Add R… to my account” without duplicating the fee created at acceptance.

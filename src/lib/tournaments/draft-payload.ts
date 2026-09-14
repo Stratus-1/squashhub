@@ -62,3 +62,21 @@ export function sanitizeExtrasPayload<T extends Record<string, any>>(payload: T)
   }
   return out as Partial<T>;
 }
+
+/**
+ * Restore the organiser's player picker without confusing a draft selection
+ * with accepted registrations or a final division allocation.
+ *
+ * Once entry rows exist they are authoritative. Before that, a saved draft
+ * roster (including an intentionally empty one) wins over registration-derived
+ * fallbacks used by older tournaments.
+ */
+export function restoreDraftPlayerIds(
+  entryIds: string[],
+  draftPlayerIds: string[] | null | undefined,
+  registeredPlayerIds: string[],
+): string[] {
+  if (entryIds.length > 0) return Array.from(new Set(entryIds));
+  if (Array.isArray(draftPlayerIds)) return Array.from(new Set(draftPlayerIds));
+  return Array.from(new Set(registeredPlayerIds));
+}

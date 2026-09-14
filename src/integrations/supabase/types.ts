@@ -12809,6 +12809,7 @@ export type Database = {
           default_break_minutes: number
           description: string | null
           doubles_pairing_locked: boolean
+          draft_player_ids: string[] | null
           draw_locked: boolean
           draw_locked_at: string | null
           draw_locked_by: string | null
@@ -12898,6 +12899,7 @@ export type Database = {
           default_break_minutes?: number
           description?: string | null
           doubles_pairing_locked?: boolean
+          draft_player_ids?: string[] | null
           draw_locked?: boolean
           draw_locked_at?: string | null
           draw_locked_by?: string | null
@@ -12987,6 +12989,7 @@ export type Database = {
           default_break_minutes?: number
           description?: string | null
           doubles_pairing_locked?: boolean
+          draft_player_ids?: string[] | null
           draw_locked?: boolean
           draw_locked_at?: string | null
           draw_locked_by?: string | null

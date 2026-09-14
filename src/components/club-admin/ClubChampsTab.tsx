@@ -7105,6 +7105,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
   const getEntityLabel = (entityId: string) => {
     if (isByeEntity(entityId)) return "Bye";
+    const rot = parseRotationEntity(entityId);
+    if (rot) return `${getMemberName(rot.player1Id)} & ${getMemberName(rot.player2Id)}`;
     if (isDoubles) {
       const pair = doublesPairs.find((p) => p.id === entityId);
       return pair ? getPairLabel(pair) : "Unknown pair";

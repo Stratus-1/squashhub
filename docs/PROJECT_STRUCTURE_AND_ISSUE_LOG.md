@@ -1381,3 +1381,9 @@ Tests: `src/test/booking-label.test.ts`.
 - Root causes (2): (1) device-control UUID regex used \d-only groups, rejecting ~98% of hex UUID device IDs before the registry lookup; (2) the club_devices registry migration was never applied to the database.
 - Fix: corrected regex to hex groups [0-9a-f]; applied club_devices table + RLS + can_operate_device() + GRANTs, and backfilled existing Shelly door/court-light configs into the registry (5 devices: Gordons Bay door + 2 courts, demo club 2 courts).
 - Verified: regex test against all real device IDs (old rejects, new accepts; legacy-court-light-N still routes to legacy branch). device-control redeployed.
+
+## 2026-09-14 — Tournament player picker draft persistence
+- **Symptom:** players checked on the tournament Players page disappeared after leaving and reopening setup unless the organiser had already visited league allocation.
+- **Cause:** the picker lived only in browser state; draft entry rows were derived from league assignments, so an unallocated roster produced no saved rows.
+- **Fix:** tournament drafts now store `draft_player_ids` separately. Settings autosave and Save Progress persist the checked roster, and setup restores it whenever no final entry allocation exists.
+- **Guard:** final `club_champs_entries` remain authoritative; draft roster saves do not accept invitations, alter registration/payment status, or send messages. Regression coverage verifies draft, empty, legacy, and allocated restore precedence.

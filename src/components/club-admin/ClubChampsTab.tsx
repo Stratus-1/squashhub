@@ -31,7 +31,7 @@ import {
   directoryScopeLabel,
   type DirectoryPlayer,
 } from "@/lib/tournaments/invite-directory";
-import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
+import { restoreDraftPlayerIds, sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import {
   classifyEntrant,
   countEntrantsByCategory,
@@ -914,7 +914,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   });
 
   // Fields that live only on the tournaments table (not exposed by the legacy
-  // club_champs compatibility view): event type, entry limits, seeding source.
+  // club_champs compatibility view): event type, entry limits, seeding source,
+  // and the organiser's in-progress player selection.
   const champIdsKey = (existingChamps as any[]).map((c: any) => c.id).join(",");
   const { data: tournamentExtras } = useQuery({
     queryKey: ["tournament-extras", champIdsKey],
@@ -922,7 +923,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points, league_sources, league_source_modes")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points, league_sources, league_source_modes, draft_player_ids")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -2539,6 +2540,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       manual_draws: Object.keys(manualDraws).length > 0 ? manualDraws : null,
       seed_order: playerOrder.length > 0 ? playerOrder : null,
       manual_seed_divisions: manualSeedGroups.size > 0 ? Array.from(manualSeedGroups) : null,
+      // The picker is useful before anyone has been allocated to a division.
+      // Keep it separate from entries/registrations so saving progress never
+      // accepts an invite or changes a payment state.
+      draft_player_ids: Array.from(selectedPlayerIds),
     };
 
     const saveExtras = async (id: string) => {
@@ -7066,8 +7071,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         setGroupAssignments(assignments);
         setExtraDivisions(extras);
       }
-    } else if (registrations.length > 0) {
-      if (champ.match_type === "doubles") {
+    } else {
+      const restoredIds = restoreDraftPlayerIds(
+        [],
+        (ex.draft_player_ids as string[] | null | undefined),
+        registrations.map((r: any) => r.club_member_id),
+      );
+      setSelectedPlayerIds(new Set(restoredIds));
+
+      if (registrations.length === 0) {
+        // A draft roster has no accepted registration metadata to hydrate.
+      } else if (champ.match_type === "doubles" && champ.partner_mode !== "rotate") {
         const paired = registrations.filter((r: any) => r.partner_member_id);
         const pairs: DoublePair[] = paired.map((r: any) => ({
           id: crypto.randomUUID(),
@@ -7078,9 +7092,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // Accepted entrants still waiting for a partner — keep them visible
         // so the admin can pair them.
         const unpaired = registrations.filter((r: any) => !r.partner_member_id).map((r: any) => r.club_member_id);
-        setSelectedPlayerIds(new Set(unpaired));
+        setSelectedPlayerIds(new Set(Array.from(new Set([...restoredIds, ...unpaired]))));
       } else {
-        setSelectedPlayerIds(new Set(registrations.map((r: any) => r.club_member_id)));
         const assignments = new Map<string, number>();
         const extras = new Map<string, Set<number>>();
         choicesByMember.forEach((chosen, id) => {

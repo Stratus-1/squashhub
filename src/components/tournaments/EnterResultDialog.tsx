@@ -53,13 +53,17 @@ export function EnterResultDialog({
   playerBName,
   bestOf,
   pointsTarget,
+  scoringMode,
   onSaved,
 }: Props) {
   const qc = useQueryClient();
   const bo = bestOf && bestOf > 0 ? bestOf : 5;
   const target = pointsTarget && pointsTarget > 0 ? pointsTarget : 11;
+  const isBells = scoringMode === "time_capped_points";
   const [winner, setWinner] = useState<Side>("a");
   const [games, setGames] = useState<GameScore[]>(() => defaultGameScores("a", gamesToWin(bo), 0, target));
+  const [bellsA, setBellsA] = useState<string>("0");
+  const [bellsB, setBellsB] = useState<string>("0");
   const [saving, setSaving] = useState(false);
   // Generated once per submission attempt so a retry can never duplicate the row.
   const resultIdRef = useRef<string | null>(null);
@@ -68,12 +72,18 @@ export function EnterResultDialog({
     if (open) {
       setWinner("a");
       setGames(defaultGameScores("a", gamesToWin(bo), 0, target));
+      setBellsA("0");
+      setBellsB("0");
       resultIdRef.current = null;
     }
   }, [open, bo, target]);
 
   const tallies = useMemo(() => possibleGameTallies(bo), [bo]);
   const validation = useMemo(() => validateQuickResult(games, bo), [games, bo]);
+
+  const bellsPointsA = Math.max(0, parseInt(bellsA, 10) || 0);
+  const bellsPointsB = Math.max(0, parseInt(bellsB, 10) || 0);
+  const bellsValid = bellsPointsA > 0 || bellsPointsB > 0;
 
   const applyTally = (side: Side, won: number, lost: number) => {
     setWinner(side);
@@ -87,8 +97,70 @@ export function EnterResultDialog({
     resultIdRef.current = null;
   };
 
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["club-champ-matches"] });
+    qc.invalidateQueries({ queryKey: ["my-champ-matches"] });
+    qc.invalidateQueries({ queryKey: ["my-champ-matches-dashboard"] });
+    qc.invalidateQueries({ queryKey: ["my-champ-matches-events"] });
+    qc.invalidateQueries({ queryKey: ["club-champs-all-entries"] });
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+    qc.invalidateQueries({ queryKey: ["matches"] });
+  };
+
+  /**
+   * Bells: no games — one points total per side for the time-capped game.
+   * Saved through the SAME RPC the Bells marker uses, so each of the four
+   * players' running point totals accumulate exactly as if it had been marked.
+   */
+  const submitBells = async () => {
+    if (!match) return;
+    setSaving(true);
+    try {
+      const { error } = await rpcExt("save_bells_match_result", {
+        _match_id: match.id,
+        _side_a_points: bellsPointsA,
+        _side_b_points: bellsPointsB,
+      });
+      if (error) throw error;
+
+      toast.success(`Result saved · ${bellsPointsA}-${bellsPointsB}`);
+      invalidateAll();
+      onSaved?.();
+      onOpenChange(false);
+
+      // Best-effort mirror into match history, same as the Bells marker.
+      const aId = match.player_a_member_id || null;
+      const bId = match.player_b_member_id || null;
+      if (aId && bId && bellsPointsA !== bellsPointsB) {
+        try {
+          await rpcExt("save_marker_match_result", {
+            _match_id: crypto.randomUUID(),
+            _club_id: clubId || null,
+            _player_a_member_id: aId,
+            _player_b_member_id: bId,
+            _winner_member_id: bellsPointsA > bellsPointsB ? aId : bId,
+            _score: `${bellsPointsA}-${bellsPointsB}`,
+            _game_scores: null,
+            _duration_s: 0,
+            _confirmed: true,
+            _notes: `Bells result entered after play. ${playerAName} vs ${playerBName}. Final ${bellsPointsA}-${bellsPointsB}.`,
+            _tournament_match_id: match.id,
+          });
+        } catch (e) {
+          console.warn("Could not mirror bells result to matches:", e);
+        }
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Could not save the result — tap save to retry");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const submit = async () => {
     if (!match) return;
+    if (isBells) return submitBells();
+
     let payload;
     try {
       payload = buildQuickResultPayload(games, bo);

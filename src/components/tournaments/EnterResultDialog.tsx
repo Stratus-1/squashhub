@@ -30,8 +30,11 @@ interface Props {
   bestOf?: number | null;
   /** Points per game used to pre-fill the quick scores. */
   pointsTarget?: number | null;
+  /** Tournament scoring mode — "time_capped_points" (Bells) captures one points total per side. */
+  scoringMode?: string | null;
   onSaved?: () => void;
 }
+
 
 /**
  * Quick capture of an ALREADY PLAYED tournament match.

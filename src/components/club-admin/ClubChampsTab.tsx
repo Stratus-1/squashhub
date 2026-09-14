@@ -4207,8 +4207,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 assignedInBlock = new Map<number, number>();
                 blockOwnership = ownershipForBlock(block, sessionCourts, rotateOn);
               }
-              // Iterate courts in original order; ownership already encodes rotation.
-              for (const cid of sessionCourts) {
+              // Iterate courts starting from a rotating offset so that when
+              // only ONE match can play at a time (e.g. rotating doubles with
+              // 6 players — every game needs 4 of the 6, so games are serial),
+              // consecutive matches still spread across the available courts
+              // instead of always landing on the first court in the list.
+              const courtStartIdx = totalPlacedSoFar() % sessionCourts.length;
+              for (let ci = 0; ci < sessionCourts.length; ci++) {
+                const cid = sessionCourts[(courtStartIdx + ci) % sessionCourts.length];
                 const freeAt = courtBusyUntil.get(cid) ?? 0;
                 if (freeAt > nowAbs) continue;
 

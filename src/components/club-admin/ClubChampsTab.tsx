@@ -3637,6 +3637,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       return distributeIntoPools(ids, pools, { manual, knockout, mode: poolAllocation }).filter((g) => g.length > 0);
     };
     const ingestRounds = (gi: number, ids: string[]) => {
+      // Rotating-partner doubles: no fixed pairs. Each round re-pairs every
+      // player, so the draw comes from the rotation design, not a round robin.
+      if (rotatePartners) {
+        const rotation = generateRotatingDoublesSchedule(ids);
+        for (const g of rotation.games) {
+          allMatches.push({
+            groupNum: gi + 1,
+            roundNum: g.round,
+            entityA: rotationEntityId(g.sideA[0], g.sideA[1]),
+            entityB: rotationEntityId(g.sideB[0], g.sideB[1]),
+            leg: null,
+          });
+        }
+        return;
+      }
       // Round robin inside each pool of the league (1 pool = classic RR).
       const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
       for (const poolIds of pools) {

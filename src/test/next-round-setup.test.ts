@@ -142,8 +142,9 @@ describe("multi-division next-round scope inventory", () => {
     expect(scopes.map((scope) => [scope.qualifiers, scope.matchups])).toEqual([
       [34, 17], [5, 3], [4, 2], [3, 2],
     ]);
+    // Scopes carry plain round numbers; stage names are presentation-only.
     expect(scopes.map((scope) => scope.stageLabel)).toEqual([
-      "Round of 64", "Quarter-final", "Semi-final", "Semi-final",
+      "Round 2", "Round 2", "Round 2", "Round 2",
     ]);
     expect(new Set(scopes.flatMap((scope) => scope.qualifierIds)).size).toBe(46);
     expect(drawLayout(scopes[0].matchups)).toBe("list");

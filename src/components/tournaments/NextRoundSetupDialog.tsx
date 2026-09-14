@@ -202,15 +202,22 @@ export function NextRoundSetupDialog({
 
           <div className="space-y-1">
             <Label htmlFor="next-round-playby" className="text-xs">
-              Play by {selfScheduled ? "" : "(optional)"}
+              Play by {fixedPlayBy ? "(fixed)" : selfScheduled ? "" : "(optional)"}
             </Label>
             <Input
               id="next-round-playby"
               type="date"
               value={playBy}
-              min={today}
+              min={earliest}
+              disabled={!!fixedPlayBy}
               onChange={(e) => setPlayBy(e.target.value)}
             />
+            {fixedPlayBy && (
+              <p className="text-[11px] text-muted-foreground">
+                This round's date was set when the tournament was planned and every player has been told to play by
+                it, so it stays as it is. Change it in the tournament's round dates if it really must move.
+              </p>
+            )}
           </div>
 
           {problems.map((p) => (

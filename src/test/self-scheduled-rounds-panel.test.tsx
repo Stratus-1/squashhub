@@ -37,7 +37,7 @@ describe("SelfScheduledRounds panel", () => {
         totalRounds={2}
       />,
     );
-    expect(screen.getByText(/Completed rounds/)).toBeTruthy();
+    expect(screen.getByText(/Earlier rounds/)).toBeTruthy();
     const toggle = screen.getByText(/Club schedules this stage/);
     expect(toggle).toBeTruthy();
     fireEvent.click(toggle);

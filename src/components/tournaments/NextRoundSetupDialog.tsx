@@ -76,13 +76,20 @@ export function NextRoundSetupDialog({
   const [playBy, setPlayBy] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
+  // A round whose date was published when the tournament was planned is FIXED:
+  // players have been told to play by that date, so setting up a section may
+  // never move it.
+  const fixedPlayBy =
+    plannedPlayBy && /^\d{4}-\d{2}-\d{2}/.test(plannedPlayBy) ? plannedPlayBy.slice(0, 10) : null;
+
   useEffect(() => {
     if (!open) return;
     setLabel(suggestStageName({ plannedLabel: state.nextRound?.label, roundNumber, qualifiers }));
-    // Priority: saved round row → tournament's configured round deadline → +7d guess.
-    const planned = plannedPlayBy && /^\d{4}-\d{2}-\d{2}/.test(plannedPlayBy) ? plannedPlayBy.slice(0, 10) : null;
-    setPlayBy(state.nextRound?.play_by ? String(state.nextRound.play_by).slice(0, 10) : planned ?? defaultPlayBy());
-  }, [open, state.nextRound?.label, state.nextRound?.play_by, plannedPlayBy, roundNumber, qualifiers]);
+    // Priority: the fixed published date → saved round row → +7d guess.
+    setPlayBy(
+      fixedPlayBy ?? (state.nextRound?.play_by ? String(state.nextRound.play_by).slice(0, 10) : defaultPlayBy()),
+    );
+  }, [open, state.nextRound?.label, state.nextRound?.play_by, fixedPlayBy, roundNumber, qualifiers]);
 
   const today = new Date().toISOString().slice(0, 10);
   const setup: NextRoundSetup = { label: label.trim(), playBy: playBy || null };

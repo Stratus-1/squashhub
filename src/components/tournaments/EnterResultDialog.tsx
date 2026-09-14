@@ -363,16 +363,18 @@ export function EnterResultDialog({
               : validation.error}
           </p>
         </div>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button size="sm" onClick={submit} disabled={saving || !validation.valid}>
+          <Button size="sm" onClick={submit} disabled={saving || (isBells ? !bellsValid : !validation.valid)}>
             {saving && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
             Save result
           </Button>
         </div>
+
       </DialogContent>
     </Dialog>
   );

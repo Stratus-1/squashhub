@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { matchesToClose, sideOf, withdrawalUpdates } from "@/lib/tournaments/withdraw";
+import {
+  matchesToClose,
+  sideOf,
+  withdrawalUpdates,
+  removeFromSeedOrder,
+  removeFromManualDraws,
+} from "@/lib/tournaments/withdraw";
+
 
 const m = (over: Partial<any> = {}) => ({
   id: "m1",

@@ -46,6 +46,12 @@ export interface DrawEntrant {
   /** Free-form context shown on the card ("Ladder 12", "B League"). */
   rankLabel?: string | null;
   divisionLabel?: string | null;
+  /**
+   * Organiser has taken this player out of this draw (pulled out / not
+   * playing). They may stay off the board without blocking confirmation.
+   */
+  withdrawn?: boolean;
+
 }
 
 export interface DrawSlotRef {

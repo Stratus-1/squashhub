@@ -27,6 +27,7 @@ import { InviteScopeTree } from "@/components/tournaments/InviteScopeTree";
 
 import {
   fetchInviteDirectory,
+  fetchTournamentEntrants,
   groupByClub,
   directoryScopeLabel,
   type DirectoryPlayer,
@@ -7018,6 +7019,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const registrations = filterParticipatingEntrants(allRegistrations as any[], {
       paymentRequired: champPaymentRequired,
     });
+
+    /**
+     * Entrants can come from several clubs. The player pool is built from the
+     * host club roster plus the search-driven directory, so without this the
+     * cross-club entrants would vanish from the Players/Allocate steps when the
+     * tournament is reopened. Pull everyone already on the list and make them
+     * selectable.
+     */
+    try {
+      const entrantDirectory = await fetchTournamentEntrants(champ.id);
+      if (entrantDirectory.length > 0) {
+        setDirectoryPicked((prev) => {
+          const next = new Map(prev);
+          entrantDirectory.forEach((p) => {
+            if (p.member_id) next.set(p.member_id, p);
+          });
+          return next;
+        });
+      }
+    } catch {
+      // Non-fatal: the host roster still loads.
+    }
 
     /**
      * What each entrant actually accepted: division_choices are stored 1-based

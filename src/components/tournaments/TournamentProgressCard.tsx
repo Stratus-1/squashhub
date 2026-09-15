@@ -281,6 +281,22 @@ export function TournamentProgressCard({
           }}
         />
       )}
+
+      {finalsGroup !== null && (
+        <LeagueFinalsDrawDialog
+          open
+          onOpenChange={(o) => !o && setFinalsGroup(null)}
+          champId={champId}
+          groupNumber={finalsGroup}
+          sections={states.filter((s) => s.groupNumber === finalsGroup)}
+          divisionLabel={`${label(finalsGroup)} · Finals`}
+          onConfirmed={() => {
+            const gn = finalsGroup;
+            setFinalsGroup(null);
+            if (gn !== null) onSchedule?.(gn);
+          }}
+        />
+      )}
     </div>
   );
 

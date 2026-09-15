@@ -176,9 +176,11 @@ export function TournamentProgressCard({
             size="sm"
             disabled={generate.isPending}
             onClick={() =>
-              viaBoard
-                ? setSetupKey(keyOf(s))
-                : generate.mutate({ groupNumber: s.groupNumber, section: s.section })
+              finalsBoard
+                ? setFinalsGroup(s.groupNumber)
+                : viaBoard
+                  ? setSetupKey(keyOf(s))
+                  : generate.mutate({ groupNumber: s.groupNumber, section: s.section })
             }
           >
             {generate.isPending ? (
@@ -186,7 +188,11 @@ export function TournamentProgressCard({
             ) : (
               <Sparkles className="mr-1 h-4 w-4" />
             )}
-            {viaBoard ? prepareActionLabel(s.nextStageLabel, (st?.currentRound ?? 0) + 1) : s.actionLabel}
+            {finalsBoard
+              ? `Draw ${s.stageLabel.toLowerCase()}`
+              : viaBoard
+                ? prepareActionLabel(s.nextStageLabel, (st?.currentRound ?? 0) + 1)
+                : s.actionLabel}
           </Button>
         )}
         {canManage && s.action === "schedule" && onSchedule && (

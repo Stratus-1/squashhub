@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { FeesPayableSchedule } from "./FeesPayableSchedule";
 import { AffiliationBillingCard } from "./AffiliationBillingCard";
+import { FamilyPackageCard } from "./FamilyPackageCard";
 
 import { useClubCurrency } from "@/hooks/use-currency";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
@@ -340,6 +341,8 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
           </Table>
         </Card>
       </div>
+
+      {!isAssociation && <FamilyPackageCard clubId={clubId} />}
 
       <Card className="p-4 bg-muted/50 space-y-3">
         <div className="flex items-center gap-3">

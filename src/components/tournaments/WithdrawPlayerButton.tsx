@@ -14,7 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, UserMinus } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
-import { withdrawalUpdates } from "@/lib/tournaments/withdraw";
+import { withdrawalUpdates, removeFromSeedOrder, removeFromManualDraws } from "@/lib/tournaments/withdraw";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,6 +33,31 @@ interface Props {
   /** Current (not past) tournaments on the Games screen. */
   champs: any[];
 }
+
+/**
+ * Take the player out of the organiser's saved setup as well: seeding order,
+ * any confirmed draw board and the draft roster. Without this they keep
+ * showing up in the setup lists after being pulled out, and removing them from
+ * the board makes "Confirm draw" impossible.
+ */
+export async function purgeFromSetup(champId: string, memberId: string) {
+  const { data } = await fromExt("tournaments")
+    .select("seed_order, manual_draws, draft_player_ids")
+    .eq("id", champId)
+    .maybeSingle();
+  if (!data) return;
+  const patch: Record<string, any> = {};
+  const seed = removeFromSeedOrder((data as any).seed_order, [memberId]);
+  if (seed) patch.seed_order = seed;
+  const draws = removeFromManualDraws((data as any).manual_draws, [memberId]);
+  if (draws) patch.manual_draws = draws;
+  const draft = removeFromSeedOrder((data as any).draft_player_ids, [memberId]);
+  if (draft) patch.draft_player_ids = draft;
+  if (Object.keys(patch).length > 0) {
+    await fromExt("tournaments").update(patch as any).eq("id", champId);
+  }
+}
+
 
 export function WithdrawPlayerButton({ champs }: Props) {
   const qc = useQueryClient();

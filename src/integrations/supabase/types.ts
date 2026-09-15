@@ -15908,6 +15908,21 @@ export type Database = {
           club_id: string
         }[]
       }
+      tournament_entrant_directory: {
+        Args: { p_tournament_id: string }
+        Returns: {
+          club_id: string
+          club_name: string
+          display_name: string
+          gender: string
+          invite_status: string
+          is_own_club: boolean
+          is_user: boolean
+          ladder_position: number
+          member_id: string
+          ranking_points: number
+        }[]
+      }
       tournament_fee_allocation: {
         Args: { p_tournament_id: string }
         Returns: {

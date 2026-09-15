@@ -37,7 +37,10 @@ interface Props {
   onUndo?: () => void;
   canUndo?: boolean;
   readOnly?: boolean;
+  /** Mark a benched player as not playing this draw (or put them back). */
+  onToggleWithdrawn?: (entrantId: string, withdrawn: boolean) => void;
 }
+
 
 const BENCH_ID = "draw-bench";
 

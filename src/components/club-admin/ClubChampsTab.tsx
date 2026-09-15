@@ -187,6 +187,9 @@ import { owningAssociation } from "@/lib/tournaments/eligibility";
 import { DoublesPairsPanel } from "@/components/club-admin/DoublesPairsPanel";
 import { z } from "zod";
 import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";
+import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
+import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
+
 
 interface ClubChampsTabProps {
   /** Primary host club — its courts are the default venue and new events are filed under it. */

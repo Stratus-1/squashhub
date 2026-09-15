@@ -131,15 +131,25 @@ export function MemberOnboardingWizard({
   const [rulesAccepted, setRulesAccepted] = useState(false);
   const acceptanceStatement = clubRules?.acceptance_statement || DEFAULT_ACCEPTANCE_STATEMENT;
 
+  // Family membership: only shown once the joiner picks the club's family
+  // package. Set from the chosen fee category further down.
+  const [isFamilyPrimary, setIsFamilyPrimary] = useState(false);
+  const [familyDrafts, setFamilyDrafts] = useState<FamilyDraft[]>([]);
+
   const STEPS = useMemo(() => {
     const steps = [...BASE_STEPS];
     // Rules sit between "Membership" and "Fees & Payment" so members read them
     // before anything is charged.
     if (rulesApply) steps.splice(3, 0, RULES_STEP);
+    // Family members come straight after the fees they relate to.
+    if (isFamilyPrimary) {
+      const feesAt = steps.findIndex((s) => s.id === "fees");
+      steps.splice(feesAt + 1, 0, FAMILY_STEP);
+    }
     if (faceRequired) steps.push(FACE_STEP);
     steps.push(DONE_STEP);
     return steps;
-  }, [faceRequired, rulesApply]);
+  }, [faceRequired, rulesApply, isFamilyPrimary]);
 
   // Face enrolment state
   const videoRef = useRef<HTMLVideoElement>(null);

@@ -1,3 +1,48 @@
+# ***** PERMANENT STITCH STANDARD — DO NOT CHANGE WITHOUT VALIDATION *****
+
+**Status: CONFIRMED WORKING. Nelspruit (nsc) once-off Stitch Express TEST payment tested successfully by Willem on 15 Sep 2026 — payer was returned to the club app.** This is the reference implementation for EVERY club, test and live.
+
+## The standard (non-negotiable)
+
+1. **Club-specific return URL, derived from the club's subdomain.** Once-off Stitch Express payments must return to
+   `https://<club-subdomain>.squashhub.co.za/my-account`, built generically from the `clubs.subdomain` column.
+   There must be NO per-club code branches (no Nelspruit exception, no Gordon's Bay exception). nsc → `https://nsc.squashhub.co.za/my-account`; gb → `https://gb.squashhub.co.za/my-account`.
+2. **Never substitute the shared callback.** A valid club-subdomain return URL must never be replaced by
+   `https://www.squashhub.co.za/pay/return`, by the apex, or by a club-hosted `/pay/return` path, and the
+   `redirect_url` query parameter must never be silently stripped from the Express hosted link. The shared
+   apex callback survives only as a last resort when a club has no usable subdomain.
+3. **`/my-account` is the proven path.** `/pay/return` on a club host is normalised to `/my-account`. A deliberately
+   supplied, valid club-specific destination other than `/pay/return` is preserved as supplied.
+4. **Test and live behave identically.** Credential type (`test-` Express client vs live/client-portal) has NO effect on
+   the redirect rule. Express token/payment calls succeed on test credentials; an `invalid_client` on
+   `secure.stitch.money/connect/token` merely means that club has no payment-request credentials — expected, harmless,
+   and unrelated to redirects.
+5. **Webhooks and redirects are separate responsibilities.** Webhooks (`stitch-webhook`, direct function URL) process
+   payment status events and are the authority for settlement. Redirects only decide where the browser lands. Never
+   change the working webhook implementation in order to fix a browser redirect, and never rely on the redirect to
+   confirm a payment.
+6. **Onboarding requirement for every new club.** In the club's own Stitch Express dashboard
+   (Settings → Redirect URLs, max five URLs, PER CLUB — not platform-wide) register
+   `https://<sub>.squashhub.co.za/my-account` and, where Stitch permits it, `https://<sub>.squashhub.co.za/*`.
+   The Banking tab shows the club's exact URLs. The application then generates the matching club-specific redirect.
+
+## Why (the regression this replaces)
+
+On 17 Aug 2026 `sanitizeReturnUrl()` was changed to ignore its argument and always return the shared
+`https://www.squashhub.co.za/pay/return`. No club has that host in its own Stitch redirect list, so Stitch Express
+404'd the hosted link ("Page Not Found"), the reachability probe then dropped `redirect_url` entirely, and every payer
+— Nelspruit AND Gordon's Bay — was parked on Stitch's own payment-success page. A later partial fix rewrote only the
+host and kept the `/pay/return` path, which still 404'd. Restoring the 09 Aug shape (club subdomain + `/my-account`)
+fixed it, as confirmed by the 15 Sep 2026 Nelspruit test.
+
+## DO NOT CHANGE
+
+Do not alter `sanitizeReturnUrl()`, `appendExpressRedirectUrl()` or `appendRedirectIfReachable()` in
+`supabase/functions/stitch-create-payment/index.ts` without first validating the change end-to-end against the
+known-working Nelspruit (nsc) and Gordon's Bay (gb) flows. Expected fresh link shape:
+`https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2F<sub>.squashhub.co.za%2Fmy-account`.
+Recurring/mandate, bar/POS and other gateway flows are separate and out of scope of this standard.
+
 # 2026-09-15b — Express hosted link 404: club subdomain was right, path `/pay/return` was wrong
 
 - **Symptom:** After the club-subdomain fix, the generated Nelspruit TEST link `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2Fnsc.squashhub.co.za%2Fpay%2Freturn` returned Stitch "Page Not Found".

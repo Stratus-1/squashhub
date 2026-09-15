@@ -959,6 +959,7 @@ export function MemberOnboardingWizard({
     if (step === 1) return name.trim().length >= 2;
     if (step === 2) return true;
     if (currentStepId === "rules") return !rulesRequireAcceptance || rulesAccepted;
+    if (currentStepId === "family") return !familyDraftError(familyPrimaryCat, familyDrafts);
     if (currentStepId === "face") return !!capturedPhoto;
     return true;
   };
@@ -1307,6 +1308,24 @@ export function MemberOnboardingWizard({
             )}
 
             {/* ─── FACE ENROLMENT ─── */}
+            {currentStepId === "family" && familyPrimaryCat && (
+              <motion.div key="family" {...slideVariants} className="flex-1 space-y-4 pt-2">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-heading">{FAMILY_PRIMARY_LABEL}</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    Who else is on your family membership? You can skip this and add them later.
+                  </DialogDescription>
+                </DialogHeader>
+                <FamilyMembersStep
+                  primary={familyPrimaryCat}
+                  additional={familyAdditionalCat}
+                  drafts={familyDrafts}
+                  onChange={setFamilyDrafts}
+                  money={money}
+                />
+              </motion.div>
+            )}
+
             {currentStepId === "face" && (
               <motion.div key="face" {...slideVariants} className="flex-1 space-y-4 pt-2">
                 <DialogHeader>

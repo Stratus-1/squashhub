@@ -542,6 +542,21 @@ export function MemberOnboardingWizard({
   }, [step, clubId, memberNumber, user?.id, isExistingMember]);
 
   const selectedCategory = feeCategories.find(c => c.id === feeCategoryId);
+  const familyPrimaryCat = (selectedCategory as any)?.family_role === "primary"
+    ? (selectedCategory as unknown as FamilyCategory)
+    : null;
+  const familyAdditionalCat = useMemo(() => {
+    const id = familyPrimaryCat?.family_additional_category_id;
+    if (!id) return null;
+    return (feeCategories.find((c) => c.id === id) as unknown as FamilyCategory) || null;
+  }, [feeCategories, familyPrimaryCat?.family_additional_category_id]);
+
+  useEffect(() => {
+    const on = !!familyPrimaryCat;
+    setIsFamilyPrimary(on);
+    if (!on) setFamilyDrafts([]);
+  }, [familyPrimaryCat?.id]);
+
   // Renewal date comes from the fee category itself (falls back to the club default).
   const dueMonth = (selectedCategory as any)?.due_month || (club as any)?.member_fee_due_month || 1;
   const dueDay = (selectedCategory as any)?.due_day || 1;

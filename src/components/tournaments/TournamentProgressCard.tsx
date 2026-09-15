@@ -21,6 +21,7 @@ import { sectionProgression, type SectionProgression } from "@/lib/tournaments/k
 import { divisionControls, groupStageControl, type ChampionScope, type SectionControl } from "@/lib/tournaments/round-control";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
+import { LeagueFinalsDrawDialog } from "./LeagueFinalsDrawDialog";
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { sectionLetter } from "@/lib/tournaments/knockout";
 import { outstandingDrawsHeadline, readyNextRoundScopes } from "@/lib/tournaments/next-round-setup";
@@ -83,6 +84,8 @@ export function TournamentProgressCard({
   const generate = useGenerateNextRound({ champId, states, selfScheduled });
   const [draw, setDraw] = useState<{ key: string; mode: NextRoundDrawMode } | null>(null);
   const [setupKey, setSetupKey] = useState<string | null>(null);
+  // League whose cross-pool finals draw board is open.
+  const [finalsGroup, setFinalsGroup] = useState<number | null>(null);
   const [setup, setSetup] = useState<NextRoundReady | null>(null);
   const keyOf = (s: { groupNumber: number; section: number }) => `${s.groupNumber}-${s.section}`;
   const drawState = draw ? states.find((s) => keyOf(s) === draw.key) ?? null : null;
@@ -127,11 +130,12 @@ export function TournamentProgressCard({
 
   const renderSection = (s: SectionControl, multi: boolean) => {
     const st = stateFor(s);
-    // Section draws go through the visual board; the cross-pool league final
-    // (section 0) has only one possible pairing set, so it is generated direct.
+    // Every draw goes through the visual board, including the cross-pool
+    // league finals (section 0), where the organiser picks the pairings.
     const viaBoard = !!st && s.section > 0;
+    const finalsBoard = s.section === 0 && !st && s.action === "generate";
     const safety = st ? roundRedrawState(st.currentRoundMatches as any[]) : null;
-    const canRedraw = !!st && s.section > 0 && s.action !== "generate" && !s.decided && !!safety?.canRedraw;
+    const canRedraw = !!st && s.action !== "generate" && !s.decided && !!safety?.canRedraw;
 
     return (
     <div
@@ -159,7 +163,7 @@ export function TournamentProgressCard({
         {!s.decided && s.action === "await_results" && s.blockedReason && (
           <p className="text-[11px] text-muted-foreground">{s.blockedReason}</p>
         )}
-        {canManage && safety && !safety.canRedraw && safety.played > 0 && !s.decided && s.section > 0 && (
+        {canManage && safety && !safety.canRedraw && safety.played > 0 && !s.decided && (
           <p className="text-[11px] text-muted-foreground">{safety.reason}</p>
         )}
       </div>
@@ -175,9 +179,11 @@ export function TournamentProgressCard({
             size="sm"
             disabled={generate.isPending}
             onClick={() =>
-              viaBoard
-                ? setSetupKey(keyOf(s))
-                : generate.mutate({ groupNumber: s.groupNumber, section: s.section })
+              finalsBoard
+                ? setFinalsGroup(s.groupNumber)
+                : viaBoard
+                  ? setSetupKey(keyOf(s))
+                  : generate.mutate({ groupNumber: s.groupNumber, section: s.section })
             }
           >
             {generate.isPending ? (
@@ -185,7 +191,11 @@ export function TournamentProgressCard({
             ) : (
               <Sparkles className="mr-1 h-4 w-4" />
             )}
-            {viaBoard ? prepareActionLabel(s.nextStageLabel, (st?.currentRound ?? 0) + 1) : s.actionLabel}
+            {finalsBoard
+              ? `Draw ${s.stageLabel.toLowerCase()}`
+              : viaBoard
+                ? prepareActionLabel(s.nextStageLabel, (st?.currentRound ?? 0) + 1)
+                : s.actionLabel}
           </Button>
         )}
         {canManage && s.action === "schedule" && onSchedule && (
@@ -269,6 +279,22 @@ export function TournamentProgressCard({
             setDraw(null);
             setSetup(null);
             onSchedule?.(drawState.groupNumber);
+          }}
+        />
+      )}
+
+      {finalsGroup !== null && (
+        <LeagueFinalsDrawDialog
+          open
+          onOpenChange={(o) => !o && setFinalsGroup(null)}
+          champId={champId}
+          groupNumber={finalsGroup}
+          sections={states.filter((s) => s.groupNumber === finalsGroup)}
+          divisionLabel={`${label(finalsGroup)} · Finals`}
+          onConfirmed={() => {
+            const gn = finalsGroup;
+            setFinalsGroup(null);
+            if (gn !== null) onSchedule?.(gn);
           }}
         />
       )}

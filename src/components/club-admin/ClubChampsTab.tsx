@@ -7035,7 +7035,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const hasEntries = entries && entries.length > 0;
 
     if (hasEntries) {
-      if (champ.match_type === "doubles") {
+      // Rotating-partner doubles is entered as individual players (each entry
+      // row is one player with no fixed partner), so it hydrates the player
+      // picker exactly like singles — not the pairs board.
+      if (champ.match_type === "doubles" && champ.partner_mode !== "rotate") {
         const pairs: DoublePair[] = entries.map((e: any) => ({
           id: crypto.randomUUID(),
           player1Id: e.club_member_id,
@@ -7148,7 +7151,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
 
     // Snapshot loaded entities so we can detect edits and prompt for rebuild.
-    if (champ.match_type === "doubles") {
+    if (champ.match_type === "doubles" && champ.partner_mode !== "rotate") {
       const pairSig = (entries || []).map((e: any) => `${e.club_member_id}+${e.partner_member_id}`).sort().join("|");
       setEntitiesSnapshotAtLoad(`d:${pairSig}`);
     } else {

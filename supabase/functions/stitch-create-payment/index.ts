@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     const merchantReference = `${refPrefix}-${String(session.id).slice(0, 8)}`
       .replace(/[^a-zA-Z0-9\s\-)]/g, "").slice(0, 50) || String(session.id).slice(0, 50);
 
-    const safeReturnUrl = sanitizeReturnUrl(return_url);
+    const safeReturnUrl = sanitizeReturnUrl(return_url, String((club as any).subdomain || "").trim());
 
     // 2. Prefer Stitch's documented Payment Request flow. Unlike Express
     // payment-links, this hosted URL honours `redirect_uri` after success.
@@ -210,9 +210,53 @@ Deno.serve(async (req) => {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
-function sanitizeReturnUrl(_raw: string) {
+// Restored to the 09 Aug 2026 confirmed-working shape (regression introduced
+// 17 Aug 2026, when this ignored its argument and always returned the shared
+// apex callback — a host no club has registered with Stitch, which made the
+// hosted link 404 and the redirect get stripped entirely).
+// Stitch validates the redirect host against the club tenant that owns the
+// credentials: apex/`www` → 404, club subdomain → 200. Each club registers
+// `https://<sub>.squashhub.co.za/*` in its own Stitch portal.
+function sanitizeReturnUrl(raw: string, clubSubdomain = ""): string {
   const canonicalReturnUrl = `${PUBLIC_APP_ORIGIN}/pay/return`;
-  return canonicalReturnUrl;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === "gbsquash:") return raw;
+    if (u.hostname.endsWith(".supabase.co")) return canonicalReturnUrl;
+
+    // `www.squashhub.co.za` is not served — fold onto the apex first.
+    if (u.hostname.toLowerCase() === "www.squashhub.co.za") u.hostname = "squashhub.co.za";
+
+    const normalizedSubdomain = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    const incomingHost = u.hostname.toLowerCase();
+    if (normalizedSubdomain && (incomingHost === "squashhub.co.za" || incomingHost.endsWith(".lovable.app"))) {
+      u.protocol = "https:";
+      u.hostname = `${normalizedSubdomain}.squashhub.co.za`;
+      u.port = "";
+    }
+
+    const host = u.hostname.toLowerCase();
+    const allowed =
+      host === "squashhub.co.za" ||
+      host.endsWith(".squashhub.co.za") ||
+      host.endsWith(".lovable.app") ||
+      host === "localhost";
+    if (!allowed) {
+      return normalizedSubdomain
+        ? `https://${normalizedSubdomain}.squashhub.co.za/my-account`
+        : canonicalReturnUrl;
+    }
+
+    u.search = "";
+    u.hash = "";
+    if (u.pathname === "/" || u.pathname === "") u.pathname = "/my-account";
+    return u.toString();
+  } catch {
+    const normalizedSubdomain = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    return normalizedSubdomain
+      ? `https://${normalizedSubdomain}.squashhub.co.za/my-account`
+      : canonicalReturnUrl;
+  }
 }
 
 // CANONICAL helper (restored 17 Aug 2026 to the 09 Aug confirmed-working
@@ -234,13 +278,23 @@ function appendExpressRedirectUrl(link: string, returnUrl: string) {
 
 async function appendRedirectIfReachable(link: string, returnUrl: string) {
   const candidate = appendExpressRedirectUrl(link, returnUrl);
+  // A club-subdomain return URL is what Stitch's per-club redirect list matches
+  // on. Keep it even if this probe is unhappy — stripping it (the 17 Aug
+  // behaviour) parks every payer on Stitch's success page.
+  let isClubHost = false;
+  try {
+    const host = new URL(returnUrl).hostname.toLowerCase();
+    isClubHost = host.endsWith(".squashhub.co.za") && host !== "www.squashhub.co.za";
+  } catch { /* keep default */ }
+
   try {
     const response = await fetch(candidate, { method: "GET", redirect: "follow" });
     if (response.ok) return candidate;
-    console.warn(`[stitch-create-payment] shared callback rejected (${response.status}); using bare hosted link`);
+    console.warn(`[stitch-create-payment] redirect probe rejected (${response.status}) for ${returnUrl}`);
   } catch (error) {
-    console.warn("[stitch-create-payment] callback check failed; using bare hosted link", error);
+    console.warn("[stitch-create-payment] redirect probe failed", error);
   }
+  if (isClubHost) return candidate;
   return link;
 }
 

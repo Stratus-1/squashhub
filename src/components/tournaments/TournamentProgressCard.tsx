@@ -127,11 +127,12 @@ export function TournamentProgressCard({
 
   const renderSection = (s: SectionControl, multi: boolean) => {
     const st = stateFor(s);
-    // Section draws go through the visual board; the cross-pool league final
-    // (section 0) has only one possible pairing set, so it is generated direct.
+    // Every draw goes through the visual board, including the cross-pool
+    // league finals (section 0), where the organiser picks the pairings.
     const viaBoard = !!st && s.section > 0;
+    const finalsBoard = s.section === 0 && !st && s.action === "generate";
     const safety = st ? roundRedrawState(st.currentRoundMatches as any[]) : null;
-    const canRedraw = !!st && s.section > 0 && s.action !== "generate" && !s.decided && !!safety?.canRedraw;
+    const canRedraw = !!st && s.action !== "generate" && !s.decided && !!safety?.canRedraw;
 
     return (
     <div

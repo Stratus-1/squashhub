@@ -83,6 +83,8 @@ export function TournamentProgressCard({
   const generate = useGenerateNextRound({ champId, states, selfScheduled });
   const [draw, setDraw] = useState<{ key: string; mode: NextRoundDrawMode } | null>(null);
   const [setupKey, setSetupKey] = useState<string | null>(null);
+  // League whose cross-pool finals draw board is open.
+  const [finalsGroup, setFinalsGroup] = useState<number | null>(null);
   const [setup, setSetup] = useState<NextRoundReady | null>(null);
   const keyOf = (s: { groupNumber: number; section: number }) => `${s.groupNumber}-${s.section}`;
   const drawState = draw ? states.find((s) => keyOf(s) === draw.key) ?? null : null;

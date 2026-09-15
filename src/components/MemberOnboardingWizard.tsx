@@ -900,6 +900,36 @@ export function MemberOnboardingWizard({
         }
       }
 
+      // 5. Family members captured during joining. Each person keeps their own
+      //    membership; the charge is raised on their own account with this
+      //    member recorded as the payer (handled inside family_add_member).
+      if (familyPrimaryCat && familyDrafts.length > 0 && cmId) {
+        const failed: string[] = [];
+        for (const d of familyDrafts) {
+          try {
+            const payload: any = familyDraftPayload(cmId, d);
+            if (d.mode === "existing") {
+              const { data: found } = await fromExt("club_members")
+                .select("id")
+                .eq("club_id", clubId)
+                .eq("club_member_number", d.memberNo.trim())
+                .maybeSingle();
+              if (!found) { failed.push(d.memberNo.trim()); continue; }
+              payload._existing_member_id = (found as any).id;
+            }
+            const { error: famErr } = await (supabase as any).rpc("family_add_member", payload);
+            if (famErr) throw famErr;
+          } catch (e: any) {
+            console.warn("[MemberOnboardingWizard] family_add_member error", e);
+            failed.push(d.mode === "existing" ? d.memberNo.trim() : `${d.name} ${d.surname}`.trim());
+          }
+        }
+        if (failed.length) {
+          toast.error(`Could not add: ${failed.join(", ")}. You can add them from My Account.`);
+        }
+        queryClient.invalidateQueries({ queryKey: ["my-family"] });
+      }
+
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["my-club"] });
       queryClient.invalidateQueries({ queryKey: ["my-club-member"] });

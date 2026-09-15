@@ -233,7 +233,12 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = ""): string {
       u.protocol = "https:";
       u.hostname = `${normalizedSubdomain}.squashhub.co.za`;
       u.port = "";
+      // The shared platform callback path is NOT registered in any club's
+      // Stitch portal. Proven-working Express destination is the club's
+      // /my-account page (09 Aug 2026). Never emit /pay/return on a club host.
+      if (/^\/pay\/return\/?$/i.test(u.pathname)) u.pathname = "/my-account";
     }
+
 
     const host = u.hostname.toLowerCase();
     const allowed =

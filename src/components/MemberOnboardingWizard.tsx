@@ -27,6 +27,9 @@ import { ClubRulesContent } from "@/components/ClubRulesContent";
 import { hasRulesContent, DEFAULT_ACCEPTANCE_STATEMENT } from "@/lib/club-rules";
 import { ScrollText } from "lucide-react";
 import { useHasCapability } from "@/hooks/use-club-capabilities";
+import { FamilyMembersStep } from "@/components/family/FamilyMembersStep";
+import { familyDraftError, familyDraftPayload, type FamilyDraft } from "@/lib/family/family-draft";
+import { FAMILY_PRIMARY_LABEL, type FamilyCategory } from "@/lib/family/family-package";
 import {
   SkillsExpertiseFields,
   emptySkillsDraft,
@@ -49,6 +52,7 @@ const BASE_STEPS: StepDef[] = [
 ];
 
 const RULES_STEP: StepDef = { id: "rules", label: "Club Rules", icon: ScrollText };
+const FAMILY_STEP: StepDef = { id: "family", label: "Family Members", icon: Users };
 const FACE_STEP: StepDef = { id: "face", label: "Face Enrolment", icon: ScanFace };
 const DONE_STEP: StepDef = { id: "done", label: "Complete", icon: Check };
 
@@ -127,15 +131,25 @@ export function MemberOnboardingWizard({
   const [rulesAccepted, setRulesAccepted] = useState(false);
   const acceptanceStatement = clubRules?.acceptance_statement || DEFAULT_ACCEPTANCE_STATEMENT;
 
+  // Family membership: only shown once the joiner picks the club's family
+  // package. Set from the chosen fee category further down.
+  const [isFamilyPrimary, setIsFamilyPrimary] = useState(false);
+  const [familyDrafts, setFamilyDrafts] = useState<FamilyDraft[]>([]);
+
   const STEPS = useMemo(() => {
     const steps = [...BASE_STEPS];
     // Rules sit between "Membership" and "Fees & Payment" so members read them
     // before anything is charged.
     if (rulesApply) steps.splice(3, 0, RULES_STEP);
+    // Family members come straight after the fees they relate to.
+    if (isFamilyPrimary) {
+      const feesAt = steps.findIndex((s) => s.id === "fees");
+      steps.splice(feesAt + 1, 0, FAMILY_STEP);
+    }
     if (faceRequired) steps.push(FACE_STEP);
     steps.push(DONE_STEP);
     return steps;
-  }, [faceRequired, rulesApply]);
+  }, [faceRequired, rulesApply, isFamilyPrimary]);
 
   // Face enrolment state
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -528,6 +542,21 @@ export function MemberOnboardingWizard({
   }, [step, clubId, memberNumber, user?.id, isExistingMember]);
 
   const selectedCategory = feeCategories.find(c => c.id === feeCategoryId);
+  const familyPrimaryCat = (selectedCategory as any)?.family_role === "primary"
+    ? (selectedCategory as unknown as FamilyCategory)
+    : null;
+  const familyAdditionalCat = useMemo(() => {
+    const id = familyPrimaryCat?.family_additional_category_id;
+    if (!id) return null;
+    return (feeCategories.find((c) => c.id === id) as unknown as FamilyCategory) || null;
+  }, [feeCategories, familyPrimaryCat?.family_additional_category_id]);
+
+  useEffect(() => {
+    const on = !!familyPrimaryCat;
+    setIsFamilyPrimary(on);
+    if (!on) setFamilyDrafts([]);
+  }, [familyPrimaryCat?.id]);
+
   // Renewal date comes from the fee category itself (falls back to the club default).
   const dueMonth = (selectedCategory as any)?.due_month || (club as any)?.member_fee_due_month || 1;
   const dueDay = (selectedCategory as any)?.due_day || 1;
@@ -871,6 +900,36 @@ export function MemberOnboardingWizard({
         }
       }
 
+      // 5. Family members captured during joining. Each person keeps their own
+      //    membership; the charge is raised on their own account with this
+      //    member recorded as the payer (handled inside family_add_member).
+      if (familyPrimaryCat && familyDrafts.length > 0 && cmId) {
+        const failed: string[] = [];
+        for (const d of familyDrafts) {
+          try {
+            const payload: any = familyDraftPayload(cmId, d);
+            if (d.mode === "existing") {
+              const { data: found } = await fromExt("club_members")
+                .select("id")
+                .eq("club_id", clubId)
+                .eq("club_member_number", d.memberNo.trim())
+                .maybeSingle();
+              if (!found) { failed.push(d.memberNo.trim()); continue; }
+              payload._existing_member_id = (found as any).id;
+            }
+            const { error: famErr } = await (supabase as any).rpc("family_add_member", payload);
+            if (famErr) throw famErr;
+          } catch (e: any) {
+            console.warn("[MemberOnboardingWizard] family_add_member error", e);
+            failed.push(d.mode === "existing" ? d.memberNo.trim() : `${d.name} ${d.surname}`.trim());
+          }
+        }
+        if (failed.length) {
+          toast.error(`Could not add: ${failed.join(", ")}. You can add them from My Account.`);
+        }
+        queryClient.invalidateQueries({ queryKey: ["my-family"] });
+      }
+
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["my-club"] });
       queryClient.invalidateQueries({ queryKey: ["my-club-member"] });
@@ -900,6 +959,7 @@ export function MemberOnboardingWizard({
     if (step === 1) return name.trim().length >= 2;
     if (step === 2) return true;
     if (currentStepId === "rules") return !rulesRequireAcceptance || rulesAccepted;
+    if (currentStepId === "family") return !familyDraftError(familyPrimaryCat, familyDrafts);
     if (currentStepId === "face") return !!capturedPhoto;
     return true;
   };
@@ -1248,6 +1308,24 @@ export function MemberOnboardingWizard({
             )}
 
             {/* ─── FACE ENROLMENT ─── */}
+            {currentStepId === "family" && familyPrimaryCat && (
+              <motion.div key="family" {...slideVariants} className="flex-1 space-y-4 pt-2">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-heading">{FAMILY_PRIMARY_LABEL}</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    Who else is on your family membership? You can skip this and add them later.
+                  </DialogDescription>
+                </DialogHeader>
+                <FamilyMembersStep
+                  primary={familyPrimaryCat}
+                  additional={familyAdditionalCat}
+                  drafts={familyDrafts}
+                  onChange={setFamilyDrafts}
+                  money={money}
+                />
+              </motion.div>
+            )}
+
             {currentStepId === "face" && (
               <motion.div key="face" {...slideVariants} className="flex-1 space-y-4 pt-2">
                 <DialogHeader>

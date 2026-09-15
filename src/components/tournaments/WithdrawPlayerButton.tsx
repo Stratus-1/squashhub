@@ -95,7 +95,7 @@ export function WithdrawPlayerButton({ champs }: Props) {
       const mid = reg.club_member_id as string;
       const { data: matches, error: mErr } = await fromExt("club_champs_matches")
         .select(
-          "id, status, is_bye, group_number, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id",
+          "id, status, is_bye, group_number, booking_id, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id",
         )
         .eq("champ_id", effectiveChampId);
       if (mErr) throw mErr;
@@ -107,6 +107,11 @@ export function WithdrawPlayerButton({ champs }: Props) {
       for (const u of updates) {
         const { error } = await fromExt("club_champs_matches").update(u.payload).eq("id", u.id);
         if (error) throw error;
+      }
+      // Free every court that was held for a game that will never be played.
+      const bookingIds = updates.map((u) => u.bookingId).filter(Boolean) as string[];
+      if (bookingIds.length > 0) {
+        await fromExt("bookings").update({ status: "cancelled" }).in("id", bookingIds);
       }
       let del = fromExt("club_champs_entries")
         .delete()
@@ -123,9 +128,11 @@ export function WithdrawPlayerButton({ champs }: Props) {
           .update({ status: "cancelled" })
           .eq("id", reg.id);
         if (error) throw error;
+        await purgeFromSetup(effectiveChampId!, mid);
       }
       return { closed: updates.length, remaining };
     },
+
     onSuccess: ({ closed, remaining }) => {
       toast.success(
         closed > 0

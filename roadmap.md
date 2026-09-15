@@ -133,3 +133,12 @@
 
 ## Parked: Standard family memberships
 - [ ] Plan/analysis saved in `.lovable/plan.md` — awaiting user go-ahead before implementation.
+
+## Completed: Standard family memberships
+- [x] Fixed system names "Family Package" and "Additional Family Member"; club amounts unchanged.
+- [x] Club fee setup: mark the two categories, set included members, qualifying relationships, optional dependent age limit.
+- [x] Family groups/members tables; each person keeps their own member record and login.
+- [x] Add a family member one at a time (existing member accepts, or brand-new person), any time after registration.
+- [x] Charges stay on each person's own account with the payer recorded; R0 still gets a zero-value line.
+- [x] Leaving a family proposes a return to the standard category, pending club-admin approval.
+- [ ] Optional follow-up: add family members during the initial joining wizard and email a personal invite link.

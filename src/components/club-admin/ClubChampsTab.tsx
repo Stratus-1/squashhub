@@ -27,6 +27,7 @@ import { InviteScopeTree } from "@/components/tournaments/InviteScopeTree";
 
 import {
   fetchInviteDirectory,
+  fetchTournamentEntrants,
   groupByClub,
   directoryScopeLabel,
   type DirectoryPlayer,

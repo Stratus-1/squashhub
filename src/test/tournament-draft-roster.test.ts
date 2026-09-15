@@ -10,8 +10,12 @@ describe("tournament draft player roster", () => {
     ]);
   });
 
-  it("treats an intentionally empty saved roster as authoritative", () => {
-    expect(restoreDraftPlayerIds([], [], ["old-registration"])).toEqual([]);
+  it("always merges accepted registrations into a saved roster", () => {
+    expect(restoreDraftPlayerIds([], [], ["late-signup"])).toEqual(["late-signup"]);
+    expect(restoreDraftPlayerIds([], ["altu"], ["altu", "late-signup"])).toEqual([
+      "altu",
+      "late-signup",
+    ]);
   });
 
   it("keeps final allocated entries authoritative", () => {

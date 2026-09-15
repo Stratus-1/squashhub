@@ -7151,7 +7151,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     }
 
     // Snapshot loaded entities so we can detect edits and prompt for rebuild.
-    if (champ.match_type === "doubles") {
+    if (champ.match_type === "doubles" && champ.partner_mode !== "rotate") {
       const pairSig = (entries || []).map((e: any) => `${e.club_member_id}+${e.partner_member_id}`).sort().join("|");
       setEntitiesSnapshotAtLoad(`d:${pairSig}`);
     } else {

@@ -131,7 +131,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
       if (error) throw error;
       toast.success(
         mode === "new"
-          ? "Added — they'll get their own sign-in link to finish setting up"
+          ? "Added — they can now sign up with that email to claim their own account"
           : "Request sent — they need to accept before they're linked",
       );
       setOpen(false);

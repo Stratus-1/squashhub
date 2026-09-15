@@ -156,3 +156,21 @@ export async function fetchInviteDirectory(input: {
   return sanitizeDirectory((data as Record<string, unknown>[]) || []);
 }
 
+
+/**
+ * Everyone already on this tournament's entry/registration list, in the same
+ * privacy-safe projection.
+ *
+ * Why this exists: entrants may come from several clubs, but the wizard's
+ * player pool is built from the HOST club roster plus whatever the search-driven
+ * directory happens to have loaded. Without this, reopening a tournament made
+ * the cross-club entrants silently disappear from the Players/Allocate steps.
+ */
+export async function fetchTournamentEntrants(tournamentId: string): Promise<DirectoryPlayer[]> {
+  if (!tournamentId) return [];
+  const { data, error } = await (supabase as any).rpc("tournament_entrant_directory", {
+    p_tournament_id: tournamentId,
+  });
+  if (error) throw error;
+  return sanitizeDirectory((data as Record<string, unknown>[]) || []);
+}

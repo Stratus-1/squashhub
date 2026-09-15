@@ -1216,35 +1216,52 @@ export default function Tournaments() {
       })
       .join("");
     return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+<style id="pagestyle">@page{size:A4 portrait;margin:10mm}</style>
 <style>
-  @page{size:A4 portrait;margin:10mm}
   body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;padding:16px;color:#111}
-  h1{margin:0 0 6px;font-size:24px}
-  .sub{color:#666;font-size:13px;margin-bottom:14px}
-  table{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
-  th,td{border:1px solid #ddd;padding:7px 9px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  th{background:#1E3A5F;color:#fff;font-size:13px}
+  h1{margin:0 0 6px;font-size:22px}
+  .sub{color:#666;font-size:13px;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:var(--fs,13px);table-layout:fixed}
+  th,td{border:1px solid #ddd;padding:var(--pad,5px 7px);text-align:left;white-space:normal;word-break:break-word}
+  th{background:#1E3A5F;color:#fff}
   tr:nth-child(even) td{background:#f7f7f9}
-  col.date{width:14%}col.time{width:9%}col.court{width:10%}col.team{width:23%}col.tour{width:21%}
-  .toolbar{margin-bottom:12px}
-  button{padding:6px 12px;font-size:13px;cursor:pointer}
-  @media print{
-    .toolbar{display:none}
-    body{padding:0}
-    table.dense{font-size:12px}
-    table.dense th,table.dense td{padding:4px 6px}
-    table.veryDense{font-size:10.5px}
-    table.veryDense th,table.veryDense td{padding:3px 5px}
-  }
+  col.date{width:12%}col.time{width:8%}col.court{width:9%}col.team{width:25%}col.tour{width:21%}
+  .toolbar{margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px}
+  button{padding:5px 10px;font-size:13px;cursor:pointer;border:1px solid #ccc;background:#fff;border-radius:4px}
+  button.on{background:#1E3A5F;color:#fff;border-color:#1E3A5F}
+  @media print{ .toolbar{display:none} body{padding:0} }
 </style></head><body>
-<div class="toolbar"><button onclick="window.print()">Print</button></div>
+<div class="toolbar">
+  <span>Page:</span>
+  <button id="btnP" class="on" onclick="setOrient('portrait')">Portrait</button>
+  <button id="btnL" onclick="setOrient('landscape')">Landscape</button>
+  <span style="margin-left:10px">Text:</span>
+  <button onclick="setSize(-1)">A−</button>
+  <button onclick="setSize(1)">A+</button>
+  <button style="margin-left:10px" onclick="window.print()">Print / Save PDF</button>
+</div>
 <h1>${title}</h1>
 <div class="sub">${matches.length} match${matches.length === 1 ? "" : "es"} · Generated ${format(new Date(), "dd MMM yyyy HH:mm")}</div>
-<table class="${matches.length > 55 ? "veryDense" : matches.length > 35 ? "dense" : ""}">
+<table>
 <colgroup><col class="date"><col class="time"><col class="court"><col class="team"><col class="team"><col class="tour"></colgroup>
 <thead><tr><th>Date</th><th>Time</th><th>Court</th><th>${headerA}</th><th>${headerB}</th><th>Tournament</th></tr></thead>
 <tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:#888">No matches</td></tr>`}</tbody></table>
+<script>
+  var fs = ${matches.length > 55 ? 10 : matches.length > 35 ? 11.5 : 13};
+  function apply(){
+    document.body.style.setProperty('--fs', fs + 'px');
+    document.body.style.setProperty('--pad', (fs < 11 ? '3px 5px' : fs < 13 ? '4px 6px' : '5px 7px'));
+  }
+  function setSize(d){ fs = Math.min(18, Math.max(7, fs + d)); apply(); }
+  function setOrient(o){
+    document.getElementById('pagestyle').textContent = '@page{size:A4 ' + o + ';margin:10mm}';
+    document.getElementById('btnP').className = o === 'portrait' ? 'on' : '';
+    document.getElementById('btnL').className = o === 'landscape' ? 'on' : '';
+  }
+  apply();
+</script>
 </body></html>`;
+
 
   };
 

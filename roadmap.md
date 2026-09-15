@@ -142,4 +142,4 @@
 - [x] Charges stay on each person's own account with the payer recorded; R0 still gets a zero-value line.
 - [x] Leaving a family proposes a return to the standard category, pending club-admin approval.
 - [x] Family members can now be added during the initial joining wizard (Family Members step, shown only for the Family Package category).
-- [ ] Still open: emailing a personal invite link to a newly added family member (needs a server-side send; the welcome-note function requires an internal secret).
+- [x] Personal invite link emailed to a newly added family member — `family-invite` edge function + `family-member-invite` template; called from My Family and the joining wizard. Needs deploying to go live.

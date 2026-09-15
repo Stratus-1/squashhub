@@ -917,8 +917,17 @@ export function MemberOnboardingWizard({
               if (!found) { failed.push(d.memberNo.trim()); continue; }
               payload._existing_member_id = (found as any).id;
             }
-            const { error: famErr } = await (supabase as any).rpc("family_add_member", payload);
+            const { data: famRowId, error: famErr } = await (supabase as any).rpc("family_add_member", payload);
             if (famErr) throw famErr;
+            // New people get a personal sign-in link emailed to them. A send
+            // failure never rolls back the membership that was just created.
+            if (d.mode === "new" && (d.email || "").trim() && famRowId) {
+              try {
+                await supabase.functions.invoke("family-invite", { body: { family_member_id: famRowId } });
+              } catch (e) {
+                console.warn("[MemberOnboardingWizard] family invite email failed", e);
+              }
+            }
           } catch (e: any) {
             console.warn("[MemberOnboardingWizard] family_add_member error", e);
             failed.push(d.mode === "existing" ? d.memberNo.trim() : `${d.name} ${d.surname}`.trim());

@@ -33,9 +33,18 @@ Analysis only at this stage. No fee amounts, member records, invoices, payments 
 
 **Club fee setup (Fees tab)** — a "Family package" section: mark one category as the Family Package and one as Additional Family Member (names fixed by the system, amounts free), set how many additional members are included, which relationships qualify, and an optional dependent age limit. Existing categories are untouched unless the admin maps them.
 
-**New registration** — when a joiner picks Family Package they become the primary holder, are asked how many family members to add (capped by the club setting), and capture each person's name, surname, email and the normal required joining fields plus relationship. The combined total is shown (e.g. R1,600 + 2 × R120 = R1,840) and paid once by the primary member. Each added person gets their own member record and an invitation link to activate their own login and set a password.
+**New registration** — when a joiner picks Family Package they become the primary holder. Adding family members at this point is **optional**: they may add all of them now, some of them, or none and do it later. For each person added now we capture name, surname, email, the normal required joining fields and relationship. The combined total is shown (e.g. R1,600 + 2 × R120 = R1,840) and paid once by the primary member. Each added person gets their own member record and an invitation link to activate their own login and set a password.
 
-**Existing member** — a "My family" card on the member's account: switch to the Family Package where the club allows it, add family members later (existing member by member number, or invite a new person), see who is linked, and pay their fees in one go. Reuses the existing shared-access accept/decline so nobody is linked without consenting.
+**Add family member later (one at a time)** — the same capability is available any time after registration, for new and existing members alike, from an "Add family member" button on the member's account (and from the member's row in club admin). One person per use:
+
+1. Choose *existing club member* (found by member number) or *new person* (name, surname, email, relationship, plus the club's required joining fields).
+2. The app checks capacity and eligibility against the club's Family Package settings (max additional members, allowed relationships, optional dependent age limit) and warns clearly if the family is already full — it never silently blocks or deletes anything.
+3. The person is added as `invited`; an existing member must accept (reuses the existing shared-access accept/decline), a new person gets their own invitation link to set up their login.
+4. Their Additional Family Member charge is raised on their own account, pro-rated by the club's existing rules for the remaining season, with the primary member recorded as payer. The primary can settle it immediately or with their next payment.
+
+Adding later never re-raises or changes anything already invoiced.
+
+**Existing member** — a "My family" card on the member's account: switch to the Family Package where the club allows it, add family members one by one as above, see who is linked and their status, remove a member (their membership is not deleted — see open question 3), and pay everyone's fees in one go.
 
 **Club admin** — a family review screen listing suggested category mappings and suggested family links with Confirm / Reject per row, plus a families roster showing each package, its members and capacity usage.
 

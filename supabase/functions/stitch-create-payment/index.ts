@@ -165,7 +165,14 @@ Deno.serve(async (req) => {
       payerPhoneNumber: member.phone || undefined,
       payerEmailAddress: member.email || undefined,
       merchantReference,
+      // Express accepts the return destination in the CREATE body. This is the
+      // shape the platform test-payment function uses and it is what makes the
+      // hosted page bounce the payer (including TEST payers) back to SquashHub
+      // instead of parking them on Stitch's "payment successful" screen.
+      merchantRedirectUrl: safeReturnWithSession,
+      redirectUrl: safeReturnWithSession,
     };
+
 
     const plResp = await fetch(`${STITCH_BASE}/payments`, {
       method: "POST",

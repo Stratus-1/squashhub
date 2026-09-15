@@ -73,6 +73,8 @@ export function ConfirmDrawDialog({
   const [history, setHistory] = useState<DrawBoardModel[]>([]);
   const [board, setBoard] = useState<DrawBoardModel>(suggested);
   const [saving, setSaving] = useState(false);
+  // Players the organiser has confirmed are not playing this draw.
+  const [notPlaying, setNotPlaying] = useState<Set<string>>(new Set());
 
   // Seed the board ONLY when the dialog transitions closed -> open. The parent
   // recomputes `suggested` on every render, so depending on it here would wipe
@@ -82,11 +84,27 @@ export function ConfirmDrawDialog({
     if (open && !wasOpen.current) {
       setBoard(suggested);
       setHistory([]);
+      setNotPlaying(new Set());
     }
     wasOpen.current = open;
   }, [open, suggested]);
 
-  const validation = useMemo(() => validateDrawBoard(board, entrants), [board, entrants]);
+  const boardEntrants = useMemo(
+    () => entrants.map((e) => (notPlaying.has(e.id) ? { ...e, withdrawn: true } : e)),
+    [entrants, notPlaying],
+  );
+
+  const toggleNotPlaying = (id: string, withdrawn: boolean) => {
+    setNotPlaying((prev) => {
+      const next = new Set(prev);
+      if (withdrawn) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const validation = useMemo(() => validateDrawBoard(board, boardEntrants), [board, boardEntrants]);
+
 
   const change = (next: DrawBoardModel) => {
     setHistory((h) => [...h.slice(-19), board]);

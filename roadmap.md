@@ -130,3 +130,6 @@
 
 - Tournament: let a player pull out of ONE league/division within a tournament (not all).
 - Fix drifting round play-by dates (per-section deadlines).
+
+## Parked: Standard family memberships
+- [ ] Plan/analysis saved in `.lovable/plan.md` — awaiting user go-ahead before implementation.

@@ -46,6 +46,12 @@ export interface DrawEntrant {
   /** Free-form context shown on the card ("Ladder 12", "B League"). */
   rankLabel?: string | null;
   divisionLabel?: string | null;
+  /**
+   * Organiser has taken this player out of this draw (pulled out / not
+   * playing). They may stay off the board without blocking confirmation.
+   */
+  withdrawn?: boolean;
+
 }
 
 export interface DrawSlotRef {
@@ -307,7 +313,8 @@ export function validateDrawBoard(board: DrawBoard, entrants: DrawEntrant[]): Dr
   for (const [id, n] of counts) {
     if (n > 1) errors.push(`${nameOf(id)} appears ${n} times in this draw — an entrant may only hold one slot.`);
   }
-  const missing = benchedEntrants(board, entrants);
+  const benched = benchedEntrants(board, entrants);
+  const missing = benched.filter((e) => !e.withdrawn);
   if (missing.length > 0) {
     errors.push(
       `${missing.length} entrant${missing.length === 1 ? " is" : "s are"} not placed in the draw: ${missing
@@ -315,6 +322,11 @@ export function validateDrawBoard(board: DrawBoard, entrants: DrawEntrant[]): Dr
         .join(", ")}.`,
     );
   }
+  const sittingOut = benched.filter((e) => e.withdrawn);
+  if (sittingOut.length > 0) {
+    warnings.push(`Not playing in this draw: ${sittingOut.map((e) => e.name).join(", ")}.`);
+  }
+
 
   let playable = 0;
   let byes = 0;

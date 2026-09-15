@@ -37,7 +37,10 @@ interface Props {
   onUndo?: () => void;
   canUndo?: boolean;
   readOnly?: boolean;
+  /** Mark a benched player as not playing this draw (or put them back). */
+  onToggleWithdrawn?: (entrantId: string, withdrawn: boolean) => void;
 }
+
 
 const BENCH_ID = "draw-bench";
 
@@ -136,7 +139,7 @@ function Slot({
   );
 }
 
-export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo, readOnly }: Props) {
+export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo, readOnly, onToggleWithdrawn }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const byId = useMemo(() => new Map(entrants.map((e) => [e.id, e])), [entrants]);
@@ -368,11 +371,31 @@ export function DrawBoard({ board, entrants, onChange, onReset, onUndo, canUndo,
             {bench.length === 0 ? (
               <p className="text-[11px] italic text-muted-foreground">Everyone has a slot.</p>
             ) : (
-              bench.map((e) => <DraggableEntrant key={e.id} entrant={e} tone="out" disabled={readOnly} />)
+              bench.map((e) => (
+                <div key={e.id} className="flex items-center gap-1">
+                  <div className="min-w-0 flex-1">
+                    <DraggableEntrant entrant={e} tone="out" disabled={readOnly} />
+                  </div>
+                  {onToggleWithdrawn && !readOnly ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={e.withdrawn ? "secondary" : "ghost"}
+                      className="h-6 shrink-0 px-1.5 text-[10px]"
+                      onClick={() => onToggleWithdrawn(e.id, !e.withdrawn)}
+                      title="Confirm this player is not playing in this draw"
+                    >
+                      {e.withdrawn ? "Not playing" : "Mark not playing"}
+                    </Button>
+                  ) : null}
+                </div>
+              ))
             )}
             <p className="pt-1 text-[10px] text-muted-foreground">
-              Drop a player here to take them out of a matchup — the slot becomes a bye.
+              Drop a player here to take them out of a matchup — the slot becomes a bye. Mark a player as not playing
+              to confirm the draw without them.
             </p>
+
           </div>
         </div>
 

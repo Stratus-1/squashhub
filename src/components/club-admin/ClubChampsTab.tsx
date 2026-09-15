@@ -187,6 +187,9 @@ import { owningAssociation } from "@/lib/tournaments/eligibility";
 import { DoublesPairsPanel } from "@/components/club-admin/DoublesPairsPanel";
 import { z } from "zod";
 import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";
+import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
+import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
+
 
 interface ClubChampsTabProps {
   /** Primary host club — its courts are the default venue and new events are filed under it. */
@@ -2877,9 +2880,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           })
           .eq("champ_id", cid)
           .in("club_member_id", resolvedIds);
+        // Also strip them from the saved seeding order / confirmed draw board,
+        // otherwise they reappear in these lists on the next open.
+        for (const resolvedId of resolvedIds) await purgeFromSetup(cid, resolvedId);
+        setManualDraws((prev) => removeFromManualDraws(prev, resolvedIds) ?? prev);
         qc.invalidateQueries({ queryKey: ["champ-invitees", cid] });
         qc.invalidateQueries({ queryKey: ["champ-registrations", cid] });
+        qc.invalidateQueries({ queryKey: ["club-champs"] });
       }
+
       if (isPair) {
         setDoublesPairs((prev) => prev.filter((p) => p.id !== id));
         setPairGroupAssignments((prev) => {

@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { matchesToClose, sideOf, withdrawalUpdates } from "@/lib/tournaments/withdraw";
+import {
+  matchesToClose,
+  sideOf,
+  withdrawalUpdates,
+  removeFromSeedOrder,
+  removeFromManualDraws,
+} from "@/lib/tournaments/withdraw";
+
 
 const m = (over: Partial<any> = {}) => ({
   id: "m1",
@@ -31,5 +38,33 @@ describe("player pulls out", () => {
 
   it("skips fixtures with no opponent yet", () => {
     expect(withdrawalUpdates([m({ player_a_member_id: null })], "b")).toEqual([]);
+  });
+});
+
+describe("pull-out cleans up the setup", () => {
+  it("releases the court held for a game that will never be played", () => {
+    const [u] = withdrawalUpdates([m({ booking_id: "bk1", court_id: 9 } as any)], "b");
+    expect(u.bookingId).toBe("bk1");
+    expect(u.payload.court_id).toBeNull();
+    expect(u.payload.scheduled_date).toBeNull();
+    expect(u.payload.booking_id).toBeNull();
+  });
+
+  it("drops the player from the seeding order", () => {
+    expect(removeFromSeedOrder(["a", "b", "c"], ["b"])).toEqual(["a", "c"]);
+    expect(removeFromSeedOrder(["a", "c"], ["b"])).toBeNull();
+    expect(removeFromSeedOrder(null, ["b"])).toBeNull();
+  });
+
+  it("clears the player out of a saved draw board and drops empty matchups", () => {
+    const draws = {
+      "1": { groupNumber: 1, round: 1, matches: [{ a: "b", b: null }, { a: "x", b: "b" }, { a: "y", b: "z" }] },
+    };
+    const next = removeFromManualDraws(draws, ["b"]) as any;
+    expect(next["1"].matches).toEqual([
+      { a: "x", b: null },
+      { a: "y", b: "z" },
+    ]);
+    expect(removeFromManualDraws(draws, ["nobody"])).toBeNull();
   });
 });

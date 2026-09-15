@@ -14,7 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, UserMinus } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
-import { withdrawalUpdates } from "@/lib/tournaments/withdraw";
+import { withdrawalUpdates, removeFromSeedOrder, removeFromManualDraws } from "@/lib/tournaments/withdraw";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,6 +33,31 @@ interface Props {
   /** Current (not past) tournaments on the Games screen. */
   champs: any[];
 }
+
+/**
+ * Take the player out of the organiser's saved setup as well: seeding order,
+ * any confirmed draw board and the draft roster. Without this they keep
+ * showing up in the setup lists after being pulled out, and removing them from
+ * the board makes "Confirm draw" impossible.
+ */
+export async function purgeFromSetup(champId: string, memberId: string) {
+  const { data } = await fromExt("tournaments")
+    .select("seed_order, manual_draws, draft_player_ids")
+    .eq("id", champId)
+    .maybeSingle();
+  if (!data) return;
+  const patch: Record<string, any> = {};
+  const seed = removeFromSeedOrder((data as any).seed_order, [memberId]);
+  if (seed) patch.seed_order = seed;
+  const draws = removeFromManualDraws((data as any).manual_draws, [memberId]);
+  if (draws) patch.manual_draws = draws;
+  const draft = removeFromSeedOrder((data as any).draft_player_ids, [memberId]);
+  if (draft) patch.draft_player_ids = draft;
+  if (Object.keys(patch).length > 0) {
+    await fromExt("tournaments").update(patch as any).eq("id", champId);
+  }
+}
+
 
 export function WithdrawPlayerButton({ champs }: Props) {
   const qc = useQueryClient();
@@ -95,7 +120,7 @@ export function WithdrawPlayerButton({ champs }: Props) {
       const mid = reg.club_member_id as string;
       const { data: matches, error: mErr } = await fromExt("club_champs_matches")
         .select(
-          "id, status, is_bye, group_number, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id",
+          "id, status, is_bye, group_number, booking_id, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id",
         )
         .eq("champ_id", effectiveChampId);
       if (mErr) throw mErr;
@@ -107,6 +132,11 @@ export function WithdrawPlayerButton({ champs }: Props) {
       for (const u of updates) {
         const { error } = await fromExt("club_champs_matches").update(u.payload).eq("id", u.id);
         if (error) throw error;
+      }
+      // Free every court that was held for a game that will never be played.
+      const bookingIds = updates.map((u) => u.bookingId).filter(Boolean) as string[];
+      if (bookingIds.length > 0) {
+        await fromExt("bookings").update({ status: "cancelled" }).in("id", bookingIds);
       }
       let del = fromExt("club_champs_entries")
         .delete()
@@ -123,9 +153,11 @@ export function WithdrawPlayerButton({ champs }: Props) {
           .update({ status: "cancelled" })
           .eq("id", reg.id);
         if (error) throw error;
+        await purgeFromSetup(effectiveChampId!, mid);
       }
       return { closed: updates.length, remaining };
     },
+
     onSuccess: ({ closed, remaining }) => {
       toast.success(
         closed > 0

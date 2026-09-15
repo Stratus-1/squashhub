@@ -2,6 +2,8 @@
 
 Analysis only at this stage. No fee amounts, member records, invoices, payments or existing membership types (Spouse, Scholar, Junior, Student, Pensioner) change as a result of this plan.
 
+**Decided:** the two types use fixed system names — "Family Package" and "Additional Family Member" — across every club; only the amounts and the package settings stay club-configured. Family members can be added during registration **or** added one at a time later, including for members who are already registered.
+
 ## (a) What already exists and can be reused
 
 - **Club fee setup** — each club has its own list of membership categories (`member_fee_categories`: name, description, annual amount, pro-rata, due month, billing period, debit-order settings), managed in the club admin Fees screen. Categories already carry a *class* label, and "family" is already one of the allowed classes — three categories use it today.

@@ -25,6 +25,7 @@ import { template as tournamentInvitePreview } from './tournament-invite-preview
 import { template as clubNotification } from './club-notification.tsx'
 import { template as associationInvoice } from './association-invoice.tsx'
 import { template as subscriptionInvoiceReminder } from './subscription-invoice-reminder.tsx'
+import { template as familyMemberInvite } from './family-member-invite.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-club-registered': newClubRegistered,
@@ -43,4 +44,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'club-notification': clubNotification,
   'association-invoice': associationInvoice,
   'subscription-invoice-reminder': subscriptionInvoiceReminder,
+  'family-member-invite': familyMemberInvite,
 }

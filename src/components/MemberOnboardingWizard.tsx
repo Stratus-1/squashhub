@@ -27,6 +27,9 @@ import { ClubRulesContent } from "@/components/ClubRulesContent";
 import { hasRulesContent, DEFAULT_ACCEPTANCE_STATEMENT } from "@/lib/club-rules";
 import { ScrollText } from "lucide-react";
 import { useHasCapability } from "@/hooks/use-club-capabilities";
+import { FamilyMembersStep } from "@/components/family/FamilyMembersStep";
+import { familyDraftError, familyDraftPayload, type FamilyDraft } from "@/lib/family/family-draft";
+import { FAMILY_PRIMARY_LABEL, type FamilyCategory } from "@/lib/family/family-package";
 import {
   SkillsExpertiseFields,
   emptySkillsDraft,
@@ -49,6 +52,7 @@ const BASE_STEPS: StepDef[] = [
 ];
 
 const RULES_STEP: StepDef = { id: "rules", label: "Club Rules", icon: ScrollText };
+const FAMILY_STEP: StepDef = { id: "family", label: "Family Members", icon: Users };
 const FACE_STEP: StepDef = { id: "face", label: "Face Enrolment", icon: ScanFace };
 const DONE_STEP: StepDef = { id: "done", label: "Complete", icon: Check };
 

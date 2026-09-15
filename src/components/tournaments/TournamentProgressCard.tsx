@@ -21,6 +21,7 @@ import { sectionProgression, type SectionProgression } from "@/lib/tournaments/k
 import { divisionControls, groupStageControl, type ChampionScope, type SectionControl } from "@/lib/tournaments/round-control";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
+import { LeagueFinalsDrawDialog } from "./LeagueFinalsDrawDialog";
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { sectionLetter } from "@/lib/tournaments/knockout";
 import { outstandingDrawsHeadline, readyNextRoundScopes } from "@/lib/tournaments/next-round-setup";

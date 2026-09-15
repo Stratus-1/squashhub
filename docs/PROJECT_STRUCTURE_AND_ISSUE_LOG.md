@@ -1,3 +1,10 @@
+# 2026-09-15b — Express hosted link 404: club subdomain was right, path `/pay/return` was wrong
+
+- **Symptom:** After the club-subdomain fix, the generated Nelspruit TEST link `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2Fnsc.squashhub.co.za%2Fpay%2Freturn` returned Stitch "Page Not Found".
+- **Finding:** `sanitizeReturnUrl()` rewrote only the HOST onto the club subdomain and kept the caller's shared path `/pay/return`. Nelspruit's Stitch portal registers `https://nsc.squashhub.co.za/my-account` and `https://nsc.squashhub.co.za/*`, but the proven-working Express links (GB, 09/17 Aug) always ended in `/my-account`. Stitch Express 404s the hosted link when the redirect target does not match a registered URL.
+- **Fix (once-off Express payment only):** when the host is rewritten onto a club subdomain, or the resolved host is any club subdomain, a `/pay/return` path is normalised to `/my-account`. Explicit club-specific destinations other than `/pay/return` are preserved as supplied.
+- **Guard — DO NOT CHANGE:** `/my-account` is the proven Express return destination pattern. A club-specific return URL must never default to `/pay/return`. Expected new link shape: `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2F<sub>.squashhub.co.za%2Fmy-account`.
+
 # 2026-09-15 — Once-off Stitch payments stopped returning to the club (regression of the 09 Aug flow)
 
 - **Symptom:** Test and live once-off card payments (Nelspruit, Gordons Bay) completed successfully but parked the payer on Stitch's "payment successful" page instead of returning to the club app.

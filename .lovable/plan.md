@@ -58,8 +58,8 @@ Adding later never re-raises or changes anything already invoiced.
 4. **Charges stay as they are.** Historical and current-season charges keep their labels and amounts; new behaviour applies to charges raised after the change.
 5. **Reversible**: clearing `family_role` and deleting the family group rows returns a club to exactly its current behaviour.
 
-## Open questions
+## Decisions (previously open)
 
-1. Should an additional family member's charge appear on their own account (payer recorded separately) — the recommended, auditable option — or on the primary member's account only?
-2. When a club's Additional Family Member amount is R0, should those people still get their own zero-value charge line for auditability? (Recommended: yes.)
-3. If a family member later leaves the family, does their membership convert to the club's standard category at the next renewal, or does an admin decide each time?
+1. **Charges sit on each person's own account**, with the primary member recorded as the payer. One combined payment settles them all, and every charge stays attributable to the person it belongs to.
+2. **R0 additional members still get a zero-value charge line** each season, so the record shows they were covered by the package.
+3. **Leaving a family converts the person to the club's standard membership category**, but not silently: the change is proposed for the next renewal and a club admin must approve it before it takes effect. Their history and past charges are untouched.

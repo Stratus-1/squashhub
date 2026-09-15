@@ -120,7 +120,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
         existingId = (found as any).id;
       }
       const fullName = mode === "new" ? `${name.trim()} ${surname.trim()}`.trim() : null;
-      const { error } = await (supabase as any).rpc("family_add_member", {
+      const { data: rowId, error } = await (supabase as any).rpc("family_add_member", {
         _primary_member_id: clubMemberId,
         _existing_member_id: existingId,
         _name: fullName,
@@ -129,9 +129,26 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
         _relationship: relationship,
       });
       if (error) throw error;
+
+      // A brand-new person gets a personal sign-in link so they can claim their
+      // own account. Sending is server-side; a failure never undoes the add.
+      let invited = false;
+      if (mode === "new" && email.trim() && rowId) {
+        try {
+          const { data: res, error: sendErr } = await supabase.functions.invoke("family-invite", {
+            body: { family_member_id: rowId },
+          });
+          invited = !sendErr && (res as any)?.sent === true;
+        } catch {
+          invited = false;
+        }
+      }
+
       toast.success(
         mode === "new"
-          ? "Added — they can now sign up with that email to claim their own account"
+          ? invited
+            ? "Added — we've emailed them a personal link to set up their login"
+            : "Added — they can now sign up with that email to claim their own account"
           : "Request sent — they need to accept before they're linked",
       );
       setOpen(false);

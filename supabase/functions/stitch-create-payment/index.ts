@@ -278,13 +278,23 @@ function appendExpressRedirectUrl(link: string, returnUrl: string) {
 
 async function appendRedirectIfReachable(link: string, returnUrl: string) {
   const candidate = appendExpressRedirectUrl(link, returnUrl);
+  // A club-subdomain return URL is what Stitch's per-club redirect list matches
+  // on. Keep it even if this probe is unhappy — stripping it (the 17 Aug
+  // behaviour) parks every payer on Stitch's success page.
+  let isClubHost = false;
+  try {
+    const host = new URL(returnUrl).hostname.toLowerCase();
+    isClubHost = host.endsWith(".squashhub.co.za") && host !== "www.squashhub.co.za";
+  } catch { /* keep default */ }
+
   try {
     const response = await fetch(candidate, { method: "GET", redirect: "follow" });
     if (response.ok) return candidate;
-    console.warn(`[stitch-create-payment] shared callback rejected (${response.status}); using bare hosted link`);
+    console.warn(`[stitch-create-payment] redirect probe rejected (${response.status}) for ${returnUrl}`);
   } catch (error) {
-    console.warn("[stitch-create-payment] callback check failed; using bare hosted link", error);
+    console.warn("[stitch-create-payment] redirect probe failed", error);
   }
+  if (isClubHost) return candidate;
   return link;
 }
 

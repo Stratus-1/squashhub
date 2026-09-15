@@ -245,12 +245,14 @@ export function ConfirmDrawDialog({
 
         <DrawBoard
           board={board}
-          entrants={entrants}
+          entrants={boardEntrants}
           onChange={change}
           onUndo={undo}
           canUndo={history.length > 0}
           onReset={() => change(suggested)}
+          onToggleWithdrawn={toggleNotPlaying}
         />
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>

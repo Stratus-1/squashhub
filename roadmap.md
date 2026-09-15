@@ -141,4 +141,5 @@
 - [x] Add a family member one at a time (existing member accepts, or brand-new person), any time after registration.
 - [x] Charges stay on each person's own account with the payer recorded; R0 still gets a zero-value line.
 - [x] Leaving a family proposes a return to the standard category, pending club-admin approval.
-- [ ] Optional follow-up: add family members during the initial joining wizard and email a personal invite link.
+- [x] Family members can now be added during the initial joining wizard (Family Members step, shown only for the Family Package category).
+- [ ] Still open: emailing a personal invite link to a newly added family member (needs a server-side send; the welcome-note function requires an internal secret).

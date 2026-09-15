@@ -255,7 +255,12 @@ function sanitizeReturnUrl(raw: string, clubSubdomain = ""): string {
     u.search = "";
     u.hash = "";
     if (u.pathname === "/" || u.pathname === "") u.pathname = "/my-account";
+    // Club-subdomain hosts must land on /my-account, not the shared callback.
+    if (host.endsWith(".squashhub.co.za") && host !== "www.squashhub.co.za" && /^\/pay\/return\/?$/i.test(u.pathname)) {
+      u.pathname = "/my-account";
+    }
     return u.toString();
+
   } catch {
     const normalizedSubdomain = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
     return normalizedSubdomain

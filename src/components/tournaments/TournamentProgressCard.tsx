@@ -160,7 +160,7 @@ export function TournamentProgressCard({
         {!s.decided && s.action === "await_results" && s.blockedReason && (
           <p className="text-[11px] text-muted-foreground">{s.blockedReason}</p>
         )}
-        {canManage && safety && !safety.canRedraw && safety.played > 0 && !s.decided && s.section > 0 && (
+        {canManage && safety && !safety.canRedraw && safety.played > 0 && !s.decided && (
           <p className="text-[11px] text-muted-foreground">{safety.reason}</p>
         )}
       </div>

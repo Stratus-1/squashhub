@@ -3401,6 +3401,118 @@ export type Database = {
           },
         ]
       }
+      club_family_groups: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          primary_member_id: string
+          season_year: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          primary_member_id: string
+          season_year?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          primary_member_id?: string
+          season_year?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_family_groups_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_family_groups_primary_member_id_fkey"
+            columns: ["primary_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_family_members: {
+        Row: {
+          club_member_id: string
+          confirmed_at: string | null
+          created_at: string
+          family_group_id: string
+          id: string
+          invited_at: string
+          pending_change_status: string
+          pending_standard_category_id: string | null
+          relationship: string | null
+          removed_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          club_member_id: string
+          confirmed_at?: string | null
+          created_at?: string
+          family_group_id: string
+          id?: string
+          invited_at?: string
+          pending_change_status?: string
+          pending_standard_category_id?: string | null
+          relationship?: string | null
+          removed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          club_member_id?: string
+          confirmed_at?: string | null
+          created_at?: string
+          family_group_id?: string
+          id?: string
+          invited_at?: string
+          pending_change_status?: string
+          pending_standard_category_id?: string | null
+          relationship?: string | null
+          removed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_family_members_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_family_members_family_group_id_fkey"
+            columns: ["family_group_id"]
+            isOneToOne: false
+            referencedRelation: "club_family_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_family_members_pending_standard_category_id_fkey"
+            columns: ["pending_standard_category_id"]
+            isOneToOne: false
+            referencedRelation: "member_fee_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_fees_payable: {
         Row: {
           active: boolean
@@ -3591,6 +3703,7 @@ export type Database = {
           auto_seeded: boolean
           club_member_id: string
           created_at: string
+          family_group_id: string | null
           fee_label: string
           fee_type: string
           id: string
@@ -3604,6 +3717,7 @@ export type Database = {
           linked_fee_payment_id: string | null
           paid: boolean
           paid_at: string | null
+          paid_by_member_id: string | null
           season_year: number
           updated_at: string
         }
@@ -3612,6 +3726,7 @@ export type Database = {
           auto_seeded?: boolean
           club_member_id: string
           created_at?: string
+          family_group_id?: string | null
           fee_label: string
           fee_type: string
           id?: string
@@ -3625,6 +3740,7 @@ export type Database = {
           linked_fee_payment_id?: string | null
           paid?: boolean
           paid_at?: string | null
+          paid_by_member_id?: string | null
           season_year?: number
           updated_at?: string
         }
@@ -3633,6 +3749,7 @@ export type Database = {
           auto_seeded?: boolean
           club_member_id?: string
           created_at?: string
+          family_group_id?: string | null
           fee_label?: string
           fee_type?: string
           id?: string
@@ -3646,6 +3763,7 @@ export type Database = {
           linked_fee_payment_id?: string | null
           paid?: boolean
           paid_at?: string | null
+          paid_by_member_id?: string | null
           season_year?: number
           updated_at?: string
         }
@@ -3658,10 +3776,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "club_member_fee_payments_family_group_id_fkey"
+            columns: ["family_group_id"]
+            isOneToOne: false
+            referencedRelation: "club_family_groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "club_member_fee_payments_linked_fee_payment_id_fkey"
             columns: ["linked_fee_payment_id"]
             isOneToOne: false
             referencedRelation: "club_member_fee_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_member_fee_payments_paid_by_member_id_fkey"
+            columns: ["paid_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
             referencedColumns: ["id"]
           },
         ]
@@ -8499,6 +8631,11 @@ export type Database = {
           description: string | null
           due_day: number
           due_month: number
+          family_additional_category_id: string | null
+          family_allowed_relationships: string[]
+          family_dependent_max_age: number | null
+          family_max_additional: number | null
+          family_role: string | null
           fee_class: string
           id: string
           name: string
@@ -8521,6 +8658,11 @@ export type Database = {
           description?: string | null
           due_day?: number
           due_month?: number
+          family_additional_category_id?: string | null
+          family_allowed_relationships?: string[]
+          family_dependent_max_age?: number | null
+          family_max_additional?: number | null
+          family_role?: string | null
           fee_class?: string
           id?: string
           name: string
@@ -8543,6 +8685,11 @@ export type Database = {
           description?: string | null
           due_day?: number
           due_month?: number
+          family_additional_category_id?: string | null
+          family_allowed_relationships?: string[]
+          family_dependent_max_age?: number | null
+          family_max_additional?: number | null
+          family_role?: string | null
           fee_class?: string
           id?: string
           name?: string
@@ -8560,6 +8707,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_fee_categories_family_additional_category_id_fkey"
+            columns: ["family_additional_category_id"]
+            isOneToOne: false
+            referencedRelation: "member_fee_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -14088,6 +14242,7 @@ export type Database = {
         Args: { _club_id: string; _tournament_id: string; _uid: string }
         Returns: boolean
       }
+      can_manage_family_group: { Args: { _group_id: string }; Returns: boolean }
       can_manage_tournament:
         | { Args: { _tournament_id: string }; Returns: boolean }
         | {
@@ -14403,6 +14558,25 @@ export type Database = {
           invite_token: string
           registration_id: string
         }[]
+      }
+      family_add_member: {
+        Args: {
+          _email?: string
+          _existing_member_id?: string
+          _name?: string
+          _phone?: string
+          _primary_member_id: string
+          _relationship?: string
+        }
+        Returns: string
+      }
+      family_remove_member: {
+        Args: { _family_member_id: string; _standard_category_id?: string }
+        Returns: undefined
+      }
+      family_resolve_category_change: {
+        Args: { _approve: boolean; _family_member_id: string }
+        Returns: undefined
       }
       find_existing_club_member: {
         Args: {

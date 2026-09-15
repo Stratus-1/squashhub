@@ -35,6 +35,7 @@ import {
 } from "@/lib/club-payments";
 
 import { SharedAccessCard } from "@/components/SharedAccessCard";
+import { MyFamilyCard } from "@/components/family/MyFamilyCard";
 import PaymentMethodsCard from "@/components/PaymentMethodsCard";
 
 export default function MyAccount() {
@@ -776,6 +777,10 @@ export default function MyAccount() {
           })()}
         </Card>
       </motion.div>
+
+      {!isPayingForOther && (
+        <MyFamilyCard clubMemberId={selfMemberId} clubId={club?.id || null} />
+      )}
 
       {!isPayingForOther && (
         <SharedAccessCard clubMemberId={selfMemberId} clubId={club?.id || null} memberName={selfName} />

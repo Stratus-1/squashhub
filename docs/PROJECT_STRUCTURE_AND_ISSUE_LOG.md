@@ -43,6 +43,26 @@ known-working Nelspruit (nsc) and Gordon's Bay (gb) flows. Expected fresh link s
 `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2F<sub>.squashhub.co.za%2Fmy-account`.
 Recurring/mandate, bar/POS and other gateway flows are separate and out of scope of this standard.
 
+# 2026-09-16 — Event/tournament withdrawal: members told they can change their answer
+
+Willem asked how a member who confirmed attendance can later withdraw. Investigation showed the capability already existed
+end-to-end but was never communicated:
+
+- `EventDetail` (`/events/:id`) always allowed confirmed → declined toggling; button now reads **Withdraw** once confirmed.
+- `whatsapp-inbound` upserts `club_event_rsvps` on every reply, so a later free-text "NO" after a "YES" already flipped
+  the member to declined (7-day interaction window). Tournament (`champ_entry`) NO replies already cancel the registration.
+- Gap was discoverability: invites never mentioned withdrawal.
+
+Changes (messaging + labels only, no flow changes):
+- Event invite + updated-invite notifications and WhatsApp `rsvp_question` details now say members can withdraw any time
+  ("Plans change? You can withdraw any time on the event page" / "Changed your mind later? Just reply NO any time before
+  the event to withdraw"). Reminder texts in `reminders/index.ts` carry the same note.
+- Invite notification `url` now deep-links to `/events/<id>` instead of `/events` so the member lands directly on the
+  page with the Confirm/Withdraw buttons.
+
+Rule: withdrawal stays self-service via these two channels (event page toggle, WhatsApp NO reply). Do not add a separate
+withdrawal request/approval flow for club social events without explicit instruction.
+
 # 2026-09-16 — Family package: existing members were billed before accepting
 
 `family_add_member()` set the invited person's fee category to "Additional Family Member" and

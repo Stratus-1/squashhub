@@ -877,9 +877,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
               user_id: m.user_id || "00000000-0000-0000-0000-000000000000",
               club_member_id: m.id,
               title: `📅 ${form.event_type.charAt(0).toUpperCase() + form.event_type.slice(1)} Event Invitation`,
-              message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}. Please confirm or decline.`,
+              message: `You're invited to "${form.title}" ${recurrenceText} at ${form.start_time}. Please confirm or decline. Plans change? You can withdraw any time on the event page.`,
               type: "booking",
-              url: `/events`,
+              url: `/events/${eventId}`,
               data: JSON.stringify({
                 event_id: eventId,
                 suppress_email: form.notify_email ? "false" : "true",
@@ -911,8 +911,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
             const occurrenceText = `${format(new Date(form.event_date), "EEE d MMM")} at ${String(form.start_time || "").slice(0, 5)}`;
             const questionText = `Are you joining "${form.title}" on ${occurrenceText}?`;
             const detailsText = form.recurrence === "once"
-              ? "Reply YES to confirm or NO to decline."
-              : "Reply YES to confirm or NO to decline. (Weekly event — we'll ask again before each one.)";
+              ? "Reply YES to confirm or NO to decline. Changed your mind later? Just reply NO any time before the event to withdraw."
+              : "Reply YES to confirm or NO to decline. Changed your mind later? Just reply NO any time before the event to withdraw. (Weekly event — we'll ask again before each one.)";
             await sendWhatsApp({
               clubId,
               recipients: inviteeIds.map((id) => ({ member_id: id })),
@@ -1026,9 +1026,9 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
         user_id: m.user_id || "00000000-0000-0000-0000-000000000000",
         club_member_id: m.id,
         title: `📅 Invitation — ${evt.title}`,
-        message: `You're invited to "${evt.title}" on ${whenText}. Please confirm or decline.`,
+        message: `You're invited to "${evt.title}" on ${whenText}. Please confirm or decline. Plans change? You can withdraw any time on the event page.`,
         type: "booking",
-        url: `/events`,
+        url: `/events/${evt.id}`,
         data: JSON.stringify({ event_id: evt.id }),
       }));
       for (let i = 0; i < notifRows.length; i += 50) {
@@ -1038,7 +1038,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       let waSent = 0;
       if (canUseClubWhatsApp && clubId) {
         const questionText = `Are you joining "${evt.title}" on ${whenText}?`;
-        const detailsText = "Reply YES to confirm or NO to decline.";
+        const detailsText = "Reply YES to confirm or NO to decline. Changed your mind later? Just reply NO any time before the event to withdraw.";
         const res = await sendWhatsApp({
           clubId,
           recipients: inviteeIds.map((id) => ({ member_id: id })),

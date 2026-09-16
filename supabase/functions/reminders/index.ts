@@ -313,9 +313,9 @@ Deno.serve(async (req) => {
           const eventType = String((ev as any).event_type || "event");
           const title = `${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Event Reminder`;
           const instanceDate = String((inst as any).instance_date);
-          const message = `"${(ev as any).title}" is on ${instanceDate} at ${startTime}. Please confirm your attendance.`;
+          const message = `"${(ev as any).title}" is on ${instanceDate} at ${startTime}. Please confirm your attendance. Plans change? You can withdraw any time on the event page.`;
           const appUrl = `/events/${String((ev as any).id)}`;
-          const waMessage = `"${(ev as any).title}" is on ${instanceDate} at ${startTime}. Please reply YES to confirm or NO to decline.`;
+          const waMessage = `"${(ev as any).title}" is on ${instanceDate} at ${startTime}. Please reply YES to confirm or NO to decline. Changed your mind later? Just reply NO any time before the event to withdraw.`;
 
           for (const mu of memberUsers || []) {
             const uid = String((mu as any).user_id);

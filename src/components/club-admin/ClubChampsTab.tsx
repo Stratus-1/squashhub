@@ -12336,7 +12336,7 @@ function InvitePreviewDialog({
     `Hello Player, this is a message from *${clubLabel}* on SquashHub.\n\n` +
     `You are invited to take part in our upcoming tournament: ${tournamentName}.\n\n` +
     `Event details: ${waDetails}\n\n` +
-    `To accept the invitation and complete your entry, please open the following link: https://squashhub.co.za/i/… (personal link)\n\n` +
+    `To accept or decline, tap here: https://squashhub.co.za/i/ab3k9xq2mt\n\n` +
     `We hope to see you on court.`;
 
 

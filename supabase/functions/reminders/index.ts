@@ -174,6 +174,7 @@ Deno.serve(async (req) => {
     }
 
     // 2) Challenge schedules (tomorrow, accepted)
+    section = "challenges";
     const { data: schedules } = await supabaseAdmin
       .from("challenge_schedules")
       .select("id,challenge_id,proposed_date,start_time,end_time,court_id,status")
@@ -215,6 +216,7 @@ Deno.serve(async (req) => {
     }
 
     // 3) Challenge expiring soon (next 24h)
+    section = "challenge_expiring";
     const soon = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const { data: expiring } = await supabaseAdmin
       .from("challenges")
@@ -247,6 +249,7 @@ Deno.serve(async (req) => {
     }
 
     // 4) Event instance reminders — sent reminder_hours before each occurrence.
+    section = "event_reminders";
     //    Channels follow the event's notify flags: in-app always, WhatsApp when
     //    notify_whatsapp (club opt-in + member opt-out enforced by send-whatsapp),
     //    email when notify_email (queued through email_outbox).
@@ -384,6 +387,7 @@ Deno.serve(async (req) => {
     }
 
     // 5) League planning reminder — sent the day BEFORE each club's configured
+    section = "league_planning";
     //    league_week_start_dow, but only for clubs that opt-in via fill_top_down_enabled.
     //    Goes to all admins/captains: club role 'captain'/'admin', chairman/secretary/club_captain
     //    delegates, and any league captains (member_league_registrations.is_captain).
@@ -496,6 +500,7 @@ Deno.serve(async (req) => {
     }
 
     // 6) Inactivity nudge (3 weeks). Only run weekly (Monday in REMINDERS_TIMEZONE) to keep load low.
+    section = "inactive_nudge";
     if (!isWeeklyRun) {
       return new Response(JSON.stringify({ ok: true, sent, skipped, today, tomorrow, isWeeklyRun }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -548,7 +553,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("Reminders error:", error);
-    return new Response(JSON.stringify({ error: (error as Error).message || String(error) }), {
+    return new Response(JSON.stringify({ error: (error as Error).message || String(error), section }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

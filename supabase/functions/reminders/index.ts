@@ -139,7 +139,6 @@ Deno.serve(async (req) => {
       return capMemo.get(key)!;
     };
 
-    let section = "init";
     // 1) Booking reminders (tomorrow)
     section = "bookings";
     const { data: bookings } = await supabaseAdmin

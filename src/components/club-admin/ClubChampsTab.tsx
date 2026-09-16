@@ -8013,6 +8013,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   The organiser picks the field for this tournament, so there is no public registration window to set.
                 </p>
               )}
+
+              {/* Pulling out after entering */}
+              <div className="mt-3 space-y-2 rounded-md border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label className="text-sm">Players may withdraw themselves</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Entrants get a withdraw option on their invitation. Entry fees already paid are not refunded.
+                    </p>
+                  </div>
+                  <Switch checked={withdrawalsAllowed} onCheckedChange={setWithdrawalsAllowed} />
+                </div>
+                {withdrawalsAllowed && (
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm whitespace-nowrap">Withdrawals close</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={60}
+                      className="w-20"
+                      value={withdrawalCutoffDays}
+                      onChange={(e) => setWithdrawalCutoffDays(Math.max(0, Math.min(60, Number(e.target.value) || 0)))}
+                    />
+                    <span className="text-sm text-muted-foreground">days before the first day</span>
+                  </div>
+                )}
+              </div>
             </WizardSection>
 
             {/* ── Courts & rounds ── */}

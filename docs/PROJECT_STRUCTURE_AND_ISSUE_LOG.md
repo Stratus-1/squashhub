@@ -43,6 +43,12 @@ known-working Nelspruit (nsc) and Gordon's Bay (gb) flows. Expected fresh link s
 `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2F<sub>.squashhub.co.za%2Fmy-account`.
 Recurring/mandate, bar/POS and other gateway flows are separate and out of scope of this standard.
 
+# 2026-09-16 — Removed confusing Yes/No buttons from WhatsApp RSVP messages
+
+- **Symptom:** Willem reported two thumbs-up/down-style buttons under every confirmation-asking WhatsApp message; members didn't know whether tapping them accepted the invite.
+- **Cause:** The approved `rsvp_question` template (`squashhub_rsvp_question_v3`) was registered on Twilio as a `twilio/quick-reply` with actions `Yes` / `No` (from `whatsapp_templates.quick_replies`). WhatsApp rendered those as two tappable buttons below the message body.
+- **Fix:** New template version `squashhub_rsvp_question_v4` — same body/variables, buttons sentence replaced with "Please reply Yes or No to this message", `quick_replies` cleared, submitted to Meta for approval (pending). Until approved, send-whatsapp falls back to the button-free `club_notice` template, so no message carries buttons in the meantime. Inbound classification (`reply-intent`) already treats free-text "yes/ja/no" replies as authoritative, so RSVP/entry confirmations keep working. Do NOT re-add `quick_replies` to this template.
+
 # 2026-09-15b — Express hosted link 404: club subdomain was right, path `/pay/return` was wrong
 
 - **Symptom:** After the club-subdomain fix, the generated Nelspruit TEST link `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2Fnsc.squashhub.co.za%2Fpay%2Freturn` returned Stitch "Page Not Found".

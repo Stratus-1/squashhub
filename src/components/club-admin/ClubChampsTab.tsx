@@ -5675,10 +5675,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // league set up in the fixture/structure step — with a single league
     // there is nothing to choose, so don't promise it.
     const hasMultipleLeagues = (numGroups || 0) > 1;
-    const chooseStep = hasMultipleLeagues ? "choose your category and " : "";
+    // The closing sentence of the message already tells the player how to
+    // accept or decline, so this line never repeats that instruction.
     const cta = needsPayment
-      ? `Open your personal link to ${chooseStep}pay the entry fee. Reply NO to decline.`
-      : `Open your personal link to ${chooseStep}confirm. Reply NO to decline.`;
+      ? `You can ${hasMultipleLeagues ? "choose your category and " : ""}pay the entry fee when you confirm.`
+      : hasMultipleLeagues
+        ? "You can choose your category when you confirm."
+        : "Everything you need is on your confirmation page.";
     if (inviteShortMessage) return cta;
     const full = buildInviteBody()
       .replace(/^You have been invited to [^\n]*\n*/, "")

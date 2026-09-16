@@ -5902,6 +5902,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (!token) throw new Error("Could not create a secure invitation link for one or more players. No invitations were sent.");
         return buildInviteUrl(token, sub);
       };
+      /**
+       * A 64-character token in a WhatsApp message looks like spam, so the
+       * message carries a short, friendly address instead. If the short code
+       * cannot be minted the full address is used — an invite always goes out.
+       */
+      const shortUrlForRegistration = async (registrationId: string) => {
+        const token = tokenByRegistration.get(registrationId);
+        if (!token) return urlForRegistration(registrationId);
+        try {
+          const { data: code, error } = await (supabase as any).rpc("ensure_invite_short_code", { p_token: token });
+          if (error || !code) return buildInviteUrl(token, sub);
+          return buildInviteUrl(String(code), sub);
+        } catch {
+          return buildInviteUrl(token, sub);
+        }
+      };
 
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");

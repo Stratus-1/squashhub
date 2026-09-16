@@ -43,6 +43,20 @@ known-working Nelspruit (nsc) and Gordon's Bay (gb) flows. Expected fresh link s
 `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2F<sub>.squashhub.co.za%2Fmy-account`.
 Recurring/mandate, bar/POS and other gateway flows are separate and out of scope of this standard.
 
+# 2026-09-16 — Family package: existing members were billed before accepting
+
+`family_add_member()` set the invited person's fee category to "Additional Family Member" and
+created/rewrote their unpaid club fee even when the family row was created as `invited`, despite the
+UI promising "They'll be asked to accept before they're linked".
+
+Fix: for `_existing_member_id` the function now only creates the pending row and notifies that
+member — no category or fee mutation. New RPC `family_respond_invite(_family_member_id, _accept)`
+(caller must be that member or a club admin) applies the category + fee line with the payer recorded
+on accept, and cancels the request on decline. New `FamilyInviteCard` on My Account gives the
+invited member the accept/decline choice. Brand-new people added by name still activate immediately.
+
+DO NOT reintroduce account mutations inside `family_add_member` for existing members.
+
 # 2026-09-16 — Event reminder system wired up and smoke-tested end-to-end
 
 - **What was implemented:** The `reminders` edge function's event section now sends each occurrence's reminder through the event's notify flags — in-app always, WhatsApp when `notify_whatsapp` (club opt-in + member opt-out enforced by `send-whatsapp`), email when `notify_email` (queued through `email_outbox`). The invite list falls back to event-level `club_event_rsvps` when an instance carries none (older events). A daily cron job `event-reminders-daily` (0 4 * * * UTC = 06:00 SA) invokes the function with the `reminders_internal_secret` from `app_settings`. `CreateClubEvent` gained a 36-hour reminder option.

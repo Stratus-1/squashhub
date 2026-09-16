@@ -14578,6 +14578,10 @@ export type Database = {
         Args: { _approve: boolean; _family_member_id: string }
         Returns: undefined
       }
+      family_respond_invite: {
+        Args: { _accept: boolean; _family_member_id: string }
+        Returns: boolean
+      }
       find_existing_club_member: {
         Args: {
           _club_id: string

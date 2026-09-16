@@ -36,6 +36,8 @@ import {
 
 import { SharedAccessCard } from "@/components/SharedAccessCard";
 import { MyFamilyCard } from "@/components/family/MyFamilyCard";
+import { FamilyInviteCard } from "@/components/family/FamilyInviteCard";
+
 import PaymentMethodsCard from "@/components/PaymentMethodsCard";
 
 export default function MyAccount() {
@@ -778,9 +780,12 @@ export default function MyAccount() {
         </Card>
       </motion.div>
 
+      {!isPayingForOther && <FamilyInviteCard clubMemberId={selfMemberId} />}
+
       {!isPayingForOther && (
         <MyFamilyCard clubMemberId={selfMemberId} clubId={club?.id || null} />
       )}
+
 
       {!isPayingForOther && (
         <SharedAccessCard clubMemberId={selfMemberId} clubId={club?.id || null} memberName={selfName} />

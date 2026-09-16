@@ -225,7 +225,6 @@ Deno.serve(async (req) => {
 
       for (const ev of activeEvents || []) {
         if (!(await capOn((ev as any).club_id, "events"))) continue;
-        const reminderHours = (ev as any).reminder_hours || 48;
         const reminderCutoff = new Date(Date.now() + reminderHours * 60 * 60 * 1000);
         const reminderCutoffDate = isoDateInTz(reminderCutoff, timeZone);
 

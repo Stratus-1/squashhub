@@ -25,6 +25,7 @@ import {
   isInviteVerificationComplete,
   requiresDivisionChoice,
   allowsMultipleDivisions,
+  withdrawalInfo,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
 import { doublesDivisions } from "@/lib/tournaments/doubles";

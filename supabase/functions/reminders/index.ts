@@ -148,12 +148,21 @@ Deno.serve(async (req) => {
       .eq("date", tomorrow)
       .limit(500);
 
+    // Court names for friendly reminder text (fall back to "Court <id>").
+    const courtNameMemo = new Map<string, string>();
+    const bookingCourtIds = [...new Set((bookings || []).map((b: any) => b.court_id).filter((id: any) => id != null))];
+    if (bookingCourtIds.length) {
+      const { data: courtRows } = await supabaseAdmin.from("courts").select("id,name").in("id", bookingCourtIds);
+      for (const c of courtRows || []) courtNameMemo.set(String((c as any).id), String((c as any).name));
+    }
+    const courtLabel = (id: any) => (id != null && courtNameMemo.get(String(id))) || `Court ${id}`;
+
     for (const b of bookings || []) {
       if (!(await capOn((b as any).club_id, "bookings"))) continue;
       const start = String((b as any).start_time || "").slice(0, 5);
       const end = String((b as any).end_time || "").slice(0, 5);
       const title = "Court booking tomorrow";
-      const message = `Court ${(b as any).court_id} · ${tomorrow} ${start}-${end}`;
+      const message = `${courtLabel((b as any).court_id)} · ${tomorrow} ${start}-${end}`;
       const url = "/bookings";
       const recipients = [String((b as any).user_id || ""), (b as any).opponent_id ? String((b as any).opponent_id) : ""]
         .filter((id) => /^[0-9a-fA-F-]{32,36}$/.test(id));
@@ -196,7 +205,7 @@ Deno.serve(async (req) => {
       const start = String((s as any).start_time || "").slice(0, 5);
       const end = String((s as any).end_time || "").slice(0, 5);
       const title = "Match scheduled tomorrow";
-      const message = `Scheduled ${tomorrow} ${start}-${end}${(s as any).court_id ? ` · Court ${(s as any).court_id}` : ""}`;
+      const message = `Scheduled ${tomorrow} ${start}-${end}${(s as any).court_id ? ` · ${courtLabel((s as any).court_id)}` : ""}`;
       const url = "/challenges";
       const recipients = [String(c.challenger_id), String(c.opponent_id)];
       for (const uid of recipients) {

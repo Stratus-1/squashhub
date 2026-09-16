@@ -43,6 +43,11 @@ known-working Nelspruit (nsc) and Gordon's Bay (gb) flows. Expected fresh link s
 `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2F<sub>.squashhub.co.za%2Fmy-account`.
 Recurring/mandate, bar/POS and other gateway flows are separate and out of scope of this standard.
 
+# 2026-09-16 — Booking reminder showed court ID instead of court name
+
+**Reported:** the "Court booking tomorrow" reminder email said "Court 9" — the numeric `bookings.court_id`, not the court's name.
+**Fix:** `supabase/functions/reminders/index.ts` booking + challenge-schedule sections now batch-fetch `courts.name` for the day's court IDs (`courtNameMemo` / `courtLabel`) and use the real court name, falling back to `Court <id>` only when the court row is missing. Deployed.
+
 # 2026-09-16 — Tournament self-withdrawal on the invitation link (organiser-controlled)
 
 Willem: the "You're entered" invitation card must carry a withdraw option, allowed up to a configurable number of days

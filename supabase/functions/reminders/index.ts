@@ -101,7 +101,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { status: 200, headers: corsHeaders });
 
   const secret = req.headers.get("x-internal-secret") || "";
-  const expected = Deno.env.get("REMINDERS_INTERNAL_SECRET") || "";
+  // The scheduled job reads the shared value from app_settings; an env var is
+  // accepted as an alternative for manual runs.
+  let expected = Deno.env.get("REMINDERS_INTERNAL_SECRET") || "";
+  if (!expected) {
+    const { data: setting } = await supabaseAdmin
+      .from("app_settings")
+      .select("value")
+      .eq("key", "reminders_internal_secret")
+      .maybeSingle();
+    expected = (setting as any)?.value || "";
+  }
   if (!expected || secret !== expected) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,

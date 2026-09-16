@@ -245,6 +245,8 @@ Deno.serve(async (req) => {
         .eq("status", "active")
         .limit(500);
 
+      await loadSubdomainUrls((activeEvents || []).map((e: any) => String(e.club_id)));
+
       for (const ev of activeEvents || []) {
         if (!(await capOn((ev as any).club_id, "events"))) continue;
         const reminderHours = (ev as any).reminder_hours || 48;

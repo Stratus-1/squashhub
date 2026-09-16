@@ -2478,6 +2478,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
       payment_methods: Array.from(paymentMethods),
       payment_required: paymentRequired,
+      withdrawals_allowed: withdrawalsAllowed,
+      withdrawal_cutoff_days: Math.max(0, Number(withdrawalCutoffDays) || 0),
       registration_required: registrationRequired,
       invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
       invite_source: inviteSource,
@@ -4789,6 +4791,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
+            withdrawals_allowed: withdrawalsAllowed,
+            withdrawal_cutoff_days: Math.max(0, Number(withdrawalCutoffDays) || 0),
+      withdrawals_allowed: withdrawalsAllowed,
+      withdrawal_cutoff_days: Math.max(0, Number(withdrawalCutoffDays) || 0),
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
@@ -4890,6 +4896,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             entry_fee_cents: Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0),
             payment_methods: Array.from(paymentMethods),
             payment_required: paymentRequired,
+            withdrawals_allowed: withdrawalsAllowed,
+            withdrawal_cutoff_days: Math.max(0, Number(withdrawalCutoffDays) || 0),
+      withdrawals_allowed: withdrawalsAllowed,
+      withdrawal_cutoff_days: Math.max(0, Number(withdrawalCutoffDays) || 0),
             registration_required: registrationRequired,
             invite_methods: Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"])),
             invite_source: inviteSource,
@@ -6881,6 +6891,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setEntryFeeRand(((champ.entry_fee_cents || 0) / 100).toString());
     setPaymentMethods(new Set(((champ.payment_methods || ["card"]) as TournamentPaymentMethod[])));
     setPaymentRequired((champ as any).payment_required !== false);
+    setWithdrawalsAllowed((champ as any).withdrawals_allowed !== false);
+    setWithdrawalCutoffDays(Number((champ as any).withdrawal_cutoff_days ?? 2));
     setRegistrationRequired((champ as any).registration_required !== false);
     setInviteMethods(new Set(((champ.invite_methods || ["app"]) as ("app"|"email")[])));
     const loadedInviteSource = (((champ as any).invite_source as any) || "manual");

@@ -43,7 +43,14 @@ known-working Nelspruit (nsc) and Gordon's Bay (gb) flows. Expected fresh link s
 `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2F<sub>.squashhub.co.za%2Fmy-account`.
 Recurring/mandate, bar/POS and other gateway flows are separate and out of scope of this standard.
 
-# 2026-09-16 — Removed confusing Yes/No buttons from WhatsApp RSVP messages
+# 2026-09-16 — Event reminder system wired up and smoke-tested end-to-end
+
+- **What was implemented:** The `reminders` edge function's event section now sends each occurrence's reminder through the event's notify flags — in-app always, WhatsApp when `notify_whatsapp` (club opt-in + member opt-out enforced by `send-whatsapp`), email when `notify_email` (queued through `email_outbox`). The invite list falls back to event-level `club_event_rsvps` when an instance carries none (older events). A daily cron job `event-reminders-daily` (0 4 * * * UTC = 06:00 SA) invokes the function with the `reminders_internal_secret` from `app_settings`. `CreateClubEvent` gained a 36-hour reminder option.
+- **Smoke test (real sends):** Manually invoked the function with the internal secret. Found and fixed a crash: 168 active bookings have a NULL `user_id`, and `String(null)` produced the literal `"null"` which failed UUID parsing (`22P02`) — booking recipients are now validated as UUID-shaped before any send. After the fix the full run returned 200: 8 in-app notifications + 8 WhatsApp event reminders were delivered for the Thursday Social (17 Sep) to members with linked logins/phones, keyed on event-level RSVPs.
+- **Dedup guard — DO NOT CHANGE:** Event reminder log rows are keyed `scheduled_for = occurrence date` (not the run date), so a member gets at most ONE reminder per occurrence even if the instance stays inside the reminder window across multiple daily runs. Note: changing this key on 16 Sep caused one duplicate reminder round (the first sends were keyed on the run date); duplicates will not recur.
+- **Backfill:** `club_event_instance_rsvps` were backfilled for all scheduled future occurrences of older events that predate the instance-RSVP sync trigger (12 rows per instance for Thursday Social).
+
+
 
 - **Symptom:** Willem reported two thumbs-up/down-style buttons under every confirmation-asking WhatsApp message; members didn't know whether tapping them accepted the invite.
 - **Cause:** The approved `rsvp_question` template (`squashhub_rsvp_question_v3`) was registered on Twilio as a `twilio/quick-reply` with actions `Yes` / `No` (from `whatsapp_templates.quick_replies`). WhatsApp rendered those as two tappable buttons below the message body.

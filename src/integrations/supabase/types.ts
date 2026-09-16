@@ -6442,6 +6442,24 @@ export type Database = {
         }
         Relationships: []
       }
+      invite_short_codes: {
+        Row: {
+          code: string
+          created_at: string
+          invite_token: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          invite_token: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          invite_token?: string
+        }
+        Relationships: []
+      }
       ladder_adjustment_log: {
         Row: {
           applied_at: string
@@ -14551,6 +14569,7 @@ export type Database = {
         Args: { _a: string; _b: string; _reason?: string }
         Returns: undefined
       }
+      ensure_invite_short_code: { Args: { p_token: string }; Returns: string }
       ensure_platform_association_for_league: {
         Args: { _association_id: string }
         Returns: string
@@ -15588,6 +15607,7 @@ export type Database = {
       request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
       reset_event_invites: { Args: { _event_id: string }; Returns: number }
+      resolve_invite_short_code: { Args: { p_code: string }; Returns: string }
       resolve_qr_short_code: { Args: { _code: string }; Returns: Json }
       respond_doubles_pair: {
         Args: {

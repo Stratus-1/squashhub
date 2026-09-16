@@ -12351,8 +12351,8 @@ function InvitePreviewDialog({
     `${clubLabel}: ${tournamentName}. ` +
     (extras ? `${extras.replace(/\n+/g, " ")} ` : "") +
     (waNeedsPayment
-      ? "Register and pay via your invitation link: https://squashhub.co.za/i/…"
-      : "Enter via your invitation link: https://squashhub.co.za/i/… Reply NO on WhatsApp to decline.");
+      ? "To enter and pay, tap here: https://squashhub.co.za/i/ab3k9xq2mt"
+      : "To accept or decline, tap here: https://squashhub.co.za/i/ab3k9xq2mt");
   const smsLength = smsBody.length;
   const smsSegments = smsLength <= 160 ? 1 : Math.ceil(smsLength / 153);
 

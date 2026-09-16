@@ -69,7 +69,48 @@ export type InvitePayload = {
   test?: boolean;
   /** False when the invited membership has never been claimed by an account. */
   member_has_account?: boolean;
+
+  /** Organiser setting: may a player pull out of this tournament themselves? */
+  withdrawals_allowed?: boolean | null;
+  /** How many days before the first day withdrawals close (0 = up to the start). */
+  withdrawal_cutoff_days?: number | null;
+  /** Last moment a player may withdraw themselves. */
+  withdrawal_deadline?: string | null;
 };
+
+export type WithdrawalInfo = {
+  /** True when a withdraw control may be shown and used. */
+  open: boolean;
+  /** Last date a player may pull out, when the tournament has a start date. */
+  deadline: Date | null;
+  /** Plain-language reason a player can no longer pull out themselves. */
+  closedReason: string | null;
+};
+
+/**
+ * Whether a player may still pull out of a tournament on their own.
+ *
+ * The organiser decides both things: whether self-withdrawal is allowed at all
+ * and how many days before the first day it closes. An entry fee already paid
+ * is never refunded by withdrawing — that stays with the club.
+ */
+export function withdrawalInfo(payload: InvitePayload | null | undefined, now: Date = new Date()): WithdrawalInfo {
+  const allowed = payload?.withdrawals_allowed !== false;
+  const raw = payload?.withdrawal_deadline;
+  const parsed = raw ? new Date(raw) : null;
+  const deadline = parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+  if (!allowed) {
+    return { open: false, deadline, closedReason: "The organiser has not allowed players to pull out on their own." };
+  }
+  if (deadline && now.getTime() > deadline.getTime()) {
+    return {
+      open: false,
+      deadline,
+      closedReason: `Withdrawals closed on ${deadline.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}.`,
+    };
+  }
+  return { open: true, deadline, closedReason: null };
+}
 
 /** Normalised division list from an invite payload. */
 export function inviteDivisions(payload: InvitePayload | null | undefined): InviteDivision[] {

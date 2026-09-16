@@ -55,6 +55,21 @@ export default function TournamentInvite() {
   /** Organiser preview: /i/test/:champId. Nothing on this page may mutate. */
   const isTest = !!champId;
 
+  // Short, friendly links (/i/ab3k9xq2mt) are swapped for the real invitation
+  // token here, so everything below keeps working unchanged.
+  const isShort = !isTest && isShortInviteCode(rawToken);
+  const { data: resolved, isLoading: resolving } = useQuery({
+    queryKey: ["invite-short-code", rawToken],
+    enabled: isShort,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("resolve_invite_short_code", { p_code: rawToken });
+      if (error) throw error;
+      return (data as string | null) || "";
+    },
+  });
+  const token = isShort ? resolved || "" : rawToken;
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["tournament-invite", isTest ? `test:${champId}` : token, user?.id ?? "anon"],
     queryFn: async () => {

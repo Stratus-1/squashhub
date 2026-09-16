@@ -155,7 +155,8 @@ Deno.serve(async (req) => {
       const title = "Court booking tomorrow";
       const message = `Court ${(b as any).court_id} · ${tomorrow} ${start}-${end}`;
       const url = "/bookings";
-      const recipients = [String((b as any).user_id), (b as any).opponent_id ? String((b as any).opponent_id) : null].filter(Boolean) as string[];
+      const recipients = [String((b as any).user_id || ""), (b as any).opponent_id ? String((b as any).opponent_id) : ""]
+        .filter((id) => /^[0-9a-fA-F-]{32,36}$/.test(id));
       for (const uid of recipients) {
         const ok = await sendReminder({
           user_id: uid,

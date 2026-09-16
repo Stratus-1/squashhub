@@ -181,6 +181,54 @@ export default function TournamentInvite() {
       </div>
     ) : null;
 
+  // Pulling out later: the same invitation is the withdrawal channel.
+  const withdrawal = withdrawalInfo(data);
+  const withdrawDeadlineLabel = withdrawal.deadline
+    ? withdrawal.deadline.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+    : null;
+
+  const withdrawSection = isTest ? (
+    <p className="text-[11px] text-muted-foreground text-center">
+      Test only — a real entrant sees a withdraw option here.
+    </p>
+  ) : withdrawal.open ? (
+    <div className="space-y-1.5 border-t pt-3">
+      <p className="text-[11px] text-muted-foreground text-center">
+        Can't make it any more?
+        {withdrawDeadlineLabel ? ` You can pull out until ${withdrawDeadlineLabel}.` : ""}
+      </p>
+      {confirmWithdraw ? (
+        <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
+          <p className="text-xs">
+            Pull out of {data?.tournament_name}? You'll be taken out of the draw
+            {hasDoublesChoice ? " and your partner will be told" : ""}.
+            {feeCents > 0 ? " Any entry fee already paid is not refunded." : ""}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" disabled={withdrawEntry.isPending} onClick={() => setConfirmWithdraw(false)}>
+              Keep my entry
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={withdrawEntry.isPending}
+              onClick={() => withdrawEntry.mutate()}
+            >
+              {withdrawEntry.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, withdraw"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" className="w-full" onClick={() => setConfirmWithdraw(true)}>
+          <LogOut className="w-4 h-4 mr-2" /> Withdraw from this tournament
+        </Button>
+      )}
+    </div>
+  ) : (
+    <p className="text-[11px] text-muted-foreground text-center border-t pt-3">
+      {withdrawal.closedReason} Contact the organiser if you can no longer play.
+    </p>
+  );
 
   if (isLoading || authLoading) {
     return (

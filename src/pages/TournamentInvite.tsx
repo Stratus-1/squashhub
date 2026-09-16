@@ -45,7 +45,7 @@ function formatDate(value?: string | null) {
 }
 
 export default function TournamentInvite() {
-  const { token = "", champId = "" } = useParams();
+  const { token: rawToken = "", champId = "" } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [done, setDone] = useState<"accepted" | "declined" | null>(null);

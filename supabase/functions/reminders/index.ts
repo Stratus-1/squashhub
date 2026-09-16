@@ -311,9 +311,8 @@ Deno.serve(async (req) => {
                     category: "utility",
                     template_key: "club_notice",
                     template_variables: {
-                      club: "", // send-whatsapp fills the club name
                       message: waMessage,
-                      link: appUrl,
+                      link: `${subdomainUrl(ev.club_id)}${appUrl}`,
                     },
                     body: waMessage,
                   }),

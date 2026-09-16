@@ -1,89 +1,44 @@
-# Stitch return-to-club: findings and smallest safe fix
+# Booking confirmations, reminders and visitor fees
 
-## Short answer
+Two new booking rules for each club, plus a per-booking choice for the member.
 
-Your reading is right and the previous diagnosis was wrong. Nothing about Nelspruit's test credentials
-prevents a redirect. The payment service was changed on 17 Aug to throw away the club's own return
-address and always send one shared address, `https://www.squashhub.co.za/pay/return`. That address is
-not registered in any club's Stitch portal, so Stitch rejects it, and the code then deliberately opens
-the payment page with no return address at all. That is why payers are parked on Stitch's success page.
+## 1. Confirmation and reminder messages
 
-This affects every club, not just Nelspruit. Gordon's Bay is in exactly the same state today.
+Today a court booking sends nothing when it is made, and the day-before reminder always goes out as an in-app notification plus email. This becomes configurable.
 
-## Evidence
+**Club setting (Courts -> Booking rules, new "Booking messages" card)**
 
-- Last payment link that carried a working club return address: Gordon's Bay, 17 Aug,
-  `.../pay/<id>?redirect_url=https://gb.squashhub.co.za/my-account`.
-- Every payment link created since (Gordon's Bay 5 Sep–12 Sep, Nelspruit 15 Sep, including today's
-  successful test payments) is a bare link with no return address at all.
-- The one link created with the shared address (19 Aug) used `www.squashhub.co.za/pay/return`.
-- The issue log's 9 Aug "confirmed working, do not change" entry states the non-negotiables plainly:
-  the return host must be the club subdomain; the return address is sent as a query parameter on the
-  hosted link; apex and `www` are rejected.
+- Send a confirmation when a booking is made: on/off, plus the default channels (in-app, email, SMS, WhatsApp).
+- Send a reminder before the booking: on/off, default channels, and how many hours before (free number, default 24).
+- Only channels the club actually has are offered: WhatsApp appears only when the club has WhatsApp switched on, SMS only when SMS is available. In-app and email are always available.
 
-## Root cause
+**Member choice at booking time (booking dialog)**
 
-In `supabase/functions/stitch-create-payment/index.ts`:
+Under the booking options, a small "Remind me" row:
 
-1. `sanitizeReturnUrl()` ignores its argument entirely and returns the hard-coded shared
-   `https://www.squashhub.co.za/pay/return`. The 9 Aug version rewrote the incoming address onto the
-   club's own subdomain.
-2. `appendRedirectIfReachable()` then probes the hosted link carrying that shared address. Stitch
-   answers 404 because the address is not in that club's redirect list, and the helper falls back to
-   the bare link, silently dropping the return address.
+- Confirm now: yes/no
+- Remind me: off, or a number of hours before
+- Channel dropdown: in-app / email / SMS / WhatsApp (only what the club allows)
 
-So the payer completes payment and has nowhere to be sent back to. The "Express fallback is required
-because of test credentials" conclusion is not the cause of the missing redirect: the Express hosted
-link does support a return address, and it worked on the Express path on 9 and 17 Aug.
+It opens pre-filled with the club's defaults, so a member who changes nothing just gets the club behaviour. The member's last choice is remembered for their next booking.
 
-On the credentials question: Nelspruit's `test-` client ID with client secret is the correct pairing
-for the Express endpoints (`express.stitch.money/api/v1/token` and `/payments`), which is the path
-being used successfully — today's test payments completed. The `invalid_client` seen earlier comes
-from the newer payment-request route at `secure.stitch.money/connect/token`, which needs separate
-client-portal credentials. That route failing is expected and harmless; the issue log already records
-the same for Gordon's Bay. It is not the reason redirects are missing.
+Both the booker and the opponent (when the opponent is a linked member) get the confirmation and the reminder, each on their own saved preference.
 
-## Smallest safe fix
+## 2. Visitor fee on bookings and visitor registration
 
-Restore the 9 Aug behaviour in the once-off payment function only:
+The club already has a visitor fee amount under Visitors. It is currently never charged. Changes:
 
-1. `sanitizeReturnUrl(raw, clubSubdomain)` — accept the caller's return URL, fold `www` to apex, then
-   rewrite apex / preview hosts to `https://<club subdomain>.squashhub.co.za`, default path
-   `/my-account`, strip query and hash. This is the same function that already exists and works in
-   `stitch-create-mandate`; copy its shape rather than inventing a new one.
-2. Pass the club's `subdomain` (already loaded from `clubs`) into it.
-3. Keep appending `redirect_url=<club URL>` to the Express hosted link. Keep the reachability probe as
-   a safety net, but the probe should now pass, since `https://nsc.squashhub.co.za/*` is registered in
-   Nelspruit's Stitch portal.
-4. Also pass the club return URL as `redirectUrl` on the payment-request route, so clubs on
-   client-portal credentials return to their own subdomain too.
-5. Leave the body-level `merchantRedirectUrl`/`redirectUrl` keys on the Express create call as-is
-   (harmless; Express ignores them).
+- **Booking with a visitor**: the second-player picker lets the member choose a registered visitor **or type a new name**, which creates a visitor record for the club. A name is compulsory once "Visitor" is chosen — the booking cannot be saved without one.
+- A clear note in the dialog: "A visitor fee of R<amount> will be charged to your account for bringing a visitor." Nothing is shown when the club's fee is 0.
+- **Charging**: the fee is added to the booking member's account **after the booking slot has passed**, so a cancelled booking never costs anything. This runs in the existing daily job, once per booking, and posts to the club's ledger the same way other member charges do.
+- **Visitor registering at the club** (walk-in visitor, not brought by a member): the same fee is raised against that visitor's own record so the club can collect it. Whether they pay on the spot or later stays a club matter for now — the charge is simply recorded as outstanding.
+- The Visitors admin screen gets a tooltip on the fee field explaining both cases.
 
-Nothing changes in the mandate/recurring flow, the bar flow, or any other gateway.
+## Technical notes
 
-## On the shared `pay/return` address
-
-It should stay available as the fallback only. Club-registered subdomain URLs are what Stitch actually
-validates against, and Stitch's five-URL limit is per club account, not platform-wide — so each club
-registering `https://<sub>.squashhub.co.za/*` costs one of their own five slots. Registering that
-wildcard per club is the correct long-term setup; the shared callback is used only when a club has no
-usable subdomain.
-
-## Verification before calling it fixed
-
-- Create a fresh Nelspruit test payment and confirm the stored link ends in
-  `?redirect_url=https%3A%2F%2Fnsc.squashhub.co.za%2Fmy-account`.
-- Confirm the reachability probe returns 200 for that fresh link (not a consumed one).
-- Complete a test payment and confirm the payer lands on `nsc.squashhub.co.za/my-account` and the
-  credit posts.
-- Repeat once for Gordon's Bay to confirm no regression there.
-- Append the finding to `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`.
-
-## Files touched by the fix
-
-- `supabase/functions/stitch-create-payment/index.ts` (`sanitizeReturnUrl`, its call site, the
-  payment-request `redirectUri`)
-- `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`
-
-No database, RLS or frontend changes. Deployment only on your explicit go-ahead.
+- New `clubs` columns: `booking_confirm_enabled`, `booking_confirm_channels` (text[]), `booking_reminder_enabled`, `booking_reminder_channels` (text[]), `booking_reminder_hours` (int, default 24). Existing `visitor_booking_fee` is reused unchanged.
+- New per-booking columns on `bookings`: `notify_channels` (text[]), `reminder_hours` (int), `confirm_sent_at`, `reminder_sent_at`, `visitor_fee_charged_at`.
+- Sending goes through the existing paths: notifications table (in-app + its email bridge), `send-whatsapp`, and the SMS sender. No new send infrastructure.
+- Reminder dispatch moves into the existing `reminders` edge function, driven by `reminder_hours` per booking rather than a fixed "tomorrow" window; the daily cron stays as is, with the function checking each booking's own window. Dedup keys per booking prevent repeats.
+- Visitor fee posting is a SECURITY DEFINER RPC called from the same function, idempotent on `visitor_fee_charged_at`, writing a member account charge plus the matching ledger entry; club-scoped and RLS-safe.
+- No change to challenges, events, tournaments, other gateways or the webhook paths.

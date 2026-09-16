@@ -10,4 +10,4 @@
 
 ## WhatsApp invite wording (16 Sep 2026)
 - [x] Short, friendly invitation link instead of the long token URL
-- [ ] Reword invite: no "link" wording, single "tap here to accept or decline" call to action (new WhatsApp template needs Meta approval)
+- [x] Reword invite: single "tap here to accept or decline" (new template awaiting WhatsApp approval)

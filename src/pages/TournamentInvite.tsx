@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { toast } from "sonner";
-import { CalendarDays, CheckCircle2, Clock, CreditCard, Loader2, LogIn, Trophy, UserPlus, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, CreditCard, Loader2, LogIn, LogOut, Trophy, UserPlus, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,6 +25,7 @@ import {
   isInviteVerificationComplete,
   requiresDivisionChoice,
   allowsMultipleDivisions,
+  withdrawalInfo,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
 import { doublesDivisions } from "@/lib/tournaments/doubles";
@@ -50,6 +51,7 @@ export default function TournamentInvite() {
   const [done, setDone] = useState<"accepted" | "declined" | null>(null);
   const [verify, setVerify] = useState("");
   const [verifyError, setVerifyError] = useState("");
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   /** Organiser preview: /i/test/:champId. Nothing on this page may mutate. */
   const isTest = !!champId;
 
@@ -131,6 +133,25 @@ export default function TournamentInvite() {
     },
   });
 
+  /** Pulling out of a tournament already entered — same link, same person. */
+  const withdrawEntry = useMutation({
+    mutationFn: async () => {
+      const { data: res, error } = await (supabase as any).rpc("withdraw_tournament_entry_public", {
+        p_token: token,
+        p_verify: verify.trim() || null,
+      });
+      if (error) throw error;
+      return res;
+    },
+    onSuccess: async () => {
+      setConfirmWithdraw(false);
+      setDone("declined");
+      await refetch();
+      toast.success("You've been withdrawn — the organiser has been updated.");
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not withdraw your entry"),
+  });
+
   // Land straight back here after signing in.
   useEffect(() => {
     if (done) return;
@@ -181,6 +202,54 @@ export default function TournamentInvite() {
       </div>
     ) : null;
 
+  // Pulling out later: the same invitation is the withdrawal channel.
+  const withdrawal = withdrawalInfo(data);
+  const withdrawDeadlineLabel = withdrawal.deadline
+    ? withdrawal.deadline.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+    : null;
+
+  const withdrawSection = isTest ? (
+    <p className="text-[11px] text-muted-foreground text-center">
+      Test only — a real entrant sees a withdraw option here.
+    </p>
+  ) : withdrawal.open ? (
+    <div className="space-y-1.5 border-t pt-3">
+      <p className="text-[11px] text-muted-foreground text-center">
+        Can't make it any more?
+        {withdrawDeadlineLabel ? ` You can pull out until ${withdrawDeadlineLabel}.` : ""}
+      </p>
+      {confirmWithdraw ? (
+        <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
+          <p className="text-xs">
+            Pull out of {data?.tournament_name}? You'll be taken out of the draw
+            {hasDoublesChoice ? " and your partner will be told" : ""}.
+            {feeCents > 0 ? " Any entry fee already paid is not refunded." : ""}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" disabled={withdrawEntry.isPending} onClick={() => setConfirmWithdraw(false)}>
+              Keep my entry
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={withdrawEntry.isPending}
+              onClick={() => withdrawEntry.mutate()}
+            >
+              {withdrawEntry.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, withdraw"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" className="w-full" onClick={() => setConfirmWithdraw(true)}>
+          <LogOut className="w-4 h-4 mr-2" /> Withdraw from this tournament
+        </Button>
+      )}
+    </div>
+  ) : (
+    <p className="text-[11px] text-muted-foreground text-center border-t pt-3">
+      {withdrawal.closedReason} Contact the organiser if you can no longer play.
+    </p>
+  );
 
   if (isLoading || authLoading) {
     return (
@@ -254,6 +323,7 @@ export default function TournamentInvite() {
             View tournament
           </Button>
         )}
+        {withdrawSection}
       </>,
     );
   }
@@ -272,7 +342,7 @@ export default function TournamentInvite() {
         >
           <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
         </Button>
-
+        {withdrawSection}
       </>,
     );
   }
@@ -281,7 +351,9 @@ export default function TournamentInvite() {
     return shell(
       <>
         {header}
-        <p className="text-sm text-muted-foreground">You declined this invitation. Contact the organiser if that was a mistake.</p>
+        <p className="text-sm text-muted-foreground">
+          You're not entered for this tournament. Contact the organiser if that was a mistake — they can enter you again.
+        </p>
       </>,
     );
   }

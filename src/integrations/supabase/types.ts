@@ -12640,6 +12640,8 @@ export type Database = {
           sanctioning_org_id: string | null
           tournament_id: string
           updated_at: string
+          withdrawal_cutoff_days: number
+          withdrawals_allowed: boolean
         }
         Insert: {
           approval_gate?: string
@@ -12675,6 +12677,8 @@ export type Database = {
           sanctioning_org_id?: string | null
           tournament_id: string
           updated_at?: string
+          withdrawal_cutoff_days?: number
+          withdrawals_allowed?: boolean
         }
         Update: {
           approval_gate?: string
@@ -12710,6 +12714,8 @@ export type Database = {
           sanctioning_org_id?: string | null
           tournament_id?: string
           updated_at?: string
+          withdrawal_cutoff_days?: number
+          withdrawals_allowed?: boolean
         }
         Relationships: [
           {
@@ -13825,6 +13831,8 @@ export type Database = {
           updated_at: string | null
           visitor_clubs: string[] | null
           win_condition: string | null
+          withdrawal_cutoff_days: number | null
+          withdrawals_allowed: boolean | null
         }
         Relationships: [
           {
@@ -16063,6 +16071,10 @@ export type Database = {
           owner_org_id: string
         }[]
       }
+      tournament_withdrawal_deadline: {
+        Args: { p_cutoff_days: number; p_start_date: string }
+        Returns: string
+      }
       unarchive_club_season: {
         Args: {
           _association_id?: string
@@ -16094,6 +16106,10 @@ export type Database = {
           amount: number
           label: string
         }[]
+      }
+      withdraw_tournament_entry_public: {
+        Args: { p_token: string; p_verify?: string }
+        Returns: Json
       }
     }
     Enums: {

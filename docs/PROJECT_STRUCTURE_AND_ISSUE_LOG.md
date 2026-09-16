@@ -43,6 +43,26 @@ known-working Nelspruit (nsc) and Gordon's Bay (gb) flows. Expected fresh link s
 `https://express.stitch.money/pay/<id>?redirect_url=https%3A%2F%2F<sub>.squashhub.co.za%2Fmy-account`.
 Recurring/mandate, bar/POS and other gateway flows are separate and out of scope of this standard.
 
+# 2026-09-16 — Tournament self-withdrawal on the invitation link (organiser-controlled)
+
+Willem: the "You're entered" invitation card must carry a withdraw option, allowed up to a configurable number of days
+before the tournament (his example: 2), and only when the tournament allows it. Fees already paid are forfeited.
+
+- Schema: `tournament_governance.withdrawals_allowed` (default true) and `withdrawal_cutoff_days` (default 2), exposed
+  through the `club_champs` view (appended columns) and written by the `zz_club_champs_compat_extra_*` INSTEAD OF
+  triggers. `tournament_withdrawal_deadline(start_date, cutoff_days)` is the single source of the cut-off.
+- New RPC `withdraw_tournament_entry_public(p_token, p_verify)` — same token + verification contract as
+  `respond_tournament_invite_public`. It cancels the registration (`confirmation_source = 'withdrawn'`), deletes the
+  player's `club_champs_entries` rows and cancels any `champ_doubles_pairs` they are in. It refuses when the organiser
+  disabled self-withdrawal or the cut-off has passed. NO refund is issued — that stays an organiser decision.
+- `get_tournament_invite` now returns `withdrawals_allowed`, `withdrawal_cutoff_days`, `withdrawal_deadline`.
+- UI: `withdrawalInfo()` in `src/lib/tournaments/invite-link.ts` (covered by `src/test/tournament-withdrawal.test.ts`)
+  decides whether the control is shown; `TournamentInvite.tsx` renders it on both the entered and
+  entry-fee-outstanding states, behind a confirm step. The organiser toggle + cut-off live in the tournament setup's
+  Registration window section.
+
+Rule: withdrawal stays self-service with no approval step, and the cut-off is per tournament — never hard-coded.
+
 # 2026-09-16 — Event/tournament withdrawal: members told they can change their answer
 
 Willem asked how a member who confirmed attendance can later withdraw. Investigation showed the capability already existed

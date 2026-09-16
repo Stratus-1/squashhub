@@ -36,6 +36,8 @@ import {
 
 import { SharedAccessCard } from "@/components/SharedAccessCard";
 import { MyFamilyCard } from "@/components/family/MyFamilyCard";
+import { FamilyInviteCard } from "@/components/family/FamilyInviteCard";
+
 import PaymentMethodsCard from "@/components/PaymentMethodsCard";
 
 export default function MyAccount() {

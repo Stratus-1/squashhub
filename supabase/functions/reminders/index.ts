@@ -119,6 +119,7 @@ Deno.serve(async (req) => {
     });
   }
 
+  let section = "init";
   try {
     const timeZone = Deno.env.get("REMINDERS_TIMEZONE") || "Africa/Johannesburg";
     const now = new Date();

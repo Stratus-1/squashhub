@@ -351,7 +351,9 @@ export default function TournamentInvite() {
     return shell(
       <>
         {header}
-        <p className="text-sm text-muted-foreground">You declined this invitation. Contact the organiser if that was a mistake.</p>
+        <p className="text-sm text-muted-foreground">
+          You're not entered for this tournament. Contact the organiser if that was a mistake — they can enter you again.
+        </p>
       </>,
     );
   }

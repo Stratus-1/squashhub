@@ -267,7 +267,7 @@ export default function TournamentInvite() {
     </p>
   );
 
-  if (isLoading || authLoading) {
+  if (isLoading || authLoading || resolving) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-5 h-5 animate-spin text-primary" />

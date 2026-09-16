@@ -778,9 +778,12 @@ export default function MyAccount() {
         </Card>
       </motion.div>
 
+      {!isPayingForOther && <FamilyInviteCard clubMemberId={selfMemberId} />}
+
       {!isPayingForOther && (
         <MyFamilyCard clubMemberId={selfMemberId} clubId={club?.id || null} />
       )}
+
 
       {!isPayingForOther && (
         <SharedAccessCard clubMemberId={selfMemberId} clubId={club?.id || null} memberName={selfName} />

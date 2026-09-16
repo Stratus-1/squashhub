@@ -245,7 +245,7 @@ export default function EventDetail() {
                         disabled={respond.isPending}
                         onClick={() => respond.mutate({ rsvpId: r.id, status: "declined" })}
                       >
-                        <X className="w-3.5 h-3.5 mr-1" /> Decline
+                        <X className="w-3.5 h-3.5 mr-1" /> {status === "confirmed" ? "Withdraw" : "Decline"}
                       </Button>
                     </div>
                   </div>

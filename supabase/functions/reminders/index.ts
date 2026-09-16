@@ -29,6 +29,28 @@ function addDays(date: Date, days: number) {
   return d;
 }
 
+/** Club app URL (https://<subdomain>.squashhub.co.za), memoised per run. */
+const subdomainMemo = new Map<string, string>();
+function subdomainUrl(clubId?: string | null): string {
+  const fallback = "https://squashhub.co.za";
+  if (!clubId) return fallback;
+  if (subdomainMemo.has(clubId)) return subdomainMemo.get(clubId)!;
+  // Filled lazily by the caller via setSubdomainUrl — avoids await in a sync helper.
+  return fallback;
+}
+async function loadSubdomainUrls(clubIds: string[]) {
+  const missing = clubIds.filter((id) => !subdomainMemo.has(id));
+  if (missing.length === 0) return;
+  const { data } = await supabaseAdmin
+    .from("clubs")
+    .select("id, subdomain")
+    .in("id", missing);
+  for (const c of data || []) {
+    const sub = (c as any).subdomain ? String((c as any).subdomain) : null;
+    subdomainMemo.set(String((c as any).id), sub ? `https://${sub}.squashhub.co.za` : "https://squashhub.co.za");
+  }
+}
+
 async function logOnce(args: { user_id: string; kind: string; ref_table: string; ref_id: string | null; scheduled_for: string }) {
   const { error } = await supabaseAdmin.from("reminder_log").insert({
     user_id: args.user_id,

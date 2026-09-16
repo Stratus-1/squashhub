@@ -212,23 +212,23 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4) Event instance reminders — check all upcoming instances where reminder_hours matches
+    // 4) Event instance reminders — sent reminder_hours before each occurrence.
+    //    Channels follow the event's notify flags: in-app always, WhatsApp when
+    //    notify_whatsapp (club opt-in + member opt-out enforced by send-whatsapp),
+    //    email when notify_email (queued through email_outbox).
     {
-      // Fetch all active events with their reminder_hours
       const { data: activeEvents } = await supabaseAdmin
         .from("club_events")
-        .select("id, club_id, title, event_type, reminder_hours, start_time, end_time")
+        .select("id, club_id, title, event_type, reminder_hours, start_time, end_time, notify_push, notify_email, notify_whatsapp")
         .eq("status", "active")
         .limit(500);
 
       for (const ev of activeEvents || []) {
         if (!(await capOn((ev as any).club_id, "events"))) continue;
         const reminderHours = (ev as any).reminder_hours || 48;
-        // Find instances within the reminder window
         const reminderCutoff = new Date(Date.now() + reminderHours * 60 * 60 * 1000);
         const reminderCutoffDate = isoDateInTz(reminderCutoff, timeZone);
 
-        // Get scheduled instances that fall within the reminder window
         const { data: instances } = await supabaseAdmin
           .from("club_event_instances")
           .select("id, instance_date")
@@ -239,21 +239,33 @@ Deno.serve(async (req) => {
           .limit(100);
 
         for (const inst of instances || []) {
-          // Get invited/confirmed RSVPs for this instance
-          const { data: rsvps } = await supabaseAdmin
+          // Invite list: instance-level RSVPs first; fall back to the
+          // event-level list when an instance carries none (older events).
+          let rsvps: any[] | null = null;
+          const { data: instRsvps } = await supabaseAdmin
             .from("club_event_instance_rsvps")
             .select("club_member_id, status")
             .eq("instance_id", String((inst as any).id))
             .in("status", ["invited", "confirmed"])
             .limit(500);
+          if (instRsvps && instRsvps.length > 0) {
+            rsvps = instRsvps;
+          } else {
+            const { data: evRsvps } = await supabaseAdmin
+              .from("club_event_rsvps")
+              .select("club_member_id, status")
+              .eq("event_id", String((ev as any).id))
+              .in("status", ["invited", "confirmed"])
+              .limit(500);
+            rsvps = evRsvps;
+          }
 
-          // Get user_ids from club_member_ids
-          const memberIds = (rsvps || []).map((r: any) => String(r.club_member_id));
+          const memberIds = [...new Set((rsvps || []).map((r: any) => String(r.club_member_id)))];
           if (memberIds.length === 0) continue;
 
           const { data: memberUsers } = await supabaseAdmin
             .from("club_members")
-            .select("id, user_id")
+            .select("id, user_id, name, email, phone, whatsapp_opt_out")
             .in("id", memberIds)
             .not("user_id", "is", null);
 
@@ -262,9 +274,13 @@ Deno.serve(async (req) => {
           const title = `${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Event Reminder`;
           const instanceDate = String((inst as any).instance_date);
           const message = `"${(ev as any).title}" is on ${instanceDate} at ${startTime}. Please confirm your attendance.`;
+          const appUrl = `/events/${String((ev as any).id)}`;
+          const waMessage = `"${(ev as any).title}" is on ${instanceDate} at ${startTime}. Please reply YES to confirm or NO to decline.`;
 
           for (const mu of memberUsers || []) {
             const uid = String((mu as any).user_id);
+            // One reminder_log row per member/day drives every channel — no
+            // duplicate WhatsApp or email if the job runs twice.
             const ok = await sendReminder({
               user_id: uid,
               kind: "event_instance_reminder",
@@ -273,11 +289,60 @@ Deno.serve(async (req) => {
               scheduled_for: today,
               title,
               message,
-              url: "/events",
+              url: appUrl,
               data: { event_id: String((ev as any).id), instance_id: String((inst as any).id) },
             });
-            if (ok) sent += 1;
-            else skipped += 1;
+            if (!ok) { skipped += 1; continue; }
+            sent += 1;
+
+            // WhatsApp (opt-in channel, billed to the club)
+            if ((ev as any).notify_whatsapp && (mu as any).phone && !(mu as any).whatsapp_opt_out) {
+              try {
+                const waRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-whatsapp`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                  },
+                  body: JSON.stringify({
+                    club_id: String((ev as any).club_id),
+                    recipients: [{ member_id: String((mu as any).id), phone: String((mu as any).phone) }],
+                    kind: "event_reminder",
+                    category: "utility",
+                    template_key: "club_notice",
+                    template_variables: {
+                      club: "", // send-whatsapp fills the club name
+                      message: waMessage,
+                      link: appUrl,
+                    },
+                    body: waMessage,
+                  }),
+                });
+                if (!waRes.ok) console.error("Event reminder WhatsApp failed:", await waRes.text());
+              } catch (waErr) {
+                console.error("Event reminder WhatsApp error:", waErr);
+              }
+            }
+
+            // Email (queued; the outbox processor delivers it)
+            if ((ev as any).notify_email && (mu as any).email) {
+              try {
+                await supabaseAdmin.from("email_outbox").insert({
+                  club_id: String((ev as any).club_id),
+                  club_member_id: String((mu as any).id),
+                  recipient_email: String((mu as any).email),
+                  recipient_name: (mu as any).name || null,
+                  subject: title,
+                  body: message,
+                  url: appUrl,
+                  cta_label: "Open event",
+                  kind: "event_reminder",
+                  ref_id: String((inst as any).id),
+                } as any);
+              } catch (mailErr) {
+                console.error("Event reminder email queue error:", mailErr);
+              }
+            }
           }
         }
       }

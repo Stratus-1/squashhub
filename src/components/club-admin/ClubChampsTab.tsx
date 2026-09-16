@@ -5675,10 +5675,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     // league set up in the fixture/structure step — with a single league
     // there is nothing to choose, so don't promise it.
     const hasMultipleLeagues = (numGroups || 0) > 1;
-    const chooseStep = hasMultipleLeagues ? "choose your category and " : "";
+    // The closing sentence of the message already tells the player how to
+    // accept or decline, so this line never repeats that instruction.
     const cta = needsPayment
-      ? `Open your personal link to ${chooseStep}pay the entry fee. Reply NO to decline.`
-      : `Open your personal link to ${chooseStep}confirm. Reply NO to decline.`;
+      ? `You can ${hasMultipleLeagues ? "choose your category and " : ""}pay the entry fee when you confirm.`
+      : hasMultipleLeagues
+        ? "You can choose your category when you confirm."
+        : "Everything you need is on your confirmation page.";
     if (inviteShortMessage) return cta;
     const full = buildInviteBody()
       .replace(/^You have been invited to [^\n]*\n*/, "")
@@ -5899,6 +5902,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         if (!token) throw new Error("Could not create a secure invitation link for one or more players. No invitations were sent.");
         return buildInviteUrl(token, sub);
       };
+      /**
+       * A 64-character token in a WhatsApp message looks like spam, so the
+       * message carries a short, friendly address instead. If the short code
+       * cannot be minted the full address is used — an invite always goes out.
+       */
+      const shortUrlForRegistration = async (registrationId: string) => {
+        const token = tokenByRegistration.get(registrationId);
+        if (!token) return urlForRegistration(registrationId);
+        try {
+          const { data: code, error } = await (supabase as any).rpc("ensure_invite_short_code", { p_token: token });
+          if (error || !code) return buildInviteUrl(token, sub);
+          return buildInviteUrl(String(code), sub);
+        } catch {
+          return buildInviteUrl(token, sub);
+        }
+      };
 
       const methods = Array.from(inviteMethods.size > 0 ? inviteMethods : new Set(["app"]));
       const sendApp = methods.includes("app");
@@ -5936,10 +5955,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // personal link. A typed NO is still written back as a decline.
       if (methods.includes("whatsapp")) {
         const needsPayment = paymentRequired && entryFeeAmount > 0;
+        // The reworded invitation ("tap here to accept or decline") is used as
+        // soon as WhatsApp has approved it; until then the previously approved
+        // wording keeps going out so invitations are never blocked.
+        const inviteTemplateKey = await (async () => {
+          try {
+            const { data } = await (supabase as any)
+              .from("whatsapp_templates")
+              .select("approval_status")
+              .eq("key", "tournament_invite_tap")
+              .maybeSingle();
+            return data?.approval_status === "approved" ? "tournament_invite_tap" : "tournament_invite";
+          } catch {
+            return "tournament_invite";
+          }
+        })();
         // Each recipient gets their own canonical invitation link, so the
         // WhatsApp message carries exactly the same URL as email / in-app.
         for (const r of rows as any[]) {
-          const link = urlForRegistration(r.id);
+          const link = await shortUrlForRegistration(r.id);
           const details = buildWhatsAppDetails(needsPayment);
           try {
             await sendWhatsApp({
@@ -5949,7 +5983,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               category: "utility",
               // Cold WhatsApp sends must use an approved template; the free-form
               // body is only used inside a 24h reply window.
-              templateKey: "tournament_invite",
+              templateKey: inviteTemplateKey,
               templateVariables: {
                 player: memberNameById.get(r.club_member_id) || "player",
                 event: champName || "our tournament",
@@ -12299,10 +12333,11 @@ function InvitePreviewDialog({
   const waNeedsPayment = !!paymentRequired && Number(entryFeeRand || 0) > 0;
   // Mirrors buildWhatsAppDetails(): only promise category choice when the
   // fixture setup actually holds more than one league.
-  const waChooseStep = hasMultipleLeagues ? "choose your category and " : "";
   const waCallToAction = waNeedsPayment
-    ? `Open your personal link to ${waChooseStep}pay the entry fee. Reply NO to decline.`
-    : `Open your personal link to ${waChooseStep}confirm. Reply NO to decline.`;
+    ? `You can ${hasMultipleLeagues ? "choose your category and " : ""}pay the entry fee when you confirm.`
+    : hasMultipleLeagues
+      ? "You can choose your category when you confirm."
+      : "Everything you need is on your confirmation page.";
   // Mirrors buildWhatsAppDetails(): full details ride along unless short mode is on.
   const waFullDetails = builtBody
     .replace(/^You have been invited to [^\n]*\n*/, "")
@@ -12316,7 +12351,7 @@ function InvitePreviewDialog({
     `Hello Player, this is a message from *${clubLabel}* on SquashHub.\n\n` +
     `You are invited to take part in our upcoming tournament: ${tournamentName}.\n\n` +
     `Event details: ${waDetails}\n\n` +
-    `To accept the invitation and complete your entry, please open the following link: https://squashhub.co.za/i/… (personal link)\n\n` +
+    `To accept or decline, tap here: https://squashhub.co.za/i/ab3k9xq2mt\n\n` +
     `We hope to see you on court.`;
 
 
@@ -12331,8 +12366,8 @@ function InvitePreviewDialog({
     `${clubLabel}: ${tournamentName}. ` +
     (extras ? `${extras.replace(/\n+/g, " ")} ` : "") +
     (waNeedsPayment
-      ? "Register and pay via your invitation link: https://squashhub.co.za/i/…"
-      : "Enter via your invitation link: https://squashhub.co.za/i/… Reply NO on WhatsApp to decline.");
+      ? "To enter and pay, tap here: https://squashhub.co.za/i/ab3k9xq2mt"
+      : "To accept or decline, tap here: https://squashhub.co.za/i/ab3k9xq2mt");
   const smsLength = smsBody.length;
   const smsSegments = smsLength <= 160 ? 1 : Math.ceil(smsLength / 153);
 

@@ -1521,3 +1521,16 @@ Members can now enter one or more other eligible players into a tournament from 
 - DB: `club_champs_registrations.paid_by_member_id`; RPCs `register_players_for_champ`, `charge_champ_entries_to_payer`; trigger `trg_fee_paid_marks_champ_entries` marks linked entries paid when the fee is settled (idempotent).
 - UI: `src/components/tournaments/GroupEntryCard.tsx` used by `TournamentRegisterCard.tsx`; helpers + tests in `src/lib/tournaments/group-entry.ts` and `src/test/group-entry.test.ts`.
 - Entered players get an in-app notification; already paid entries are never charged twice.
+
+## 2026-09-16 — WhatsApp invitation: short link + single call to action
+- Long `/i/<64-char token>` URLs looked like spam in WhatsApp. New table `invite_short_codes`
+  plus SECURITY DEFINER `ensure_invite_short_code()` / `resolve_invite_short_code()`.
+  Invites now carry `https://<sub>.squashhub.co.za/i/<10-char code>`; `TournamentInvite`
+  swaps a short code for the real token before anything else (tokens are >= 32 chars).
+  If a short code cannot be minted the full URL is used — an invite always goes out.
+- Wording: the duplicated "Open your personal link to confirm. Reply NO to decline."
+  line is removed. One instruction only: "To accept or decline your invitation, tap here: <url>".
+  Never reintroduce the duplicate, and avoid the word "link" in the call to action.
+- New template `tournament_invite_tap` carries that wording and is awaiting Meta approval.
+  The send path uses it only when `approval_status = 'approved'`, otherwise the previously
+  approved `tournament_invite` keeps sending — invitations are never blocked by approval.

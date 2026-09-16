@@ -5958,7 +5958,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // Each recipient gets their own canonical invitation link, so the
         // WhatsApp message carries exactly the same URL as email / in-app.
         for (const r of rows as any[]) {
-          const link = urlForRegistration(r.id);
+          const link = await shortUrlForRegistration(r.id);
           const details = buildWhatsAppDetails(needsPayment);
           try {
             await sendWhatsApp({

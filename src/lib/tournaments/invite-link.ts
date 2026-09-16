@@ -24,6 +24,16 @@ export function buildInviteUrl(token: string, subdomain?: string | null): string
   return `https://${ROOT_HOST}${path}`;
 }
 
+/**
+ * A long random token looks like spam in a WhatsApp message, so invitations
+ * are shared as a short code (`/i/ab3k9xq2mt`) that the landing page swaps for
+ * the real token. Anything at least 32 characters long IS the real token.
+ */
+export function isShortInviteCode(value: string | null | undefined): boolean {
+  const v = (value || "").trim();
+  return v.length > 0 && v.length < 32;
+}
+
 export type InviteDivision = {
   group_number: number;
   label: string;

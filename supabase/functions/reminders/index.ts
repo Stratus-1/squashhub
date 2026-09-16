@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
       const start = String((s as any).start_time || "").slice(0, 5);
       const end = String((s as any).end_time || "").slice(0, 5);
       const title = "Match scheduled tomorrow";
-      const message = `Scheduled ${tomorrow} ${start}-${end}${(s as any).court_id ? ` · Court ${(s as any).court_id}` : ""}`;
+      const message = `Scheduled ${tomorrow} ${start}-${end}${(s as any).court_id ? ` · ${courtLabel((s as any).court_id)}` : ""}`;
       const url = "/challenges";
       const recipients = [String(c.challenger_id), String(c.opponent_id)];
       for (const uid of recipients) {

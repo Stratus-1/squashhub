@@ -23,6 +23,7 @@ import {
   inviteVerificationKind,
   inviteVerificationLabel,
   isInviteVerificationComplete,
+  isShortInviteCode,
   requiresDivisionChoice,
   allowsMultipleDivisions,
   withdrawalInfo,

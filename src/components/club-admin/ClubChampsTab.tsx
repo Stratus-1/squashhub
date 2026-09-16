@@ -5955,6 +5955,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // personal link. A typed NO is still written back as a decline.
       if (methods.includes("whatsapp")) {
         const needsPayment = paymentRequired && entryFeeAmount > 0;
+        // The reworded invitation ("tap here to accept or decline") is used as
+        // soon as WhatsApp has approved it; until then the previously approved
+        // wording keeps going out so invitations are never blocked.
+        const inviteTemplateKey = await (async () => {
+          try {
+            const { data } = await (supabase as any)
+              .from("whatsapp_templates")
+              .select("approval_status")
+              .eq("key", "tournament_invite_tap")
+              .maybeSingle();
+            return data?.approval_status === "approved" ? "tournament_invite_tap" : "tournament_invite";
+          } catch {
+            return "tournament_invite";
+          }
+        })();
         // Each recipient gets their own canonical invitation link, so the
         // WhatsApp message carries exactly the same URL as email / in-app.
         for (const r of rows as any[]) {

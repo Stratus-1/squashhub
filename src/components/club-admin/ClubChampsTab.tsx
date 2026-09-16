@@ -1520,6 +1520,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
+  // Players pulling out after they have entered.
+  const [withdrawalsAllowed, setWithdrawalsAllowed] = useState<boolean>(true);
+  const [withdrawalCutoffDays, setWithdrawalCutoffDays] = useState<number>(2);
   const [paymentMethods, setPaymentMethods] = useState<Set<TournamentPaymentMethod>>(new Set(["card"]));
   const [paymentRequired, setPaymentRequired] = useState<boolean>(true);
   // When false, the registration step is collapsed (no public registration window,

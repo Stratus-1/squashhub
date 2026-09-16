@@ -326,7 +326,10 @@ Deno.serve(async (req) => {
               kind: "event_instance_reminder",
               ref_table: "club_event_instances",
               ref_id: String((inst as any).id),
-              scheduled_for: today,
+              // Keyed on the occurrence date, not the run date, so a reminder
+              // goes out exactly once per member per occurrence even if the
+              // instance stays inside the reminder window for several days.
+              scheduled_for: instanceDate,
               title,
               message,
               url: appUrl,

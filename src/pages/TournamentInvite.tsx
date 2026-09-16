@@ -131,6 +131,25 @@ export default function TournamentInvite() {
     },
   });
 
+  /** Pulling out of a tournament already entered — same link, same person. */
+  const withdrawEntry = useMutation({
+    mutationFn: async () => {
+      const { data: res, error } = await (supabase as any).rpc("withdraw_tournament_entry_public", {
+        p_token: token,
+        p_verify: verify.trim() || null,
+      });
+      if (error) throw error;
+      return res;
+    },
+    onSuccess: async () => {
+      setConfirmWithdraw(false);
+      setDone("declined");
+      await refetch();
+      toast.success("You've been withdrawn — the organiser has been updated.");
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not withdraw your entry"),
+  });
+
   // Land straight back here after signing in.
   useEffect(() => {
     if (done) return;

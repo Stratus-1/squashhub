@@ -254,6 +254,7 @@ export default function TournamentInvite() {
             View tournament
           </Button>
         )}
+        {withdrawSection}
       </>,
     );
   }
@@ -272,7 +273,7 @@ export default function TournamentInvite() {
         >
           <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
         </Button>
-
+        {withdrawSection}
       </>,
     );
   }

@@ -5983,7 +5983,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               category: "utility",
               // Cold WhatsApp sends must use an approved template; the free-form
               // body is only used inside a 24h reply window.
-              templateKey: "tournament_invite",
+              templateKey: inviteTemplateKey,
               templateVariables: {
                 player: memberNameById.get(r.club_member_id) || "player",
                 event: champName || "our tournament",

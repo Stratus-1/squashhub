@@ -12,6 +12,7 @@ import {
   inviteSignupPath,
   inviteState,
   inviteePath,
+  normalizeShortInviteCode,
   type InvitePayload,
 } from "@/lib/tournaments/invite-link";
 
@@ -31,6 +32,12 @@ describe("invitation links", () => {
 
   it("preserves invite context through login", () => {
     expect(inviteLoginPath("tok")).toBe("/auth?redirectTo=%2Fi%2Ftok");
+  });
+
+  it("removes punctuation appended by phone messaging apps", () => {
+    expect(normalizeShortInviteCode("wwv59skscy.")).toBe("wwv59skscy");
+    expect(normalizeShortInviteCode(" WWV59SKSCY) ")).toBe("wwv59skscy");
+    expect(normalizeShortInviteCode("wwv59skscy")).toBe("wwv59skscy");
   });
 });
 

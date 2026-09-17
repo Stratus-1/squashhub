@@ -34,6 +34,15 @@ export function isShortInviteCode(value: string | null | undefined): boolean {
   return v.length > 0 && v.length < 32;
 }
 
+/**
+ * Android messaging apps can include sentence punctuation in a tapped URL.
+ * Short invitation codes use a closed lowercase alphanumeric alphabet, so
+ * removing only trailing punctuation is safe and preserves every real code.
+ */
+export function normalizeShortInviteCode(value: string | null | undefined): string {
+  return (value || "").trim().toLowerCase().replace(/[^a-z0-9]+$/, "");
+}
+
 export type InviteDivision = {
   group_number: number;
   label: string;

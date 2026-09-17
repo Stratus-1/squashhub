@@ -289,6 +289,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-09-17 · Booking confirmations, per-booking reminders and visitor fees
+- **Symptom:** Booking reminders were hard-coded to "tomorrow", in-app/push/email only, with no club or member control; the club's `visitor_booking_fee` was stored but never charged, and a visitor opponent could be left unnamed.
+- **Finding:** The reminders job queried only `date = tomorrow` and ignored any per-booking preference; no code path ever read `clubs.visitor_booking_fee`.
+- **Fix:** New club defaults (`booking_confirm_enabled/channels`, `booking_reminder_enabled/channels/hours`) edited in Club Admin → Courts → Booking rules ("Booking messages" card); per-booking `notify_channels` / `reminder_hours` chosen in the booking dialog and remembered per member in localStorage; confirmation sent at booking time to booker and member opponent; reminders now fire from each booking's own lead time across today/tomorrow/day-after, honouring the chosen channels (in-app always, email via notification trigger, SMS/WhatsApp only when the club has them on); visitor name is compulsory with a fee tooltip, and the service-role RPC `charge_visitor_booking_fee` charges the booking member idempotently once the slot has passed.
+- **Guard:** SMS/WhatsApp options must never appear for a club that has not enabled them, reminder dedup is keyed on the booking date (never the run date), and the visitor fee is charged once only — never before the slot has ended.
+
 ### 2026-08-27 · Club Admin spinner for platform admins outside the tenant roster
 - **Symptom:** A platform super-admin opening Club Admin for a club where they had no membership row remained on the full-page spinner or was redirected before permissions resolved.
 - **Finding:** The page treated secondary membership/full-club fetches as render blockers and permission hooks represented their initial pending state as an empty permission set.

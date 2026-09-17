@@ -1646,3 +1646,10 @@ Members can now enter one or more other eligible players into a tournament from 
 - `challenges.expires_at` was absent from the live database (migration
   20260306224000 never applied), so the nightly `reminders` job 500'd on the
   challenge-expiry section. Column + partial index restored via migration.
+
+## 2026-09-17 — Doubles pairing: no partner approval, payer covers both entries
+
+- Choosing a partner now books the pair immediately (`propose_doubles_partner` inserts `awaiting_payment` with `accepted_at`); partners no longer accept/confirm.
+- The chooser is always the payer (`pays_for_partner = true`), so the entry amount is the fee x 2.
+- `tournament_invite_payment_context` returns the pair amount (both entry fees) when the payer's partner is unpaid, which fixes guest invite payments charging a single fee.
+- New `champ_apply_paid_registration(registration_id, payment_ref)` marks the covered partner's entry paid and settles the pair; called from Stitch settlement after a tournament payment.

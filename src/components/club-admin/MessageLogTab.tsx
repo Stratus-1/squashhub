@@ -98,11 +98,11 @@ function ChannelLog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("club_members")
-        .select("id,first_name,last_name")
+        .select("id,name")
         .in("id", memberIds);
       if (error) throw error;
       const map: Record<string, string> = {};
-      for (const m of data || []) map[m.id] = `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim();
+      for (const m of data || []) map[m.id] = (m.name ?? "").trim();
       return map;
     },
   });

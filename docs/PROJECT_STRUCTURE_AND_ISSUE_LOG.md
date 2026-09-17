@@ -14,6 +14,12 @@ For one release, `/sw.js` and the previously used `/service-worker.js` path are 
 
 A fresh Nelspruit Family Doubles test payment incorrectly used the public invitation path (`/i/<short-code>`) as its Express `redirect_url`, and Stitch returned 404 before payment. Guest tournament payment creation now always uses the permanent club-specific return destination `https://<club-subdomain>.squashhub.co.za/my-account`. This is generic for Nelspruit, Gordon's Bay, and all future clubs, in TEST and LIVE. Public invitation paths must never be passed to Stitch Express as return destinations.
 
+## 2026-09-17 — Tournament entrant lists hidden by recursive roster permissions
+
+Family Doubles and Nelspruit Club Champs 2026 still contained their paid registrations and draw entries, but normal member pages displayed zero registered players or a blank draw. The registration policy called `can_view_tournament()`, while that function checked the registration and entry tables again. Under row-level security this circular path prevented the real roster from loading. A dedicated `SECURITY DEFINER` predicate, `can_view_tournament_roster(user, tournament)`, now checks host-club membership, organiser/platform authority, or the requesting user's own registration/entry without recursively invoking either table's policies. Both registration and draw-entry read policies use that predicate. This preserves host-club and legitimate cross-club entrant access without exposing roster data anonymously or changing registrations, pairings, invitations, or payments.
+
+**Guard:** Tournament roster policies must never call a helper that re-enters `club_champs_registrations` or `club_champs_entries` under their own row-level policies. Keep roster authorization in the protected predicate and preserve tenant/entrant scope.
+
 ## 2026-09-17 — Family Doubles partner lookup remained blocked after verification
 
 The public invitation page started its doubles pairing queries before a guest, or a person signed into a different account, had completed the token-bound surname/phone check. That failed query was cached without the verification value in its key, so entering the correct detail did not restart it and the partner area could remain loading or empty. Partner queries now wait for required verification, include that value in their cache keys, do not repeatedly retry verification failures, and show a retryable error. Eligibility remains restricted to registrations for the same tournament and doubles division.

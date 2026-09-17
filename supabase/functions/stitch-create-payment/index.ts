@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
         club_id, club_member_id, user_id: userId,
         amount: amt, purpose, method,
         fee_ids, champ_registration_id,
-        description: description || defaultDesc,
+        description: description || inviteContext?.description || defaultDesc,
         payer_reference: refPrefix,
         status: "created",
       }).select("id").single();

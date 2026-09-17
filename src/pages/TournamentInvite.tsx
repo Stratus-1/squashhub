@@ -84,11 +84,15 @@ export default function TournamentInvite() {
     staleTime: Infinity,
     retry: 2,
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("resolve_invite_short_code", { p_code: rawToken });
       // A stale session in an already-open app can make the signed-in request
-      // fail; the invitation is public, so retry it without any session.
-      if (error) return (await rpcPublic<string>("resolve_invite_short_code", { p_code: rawToken })) || "";
-      return (data as string | null) || "";
+      // fail (or throw); the invitation is public, so retry with no session.
+      try {
+        const { data, error } = await (supabase as any).rpc("resolve_invite_short_code", { p_code: rawToken });
+        if (error) throw error;
+        return (data as string | null) || "";
+      } catch {
+        return (await rpcPublic<string>("resolve_invite_short_code", { p_code: rawToken })) || "";
+      }
     },
   });
   const token = isShort ? resolved || "" : rawToken;
@@ -102,15 +106,20 @@ export default function TournamentInvite() {
         if (error) throw error;
         return (data || { found: false }) as InvitePayload;
       }
-      const { data, error } = await (supabase as any).rpc("get_tournament_invite", { p_token: token });
-      if (error) {
+      try {
+        const { data, error } = await (supabase as any).rpc("get_tournament_invite", { p_token: token });
+        if (error) throw error;
+        return (data || { found: false }) as InvitePayload;
+      } catch {
+        // Public fallback: the token itself is validated server-side, so a
+        // genuinely invalid/revoked invitation is still rejected.
         const fallback = await rpcPublic<InvitePayload>("get_tournament_invite", { p_token: token });
         return (fallback || { found: false }) as InvitePayload;
       }
-      return (data || { found: false }) as InvitePayload;
     },
-    enabled: (!!token || !!champId) && !authLoading,
+    enabled: !!token || !!champId,
   });
+
 
   const state = inviteState(data);
   const feeCents = inviteFeeCents(data);

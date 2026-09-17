@@ -1,25 +1,26 @@
-// Kill-switch service worker — replaces the previous PWA service worker.
-// Cleans up all caches and unregisters itself so existing installs no longer
-// serve stale content.
-self.addEventListener("install", (e) => e.waitUntil(self.skipWaiting()));
-self.addEventListener("activate", (e) =>
-  e.waitUntil(
+// One-release cleanup worker for the former Workbox app-shell cache.
+// Home-screen installation remains available through the web manifest.
+function isSquashHubAppCache(name) {
+  const isWorkboxBucket = /(^|-)precache-v\d+-|(^|-)runtime-|(^|-)googleAnalytics-/.test(name);
+  const isKnownHtmlBucket = name === "html-pages";
+  return (isWorkboxBucket && name.endsWith(self.registration.scope)) || isKnownHtmlBucket;
+}
+
+self.addEventListener("install", () => self.skipWaiting());
+
+self.addEventListener("activate", (event) =>
+  event.waitUntil(
     (async () => {
-      await self.clients.claim();
-      const names = await caches.keys();
-      await Promise.all(names.map((n) => caches.delete(n)));
-      const clients = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      });
-      await Promise.all(
-        clients.map((c) => {
-          const url = new URL(c.url);
-          url.searchParams.set("sw-cleanup", Date.now().toString());
-          return c.navigate(url.toString());
-        })
-      );
-      await self.registration.unregister();
-    })()
-  )
+      try {
+        const cacheNames = await caches.keys();
+        const appCacheNames = cacheNames.filter(isSquashHubAppCache);
+        await Promise.allSettled(appCacheNames.map((name) => caches.delete(name)));
+        await self.clients.claim();
+        const windowClients = await self.clients.matchAll({ type: "window" });
+        await Promise.allSettled(windowClients.map((client) => client.navigate(client.url)));
+      } finally {
+        await self.registration.unregister();
+      }
+    })(),
+  ),
 );

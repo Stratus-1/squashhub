@@ -24,6 +24,7 @@ import {
   inviteVerificationLabel,
   isInviteVerificationComplete,
   isShortInviteCode,
+  normalizeShortInviteCode,
   requiresDivisionChoice,
   allowsMultipleDivisions,
   withdrawalInfo,
@@ -76,10 +77,12 @@ export default function TournamentInvite() {
   const isTest = !!champId;
 
   // Short, friendly links (/i/ab3k9xq2mt) are swapped for the real invitation
-  // token here, so everything below keeps working unchanged.
+  // token here. Android messaging apps sometimes append sentence punctuation
+  // to the tapped URL, so strip only trailing non-code characters first.
   const isShort = !isTest && isShortInviteCode(rawToken);
+  const shortCode = isShort ? normalizeShortInviteCode(rawToken) : "";
   const { data: resolved, isLoading: resolving, isError: resolveError } = useQuery({
-    queryKey: ["invite-short-code", rawToken],
+    queryKey: ["invite-short-code", shortCode],
     enabled: isShort,
     staleTime: Infinity,
     retry: 2,
@@ -87,11 +90,11 @@ export default function TournamentInvite() {
       // A stale session in an already-open app can make the signed-in request
       // fail (or throw); the invitation is public, so retry with no session.
       try {
-        const { data, error } = await (supabase as any).rpc("resolve_invite_short_code", { p_code: rawToken });
+        const { data, error } = await (supabase as any).rpc("resolve_invite_short_code", { p_code: shortCode });
         if (error) throw error;
         return (data as string | null) || "";
       } catch {
-        return (await rpcPublic<string>("resolve_invite_short_code", { p_code: rawToken })) || "";
+        return (await rpcPublic<string>("resolve_invite_short_code", { p_code: shortCode })) || "";
       }
     },
   });

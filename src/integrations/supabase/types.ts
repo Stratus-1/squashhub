@@ -14341,10 +14341,6 @@ export type Database = {
         Args: { _tournament_id: string; _user_id: string }
         Returns: boolean
       }
-      can_view_tournament_roster: {
-        Args: { _tournament_id: string; _user_id: string }
-        Returns: boolean
-      }
       cancel_doubles_pair: {
         Args: { p_pair_id: string; p_token?: string; p_verify?: string }
         Returns: Json

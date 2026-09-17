@@ -187,8 +187,10 @@ function DivisionPartner({
       : 0;
 
   const choose = (o: PartnerOption) => {
+    // Picking a partner books the pair — the partner never has to accept, and
+    // the player who picks covers both entry fees.
     if (hasFee) setFeeAsk(o);
-    else act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: false });
+    else act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: true });
   };
 
   const badgeLabel =

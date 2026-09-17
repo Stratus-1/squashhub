@@ -338,15 +338,42 @@ Deno.serve(async (req) => {
       unitCost = Number(rate ?? 0);
     }
 
-    // Resolve phones + honour opt-outs.
+    // Resolve phones + honour opt-outs. Most sends are club-local, but a club
+    // tournament may legitimately invite registered players from other clubs.
+    // In that one case, resolve only member ids that are already registration
+    // rows for this exact tournament. This keeps cross-club phone numbers on the
+    // server and never exposes them to the organiser's browser.
     const memberIds = recipients.map((r) => r.member_id).filter(Boolean) as string[];
-    const members = memberIds.length
+    let permittedMemberIds = memberIds;
+    if (
+      memberIds.length > 0 &&
+      payload.interaction?.kind === "champ_entry" &&
+      payload.interaction.target_id
+    ) {
+      const { data: tournament } = await admin
+        .from("club_champs")
+        .select("id, club_id")
+        .eq("id", payload.interaction.target_id)
+        .eq("club_id", clubId)
+        .maybeSingle();
+      if (tournament) {
+        const { data: registrations } = await admin
+          .from("club_champs_registrations")
+          .select("club_member_id")
+          .eq("champ_id", payload.interaction.target_id)
+          .in("club_member_id", memberIds);
+        const registeredIds = new Set(
+          (registrations ?? []).map((row) => row.club_member_id).filter(Boolean),
+        );
+        permittedMemberIds = memberIds.filter((id) => registeredIds.has(id));
+      }
+    }
+    const members = permittedMemberIds.length
       ? (
           await admin
             .from("club_members")
             .select("id, phone, whatsapp_opt_out")
-            .eq("club_id", clubId)
-            .in("id", memberIds)
+            .in("id", permittedMemberIds)
         ).data ?? []
       : [];
     const memberMap = new Map(members.map((m) => [m.id, m]));

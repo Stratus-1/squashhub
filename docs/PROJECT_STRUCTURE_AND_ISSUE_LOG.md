@@ -2,6 +2,27 @@
 
 **Status: CONFIRMED WORKING. Nelspruit (nsc) once-off Stitch Express TEST payment tested successfully by Willem on 15 Sep 2026 — payer was returned to the club app.** This is the reference implementation for EVERY club, test and live.
 
+## 2026-09-17 — Cross-club tournament WhatsApps were silently skipped
+
+Symptom: after the client-side batch fixes were published, the Bells send made
+46 successful calls to `send-whatsapp`, but only the nine CSIR members had log
+rows and no new messages reached players from the other clubs.
+
+Cause: `send-whatsapp` resolved a supplied `member_id` only when that member
+belonged to the sending club. Cross-club tournament registrations are valid,
+but their phone numbers were therefore unresolved and every one was returned as
+`skipped: no valid phone` before the provider call or delivery-log insert.
+
+Fix: for a `champ_entry` interaction only, the function verifies that the
+tournament belongs to the sending club and resolves only recipient member ids
+that have registration rows for that exact tournament. Phone numbers remain
+server-side and member opt-outs remain enforced. All other WhatsApp sends keep
+their existing club-local behaviour.
+
+RULE: cross-club tournament contact details must never be exposed to the
+organiser's browser. Resolve them server-side only after checking both tournament
+ownership and the recipient's registration.
+
 ## 2026-09-17 — Phone-only members were dropped from tournament invites
 
 Symptom: members at other clubs received no WhatsApp invitation even though they

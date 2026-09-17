@@ -115,30 +115,3 @@ Deno.serve(async (req) => {
     return new Response("err", { status: 500 });
   }
 });
-
-async function finalisePayment(admin: SupabaseClient, session: any) {
-  const amount = Number(session.amount);
-  const methodLabel = session.method === "card" ? "card" : "eft";
-  if (session.purpose !== "tournament") {
-    const { error } = await admin.from("member_credit_transactions").insert({
-      club_id: session.club_id, club_member_id: session.club_member_id,
-      amount, type: "debit", method: methodLabel,
-      description: `${session.description || "Payment"} [Stitch]`,
-      reference: session.stitch_request_id,
-      status: "confirmed", confirmed_at: new Date().toISOString(),
-    });
-    if (error && (error as any).code !== "23505") console.error("credit_tx:", error);
-  }
-  if (session.purpose === "fee" && Array.isArray(session.fee_ids) && session.fee_ids.length) {
-    for (const id of session.fee_ids) {
-      await admin.from("club_member_fee_payments")
-        .update({ paid: true, paid_at: new Date().toISOString() }).eq("id", id);
-    }
-  }
-  if (session.purpose === "tournament" && session.champ_registration_id) {
-    await admin.from("club_champs_registrations").update({
-      status: "paid", fee_paid_cents: Math.round(amount * 100),
-      payment_ref: session.stitch_request_id, paid_at: new Date().toISOString(),
-    }).eq("id", session.champ_registration_id);
-  }
-}

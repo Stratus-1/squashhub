@@ -16,6 +16,7 @@ import { CalendarClock, Loader2, Shuffle, Sparkles, Trophy } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useChampRounds } from "@/hooks/use-champ-rounds";
+import { useChampWithdrawn } from "@/hooks/use-champ-withdrawn";
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { sectionProgression, type SectionProgression } from "@/lib/tournaments/knockout-progression";
 import { divisionControls, groupStageControl, type ChampionScope, type SectionControl } from "@/lib/tournaments/round-control";
@@ -80,7 +81,12 @@ export function TournamentProgressCard({
     () => (matches as any[]).filter((m) => (m.stage || "") === "ko"),
     [matches],
   );
-  const states = useMemo(() => sectionProgression(koMatches, rounds as any), [koMatches, rounds]);
+  const { data: withdrawn } = useChampWithdrawn(champId);
+  const withdrawnIds = useMemo(() => Array.from(withdrawn || []), [withdrawn]);
+  const states = useMemo(
+    () => sectionProgression(koMatches, rounds as any, withdrawnIds),
+    [koMatches, rounds, withdrawnIds],
+  );
   const generate = useGenerateNextRound({ champId, states, selfScheduled });
   const [draw, setDraw] = useState<{ key: string; mode: NextRoundDrawMode } | null>(null);
   const [setupKey, setSetupKey] = useState<string | null>(null);
@@ -98,8 +104,8 @@ export function TournamentProgressCard({
 
 
   const divisions = useMemo(
-    () => divisionControls(koMatches, rounds as any, { selfScheduled, championScope }),
-    [koMatches, rounds, selfScheduled, championScope],
+    () => divisionControls(koMatches, rounds as any, { selfScheduled, championScope, withdrawnIds }),
+    [koMatches, rounds, selfScheduled, championScope, withdrawnIds],
   );
 
   const shown = onlyGroup !== undefined ? divisions.filter((d) => d.groupNumber === Number(onlyGroup)) : divisions;

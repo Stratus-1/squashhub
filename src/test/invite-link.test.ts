@@ -46,6 +46,18 @@ describe("invite state machine", () => {
     expect(inviteState({ ...base, declined_at: "2026-08-01" })).toBe("declined");
   });
 
+  it("makes an organiser-reopened invitation actionable after withdrawal markers are cleared", () => {
+    expect(
+      inviteState({
+        ...base,
+        status: "invited",
+        declined_at: null,
+        confirmed_at: null,
+        confirmation_source: null,
+      }),
+    ).toBe("actionable");
+  });
+
   it("treats paid-equivalent statuses as registered", () => {
     for (const s of ["paid", "waived", "registered", "active"]) {
       expect(inviteState({ ...base, status: s })).toBe("registered");

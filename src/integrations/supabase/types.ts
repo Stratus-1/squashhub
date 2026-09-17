@@ -14362,6 +14362,10 @@ export type Database = {
         Args: { p_champ_id: string; p_token: string; p_verify: string }
         Returns: string
       }
+      champ_apply_paid_registration: {
+        Args: { p_payment_ref?: string; p_registration_id: string }
+        Returns: Json
+      }
       champ_division_is_doubles: {
         Args: { p_champ_id: string; p_group_number: number }
         Returns: boolean

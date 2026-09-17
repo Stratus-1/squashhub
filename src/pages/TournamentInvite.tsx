@@ -89,6 +89,8 @@ export default function TournamentInvite() {
   const state = inviteState(data);
   const feeCents = inviteFeeCents(data);
   const verificationKind = inviteVerificationKind(data);
+  const partnerNeedsVerify = !isTest && verificationKind !== "none";
+  const partnerVerifyReady = isInviteVerificationComplete(verificationKind, verify);
   const divisions = useMemo(() => inviteDivisions(data), [data]);
   const mustChooseDivision = requiresDivisionChoice(data);
   // Bells runs every league at the same time, so only one entry is possible.
@@ -253,11 +255,33 @@ export default function TournamentInvite() {
               : ""}
           </p>
         </div>
+        {partnerNeedsVerify && (
+          <div className="space-y-1.5">
+            <Label htmlFor="partner-verify" className="text-xs">
+              {inviteVerificationLabel(verificationKind)}
+            </Label>
+            <Input
+              id="partner-verify"
+              inputMode={verificationKind === "phone_last4" ? "numeric" : "text"}
+              autoComplete="off"
+              value={verify}
+              onChange={(e) => {
+                setVerify(e.target.value);
+                setVerifyError("");
+              }}
+              placeholder={verificationKind === "phone_last4" ? "e.g. 4821" : "e.g. Pretorius"}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {verifyError || "A quick check that this invitation is yours — no SquashHub login needed."}
+            </p>
+          </div>
+        )}
         <DoublesPartnerPicker
           champId={String(data.champ_id)}
           divisions={enteredDivisions}
           token={token || null}
           verify={verify.trim() || null}
+          enabled={!partnerNeedsVerify || partnerVerifyReady}
           onPay={() => goPay(String(data.champ_id))}
         />
 

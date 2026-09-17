@@ -36,6 +36,8 @@ type Props = {
   divisions: InviteDivision[];
   token?: string | null;
   verify?: string | null;
+  /** Wait until a token-bound identity check is ready before calling public RPCs. */
+  enabled?: boolean;
   clubId?: string | null;
   /** Called when the player must settle an entry fee (combined or their own). */
   onPay?: (amountCents: number) => void;
@@ -51,24 +53,37 @@ const money = (cents: number) => `R${(cents / 100).toFixed(2)}`;
  * entry fee applies the player is asked whether they are paying for the partner
  * too; the pair only locks once every required payment has succeeded.
  */
-export function DoublesPartnerPicker({ champId, divisions, token, verify, clubId, onPay }: Props) {
+export function DoublesPartnerPicker({ champId, divisions, token, verify, enabled = true, clubId, onPay }: Props) {
   const qc = useQueryClient();
   const auth = { token, verify };
-  const stateKey = ["champ-pairing-state", champId, token || "auth"];
+  const stateKey = ["champ-pairing-state", champId, token || "auth", verify || "unverified"];
 
-  const { data: state, isLoading } = useQuery({
+  const { data: state, isLoading, isError, error, refetch } = useQuery({
     queryKey: stateKey,
     queryFn: () => fetchPairingState(champId, auth),
-    enabled: !!champId && divisions.length > 0,
+    enabled: enabled && !!champId && divisions.length > 0,
+    retry: false,
   });
 
   const refresh = () => qc.invalidateQueries({ queryKey: stateKey });
 
   if (divisions.length === 0) return null;
+  if (!enabled) return null;
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading partner options…
+      </div>
+    );
+  }
+  if (isError) {
+    const message = error instanceof Error ? error.message : "Partner options could not be loaded.";
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2.5 space-y-2">
+        <p className="text-xs text-destructive">{message}</p>
+        <Button size="sm" variant="outline" onClick={() => refetch()}>
+          Try again
+        </Button>
       </div>
     );
   }
@@ -120,10 +135,11 @@ function DivisionPartner({
   const picking = action === "choose";
   const hasFee = feeCents > 0;
 
-  const { data: options = [], isLoading } = useQuery({
-    queryKey: ["champ-partner-options", champId, division.group_number, search, auth.token || "auth"],
+  const { data: options = [], isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["champ-partner-options", champId, division.group_number, search, auth.token || "auth", auth.verify || "unverified"],
     queryFn: () => fetchPartnerOptions(champId, division.group_number, auth, search),
     enabled: picking,
+    retry: false,
   });
 
   const act = useMutation({
@@ -241,6 +257,15 @@ function DivisionPartner({
           />
           {isLoading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+          ) : isError ? (
+            <div className="space-y-2">
+              <p className="text-[11px] text-destructive">
+                {error instanceof Error ? error.message : "Partner options could not be loaded."}
+              </p>
+              <Button size="sm" variant="outline" onClick={() => refetch()}>
+                Try again
+              </Button>
+            </div>
           ) : options.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">{PARTNER_MUST_REGISTER_MESSAGE}</p>
           ) : (

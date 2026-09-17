@@ -2,6 +2,10 @@
 
 **Status: CONFIRMED WORKING. Nelspruit (nsc) once-off Stitch Express TEST payment tested successfully by Willem on 15 Sep 2026 — payer was returned to the club app.** This is the reference implementation for EVERY club, test and live.
 
+## 2026-09-17 — Family Doubles partner lookup remained blocked after verification
+
+The public invitation page started its doubles pairing queries before a guest, or a person signed into a different account, had completed the token-bound surname/phone check. That failed query was cached without the verification value in its key, so entering the correct detail did not restart it and the partner area could remain loading or empty. Partner queries now wait for required verification, include that value in their cache keys, do not repeatedly retry verification failures, and show a retryable error. Eligibility remains restricted to registrations for the same tournament and doubles division.
+
 ## 2026-09-17 — Invited players can pay their entry fee without a login
 
 Invitees who answered by WhatsApp link were bounced to the club login when they

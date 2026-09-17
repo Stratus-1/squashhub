@@ -139,7 +139,10 @@ export default function TournamentInvite() {
         toast.success("You're entered. See you on court!");
       }
       // Doubles entrants stay here so they can pick a partner right away.
-      if (champId && !hasDoublesChoice) navigate(path);
+      // Doubles entrants stay here so they can pick a partner right away, and so
+      // do guests without a login — they pay from this page instead of the app.
+      if (champId && !hasDoublesChoice && user) navigate(path);
+
 
     },
     onError: (e: any) => {

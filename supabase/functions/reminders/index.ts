@@ -186,15 +186,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    /** Local wall-clock start of a booking, in the reminders timezone. */
+    /** Booking start as a real instant, reading date+time as club-local time. */
     const bookingStartMs = (dateStr: string, startTime: string) => {
-      const iso = `${dateStr}T${String(startTime || "00:00").slice(0, 8).padEnd(8, ":00".slice(0, 0)) || "00:00:00"}`;
-      // Interpret as local club time by measuring the zone offset for that instant.
-      const naive = new Date(`${iso}Z`).getTime();
+      const hhmmss = String(startTime || "00:00:00").slice(0, 8);
+      const naive = Date.parse(`${dateStr}T${hhmmss.length === 5 ? `${hhmmss}:00` : hhmmss}Z`);
+      if (Number.isNaN(naive)) return NaN;
+      // Offset of the club timezone at that instant (ms east of UTC).
       const probe = new Date(naive);
-      const asTz = new Date(probe.toLocaleString("en-US", { timeZone }));
-      const asUtc = new Date(probe.toLocaleString("en-US", { timeZone: "UTC" }));
-      return naive + (asUtc.getTime() - asTz.getTime());
+      const asTz = new Date(probe.toLocaleString("en-US", { timeZone })).getTime();
+      const asUtc = new Date(probe.toLocaleString("en-US", { timeZone: "UTC" })).getTime();
+      return naive - (asTz - asUtc);
     };
 
     for (const b of bookings || []) {

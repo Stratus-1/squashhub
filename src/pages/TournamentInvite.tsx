@@ -165,7 +165,11 @@ export default function TournamentInvite() {
       await refetch();
       toast.success("You've been withdrawn — the organiser has been updated.");
     },
-    onError: (e: any) => toast.error(e?.message || "Could not withdraw your entry"),
+    onError: (e: any) => {
+      const msg = e?.message || "Could not withdraw your entry";
+      if (/verify/i.test(msg)) setVerifyError(msg);
+      toast.error(msg);
+    },
   });
 
   // Land straight back here after signing in.

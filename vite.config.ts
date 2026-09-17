@@ -79,6 +79,13 @@ export default defineConfig(() => ({
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         runtimeCaching: [
           {
+            // Invitation pages: never serve from cache.
+            urlPattern: ({ request, url }) =>
+              request.mode === "navigate" &&
+              (url.pathname.startsWith("/i/") || url.pathname.startsWith("/tournament-invite")),
+            handler: "NetworkOnly",
+          },
+          {
             // HTML navigations: NetworkFirst so deploys land quickly.
             urlPattern: ({ request }) => request.mode === "navigate",
             handler: "NetworkFirst",

@@ -330,10 +330,19 @@ export function sectionProgression(
   return out.sort((a, b) => a.groupNumber - b.groupNumber || a.section - b.section);
 }
 
-/** Members who may appear in the NEXT round — winners of the current round only. */
+/**
+ * Members who may appear in the NEXT round — winners of the current round,
+ * minus anyone who is out of the draw (lost elsewhere, or pulled out by an
+ * organiser: a withdrawal is treated exactly like a knockout).
+ */
 export function advancingMembers(section: SectionProgression): string[] {
   if (!section.currentRoundComplete) return [];
-  return section.currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[];
+  const out = new Set(
+    (section.entrants || []).filter((e) => e.eliminated).map((e) => String(e.memberId)),
+  );
+  return (section.currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[]).filter(
+    (id) => !out.has(String(id)),
+  );
 }
 
 /**

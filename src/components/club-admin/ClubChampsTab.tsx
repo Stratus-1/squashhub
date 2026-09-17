@@ -10030,7 +10030,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       <LeagueSourceTree
                         groups={audienceLeagueTree}
                         selected={Array.from(audienceLeagueIds)}
-                        onChange={(ids) => setAudienceLeagueIds(new Set(ids))}
+                        onChange={(ids) => {
+                          const next = new Set(ids);
+                          // Unticking a team must actually shrink the audience:
+                          // drop its players from the individually-added set
+                          // unless another ticked team still contains them.
+                          const removed = Array.from(audienceLeagueIds).filter((id) => !next.has(id));
+                          if (removed.length > 0) {
+                            const drop = new Set<string>();
+                            removed.forEach((lid) =>
+                              (audienceRegistrationsByLeague.get(lid) || []).forEach((m) => drop.add(m)),
+                            );
+                            next.forEach((lid) =>
+                              (audienceRegistrationsByLeague.get(lid) || []).forEach((m) => drop.delete(m)),
+                            );
+                            if (drop.size > 0) {
+                              setAudienceMemberIds((prev) => new Set(Array.from(prev).filter((id) => !drop.has(id))));
+                              setDirectoryPicked((prev) => {
+                                const m = new Map(prev);
+                                drop.forEach((id) => m.delete(id));
+                                return m;
+                              });
+                            }
+                          }
+                          setAudienceLeagueIds(next);
+                        }}
                       />
                     </div>
 

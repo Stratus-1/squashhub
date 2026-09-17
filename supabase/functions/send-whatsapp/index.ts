@@ -345,6 +345,7 @@ Deno.serve(async (req) => {
     // server and never exposes them to the organiser's browser.
     const memberIds = recipients.map((r) => r.member_id).filter(Boolean) as string[];
     let permittedMemberIds = memberIds;
+    let allowCrossClubTournamentMembers = false;
     if (
       memberIds.length > 0 &&
       payload.interaction?.kind === "champ_entry" &&
@@ -357,6 +358,7 @@ Deno.serve(async (req) => {
         .eq("club_id", clubId)
         .maybeSingle();
       if (tournament) {
+        allowCrossClubTournamentMembers = true;
         const { data: registrations } = await admin
           .from("club_champs_registrations")
           .select("club_member_id")
@@ -368,14 +370,15 @@ Deno.serve(async (req) => {
         permittedMemberIds = memberIds.filter((id) => registeredIds.has(id));
       }
     }
-    const members = permittedMemberIds.length
-      ? (
-          await admin
-            .from("club_members")
-            .select("id, phone, whatsapp_opt_out")
-            .in("id", permittedMemberIds)
-        ).data ?? []
-      : [];
+    let members: Array<{ id: string; phone: string | null; whatsapp_opt_out: boolean | null }> = [];
+    if (permittedMemberIds.length > 0) {
+      let memberQuery = admin
+        .from("club_members")
+        .select("id, phone, whatsapp_opt_out")
+        .in("id", permittedMemberIds);
+      if (!allowCrossClubTournamentMembers) memberQuery = memberQuery.eq("club_id", clubId);
+      members = (await memberQuery).data ?? [];
+    }
     const memberMap = new Map(members.map((m) => [m.id, m]));
 
     const results: Array<Record<string, unknown>> = [];

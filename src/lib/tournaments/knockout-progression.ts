@@ -169,7 +169,10 @@ function sidesOf(m: KnockoutMatchLike): string[] {
  * Derive alive/eliminated state for one section from its match rows.
  * A bye never eliminates anyone. Unfinished matches leave both sides alive.
  */
-export function entrantStates(sectionMatches: KnockoutMatchLike[]): EntrantState[] {
+export function entrantStates(
+  sectionMatches: KnockoutMatchLike[],
+  withdrawnIds: Iterable<string> = [],
+): EntrantState[] {
   const state = new Map<string, EntrantState>();
   const ordered = [...sectionMatches].sort(
     (a, b) => (Number(a.round_number) || 0) - (Number(b.round_number) || 0),
@@ -196,6 +199,15 @@ export function entrantStates(sectionMatches: KnockoutMatchLike[]): EntrantState
       row.aliveInRound = null;
     }
   }
+  // A player pulled out by an organiser is out of the draw exactly as if they
+  // had lost: they never contest another round and never receive another bye.
+  const pulled = new Set(Array.from(withdrawnIds, String));
+  for (const row of state.values()) {
+    if (!pulled.has(row.memberId) || row.eliminated) continue;
+    row.eliminated = true;
+    row.eliminatedInRound = row.eliminatedInRound ?? row.aliveInRound;
+    row.aliveInRound = null;
+  }
   return Array.from(state.values());
 }
 
@@ -206,6 +218,7 @@ export function entrantStates(sectionMatches: KnockoutMatchLike[]): EntrantState
 export function sectionProgression(
   matches: KnockoutMatchLike[],
   rounds: ChampRound[] = [],
+  withdrawnIds: Iterable<string> = [],
 ): SectionProgression[] {
   const ko = matches.filter((m) => (m.stage || "") === "ko");
   const keys = new Map<string, KnockoutMatchLike[]>();
@@ -235,8 +248,11 @@ export function sectionProgression(
     const unresolved = currentRoundMatches.filter((m) => !isResolved(m));
     const currentRoundComplete = currentRoundMatches.length > 0 && unresolved.length === 0;
 
-    const states = entrantStates(rows);
-    const winners = currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[];
+    const states = entrantStates(rows, withdrawnIds);
+    const pulledOut = new Set(Array.from(withdrawnIds, String));
+    const winners = (currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[]).filter(
+      (id) => !pulledOut.has(String(id)),
+    );
     // Anyone still alive who was not part of the round just played (e.g. taken
     // out of a fixture by an organiser correction) still contests the next round.
     const inCurrentRound = new Set(
@@ -314,10 +330,19 @@ export function sectionProgression(
   return out.sort((a, b) => a.groupNumber - b.groupNumber || a.section - b.section);
 }
 
-/** Members who may appear in the NEXT round — winners of the current round only. */
+/**
+ * Members who may appear in the NEXT round — winners of the current round,
+ * minus anyone who is out of the draw (lost elsewhere, or pulled out by an
+ * organiser: a withdrawal is treated exactly like a knockout).
+ */
 export function advancingMembers(section: SectionProgression): string[] {
   if (!section.currentRoundComplete) return [];
-  return section.currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[];
+  const out = new Set(
+    (section.entrants || []).filter((e) => e.eliminated).map((e) => String(e.memberId)),
+  );
+  return (section.currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[]).filter(
+    (id) => !out.has(String(id)),
+  );
 }
 
 /**

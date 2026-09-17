@@ -1,5 +1,13 @@
 # ***** PERMANENT STITCH STANDARD — DO NOT CHANGE WITHOUT VALIDATION *****
 
+## 2026-09-17 — Existing Android installation kept showing valid invitations as unavailable
+
+Vian's current Nelspruit Family Doubles short invitation still resolved to an active, paid registration and had not been revoked. His phone nevertheless showed the older "Invitation unavailable" screen while the same URL worked elsewhere. The previous invitation-route network-only change existed only in the newly generated service worker; the already-installed Workbox worker could keep its older app shell active, so it could not reliably receive the code intended to fix itself.
+
+For one release, `/sw.js` is now a same-path cleanup worker. It activates immediately, removes only SquashHub's Workbox/app-shell caches, refreshes open pages at their existing URL, and unregisters itself. Manifest, icon and home-screen installation support remain; app-shell offline caching is temporarily removed. Messaging workers are untouched. Existing invite codes/tokens, registrations, pairs and payments are unchanged, and the server still rejects genuinely invalid, revoked or expired invitations.
+
+**Guard:** A route deny-list added only to a replacement service worker cannot repair clients still controlled by the old worker. When stale app-shell caching causes production invitation failures, ship a same-path cleanup worker before rebuilding offline support; preserve the current URL during cleanup and never clear unrelated messaging caches.
+
 **Status: CONFIRMED WORKING. Nelspruit (nsc) once-off Stitch Express TEST payment tested successfully by Willem on 15 Sep 2026 — payer was returned to the club app.** This is the reference implementation for EVERY club, test and live.
 
 ## 2026-09-17 — Guest tournament payments restored to the standard Stitch return

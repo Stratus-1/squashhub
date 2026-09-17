@@ -3,7 +3,6 @@ import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
 import { initDeepLinks } from "@/lib/deep-links";
-import { registerServiceWorker } from "@/lib/pwa-register";
 import { installBlankScreenRecovery } from "@/lib/pwa-recovery";
 import { restoreRouteAfterUpdate } from "@/lib/pwa-update";
 
@@ -39,9 +38,6 @@ if (savedTheme !== "light") {
 installBlankScreenRecovery();
 
 void initDeepLinks();
-
-// Register the PWA service worker (no-op in iframe / preview / native).
-registerServiceWorker();
 
 // If a PWA update reload relaunched us at start_url, go back to the page the
 // user was on (auth/session is untouched — it lives in localStorage).

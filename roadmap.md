@@ -10,6 +10,7 @@
 - [x] Fix the Family Doubles accepted/unpaid invitation state so verification resumes the existing partner choice or loads eligible partners
 - [x] Allow one Family Doubles invite holder to create multiple exact pairs and pay each selected player once
 - [x] Correct Rachel's guest Stitch amount from R150 to R300 for her active two-player pair
+- [x] Replace the stale app-shell worker that made valid tournament invitations appear unavailable on installed Android phones
 
 ## WhatsApp invite wording (16 Sep 2026)
 - [x] Short, friendly invitation link instead of the long token URL

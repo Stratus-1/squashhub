@@ -23,6 +23,8 @@ export type MemberMessageOptions = {
   recipients: MessageRecipient[];
   /** Plain text of the message — used as-is on SMS, and on WhatsApp. */
   text: string;
+  /** Shorter plain-ASCII wording used on SMS only (keeps it to one segment). */
+  smsText?: string;
   /** True when the member is expected to reply or act in the chat. */
   replyRequired?: boolean;
   kind?: string;
@@ -65,7 +67,7 @@ export async function sendMemberMessage(
     const r = await sendSms({
       clubId: opts.clubId,
       recipients: opts.recipients,
-      body: opts.text,
+      body: opts.smsText || opts.text,
       kind: opts.kind,
       critical: opts.critical,
     });

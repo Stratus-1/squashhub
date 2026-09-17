@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
     }
 
     // Phone numbers for SMS / WhatsApp reminders.
-    const phoneMemo = new Map<string, string>();
+    const phoneMemo = new Map<string, { member_id: string; phone: string }>();
     const memberIds = [...new Set((bookings || [])
       .flatMap((b: any) => [b.club_member_id, b.opponent_member_id])
       .filter(Boolean).map(String))];
@@ -180,7 +180,9 @@ Deno.serve(async (req) => {
         .from("club_members").select("id,user_id,phone").in("id", memberIds);
       for (const m of memberRows || []) {
         const phone = String((m as any).phone || "").trim();
-        if (phone && (m as any).user_id) phoneMemo.set(String((m as any).user_id), phone);
+        if (phone && (m as any).user_id) {
+          phoneMemo.set(String((m as any).user_id), { member_id: String((m as any).id), phone });
+        }
       }
     }
 

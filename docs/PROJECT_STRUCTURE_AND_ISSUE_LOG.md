@@ -2,6 +2,14 @@
 
 **Status: CONFIRMED WORKING. Nelspruit (nsc) once-off Stitch Express TEST payment tested successfully by Willem on 15 Sep 2026 — payer was returned to the club app.** This is the reference implementation for EVERY club, test and live.
 
+## 2026-09-17 — Re-sent tournament invite still showed "not entered"
+
+**Symptom:** Willem replied positively to a re-sent Bells invitation, but the same personal link said he was not entered.
+
+**Cause:** the earlier withdrawal left `declined_at` and `confirmation_source = 'withdrawn'` on the registration. The organiser's re-invite changed only `status` back to `invited`; the invitation page correctly treated the remaining decline date as authoritative.
+
+**Fix:** organiser re-invites now clear the old decline/withdrawal and confirmation markers while reopening the row. Database trigger `trg_normalize_reopened_tournament_invite` enforces the same invariant for older published clients: a deliberate `cancelled` → `invited`/`pending_payment` transition cannot retain stale decline state. Existing paid/confirmed entries are untouched. Willem's existing Bells registration was repaired in place so its current short link remains valid.
+
 ## 2026-09-17 — Tournament WhatsApp invites stopped after 9 of 49
 
 **Symptom:** 49 players were invited to the CSIR "6th vs 7th League Players Bells Get Together"; only the first 9 received a WhatsApp.

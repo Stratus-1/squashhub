@@ -5768,7 +5768,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // again on purpose, so reopen their row instead of silently skipping
         // them — otherwise the send resolves to nobody.
         const { error: reopenErr } = await fromExt("club_champs_registrations")
-          .update({ status: fee > 0 && paymentRequired ? "pending_payment" : "invited" })
+          .update({
+            status: fee > 0 && paymentRequired ? "pending_payment" : "invited",
+            declined_at: null,
+            confirmed_at: null,
+            confirmed_by: null,
+            confirmation_source: null,
+          })
           .eq("champ_id", champId)
           .in("club_member_id", audienceMemberIds)
           .eq("status", "cancelled");

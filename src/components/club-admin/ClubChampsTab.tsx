@@ -10068,7 +10068,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         onCheckedChange={(c) => setAudienceIncludeIndividuals(!!c)}
                       />
                       Also invite individually picked members
+                      {audienceMemberIds.size > 0 && (
+                        <span className="text-[11px] text-muted-foreground">({audienceMemberIds.size} picked)</span>
+                      )}
                     </label>
+                    {audienceMemberIds.size > 0 && (
+                      <p className="text-[11px] text-muted-foreground -mt-1">
+                        {audienceMemberIds.size} member{audienceMemberIds.size === 1 ? " is" : "s are"} added by hand on
+                        top of the ticked teams.{" "}
+                        <button
+                          type="button"
+                          className="underline"
+                          onClick={() => {
+                            setAudienceMemberIds(new Set());
+                            setDirectoryPicked(new Map());
+                          }}
+                        >
+                          Remove all individually added members
+                        </button>
+                      </p>
+                    )}
                     {inviteTeamRosters.length > 0 && (
                       <div className="rounded border border-border/50 bg-background/60 p-2 space-y-2 max-h-72 overflow-auto">
                         <p className="text-[11px] text-muted-foreground">

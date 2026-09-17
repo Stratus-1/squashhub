@@ -3,16 +3,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Users, Check, X, CreditCard } from "lucide-react";
+import { Loader2, Users, Check, X, CreditCard, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
   PARTNER_MUST_REGISTER_MESSAGE,
   canPickPartner,
   cancelPair,
+  createFamilyPair,
+  fetchFamilyPlayers,
   fetchPairingState,
   fetchPartnerOptions,
   pairAction,
@@ -25,6 +28,7 @@ import {
   proposePartner,
   respondToPair,
   type MyPair,
+  type ManagedPair,
   type PartnerOption,
 } from "@/lib/tournaments/doubles";
 
@@ -88,6 +92,22 @@ export function DoublesPartnerPicker({ champId, divisions, token, verify, enable
     );
   }
 
+  if (state?.family_mode) {
+    return (
+      <FamilyPairsBuilder
+        champId={champId}
+        divisions={divisions}
+        locked={!!state.locked}
+        feeCents={Number(state.entry_fee_cents || 0)}
+        amountDueCents={Number(state.amount_due_cents || 0)}
+        pairs={state.managed_pairs || []}
+        auth={auth}
+        onChanged={refresh}
+        onPay={onPay}
+      />
+    );
+  }
+
   return (
     <div className="space-y-3">
       {divisions.map((d) => (
@@ -104,6 +124,199 @@ export function DoublesPartnerPicker({ champId, divisions, token, verify, enable
           onPay={onPay}
         />
       ))}
+    </div>
+  );
+}
+
+function FamilyPairsBuilder({
+  champId,
+  divisions,
+  locked,
+  feeCents,
+  amountDueCents,
+  pairs,
+  auth,
+  onChanged,
+  onPay,
+}: {
+  champId: string;
+  divisions: InviteDivision[];
+  locked: boolean;
+  feeCents: number;
+  amountDueCents: number;
+  pairs: ManagedPair[];
+  auth: { token?: string | null; verify?: string | null };
+  onChanged: () => void;
+  onPay?: (amountCents: number) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {divisions.map((division) => (
+        <FamilyDivisionPairs
+          key={division.group_number}
+          champId={champId}
+          division={division}
+          locked={locked}
+          feeCents={feeCents}
+          amountDueCents={amountDueCents}
+          pairs={pairs.filter((pair) => pair.group_number === division.group_number)}
+          auth={auth}
+          onChanged={onChanged}
+          onPay={onPay}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FamilyDivisionPairs({
+  champId,
+  division,
+  locked,
+  feeCents,
+  amountDueCents,
+  pairs,
+  auth,
+  onChanged,
+  onPay,
+}: {
+  champId: string;
+  division: InviteDivision;
+  locked: boolean;
+  feeCents: number;
+  amountDueCents: number;
+  pairs: ManagedPair[];
+  auth: { token?: string | null; verify?: string | null };
+  onChanged: () => void;
+  onPay?: (amountCents: number) => void;
+}) {
+  const [memberA, setMemberA] = useState("");
+  const [memberB, setMemberB] = useState("");
+  const playersKey = ["family-doubles-players", champId, division.group_number, auth.token || "auth", auth.verify || "unverified"];
+  const { data: players = [], isLoading, isError, error, refetch } = useQuery({
+    queryKey: playersKey,
+    queryFn: () => fetchFamilyPlayers(champId, division.group_number, auth),
+    retry: false,
+  });
+
+  const available = players.filter((player) => !player.paired);
+  const act = useMutation({
+    mutationFn: (job: { kind: "create"; a: string; b: string } | { kind: "cancel"; id: string }) =>
+      job.kind === "create"
+        ? createFamilyPair(champId, division.group_number, job.a, job.b, auth)
+        : cancelPair(job.id, auth),
+    onSuccess: async (_, job) => {
+      setMemberA("");
+      setMemberB("");
+      await Promise.all([onChanged(), refetch()]);
+      toast.success(job.kind === "create" ? "Family pair added." : "Family pair removed.");
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not update the family pairs"),
+  });
+
+  const distinctPlayers = new Set(pairs.flatMap((pair) => [pair.member_a, pair.member_b]));
+  const unpaidPlayers = new Set(
+    pairs.flatMap((pair) => [
+      ...(pair.member_a_paid ? [] : [pair.member_a]),
+      ...(pair.member_b_paid ? [] : [pair.member_b]),
+    ]),
+  );
+
+  return (
+    <div className="rounded-md border p-3 space-y-3">
+      <div className="flex items-center gap-2">
+        <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+        <span className="text-sm font-medium flex-1">{division.label}</span>
+        <Badge variant="outline" className="text-[10px]">
+          {pairs.length} {pairs.length === 1 ? "pair" : "pairs"}
+        </Badge>
+      </div>
+
+      {pairs.length > 0 && (
+        <div className="space-y-1.5">
+          {pairs.map((pair) => (
+            <div key={pair.id} className="flex items-center gap-2 rounded border p-2">
+              <p className="text-xs flex-1">
+                <span className="font-medium">{pair.member_a_name}</span> &amp; <span className="font-medium">{pair.member_b_name}</span>
+              </p>
+              <Badge variant={pair.status === "confirmed" ? "default" : "secondary"} className="text-[9px]">
+                {pair.status === "confirmed" ? "Paid" : "Awaiting payment"}
+              </Badge>
+              {!locked && pair.status !== "confirmed" && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2"
+                  disabled={act.isPending}
+                  onClick={() => act.mutate({ kind: "cancel", id: pair.id })}
+                  title="Remove this pair"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!locked && (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <Select value={memberA} onValueChange={setMemberA}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Player 1" /></SelectTrigger>
+            <SelectContent>
+              {available.filter((player) => player.member_id !== memberB).map((player) => (
+                <SelectItem key={player.member_id} value={player.member_id} className="text-xs">
+                  {player.display_name}{player.is_payer ? " (you)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={memberB} onValueChange={setMemberB}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Player 2" /></SelectTrigger>
+            <SelectContent>
+              {available.filter((player) => player.member_id !== memberA).map((player) => (
+                <SelectItem key={player.member_id} value={player.member_id} className="text-xs">
+                  {player.display_name}{player.is_payer ? " (you)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            className="h-8 text-xs"
+            disabled={!memberA || !memberB || act.isPending || isLoading}
+            onClick={() => act.mutate({ kind: "create", a: memberA, b: memberB })}
+          >
+            {act.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Plus className="w-3.5 h-3.5 mr-1" />}
+            Add pair
+          </Button>
+        </div>
+      )}
+
+      {isLoading && <p className="text-[11px] text-muted-foreground">Loading invited family members…</p>}
+      {isError && (
+        <div className="space-y-1">
+          <p className="text-[11px] text-destructive">{error instanceof Error ? error.message : "Family members could not be loaded."}</p>
+          <Button size="sm" variant="outline" onClick={() => refetch()}>Try again</Button>
+        </div>
+      )}
+      {!isLoading && !isError && available.length < 2 && pairs.length === 0 && (
+        <p className="text-[11px] text-muted-foreground">At least two invited, unpaired players are needed.</p>
+      )}
+
+      {pairs.length > 0 && (
+        <div className="border-t pt-2 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            {pairs.length} {pairs.length === 1 ? "pair" : "pairs"} · {distinctPlayers.size} players
+            {feeCents > 0 && ` · ${unpaidPlayers.size} unpaid`}
+          </p>
+          {amountDueCents > 0 && onPay && (
+            <Button className="w-full" size="sm" onClick={() => onPay(amountDueCents)}>
+              <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay {money(amountDueCents)} for everyone
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -152,9 +365,10 @@ function DivisionPartner({
     ) => {
       if (job.kind === "propose")
         return proposePartner(champId, division.group_number, job.memberId, auth, job.payForPartner);
-      if (job.kind === "accept") return respondToPair(pair!.id, true, auth);
-      if (job.kind === "reject") return respondToPair(pair!.id, false, auth);
-      return cancelPair(pair!.id, auth);
+      if (!pair) throw new Error("This pairing no longer exists");
+      if (job.kind === "accept") return respondToPair(pair.id, true, auth);
+      if (job.kind === "reject") return respondToPair(pair.id, false, auth);
+      return cancelPair(pair.id, auth);
     },
     onSuccess: async (res: any, job) => {
       onChanged();
@@ -319,7 +533,8 @@ function DivisionPartner({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                const o = feeAsk!;
+                const o = feeAsk;
+                if (!o) return;
                 setFeeAsk(null);
                 act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: true });
               }}

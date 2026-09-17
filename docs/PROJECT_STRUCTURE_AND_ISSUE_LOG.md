@@ -1653,3 +1653,11 @@ Members can now enter one or more other eligible players into a tournament from 
 - The chooser is always the payer (`pays_for_partner = true`), so the entry amount is the fee x 2.
 - `tournament_invite_payment_context` returns the pair amount (both entry fees) when the payer's partner is unpaid, which fixes guest invite payments charging a single fee.
 - New `champ_apply_paid_registration(registration_id, payment_ref)` marks the covered partner's entry paid and settles the pair; called from Stitch settlement after a tournament payment.
+
+## 2026-09-17 — Family Doubles multi-pair entry and combined payment
+
+- A Family Doubles invite holder can now build several exact two-player pairs from the genuinely invited players. Each player remains limited to one active pair in that division, but the payer does not have to play in every pair they create.
+- Every created pair is accepted immediately; selected partners do not approve separately. The invite holder remains the payer for all managed pairs.
+- The guest payment context counts distinct unpaid players across all managed pairs exactly once. Rachel's existing Rachel/Chané pair therefore produces a new R300 Stitch payment instead of R150.
+- Covered partners cannot start a separate payment while the family payer is responsible for them. Successful settlement marks all covered registrations paid idempotently and settles every managed pair.
+- This behavior is restricted to tournaments named/configured as Family Doubles. Ordinary doubles tournaments retain one self-selected pair per player.

@@ -165,7 +165,11 @@ export default function TournamentInvite() {
       await refetch();
       toast.success("You've been withdrawn — the organiser has been updated.");
     },
-    onError: (e: any) => toast.error(e?.message || "Could not withdraw your entry"),
+    onError: (e: any) => {
+      const msg = e?.message || "Could not withdraw your entry";
+      if (/verify/i.test(msg)) setVerifyError(msg);
+      toast.error(msg);
+    },
   });
 
   // Land straight back here after signing in.
@@ -223,6 +227,11 @@ export default function TournamentInvite() {
   const withdrawDeadlineLabel = withdrawal.deadline
     ? withdrawal.deadline.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
     : null;
+  // Guests who answered by link have no session, so they prove who they are the
+  // same way they did when accepting.
+  const withdrawNeedsVerify = !isTest && !user && verificationKind !== "none";
+  const withdrawVerifyReady = isInviteVerificationComplete(verificationKind, verify);
+
 
   const withdrawSection = isTest ? (
     <p className="text-[11px] text-muted-foreground text-center">
@@ -241,6 +250,27 @@ export default function TournamentInvite() {
             {hasDoublesChoice ? " and your partner will be told" : ""}.
             {feeCents > 0 ? " Any entry fee already paid is not refunded." : ""}
           </p>
+          {withdrawNeedsVerify && (
+            <div className="space-y-1.5">
+              <Label htmlFor="withdraw-verify" className="text-xs">
+                {inviteVerificationLabel(verificationKind)}
+              </Label>
+              <Input
+                id="withdraw-verify"
+                inputMode={verificationKind === "phone_last4" ? "numeric" : "text"}
+                autoComplete="off"
+                value={verify}
+                onChange={(e) => {
+                  setVerify(e.target.value);
+                  setVerifyError("");
+                }}
+                placeholder={verificationKind === "phone_last4" ? "e.g. 4821" : "e.g. Pretorius"}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {verifyError || "A quick check that this invitation is yours — no SquashHub login needed."}
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" size="sm" disabled={withdrawEntry.isPending} onClick={() => setConfirmWithdraw(false)}>
               Keep my entry
@@ -248,7 +278,7 @@ export default function TournamentInvite() {
             <Button
               variant="destructive"
               size="sm"
-              disabled={withdrawEntry.isPending}
+              disabled={withdrawEntry.isPending || (withdrawNeedsVerify && !withdrawVerifyReady)}
               onClick={() => withdrawEntry.mutate()}
             >
               {withdrawEntry.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, withdraw"}

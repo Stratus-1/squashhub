@@ -1363,6 +1363,7 @@ export type Database = {
           counter_time: string | null
           court_id: number | null
           created_at: string
+          expires_at: string
           id: string
           opponent_id: string | null
           opponent_member_id: string | null
@@ -1380,6 +1381,7 @@ export type Database = {
           counter_time?: string | null
           court_id?: number | null
           created_at?: string
+          expires_at?: string
           id?: string
           opponent_id?: string | null
           opponent_member_id?: string | null
@@ -1397,6 +1399,7 @@ export type Database = {
           counter_time?: string | null
           court_id?: number | null
           created_at?: string
+          expires_at?: string
           id?: string
           opponent_id?: string | null
           opponent_member_id?: string | null

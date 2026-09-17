@@ -1679,3 +1679,9 @@ shared helper so verify, sweep and webhook behave identically.
 
 The nightly `reminders` job sent "Plan league games for next week" even after a club's league season ended (Nelspruit: last round ended 2026-09-06).
 Fix: the `league_planning` section now requires (a) at least one non-archived league for the club and (b) at least one league round whose end date (or round date) is on/after tomorrow and whose status is not cancelled/completed/archived. Deployed `reminders` only.
+
+## 17 Sep 2026 — Security findings: PII scoping
+- `sportyhq_profiles`: replaced `USING (true)` SELECT policy with scoped access (platform admins, members of the linked member's club, or the person themselves).
+- `club_champs` view: now `security_invoker = on`, so underlying `tournaments`/`tournament_governance`/`tournament_rules` RLS applies.
+- To keep access unchanged for legitimate users, added a `tournaments` SELECT policy for registrants/entrants and extended `can_view_tournament()` to include registrations, partners and entries (covers cross-club entrants).
+- `club_members.id_number` / `address`: already protected by column-level grants (authenticated has SELECT on 49 of 51 columns); read via `club_member_private_fields()` for self/admins. Finding was stale — no change needed.

@@ -7,7 +7,7 @@
 - [ ] Awaiting Willem's fresh Nelspruit test payment result (should land on nsc.squashhub.co.za/my-account)
 - [ ] Deploy `family-invite` edge function (written, not deployed)
 - [ ] Monitor Meta approval of the button-free `rsvp_question` template (v4)
-- [ ] Fix the Family Doubles accepted-but-unpaired, unpaid invitation state so the invited partner appears after guest verification
+- [x] Fix the Family Doubles accepted/unpaid invitation state so verification resumes the existing partner choice or loads eligible partners
 
 ## WhatsApp invite wording (16 Sep 2026)
 - [x] Short, friendly invitation link instead of the long token URL

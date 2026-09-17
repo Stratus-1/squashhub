@@ -24,18 +24,47 @@ Deno.serve(async (req) => {
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const authHeader = req.headers.get("Authorization") || "";
 
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json({ error: "Unauthorized" }, 200);
-    const userId = userData.user.id;
-
     const body = await req.json().catch(() => ({}));
     const {
-      club_id, club_member_id, amount, purpose,
       method = "paybybank",
-      fee_ids = [], champ_registration_id = null,
-      description, return_url,
+      fee_ids = [], description, return_url,
+      // Guest path: an invitee who answered by WhatsApp link and has no login
+      // may still pay their own tournament entry. The invitation token (plus
+      // the same surname / last-4-digits check used to accept) is the proof.
+      invite_token = null, invite_verify = null,
     } = body || {};
+    let { club_id, club_member_id, amount, purpose, champ_registration_id = null } = body || {};
+
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    let userId: string | null = null;
+    let inviteContext: any = null;
+
+    if (invite_token) {
+      const { data: ctx, error: ctxErr } = await admin.rpc("tournament_invite_payment_context", {
+        p_token: invite_token, p_verify: invite_verify,
+      });
+      if (ctxErr) {
+        console.error("invite payment context error", ctxErr);
+        return json({ error: "Could not verify this invitation" }, 200);
+      }
+      inviteContext = ctx;
+      if (!ctx?.ok) {
+        return json({ error: ctx?.error || "Could not verify this invitation", needs_verification: !!ctx?.needs_verification }, 200);
+      }
+      // Everything that determines what is charged comes from the server.
+      club_id = ctx.club_id;
+      club_member_id = ctx.club_member_id;
+      amount = ctx.amount;
+      purpose = "tournament";
+      champ_registration_id = ctx.registration_id;
+      userId = ctx.user_id || null;
+    } else {
+      const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+      const { data: userData, error: userErr } = await userClient.auth.getUser();
+      if (userErr || !userData.user) return json({ error: "Unauthorized" }, 200);
+      userId = userData.user.id;
+    }
 
     if (!club_id || !club_member_id || !amount || !purpose || !return_url) {
       return json({ error: "Missing required fields" }, 200);
@@ -46,16 +75,15 @@ Deno.serve(async (req) => {
     const amountCents = Math.round(amt * 100);
     if (amountCents < 100) return json({ error: "Minimum payment is R1.00" }, 200);
 
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-
     const { data: member, error: memberErr } = await admin
       .from("club_members")
       .select("id, club_id, user_id, name, email, phone, club_member_number")
       .eq("id", club_member_id).maybeSingle();
     if (memberErr) console.error("member lookup error", memberErr);
-    if (!member || member.club_id !== club_id || member.user_id !== userId) {
+    if (!member || member.club_id !== club_id || (!inviteContext && member.user_id !== userId)) {
       return json({ error: "Member not found or not yours" }, 200);
     }
+
 
     const { data: club } = await admin
       .from("clubs").select("id, name, subdomain, payment_gateway, payment_gateways")

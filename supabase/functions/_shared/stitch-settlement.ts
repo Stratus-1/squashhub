@@ -94,6 +94,12 @@ export async function finalisePayment(admin: any, session: any) {
     await admin.from("member_credit_transactions")
       .update({ status: "cancelled" })
       .eq("reference", `TOURN-REG-${session.champ_registration_id}`).eq("status", "pending");
+    // Doubles: the payer covers the partner's entry too — settle the pair.
+    const { error: pairErr } = await admin.rpc("champ_apply_paid_registration", {
+      p_registration_id: session.champ_registration_id,
+      p_payment_ref: session.stitch_request_id,
+    });
+    if (pairErr) console.error("champ_apply_paid_registration failed", pairErr);
   }
 }
 

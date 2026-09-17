@@ -166,10 +166,15 @@ const PRIORITY: Record<RoundAction, number> = {
 export function divisionControls(
   matches: KnockoutMatchLike[],
   rounds: ChampRound[] = [],
-  opts: { selfScheduled?: boolean; championScope?: ChampionScope } = {},
+  opts: {
+    selfScheduled?: boolean;
+    championScope?: ChampionScope;
+    /** Members pulled out by an organiser — out of the draw like a knockout. */
+    withdrawnIds?: Iterable<string>;
+  } = {},
 ): DivisionControl[] {
   const scope: ChampionScope = opts.championScope ?? DEFAULT_CHAMPION_SCOPE;
-  const states = sectionProgression(matches, rounds);
+  const states = sectionProgression(matches, rounds, opts.withdrawnIds || []);
   const byGroup = new Map<number, SectionControl[]>();
   for (const s of states) {
     const c = sectionControl(s, matches, opts);

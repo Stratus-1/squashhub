@@ -16,6 +16,7 @@ import { CalendarClock, Loader2, Shuffle, Sparkles, Trophy } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
 import { useChampRounds } from "@/hooks/use-champ-rounds";
+import { useChampWithdrawn } from "@/hooks/use-champ-withdrawn";
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { sectionProgression, type SectionProgression } from "@/lib/tournaments/knockout-progression";
 import { divisionControls, groupStageControl, type ChampionScope, type SectionControl } from "@/lib/tournaments/round-control";

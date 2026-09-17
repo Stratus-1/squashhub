@@ -463,7 +463,7 @@ export default function TournamentInvite() {
           </Button>
         ) : (
           <div className="space-y-2">
-            {payNeedsVerify && (
+            {payNeedsVerify && !hasDoublesChoice && (
               <div className="space-y-1.5">
                 <Label htmlFor="pay-verify" className="text-xs">
                   {inviteVerificationLabel(verificationKind)}

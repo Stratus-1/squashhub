@@ -12,6 +12,7 @@
 - [x] Correct Rachel's guest Stitch amount from R150 to R300 for her active two-player pair
 - [x] Replace the stale app-shell worker that made valid tournament invitations appear unavailable on installed Android phones
 - [x] Make the public tournament invitation lookup backward-compatible with short codes from older cached phone pages
+- [x] Treat a player pulled out of a tournament as knocked out: no further fixtures/byes, name shown with a strike-through
 
 ## WhatsApp invite wording (16 Sep 2026)
 - [x] Short, friendly invitation link instead of the long token URL

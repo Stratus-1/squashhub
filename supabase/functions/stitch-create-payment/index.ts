@@ -133,7 +133,13 @@ Deno.serve(async (req) => {
     const merchantReference = `${refPrefix}-${String(session.id).slice(0, 8)}`
       .replace(/[^a-zA-Z0-9\s\-)]/g, "").slice(0, 50) || String(session.id).slice(0, 50);
 
-    const safeReturnUrl = sanitizeReturnUrl(return_url, String((club as any).subdomain || "").trim());
+    const clubSubdomain = String((club as any).subdomain || "").trim();
+    // Public invite paths are not Stitch return destinations. Guest tournament
+    // payments always use the proven club-specific `/my-account` contract.
+    const requestedReturnUrl = inviteContext
+      ? clubAccountReturnUrl(clubSubdomain)
+      : return_url;
+    const safeReturnUrl = sanitizeReturnUrl(requestedReturnUrl, clubSubdomain);
 
     // 2. Prefer Stitch's documented Payment Request flow. Unlike Express
     // payment-links, this hosted URL honours `redirect_uri` after success.
@@ -217,8 +223,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = plJson.data.payment;
-    // All clubs share the single whitelisted SquashHub callback. The callback
-    // resolves the session and forwards the payer to the correct club page.
+    // Each club uses its own whitelisted subdomain + `/my-account` return.
     const redirectUrl = await appendRedirectIfReachable(payment.link as string, safeReturnWithSession);
 
     await admin.from("stitch_payment_sessions").update({
@@ -237,6 +242,13 @@ Deno.serve(async (req) => {
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+function clubAccountReturnUrl(clubSubdomain: string): string {
+  const normalizedSubdomain = clubSubdomain.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  return normalizedSubdomain
+    ? `https://${normalizedSubdomain}.squashhub.co.za/my-account`
+    : `${PUBLIC_APP_ORIGIN}/pay/return`;
 }
 // Restored to the 09 Aug 2026 confirmed-working shape (regression introduced
 // 17 Aug 2026, when this ignored its argument and always returned the shared

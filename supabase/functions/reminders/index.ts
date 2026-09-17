@@ -528,10 +528,33 @@ Deno.serve(async (req) => {
         .eq("fill_top_down_enabled", true)
         .eq("league_week_start_dow", tomorrowDow);
 
+      const tomorrowIso = isoDateInTz(tomorrowDate, timeZone);
+
       for (const club of optedInClubs || []) {
         const clubId = String((club as any).id);
         if (!(await capOn(clubId, "leagues"))) continue;
         const clubName = String((club as any).name || "your club");
+
+        // Skip clubs whose league season is over: require at least one active
+        // (non-archived) league AND at least one round still running/upcoming.
+        const { count: activeLeagueCount } = await supabaseAdmin
+          .from("leagues")
+          .select("id", { count: "exact", head: true })
+          .eq("club_id", clubId)
+          .is("archived_at", null);
+        if (!activeLeagueCount) continue;
+
+        const { data: liveRounds } = await supabaseAdmin
+          .from("league_rounds")
+          .select("id, round_date, end_date, status")
+          .eq("club_id", clubId)
+          .not("status", "in", "(cancelled,completed,archived)")
+          .limit(500);
+        const hasLiveRound = (liveRounds || []).some((r: any) => {
+          const end = String(r.end_date || r.round_date || "");
+          return end && end >= tomorrowIso;
+        });
+        if (!hasLiveRound) continue;
 
         // Collect all recipient member ids
         const recipientMemberIds = new Set<string>();

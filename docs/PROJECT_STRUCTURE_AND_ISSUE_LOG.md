@@ -1674,3 +1674,8 @@ Fix: webhook now imports the shared `finalisePayment` from
 once-off settlement). Existing R600 payment backfilled.
 Rule: never duplicate settlement logic in a Stitch entry point — always use the
 shared helper so verify, sweep and webhook behave identically.
+
+## 17 Sep 2026 - League planning reminders suppressed when season finished
+
+The nightly `reminders` job sent "Plan league games for next week" even after a club's league season ended (Nelspruit: last round ended 2026-09-06).
+Fix: the `league_planning` section now requires (a) at least one non-archived league for the club and (b) at least one league round whose end date (or round date) is on/after tomorrow and whose status is not cancelled/completed/archived. Deployed `reminders` only.

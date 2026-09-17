@@ -289,6 +289,12 @@ using validated callback parameters. Never create or require one whitelist entry
 
 Format: **Symptom → Finding → Fix → Guard.** Newest first.
 
+### 2026-09-17 · Tournament invite classed as marketing by Meta
+- **Symptom:** Meta re-classified the reworded `tournament_invite_tap` WhatsApp template as marketing, and repeated test invites to one number were silently not delivered (Twilio 63049).
+- **Finding:** The CSIR Bells tournament's own description carried a recruitment line ("Players you want to invite – let them follow …register-club") that travelled inside every invite's details block — advertising content turns the message into marketing in Meta's eyes.
+- **Fix:** Recruitment line removed from the tournament description; `whatsapp_templates` row `tournament_invite_tap` reset to `draft` with `category = 'utility'` so the hourly `whatsapp-templates-sync` resubmits it as a service message. The send path already falls back to the approved `tournament_invite` template until Meta approves.
+- **Guard:** Tournament invite wording must stay service-only (the player's own entry, date, confirm/decline) — never add recruitment, advertising or "invite your friends" lines to invite details or the template body, or Meta will re-classify it as marketing with higher cost and silent non-delivery.
+
 ### 2026-09-17 · Booking confirmations, per-booking reminders and visitor fees
 - **Symptom:** Booking reminders were hard-coded to "tomorrow", in-app/push/email only, with no club or member control; the club's `visitor_booking_fee` was stored but never charged, and a visitor opponent could be left unnamed.
 - **Finding:** The reminders job queried only `date = tomorrow` and ignored any per-booking preference; no code path ever read `clubs.visitor_booking_fee`.

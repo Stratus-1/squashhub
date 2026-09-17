@@ -1586,3 +1586,13 @@ Members can now enter one or more other eligible players into a tournament from 
 - New template `tournament_invite_tap` carries that wording and is awaiting Meta approval.
   The send path uses it only when `approval_status = 'approved'`, otherwise the previously
   approved `tournament_invite` keeps sending — invitations are never blocked by approval.
+
+## 2026-09-17 — Withdraw for guest entrants + missing challenges.expires_at
+- Tournament invite: the withdraw block gave no way for an unauthenticated entrant to
+  prove the invitation was theirs, so `withdraw_tournament_entry_public` always raised a
+  verification error. The same surname / phone-last-4 field now appears inside the
+  withdraw confirmation when there is no signed-in user, and verification errors show
+  under the field.
+- `challenges.expires_at` was absent from the live database (migration
+  20260306224000 never applied), so the nightly `reminders` job 500'd on the
+  challenge-expiry section. Column + partial index restored via migration.

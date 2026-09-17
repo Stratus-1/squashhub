@@ -297,37 +297,6 @@ export default function TournamentInvite() {
     </p>
   );
 
-  // Paying without signing in: the invitation token (plus the same quick check
-  // used to accept) proves who the payer is, so an invited player never has to
-  // create a login just to settle their entry fee.
-  const payNeedsVerify = !isTest && !user && verificationKind !== "none";
-  const payVerifyReady = isInviteVerificationComplete(verificationKind, verify);
-
-  const payNow = useMutation({
-    mutationFn: async () => {
-      const { data: res, error } = await supabase.functions.invoke("stitch-create-payment", {
-        body: {
-          invite_token: token,
-          invite_verify: verify.trim() || null,
-          method: "paybybank",
-          return_url: window.location.href,
-        },
-      });
-      if (error) throw new Error(error.message || "Could not start the payment");
-      if ((res as any)?.error) throw new Error((res as any).error);
-      const redirect = (res as any)?.redirect_url;
-      if (!redirect) throw new Error("The payment page could not be opened");
-      return redirect as string;
-    },
-    onSuccess: (redirect) => {
-      window.location.assign(redirect);
-    },
-    onError: (e: any) => {
-      const msg = e?.message || "Could not start the payment";
-      setVerifyError(msg);
-      toast.error(msg);
-    },
-  });
 
 
   if (isLoading || authLoading || resolving) {

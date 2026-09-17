@@ -1661,3 +1661,16 @@ Members can now enter one or more other eligible players into a tournament from 
 - The guest payment context counts distinct unpaid players across all managed pairs exactly once. Rachel's existing Rachel/Chané pair therefore produces a new R300 Stitch payment instead of R150.
 - Covered partners cannot start a separate payment while the family payer is responsible for them. Successful settlement marks all covered registrations paid idempotently and settles every managed pair.
 - This behavior is restricted to tournaments named/configured as Family Doubles. Ordinary doubles tournaments retain one self-selected pair per player.
+
+## 17 Sep 2026 — Stitch webhook skipped payment settlement
+Symptom: Rachel's R600 Family Doubles payment showed only the gateway fee in the
+ledger; no bank receipt, fees still outstanding for all 4 players.
+Cause: `supabase/functions/stitch-webhook/index.ts` had its own local
+`finalisePayment()` that only stamped the payer's registration — it never marked
+`club_member_fee_payments.paid` (which posts Dr Bank / Cr Debtors) nor called
+`champ_apply_paid_registration` to settle covered partners/pairs.
+Fix: webhook now imports the shared `finalisePayment` from
+`supabase/functions/_shared/stitch-settlement.ts` (single source of truth for
+once-off settlement). Existing R600 payment backfilled.
+Rule: never duplicate settlement logic in a Stitch entry point — always use the
+shared helper so verify, sweep and webhook behave identically.

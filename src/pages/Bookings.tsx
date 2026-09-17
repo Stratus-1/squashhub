@@ -1291,6 +1291,35 @@ export default function Bookings() {
         ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
         : null;
 
+      // Booking confirmation to the booker and (when a member) the 2nd player.
+      if (bookingDialog.confirmNow && bookingClubId) {
+        const courtName = courtsData?.find((c: any) => c.id === bookingDialog.courtId)?.name
+          || `Court ${bookingDialog.courtId}`;
+        const text = `Your court booking is confirmed: ${courtName} on ${dateStr} at ${bookingDialog.time}–${endTime}.`;
+        try {
+          await sendBookingMessage({
+            clubId: bookingClubId,
+            channels: bookingDialog.notifyChannels,
+            kind: "confirmation",
+            title: "Court booking confirmed",
+            text,
+            url: "/bookings",
+            targets: [
+              { userId: user?.id || null, phone: (profile as any)?.phone || null },
+              ...(opponent
+                ? [{ userId: (opponent as any).id || null, phone: (opponent as any).phone || null }]
+                : []),
+            ],
+          });
+          await fromExt("bookings")
+            .update({ confirm_sent_at: new Date().toISOString() })
+            .eq("id", bookingRowId);
+        } catch (e: any) {
+          console.error("Booking confirmation failed:", e);
+        }
+      }
+
+
       if (bookingDialog.opponentId && !bookingDialog.isFriendly) {
         try {
           const challenge = await createChallenge.mutateAsync({

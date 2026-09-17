@@ -59,20 +59,24 @@ export default function TournamentInvite() {
   // Short, friendly links (/i/ab3k9xq2mt) are swapped for the real invitation
   // token here, so everything below keeps working unchanged.
   const isShort = !isTest && isShortInviteCode(rawToken);
-  const { data: resolved, isLoading: resolving } = useQuery({
+  const { data: resolved, isLoading: resolving, isError: resolveError } = useQuery({
     queryKey: ["invite-short-code", rawToken],
     enabled: isShort,
     staleTime: Infinity,
+    retry: 2,
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("resolve_invite_short_code", { p_code: rawToken });
-      if (error) throw error;
+      // A stale session in an already-open app can make the signed-in request
+      // fail; the invitation is public, so retry it without any session.
+      if (error) return (await rpcPublic<string>("resolve_invite_short_code", { p_code: rawToken })) || "";
       return (data as string | null) || "";
     },
   });
   const token = isShort ? resolved || "" : rawToken;
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError: loadError, refetch } = useQuery({
     queryKey: ["tournament-invite", isTest ? `test:${champId}` : token, user?.id ?? "anon"],
+    retry: 2,
     queryFn: async () => {
       if (isTest) {
         const { data, error } = await (supabase as any).rpc("get_tournament_invite_preview", { p_champ_id: champId });
@@ -80,7 +84,10 @@ export default function TournamentInvite() {
         return (data || { found: false }) as InvitePayload;
       }
       const { data, error } = await (supabase as any).rpc("get_tournament_invite", { p_token: token });
-      if (error) throw error;
+      if (error) {
+        const fallback = await rpcPublic<InvitePayload>("get_tournament_invite", { p_token: token });
+        return (fallback || { found: false }) as InvitePayload;
+      }
       return (data || { found: false }) as InvitePayload;
     },
     enabled: (!!token || !!champId) && !authLoading,

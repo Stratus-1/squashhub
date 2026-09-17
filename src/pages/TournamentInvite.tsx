@@ -223,6 +223,11 @@ export default function TournamentInvite() {
   const withdrawDeadlineLabel = withdrawal.deadline
     ? withdrawal.deadline.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
     : null;
+  // Guests who answered by link have no session, so they prove who they are the
+  // same way they did when accepting.
+  const withdrawNeedsVerify = !isTest && !user && verificationKind !== "none";
+  const withdrawVerifyReady = isInviteVerificationComplete(verificationKind, verify);
+
 
   const withdrawSection = isTest ? (
     <p className="text-[11px] text-muted-foreground text-center">

@@ -199,6 +199,15 @@ export function entrantStates(
       row.aliveInRound = null;
     }
   }
+  // A player pulled out by an organiser is out of the draw exactly as if they
+  // had lost: they never contest another round and never receive another bye.
+  const pulled = new Set(Array.from(withdrawnIds, String));
+  for (const row of state.values()) {
+    if (!pulled.has(row.memberId) || row.eliminated) continue;
+    row.eliminated = true;
+    row.eliminatedInRound = row.eliminatedInRound ?? row.aliveInRound;
+    row.aliveInRound = null;
+  }
   return Array.from(state.values());
 }
 
@@ -209,6 +218,7 @@ export function entrantStates(
 export function sectionProgression(
   matches: KnockoutMatchLike[],
   rounds: ChampRound[] = [],
+  withdrawnIds: Iterable<string> = [],
 ): SectionProgression[] {
   const ko = matches.filter((m) => (m.stage || "") === "ko");
   const keys = new Map<string, KnockoutMatchLike[]>();

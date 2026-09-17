@@ -39,7 +39,7 @@ import { SmsMessagingCard } from "@/components/club-admin/SmsMessagingCard";
 import { RouterTab } from "@/components/club-admin/RouterTab";
 import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
 import { AiAssistantTab } from "@/components/club-admin/AiAssistantTab";
-import { EmailLogTab } from "@/components/club-admin/EmailLogTab";
+import { MessageLogTab } from "@/components/club-admin/MessageLogTab";
 import { useMyPermissionsStatus, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
@@ -106,7 +106,7 @@ const OPERATIONS_TABS: AdminTab[] = [
   { value: "awards", label: "League Awards", icon: Trophy, permission: "leagues", color: "amber", noStatus: true, capability: "leagues" },
   { value: "comms", label: "Comms", icon: Mail, permission: "communications", color: "blue" },
   { value: "updates", label: "Updates from SquashHub", icon: Megaphone, permission: "communications", color: "rose", noStatus: true },
-  { value: "emails", label: "Email Log", icon: Mail, permission: "communications", color: "sky", noStatus: true },
+  { value: "emails", label: "Message Log", icon: Mail, permission: "communications", color: "sky", noStatus: true },
   // AI Assistant tab hidden while the feature is being reworked.
 ];
 
@@ -232,7 +232,7 @@ export default function ClubAdmin() {
       case "comms": return <CommunicationsTab clubId={club.id} />;
       case "updates": return <PlatformUpdatesInbox clubId={club.id} />;
       case "ai": return <AiAssistantTab clubId={club.id} />;
-      case "emails": return <EmailLogTab clubId={club.id} />;
+      case "emails": return <MessageLogTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;
       case "whatsapp": return (
         <div className="mt-4 space-y-4">

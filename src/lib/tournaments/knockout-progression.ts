@@ -248,8 +248,11 @@ export function sectionProgression(
     const unresolved = currentRoundMatches.filter((m) => !isResolved(m));
     const currentRoundComplete = currentRoundMatches.length > 0 && unresolved.length === 0;
 
-    const states = entrantStates(rows);
-    const winners = currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[];
+    const states = entrantStates(rows, withdrawnIds);
+    const pulledOut = new Set(Array.from(withdrawnIds, String));
+    const winners = (currentRoundMatches.map((m) => winnerOf(m)).filter(Boolean) as string[]).filter(
+      (id) => !pulledOut.has(String(id)),
+    );
     // Anyone still alive who was not part of the round just played (e.g. taken
     // out of a fixture by an organiser correction) still contests the next round.
     const inCurrentRound = new Set(

@@ -39,7 +39,7 @@ import { SmsMessagingCard } from "@/components/club-admin/SmsMessagingCard";
 import { RouterTab } from "@/components/club-admin/RouterTab";
 import { LeagueAwardsTab } from "@/components/club-admin/LeagueAwardsTab";
 import { AiAssistantTab } from "@/components/club-admin/AiAssistantTab";
-import { EmailLogTab } from "@/components/club-admin/EmailLogTab";
+import { MessageLogTab } from "@/components/club-admin/MessageLogTab";
 import { useMyPermissionsStatus, type PermissionSlug } from "@/hooks/use-club-permissions";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
@@ -232,7 +232,7 @@ export default function ClubAdmin() {
       case "comms": return <CommunicationsTab clubId={club.id} />;
       case "updates": return <PlatformUpdatesInbox clubId={club.id} />;
       case "ai": return <AiAssistantTab clubId={club.id} />;
-      case "emails": return <EmailLogTab clubId={club.id} />;
+      case "emails": return <MessageLogTab clubId={club.id} />;
       case "subscription": return <SubscriptionTab clubId={club.id} />;
       case "whatsapp": return (
         <div className="mt-4 space-y-4">

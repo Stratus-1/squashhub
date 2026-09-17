@@ -33,7 +33,7 @@ import { AssociationLeaguesTab } from "@/components/association-admin/Associatio
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
-import { EmailLogTab } from "@/components/club-admin/EmailLogTab";
+import { MessageLogTab } from "@/components/club-admin/MessageLogTab";
 import { AssociationRankingsTab } from "@/components/association-admin/AssociationRankingsTab";
 
 interface TabDef {
@@ -216,7 +216,7 @@ export default function AssociationDashboard() {
       case "banking": return <BankingTab club={association as any} clubId={association.id} />;
       case "finance": return <FinanceTab club={association as any} clubId={association.id} party="club" />;
       case "comms": return <CommunicationsTab clubId={association.id} />;
-      case "emails": return <EmailLogTab clubId={association.id} mode="association" />;
+      case "emails": return <MessageLogTab clubId={association.id} mode="association" />;
       case "settings": return <SettingsTab club={association as any} clubId={association.id} />;
       case "permissions": return <PermissionsTab clubId={association.id} />;
       default: return null;

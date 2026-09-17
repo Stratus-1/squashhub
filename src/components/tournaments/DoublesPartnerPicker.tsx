@@ -187,8 +187,10 @@ function DivisionPartner({
       : 0;
 
   const choose = (o: PartnerOption) => {
+    // Picking a partner books the pair — the partner never has to accept, and
+    // the player who picks covers both entry fees.
     if (hasFee) setFeeAsk(o);
-    else act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: false });
+    else act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: true });
   };
 
   const badgeLabel =
@@ -307,25 +309,14 @@ function DivisionPartner({
       <AlertDialog open={!!feeAsk} onOpenChange={(o) => !o && setFeeAsk(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you paying for {feeAsk?.display_name}?</AlertDialogTitle>
+            <AlertDialogTitle>Enter with {feeAsk?.display_name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              The entry fee is {money(feeCents)} per player. Pay for both ({money(feeCents * 2)}) and
-              the pair locks as soon as your payment succeeds — or let {feeAsk?.display_name || "your partner"} pay
-              their own entry and we'll send them a “Complete registration” link.
+              The entry fee is {money(feeCents)} per player, so you pay {money(feeCents * 2)} for the pair.
+              {feeAsk?.display_name || "Your partner"} is entered straight away and does not need to confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const o = feeAsk!;
-                setFeeAsk(null);
-                act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: false });
-              }}
-            >
-              No — they pay their own
-            </Button>
             <AlertDialogAction
               onClick={() => {
                 const o = feeAsk!;
@@ -333,7 +324,7 @@ function DivisionPartner({
                 act.mutate({ kind: "propose", memberId: o.member_id, payForPartner: true });
               }}
             >
-              Yes — pay {money(feeCents * 2)}
+              Pay {money(feeCents * 2)}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

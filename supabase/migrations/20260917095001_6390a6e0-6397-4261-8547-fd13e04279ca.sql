@@ -1,0 +1,1 @@
+ALTER TABLE public.stitch_payment_sessions ALTER COLUMN user_id DROP NOT NULL;

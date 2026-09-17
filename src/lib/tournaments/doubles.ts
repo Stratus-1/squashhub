@@ -68,9 +68,32 @@ export type MyPair = {
 export type PairingState = {
   member_id: string | null;
   locked: boolean;
+  family_mode: boolean;
   entry_fee_cents: number;
   my_fee_paid: boolean;
+  amount_due_cents: number;
   pairs: MyPair[];
+  managed_pairs: ManagedPair[];
+};
+
+export type ManagedPair = {
+  id: string;
+  group_number: number;
+  status: PairStatus;
+  member_a: string;
+  member_a_name: string;
+  member_b: string;
+  member_b_name: string;
+  member_a_paid: boolean;
+  member_b_paid: boolean;
+  locked_at?: string | null;
+  created_at?: string | null;
+};
+
+export type FamilyPlayerOption = PartnerOption & {
+  fee_paid: boolean;
+  is_payer: boolean;
+  paired: boolean;
 };
 
 export const PARTNER_MUST_REGISTER_MESSAGE =
@@ -240,10 +263,59 @@ export async function fetchPairingState(
   return {
     member_id: data?.member_id ?? null,
     locked: !!data?.locked,
+    family_mode: !!data?.family_mode,
     entry_fee_cents: Number(data?.entry_fee_cents || 0),
     my_fee_paid: !!data?.my_fee_paid,
+    amount_due_cents: Number(data?.amount_due_cents || 0),
     pairs: Array.isArray(data?.pairs) ? (data.pairs as MyPair[]) : [],
+    managed_pairs: Array.isArray(data?.managed_pairs) ? (data.managed_pairs as ManagedPair[]) : [],
   };
+}
+
+export async function fetchFamilyPlayers(
+  champId: string,
+  groupNumber: number,
+  auth: TokenAuth = {},
+): Promise<FamilyPlayerOption[]> {
+  const { data, error } = await (supabase as any).rpc("list_family_doubles_players", {
+    p_champ_id: champId,
+    p_group_number: groupNumber,
+    p_token: auth.token || null,
+    p_verify: auth.verify || null,
+  });
+  if (error) throw error;
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((raw: any) => {
+      const safe = sanitizePartnerOption(raw);
+      if (!safe) return null;
+      return {
+        ...safe,
+        fee_paid: raw?.fee_paid === true,
+        is_payer: raw?.is_payer === true,
+        paired: raw?.paired === true,
+      };
+    })
+    .filter((row): row is FamilyPlayerOption => row !== null);
+}
+
+export async function createFamilyPair(
+  champId: string,
+  groupNumber: number,
+  memberA: string,
+  memberB: string,
+  auth: TokenAuth = {},
+) {
+  const { data, error } = await (supabase as any).rpc("create_family_doubles_pair", {
+    p_champ_id: champId,
+    p_group_number: groupNumber,
+    p_member_a: memberA,
+    p_member_b: memberB,
+    p_token: auth.token || null,
+    p_verify: auth.verify || null,
+  });
+  if (error) throw error;
+  return data as { id: string; status: PairStatus };
 }
 
 export async function proposePartner(

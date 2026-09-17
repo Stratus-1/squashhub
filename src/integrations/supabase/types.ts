@@ -14371,6 +14371,10 @@ export type Database = {
         Returns: boolean
       }
       champ_entry_fee_cents: { Args: { p_champ_id: string }; Returns: number }
+      champ_is_family_doubles: {
+        Args: { p_champ_id: string }
+        Returns: boolean
+      }
       champ_member_accepted: {
         Args: {
           p_champ_id: string
@@ -14580,6 +14584,17 @@ export type Database = {
       count_member_duplicate_hints: {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number
+      }
+      create_family_doubles_pair: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
+          p_member_a: string
+          p_member_b: string
+          p_token?: string
+          p_verify?: string
+        }
+        Returns: Json
       }
       create_league_season: {
         Args: {
@@ -15157,6 +15172,15 @@ export type Database = {
           p_group_number: number
           p_limit?: number
           p_search?: string
+          p_token?: string
+          p_verify?: string
+        }
+        Returns: Json
+      }
+      list_family_doubles_players: {
+        Args: {
+          p_champ_id: string
+          p_group_number: number
           p_token?: string
           p_verify?: string
         }

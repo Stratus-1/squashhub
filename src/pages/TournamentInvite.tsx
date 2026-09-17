@@ -249,9 +249,9 @@ export default function TournamentInvite() {
             Doubles partner required
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Your doubles entry is only complete once you name a partner.
+            Add the exact two-person pairings that will play.
             {feeCents > 0
-              ? " You'll also say who is paying — if your partner pays their own entry, we send them a confirmation with a payment link."
+              ? " The person using this invitation pays every selected player's entry fee once."
               : ""}
           </p>
         </div>

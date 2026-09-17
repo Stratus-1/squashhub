@@ -5972,6 +5972,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         })();
         // Each recipient gets their own canonical invitation link, so the
         // WhatsApp message carries exactly the same URL as email / in-app.
+        // One bad recipient (no phone number, provider hiccup) must never stop
+        // the rest of the batch: every failure is collected and reported at the
+        // end, but the loop always continues to the next player.
+        const waFailures: string[] = [];
+        let waSent = 0;
         for (const r of rows as any[]) {
           const link = await shortUrlForRegistration(r.id);
           const details = buildWhatsAppDetails(needsPayment);
@@ -5999,11 +6004,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 prompt: `Entry for ${champName || "tournament"}\n${link}`,
               },
             });
-
+            waSent += 1;
           } catch (waErr: any) {
-            toast.warning(`WhatsApp invites failed: ${waErr?.message || "unknown error"}`);
-            break;
+            waFailures.push(
+              `${memberNameById.get(r.club_member_id) || "Unknown member"}: ${waErr?.message || "unknown error"}`,
+            );
           }
+        }
+        if (waFailures.length > 0) {
+          toast.warning(
+            `WhatsApp: ${waSent} sent, ${waFailures.length} failed — ${waFailures.slice(0, 3).join("; ")}${waFailures.length > 3 ? "…" : ""}`,
+          );
         }
       }
 

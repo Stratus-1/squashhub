@@ -2,6 +2,14 @@
 
 **Status: CONFIRMED WORKING. Nelspruit (nsc) once-off Stitch Express TEST payment tested successfully by Willem on 15 Sep 2026 — payer was returned to the club app.** This is the reference implementation for EVERY club, test and live.
 
+## 2026-09-17 — Tournament WhatsApp invites stopped after 9 of 49
+
+**Symptom:** 49 players were invited to the CSIR "6th vs 7th League Players Bells Get Together"; only the first 9 received a WhatsApp.
+
+**Cause:** the WhatsApp loop in `ClubChampsTab.tsx` had `break` inside its catch — the first recipient that threw (e.g. a member with no phone number on file, such as Nico Van Niekerk) aborted the whole batch silently, leaving 40 players unsent.
+
+**Fix:** the loop now continues past a failure, counts sends and failures, and reports `X sent, Y failed` with the first few names. Never re-add a `break` there.
+
 ## The standard (non-negotiable)
 
 1. **Club-specific return URL, derived from the club's subdomain.** Once-off Stitch Express payments must return to

@@ -169,7 +169,10 @@ function sidesOf(m: KnockoutMatchLike): string[] {
  * Derive alive/eliminated state for one section from its match rows.
  * A bye never eliminates anyone. Unfinished matches leave both sides alive.
  */
-export function entrantStates(sectionMatches: KnockoutMatchLike[]): EntrantState[] {
+export function entrantStates(
+  sectionMatches: KnockoutMatchLike[],
+  withdrawnIds: Iterable<string> = [],
+): EntrantState[] {
   const state = new Map<string, EntrantState>();
   const ordered = [...sectionMatches].sort(
     (a, b) => (Number(a.round_number) || 0) - (Number(b.round_number) || 0),

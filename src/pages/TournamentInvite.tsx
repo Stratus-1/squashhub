@@ -416,6 +416,19 @@ export default function TournamentInvite() {
     </div>
   );
 
+  if (loadError || resolveError) {
+    return shell(
+      <div className="text-center space-y-3 py-4">
+        <XCircle className="w-8 h-8 text-muted-foreground mx-auto" />
+        <h1 className="text-base font-semibold">Couldn't open your invitation</h1>
+        <p className="text-sm text-muted-foreground">
+          We couldn't reach the invitation just now. Please check your connection and try again.
+        </p>
+        <Button size="sm" onClick={() => window.location.reload()}>Try again</Button>
+      </div>,
+    );
+  }
+
   if (state === "not_found" || state === "revoked") {
     return shell(
       <div className="text-center space-y-2 py-4">

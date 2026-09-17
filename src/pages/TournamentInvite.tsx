@@ -241,6 +241,27 @@ export default function TournamentInvite() {
             {hasDoublesChoice ? " and your partner will be told" : ""}.
             {feeCents > 0 ? " Any entry fee already paid is not refunded." : ""}
           </p>
+          {withdrawNeedsVerify && (
+            <div className="space-y-1.5">
+              <Label htmlFor="withdraw-verify" className="text-xs">
+                {inviteVerificationLabel(verificationKind)}
+              </Label>
+              <Input
+                id="withdraw-verify"
+                inputMode={verificationKind === "phone_last4" ? "numeric" : "text"}
+                autoComplete="off"
+                value={verify}
+                onChange={(e) => {
+                  setVerify(e.target.value);
+                  setVerifyError("");
+                }}
+                placeholder={verificationKind === "phone_last4" ? "e.g. 4821" : "e.g. Pretorius"}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {verifyError || "A quick check that this invitation is yours — no SquashHub login needed."}
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" size="sm" disabled={withdrawEntry.isPending} onClick={() => setConfirmWithdraw(false)}>
               Keep my entry
@@ -248,7 +269,7 @@ export default function TournamentInvite() {
             <Button
               variant="destructive"
               size="sm"
-              disabled={withdrawEntry.isPending}
+              disabled={withdrawEntry.isPending || (withdrawNeedsVerify && !withdrawVerifyReady)}
               onClick={() => withdrawEntry.mutate()}
             >
               {withdrawEntry.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, withdraw"}

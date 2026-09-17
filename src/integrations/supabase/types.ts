@@ -12308,7 +12308,7 @@ export type Database = {
           stitch_redirect_url: string | null
           stitch_request_id: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           amount: number
@@ -12329,7 +12329,7 @@ export type Database = {
           stitch_redirect_url?: string | null
           stitch_request_id?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -12350,7 +12350,7 @@ export type Database = {
           stitch_redirect_url?: string | null
           stitch_request_id?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

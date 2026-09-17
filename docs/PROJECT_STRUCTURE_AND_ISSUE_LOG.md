@@ -2,7 +2,28 @@
 
 **Status: CONFIRMED WORKING. Nelspruit (nsc) once-off Stitch Express TEST payment tested successfully by Willem on 15 Sep 2026 — payer was returned to the club app.** This is the reference implementation for EVERY club, test and live.
 
+## 2026-09-17 — Invited players can pay their entry fee without a login
+
+Invitees who answered by WhatsApp link were bounced to the club login when they
+tapped "Pay entry fee", because `stitch-create-payment` only accepted a signed-in
+session. Added a guest path: the invite token (plus the same surname / last-4-digits
+check used to accept or withdraw) authorises the payment.
+
+- New SECURITY DEFINER RPC `tournament_invite_payment_context(p_token, p_verify)`
+  (EXECUTE: service_role only) — validates the token, runs `invite_verification_ok`
+  for people without a login, and returns club, member, registration, amount and
+  description. The client can never dictate the amount or the payer.
+- `stitch-create-payment` accepts `invite_token` / `invite_verify` in place of a
+  session; all charge fields are taken from the RPC, never the request body.
+- `stitch_payment_sessions.user_id` is now nullable (invitees may have no login).
+  The webhook never used it; `stitch-verify-payment` still requires a session and
+  is unaffected.
+- Return URL is the invitation page itself on the club subdomain, which the
+  Stitch standard above allows (clubs must register `https://<sub>.squashhub.co.za/*`).
+  Never redirect a club payer to `/pay/return`.
+
 ## 2026-09-17 — Cross-club tournament WhatsApps were silently skipped
+
 
 Symptom: after the client-side batch fixes were published, the Bells send made
 46 successful calls to `send-whatsapp`, but only the nine CSIR members had log

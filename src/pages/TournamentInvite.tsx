@@ -297,6 +297,39 @@ export default function TournamentInvite() {
     </p>
   );
 
+  // Paying without signing in: the invitation token (plus the same quick check
+  // used to accept) proves who the payer is, so an invited player never has to
+  // create a login just to settle their entry fee.
+  const payNeedsVerify = !isTest && !user && verificationKind !== "none";
+  const payVerifyReady = isInviteVerificationComplete(verificationKind, verify);
+
+  const payNow = useMutation({
+    mutationFn: async () => {
+      const { data: res, error } = await supabase.functions.invoke("stitch-create-payment", {
+        body: {
+          invite_token: token,
+          invite_verify: verify.trim() || null,
+          method: "paybybank",
+          return_url: window.location.href,
+        },
+      });
+      if (error) throw new Error(error.message || "Could not start the payment");
+      if ((res as any)?.error) throw new Error((res as any).error);
+      const redirect = (res as any)?.redirect_url;
+      if (!redirect) throw new Error("The payment page could not be opened");
+      return redirect as string;
+    },
+    onSuccess: (redirect) => {
+      window.location.assign(redirect);
+    },
+    onError: (e: any) => {
+      const msg = e?.message || "Could not start the payment";
+      setVerifyError(msg);
+      toast.error(msg);
+    },
+  });
+
+
   if (isLoading || authLoading || resolving) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -382,12 +415,59 @@ export default function TournamentInvite() {
         {detailList}
         <Badge variant="secondary">Accepted — entry fee outstanding</Badge>
         {partnerSection}
-        <Button
-          className="w-full"
-          onClick={() => data?.champ_id && navigate(afterAcceptPath(data.champ_id, "pending_payment"))}
-        >
-          <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
-        </Button>
+        {isTest ? (
+          <Button className="w-full" disabled>
+            <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
+          </Button>
+        ) : user ? (
+          <Button
+            className="w-full"
+            onClick={() => data?.champ_id && navigate(afterAcceptPath(data.champ_id, "pending_payment"))}
+          >
+            <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            {payNeedsVerify && (
+              <div className="space-y-1.5">
+                <Label htmlFor="pay-verify" className="text-xs">
+                  {inviteVerificationLabel(verificationKind)}
+                </Label>
+                <Input
+                  id="pay-verify"
+                  inputMode={verificationKind === "phone_last4" ? "numeric" : "text"}
+                  autoComplete="off"
+                  value={verify}
+                  onChange={(e) => {
+                    setVerify(e.target.value);
+                    setVerifyError("");
+                  }}
+                  placeholder={verificationKind === "phone_last4" ? "e.g. 4821" : "e.g. Pretorius"}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {verifyError || "A quick check that this invitation is yours — no SquashHub login needed."}
+                </p>
+              </div>
+            )}
+            <Button
+              className="w-full"
+              disabled={payNow.isPending || (payNeedsVerify && !payVerifyReady)}
+              onClick={() => payNow.mutate()}
+            >
+              {payNow.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
+                </>
+              )}
+            </Button>
+            <p className="text-[11px] text-muted-foreground text-center">
+              You can pay straight from this invitation — no login needed.
+            </p>
+          </div>
+        )}
+
         {withdrawSection}
       </>,
     );

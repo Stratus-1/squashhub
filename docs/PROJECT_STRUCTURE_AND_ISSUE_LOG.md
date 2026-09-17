@@ -22,6 +22,7 @@ check used to accept or withdraw) authorises the payment.
   Stitch standard above allows (clubs must register `https://<sub>.squashhub.co.za/*`).
   Never redirect a club payer to `/pay/return`.
 
+## 2026-09-17 — Cross-club tournament WhatsApps were silently skipped
 
 
 Symptom: after the client-side batch fixes were published, the Bells send made

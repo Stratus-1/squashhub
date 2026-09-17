@@ -28,6 +28,7 @@ import {
 import { GoBookApiCard } from "./GoBookApiCard";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { EditLock, useEditLock } from "./setup/EditLock";
+import { BookingMessagesCard } from "./BookingMessagesCard";
 
 type RelayDevice = string;
 
@@ -437,6 +438,8 @@ export function CourtsTab({ club, clubId }: { club: Club; clubId: string }) {
           )}
         </EditLock>
         </Card>
+
+        <BookingMessagesCard club={club} />
       </div>
       )}
 

@@ -1151,6 +1151,7 @@ export type Database = {
           challenge_id: string | null
           club_id: string | null
           club_member_id: string | null
+          confirm_sent_at: string | null
           court_id: number
           created_at: string
           date: string
@@ -1163,23 +1164,28 @@ export type Database = {
           is_friendly: boolean
           light_fee_split: string
           lights_requested: boolean
+          notify_channels: string[] | null
           opponent_id: string | null
           opponent_member_id: string | null
           ops_note: string | null
           ops_photo_url: string | null
           ops_purpose: string | null
+          reminder_hours: number | null
+          reminder_sent_at: string | null
           shelly_schedule_off_id: string | null
           shelly_schedule_on_id: string | null
           source: string
           start_time: string
           status: string
           user_id: string | null
+          visitor_fee_charged_at: string | null
         }
         Insert: {
           booking_type?: string
           challenge_id?: string | null
           club_id?: string | null
           club_member_id?: string | null
+          confirm_sent_at?: string | null
           court_id: number
           created_at?: string
           date: string
@@ -1192,23 +1198,28 @@ export type Database = {
           is_friendly?: boolean
           light_fee_split?: string
           lights_requested?: boolean
+          notify_channels?: string[] | null
           opponent_id?: string | null
           opponent_member_id?: string | null
           ops_note?: string | null
           ops_photo_url?: string | null
           ops_purpose?: string | null
+          reminder_hours?: number | null
+          reminder_sent_at?: string | null
           shelly_schedule_off_id?: string | null
           shelly_schedule_on_id?: string | null
           source?: string
           start_time: string
           status?: string
           user_id?: string | null
+          visitor_fee_charged_at?: string | null
         }
         Update: {
           booking_type?: string
           challenge_id?: string | null
           club_id?: string | null
           club_member_id?: string | null
+          confirm_sent_at?: string | null
           court_id?: number
           created_at?: string
           date?: string
@@ -1221,17 +1232,21 @@ export type Database = {
           is_friendly?: boolean
           light_fee_split?: string
           lights_requested?: boolean
+          notify_channels?: string[] | null
           opponent_id?: string | null
           opponent_member_id?: string | null
           ops_note?: string | null
           ops_photo_url?: string | null
           ops_purpose?: string | null
+          reminder_hours?: number | null
+          reminder_sent_at?: string | null
           shelly_schedule_off_id?: string | null
           shelly_schedule_on_id?: string | null
           source?: string
           start_time?: string
           status?: string
           user_id?: string | null
+          visitor_fee_charged_at?: string | null
         }
         Relationships: [
           {
@@ -4960,6 +4975,8 @@ export type Database = {
           last_name: string
           member_number: string | null
           phone: string | null
+          visitor_fee_charged_at: string | null
+          visitor_fee_due: number
         }
         Insert: {
           category?: string
@@ -4972,6 +4989,8 @@ export type Database = {
           last_name: string
           member_number?: string | null
           phone?: string | null
+          visitor_fee_charged_at?: string | null
+          visitor_fee_due?: number
         }
         Update: {
           category?: string
@@ -4984,6 +5003,8 @@ export type Database = {
           last_name?: string
           member_number?: string | null
           phone?: string | null
+          visitor_fee_charged_at?: string | null
+          visitor_fee_due?: number
         }
         Relationships: [
           {
@@ -5143,8 +5164,13 @@ export type Database = {
           baseline_member_count: number | null
           baseline_set_at: string | null
           block_back_to_back_bookings: boolean
+          booking_confirm_channels: string[]
+          booking_confirm_enabled: boolean
           booking_last_slot_time: string
           booking_open_time: string
+          booking_reminder_channels: string[]
+          booking_reminder_enabled: boolean
+          booking_reminder_hours: number
           booking_slot_minutes: number
           chairman_member_id: string | null
           challenge_levels_up: number | null
@@ -5282,8 +5308,13 @@ export type Database = {
           baseline_member_count?: number | null
           baseline_set_at?: string | null
           block_back_to_back_bookings?: boolean
+          booking_confirm_channels?: string[]
+          booking_confirm_enabled?: boolean
           booking_last_slot_time?: string
           booking_open_time?: string
+          booking_reminder_channels?: string[]
+          booking_reminder_enabled?: boolean
+          booking_reminder_hours?: number
           booking_slot_minutes?: number
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
@@ -5421,8 +5452,13 @@ export type Database = {
           baseline_member_count?: number | null
           baseline_set_at?: string | null
           block_back_to_back_bookings?: boolean
+          booking_confirm_channels?: string[]
+          booking_confirm_enabled?: boolean
           booking_last_slot_time?: string
           booking_open_time?: string
+          booking_reminder_channels?: string[]
+          booking_reminder_enabled?: boolean
+          booking_reminder_hours?: number
           booking_slot_minutes?: number
           chairman_member_id?: string | null
           challenge_levels_up?: number | null
@@ -14377,6 +14413,10 @@ export type Database = {
       charge_tournament_entry_to_account: {
         Args: { p_registration_id: string }
         Returns: Json
+      }
+      charge_visitor_booking_fee: {
+        Args: { p_booking_id: string }
+        Returns: boolean
       }
       check_ledger_integrity: {
         Args: { p_club_id?: string }

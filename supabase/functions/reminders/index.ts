@@ -139,13 +139,15 @@ Deno.serve(async (req) => {
       return capMemo.get(key)!;
     };
 
-    // 1) Booking reminders (tomorrow)
+    // 1) Booking reminders — each booking carries its own lead time and
+    //    channels (falling back to the club's defaults).
     section = "bookings";
+    const dayAfter = isoDateInTz(addDays(now, 2), timeZone);
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
-      .select("id,club_id,user_id,opponent_id,date,start_time,end_time,court_id,status")
+      .select("id,club_id,user_id,opponent_id,club_member_id,opponent_member_id,date,start_time,end_time,court_id,status,notify_channels,reminder_hours")
       .eq("status", "active")
-      .eq("date", tomorrow)
+      .in("date", [today, tomorrow, dayAfter])
       .limit(500);
 
     // Court names for friendly reminder text (fall back to "Court <id>").
@@ -157,29 +159,138 @@ Deno.serve(async (req) => {
     }
     const courtLabel = (id: any) => (id != null && courtNameMemo.get(String(id))) || `Court ${id}`;
 
+    // Club-level booking message defaults.
+    const clubMsgMemo = new Map<string, any>();
+    const bookingClubIds = [...new Set((bookings || []).map((b: any) => b.club_id).filter(Boolean).map(String))];
+    if (bookingClubIds.length) {
+      const { data: clubRows } = await supabaseAdmin
+        .from("clubs")
+        .select("id,booking_reminder_enabled,booking_reminder_channels,booking_reminder_hours,sms_enabled,whatsapp_enabled")
+        .in("id", bookingClubIds);
+      for (const c of clubRows || []) clubMsgMemo.set(String((c as any).id), c);
+    }
+
+    // Phone numbers for SMS / WhatsApp reminders.
+    const phoneMemo = new Map<string, { member_id: string; phone: string }>();
+    const memberIds = [...new Set((bookings || [])
+      .flatMap((b: any) => [b.club_member_id, b.opponent_member_id])
+      .filter(Boolean).map(String))];
+    if (memberIds.length) {
+      const { data: memberRows } = await supabaseAdmin
+        .from("club_members").select("id,user_id,phone").in("id", memberIds);
+      for (const m of memberRows || []) {
+        const phone = String((m as any).phone || "").trim();
+        if (phone && (m as any).user_id) {
+          phoneMemo.set(String((m as any).user_id), { member_id: String((m as any).id), phone });
+        }
+      }
+    }
+
+    /** Booking start as a real instant, reading date+time as club-local time. */
+    const bookingStartMs = (dateStr: string, startTime: string) => {
+      const hhmmss = String(startTime || "00:00:00").slice(0, 8);
+      const naive = Date.parse(`${dateStr}T${hhmmss.length === 5 ? `${hhmmss}:00` : hhmmss}Z`);
+      if (Number.isNaN(naive)) return NaN;
+      // Offset of the club timezone at that instant (ms east of UTC).
+      const probe = new Date(naive);
+      const asTz = new Date(probe.toLocaleString("en-US", { timeZone })).getTime();
+      const asUtc = new Date(probe.toLocaleString("en-US", { timeZone: "UTC" })).getTime();
+      return naive - (asTz - asUtc);
+    };
+
     for (const b of bookings || []) {
       if (!(await capOn((b as any).club_id, "bookings"))) continue;
+      const club = clubMsgMemo.get(String((b as any).club_id)) || {};
+      if (club.booking_reminder_enabled === false && (b as any).reminder_hours == null) continue;
+
+      const hours = Number(
+        (b as any).reminder_hours ?? club.booking_reminder_hours ?? 24,
+      );
+      if (!(hours > 0)) continue;
+
+      const startMs = bookingStartMs(String((b as any).date), String((b as any).start_time || ""));
+      const dueMs = startMs - hours * 60 * 60 * 1000;
+      if (Number.isNaN(startMs)) continue;
+      if (now.getTime() < dueMs || now.getTime() >= startMs) continue;
+
+      const channels: string[] = Array.isArray((b as any).notify_channels) && (b as any).notify_channels.length
+        ? (b as any).notify_channels
+        : (Array.isArray(club.booking_reminder_channels) && club.booking_reminder_channels.length
+          ? club.booking_reminder_channels
+          : ["inapp"]);
+      const wantsEmail = channels.includes("email");
+      const wantsSms = channels.includes("sms") && !!club.sms_enabled;
+      const wantsWhatsApp = channels.includes("whatsapp") && !!club.whatsapp_enabled;
+
       const start = String((b as any).start_time || "").slice(0, 5);
       const end = String((b as any).end_time || "").slice(0, 5);
-      const title = "Court booking tomorrow";
-      const message = `${courtLabel((b as any).court_id)} · ${tomorrow} ${start}-${end}`;
-      const url = "/bookings";
+      const bookingDate = String((b as any).date);
+      const title = "Court booking reminder";
+      const message = `${courtLabel((b as any).court_id)} · ${bookingDate} ${start}-${end}`;
       const recipients = [String((b as any).user_id || ""), (b as any).opponent_id ? String((b as any).opponent_id) : ""]
         .filter((id) => /^[0-9a-fA-F-]{32,36}$/.test(id));
+
       for (const uid of recipients) {
         const ok = await sendReminder({
           user_id: uid,
-          kind: "booking_tomorrow",
+          kind: "booking_upcoming",
           ref_table: "bookings",
           ref_id: String((b as any).id),
-          scheduled_for: today,
+          scheduled_for: bookingDate,
           title,
           message,
-          url,
-          data: { booking_id: String((b as any).id), date: tomorrow },
+          url: "/bookings",
+          data: {
+            booking_id: String((b as any).id),
+            date: bookingDate,
+            ...(wantsEmail ? {} : { suppress_email: "true" }),
+          },
         });
-        if (ok) sent += 1;
-        else skipped += 1;
+        if (!ok) { skipped += 1; continue; }
+        sent += 1;
+
+        const contact = phoneMemo.get(uid);
+        if (contact && (wantsSms || wantsWhatsApp)) {
+          const body = `${title}: ${message}`;
+          const recipients = [{ member_id: contact.member_id, phone: contact.phone }];
+          try {
+            if (wantsWhatsApp) {
+              await supabaseAdmin.functions.invoke("send-whatsapp", {
+                body: { club_id: (b as any).club_id, recipients, body, kind: "booking_reminder", category: "utility" },
+              });
+            } else {
+              await supabaseAdmin.functions.invoke("send-sms", {
+                body: { club_id: (b as any).club_id, recipients, body, kind: "booking_reminder" },
+              });
+            }
+          } catch (e) {
+            console.error("booking reminder message failed", e);
+          }
+        }
+      }
+
+      await supabaseAdmin.from("bookings")
+        .update({ reminder_sent_at: new Date().toISOString() })
+        .eq("id", (b as any).id);
+    }
+
+    // 1b) Visitor fees — charged to the booking member once the slot has passed.
+    section = "visitor_fees";
+    const { data: visitorBookings } = await supabaseAdmin
+      .from("bookings")
+      .select("id")
+      .eq("status", "active")
+      .is("visitor_fee_charged_at", null)
+      .is("opponent_member_id", null)
+      .not("guest_name", "is", null)
+      .gte("date", isoDateInTz(addDays(now, -7), timeZone))
+      .lte("date", today)
+      .limit(500);
+    for (const vb of visitorBookings || []) {
+      try {
+        await supabaseAdmin.rpc("charge_visitor_booking_fee", { p_booking_id: (vb as any).id });
+      } catch (e) {
+        console.error("visitor fee charge failed", (vb as any).id, e);
       }
     }
 

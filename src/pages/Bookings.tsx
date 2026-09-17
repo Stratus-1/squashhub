@@ -27,6 +27,17 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays, subDays, getISODay, isToday, isTomorrow, isPast, parseISO } from "date-fns";
 import { useBookings, useCancelBooking, useCreateBooking, useCreateChallenge, useProfile, useMyBookings } from "@/hooks/use-data";
+import {
+  BOOKING_CHANNEL_LABELS,
+  REMINDER_HOUR_OPTIONS,
+  availableChannels,
+  normaliseChannels,
+  reminderHoursLabel,
+  sendBookingMessage,
+  loadBookingPref,
+  saveBookingPref,
+  type BookingChannel,
+} from "@/lib/booking-notify";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { toast } from "sonner";
@@ -319,6 +330,10 @@ export default function Bookings() {
     duration: 30 | 40 | 60;
     lightsOn: boolean;
     lightFeeSplit: "booker" | "shared";
+    /** Confirmation + reminder choices for this booking. */
+    notifyChannels: BookingChannel[];
+    reminderHours: number;
+    confirmNow: boolean;
   } | null>(null);
   const [calendarPrompt, setCalendarPrompt] = useState<{
     open: boolean;
@@ -409,6 +424,26 @@ export default function Bookings() {
 
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
+
+  // Booking messages — club defaults, overridable per booking by the member.
+  const msgChannelsAllowed = useMemo(
+    () => availableChannels({
+      smsEnabled: (myClub as any)?.sms_enabled,
+      whatsappEnabled: (myClub as any)?.whatsapp_enabled,
+    }),
+    [(myClub as any)?.sms_enabled, (myClub as any)?.whatsapp_enabled],
+  );
+  const clubConfirmOn = !!(myClub as any)?.booking_confirm_enabled;
+  const clubRemindOn = (myClub as any)?.booking_reminder_enabled ?? true;
+  const clubRemindHours = Math.max(0, Number((myClub as any)?.booking_reminder_hours ?? 24));
+  const clubMsgChannels = useMemo(
+    () => normaliseChannels(
+      (myClub as any)?.booking_reminder_channels ?? (myClub as any)?.booking_confirm_channels,
+      msgChannelsAllowed,
+    ),
+    [(myClub as any)?.booking_reminder_channels, (myClub as any)?.booking_confirm_channels, msgChannelsAllowed],
+  );
+  const visitorFee = Number((myClub as any)?.visitor_booking_fee ?? 0);
   const rawSlot = Number((myClub as any)?.booking_slot_minutes);
   const slotMinutes: 30 | 40 | 60 = (rawSlot === 60 ? 60 : rawSlot === 40 ? 40 : 30);
   const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));
@@ -942,6 +977,12 @@ export default function Bookings() {
       toast.error("Visitor bookings aren't enabled at this club. Please ask a member or the club admin to book on your behalf.");
       return;
     }
+    // A visitor must always be named — the club charges the booking member a
+    // visitor fee for letting them play.
+    if (bookingDialog.playerMode === "visitor" && !bookingDialog.guestName.trim()) {
+      toast.error("Please enter the visitor's name.");
+      return;
+    }
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 
@@ -1233,9 +1274,57 @@ export default function Bookings() {
         }
       }
 
+      // Store this member's confirmation / reminder choices on the booking so
+      // the nightly reminder job knows when and how to message them.
+      const bookingRowId = (created as any)?.id || bookingId;
+      try {
+        saveBookingPref({
+          channels: bookingDialog.notifyChannels,
+          reminderHours: bookingDialog.reminderHours,
+          confirm: bookingDialog.confirmNow,
+        });
+        await fromExt("bookings")
+          .update({
+            notify_channels: bookingDialog.notifyChannels,
+            reminder_hours: bookingDialog.reminderHours,
+          })
+          .eq("id", bookingRowId);
+      } catch (e: any) {
+        console.error("Failed to save booking reminder settings:", e);
+      }
+
       const opponent = bookingDialog.opponentId
         ? (availablePlayers || []).find((p: any) => p.id === bookingDialog.opponentId) || null
         : null;
+
+      // Booking confirmation to the booker and (when a member) the 2nd player.
+      if (bookingDialog.confirmNow && bookingClubId) {
+        const courtName = courtsData?.find((c: any) => c.id === bookingDialog.courtId)?.name
+          || `Court ${bookingDialog.courtId}`;
+        const text = `Your court booking is confirmed: ${courtName} on ${dateStr} at ${bookingDialog.time}–${endTime}.`;
+        try {
+          await sendBookingMessage({
+            clubId: bookingClubId,
+            channels: bookingDialog.notifyChannels,
+            kind: "confirmation",
+            title: "Court booking confirmed",
+            text,
+            url: "/bookings",
+            targets: [
+              { userId: user?.id || null, phone: (me as any)?.phone || null },
+              ...(opponent
+                ? [{ userId: (opponent as any).id || null, phone: (opponent as any).phone || null }]
+                : []),
+            ],
+          });
+          await fromExt("bookings")
+            .update({ confirm_sent_at: new Date().toISOString() })
+            .eq("id", bookingRowId);
+        } catch (e: any) {
+          console.error("Booking confirmation failed:", e);
+        }
+      }
+
 
       if (bookingDialog.opponentId && !bookingDialog.isFriendly) {
         try {
@@ -1998,7 +2087,21 @@ export default function Bookings() {
                                 if (mins > 0) prefillDuration = mins as any;
                               }
                             }
-                            setBookingDialog({ courtId, time, opponentId: "", guestName: "", playerMode: "none", isFriendly: true, duration: prefillDuration, lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker" });
+                            {
+                              const pref = loadBookingPref({
+                                channels: clubMsgChannels,
+                                reminderHours: clubRemindOn ? clubRemindHours : 0,
+                                confirm: clubConfirmOn,
+                              });
+                              setBookingDialog({
+                                courtId, time, opponentId: "", guestName: "", playerMode: "none",
+                                isFriendly: true, duration: prefillDuration,
+                                lightsOn: lightsIntegrationEnabled, lightFeeSplit: "booker",
+                                notifyChannels: normaliseChannels(pref.channels, msgChannelsAllowed),
+                                reminderHours: pref.reminderHours,
+                                confirmNow: pref.confirm,
+                              });
+                            }
                           }}
                         >
                           {isPeak && (
@@ -2604,6 +2707,23 @@ export default function Bookings() {
                     </PopoverContent>
                   </Popover>
                 )}
+
+                {bookingDialog.playerMode === "visitor" && (
+                  <>
+                    <Input
+                      placeholder="Or type the visitor's name (required)"
+                      value={bookingDialog.guestName}
+                      onChange={(e) => setBookingDialog((s) => s ? { ...s, guestName: e.target.value } : s)}
+                      className="rounded-xl"
+                    />
+                    {visitorFee > 0 && (
+                      <p className="text-[11px] text-muted-foreground leading-snug">
+                        A visitor fee of {money(visitorFee)} will be charged to your account for letting this
+                        visitor play. It's added after the booking time has passed.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
 
               {bookingDialog.lightsOn && lightFeePerHour > 0 && bookingDialog.playerMode === "member" && bookingDialog.opponentId && (
@@ -2641,6 +2761,57 @@ export default function Bookings() {
                   {money(lightFeePerHour)}/hr — charged based on actual usage when lights turn off
                 </div>
               )}
+
+              {/* Confirmation + reminder for this booking */}
+              <div className="space-y-2 rounded-xl border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-xs font-semibold">Confirm this booking to me</Label>
+                  <Switch
+                    checked={bookingDialog.confirmNow}
+                    onCheckedChange={(v) => setBookingDialog((s) => s ? { ...s, confirmNow: v } : s)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Remind me</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {REMINDER_HOUR_OPTIONS.map((h) => (
+                      <Button
+                        key={h}
+                        size="sm"
+                        variant={bookingDialog.reminderHours === h ? "default" : "outline"}
+                        className="text-[11px] h-7 rounded-lg"
+                        onClick={() => setBookingDialog((s) => s ? { ...s, reminderHours: h } : s)}
+                      >
+                        {reminderHoursLabel(h)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                {(bookingDialog.confirmNow || bookingDialog.reminderHours > 0) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {msgChannelsAllowed.map((ch) => (
+                      <Button
+                        key={ch}
+                        size="sm"
+                        variant={bookingDialog.notifyChannels.includes(ch) ? "default" : "outline"}
+                        className="text-[11px] h-7 rounded-lg"
+                        onClick={() => setBookingDialog((s) => {
+                          if (!s) return s;
+                          const next = s.notifyChannels.includes(ch)
+                            ? s.notifyChannels.filter((c) => c !== ch)
+                            : [...s.notifyChannels, ch];
+                          return { ...s, notifyChannels: next.length ? next : s.notifyChannels };
+                        })}
+                      >
+                        {BOOKING_CHANNEL_LABELS[ch]}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  Your 2nd player gets the same messages on their own saved preference.
+                </p>
+              </div>
             </div>
           )}
           <DialogFooter>

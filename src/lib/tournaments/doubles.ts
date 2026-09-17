@@ -251,7 +251,7 @@ export async function proposePartner(
   groupNumber: number,
   partnerMemberId: string,
   auth: TokenAuth = {},
-  payForPartner = false,
+  payForPartner = true,
 ) {
   const { data, error } = await (supabase as any).rpc("propose_doubles_partner", {
     p_champ_id: champId,
@@ -259,7 +259,8 @@ export async function proposePartner(
     p_partner_member_id: partnerMemberId,
     p_token: auth.token || null,
     p_verify: auth.verify || null,
-    p_pay_for_partner: !!payForPartner,
+    // The player who picks the partner books the pair and pays both entries.
+    p_pay_for_partner: payForPartner !== false,
   });
   if (error) throw error;
   return data as { id: string; status: PairStatus };

@@ -977,6 +977,12 @@ export default function Bookings() {
       toast.error("Visitor bookings aren't enabled at this club. Please ask a member or the club admin to book on your behalf.");
       return;
     }
+    // A visitor must always be named — the club charges the booking member a
+    // visitor fee for letting them play.
+    if (bookingDialog.playerMode === "visitor" && !bookingDialog.guestName.trim()) {
+      toast.error("Please enter the visitor's name.");
+      return;
+    }
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 
@@ -1305,7 +1311,7 @@ export default function Bookings() {
             text,
             url: "/bookings",
             targets: [
-              { userId: user?.id || null, phone: (profile as any)?.phone || null },
+              { userId: user?.id || null, phone: (me as any)?.phone || null },
               ...(opponent
                 ? [{ userId: (opponent as any).id || null, phone: (opponent as any).phone || null }]
                 : []),

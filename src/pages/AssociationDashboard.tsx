@@ -57,7 +57,7 @@ const ADMIN_TABS: TabDef[] = [
   { value: "banking", label: "Banking", icon: Banknote, permission: "banking" },
   { value: "finance", label: "Finance", icon: Landmark, permission: "finance" },
   { value: "comms", label: "Comms", icon: MessageCircle, permission: "communications" },
-  { value: "emails", label: "Email Log", icon: MessageCircle, permission: "communications" },
+  { value: "emails", label: "Message Log", icon: MessageCircle, permission: "communications" },
   { value: "settings", label: "Preferences", icon: Settings, permission: "settings" },
   { value: "permissions", label: "Permissions", icon: ShieldCheck, adminOnly: true },
 ];

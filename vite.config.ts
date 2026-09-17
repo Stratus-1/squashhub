@@ -63,6 +63,11 @@ export default defineConfig(() => ({
           /^\/auth/,
           /^\/reset-password/,
           /^\/booking-response/,
+          // Invitation links (short codes and invite pages) must always come
+          // from the network — a stale cached bundle wrongly showed
+          // "invitation unavailable" on phones.
+          /^\/i\//,
+          /^\/tournament-invite/,
           /^\/api\//,
           /^\/functions\//,
           /\/sw\.js$/,
@@ -73,6 +78,13 @@ export default defineConfig(() => ({
         // 12MB max per asset (main bundle currently ~5.3MB)
         maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         runtimeCaching: [
+          {
+            // Invitation pages: never serve from cache.
+            urlPattern: ({ request, url }) =>
+              request.mode === "navigate" &&
+              (url.pathname.startsWith("/i/") || url.pathname.startsWith("/tournament-invite")),
+            handler: "NetworkOnly",
+          },
           {
             // HTML navigations: NetworkFirst so deploys land quickly.
             urlPattern: ({ request }) => request.mode === "navigate",

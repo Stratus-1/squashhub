@@ -53,7 +53,6 @@ describe("invite state machine", () => {
         status: "invited",
         declined_at: null,
         confirmed_at: null,
-        confirmation_source: null,
       }),
     ).toBe("actionable");
   });

@@ -16112,6 +16112,10 @@ export type Database = {
           ranking_points: number
         }[]
       }
+      tournament_invite_payment_context: {
+        Args: { p_token: string; p_verify?: string }
+        Returns: Json
+      }
       tournament_invite_scope_tree: {
         Args: { p_club_id?: string; p_scope?: string; p_tournament_id?: string }
         Returns: {

@@ -244,10 +244,13 @@ export default function TournamentInvite() {
     },
   });
 
-  /** Signed-in members pay inside the club app; guests pay from this invitation. */
-  const goPay = (champId: string) => {
-    if (user) navigate(`/club-champs/${champId}?pay=1`);
-    else payNow.mutate();
+  /**
+   * Always settle from the invitation itself: it knows the full amount owed
+   * (every pair this payer covers). Sending a signed-in member to the club
+   * tournament page loses that context and offers only a single entry fee.
+   */
+  const goPay = (_champId: string) => {
+    payNow.mutate();
   };
 
 

@@ -34,6 +34,25 @@ import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPic
 
 
 
+/**
+ * Invitation lookups are public. If the visitor already has the app open with
+ * a stale/expired session, the signed-in request can fail with an auth error
+ * and the page would wrongly say the invitation is invalid. This calls the
+ * same public function with no session attached.
+ */
+async function rpcPublic<T>(fn: string, body: Record<string, unknown>): Promise<T | null> {
+  const url = import.meta.env.VITE_SUPABASE_URL as string;
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+  if (!url || !key) return null;
+  const res = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`invite lookup failed (${res.status})`);
+  return (await res.json()) as T;
+}
+
 function money(cents: number) {
   return `R${(cents / 100).toFixed(2)}`;
 }
@@ -59,20 +78,24 @@ export default function TournamentInvite() {
   // Short, friendly links (/i/ab3k9xq2mt) are swapped for the real invitation
   // token here, so everything below keeps working unchanged.
   const isShort = !isTest && isShortInviteCode(rawToken);
-  const { data: resolved, isLoading: resolving } = useQuery({
+  const { data: resolved, isLoading: resolving, isError: resolveError } = useQuery({
     queryKey: ["invite-short-code", rawToken],
     enabled: isShort,
     staleTime: Infinity,
+    retry: 2,
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("resolve_invite_short_code", { p_code: rawToken });
-      if (error) throw error;
+      // A stale session in an already-open app can make the signed-in request
+      // fail; the invitation is public, so retry it without any session.
+      if (error) return (await rpcPublic<string>("resolve_invite_short_code", { p_code: rawToken })) || "";
       return (data as string | null) || "";
     },
   });
   const token = isShort ? resolved || "" : rawToken;
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError: loadError, refetch } = useQuery({
     queryKey: ["tournament-invite", isTest ? `test:${champId}` : token, user?.id ?? "anon"],
+    retry: 2,
     queryFn: async () => {
       if (isTest) {
         const { data, error } = await (supabase as any).rpc("get_tournament_invite_preview", { p_champ_id: champId });
@@ -80,7 +103,10 @@ export default function TournamentInvite() {
         return (data || { found: false }) as InvitePayload;
       }
       const { data, error } = await (supabase as any).rpc("get_tournament_invite", { p_token: token });
-      if (error) throw error;
+      if (error) {
+        const fallback = await rpcPublic<InvitePayload>("get_tournament_invite", { p_token: token });
+        return (fallback || { found: false }) as InvitePayload;
+      }
       return (data || { found: false }) as InvitePayload;
     },
     enabled: (!!token || !!champId) && !authLoading,
@@ -389,6 +415,19 @@ export default function TournamentInvite() {
       </Card>
     </div>
   );
+
+  if (loadError || resolveError) {
+    return shell(
+      <div className="text-center space-y-3 py-4">
+        <XCircle className="w-8 h-8 text-muted-foreground mx-auto" />
+        <h1 className="text-base font-semibold">Couldn't open your invitation</h1>
+        <p className="text-sm text-muted-foreground">
+          We couldn't reach the invitation just now. Please check your connection and try again.
+        </p>
+        <Button size="sm" onClick={() => window.location.reload()}>Try again</Button>
+      </div>,
+    );
+  }
 
   if (state === "not_found" || state === "revoked") {
     return shell(

@@ -228,6 +228,15 @@ export default function ClubChampsView() {
 
 
 
+  /**
+   * Pulled out by an organiser = knocked out. Their played history stays, but
+   * their name is struck through and they contest no further round.
+   */
+  const withdrawnIds = useMemo(() => withdrawnMemberIds(allRegistrations as any[]), [allRegistrations]);
+  const isPulledOut = (row: any) =>
+    withdrawnIds.has(String(row?.club_member_id || "")) ||
+    (!!row?.partner_member_id && withdrawnIds.has(String(row.partner_member_id)));
+
   const getPlayerName = (player: any) => {
     const raw = player?.name || player?.profiles?.name;
     return looksLikePhone(raw) ? "Unknown" : raw || "Unknown";

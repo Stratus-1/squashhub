@@ -128,6 +128,9 @@ export function qualifierEntrants(
 ): DrawEntrant[] {
   if (!section.currentRoundComplete) return [];
   const lost = losersInRound(section.currentRoundMatches as KnockoutMatchLike[]);
+  // Someone pulled out by an organiser carries an eliminated entrant row, so a
+  // bye win in the feeder round must never put them back on the board.
+  for (const e of section.entrants || []) if (e.eliminated) lost.add(String(e.memberId));
   const out = winnersAsEntrants(section.currentRoundMatches as KnockoutMatchLike[], nameOf)
     .filter((e) => !lost.has(e.id))
     .map((e, i) => ({ ...e, seed: i + 1 }));

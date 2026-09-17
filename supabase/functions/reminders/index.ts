@@ -248,17 +248,18 @@ Deno.serve(async (req) => {
         if (!ok) { skipped += 1; continue; }
         sent += 1;
 
-        const phone = phoneMemo.get(uid);
-        if (phone && (wantsSms || wantsWhatsApp)) {
+        const contact = phoneMemo.get(uid);
+        if (contact && (wantsSms || wantsWhatsApp)) {
           const body = `${title}: ${message}`;
+          const recipients = [{ member_id: contact.member_id, phone: contact.phone }];
           try {
             if (wantsWhatsApp) {
               await supabaseAdmin.functions.invoke("send-whatsapp", {
-                body: { club_id: (b as any).club_id, recipients: [{ phone }], body, kind: "booking_reminder", category: "utility" },
+                body: { club_id: (b as any).club_id, recipients, body, kind: "booking_reminder", category: "utility" },
               });
             } else {
               await supabaseAdmin.functions.invoke("send-sms", {
-                body: { club_id: (b as any).club_id, recipients: [{ phone }], body, kind: "booking_reminder" },
+                body: { club_id: (b as any).club_id, recipients, body, kind: "booking_reminder" },
               });
             }
           } catch (e) {

@@ -51,7 +51,7 @@ export async function notifyRoundDraw(scope: RoundDrawNotifyScope): Promise<Roun
   if (error) throw error;
 
   const channels: string[] = Array.isArray(data?.channels) ? data.channels : [];
-  const waList: Array<{ member_id: string; message: string }> = Array.isArray(data?.whatsapp)
+  const waList: Array<{ member_id: string; message: string; sms?: string }> = Array.isArray(data?.whatsapp)
     ? data.whatsapp
     : [];
 
@@ -79,6 +79,7 @@ export async function notifyRoundDraw(scope: RoundDrawNotifyScope): Promise<Roun
           clubId,
           recipients: [{ member_id: w.member_id }],
           text: w.message,
+          smsText: w.sms,
           replyRequired: false,
           kind: "champ_round_draw",
         });

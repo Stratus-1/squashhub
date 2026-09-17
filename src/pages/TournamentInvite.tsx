@@ -450,7 +450,7 @@ export default function TournamentInvite() {
         {detailList}
         <Badge variant="secondary">Accepted — entry fee outstanding</Badge>
         {partnerSection}
-        {isTest ? (
+        {!hasDoublesChoice && (isTest ? (
           <Button className="w-full" disabled>
             <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
           </Button>
@@ -501,7 +501,7 @@ export default function TournamentInvite() {
               You can pay straight from this invitation — no login needed.
             </p>
           </div>
-        )}
+        ))}
 
         {withdrawSection}
       </>,

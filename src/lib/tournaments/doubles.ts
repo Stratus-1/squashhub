@@ -1,10 +1,9 @@
 /**
  * Doubles partner selection for tournament registration.
  *
- * A player may only choose a partner who has ALREADY accepted/registered for
- * the same doubles division. Pairing is mutual: the proposal sits at `pending`
- * until the chosen partner accepts (or the two players proposed each other, in
- * which case the database confirms it immediately).
+ * Ordinary doubles entrants choose one invited partner. Family Doubles invite
+ * holders may instead build several exact pairs and pay for every distinct
+ * selected player; selected partners do not approve separately.
  *
  * Everything here is token-aware so the whole journey works from the secure
  * invitation link without a SquashHub login.

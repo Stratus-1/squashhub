@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.tournament_invite_payment_context(text, text);

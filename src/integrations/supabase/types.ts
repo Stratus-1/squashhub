@@ -16141,7 +16141,7 @@ export type Database = {
         }[]
       }
       tournament_invite_payment_context: {
-        Args: { p_token: string; p_verify?: string }
+        Args: { p_token: string; p_user_id?: string; p_verify?: string }
         Returns: Json
       }
       tournament_invite_scope_tree: {

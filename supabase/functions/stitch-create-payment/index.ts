@@ -41,8 +41,16 @@ Deno.serve(async (req) => {
     let inviteContext: any = null;
 
     if (invite_token) {
+      // A signed-in member paying from their own invitation should not have to
+      // re-enter the guest check, so pass the verified caller through.
+      let callerId: string | null = null;
+      if (authHeader) {
+        const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+        const { data: u } = await userClient.auth.getUser();
+        callerId = u?.user?.id || null;
+      }
       const { data: ctx, error: ctxErr } = await admin.rpc("tournament_invite_payment_context", {
-        p_token: invite_token, p_verify: invite_verify,
+        p_token: invite_token, p_verify: invite_verify, p_user_id: callerId,
       });
       if (ctxErr) {
         console.error("invite payment context error", ctxErr);

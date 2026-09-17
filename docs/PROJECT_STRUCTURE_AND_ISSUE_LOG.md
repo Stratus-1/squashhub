@@ -2,6 +2,25 @@
 
 **Status: CONFIRMED WORKING. Nelspruit (nsc) once-off Stitch Express TEST payment tested successfully by Willem on 15 Sep 2026 — payer was returned to the club app.** This is the reference implementation for EVERY club, test and live.
 
+## 2026-09-17 — Phone-only members were dropped from tournament invites
+
+Symptom: members at other clubs received no WhatsApp invitation even though they
+have a cell number on file.
+
+Cause: `reachableMemberIds` in `ClubChampsTab.tsx` treated a member as reachable
+only when they had a linked login or an email address. Phone-only members were
+therefore filtered out of the invitee picker / audience before any channel was
+considered, so WhatsApp and SMS never even attempted them. The server-side
+directory RPCs (`tournament_invite_member_directory`,
+`tournament_invite_league_tree`, `tournament_invite_league_member_ids`) already
+use the correct rule: contactable = email OR phone.
+
+Fix: client-side reachability now matches the server — a member is reachable if
+they have a linked login, an email address OR a phone number.
+
+RULE: contact-channel eligibility is per channel. Email needs an email address;
+WhatsApp/SMS need only a phone number. Never gate a phone channel on email.
+
 ## 2026-09-17 — Re-sent tournament invite still showed "not entered"
 
 **Symptom:** Willem replied positively to a re-sent Bells invitation, but the same personal link said he was not entered.

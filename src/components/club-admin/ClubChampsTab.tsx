@@ -6408,12 +6408,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return m;
   }, [members]);
 
-  // Members who can actually receive an invite: email on file or a linked login.
+  // Members who can actually receive an invite: a linked login (in-app), an
+  // email address (email) OR a phone number (WhatsApp / SMS). A phone-only
+  // member must never be dropped — this mirrors the server-side directory,
+  // which treats email OR phone as contactable.
   const reachableMemberIds = useMemo(() => {
     const s = new Set<string>();
     for (const p of members as any[]) {
       const email = String(p.email || p.profiles?.email || "").trim();
-      if (p.user_id || email) s.add(p.id);
+      const phone = String(p.phone || p.profiles?.phone || "").trim();
+      if (p.user_id || email || phone) s.add(p.id);
     }
     return s;
   }, [members]);

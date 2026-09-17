@@ -2,6 +2,10 @@
 
 **Status: CONFIRMED WORKING. Nelspruit (nsc) once-off Stitch Express TEST payment tested successfully by Willem on 15 Sep 2026 — payer was returned to the club app.** This is the reference implementation for EVERY club, test and live.
 
+## 2026-09-17 — Guest tournament payments restored to the standard Stitch return
+
+A fresh Nelspruit Family Doubles test payment incorrectly used the public invitation path (`/i/<short-code>`) as its Express `redirect_url`, and Stitch returned 404 before payment. Guest tournament payment creation now always uses the permanent club-specific return destination `https://<club-subdomain>.squashhub.co.za/my-account`. This is generic for Nelspruit, Gordon's Bay, and all future clubs, in TEST and LIVE. Public invitation paths must never be passed to Stitch Express as return destinations.
+
 ## 2026-09-17 — Family Doubles partner lookup remained blocked after verification
 
 The public invitation page started its doubles pairing queries before a guest, or a person signed into a different account, had completed the token-bound surname/phone check. That failed query was cached without the verification value in its key, so entering the correct detail did not restart it and the partner area could remain loading or empty. Partner queries now wait for required verification, include that value in their cache keys, do not repeatedly retry verification failures, and show a retryable error. Eligibility remains restricted to registrations for the same tournament and doubles division.
@@ -22,9 +26,9 @@ check used to accept or withdraw) authorises the payment.
 - `stitch_payment_sessions.user_id` is now nullable (invitees may have no login).
   The webhook never used it; `stitch-verify-payment` still requires a session and
   is unaffected.
-- Return URL is the invitation page itself on the club subdomain, which the
-  Stitch standard above allows (clubs must register `https://<sub>.squashhub.co.za/*`).
-  Never redirect a club payer to `/pay/return`.
+- The invitation may start the payment, but the Stitch return URL remains the
+  registered club-specific `/my-account` destination. Never use an `/i/<code>`
+  invitation path or `/pay/return` as the Express return destination.
 
 ## 2026-09-17 — Cross-club tournament WhatsApps were silently skipped
 

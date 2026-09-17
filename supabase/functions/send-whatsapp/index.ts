@@ -338,17 +338,47 @@ Deno.serve(async (req) => {
       unitCost = Number(rate ?? 0);
     }
 
-    // Resolve phones + honour opt-outs.
+    // Resolve phones + honour opt-outs. Most sends are club-local, but a club
+    // tournament may legitimately invite registered players from other clubs.
+    // In that one case, resolve only member ids that are already registration
+    // rows for this exact tournament. This keeps cross-club phone numbers on the
+    // server and never exposes them to the organiser's browser.
     const memberIds = recipients.map((r) => r.member_id).filter(Boolean) as string[];
-    const members = memberIds.length
-      ? (
-          await admin
-            .from("club_members")
-            .select("id, phone, whatsapp_opt_out")
-            .eq("club_id", clubId)
-            .in("id", memberIds)
-        ).data ?? []
-      : [];
+    let permittedMemberIds = memberIds;
+    let allowCrossClubTournamentMembers = false;
+    if (
+      memberIds.length > 0 &&
+      payload.interaction?.kind === "champ_entry" &&
+      payload.interaction.target_id
+    ) {
+      const { data: tournament } = await admin
+        .from("club_champs")
+        .select("id, club_id")
+        .eq("id", payload.interaction.target_id)
+        .eq("club_id", clubId)
+        .maybeSingle();
+      if (tournament) {
+        allowCrossClubTournamentMembers = true;
+        const { data: registrations } = await admin
+          .from("club_champs_registrations")
+          .select("club_member_id")
+          .eq("champ_id", payload.interaction.target_id)
+          .in("club_member_id", memberIds);
+        const registeredIds = new Set(
+          (registrations ?? []).map((row) => row.club_member_id).filter(Boolean),
+        );
+        permittedMemberIds = memberIds.filter((id) => registeredIds.has(id));
+      }
+    }
+    let members: Array<{ id: string; phone: string | null; whatsapp_opt_out: boolean | null }> = [];
+    if (permittedMemberIds.length > 0) {
+      let memberQuery = admin
+        .from("club_members")
+        .select("id, phone, whatsapp_opt_out")
+        .in("id", permittedMemberIds);
+      if (!allowCrossClubTournamentMembers) memberQuery = memberQuery.eq("club_id", clubId);
+      members = (await memberQuery).data ?? [];
+    }
     const memberMap = new Map(members.map((m) => [m.id, m]));
 
     const results: Array<Record<string, unknown>> = [];

@@ -34,6 +34,25 @@ import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPic
 
 
 
+/**
+ * Invitation lookups are public. If the visitor already has the app open with
+ * a stale/expired session, the signed-in request can fail with an auth error
+ * and the page would wrongly say the invitation is invalid. This calls the
+ * same public function with no session attached.
+ */
+async function rpcPublic<T>(fn: string, body: Record<string, unknown>): Promise<T | null> {
+  const url = import.meta.env.VITE_SUPABASE_URL as string;
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+  if (!url || !key) return null;
+  const res = await fetch(`${url}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`invite lookup failed (${res.status})`);
+  return (await res.json()) as T;
+}
+
 function money(cents: number) {
   return `R${(cents / 100).toFixed(2)}`;
 }

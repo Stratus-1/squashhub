@@ -7,6 +7,10 @@ import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
+import {
+  buildDefaultTournamentInviteText,
+  migrateLegacyTournamentInviteText,
+} from "@/lib/tournaments/invite-message";
 import type { TournamentPaymentMethod } from "@/lib/tournaments/payment-methods";
 import { inviteConfirmSummary, resolveInviteRecipients, type InviteSendMode, type ResolveResult } from "@/lib/tournaments/invite-recipients";
 import {
@@ -3006,10 +3010,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const extra = prev
         .replace(/^[\s\S]*?— Tournament details —\n([\s\S]*?)\n— End details —\n?/m, "")
         .trimStart();
-      const next = extra ? `${autoDetailBlock}\n\n${extra}` : autoDetailBlock;
+      const details = extra ? `${autoDetailBlock}\n\n${extra}` : autoDetailBlock;
+      const next = buildDefaultTournamentInviteText(champName, details);
       return next === prev ? prev : next;
     });
-  }, [autoDetailBlock, descriptionCustom]);
+  }, [autoDetailBlock, champName, descriptionCustom]);
 
 
   const goToStep = (s: WizardStep) => {
@@ -5644,6 +5649,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [invitesSendingFor, setInvitesSendingFor] = useState<string | null>(null);
 
   // Builds the invitation body shared by in-app / email / WhatsApp channels.
+  // The opening sentence lives inside `description`, so the organiser can edit
+  // or remove it (for example when this send is a reminder, not a fresh invite).
   function buildInviteBody() {
     // A hand-edited invite is used exactly as typed — no auto details block.
     const descHasDetails = descriptionCustom || /— Tournament details —/.test(description);
@@ -5665,14 +5672,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (inviteShortMessage) {
       // Short mode: the message stays brief — the personal link below carries
       // the full details (the /i/:token page renders them from the tournament).
-      return `You have been invited to ${champName || "a tournament"}.` +
-        (extras ? `\n\n${extras}` : "") +
-        `\n\nTap your link for the full details and to respond.`;
+      const shortIntro = description
+        .replace(/— Tournament details —[\s\S]*?— End details —/g, "")
+        .trim();
+      return [shortIntro, extras, "Tap here for the full details and to respond."]
+        .filter(Boolean)
+        .join("\n\n");
     }
-    return `You have been invited to ${champName || "a tournament"}.` +
-      (extras ? `\n\n${extras}` : "") +
-      (detailsBlock ? `\n\n${detailsBlock}` : "") +
-      (description.trim() ? `\n\n${description.trim()}` : "");
+    if (descriptionCustom) {
+      return [description.trim(), extras].filter(Boolean).join("\n\n");
+    }
+    return [description.trim() || detailsBlock, extras].filter(Boolean).join("\n\n");
   }
 
   /**
@@ -5696,7 +5706,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         : "Everything you need is on your confirmation page.";
     if (inviteShortMessage) return cta;
     const full = buildInviteBody()
-      .replace(/^You have been invited to [^\n]*\n*/, "")
       .replace(/—\s*Tournament details\s*—/g, "")
       .replace(/—\s*End details\s*—/g, "")
       .trim();
@@ -5973,21 +5982,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // personal link. A typed NO is still written back as a decline.
       if (methods.includes("whatsapp")) {
         const needsPayment = paymentRequired && entryFeeAmount > 0;
-        // The reworded invitation ("tap here to accept or decline") is used as
-        // soon as WhatsApp has approved it; until then the previously approved
-        // wording keeps going out so invitations are never blocked.
-        const inviteTemplateKey = await (async () => {
-          try {
-            const { data } = await (supabase as any)
-              .from("whatsapp_templates")
-              .select("approval_status")
-              .eq("key", "tournament_invite_tap")
-              .maybeSingle();
-            return data?.approval_status === "approved" ? "tournament_invite_tap" : "tournament_invite";
-          } catch {
-            return "tournament_invite";
-          }
-        })();
         // Each recipient gets their own canonical invitation link, so the
         // WhatsApp message carries exactly the same URL as email / in-app.
         // One bad recipient (no phone number, provider hiccup) must never stop
@@ -6006,12 +6000,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               category: "utility",
               // Cold WhatsApp sends must use an approved template; the free-form
               // body is only used inside a 24h reply window.
-              templateKey: inviteTemplateKey,
+              // The approved generic utility template keeps the complete message
+              // editable. The older tournament template hard-coded an invitation
+              // sentence, which made reminder wording impossible.
+              templateKey: "club_notice",
               templateVariables: {
-                player: memberNameById.get(r.club_member_id) || "player",
-                event: champName || "our tournament",
-                details,
-                link,
+                club: champName || "Tournament",
+                message: details,
+                link: `To accept or decline, tap here: ${link}`,
               },
               body: `${msg}\n\n${details}\n${link}`,
               interaction: {
@@ -6179,9 +6175,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
       if (parsedPhone) {
-        // Same template, variables and personal link as the real WhatsApp
-        // invite — only the recipient is the number you typed, and nothing is
-        // recorded on the player's registration.
+        // Same editable wording and personal link as the real WhatsApp invite;
+        // only the recipient changes, and no registration is updated.
         const needsPayment = paymentRequired && entryFeeAmount > 0;
         const details = buildWhatsAppDetails(needsPayment);
         const wa = await sendWhatsApp({
@@ -6189,12 +6184,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           recipients: [{ phone: parsedPhone }],
           kind: "champ_invite_test",
           category: "utility",
-          templateKey: "tournament_invite",
+          templateKey: "club_notice",
           templateVariables: {
-            player: previewMember.name,
-            event: champName || "our tournament",
-            details,
-            link: previewUrl,
+            club: champName || "Tournament",
+            message: details,
+            link: `To accept or decline, tap here: ${previewUrl}`,
           },
           body: `TEST INVITATION\n\n${buildInviteBody()}\n\n${details}\n${previewUrl}`,
           interaction: { kind: "champ_entry", targetId: champId, prompt: `TEST entry for ${champName || "tournament"}\n${previewUrl}` },
@@ -6305,12 +6299,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             recipients: [{ phone: myPhone }],
             kind: "champ_invite_test",
             category: "utility",
-            templateKey: "tournament_invite",
+            templateKey: "club_notice",
             templateVariables: {
-              player: String((myMember as any)?.name || "").trim() || "player",
-              event: champName || "our tournament",
-              details,
-              link: testUrl,
+              club: champName || "Tournament",
+              message: details,
+              link: `To accept or decline, tap here: ${testUrl}`,
             },
             body: `TEST INVITATION\n\n${body}\n\n${details}\n${testUrl}`,
           });
@@ -6987,7 +6980,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const loadedDay = ((champ as any).day_schedules as DaySchedule[] | null) || [];
     setDaySchedules(Array.isArray(loadedDay) ? loadedDay : []);
     setCustomizeDailySchedule(Array.isArray(loadedDay) && loadedDay.length > 0);
-    setDescription(champ.description || "");
+    setDescription(migrateLegacyTournamentInviteText(champ.description, champ.name));
     setDescriptionCustom(!!(champ.description || "").trim());
     setInviteExtraDetails((champ as any).invite_extra_details || "");
     setAffectsRankingPoints(!!(champ as any).affects_ranking_points);
@@ -10241,15 +10234,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary">2</span>
                   What do you want to send?
                 </h3>
-                <p className="text-xs text-muted-foreground">Start from the automatic invitation and edit it if you want. Your wording is kept.</p>
+                <p className="text-xs text-muted-foreground">The full opening and details are editable, so you can change an invitation into a reminder or remove any sentence.</p>
               </div>
             <div className="space-y-2">
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="flex-1 min-w-0 space-y-2">
-                  <Label className="text-sm">Tournament details (shown in invites)</Label>
+                  <Label className="text-sm">Invitation message</Label>
                   <Textarea
                     rows={10}
-                    placeholder={`The tournament details block is filled in automatically from your setup. Add anything extra below it, like:\nVenue: Main courts, 18:00 start\nPrizes: Trophy + R500 voucher\nDress code: Club shirts\nQueries: contact the captain`}
+                    placeholder={`You have been invited to the tournament.\n\nThe tournament details block is filled in automatically from your setup. You can edit or remove the opening sentence when sending a reminder.`}
                     value={description}
                     onChange={(e) => {
                       setDescription(e.target.value);
@@ -10273,7 +10266,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     variant="ghost"
                     className="flex-1 md:flex-none"
                     onClick={() => {
-                      setDescription(autoDetailBlock);
+                      setDescription(buildDefaultTournamentInviteText(champName, autoDetailBlock));
                       setDescriptionCustom(false);
                       toast.success("Invite text rebuilt from the tournament settings");
                     }}
@@ -12416,7 +12409,6 @@ function InvitePreviewDialog({
       : "Everything you need is on your confirmation page.";
   // Mirrors buildWhatsAppDetails(): full details ride along unless short mode is on.
   const waFullDetails = builtBody
-    .replace(/^You have been invited to [^\n]*\n*/, "")
     .replace(/—\s*Tournament details\s*—/g, "")
     .replace(/—\s*End details\s*—/g, "")
     .trim();
@@ -12424,11 +12416,9 @@ function InvitePreviewDialog({
     ? waCallToAction
     : `${waFullDetails}\n\n${waCallToAction}`;
   const waBody =
-    `Hello Player, this is a message from *${clubLabel}* on SquashHub.\n\n` +
-    `You are invited to take part in our upcoming tournament: ${tournamentName}.\n\n` +
-    `Event details: ${waDetails}\n\n` +
-    `To accept or decline, tap here: https://squashhub.co.za/i/ab3k9xq2mt\n\n` +
-    `We hope to see you on court.`;
+    `*${clubLabel}*\n\n` +
+    `${waDetails}\n\n` +
+    `To accept or decline, tap here: https://squashhub.co.za/i/ab3k9xq2mt`;
 
 
   // WhatsApp templates are capped at 1024 characters once the variables are
@@ -12439,8 +12429,7 @@ function InvitePreviewDialog({
   // SMS is plain text with no formatting, so we show a condensed version and
   // the segment count (160 chars per segment, 153 when concatenated).
   const smsBody =
-    `${clubLabel}: ${tournamentName}. ` +
-    (extras ? `${extras.replace(/\n+/g, " ")} ` : "") +
+    `${clubLabel}: ${builtBody.replace(/\n+/g, " ").trim()} ` +
     (waNeedsPayment
       ? "To enter and pay, tap here: https://squashhub.co.za/i/ab3k9xq2mt"
       : "To accept or decline, tap here: https://squashhub.co.za/i/ab3k9xq2mt");

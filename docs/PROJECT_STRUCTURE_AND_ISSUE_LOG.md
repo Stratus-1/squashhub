@@ -1749,3 +1749,16 @@ Fix: `GRANT SELECT (cross_gender_ladder_position) ON public.club_members TO auth
 Rule: when adding a column to `club_members` (or any table with column-level
 grants), grant SELECT on the new column in the same migration, or all roster
 reads break silently.
+
+## 18 Sep 2026 — PayFast card top-up failed (Uitsig)
+
+Symptom: "Edge Function returned a non-2xx status code" when a member chose
+Card on the Top Up dialog.
+
+Cause: `payfast-create-checkout` selected a non-existent `clubs.currency`
+column (the real column is `currency_code`). PostgREST errored, `club` came
+back null and the function returned 400 "PayFast is not configured for this
+club" — a misleading message because the club lookup error was swallowed.
+
+Fix: select `currency_code`, and surface club-lookup errors explicitly instead
+of treating them as "gateway not configured".

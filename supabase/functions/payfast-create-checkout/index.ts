@@ -70,11 +70,15 @@ Deno.serve(async (req) => {
       return json({ error: "Member not found or not yours" }, 403);
     }
 
-    const { data: club } = await admin
+    const { data: club, error: clubErr } = await admin
       .from("clubs")
-      .select("id, name, payment_gateway, payment_gateways, currency")
+      .select("id, name, payment_gateway, payment_gateways, currency_code")
       .eq("id", club_id)
       .maybeSingle();
+    if (clubErr) {
+      console.error("payfast-create-checkout: club lookup failed:", clubErr.message);
+      return json({ error: `Club lookup failed: ${clubErr.message}` }, 500);
+    }
     if (!club || !gatewayEnabled(club, "payfast")) {
       return json({ error: "PayFast is not configured for this club" }, 400);
     }
@@ -107,7 +111,7 @@ Deno.serve(async (req) => {
         club_member_id,
         user_id: userId,
         amount: amt,
-        currency: club.currency || "ZAR",
+        currency: (club as any).currency_code || "ZAR",
         purpose,
         fee_ids,
         champ_registration_id,

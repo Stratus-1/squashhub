@@ -727,6 +727,7 @@ export type Database = {
           closed_at: string | null
           club_id: string
           club_member_id: string | null
+          counter_device_id: string | null
           created_at: string
           guest_name: string
           id: string
@@ -739,6 +740,7 @@ export type Database = {
           closed_at?: string | null
           club_id: string
           club_member_id?: string | null
+          counter_device_id?: string | null
           created_at?: string
           guest_name: string
           id?: string
@@ -751,6 +753,7 @@ export type Database = {
           closed_at?: string | null
           club_id?: string
           club_member_id?: string | null
+          counter_device_id?: string | null
           created_at?: string
           guest_name?: string
           id?: string
@@ -772,6 +775,13 @@ export type Database = {
             columns: ["club_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_guest_tabs_counter_device_id_fkey"
+            columns: ["counter_device_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
             referencedColumns: ["id"]
           },
         ]
@@ -1002,6 +1012,7 @@ export type Database = {
         Row: {
           bar_item_id: string
           club_id: string
+          counter_device_id: string | null
           created_at: string
           customer_type: string
           guest_tab_id: string | null
@@ -1023,6 +1034,7 @@ export type Database = {
         Insert: {
           bar_item_id: string
           club_id: string
+          counter_device_id?: string | null
           created_at?: string
           customer_type?: string
           guest_tab_id?: string | null
@@ -1044,6 +1056,7 @@ export type Database = {
         Update: {
           bar_item_id?: string
           club_id?: string
+          counter_device_id?: string | null
           created_at?: string
           customer_type?: string
           guest_tab_id?: string | null
@@ -1075,6 +1088,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_visitor_sales_counter_device_id_fkey"
+            columns: ["counter_device_id"]
+            isOneToOne: false
+            referencedRelation: "bar_counter_devices"
             referencedColumns: ["id"]
           },
           {
@@ -14327,15 +14347,34 @@ export type Database = {
         Args: { _club_id: string; _token: string }
         Returns: string
       }
+      bar_counter_device_for_token: {
+        Args: { _token: string }
+        Returns: string
+      }
       bar_counter_open_tab: {
         Args: { _club_id?: string; _guest_name: string; _token?: string }
         Returns: Json
       }
-      bar_counter_revoke_devices: { Args: { _club_id: string }; Returns: Json }
-      bar_counter_set_pin: {
-        Args: { _club_id: string; _label?: string; _pin: string }
+      bar_counter_operators: { Args: { _club_id: string }; Returns: Json }
+      bar_counter_remove_operator: {
+        Args: { _club_id: string; _device_id: string }
         Returns: Json
       }
+      bar_counter_revoke_devices: { Args: { _club_id: string }; Returns: Json }
+      bar_counter_set_pin:
+        | {
+            Args: { _club_id: string; _label?: string; _pin: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _club_id: string
+              _device_id?: string
+              _label?: string
+              _pin: string
+            }
+            Returns: Json
+          }
       bar_counter_settle_tab: {
         Args: {
           _club_id?: string

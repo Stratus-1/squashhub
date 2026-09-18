@@ -5717,7 +5717,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // `mode` is explicit: "selected" NEVER widens to the full roster, for any reason.
   async function sendChampInvites(
     champId: string,
-    opts?: { confirm?: boolean; registrationIds?: string[]; mode?: InviteSendMode },
+    opts?: {
+      confirm?: boolean;
+      registrationIds?: string[];
+      mode?: InviteSendMode;
+      /** Reminder to everyone, including members who already registered/paid. */
+      includeRegistered?: boolean;
+    },
   ) {
     const mode: InviteSendMode = opts?.mode || (opts?.registrationIds ? "selected" : "all");
     const only = mode === "selected";

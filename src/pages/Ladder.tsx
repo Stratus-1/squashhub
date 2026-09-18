@@ -15,6 +15,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateChallenge, useSquashTotals, useHeadToHead } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { useSportyHqRatings } from "@/hooks/use-sportyhq-ratings";
+import { useAssociationNumbers } from "@/hooks/use-association-numbers";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -466,9 +467,13 @@ export default function Ladder() {
   const allPlayers = useMemo(() => (players || []) as LadderPlayer[], [players]);
 
   // National strength (SportyHQ) shown beside each member on the ladder.
-  const { data: sportyHqRatings } = useSportyHqRatings(
-    useMemo(() => allPlayers.map((p) => p.club_member_id).filter(Boolean) as string[], [allPlayers]),
+  const ladderMemberIds = useMemo(
+    () => allPlayers.map((p) => p.club_member_id).filter(Boolean) as string[],
+    [allPlayers],
   );
+  const { data: sportyHqRatings } = useSportyHqRatings(ladderMemberIds);
+  // Association / NSA numbers shown beside each member.
+  const { data: associationNumbers } = useAssociationNumbers(ladderMemberIds);
 
   // How many open challenges I already have (drives the same limit the DB enforces)
   const { data: myOpenOutgoing = 0 } = useQuery({

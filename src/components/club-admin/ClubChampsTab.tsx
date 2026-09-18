@@ -6175,9 +6175,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
 
       if (parsedPhone) {
-        // Same template, variables and personal link as the real WhatsApp
-        // invite — only the recipient is the number you typed, and nothing is
-        // recorded on the player's registration.
+        // Same editable wording and personal link as the real WhatsApp invite;
+        // only the recipient changes, and no registration is updated.
         const needsPayment = paymentRequired && entryFeeAmount > 0;
         const details = buildWhatsAppDetails(needsPayment);
         const wa = await sendWhatsApp({
@@ -6185,11 +6184,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           recipients: [{ phone: parsedPhone }],
           kind: "champ_invite_test",
           category: "utility",
-        templateKey: "club_notice",
+          templateKey: "club_notice",
           templateVariables: {
-          club: champName || "Tournament",
-          message: details,
-          link: `To accept or decline, tap here: ${previewUrl}`,
+            club: champName || "Tournament",
+            message: details,
+            link: `To accept or decline, tap here: ${previewUrl}`,
           },
           body: `TEST INVITATION\n\n${buildInviteBody()}\n\n${details}\n${previewUrl}`,
           interaction: { kind: "champ_entry", targetId: champId, prompt: `TEST entry for ${champName || "tournament"}\n${previewUrl}` },

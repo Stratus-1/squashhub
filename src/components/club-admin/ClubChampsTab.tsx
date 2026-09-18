@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import {
   buildDefaultTournamentInviteText,
+  personalizeTournamentInvite,
   migrateLegacyTournamentInviteText,
 } from "@/lib/tournaments/invite-message";
 import type { TournamentPaymentMethod } from "@/lib/tournaments/payment-methods";
@@ -5992,10 +5993,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         for (const r of rows as any[]) {
           const link = await shortUrlForRegistration(r.id);
           const details = buildWhatsAppDetails(needsPayment);
+          const recipientName = resolveInviteeName(r.club_member_id)?.name || null;
+          const personalizedDetails = personalizeTournamentInvite(details, recipientName);
           try {
             await sendWhatsApp({
               clubId,
-              recipients: [{ member_id: r.club_member_id }],
+              recipients: [{
+                member_id: r.club_member_id,
+                variables: { message: personalizedDetails },
+              }],
               kind: "champ_invite",
               category: "utility",
               // Cold WhatsApp sends must use an approved template; the free-form
@@ -6006,10 +6012,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               templateKey: "club_notice",
               templateVariables: {
                 club: champName || "Tournament",
-                message: details,
+                message: personalizedDetails,
                 link: `To accept or decline, tap here: ${link}`,
               },
-              body: `${msg}\n\n${details}\n${link}`,
+              body: `${personalizeTournamentInvite(msg, recipientName)}\n\n${details}\n${link}`,
               interaction: {
                 kind: "champ_entry",
                 targetId: champId,
@@ -6179,6 +6185,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // only the recipient changes, and no registration is updated.
         const needsPayment = paymentRequired && entryFeeAmount > 0;
         const details = buildWhatsAppDetails(needsPayment);
+        const personalizedDetails = personalizeTournamentInvite(details, previewMember.name);
         const wa = await sendWhatsApp({
           clubId,
           recipients: [{ phone: parsedPhone }],
@@ -6187,10 +6194,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           templateKey: "club_notice",
           templateVariables: {
             club: champName || "Tournament",
-            message: details,
+            message: personalizedDetails,
             link: `To accept or decline, tap here: ${previewUrl}`,
           },
-          body: `TEST INVITATION\n\n${buildInviteBody()}\n\n${details}\n${previewUrl}`,
+          body: `TEST INVITATION\n\n${personalizeTournamentInvite(buildInviteBody(), previewMember.name)}\n\n${details}\n${previewUrl}`,
           interaction: { kind: "champ_entry", targetId: champId, prompt: `TEST entry for ${champName || "tournament"}\n${previewUrl}` },
         });
         const waResult = wa.results?.[0];
@@ -6294,6 +6301,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         } else {
           const needsPayment = paymentRequired && entryFeeAmount > 0;
           const details = buildWhatsAppDetails(needsPayment);
+          const personalizedDetails = personalizeTournamentInvite(details, (myMember as any)?.name);
           const wa = await sendWhatsApp({
             clubId,
             recipients: [{ phone: myPhone }],
@@ -6302,10 +6310,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             templateKey: "club_notice",
             templateVariables: {
               club: champName || "Tournament",
-              message: details,
+              message: personalizedDetails,
               link: `To accept or decline, tap here: ${testUrl}`,
             },
-            body: `TEST INVITATION\n\n${body}\n\n${details}\n${testUrl}`,
+            body: `TEST INVITATION\n\n${personalizeTournamentInvite(body, (myMember as any)?.name)}\n\n${details}\n${testUrl}`,
           });
           if (wa.results?.[0]?.status !== "sent") {
             throw new Error(wa.results?.[0]?.error || "The WhatsApp test could not be sent.");
@@ -12191,6 +12199,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         entryFeeRand={entryFeeRand}
         inviteExtraDetails={inviteExtraDetails}
         hasMultipleLeagues={(numGroups || 0) > 1}
+        previewRecipientName={testInvitePreviewAs?.name ?? sampleInvitee?.name ?? null}
         footer={
           editingChampId ? (
             <div className="rounded-md border border-dashed border-border/60 p-3 space-y-2">
@@ -12409,6 +12418,7 @@ function InvitePreviewDialog({
   entryFeeRand,
   inviteExtraDetails,
   hasMultipleLeagues,
+  previewRecipientName,
   footer,
 }: {
   open: boolean;
@@ -12424,6 +12434,8 @@ function InvitePreviewDialog({
   inviteExtraDetails?: string;
   /** True when the fixture setup holds more than one league — only then does the CTA offer a category choice. */
   hasMultipleLeagues?: boolean;
+  /** Example recipient used to demonstrate delivery-time personalisation. */
+  previewRecipientName?: string | null;
   /** Test-invite controls live under the preview, never on the messaging step. */
   footer?: React.ReactNode;
 }) {
@@ -12465,9 +12477,10 @@ function InvitePreviewDialog({
   const waDetails = inviteShortMessage || !waFullDetails
     ? waCallToAction
     : `${waFullDetails}\n\n${waCallToAction}`;
+  const previewGreetingName = previewRecipientName || "Player name";
   const waBody =
     `*${clubLabel}*\n\n` +
-    `${waDetails}\n\n` +
+    `${personalizeTournamentInvite(waDetails, previewGreetingName)}\n\n` +
     `To accept or decline, tap here: https://squashhub.co.za/i/ab3k9xq2mt`;
 
 
@@ -12528,7 +12541,7 @@ function InvitePreviewDialog({
                 <p className="text-xs text-muted-foreground">Subject</p>
                 <p className="font-semibold">You're invited: {tournamentName}</p>
                 <Separator />
-                <p>Hi there,</p>
+                <p>{buildTournamentInviteGreeting(previewGreetingName)}</p>
                 {/* The email body is the exact same message that will be sent,
                     so custom edits and short-message mode are shown verbatim. */}
                 <div className="text-sm whitespace-pre-wrap text-muted-foreground">

@@ -3,6 +3,21 @@ export function defaultTournamentInviteOpening(tournamentName?: string | null): 
   return `You have been invited to ${String(tournamentName || "a tournament").trim() || "a tournament"}.`;
 }
 
+/** Personal greeting added at delivery time; it is not stored in editable copy. */
+export function buildTournamentInviteGreeting(recipientName?: string | null): string {
+  const name = String(recipientName || "").trim();
+  return `Dear ${name || "player"},`;
+}
+
+export function personalizeTournamentInvite(
+  body: string,
+  recipientName?: string | null,
+): string {
+  return [buildTournamentInviteGreeting(recipientName), String(body || "").trim()]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function buildDefaultTournamentInviteText(
   tournamentName: string | null | undefined,
   detailsBlock: string,

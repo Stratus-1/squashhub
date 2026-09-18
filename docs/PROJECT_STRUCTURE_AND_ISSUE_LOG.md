@@ -1,3 +1,9 @@
+## 2026-09-18 — Browser push notification setup no longer hangs
+
+- Confirmed the web notification hook waited indefinitely for a service worker after app-shell/offline worker registration was removed.
+- Added a dedicated notification-only worker and bounded registration. It receives notification payloads and opens the supplied app destination, but does not cache pages or restore offline app-shell behaviour.
+- Existing browser subscriptions can receive alerts after launch; new subscriptions now fail promptly rather than leaving the settings switch spinning forever when registration is unavailable.
+
 ## 2026-09-18 — Tournament invitation opening is editable
 
 - The automatic “You have been invited to …” sentence now lives inside the invitation message editor and preview instead of being prepended only during sending.

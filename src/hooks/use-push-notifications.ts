@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getPushServiceWorkerRegistration } from "@/lib/push-service-worker";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -30,10 +31,12 @@ export function usePushNotifications() {
     setPermission(Notification.permission as PushPermissionState);
 
     // Check existing local subscription (browser).
-    navigator.serviceWorker.ready.then(async (registration) => {
-      const sub = await registration.pushManager.getSubscription();
-      setLocalSubscribed(!!sub);
-    });
+    void getPushServiceWorkerRegistration()
+      .then(async (registration) => {
+        const sub = await registration.pushManager.getSubscription();
+        setLocalSubscribed(!!sub);
+      })
+      .catch(() => setLocalSubscribed(false));
   }, []);
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export function usePushNotifications() {
 
     (async () => {
       try {
-        const registration = await navigator.serviceWorker.ready;
+        const registration = await getPushServiceWorkerRegistration();
         const sub = await registration.pushManager.getSubscription();
         if (!sub) {
           setLocalSubscribed(false);
@@ -95,7 +98,7 @@ export function usePushNotifications() {
       if (!publicKey) throw new Error("Missing VAPID public key");
 
       // Register push subscription
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await getPushServiceWorkerRegistration();
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
@@ -104,7 +107,7 @@ export function usePushNotifications() {
       // Store subscription on server
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("Not authenticated");
-      await fetch(
+      const subscribeResponse = await fetch(
         `https://${projectId}.supabase.co/functions/v1/push-notifications?action=subscribe`,
         {
           method: "POST",
@@ -115,6 +118,7 @@ export function usePushNotifications() {
           body: JSON.stringify({ subscription: subscription.toJSON() }),
         }
       );
+      if (!subscribeResponse.ok) throw new Error("Notification subscription could not be saved");
 
       // Verify server storage (required for delivery).
       const { data, error } = await supabase
@@ -134,7 +138,7 @@ export function usePushNotifications() {
       if (import.meta.env.DEV) console.error("Push subscription failed:", error);
       // Avoid a false-positive local subscription that the server can't deliver to.
       try {
-        const registration = await navigator.serviceWorker.ready;
+        const registration = await getPushServiceWorkerRegistration();
         const sub = await registration.pushManager.getSubscription();
         await sub?.unsubscribe?.();
       } catch {
@@ -151,7 +155,7 @@ export function usePushNotifications() {
 
     setLoading(true);
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await getPushServiceWorkerRegistration();
       const subscription = await registration.pushManager.getSubscription();
 
       if (subscription) {

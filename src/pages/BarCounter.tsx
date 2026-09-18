@@ -47,6 +47,7 @@ interface Board {
 }
 
 const tokenKey = (code: string) => `sh.barcounter.token.${code}`;
+const operatorKey = (code: string) => `sh.barcounter.operator.${code}`;
 
 export default function BarCounter() {
   const { code } = useParams<{ code?: string }>();
@@ -59,6 +60,7 @@ export default function BarCounter() {
   const qc = useQueryClient();
 
   const [token, setToken] = useState<string | null>(() => (code ? localStorage.getItem(tokenKey(code)) : null));
+  const [operator, setOperator] = useState<string | null>(() => (code ? localStorage.getItem(operatorKey(code)) : null));
   const [pin, setPin] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -110,6 +112,8 @@ export default function BarCounter() {
     if (!boardError || !code || !token) return;
     if (/unlock|revok|token|permission/i.test(String((boardError as any)?.message ?? ""))) {
       localStorage.removeItem(tokenKey(code));
+      localStorage.removeItem(operatorKey(code));
+      setOperator(null);
       setToken(null);
       setPin("");
       setActiveTabId(null);
@@ -145,10 +149,13 @@ export default function BarCounter() {
       const { data, error } = await supabase.rpc("bar_counter_unlock", { _code: code, _pin: pin } as any);
       if (error) throw error;
       const t = (data as any)?.token as string;
+      const who = ((data as any)?.label as string) ?? null;
       localStorage.setItem(tokenKey(code), t);
+      if (who) localStorage.setItem(operatorKey(code), who);
+      setOperator(who);
       setToken(t);
       setPin("");
-      toast.success("Counter unlocked");
+      toast.success(who ? `Counter unlocked — hi ${who}` : "Counter unlocked");
     } catch (e: any) {
       toast.error(e.message ?? "Could not unlock this device");
     } finally {
@@ -305,7 +312,7 @@ export default function BarCounter() {
           <Lock className="w-8 h-8 mx-auto text-muted-foreground" />
           <div>
             <h1 className="text-lg font-semibold">Bar counter mode</h1>
-            <p className="text-sm text-muted-foreground">Enter the club's counter PIN to start serving.</p>
+            <p className="text-sm text-muted-foreground">Enter your counter PIN to start serving.</p>
           </div>
           <Input
             inputMode="numeric"
@@ -361,7 +368,9 @@ export default function BarCounter() {
 
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
         <div>
-          <h1 className="text-base font-semibold leading-tight">{board.club_name} · Bar counter</h1>
+          <h1 className="text-base font-semibold leading-tight">
+            {board.club_name} · Bar counter{operator ? ` · ${operator}` : ""}
+          </h1>
           <p className="text-xs text-muted-foreground">
             {board.tabs.length} open tab{board.tabs.length === 1 ? "" : "s"} ·{" "}
             {money(board.tabs.reduce((s, t) => s + Number(t.total || 0), 0))} outstanding

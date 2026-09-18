@@ -1722,3 +1722,13 @@ Fix: the `league_planning` section now requires (a) at least one non-archived le
 - Tournament re-invitations previously used the approved generic `club_notice` wrapper, which incorrectly described them as updates about a club account.
 - Every club now uses the same `tournament_notice` utility template: tournament-specific heading, `Dear <player>`, editable organiser wording, and the personal tournament-entry URL.
 - This was not a Gordon's Bay configuration difference. Email added names during delivery, while WhatsApp's generic fallback had no player field. Recipient names remain delivery-time personalisation and are not stored in the editable tournament copy.
+
+## 18 Sep 2026 — PayFast gateway support (Uitsig)
+
+- Uitsig selected PayFast in Admin → Banking and saved merchant credentials, but members hit "No supported online payment gateway is configured for this club". Cause: PayFast was selectable in the admin UI only — it was absent from `SUPPORTED_GATEWAYS` and had no edge functions.
+- Added `payfast_payment_sessions` (member/admin read-only RLS, service-role writes) and three functions mirroring the Paynow pattern:
+  - `payfast-create-checkout` — validates the member owns the club_member row, checks `gatewayEnabled(club, "payfast")`, resolves credentials with `resolveGatewayCreds`, creates a session and builds a signed PayFast process URL (sandbox when `mode=sandbox` or merchant 10000100).
+  - `payfast-itn` — verifies signature, merchant id, PayFast server-side payload validation and the gross amount before an atomic claim + settlement (idempotent, safe on retries/out-of-order).
+  - `payfast-verify-checkout` — read-only status report for the return page; confirmation is always the ITN's job.
+- Signature rule: MD5 over fields in submission order, RFC1738 encoding (spaces as `+`, uppercase hex), blank fields dropped, passphrase appended last. Never reorder the field list in `payfast-create-checkout` without recomputing.
+- Client: `GatewayId`/`SUPPORTED_GATEWAYS` include `payfast`; pending session stored under `sh.payfast.pending`; return params `payfast_session` / `payfast_cancelled`.

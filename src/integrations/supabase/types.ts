@@ -10044,6 +10044,63 @@ export type Database = {
           },
         ]
       }
+      payfast_payment_sessions: {
+        Row: {
+          amount: number
+          champ_registration_id: string | null
+          club_id: string
+          club_member_id: string
+          completed_at: string | null
+          created_at: string
+          currency: string
+          description: string | null
+          fee_ids: string[]
+          id: string
+          payfast_payment_id: string | null
+          payfast_redirect_url: string | null
+          purpose: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          champ_registration_id?: string | null
+          club_id: string
+          club_member_id: string
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          fee_ids?: string[]
+          id?: string
+          payfast_payment_id?: string | null
+          payfast_redirect_url?: string | null
+          purpose: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          champ_registration_id?: string | null
+          club_id?: string
+          club_member_id?: string
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          fee_ids?: string[]
+          id?: string
+          payfast_payment_id?: string | null
+          payfast_redirect_url?: string | null
+          purpose?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       paynow_payment_sessions: {
         Row: {
           amount: number

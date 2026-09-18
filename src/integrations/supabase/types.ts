@@ -10056,6 +10056,8 @@ export type Database = {
           description: string | null
           fee_ids: string[]
           id: string
+          is_tokenisation: boolean
+          mandate_id: string | null
           payfast_payment_id: string | null
           payfast_redirect_url: string | null
           purpose: string
@@ -10074,6 +10076,8 @@ export type Database = {
           description?: string | null
           fee_ids?: string[]
           id?: string
+          is_tokenisation?: boolean
+          mandate_id?: string | null
           payfast_payment_id?: string | null
           payfast_redirect_url?: string | null
           purpose: string
@@ -10092,6 +10096,8 @@ export type Database = {
           description?: string | null
           fee_ids?: string[]
           id?: string
+          is_tokenisation?: boolean
+          mandate_id?: string | null
           payfast_payment_id?: string | null
           payfast_redirect_url?: string | null
           purpose?: string
@@ -10099,7 +10105,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payfast_payment_sessions_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "stitch_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       paynow_payment_sessions: {
         Row: {
@@ -12152,8 +12166,10 @@ export type Database = {
           due_date: string
           failed_reason: string | null
           fee_payable_id: string | null
+          gateway: string
           id: string
           mandate_id: string
+          payfast_payment_id: string | null
           posted_at: string | null
           retry_of: string | null
           settled_at: string | null
@@ -12174,8 +12190,10 @@ export type Database = {
           due_date: string
           failed_reason?: string | null
           fee_payable_id?: string | null
+          gateway?: string
           id?: string
           mandate_id: string
+          payfast_payment_id?: string | null
           posted_at?: string | null
           retry_of?: string | null
           settled_at?: string | null
@@ -12196,8 +12214,10 @@ export type Database = {
           due_date?: string
           failed_reason?: string | null
           fee_payable_id?: string | null
+          gateway?: string
           id?: string
           mandate_id?: string
+          payfast_payment_id?: string | null
           posted_at?: string | null
           retry_of?: string | null
           settled_at?: string | null
@@ -12240,8 +12260,13 @@ export type Database = {
           initial_amount_cents: number | null
           initial_payment_tx_id: string | null
           last_collection_at: string | null
+          last_failure_reason: string | null
           mandate_type: string
           max_amount_cents: number
+          months_charged: number
+          months_total: number | null
+          next_charge_date: string | null
+          payfast_token: string | null
           rail: string
           status: string
           stitch_mandate_id: string | null
@@ -12265,8 +12290,13 @@ export type Database = {
           initial_amount_cents?: number | null
           initial_payment_tx_id?: string | null
           last_collection_at?: string | null
+          last_failure_reason?: string | null
           mandate_type?: string
           max_amount_cents: number
+          months_charged?: number
+          months_total?: number | null
+          next_charge_date?: string | null
+          payfast_token?: string | null
           rail: string
           status?: string
           stitch_mandate_id?: string | null
@@ -12290,8 +12320,13 @@ export type Database = {
           initial_amount_cents?: number | null
           initial_payment_tx_id?: string | null
           last_collection_at?: string | null
+          last_failure_reason?: string | null
           mandate_type?: string
           max_amount_cents?: number
+          months_charged?: number
+          months_total?: number | null
+          next_charge_date?: string | null
+          payfast_token?: string | null
           rail?: string
           status?: string
           stitch_mandate_id?: string | null

@@ -25,3 +25,10 @@
 - [x] Dual ladder listing + men's ranking for those ladies (ladies' position preserved)
 - [x] Default ON for NSA clubs (association default), club override available
 - [x] Cross-listed ladies exempt from the ±2 position movement cap — may play any men's league level
+
+## Monthly card payments with PayFast (18 Sep 2026)
+- [x] Tokenised monthly arrangements (create/cancel/daily charge) + activation on payment notice
+- [x] Member view (My Account) and club admin panel support both gateways
+- [x] PayFast payment-notice signature accepted in all valid forms; Gerhard's R20 top-up posted
+- [ ] Daily schedule for payfast-charge-mandates
+- [ ] First live monthly arrangement as a real-money test

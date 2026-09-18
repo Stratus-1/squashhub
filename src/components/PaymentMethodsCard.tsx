@@ -21,6 +21,7 @@ import { toast } from "sonner";
 type Mandate = {
   id: string;
   rail: string;
+  gateway?: string | null;
   mandate_type: "card_consent" | "subscription";
   max_amount_cents: number;
   debit_day: number | null;
@@ -28,6 +29,10 @@ type Mandate = {
   auth_url: string | null;
   authorised_at: string | null;
   fee_category_id: string | null;
+  next_charge_date?: string | null;
+  months_total?: number | null;
+  months_charged?: number | null;
+  last_failure_reason?: string | null;
 };
 
 type FeeCategory = {
@@ -187,9 +192,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
   }, [clubMemberId, qc]);
 
-  // Auto-sync any pending mandates on mount (covers missed webhooks)
+  // Auto-sync any pending mandates on mount (covers missed webhooks).
+  // PayFast arrangements are activated by their own notification, so they are
+  // never refreshed through Stitch.
   useEffect(() => {
-    const pending = mandates.filter((m) => m.status === "pending");
+    const pending = mandates.filter((m) => m.status === "pending" && m.gateway !== "payfast");
     pending.forEach((m) => refreshMandate(m.id, true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mandates.length]);
@@ -198,7 +205,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   // Stitch webhooks can be delayed, and members were re-starting the whole
   // setup (creating duplicate mandates) because nothing changed on screen.
   useEffect(() => {
-    const pendingIds = mandates.filter((m) => m.status === "pending").map((m) => m.id);
+    const pendingIds = mandates
+      .filter((m) => m.status === "pending" && m.gateway !== "payfast")
+      .map((m) => m.id);
     if (!pendingIds.length) return;
     let ticks = 0;
     const t = setInterval(() => {
@@ -269,15 +278,21 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     if (n > 0 && annual > 0) setAmount((annual / n).toFixed(2));
   }, [months, selectedCategory, amountTouched, fallbackAnnual]);
 
-  if (paymentGateway !== "stitch") return null;
-  
+  const isPayfast = paymentGateway === "payfast";
+  if (paymentGateway !== "stitch" && !isPayfast) return null;
+
 
   const pendingMandate = mandates.find((m) => m.status === "pending") || null;
 
-  // Re-open the existing Stitch link instead of creating another mandate.
+  // Re-open the existing authorisation link instead of creating another mandate.
   async function resumeSetup(m: Mandate) {
     if (!m.auth_url) {
       toast.error("This setup has no link left — cancel it and start again.");
+      return;
+    }
+    if (m.gateway === "payfast") {
+      // PayFast hosts the card page in the same tab.
+      window.location.assign(m.auth_url);
       return;
     }
     await refreshMandate(m.id, true);
@@ -323,6 +338,28 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setSubmitting(true);
 
     try {
+      if (isPayfast) {
+        const { data, error } = await supabase.functions.invoke("payfast-create-mandate", {
+          body: {
+            club_id: clubId,
+            club_member_id: clubMemberId,
+            fee_category_id: selectedCategory.id === "__general__" ? null : selectedCategory.id,
+            monthly_amount: amt,
+            debit_day: Number(debitDay) || 1,
+            months_total: Number(months) || null,
+            return_url: `${window.location.origin}/my-account?mandate=pending`,
+          },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        if ((data as any)?.redirect_url) {
+          setSetupOpen(false);
+          window.location.assign((data as any).redirect_url);
+          return;
+        }
+        throw new Error("PayFast did not return a card page");
+      }
+
       const returnUrl = buildStitchReturnUrl("/my-account?mandate=pending");
       const { data, error } = await supabase.functions.invoke("stitch-create-mandate", {
         body: {
@@ -357,7 +394,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   async function cancelMandate(mandateId: string) {
     if (!confirm("Cancel this recurring card payment? You can set it up again later.")) return;
     try {
-      const { error } = await supabase.functions.invoke("stitch-cancel-mandate", {
+      const mandate = mandates.find((m) => m.id === mandateId);
+      const fn = mandate?.gateway === "payfast" ? "payfast-cancel-mandate" : "stitch-cancel-mandate";
+      const { error } = await supabase.functions.invoke(fn, {
         body: { mandate_id: mandateId },
       });
       if (error) throw error;
@@ -451,12 +490,19 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     Up to {money(m.max_amount_cents / 100)} charged to your card each month
                     {m.debit_day ? ` · monthly charge day ${m.debit_day}` : ""}
+                    {m.status === "active" && m.next_charge_date
+                      ? ` · next ${formatDate(new Date(`${m.next_charge_date}T00:00:00`))}`
+                      : ""}
+                    {m.months_total
+                      ? ` · instalment ${Math.min(Number(m.months_charged || 0) + 1, m.months_total)} of ${m.months_total}`
+                      : ""}
                   </p>
 
                   {m.status === "pending" && (
                     <div className="mt-1 space-y-1">
                       <p className="text-[11px] text-amber-700 leading-snug">
-                        Waiting for you to finish the authorisation at Stitch. Your first monthly
+                        Waiting for you to finish the card authorisation
+                        {m.gateway === "payfast" ? " at PayFast" : " at Stitch"}. Your first monthly
                         instalment is charged there and credited to your club account.
                         Don't start a new setup — reopen this one.
                       </p>
@@ -466,6 +512,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                             Finish authorisation
                           </Button>
                         )}
+                        {m.gateway !== "payfast" && (
                         <button
                           type="button"
                           onClick={() => refreshMandate(m.id)}
@@ -473,6 +520,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                         >
                           Check status
                         </button>
+                        )}
                       </div>
                     </div>
                   )}

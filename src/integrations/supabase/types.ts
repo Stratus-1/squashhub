@@ -10056,6 +10056,8 @@ export type Database = {
           description: string | null
           fee_ids: string[]
           id: string
+          is_tokenisation: boolean
+          mandate_id: string | null
           payfast_payment_id: string | null
           payfast_redirect_url: string | null
           purpose: string
@@ -10074,6 +10076,8 @@ export type Database = {
           description?: string | null
           fee_ids?: string[]
           id?: string
+          is_tokenisation?: boolean
+          mandate_id?: string | null
           payfast_payment_id?: string | null
           payfast_redirect_url?: string | null
           purpose: string
@@ -10092,6 +10096,8 @@ export type Database = {
           description?: string | null
           fee_ids?: string[]
           id?: string
+          is_tokenisation?: boolean
+          mandate_id?: string | null
           payfast_payment_id?: string | null
           payfast_redirect_url?: string | null
           purpose?: string
@@ -10099,7 +10105,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payfast_payment_sessions_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "stitch_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       paynow_payment_sessions: {
         Row: {

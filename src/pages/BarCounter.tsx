@@ -312,7 +312,7 @@ export default function BarCounter() {
           <Lock className="w-8 h-8 mx-auto text-muted-foreground" />
           <div>
             <h1 className="text-lg font-semibold">Bar counter mode</h1>
-            <p className="text-sm text-muted-foreground">Enter the club's counter PIN to start serving.</p>
+            <p className="text-sm text-muted-foreground">Enter your counter PIN to start serving.</p>
           </div>
           <Input
             inputMode="numeric"

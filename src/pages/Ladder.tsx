@@ -804,14 +804,14 @@ export default function Ladder() {
           <div className="inline-flex rounded-full border bg-muted/40 p-0.5">
             <button
               type="button"
-              onClick={() => setViewMode("list")}
+              onClick={() => chooseViewMode("list")}
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
               <List className="w-3 h-3" /> List
             </button>
             <button
               type="button"
-              onClick={() => setViewMode("pyramid")}
+              onClick={() => chooseViewMode("pyramid")}
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${viewMode === "pyramid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
               <Triangle className="w-3 h-3" /> Pyramid

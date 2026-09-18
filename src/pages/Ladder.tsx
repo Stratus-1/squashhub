@@ -280,16 +280,28 @@ export default function Ladder() {
   const [courtId, setCourtId] = useState<string>("");
   const [sending, setSending] = useState(false);
 
-  // Pyramid vs list view (pyramid clubs only) — defaults to list on small screens
-  const [viewMode, setViewMode] = useState<"pyramid" | "list">(() => {
-    if (typeof window === "undefined") return "pyramid";
-    const stored = window.localStorage.getItem("sh.ladder.view");
-    if (stored === "pyramid" || stored === "list") return stored;
-    return window.innerWidth < 768 ? "list" : "pyramid";
-  });
+  // Pyramid vs list view (pyramid clubs only). The preference is stored per club so
+  // one club's choice never decides another club's default.
+  const viewStorageKey = clubId ? `sh.ladder.view.${clubId}` : null;
+  const [viewMode, setViewMode] = useState<"pyramid" | "list">("pyramid");
+  const [viewModeTouched, setViewModeTouched] = useState(false);
   useEffect(() => {
-    try { window.localStorage.setItem("sh.ladder.view", viewMode); } catch { /* ignore */ }
-  }, [viewMode]);
+    if (!viewStorageKey) return;
+    setViewModeTouched(false);
+    try {
+      const stored = window.localStorage.getItem(viewStorageKey);
+      setViewMode(stored === "list" ? "list" : "pyramid");
+    } catch {
+      setViewMode("pyramid");
+    }
+  }, [viewStorageKey]);
+  const chooseViewMode = (mode: "pyramid" | "list") => {
+    setViewMode(mode);
+    setViewModeTouched(true);
+    if (!viewStorageKey) return;
+    try { window.localStorage.setItem(viewStorageKey, mode); } catch { /* ignore */ }
+  };
+  void viewModeTouched;
 
   // Blocked challenge dialog
   const [blockedChallenge, setBlockedChallenge] = useState<{

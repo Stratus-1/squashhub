@@ -14,6 +14,7 @@ import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTria
 import { BarQrLabelsDialog } from "./BarQrLabelsDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
+import { StockLevelsTab } from "./bar/StockLevelsTab";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
@@ -143,6 +144,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
   const barSteps: SetupStep[] = [
     { id: "items", label: "Items & prices", description: "List everything on sale at the bar with its selling price and current stock — this is the menu customers see when they scan.", complete: items.length > 0 },
     { id: "stock-purchases", label: "Stock purchases", description: "Record supplier invoices so stock levels and bar cost of sales stay accurate.", complete: stockPurchases.length > 0 },
+    { id: "stock-levels", label: "Stock levels", description: "See stock on hand on any date and run a stock take to find differences.", complete: items.length > 0 },
     { id: "member-sales", label: "Member sales", description: "Purchases charged to a member's account tab — and a way to add a charge on a member's behalf.", complete: enabled },
     { id: "card-sales", label: "Card sales", description: "Visitor, walk-in and scan-to-pay sales paid by card instead of a member account.", complete: enabled },
   ];
@@ -293,6 +295,8 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
           </Card>
         </div>
       )}
+
+      {step === "stock-levels" && <StockLevelsTab clubId={clubId} />}
 
       {step === "member-sales" && (
         <div className="space-y-4">

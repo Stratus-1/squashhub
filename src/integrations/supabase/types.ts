@@ -915,6 +915,104 @@ export type Database = {
           },
         ]
       }
+      bar_stock_take_lines: {
+        Row: {
+          bar_item_id: string
+          counted_qty: number | null
+          created_at: string
+          expected_qty: number
+          id: string
+          stock_take_id: string
+          unit_cost: number
+          updated_at: string
+        }
+        Insert: {
+          bar_item_id: string
+          counted_qty?: number | null
+          created_at?: string
+          expected_qty?: number
+          id?: string
+          stock_take_id: string
+          unit_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          bar_item_id?: string
+          counted_qty?: number | null
+          created_at?: string
+          expected_qty?: number
+          id?: string
+          stock_take_id?: string
+          unit_cost?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_stock_take_lines_bar_item_id_fkey"
+            columns: ["bar_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_stock_take_lines_stock_take_id_fkey"
+            columns: ["stock_take_id"]
+            isOneToOne: false
+            referencedRelation: "bar_stock_takes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_stock_takes: {
+        Row: {
+          adjusted: boolean
+          club_id: string
+          created_at: string
+          created_by: string | null
+          finalised_at: string | null
+          finalised_by: string | null
+          id: string
+          notes: string | null
+          status: string
+          take_date: string
+          updated_at: string
+        }
+        Insert: {
+          adjusted?: boolean
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          finalised_at?: string | null
+          finalised_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          take_date?: string
+          updated_at?: string
+        }
+        Update: {
+          adjusted?: boolean
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          finalised_at?: string | null
+          finalised_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          take_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_stock_takes_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bar_tab_entries: {
         Row: {
           bar_item_id: string
@@ -14437,6 +14535,22 @@ export type Database = {
       bar_staff_can_serve: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
+      }
+      bar_stock_levels_on: {
+        Args: { _club_id: string; _date: string }
+        Returns: Json
+      }
+      bar_stock_take_finalise: {
+        Args: { _adjust?: boolean; _take_id: string }
+        Returns: Json
+      }
+      bar_stock_take_save: {
+        Args: { _lines: Json; _notes?: string; _take_id: string }
+        Returns: Json
+      }
+      bar_stock_take_start: {
+        Args: { _club_id: string; _date: string }
+        Returns: string
       }
       bill_wifi_monthly: { Args: never; Returns: Json }
       can_access_champ_match: {

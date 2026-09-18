@@ -2035,8 +2035,16 @@ export default function Bookings() {
                         || (isLeagueBooking ? formatLeagueLabel(rawGuestName) : (rawGuestName || (booking as any)?.player_name || "Tournament")))
                     : null;
 
-                  const a = (booking as any)?.player_name ? toInitialSurname(String((booking as any).player_name)) : null;
-                  const b = !isEventBooking && (booking as any)?.opponent_name ? toInitialSurname(String((booking as any).opponent_name)) : null;
+                  // Rows mirrored from an external system (GoBook) carry group or
+                  // activity labels ("Centurion Juniors", "Court Maintenance"), not
+                  // member names — show those in full, like GoBook does. In-app
+                  // member bookings stay abbreviated for privacy.
+                  const isExternalRow = String((booking as any)?.source || "") === "gobook"
+                    || !!(booking as any)?.external_id
+                    || !!(booking as any)?.external_booker_name;
+                  const nameLabel = (v: unknown) => (isExternalRow ? String(v) : toInitialSurname(String(v)));
+                  const a = (booking as any)?.player_name ? nameLabel((booking as any).player_name) : null;
+                  const b = !isEventBooking && (booking as any)?.opponent_name ? nameLabel((booking as any).opponent_name) : null;
                   const isMine = booking && ((booking as any).user_id === user?.id || (booking as any).opponent_id === user?.id);
                   const isBlocked = !!(booking as any)?.is_blocked;
                   const blockReason = (booking as any)?.block_reason ? String((booking as any).block_reason) : "";

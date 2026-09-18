@@ -21,7 +21,7 @@ import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
-import { LeaguePlayoffDrawDialog } from "./LeaguePlayoffDrawDialog";
+import { LeagueFinalsDrawDialog } from "./LeagueFinalsDrawDialog";
 
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 

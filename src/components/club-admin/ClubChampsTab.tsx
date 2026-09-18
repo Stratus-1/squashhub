@@ -6568,6 +6568,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const effectiveAllInviteCount =
     resolvedAudience.memberIds.length || allInviteCount || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
+  /** Everyone still in the tournament — including players who already registered or paid. */
+  const everyoneInviteCount = useMemo(
+    () =>
+      (inviteeRows as any[]).filter(
+        (r: any) => r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled",
+      ).length,
+    [inviteeRows],
+  );
 
   /** Live acceptance picture for this tournament (drives the Players step). */
   const entrantCounts = useMemo(

@@ -104,6 +104,7 @@ export default function MatchMarker() {
     fresh: champLockFresh,
     approveTakeover,
     declineTakeover,
+    claim: claimChampLock,
   } = useChampMarkerLock(tournamentMatchId, user?.id, markerName);
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [tournamentLoadState, setTournamentLoadState] = useState<"idle" | "loading" | "error">("idle");
@@ -115,15 +116,22 @@ export default function MatchMarker() {
     setHandoverOpen(!!takeoverRequester);
   }, [takeoverRequester]);
 
-  // Somebody else now holds the lock (approved or forced take-over) → step out
-  // of the marker and watch the game live instead of writing conflicting scores.
+  // Somebody else now holds the lock. This must NEVER silently throw an active
+  // marker off the scoreboard (that is how live scoring "just went out" mid
+  // game). Unless this marker explicitly handed over, we stay put, warn them,
+  // and let them decide: keep marking (reclaim) or switch to the live view.
+  const handedOverRef = useRef(false);
+  const [stolenBy, setStolenBy] = useState<string | null>(null);
   useEffect(() => {
     if (!tournamentMatchId || !champLock || !user) return;
     if (champLockFresh && champLock.user_id !== user.id) {
-      toast.info(`${champLock.user_name} has taken over marking`, {
-        description: "Switching you to the live score.",
-      });
-      navigate(`/tournament-live/${tournamentMatchId}`, { replace: true });
+      if (handedOverRef.current) {
+        navigate(`/tournament-live/${tournamentMatchId}`, { replace: true });
+      } else {
+        setStolenBy(champLock.user_name || "Another marker");
+      }
+    } else {
+      setStolenBy(null);
     }
   }, [champLock, champLockFresh, tournamentMatchId, user, navigate]);
 
@@ -798,6 +806,7 @@ export default function MatchMarker() {
             <AlertDialogAction
               onClick={async () => {
                 const id = tournamentMatchId;
+                handedOverRef.current = true;
                 await approveTakeover();
                 try {
                   localStorage.removeItem(MARKER_CONFIG_KEY);
@@ -809,6 +818,41 @@ export default function MatchMarker() {
             >
               Yes, hand over
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Someone else claimed this game while we were still marking it.
+          We never leave the scoreboard on our own — the marker chooses. */}
+      <AlertDialog open={!!stolenBy} onOpenChange={(o) => { if (!o) setStolenBy(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{stolenBy} has started marking this game</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are still on the scoreboard and your score is safe. Keep marking to take the game
+              back, or switch to the live view and let them carry on.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={async () => {
+                await claimChampLock();
+                setStolenBy(null);
+                toast.success("You are marking this game");
+              }}
+            >
+              Keep marking
+            </AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => {
+                const id = tournamentMatchId;
+                handedOverRef.current = true;
+                setStolenBy(null);
+                if (id) navigate(`/tournament-live/${id}`, { replace: true });
+              }}
+            >
+              Watch live instead
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

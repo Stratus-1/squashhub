@@ -37,3 +37,5 @@
 - [x] Fix contradictory GoBook banners (setup-incomplete shown alongside live grid) — API mode no longer requires a URL
 - [x] Add 45-minute court slot option (settings dropdown, grid, duration choices 45/90)
 - [x] Verify build clean
+
+- [ ] Check Lizani Slippers live-scoring dropouts (Nelspruit tournament)

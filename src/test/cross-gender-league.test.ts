@@ -103,3 +103,36 @@ describe("helpers", () => {
     expect(strong).toBeLessThan(weaker);
   });
 });
+
+import { checkSubEligibility } from "@/lib/league-sub-eligibility";
+
+describe("cross-gender movement cap exemption", () => {
+  const rules = { max_position_movement_per_week: 2, cross_gender_subs_allowed: false } as any;
+
+  it("lets a cross-gender lady play any men's league level", () => {
+    const res = checkSubEligibility(
+      rules,
+      { homeLeagueNumber: 1, homePosition: 1, gender: "ladies", crossGenderLeaguePlayer: true },
+      { leagueNumber: 7, position: 4, gender: "men" },
+    );
+    expect(res.ok).toBe(true);
+  });
+
+  it("still caps a lady who is not a cross-gender league player", () => {
+    const res = checkSubEligibility(
+      rules,
+      { homeLeagueNumber: 1, homePosition: 1, gender: "ladies" },
+      { leagueNumber: 7, position: 4, gender: "men" },
+    );
+    expect(res.ok).toBe(false);
+  });
+
+  it("still caps a cross-gender lady inside her own ladies league", () => {
+    const res = checkSubEligibility(
+      rules,
+      { homeLeagueNumber: 1, homePosition: 1, gender: "ladies", crossGenderLeaguePlayer: true },
+      { leagueNumber: 5, position: 4, gender: "ladies" },
+    );
+    expect(res.ok).toBe(false);
+  });
+});

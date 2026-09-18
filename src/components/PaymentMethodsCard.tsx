@@ -21,6 +21,7 @@ import { toast } from "sonner";
 type Mandate = {
   id: string;
   rail: string;
+  gateway?: string | null;
   mandate_type: "card_consent" | "subscription";
   max_amount_cents: number;
   debit_day: number | null;
@@ -28,6 +29,10 @@ type Mandate = {
   auth_url: string | null;
   authorised_at: string | null;
   fee_category_id: string | null;
+  next_charge_date?: string | null;
+  months_total?: number | null;
+  months_charged?: number | null;
+  last_failure_reason?: string | null;
 };
 
 type FeeCategory = {

@@ -825,6 +825,10 @@ export default function Ladder() {
               <div className="grid grid-cols-1 gap-4">
                 {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
                 {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
+                {unknownGenderPlayers.length > 0 &&
+                  (groupByLeague
+                    ? renderGrouped("Gender not set", unknownGenderPlayers)
+                    : renderColumn("Gender not set", unknownGenderPlayers))}
               </div>
             )
           }

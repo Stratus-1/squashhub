@@ -6608,6 +6608,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     });
   }, [withdrawnMemberIds]);
 
+  /** The Players step may only offer people who have not withdrawn/declined. */
+  const availablePlayers = useMemo(
+    () => (allSelectablePlayers as any[]).filter((m: any) => !withdrawnMemberIds.has(String(m.id))),
+    [allSelectablePlayers, withdrawnMemberIds],
+  );
+
+
+
 
 
   /** Accepted entrants who belong to no source league — need a division by hand. */

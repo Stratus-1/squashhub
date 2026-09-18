@@ -34,6 +34,12 @@ export function resolveInviteRecipients(input: {
   selectedIds?: string[] | null;
   /** Send-all fallback: allow re-sending to everyone already registered. */
   allowResendAll?: boolean;
+  /**
+   * Deliberate reminder-to-everyone send: include people who have already
+   * registered / paid instead of only those still to respond. Never widens a
+   * selective send.
+   */
+  includeRegistered?: boolean;
 }): ResolveResult {
   const registrations = (input.registrations || []).filter((r) => r && r.id && r.club_member_id);
 

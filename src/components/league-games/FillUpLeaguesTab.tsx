@@ -634,6 +634,20 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     return m;
   }, [members]);
 
+  // "Ladies may play and be ranked in the men's league" (NSA default).
+  // Ladies with recent men's-league games are offered automatically in men's
+  // pools and may be placed at ANY men's level (no movement cap).
+  const { data: crossGenderOn = false } = useCrossGenderLeagueSetting(
+    clubId,
+    rulesAssociationId ?? associationId ?? null,
+  );
+  const { data: crossGenderNumbers } = useAssociationNumbers(memberIds);
+  const { data: crossGenderPlayers } = useCrossGenderPlayers(clubId, crossGenderNumbers, crossGenderOn);
+  const isCrossGenderPlayer = useCallback(
+    (memberId: string) => !!crossGenderOn && !!crossGenderPlayers?.has(memberId),
+    [crossGenderOn, crossGenderPlayers],
+  );
+
   // Determine if these leagues belong to an internal association (no external number issued).
   // For internal leagues we fall back to the member's club_member_number as the league number.
   const associationIds = useMemo(

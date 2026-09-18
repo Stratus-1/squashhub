@@ -2305,8 +2305,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     return list;
   }, [allVisitors, includeVisitors, selectedVisitorClubs, gender]);
 
+  /**
+   * Any league (division) switched to doubles in the structure step makes this a
+   * doubles tournament, even when the Step 1 category still says Singles.
+   */
+  const anyLeagueDoubles = useMemo(() => {
+    for (let i = 1; i <= (numGroups || 0); i++) {
+      if ((leagueMatchTypes[String(i)] ?? matchType) === "doubles") return true;
+    }
+    return false;
+  }, [numGroups, leagueMatchTypes, matchType]);
   /** Doubles as a CATEGORY (labels, partner-selection UI, persisted match_type). */
-  const isDoublesCategory = matchType === "doubles";
+  const isDoublesCategory = matchType === "doubles" || anyLeagueDoubles;
+  /** What we persist as the tournament-level match type. */
+  const effectiveMatchType: "singles" | "doubles" = isDoublesCategory ? "doubles" : "singles";
   /**
    * Rotating partners: players enter individually and are re-paired every round
    * (everyone partners everyone). There are no fixed pair entities, so the whole

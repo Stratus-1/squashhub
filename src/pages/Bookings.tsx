@@ -2322,7 +2322,9 @@ export default function Bookings() {
                 || (!!activeMember?.id && (bookingDetails as any).opponent_member_id === activeMember.id);
               const isAdmin = isMemberAdmin;
 
-              const isGoBookBooking = (bookingDetails as any).source === 'gobook';
+              const isGoBookBooking = (bookingDetails as any).source === 'gobook'
+                || /^gobook:\d+$/.test(String((bookingDetails as any).external_id || ''));
+
               const bookingDateStr = String(bookingDetails.date);
               const endTimeStr = String(bookingDetails.end_time || "23:59:59").slice(0, 5);
               const bookingEnd = new Date(`${bookingDateStr}T${endTimeStr}`);

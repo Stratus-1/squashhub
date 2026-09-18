@@ -34,6 +34,9 @@ import { LadderPendingMovesCard } from "@/components/club-admin/LadderPendingMov
 import { SportyHqRatingBadge } from "@/components/SportyHqRatingBadge";
 import { useSportyHqRatings, type SportyHqRating } from "@/hooks/use-sportyhq-ratings";
 import { useAssociationNumbers } from "@/hooks/use-association-numbers";
+import { useLeagueStrength } from "@/hooks/use-league-strength";
+import { refineOrderFromLeagueStats, describeStrength } from "@/lib/ladder/league-strength";
+import { Sparkles } from "lucide-react";
 
 
 interface LadderMember {

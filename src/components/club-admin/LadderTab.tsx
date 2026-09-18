@@ -35,7 +35,7 @@ import { SportyHqRatingBadge } from "@/components/SportyHqRatingBadge";
 import { useSportyHqRatings, type SportyHqRating } from "@/hooks/use-sportyhq-ratings";
 import { useAssociationNumbers } from "@/hooks/use-association-numbers";
 import { useLeagueStrength } from "@/hooks/use-league-strength";
-import { refineOrderFromLeagueStats, describeStrength } from "@/lib/ladder/league-strength";
+import { refineOrderFromLeagueStats, describeStrength, type LeagueStrength } from "@/lib/ladder/league-strength";
 import { Sparkles } from "lucide-react";
 
 
@@ -343,10 +343,11 @@ interface GenderLadderProps {
   affiliationsByMember: Map<string, Set<string>>;
   sportyHqRatings?: Map<string, SportyHqRating>;
   associationNumbers?: Map<string, string[]>;
+  leagueStrength?: Map<string, LeagueStrength | null>;
   onAllocated: () => void;
 }
 
-function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, associationNumbers, onAllocated }: GenderLadderProps) {
+function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, associationNumbers, leagueStrength, onAllocated }: GenderLadderProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
@@ -410,6 +411,11 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
                   currentAffiliations={currentAffiliations}
                   sportyHqRating={sportyHqRatings?.get(player.id)}
                   associationNumbers={associationNumbers?.get(player.id)}
+                  strengthSummary={
+                    leagueStrength?.get(player.id)
+                      ? describeStrength(leagueStrength.get(player.id)!)
+                      : undefined
+                  }
                   onAllocated={onAllocated}
                   onMoveTo={(playerId, targetIndex) => {
                     const fromIdx = list.findIndex((p) => p.id === playerId);
@@ -722,6 +728,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             affiliationsByMember={affiliationsByMember}
             sportyHqRatings={sportyHqRatings}
             associationNumbers={associationNumbers}
+            leagueStrength={leagueStrength}
             onAllocated={handleAllocated}
           />
         </div>
@@ -740,6 +747,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             affiliationsByMember={affiliationsByMember}
             sportyHqRatings={sportyHqRatings}
             associationNumbers={associationNumbers}
+            leagueStrength={leagueStrength}
             onAllocated={handleAllocated}
           />
           <GenderLadder
@@ -755,6 +763,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             affiliationsByMember={affiliationsByMember}
             sportyHqRatings={sportyHqRatings}
             associationNumbers={associationNumbers}
+            leagueStrength={leagueStrength}
             onAllocated={handleAllocated}
           />
         </div>

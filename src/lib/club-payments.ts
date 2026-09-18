@@ -225,6 +225,13 @@ export function readReturnSession(
     const sid = paynowSid || paynowPending!.sessionId;
     return { gateway: "paynow", sid };
   }
+  const payfastSid = searchParams.get("payfast_session");
+  const payfastCancelled = searchParams.get("payfast_cancelled");
+  const payfastPending = getPendingPayfastSession();
+  if (payfastSid || (payfastPending && payfastPending.returnPath === expectedReturnPath)) {
+    const sid = payfastSid || payfastPending!.sessionId;
+    return { gateway: "payfast", sid, cancelled: !!payfastCancelled };
+  }
   return null;
 }
 
@@ -234,6 +241,7 @@ export function clearReturnParams(searchParams: URLSearchParams): URLSearchParam
     "yoco_session", "yoco_cancelled", "yoco_status",
     "stitch_session", "stitch_status",
     "paynow_session",
+    "payfast_session", "payfast_cancelled",
     // Stitch hosted checkout adds these on return — strip so back/refresh doesn't re-trigger
     "reference", "payment_id", "id",
   ].forEach(k => next.delete(k));

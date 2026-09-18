@@ -75,6 +75,10 @@ Deno.serve(async (req) => {
       .select("id, name, payment_gateway, payment_gateways, currency_code")
       .eq("id", club_id)
       .maybeSingle();
+    if (clubErr) {
+      console.error("payfast-create-checkout: club lookup failed:", clubErr.message);
+      return json({ error: `Club lookup failed: ${clubErr.message}` }, 500);
+    }
     if (!club || !gatewayEnabled(club, "payfast")) {
       return json({ error: "PayFast is not configured for this club" }, 400);
     }

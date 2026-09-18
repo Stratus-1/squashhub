@@ -36,6 +36,12 @@ import { useSportyHqRatings, type SportyHqRating } from "@/hooks/use-sportyhq-ra
 import { useAssociationNumbers } from "@/hooks/use-association-numbers";
 import { useLeagueStrength } from "@/hooks/use-league-strength";
 import { refineOrderFromLeagueStats, describeStrength, type LeagueStrength } from "@/lib/ladder/league-strength";
+import { useCrossGenderLeagueSetting, useCrossGenderPlayers } from "@/hooks/use-cross-gender-league";
+import {
+  crossGenderStrengthKey,
+  describeCrossGender,
+  type CrossGenderQualification,
+} from "@/lib/leagues/cross-gender";
 import { Sparkles } from "lucide-react";
 
 
@@ -45,6 +51,7 @@ interface LadderMember {
   avatar_url: string | null;
   gender: string | null;
   ladder_position: number | null;
+  cross_gender_ladder_position: number | null;
   plays_league: boolean;
   enable_league_association_id: string | null;
 }

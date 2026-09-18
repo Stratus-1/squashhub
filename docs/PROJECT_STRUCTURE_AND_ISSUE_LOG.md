@@ -1762,3 +1762,10 @@ club" — a misleading message because the club lookup error was swallowed.
 
 Fix: select `currency_code`, and surface club-lookup errors explicitly instead
 of treating them as "gateway not configured".
+
+## 18 Sep 2026 — PayFast ITN signature mismatch (Uitsig) + monthly card payments
+
+- **Symptom:** Gerhard Fourie's R20 PayFast top-up succeeded at PayFast but never reflected. `payfast-itn` logged `signature mismatch` and returned 200, so PayFast did not retry.
+- **Cause:** our ITN signature always excluded empty fields and always appended the club passphrase. PayFast's own ITN sample keeps empty fields, and a merchant account may have no passphrase configured.
+- **Fix:** `pfItnSignatureMatches()` in `_shared/payfast.ts` accepts any of the four valid combinations (empty fields kept/dropped x passphrase/no passphrase). The payload is still confirmed with PayFast's server-side validate call, so security is unchanged. The stranded R20 session was settled manually.
+- **Recurring card payments (PayFast tokenisation):** `payfast-create-mandate`, `payfast-charge-mandates` (daily), `payfast-cancel-mandate`, and `payfast-itn` mandate activation. Stitch queue/submit jobs now filter `gateway='stitch'` so the two rails never collect the same mandate.

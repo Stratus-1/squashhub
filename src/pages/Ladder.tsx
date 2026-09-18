@@ -406,13 +406,26 @@ export default function Ladder() {
     ? leaguesList.find((l) => l.id === activeLeagueFilter) || null
     : null;
 
+  // Gender buckets. A member with no gender saved is NOT a man — keeping them in the
+  // men's ladder makes a split ladder look like one mixed ladder, so they get their own group.
+  const genderBucket = (gender?: string | null): "ladies" | "men" | "unknown" => {
+    const g = (gender || "").toLowerCase().trim();
+    if (!g) return "unknown";
+    return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
+  };
+
   const menPlayers = useMemo(() =>
-    (players || []).filter((p: any) => p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f") as LadderPlayer[],
+    (players || []).filter((p: any) => genderBucket(p.gender) === "men") as LadderPlayer[],
     [players]
   );
 
   const ladiesPlayers = useMemo(() =>
-    (players || []).filter((p: any) => p.gender?.toLowerCase() === "female" || p.gender?.toLowerCase() === "ladies" || p.gender?.toLowerCase() === "f") as LadderPlayer[],
+    (players || []).filter((p: any) => genderBucket(p.gender) === "ladies") as LadderPlayer[],
+    [players]
+  );
+
+  const unknownGenderPlayers = useMemo(() =>
+    (players || []).filter((p: any) => genderBucket(p.gender) === "unknown") as LadderPlayer[],
     [players]
   );
 

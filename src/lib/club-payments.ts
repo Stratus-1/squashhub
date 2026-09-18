@@ -37,6 +37,25 @@ export function clearPendingPaynowSession(sid?: string) {
   } catch { /* noop */ }
 }
 
+// PayFast pending-session helpers (same pattern as Paynow)
+const PAYFAST_PENDING_KEY = "sh.payfast.pending";
+export function rememberPendingPayfastSession(sessionId: string, returnPath: string) {
+  try { localStorage.setItem(PAYFAST_PENDING_KEY, JSON.stringify({ sessionId, returnPath })); } catch { /* noop */ }
+}
+export function getPendingPayfastSession(): { sessionId: string; returnPath: string } | null {
+  try {
+    const raw = localStorage.getItem(PAYFAST_PENDING_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+export function clearPendingPayfastSession(sid?: string) {
+  try {
+    if (!sid) { localStorage.removeItem(PAYFAST_PENDING_KEY); return; }
+    const cur = getPendingPayfastSession();
+    if (cur?.sessionId === sid) localStorage.removeItem(PAYFAST_PENDING_KEY);
+  } catch { /* noop */ }
+}
+
 export interface StartCheckoutOpts {
   clubId: string;
   clubMemberId: string;

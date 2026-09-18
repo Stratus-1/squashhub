@@ -149,10 +149,13 @@ export default function BarCounter() {
       const { data, error } = await supabase.rpc("bar_counter_unlock", { _code: code, _pin: pin } as any);
       if (error) throw error;
       const t = (data as any)?.token as string;
+      const who = ((data as any)?.label as string) ?? null;
       localStorage.setItem(tokenKey(code), t);
+      if (who) localStorage.setItem(operatorKey(code), who);
+      setOperator(who);
       setToken(t);
       setPin("");
-      toast.success("Counter unlocked");
+      toast.success(who ? `Counter unlocked — hi ${who}` : "Counter unlocked");
     } catch (e: any) {
       toast.error(e.message ?? "Could not unlock this device");
     } finally {

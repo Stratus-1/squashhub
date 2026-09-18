@@ -2448,7 +2448,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const rawPayload: Record<string, any> = {
       name: champName || defaultName,
       gender,
-      match_type: matchType,
+      match_type: effectiveMatchType,
       num_groups: numGroups,
       enable_playoffs: enablePlayoffs,
       champion_scope: championScope,
@@ -4763,7 +4763,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           .update(sanitizeDraftPayload({
             name: champName || defaultName,
             gender,
-            match_type: matchType,
+            match_type: effectiveMatchType,
             num_groups: numGroups,
             enable_playoffs: enablePlayoffs,
             champion_scope: championScope,
@@ -4866,7 +4866,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             club_id: clubId,
             name: champName || defaultName,
             gender,
-            match_type: matchType,
+            match_type: effectiveMatchType,
             num_groups: numGroups,
             enable_playoffs: enablePlayoffs,
             champion_scope: championScope,

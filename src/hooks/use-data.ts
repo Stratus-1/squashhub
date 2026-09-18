@@ -422,7 +422,7 @@ export function useCancelBooking() {
     mutationFn: async (bookingId: string) => {
       const { data: booking, error: loadError } = await supabase
         .from("bookings")
-        .select("id, source, external_id")
+        .select("id, source, external_id, club_id, club_member_id")
         .eq("id", bookingId)
         .maybeSingle();
       if (loadError) throw loadError;
@@ -442,12 +442,38 @@ export function useCancelBooking() {
         }
       }
 
+      // Bookings mirrored into GoBook must be released at the provider too,
+      // otherwise the slot stays blocked there after cancelling locally.
+      const gobookBookingId = externalId.match(/^gobook:(\d+)$/)?.[1] || "";
+      if (gobookBookingId && (booking as any)?.club_id) {
+        const { data: club } = await supabase
+          .from("clubs")
+          .select("gobook_api_enabled")
+          .eq("id", (booking as any).club_id)
+          .maybeSingle();
+        if ((club as any)?.gobook_api_enabled) {
+          const { data, error } = await supabase.functions.invoke("gobook-api", {
+            body: {
+              action: "cancel",
+              club_id: (booking as any).club_id,
+              club_member_id: (booking as any).club_member_id,
+              booking_id: gobookBookingId,
+            },
+          });
+          const providerError = error?.message || (data as any)?.error;
+          if (providerError) {
+            throw new Error(`GoBook cancellation failed: ${providerError}`);
+          }
+        }
+      }
+
       const { error } = await supabase
         .from("bookings")
         .update({ status: "cancelled" })
         .eq("id", bookingId);
       if (error) throw error;
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["my-bookings"] });

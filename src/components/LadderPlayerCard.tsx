@@ -41,6 +41,8 @@ interface Props {
   highlightChallengeable?: boolean;
   leagues?: LeagueChip[];
   sportyHqRating?: SportyHqRating;
+  /** Active association/NSA numbers for this member, e.g. ["NSF4207"]. */
+  associationNumbers?: string[];
   onLeagueClick?: (leagueId: string) => void;
   activeLeagueFilter?: string | null;
 }
@@ -55,6 +57,7 @@ export function LadderPlayerCard({
   highlightChallengeable,
   leagues = [],
   sportyHqRating,
+  associationNumbers = [],
   onLeagueClick,
   activeLeagueFilter,
 }: Props) {

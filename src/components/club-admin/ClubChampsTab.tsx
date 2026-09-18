@@ -6568,6 +6568,48 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     [inviteeRows, paymentRequired, entryFeeAmount],
   );
 
+  /**
+   * Players who withdrew (their own invitation link) or were cancelled by the
+   * organiser. They must never sit in the Players shortlist or an allocation —
+   * the draw would otherwise keep handing them fixtures/byes.
+   */
+  const withdrawnMemberIds = useMemo(() => {
+    const out = new Set<string>();
+    (inviteeRows as any[]).forEach((r) => {
+      if (!r.club_member_id) return;
+      if (classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }) === "declined") {
+        out.add(String(r.club_member_id));
+      }
+    });
+    return out;
+  }, [inviteeRows, paymentRequired, entryFeeAmount]);
+
+  useEffect(() => {
+    if (withdrawnMemberIds.size === 0) return;
+    setSelectedPlayerIds((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      withdrawnMemberIds.forEach((id) => {
+        if (next.delete(id)) changed = true;
+      });
+      return changed ? next : prev;
+    });
+    setPlayerOrder((prev) => {
+      const next = prev.filter((id) => !withdrawnMemberIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+    setGroupAssignments((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      withdrawnMemberIds.forEach((id) => {
+        if (next.delete(id)) changed = true;
+      });
+      return changed ? next : prev;
+    });
+  }, [withdrawnMemberIds]);
+
+
+
   /** Accepted entrants who belong to no source league — need a division by hand. */
   const acceptedNeedingDivision = useMemo(() => {
     const inAnyLeague = new Set<string>();

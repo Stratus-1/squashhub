@@ -775,6 +775,29 @@ export function LadderTab({ clubId }: { clubId: string }) {
         <Switch checked={mixedEnabled} onCheckedChange={toggleMixed} />
       </Card>
 
+      {!mixedEnabled && (
+        <Card className="p-3 flex items-center gap-3">
+          <ArrowRightLeft className="w-4 h-4 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">Ladies may play and be ranked in the men's league</p>
+            <p className="text-xs text-muted-foreground">
+              Ladies who played men's league games this season or last are offered automatically when
+              filling men's teams and are also shown on the men's ladder, keeping their place on the
+              ladies' ladder. They may play at any men's league level.
+              {clubFlags?.cross_gender_league_play_allowed == null
+                ? " Currently following your league's setting."
+                : ""}
+            </p>
+            {crossGenderOn && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {crossListedLadies.length} lady player{crossListedLadies.length === 1 ? "" : "s"} qualify
+              </p>
+            )}
+          </div>
+          <Switch checked={crossGenderOn} onCheckedChange={toggleCrossGender} />
+        </Card>
+      )}
+
       <Card className="p-3 flex items-center gap-3">
         <Sparkles className="w-4 h-4 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
@@ -871,7 +894,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
             affiliationsByMember={affiliationsByMember}
             sportyHqRatings={sportyHqRatings}
             associationNumbers={associationNumbers}
-            leagueStrength={leagueStrength}
+            leagueStrength={strengthSets?.mens ?? leagueStrength}
+            crossGender={crossGenderPlayers}
             onAllocated={handleAllocated}
           />
         </div>

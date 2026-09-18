@@ -296,6 +296,8 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
         </div>
       )}
 
+      {step === "stock-levels" && <StockLevelsTab clubId={clubId} />}
+
       {step === "member-sales" && (
         <div className="space-y-4">
 

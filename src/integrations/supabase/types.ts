@@ -14487,6 +14487,7 @@ export type Database = {
         Args: { _code: string; _pin: string }
         Returns: Json
       }
+      bar_open_tabs: { Args: { _club_id: string }; Returns: Json }
       bar_qr_charge_guest_tab_member: {
         Args: {
           _club_member_id: string

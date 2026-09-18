@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.bar_open_tabs(uuid) FROM anon;

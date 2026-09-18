@@ -430,6 +430,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
   const memberIdList = useMemo(() => (members as { id: string }[]).map((m) => m.id), [members]);
   const { data: sportyHqRatings } = useSportyHqRatings(memberIdList);
   const { data: associationNumbers } = useAssociationNumbers(memberIdList);
+  const { data: leagueStrength, isFetching: strengthLoading } = useLeagueStrength(clubId, associationNumbers);
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderMember[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderMember[] | null>(null);

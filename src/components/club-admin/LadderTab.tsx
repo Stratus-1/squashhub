@@ -69,8 +69,10 @@ function DraggablePlayerRow({
   currentAffiliations,
   sportyHqRating,
   associationNumbers = [],
+  strengthSummary,
   onAllocated,
 }: {
+  strengthSummary?: string;
   player: LadderMember;
   index: number;
   total: number;

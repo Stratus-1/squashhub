@@ -161,6 +161,9 @@ export function KnockoutCard({
           );
           const playoffReady = draws.length > 1 && leaguePlayoffReady(allDecided, aliveInLeague);
           const champion = finals?.complete ? finals.winner : draws.length === 1 ? draws[0].winner : null;
+          return (
+            <div key={gn} className="space-y-3">
+
 
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{groupLabel(gn)}</div>

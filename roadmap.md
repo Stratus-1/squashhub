@@ -36,4 +36,4 @@
 ## Court slots & GoBook banner (18 Sep 2026)
 - [x] Fix contradictory GoBook banners (setup-incomplete shown alongside live grid) — API mode no longer requires a URL
 - [x] Add 45-minute court slot option (settings dropdown, grid, duration choices 45/90)
-- [ ] Verify build clean
+- [x] Verify build clean

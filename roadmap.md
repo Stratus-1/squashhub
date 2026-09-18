@@ -21,7 +21,7 @@
 - [x] Reword invite: single "tap here to accept or decline" (new template awaiting WhatsApp approval)
 
 ## Cross-gender league play (18 Sep 2026)
-- [ ] Ladies with recent men's-league history offered automatically in men's league fill pools
-- [ ] Dual ladder listing + men's ranking for those ladies (ladies' position preserved)
-- [ ] Default ON for NSA clubs (association default), club override available
-- [ ] Cross-listed ladies exempt from the ±2 position movement cap — may play any men's league level
+- [x] Ladies with recent men's-league history offered automatically in men's league fill pools
+- [x] Dual ladder listing + men's ranking for those ladies (ladies' position preserved)
+- [x] Default ON for NSA clubs (association default), club override available
+- [x] Cross-listed ladies exempt from the ±2 position movement cap — may play any men's league level

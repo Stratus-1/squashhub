@@ -12,8 +12,11 @@ import {
 
   progressSummary,
   sectionProgression,
+  leaguePlayoffReady,
+  leaguePlayoffStageLabel,
   type ChampRound,
 } from "@/lib/tournaments/knockout-progression";
+
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
@@ -149,9 +152,19 @@ export function KnockoutCard({
           const draws = sections.filter((s) => s.section > 0).sort((a, b) => a.section - b.section);
           const finals = sections.find((s) => s.section === 0);
           const allDecided = draws.length > 1 && draws.every((s) => s.complete);
+          // The league is ready for its own play-off on total survivors, not
+          // on "every pool decided": 2 pools decided + 1 pool with 2 left = 4
+          // still in = semi-finals.
+          const aliveInLeague = draws.reduce(
+            (n, s) => n + s.entrants.filter((e) => !e.eliminated).length,
+            0,
+          );
+          const playoffReady = draws.length > 1 && leaguePlayoffReady(allDecided, aliveInLeague);
           const champion = finals?.complete ? finals.winner : draws.length === 1 ? draws[0].winner : null;
           return (
             <div key={gn} className="space-y-3">
+
+
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{groupLabel(gn)}</div>
                 {champion && (
@@ -231,11 +244,21 @@ export function KnockoutCard({
                 </div>
               )}
 
-              {canManage && allDecided && !finals && (
-                <Button size="sm" disabled={generate.isPending} onClick={() => generate.mutate({ groupNumber: gn })}>
-                  Generate league final ({draws.length} section winners)
-                </Button>
+              {canManage && playoffReady && !finals && (
+                <div className="space-y-1">
+                  <Button size="sm" disabled={generate.isPending} onClick={() => generate.mutate({ groupNumber: gn })}>
+                    {allDecided
+                      ? `Generate league final (${draws.length} section winners)`
+                      : `Generate ${leaguePlayoffStageLabel(aliveInLeague)} (${aliveInLeague} still in)`}
+                  </Button>
+                  {!allDecided && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Any pool game still outstanding no longer affects this play-off.
+                    </p>
+                  )}
+                </div>
               )}
+
             </div>
           );
         })}

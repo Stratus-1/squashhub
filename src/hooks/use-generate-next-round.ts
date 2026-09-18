@@ -12,7 +12,11 @@ import { fromExt } from "@/lib/supabase-ext";
 import { buildLeagueFinals, buildNextRound, sectionLetter } from "@/lib/tournaments/knockout";
 import { buildGraduatedNextRound } from "@/lib/tournaments/graduated";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
-import type { SectionProgression } from "@/lib/tournaments/knockout-progression";
+import {
+  leaguePlayoffReady,
+  type SectionProgression,
+} from "@/lib/tournaments/knockout-progression";
+
 
 /**
  * Every newly created round tells its players who they play, through exactly
@@ -154,11 +158,16 @@ export function useGenerateNextRound(opts: {
         return rows.length;
       }
 
-      // League final between section winners.
+      // League play-off between the players still standing.
+      //
+      // Historically this only ran once EVERY section was decided (one winner
+      // each). That blocked the common case an organiser actually wants: three
+      // pools, two of them decided and one with two players left = four still
+      // in the league, which is a semi-final. So the gate is now the league's
+      // TOTAL survivor count (2, 4 or 8), not "one survivor per pool".
       const sections = mine.filter((s) => s.section > 0);
       if (sections.length < 2) throw new Error("This league only has one section");
-      if (!sections.every((s) => s.complete)) throw new Error("Every section must be decided first");
-      if (mine.some((s) => s.section === 0)) throw new Error("The league final already exists");
+      if (mine.some((s) => s.section === 0)) throw new Error("The league play-off already exists");
       const deepest = Math.max(...sections.map((s) => s.currentRound));
       const { data: existingFinal, error: fErr } = await fromExt("club_champs_matches")
         .select("id")
@@ -167,22 +176,33 @@ export function useGenerateNextRound(opts: {
         .eq("section_number", 0)
         .limit(1);
       if (fErr) throw fErr;
-      if (existingFinal && existingFinal.length > 0) throw new Error("The league final already exists");
+      if (existingFinal && existingFinal.length > 0) throw new Error("The league play-off already exists");
+
+      const partnerFor = (s: SectionProgression, memberId: string): string | null => {
+        for (const m of s.currentRoundMatches as any[]) {
+          if (m?.player_a_member_id === memberId) return m?.partner_a_member_id ?? null;
+          if (m?.player_b_member_id === memberId) return m?.partner_b_member_id ?? null;
+        }
+        return null;
+      };
+      const survivors = sections.flatMap((s) =>
+        s.entrants
+          .filter((e) => !e.eliminated)
+          .map((e) => ({ section: s.section, memberId: e.memberId, partnerId: partnerFor(s, e.memberId) })),
+      );
+      if (!leaguePlayoffReady(sections.every((s) => s.complete), survivors.length)) {
+        throw new Error(
+          `A league play-off needs 2, 4 or 8 players still in — this league has ${survivors.length}.`,
+        );
+      }
+
+
       const rows = buildLeagueFinals({
         champId,
         groupNumber,
         round: deepest + 1,
-        sectionWinners: sections.map((s) => {
-          const m = s.currentRoundMatches[0];
-          const w = s.winner!;
-          const partner =
-            m?.player_a_member_id === w
-              ? m?.partner_a_member_id
-              : m?.player_b_member_id === w
-                ? m?.partner_b_member_id
-                : null;
-          return { section: s.section, memberId: w, partnerId: partner ?? null };
-        }),
+        sectionWinners: survivors,
+
       });
       if (rows.length === 0) throw new Error("Nothing to generate");
       const { error } = await fromExt("club_champs_matches").insert(rows as any);

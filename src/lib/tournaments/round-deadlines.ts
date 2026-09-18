@@ -101,13 +101,19 @@ export function mergeRoundDeadlines(
     const i = n - 1;
     while (out.length < i) out.push({ label: defaultRoundLabel(out.length), date: "" });
     const existing = out[i];
+    const plannedLabel = (existing?.label || "").trim();
+    const liveLabel = String(v.label || "").trim();
+    // A generic "Round N" is only a placeholder: when the live round carries a
+    // real name (Quarter-final, Semi-final, Final) that name wins.
+    const plannedIsGeneric = !plannedLabel || /^round\s*\d+$/i.test(plannedLabel);
     out[i] = {
       ...(existing || {}),
-      label: (existing?.label || "").trim() || String(v.label || "").trim() || defaultRoundLabel(i),
+      label: (plannedIsGeneric ? liveLabel || plannedLabel : plannedLabel) || defaultRoundLabel(i),
       // The organiser's planned date wins — only fill rounds that have none,
       // otherwise the published date appears to move on its own.
       date: isDate(existing?.date || "") ? existing!.date : v.date,
     };
+
   }
   return out;
 }

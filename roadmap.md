@@ -39,3 +39,9 @@
 - [x] Verify build clean
 
 - [ ] Check Lizani Slippers live-scoring dropouts (Nelspruit tournament)
+
+## Nelspruit round labelling (18 Sep 2026)
+- [x] League play-off gate uses total survivors (2/4/8) not "every pool decided"
+- [x] Round headings prefer each fixture's own stage label over "Round N"
+- [ ] Round headings group by stage, not round number (semi-finals under a QF heading)
+- [ ] Play-by date shown per heading must match the round actually planned

@@ -9,7 +9,7 @@
  *
  * Pure logic: no React, no network. Completed pool matches are only READ.
  */
-import type { SectionProgression } from "./knockout-progression";
+import { leaguePlayoffReady, type SectionProgression } from "./knockout-progression";
 import { sectionLetter } from "./knockout";
 import { suggestNextRoundBoard, type DrawBoard, type DrawEntrant } from "./draw-board";
 
@@ -21,11 +21,26 @@ export function finalsPools(sections: SectionProgression[]): SectionProgression[
   return sections.filter((s) => s.section > 0).sort((a, b) => a.section - b.section);
 }
 
-/** Ready only when EVERY pool of the league is decided and 2+ winners exist. */
+/** Total players still standing across the pools of one league. */
+export function leagueSurvivorCount(sections: SectionProgression[]): number {
+  return finalsPools(sections).reduce(
+    (n, p) => n + p.entrants.filter((e) => !e.eliminated).length,
+    0,
+  );
+}
+
+/**
+ * Ready when every pool is decided, OR the pools together are down to a
+ * bracket-sized field (2 / 4 / 8) — two decided pools plus a pool with two
+ * players left is a semi-final, not a wait.
+ */
 export function finalsReady(sections: SectionProgression[]): boolean {
   const pools = finalsPools(sections);
-  return pools.length >= 2 && pools.every((p) => p.complete && !!p.winner);
+  if (pools.length < 2) return false;
+  if (pools.every((p) => p.complete && !!p.winner)) return true;
+  return leaguePlayoffReady(false, leagueSurvivorCount(sections));
 }
+
 
 /** Round number the finals sit at: one after the deepest pool round. */
 export function finalsRoundNumber(sections: SectionProgression[]): number {
@@ -42,27 +57,41 @@ export function leagueFinalsEntrants(
   sections: SectionProgression[],
   nameOf: (id: string) => string = () => "Player",
 ): DrawEntrant[] {
+  const pools = finalsPools(sections);
+  const allDecided = pools.length >= 2 && pools.every((p) => p.complete && !!p.winner);
+  const partnerOf = (p: SectionProgression, id: string): string | null => {
+    for (const m of p.currentRoundMatches as any[]) {
+      if (m?.player_a_member_id === id) return m?.partner_a_member_id ?? null;
+      if (m?.player_b_member_id === id) return m?.partner_b_member_id ?? null;
+    }
+    return null;
+  };
   const out: DrawEntrant[] = [];
-  for (const p of finalsPools(sections)) {
-    const w = p.winner;
-    if (!p.complete || !w) continue;
-    const m = p.currentRoundMatches[0] as any;
-    const partnerId =
-      m?.player_a_member_id === w
-        ? m?.partner_a_member_id ?? null
-        : m?.player_b_member_id === w
-          ? m?.partner_b_member_id ?? null
-          : null;
-    out.push({
-      id: w,
-      name: nameOf(w),
-      partnerId,
-      seed: out.length + 1,
-      rankLabel: `Pool ${sectionLetter(p.section)} winner`,
-    });
+  for (const p of pools) {
+    // Decided pool → its winner. Pool still running → everyone still in it.
+    const ids = allDecided
+      ? p.complete && p.winner
+        ? [p.winner]
+        : []
+      : p.complete && p.winner
+        ? [p.winner]
+        : p.entrants.filter((e) => !e.eliminated).map((e) => e.memberId);
+    for (const id of ids) {
+      out.push({
+        id,
+        name: nameOf(id),
+        partnerId: partnerOf(p, id),
+        seed: out.length + 1,
+        rankLabel:
+          p.complete && p.winner === id
+            ? `Pool ${sectionLetter(p.section)} winner`
+            : `Pool ${sectionLetter(p.section)}`,
+      });
+    }
   }
   return out;
 }
+
 
 /**
  * Suggested finals pairing — the same default as the automatic generator

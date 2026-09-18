@@ -14,9 +14,12 @@ import type { KnockoutMatchLike } from "./knockout";
 import {
   generateActionLabel,
   sectionProgression,
+  leaguePlayoffReady,
+  leaguePlayoffStageLabel,
   type ChampRound,
   type SectionProgression,
 } from "./knockout-progression";
+
 
 /** The single next thing an admin can do with a draw. */
 export type RoundAction = "generate" | "schedule" | "await_results" | "none";
@@ -187,11 +190,20 @@ export function divisionControls(
       const pools = sorted.filter((s) => s.section > 0);
       const hasFinalsBracket = sorted.some((s) => s.section === 0);
 
-      // One champion per league: the pool winners still have to meet.
+      // One champion per league: the players still standing have to meet. The
+      // trigger is the league's TOTAL survivor count (2 / 4 / 8), so two
+      // decided pools plus one pool with two players left = a semi-final. All
+      // pools decided still qualifies whatever the count.
       if (scope === "division" && pools.length > 1 && !hasFinalsBracket) {
         const decided = pools.filter((s) => s.decided).length;
-        const label = leagueFinalStageLabel(pools.length);
-        const ready = decided === pools.length;
+        const alive = states
+          .filter((s) => s.groupNumber === groupNumber && s.section > 0)
+          .reduce((n, s) => n + s.entrants.filter((e) => !e.eliminated).length, 0);
+        const allDecided = decided === pools.length;
+        const ready = leaguePlayoffReady(allDecided, alive);
+        const label = allDecided
+          ? leagueFinalStageLabel(pools.length)
+          : leaguePlayoffStageLabel(alive).replace(/^./, (c) => c.toUpperCase());
         sorted = sorted.map((s) =>
           s.section > 0 && s.decided
             ? { ...s, headline: `${s.headline} The winner goes through to the ${label.toLowerCase()}.` }
@@ -202,21 +214,26 @@ export function divisionControls(
           section: 0,
           stageLabel: label,
           nextStageLabel: null,
-          activeCount: decided,
+          activeCount: allDecided ? decided : alive,
           completed: 0,
           total: 0,
           unscheduled: 0,
           headline: ready
-            ? `All ${pools.length} pool winners are decided — ready for the ${label.toLowerCase()}.`
-            : `${label} pending — ${decided} of ${pools.length} pool winners decided.`,
+            ? allDecided
+              ? `All ${pools.length} pool winners are decided — ready for the ${label.toLowerCase()}.`
+              : `${alive} players still in across the pools — ready for the ${label.toLowerCase()}.`
+            : `${label} pending — ${alive} players still in across the pools.`,
           action: ready ? "generate" : "await_results",
           actionLabel: ready ? `Generate ${label.toLowerCase()}` : null,
           canGenerate: ready,
-          blockedReason: ready ? null : "Every pool must be decided first.",
+          blockedReason: ready
+            ? null
+            : `A play-off needs every pool decided, or 2, 4 or 8 players still in — there are ${alive}.`,
           decided: false,
           winner: null,
           progression: null,
         });
+
         sorted.sort((a, b) => a.section - b.section);
       }
 

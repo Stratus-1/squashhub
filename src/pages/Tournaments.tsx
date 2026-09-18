@@ -648,53 +648,84 @@ export default function Tournaments() {
   };
 
   /**
+   * The round row that belongs to ONE fixture: its own league + section first,
+   * then the league, then the tournament. Sections of the same round number can
+   * be at completely different stages (a pool round-5 game and a semi-final),
+   * so a fixture must never read another section's row.
+   */
+  const matchRoundRow = (m: any): any | undefined => {
+    const rows = roundsByChamp.get(m.champ_id) || [];
+    const sameRound = rows.filter((r: any) => Number(r.round_number) === Number(m.round_number));
+    return (
+      sameRound.find(
+        (r: any) =>
+          Number(r.group_number) === Number(m.group_number) &&
+          Number(r.section_number) === Number(m.section_number),
+      ) ||
+      sameRound.find((r: any) => Number(r.group_number) === Number(m.group_number)) ||
+      undefined
+    );
+  };
+
+  const isGenericRoundLabel = (s: string) => !s || /^round\s*\d+$/i.test(s.trim());
+
+  /** Semi-final / Quarter-final / Round 5 — the stage THIS fixture belongs to. */
+  const matchStageLabel = (m: any): string => {
+    const own = String(m?.stage_label || "").trim();
+    if (!isGenericRoundLabel(own)) return own;
+    const row = String(matchRoundRow(m)?.label || "").trim();
+    if (!isGenericRoundLabel(row)) return row;
+    const planned = roundMeta(m.champ_id, m.round_number).label;
+    return planned || `Round ${Number(m.round_number) || 1}`;
+  };
+
+  /**
    * The play-by date for ONE fixture: its own section's round row first, so a
    * later section of the same round never changes another section's date.
    */
   const matchPlayBy = (m: any): string | null => {
-    // The round's published date is fixed for everyone in that round. Only a
-    // round the plan never dated falls back to the section's own row.
-    const planned = roundMeta(m.champ_id, m.round_number).date;
-    if (planned) return planned;
-    const rows = roundsByChamp.get(m.champ_id) || [];
-    const exact = rows.find(
-      (r: any) =>
-        Number(r.round_number) === Number(m.round_number) &&
-        Number(r.group_number) === Number(m.group_number) &&
-        Number(r.section_number) === Number(m.section_number),
-    );
-    return exact?.play_by ? String(exact.play_by).slice(0, 10) : null;
+    const own = matchRoundRow(m)?.play_by;
+    if (own) return String(own).slice(0, 10);
+    return roundMeta(m.champ_id, m.round_number).date;
   };
 
   const renderRoundGroups = (list: any[]) => {
-    const groups = new Map<number, any[]>();
+    // Grouped by STAGE, not by round number: a league that reached its
+    // semi-final in round 5 must not sit under another league's "Round 5".
+    const groups = new Map<string, any[]>();
+    const order = new Map<string, number>();
     list.forEach((m) => {
       const n = Number(m.round_number);
-      const key = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
+      const num = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
+      const key = num === 0 ? "\u0000pool" : matchStageLabel(m);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
+      const prev = order.get(key);
+      if (prev === undefined || num < prev) order.set(key, num);
     });
-    const keys = Array.from(groups.keys()).sort((a, b) => (a === 0 ? 1 : b === 0 ? -1 : a - b));
+    const keys = Array.from(groups.keys()).sort((a, b) => {
+      if (a === "\u0000pool") return 1;
+      if (b === "\u0000pool") return -1;
+      return (order.get(a) ?? 0) - (order.get(b) ?? 0) || a.localeCompare(b);
+    });
+
     return (
       <div className="space-y-2">
-        {keys.map((n) => {
-          const items = groups.get(n)!;
-          // Progress is measured against every game of that round, not just
-          // the filtered view.
-          // Only the tournaments actually shown in this section count — a
-          // round heading must never total up round 1 of every tournament.
+        {keys.map((key) => {
+          const items = groups.get(key)!;
+          const isPool = key === "\u0000pool";
+          // Progress is measured against every game at this stage, not just
+          // the filtered view — and only for the tournaments shown here.
           const champsHere = new Set(items.map((m: any) => m.champ_id));
           const all = (allMatches as any[]).filter((m: any) => {
+            if (m.status === "placeholder" || !champsHere.has(m.champ_id)) return false;
             const r = Number(m.round_number);
-            const k = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
-            return k === n && m.status !== "placeholder" && champsHere.has(m.champ_id);
+            const num = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
+            return isPool ? num === 0 : num !== 0 && matchStageLabel(m) === key;
           });
           const done = all.filter((m: any) => isTerminalMatchStatus(m.status)).length;
           const outstanding = all.length - done;
-          const labels = Array.from(
-            new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).label).filter(Boolean)),
-          );
-          const heading = n === 0 ? "Pool games" : labels.join(" / ") || `Round ${n}`;
+          const heading = isPool ? "Pool games" : key;
           const dates = Array.from(
             new Set(items.map((m: any) => matchPlayBy(m)).filter(Boolean)),
           ).sort() as string[];
@@ -703,7 +734,7 @@ export default function Tournaments() {
             new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).notes).filter(Boolean)),
           );
           return (
-            <details key={n} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
+            <details key={key} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
               <summary className="cursor-pointer select-none flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
                 <span className="uppercase tracking-wider">{heading}</span>
@@ -712,7 +743,7 @@ export default function Tournaments() {
                     ? `${outstanding} game${outstanding === 1 ? "" : "s"} left of ${all.length}`
                     : `${items.length} game${items.length === 1 ? "" : "s"}`}
                 </span>
-                {n !== 0 && outstanding > 0 && done > 0 && (
+                {!isPool && outstanding > 0 && done > 0 && (
                   <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/60 text-amber-700 dark:text-amber-300">
                     still outstanding
                   </Badge>
@@ -730,6 +761,7 @@ export default function Tournaments() {
             </details>
           );
         })}
+
       </div>
     );
   };

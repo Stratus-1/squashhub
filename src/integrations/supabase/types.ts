@@ -3913,6 +3913,7 @@ export type Database = {
           billing_exempt: boolean
           club_id: string
           club_member_number: string | null
+          cross_gender_ladder_position: number | null
           email: string | null
           enable_league_association_id: string | null
           face_consent_at: string | null
@@ -3966,6 +3967,7 @@ export type Database = {
           billing_exempt?: boolean
           club_id: string
           club_member_number?: string | null
+          cross_gender_ladder_position?: number | null
           email?: string | null
           enable_league_association_id?: string | null
           face_consent_at?: string | null
@@ -4019,6 +4021,7 @@ export type Database = {
           billing_exempt?: boolean
           club_id?: string
           club_member_number?: string | null
+          cross_gender_ladder_position?: number | null
           email?: string | null
           enable_league_association_id?: string | null
           face_consent_at?: string | null
@@ -5182,6 +5185,7 @@ export type Database = {
           contact_person_name: string | null
           created_at: string
           created_by: string | null
+          cross_gender_league_play_allowed: boolean | null
           currency_code: string
           currency_symbol: string
           door_auto_unlock_enabled: boolean
@@ -5326,6 +5330,7 @@ export type Database = {
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
+          cross_gender_league_play_allowed?: boolean | null
           currency_code?: string
           currency_symbol?: string
           door_auto_unlock_enabled?: boolean
@@ -5470,6 +5475,7 @@ export type Database = {
           contact_person_name?: string | null
           created_at?: string
           created_by?: string | null
+          cross_gender_league_play_allowed?: boolean | null
           currency_code?: string
           currency_symbol?: string
           door_auto_unlock_enabled?: boolean
@@ -7425,6 +7431,7 @@ export type Database = {
           bonus_points_value: number
           club_id: string | null
           created_at: string
+          cross_gender_league_play_allowed: boolean
           cross_gender_subs_allowed: boolean
           doubles_rubbers: number | null
           enforce_sub_rules: boolean
@@ -7465,6 +7472,7 @@ export type Database = {
           bonus_points_value?: number
           club_id?: string | null
           created_at?: string
+          cross_gender_league_play_allowed?: boolean
           cross_gender_subs_allowed?: boolean
           doubles_rubbers?: number | null
           enforce_sub_rules?: boolean
@@ -7505,6 +7513,7 @@ export type Database = {
           bonus_points_value?: number
           club_id?: string | null
           created_at?: string
+          cross_gender_league_play_allowed?: boolean
           cross_gender_subs_allowed?: boolean
           doubles_rubbers?: number | null
           enforce_sub_rules?: boolean

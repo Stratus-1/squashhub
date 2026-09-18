@@ -490,12 +490,19 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     Up to {money(m.max_amount_cents / 100)} charged to your card each month
                     {m.debit_day ? ` · monthly charge day ${m.debit_day}` : ""}
+                    {m.status === "active" && m.next_charge_date
+                      ? ` · next ${formatDate(new Date(`${m.next_charge_date}T00:00:00`))}`
+                      : ""}
+                    {m.months_total
+                      ? ` · instalment ${Math.min(Number(m.months_charged || 0) + 1, m.months_total)} of ${m.months_total}`
+                      : ""}
                   </p>
 
                   {m.status === "pending" && (
                     <div className="mt-1 space-y-1">
                       <p className="text-[11px] text-amber-700 leading-snug">
-                        Waiting for you to finish the authorisation at Stitch. Your first monthly
+                        Waiting for you to finish the card authorisation
+                        {m.gateway === "payfast" ? " at PayFast" : " at Stitch"}. Your first monthly
                         instalment is charged there and credited to your club account.
                         Don't start a new setup — reopen this one.
                       </p>
@@ -505,6 +512,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                             Finish authorisation
                           </Button>
                         )}
+                        {m.gateway !== "payfast" && (
                         <button
                           type="button"
                           onClick={() => refreshMandate(m.id)}

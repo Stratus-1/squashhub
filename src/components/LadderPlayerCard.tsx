@@ -41,6 +41,8 @@ interface Props {
   highlightChallengeable?: boolean;
   leagues?: LeagueChip[];
   sportyHqRating?: SportyHqRating;
+  /** Active association/NSA numbers for this member, e.g. ["NSF4207"]. */
+  associationNumbers?: string[];
   onLeagueClick?: (leagueId: string) => void;
   activeLeagueFilter?: string | null;
 }
@@ -55,6 +57,7 @@ export function LadderPlayerCard({
   highlightChallengeable,
   leagues = [],
   sportyHqRating,
+  associationNumbers = [],
   onLeagueClick,
   activeLeagueFilter,
 }: Props) {
@@ -101,6 +104,15 @@ export function LadderPlayerCard({
               <Badge variant="secondary" className="text-[9px] shrink-0 px-1 py-0">You</Badge>
             )}
             <SportyHqRatingBadge rating={sportyHqRating} />
+            {associationNumbers.map((num) => (
+              <span
+                key={num}
+                title="Association / NSA number"
+                className="text-[9px] font-mono font-semibold px-1.5 py-0 rounded-full border border-border bg-muted text-muted-foreground shrink-0 leading-tight"
+              >
+                {num}
+              </span>
+            ))}
             {leagues.length > 0 ? (
               leagues.map((lg) => {
                 const isActive = activeLeagueFilter === lg.id;

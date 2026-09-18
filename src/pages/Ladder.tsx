@@ -15,6 +15,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useLadder, useCreateChallenge, useSquashTotals, useHeadToHead } from "@/hooks/use-data";
 import { useMyClub, useMyClubMember } from "@/hooks/use-club";
 import { useSportyHqRatings } from "@/hooks/use-sportyhq-ratings";
+import { useAssociationNumbers } from "@/hooks/use-association-numbers";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -406,13 +407,26 @@ export default function Ladder() {
     ? leaguesList.find((l) => l.id === activeLeagueFilter) || null
     : null;
 
+  // Gender buckets. A member with no gender saved is NOT a man — keeping them in the
+  // men's ladder makes a split ladder look like one mixed ladder, so they get their own group.
+  const genderBucket = (gender?: string | null): "ladies" | "men" | "unknown" => {
+    const g = (gender || "").toLowerCase().trim();
+    if (!g) return "unknown";
+    return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
+  };
+
   const menPlayers = useMemo(() =>
-    (players || []).filter((p: any) => p.gender?.toLowerCase() !== "female" && p.gender?.toLowerCase() !== "ladies" && p.gender?.toLowerCase() !== "f") as LadderPlayer[],
+    (players || []).filter((p: any) => genderBucket(p.gender) === "men") as LadderPlayer[],
     [players]
   );
 
   const ladiesPlayers = useMemo(() =>
-    (players || []).filter((p: any) => p.gender?.toLowerCase() === "female" || p.gender?.toLowerCase() === "ladies" || p.gender?.toLowerCase() === "f") as LadderPlayer[],
+    (players || []).filter((p: any) => genderBucket(p.gender) === "ladies") as LadderPlayer[],
+    [players]
+  );
+
+  const unknownGenderPlayers = useMemo(() =>
+    (players || []).filter((p: any) => genderBucket(p.gender) === "unknown") as LadderPlayer[],
     [players]
   );
 
@@ -429,9 +443,10 @@ export default function Ladder() {
     } else {
       menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
       ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+      unknownGenderPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
     }
     return map;
-  }, [menPlayers, ladiesPlayers, mixedLadderEnabled, players]);
+  }, [menPlayers, ladiesPlayers, unknownGenderPlayers, mixedLadderEnabled, players]);
 
   const myPosition = useMemo(() => {
     if (!myMemberId) return null;
@@ -452,9 +467,13 @@ export default function Ladder() {
   const allPlayers = useMemo(() => (players || []) as LadderPlayer[], [players]);
 
   // National strength (SportyHQ) shown beside each member on the ladder.
-  const { data: sportyHqRatings } = useSportyHqRatings(
-    useMemo(() => allPlayers.map((p) => p.club_member_id).filter(Boolean) as string[], [allPlayers]),
+  const ladderMemberIds = useMemo(
+    () => allPlayers.map((p) => p.club_member_id).filter(Boolean) as string[],
+    [allPlayers],
   );
+  const { data: sportyHqRatings } = useSportyHqRatings(ladderMemberIds);
+  // Association / NSA numbers shown beside each member.
+  const { data: associationNumbers } = useAssociationNumbers(ladderMemberIds);
 
   // How many open challenges I already have (drives the same limit the DB enforces)
   const { data: myOpenOutgoing = 0 } = useQuery({
@@ -507,8 +526,7 @@ export default function Ladder() {
   const getPlayerGenderGroup = (player: LadderPlayer): string => {
     // One combined ladder → everyone is in the same challenge group.
     if (mixedLadderEnabled) return myGenderGroup;
-    const g = (player.gender || "").toLowerCase();
-    return (g === "female" || g === "ladies" || g === "f") ? "ladies" : "men";
+    return genderBucket(player.gender);
   };
 
   const canChallenge = (player: LadderPlayer): string | null => {
@@ -659,6 +677,7 @@ export default function Ladder() {
               highlightChallengeable={isChallengeable(player)}
               leagues={getPlayerLeagues(player)}
               sportyHqRating={sportyHqRatings?.get(player.club_member_id)}
+              associationNumbers={associationNumbers?.get(player.club_member_id)}
               onLeagueClick={handleLeagueClick}
               activeLeagueFilter={activeLeagueFilter}
             />
@@ -724,6 +743,7 @@ export default function Ladder() {
                     highlightChallengeable={isChallengeable(player)}
                     leagues={getPlayerLeagues(player)}
                     sportyHqRating={sportyHqRatings?.get(player.club_member_id)}
+                    associationNumbers={associationNumbers?.get(player.club_member_id)}
                     onLeagueClick={handleLeagueClick}
                     activeLeagueFilter={activeLeagueFilter}
                   />
@@ -805,6 +825,10 @@ export default function Ladder() {
               <div className="grid grid-cols-1 gap-4">
                 {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
                 {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
+                {unknownGenderPlayers.length > 0 &&
+                  (groupByLeague
+                    ? renderGrouped("Gender not set", unknownGenderPlayers)
+                    : renderColumn("Gender not set", unknownGenderPlayers))}
               </div>
             )
           }
@@ -823,6 +847,10 @@ export default function Ladder() {
         <div className="px-4 mt-3 mb-4 grid grid-cols-1 gap-4">
           {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
           {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
+          {unknownGenderPlayers.length > 0 &&
+            (groupByLeague
+              ? renderGrouped("Gender not set", unknownGenderPlayers)
+              : renderColumn("Gender not set", unknownGenderPlayers))}
         </div>
       )}
 

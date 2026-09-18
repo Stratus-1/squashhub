@@ -1,7 +1,8 @@
 /**
- * Counter mode setup — lets a club admin / bar-permission user set the short
- * staff PIN that unlocks a bar tablet from the menu QR code (no login needed),
- * and sign out every unlocked device.
+ * Counter mode setup — lets a club admin / bar-permission user manage the short
+ * staff PINs that unlock a bar tablet from the menu QR code (no login needed).
+ * Each person behind the bar gets their own named PIN (up to 10), so the club
+ * can see who served which tab.
  */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,48 +13,94 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Store, Loader2, CheckCircle2 } from "lucide-react";
+import { Store, Loader2, Plus, Trash2, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+const MAX_OPERATORS = 10;
+
+interface Operator {
+  id: string;
+  label: string;
+  updated_at: string;
+  unlocked: number;
+}
 
 export function CounterModeCard({ clubId }: { clubId?: string | null }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [pin, setPin] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newPin, setNewPin] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editPin, setEditPin] = useState("");
 
-  const { data: status, refetch: refetchStatus } = useQuery({
-    queryKey: ["bar-counter-status", clubId],
+  const { data: operators = [], refetch } = useQuery({
+    queryKey: ["bar-counter-operators", clubId],
     enabled: !!clubId,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("bar_counter_status", { _club_id: clubId } as any);
+      const { data, error } = await supabase.rpc("bar_counter_operators", { _club_id: clubId } as any);
       if (error) throw error;
-      return data as any;
+      return (data ?? []) as unknown as Operator[];
     },
   });
 
-  async function save() {
+  const unlockedTotal = operators.reduce((s, o) => s + Number(o.unlocked || 0), 0);
+
+  async function addOperator() {
     setSaving(true);
     try {
       const { error } = await supabase.rpc("bar_counter_set_pin", {
-        _club_id: clubId, _pin: pin, _label: "Bar counter",
+        _club_id: clubId, _pin: newPin, _label: newName.trim(), _device_id: null,
       } as any);
       if (error) throw error;
-      setPin("");
+      setNewName("");
+      setNewPin("");
+      await refetch();
       qc.invalidateQueries({ queryKey: ["bar-counter-status"] });
-      await refetchStatus();
-      toast.success("Counter PIN saved — unlocked devices were signed out");
+      toast.success("Counter PIN added");
     } catch (e: any) {
-      toast.error(e.message ?? "Could not save the counter PIN");
+      toast.error(e.message ?? "Could not add that counter PIN");
     } finally {
       setSaving(false);
     }
   }
 
-  async function revoke() {
+  async function changePin(op: Operator) {
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc("bar_counter_set_pin", {
+        _club_id: clubId, _pin: editPin, _label: op.label, _device_id: op.id,
+      } as any);
+      if (error) throw error;
+      setEditing(null);
+      setEditPin("");
+      await refetch();
+      toast.success(`${op.label}'s PIN changed — their devices were signed out`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not change that PIN");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeOperator(op: Operator) {
+    try {
+      const { error } = await supabase.rpc("bar_counter_remove_operator", {
+        _club_id: clubId, _device_id: op.id,
+      } as any);
+      if (error) throw error;
+      await refetch();
+      toast.success(`${op.label} removed`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not remove that person");
+    }
+  }
+
+  async function revokeAll() {
     try {
       const { error } = await supabase.rpc("bar_counter_revoke_devices", { _club_id: clubId } as any);
       if (error) throw error;
-      qc.invalidateQueries({ queryKey: ["bar-counter-status"] });
+      await refetch();
       toast.success("All counter devices signed out");
     } catch (e: any) {
       toast.error(e.message ?? "Could not sign devices out");
@@ -68,50 +115,91 @@ export function CounterModeCard({ clubId }: { clubId?: string | null }) {
         <div className="flex items-center gap-2 text-sm font-semibold">
           <Store className="w-4 h-4" /> Counter mode (no login)
         </div>
-        {status?.has_pin && (
-          <Badge variant="secondary" className="text-[11px]">
-            {status.unlocked_devices} device{status.unlocked_devices === 1 ? "" : "s"} unlocked
-          </Badge>
-        )}
+        <Badge variant="secondary" className="text-[11px]">
+          {unlockedTotal} device{unlockedTotal === 1 ? "" : "s"} unlocked
+        </Badge>
       </div>
       <p className="text-xs text-muted-foreground">
-        Whoever is behind the bar scans the club menu QR code, opens “Counter mode” and enters this PIN.
-        They can then run guest tabs for the evening without a SquashHub login. Charging a member's account
-        still needs that member's own Bar PIN.
+        Give each person who works the bar their own PIN (up to {MAX_OPERATORS}). They scan the club menu QR code,
+        open “Counter mode” and enter their PIN — no SquashHub login needed — and every tab they open is recorded
+        against their name. Charging a member's account still needs that member's own Bar PIN.
       </p>
-      <div className="text-[11px] flex items-center gap-1.5">
-        {status?.has_pin ? (
-          <span className="text-emerald-600 font-medium flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Counter PIN is set
-            {status.pin_updated_at
-              ? ` · last changed ${new Date(status.pin_updated_at).toLocaleString()}`
-              : ""}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">No counter PIN set yet.</span>
-        )}
-      </div>
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <Label className="text-[11px]">{status?.has_pin ? "New counter PIN" : "Counter PIN"} (4–8 digits)</Label>
-          <Input
-            inputMode="numeric" value={pin} maxLength={8}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-            className="h-10 tracking-widest"
-            placeholder="••••"
-          />
+
+      {operators.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground">No counter PINs yet.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {operators.map((op) => (
+            <div key={op.id} className="border rounded-md p-2 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{op.label}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    PIN set {new Date(op.updated_at).toLocaleDateString()}
+                    {op.unlocked > 0 ? ` · ${op.unlocked} device${op.unlocked === 1 ? "" : "s"} unlocked` : ""}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm" variant="ghost" className="h-8 gap-1 text-[11px]"
+                    onClick={() => { setEditing(editing === op.id ? null : op.id); setEditPin(""); }}
+                  >
+                    <KeyRound className="w-3.5 h-3.5" /> New PIN
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeOperator(op)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+              {editing === op.id && (
+                <div className="flex gap-2">
+                  <Input
+                    inputMode="numeric" value={editPin} maxLength={8} autoFocus
+                    onChange={(e) => setEditPin(e.target.value.replace(/\D/g, ""))}
+                    className="h-9 tracking-widest" placeholder="New PIN (4–8 digits)"
+                  />
+                  <Button size="sm" className="h-9" disabled={editPin.length < 4 || saving} onClick={() => changePin(op)}>
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-        <Button className="self-end h-10" disabled={pin.length < 4 || saving} onClick={save}>
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
-        </Button>
-      </div>
+      )}
+
+      {operators.length < MAX_OPERATORS && (
+        <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px]">Name</Label>
+              <Input
+                value={newName} maxLength={40}
+                onChange={(e) => setNewName(e.target.value)}
+                className="h-10" placeholder="e.g. Pete"
+              />
+            </div>
+            <div>
+              <Label className="text-[11px]">PIN (4–8 digits)</Label>
+              <Input
+                inputMode="numeric" value={newPin} maxLength={8}
+                onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
+                className="h-10 tracking-widest" placeholder="••••"
+              />
+            </div>
+          </div>
+          <Button className="h-10 gap-1" disabled={!newName.trim() || newPin.length < 4 || saving} onClick={addOperator}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" /> Add</>}
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2">
         <Button variant="secondary" size="sm" onClick={() => navigate("/bar/counter")}>
           Open counter mode
         </Button>
-        {status?.has_pin && (
-          <Button variant="outline" size="sm" onClick={revoke}>
+        {unlockedTotal > 0 && (
+          <Button variant="outline" size="sm" onClick={revokeAll}>
             Sign out all counter devices
           </Button>
         )}
@@ -119,4 +207,3 @@ export function CounterModeCard({ clubId }: { clubId?: string | null }) {
     </Card>
   );
 }
-

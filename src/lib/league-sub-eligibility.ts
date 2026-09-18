@@ -90,16 +90,22 @@ export function checkSubEligibility(
   if (!rules || rules.enforce_sub_rules === false) return { ok: true };
 
   const playerGender = normaliseGender(player.gender as any);
+  const crossGenderTarget =
+    target.gender !== "mixed" && target.gender !== "open" && !!playerGender && playerGender !== target.gender;
 
   // 1. Cross-gender check (always relevant when target is gendered)
-  if (target.gender !== "mixed" && target.gender !== "open" && playerGender && playerGender !== target.gender) {
-    if (!rules.cross_gender_subs_allowed) {
+  if (crossGenderTarget) {
+    if (!player.crossGenderLeaguePlayer && !rules.cross_gender_subs_allowed) {
       return {
         ok: false,
         reason: `Cross-gender subs not allowed (${playerGender} player → ${target.gender}'s team)`,
       };
     }
   }
+
+  // A recognised cross-gender league player may play at any level of the other
+  // gender's league — direction and movement caps do not apply to that placement.
+  if (player.crossGenderLeaguePlayer && crossGenderTarget) return { ok: true };
 
   // If we don't know where they last played, allow with warning (per user spec)
   if (player.homeLeagueNumber == null) {

@@ -47,6 +47,7 @@ interface Board {
 }
 
 const tokenKey = (code: string) => `sh.barcounter.token.${code}`;
+const operatorKey = (code: string) => `sh.barcounter.operator.${code}`;
 
 export default function BarCounter() {
   const { code } = useParams<{ code?: string }>();

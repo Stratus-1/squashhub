@@ -394,7 +394,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   async function cancelMandate(mandateId: string) {
     if (!confirm("Cancel this recurring card payment? You can set it up again later.")) return;
     try {
-      const { error } = await supabase.functions.invoke("stitch-cancel-mandate", {
+      const mandate = mandates.find((m) => m.id === mandateId);
+      const fn = mandate?.gateway === "payfast" ? "payfast-cancel-mandate" : "stitch-cancel-mandate";
+      const { error } = await supabase.functions.invoke(fn, {
         body: { mandate_id: mandateId },
       });
       if (error) throw error;

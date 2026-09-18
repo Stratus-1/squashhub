@@ -236,6 +236,14 @@ function DraggablePlayerRow({
                 No gender
               </span>
             )}
+            {crossGenderNote && (
+              <span
+                title={crossGenderNote}
+                className="text-[9px] font-semibold px-1.5 py-0 rounded-full border border-primary/40 bg-primary/10 text-primary shrink-0 leading-tight"
+              >
+                ♀ men's league
+              </span>
+            )}
           </div>
           {currentAffiliations.size > 0 && (
             <p className="text-[10px] text-muted-foreground truncate">
@@ -244,6 +252,9 @@ function DraggablePlayerRow({
                 .map((l) => l.abbreviation || l.name)
                 .join(" · ")}
             </p>
+          )}
+          {crossGenderNote && (
+            <p className="text-[10px] text-muted-foreground truncate">{crossGenderNote}</p>
           )}
           {strengthSummary && (
             <p className="text-[10px] text-muted-foreground truncate">{strengthSummary}</p>

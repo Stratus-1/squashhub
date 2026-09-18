@@ -77,9 +77,11 @@ function DraggablePlayerRow({
   sportyHqRating,
   associationNumbers = [],
   strengthSummary,
+  crossGenderNote,
   onAllocated,
 }: {
   strengthSummary?: string;
+  crossGenderNote?: string;
   player: LadderMember;
   index: number;
   total: number;

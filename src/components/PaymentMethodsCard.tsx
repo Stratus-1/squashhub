@@ -520,6 +520,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                         >
                           Check status
                         </button>
+                        )}
                       </div>
                     </div>
                   )}

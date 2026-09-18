@@ -134,7 +134,7 @@ function formatTimeDisplay(t: string) {
 
 function buildTimeSlots(stepMinutes: number, openTime?: string | null, lastSlotTime?: string | null) {
   const slots: string[] = [];
-  const step = stepMinutes === 60 ? 60 : stepMinutes === 40 ? 40 : 30;
+  const step = stepMinutes === 60 ? 60 : stepMinutes === 45 ? 45 : stepMinutes === 40 ? 40 : 30;
   // Club-configurable window. Defaults: 05:00 first slot, 22:00 last slot start
   // (40-min clubs historically start at 07:00 when no club setting exists).
   const defaultStart = step === 40 ? 7 * 60 : 5 * 60;
@@ -327,7 +327,7 @@ export default function Bookings() {
     guestName: string;
     playerMode: "none" | "member" | "guest" | "visitor";
     isFriendly: boolean;
-    duration: 30 | 40 | 60;
+    duration: 30 | 40 | 45 | 60 | 90;
     lightsOn: boolean;
     lightFeeSplit: "booker" | "shared";
     /** Confirmation + reminder choices for this booking. */
@@ -419,8 +419,8 @@ export default function Bookings() {
   // Admin picked an external provider but hasn't finished the setup (no URL,
   // or GoBook chosen without the API connection enabled yet).
   const externalSetupIncomplete =
-    !!externalProvider && externalProvider !== "none" &&
-    (!externalUrl || (externalProvider === "gobook" && !gobookApiMode));
+    !!externalProvider && externalProvider !== "none" && !gobookApiMode &&
+    (!externalUrl || externalProvider === "gobook");
 
   const lightsIntegrationEnabled = !!(myClub as any)?.lights_integration_enabled;
   const lightFeePerHour = lightsIntegrationEnabled ? ((myClub as any)?.light_fee_per_hour ?? 0) : 0;
@@ -445,7 +445,7 @@ export default function Bookings() {
   );
   const visitorFee = Number((myClub as any)?.visitor_booking_fee ?? 0);
   const rawSlot = Number((myClub as any)?.booking_slot_minutes);
-  const slotMinutes: 30 | 40 | 60 = (rawSlot === 60 ? 60 : rawSlot === 40 ? 40 : 30);
+  const slotMinutes: 30 | 40 | 45 | 60 = (rawSlot === 60 ? 60 : rawSlot === 40 ? 40 : rawSlot === 45 ? 45 : 30);
   const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));
   const maxBookingsPerDay = Math.max(1, Number((myClub as any)?.max_bookings_per_day ?? 4));
   const dynamicTimeSlots = useMemo(
@@ -1975,7 +1975,7 @@ export default function Bookings() {
             const isHour = time.endsWith(":00");
             // For 40-min clubs, slots don't align to the hour, so label every
             // row and skip the hourly separator rule to avoid drift.
-            const showTimeLabel = slotMinutes === 40 ? true : isHour;
+            const showTimeLabel = slotMinutes === 40 || slotMinutes === 45 ? true : isHour;
             const showHourSeparator = slotMinutes !== 40 && isHour && idx !== 0;
             return (
               <div
@@ -2546,7 +2546,7 @@ export default function Bookings() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Duration</Label>
                 <div className="flex gap-1.5">
-                  {(slotMinutes === 30 ? ([30, 60] as const) : slotMinutes === 40 ? ([40] as const) : ([60] as const)).map((d) => (
+                  {(slotMinutes === 30 ? ([30, 60] as const) : slotMinutes === 40 ? ([40] as const) : slotMinutes === 45 ? ([45, 90] as const) : ([60] as const)).map((d) => (
                     <Button
                       key={d}
                       size="sm"

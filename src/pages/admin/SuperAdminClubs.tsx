@@ -283,6 +283,7 @@ export default function SuperAdminClubs() {
                 <SelectContent>
                   <SelectItem value="30">30-minute slots</SelectItem>
                   <SelectItem value="40">40-minute slots (starts 07:00)</SelectItem>
+                  <SelectItem value="45">45-minute slots</SelectItem>
                   <SelectItem value="60">60-minute slots (full hours)</SelectItem>
                 </SelectContent>
               </Select>

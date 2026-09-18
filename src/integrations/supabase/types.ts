@@ -14080,6 +14080,10 @@ export type Database = {
         Args: { _journal_ref: string; _note?: string }
         Returns: Json
       }
+      admin_set_cross_gender_ladder: {
+        Args: { p_club_id: string; p_member_ids: string[] }
+        Returns: undefined
+      }
       age_group_for_age: { Args: { _age: number }; Returns: string }
       allocate_next_member_number: {
         Args: { _club_id: string }

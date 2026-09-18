@@ -369,16 +369,35 @@ export default function BarCounter() {
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
         <div>
           <h1 className="text-base font-semibold leading-tight">
-            {board.club_name} · Bar counter{operator ? ` · ${operator}` : ""}
+            {board.club_name} · Bar counter
           </h1>
           <p className="text-xs text-muted-foreground">
+            {operator ? <span className="font-medium text-foreground">Serving: {operator} · </span> : null}
             {board.tabs.length} open tab{board.tabs.length === 1 ? "" : "s"} ·{" "}
             {money(board.tabs.reduce((s, t) => s + Number(t.total || 0), 0))} outstanding
           </p>
         </div>
-        <Button size="icon" variant="ghost" onClick={() => refetch()} aria-label="Refresh">
-          <RefreshCw className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="icon" variant="ghost" onClick={() => refetch()} aria-label="Refresh">
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+          {operator && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (code) {
+                  localStorage.removeItem(tokenKey(code));
+                  localStorage.removeItem(operatorKey(code));
+                }
+                setOperator(null);
+                setToken(null);
+              }}
+            >
+              End shift
+            </Button>
+          )}
+        </div>
       </div>
 
       {settled ? (

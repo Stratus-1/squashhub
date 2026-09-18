@@ -34,6 +34,9 @@ import { LadderPendingMovesCard } from "@/components/club-admin/LadderPendingMov
 import { SportyHqRatingBadge } from "@/components/SportyHqRatingBadge";
 import { useSportyHqRatings, type SportyHqRating } from "@/hooks/use-sportyhq-ratings";
 import { useAssociationNumbers } from "@/hooks/use-association-numbers";
+import { useLeagueStrength } from "@/hooks/use-league-strength";
+import { refineOrderFromLeagueStats, describeStrength, type LeagueStrength } from "@/lib/ladder/league-strength";
+import { Sparkles } from "lucide-react";
 
 
 interface LadderMember {
@@ -66,8 +69,10 @@ function DraggablePlayerRow({
   currentAffiliations,
   sportyHqRating,
   associationNumbers = [],
+  strengthSummary,
   onAllocated,
 }: {
+  strengthSummary?: string;
   player: LadderMember;
   index: number;
   total: number;
@@ -231,6 +236,9 @@ function DraggablePlayerRow({
                 .join(" · ")}
             </p>
           )}
+          {strengthSummary && (
+            <p className="text-[10px] text-muted-foreground truncate">{strengthSummary}</p>
+          )}
         </div>
 
         {leagues.length > 0 && (
@@ -335,10 +343,11 @@ interface GenderLadderProps {
   affiliationsByMember: Map<string, Set<string>>;
   sportyHqRatings?: Map<string, SportyHqRating>;
   associationNumbers?: Map<string, string[]>;
+  leagueStrength?: Map<string, LeagueStrength | null>;
   onAllocated: () => void;
 }
 
-function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, associationNumbers, onAllocated }: GenderLadderProps) {
+function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, associationNumbers, leagueStrength, onAllocated }: GenderLadderProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
@@ -402,6 +411,11 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
                   currentAffiliations={currentAffiliations}
                   sportyHqRating={sportyHqRatings?.get(player.id)}
                   associationNumbers={associationNumbers?.get(player.id)}
+                  strengthSummary={
+                    leagueStrength?.get(player.id)
+                      ? describeStrength(leagueStrength.get(player.id)!)
+                      : undefined
+                  }
                   onAllocated={onAllocated}
                   onMoveTo={(playerId, targetIndex) => {
                     const fromIdx = list.findIndex((p) => p.id === playerId);
@@ -427,6 +441,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
   const memberIdList = useMemo(() => (members as { id: string }[]).map((m) => m.id), [members]);
   const { data: sportyHqRatings } = useSportyHqRatings(memberIdList);
   const { data: associationNumbers } = useAssociationNumbers(memberIdList);
+  const { data: leagueStrength, isFetching: strengthLoading } = useLeagueStrength(clubId, associationNumbers);
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderMember[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderMember[] | null>(null);
@@ -593,6 +608,35 @@ export function LadderTab({ clubId }: { clubId: string }) {
     [queryClient]
   );
 
+  // Propose (never save) a ladder order based on regional league history.
+  const handleRefineFromLeague = useCallback(() => {
+    if (!leagueStrength || leagueStrength.size === 0) {
+      toast.error("No regional league history found for these members yet");
+      return;
+    }
+    let moved = 0;
+    let ranked = 0;
+    if (mixedEnabled) {
+      const res = refineOrderFromLeagueStats(mixedOrder ?? mixedMembersList, leagueStrength);
+      setMixedOrder(res.order);
+      moved += res.moved;
+      ranked += res.order.length - res.unchangedWithoutData;
+    } else {
+      const men = refineOrderFromLeagueStats(menOrder ?? menMembers, leagueStrength);
+      setMenOrder(men.order);
+      const ladies = refineOrderFromLeagueStats(ladiesOrder ?? ladiesMembers, leagueStrength);
+      setLadiesOrder(ladies.order);
+      moved += men.moved + ladies.moved;
+      ranked +=
+        men.order.length - men.unchangedWithoutData + ladies.order.length - ladies.unchangedWithoutData;
+    }
+    if (moved === 0) {
+      toast.success(`Ladder already matches league form (${ranked} league players checked)`);
+    } else {
+      toast.success(`Suggested ${moved} change${moved === 1 ? "" : "s"} from ${ranked} league players — review and save`);
+    }
+  }, [leagueStrength, mixedEnabled, mixedOrder, mixedMembersList, menOrder, menMembers, ladiesOrder, ladiesMembers]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -622,6 +666,35 @@ export function LadderTab({ clubId }: { clubId: string }) {
         </div>
         <Switch checked={mixedEnabled} onCheckedChange={toggleMixed} />
       </Card>
+
+      <Card className="p-3 flex items-center gap-3">
+        <Sparkles className="w-4 h-4 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">Refine rankings from regional league stats</p>
+          <p className="text-xs text-muted-foreground">
+            Uses each member's regional league record — the league they play in, the position they
+            usually play in their team and how often they win — to suggest a more accurate order.
+            Members without league history stay exactly where they are. Nothing is saved until you
+            press Save on a ladder.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {strengthLoading
+              ? "Loading league history…"
+              : `${leagueStrength?.size ?? 0} members have league history`}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1 shrink-0"
+          disabled={strengthLoading || !leagueStrength?.size}
+          onClick={handleRefineFromLeague}
+        >
+          {strengthLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+          Refine
+        </Button>
+      </Card>
+
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -655,6 +728,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             affiliationsByMember={affiliationsByMember}
             sportyHqRatings={sportyHqRatings}
             associationNumbers={associationNumbers}
+            leagueStrength={leagueStrength}
             onAllocated={handleAllocated}
           />
         </div>
@@ -673,6 +747,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             affiliationsByMember={affiliationsByMember}
             sportyHqRatings={sportyHqRatings}
             associationNumbers={associationNumbers}
+            leagueStrength={leagueStrength}
             onAllocated={handleAllocated}
           />
           <GenderLadder
@@ -688,6 +763,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             affiliationsByMember={affiliationsByMember}
             sportyHqRatings={sportyHqRatings}
             associationNumbers={associationNumbers}
+            leagueStrength={leagueStrength}
             onAllocated={handleAllocated}
           />
         </div>

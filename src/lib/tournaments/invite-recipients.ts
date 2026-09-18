@@ -60,10 +60,16 @@ export function resolveInviteRecipients(input: {
     return pass(rows);
   }
 
+  const everyone = registrations.filter((r) => String(r.status || "").toLowerCase() !== "cancelled");
+
+  if (input.includeRegistered) {
+    if (everyone.length === 0) return fail("No invitees to notify.");
+    return pass(everyone);
+  }
+
   const pending = registrations.filter((r) => !SKIP_INVITE_STATUSES.has(String(r.status || "").toLowerCase()));
   if (pending.length > 0) return pass(pending);
 
-  const everyone = registrations.filter((r) => String(r.status || "").toLowerCase() !== "cancelled");
   if (everyone.length === 0) return fail("No invitees to notify.");
   if (!input.allowResendAll) {
     return fail("Everyone is already registered.");

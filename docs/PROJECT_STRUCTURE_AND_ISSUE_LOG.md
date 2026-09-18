@@ -1717,8 +1717,8 @@ Fix: the `league_planning` section now requires (a) at least one non-archived le
 - `club_members.id_number` / `address`: already protected by column-level grants (authenticated has SELECT on 49 of 51 columns); read via `club_member_private_fields()` for self/admins. Finding was stale — no change needed.
 - 17 Sep 15:29: REVERTED `club_champs` to `security_invoker = off`. Enabling invoker broke guest/anon access to tournament pages ("Tournament not found" when Vian tried to pay R600). The `tournaments` entrant policy and widened `can_view_tournament()` were kept (harmless, additive). Any future fix for the Security Definer View finding MUST preserve anonymous read of `club_champs` for invite/payment pages.
 
-## 18 Sep 2026 — Tournament invitation recipient greeting
+## 18 Sep 2026 — Shared tournament WhatsApp wording and player greeting
 
-- **Symptom:** invitation emails could say `Dear <member name>`, but the admin preview showed a generic greeting and WhatsApp invitations sent through the editable `club_notice` template carried no player name.
-- **Fix:** the preview now demonstrates `Dear <selected preview player>,` (or `Dear Player name,` before a player is selected), and each real WhatsApp invitation adds the resolved recipient name at delivery time. Test invitations use the same rule.
-- **Guard:** the greeting is delivery-time personalisation, not stored tournament wording. Organisers can still edit or remove the invitation/reminder opening without embedding one member's name into messages for everyone.
+- Tournament re-invitations previously used the approved generic `club_notice` wrapper, which incorrectly described them as updates about a club account.
+- Every club now uses the same `tournament_notice` utility template: tournament-specific heading, `Dear <player>`, editable organiser wording, and the personal tournament-entry URL.
+- This was not a Gordon's Bay configuration difference. Email added names during delivery, while WhatsApp's generic fallback had no player field. Recipient names remain delivery-time personalisation and are not stored in the editable tournament copy.

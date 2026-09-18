@@ -9,8 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import {
   buildDefaultTournamentInviteText,
-  buildTournamentInviteGreeting,
-  personalizeTournamentInvite,
   migrateLegacyTournamentInviteText,
 } from "@/lib/tournaments/invite-message";
 import type { TournamentPaymentMethod } from "@/lib/tournaments/payment-methods";
@@ -5994,29 +5992,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         for (const r of rows as any[]) {
           const link = await shortUrlForRegistration(r.id);
           const details = buildWhatsAppDetails(needsPayment);
-          const recipientName = resolveInviteeName(r.club_member_id)?.name || null;
-          const personalizedDetails = personalizeTournamentInvite(details, recipientName);
+          const recipientName = resolveInviteeName(r.club_member_id)?.name || "Player";
           try {
             await sendWhatsApp({
               clubId,
-              recipients: [{
-                member_id: r.club_member_id,
-                variables: { message: personalizedDetails },
-              }],
+              recipients: [{ member_id: r.club_member_id }],
               kind: "champ_invite",
               category: "utility",
               // Cold WhatsApp sends must use an approved template; the free-form
               // body is only used inside a 24h reply window.
-              // The approved generic utility template keeps the complete message
-              // editable. The older tournament template hard-coded an invitation
-              // sentence, which made reminder wording impossible.
-              templateKey: "club_notice",
+              // One shared tournament template is used by every club. Its message
+              // variable remains editable, so it also works for reminders.
+              templateKey: "tournament_notice",
               templateVariables: {
-                club: champName || "Tournament",
-                message: personalizedDetails,
-                link: `To accept or decline, tap here: ${link}`,
+                player: recipientName,
+                message: details,
+                link,
               },
-              body: `${personalizeTournamentInvite(msg, recipientName)}\n\n${details}\n${link}`,
+              body: `${msg}\n\n${details}\n${link}`,
               interaction: {
                 kind: "champ_entry",
                 targetId: champId,
@@ -6186,19 +6179,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // only the recipient changes, and no registration is updated.
         const needsPayment = paymentRequired && entryFeeAmount > 0;
         const details = buildWhatsAppDetails(needsPayment);
-        const personalizedDetails = personalizeTournamentInvite(details, previewMember.name);
         const wa = await sendWhatsApp({
           clubId,
           recipients: [{ phone: parsedPhone }],
           kind: "champ_invite_test",
           category: "utility",
-          templateKey: "club_notice",
+          templateKey: "tournament_notice",
           templateVariables: {
-            club: champName || "Tournament",
-            message: personalizedDetails,
-            link: `To accept or decline, tap here: ${previewUrl}`,
+            player: previewMember.name,
+            message: details,
+            link: previewUrl,
           },
-          body: `TEST INVITATION\n\n${personalizeTournamentInvite(buildInviteBody(), previewMember.name)}\n\n${details}\n${previewUrl}`,
+          body: `TEST INVITATION\n\n${buildInviteBody()}\n\n${details}\n${previewUrl}`,
           interaction: { kind: "champ_entry", targetId: champId, prompt: `TEST entry for ${champName || "tournament"}\n${previewUrl}` },
         });
         const waResult = wa.results?.[0];
@@ -6302,19 +6294,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         } else {
           const needsPayment = paymentRequired && entryFeeAmount > 0;
           const details = buildWhatsAppDetails(needsPayment);
-          const personalizedDetails = personalizeTournamentInvite(details, (myMember as any)?.name);
           const wa = await sendWhatsApp({
             clubId,
             recipients: [{ phone: myPhone }],
             kind: "champ_invite_test",
             category: "utility",
-            templateKey: "club_notice",
+            templateKey: "tournament_notice",
             templateVariables: {
-              club: champName || "Tournament",
-              message: personalizedDetails,
-              link: `To accept or decline, tap here: ${testUrl}`,
+              player: (myMember as any)?.name || "Player",
+              message: details,
+              link: testUrl,
             },
-            body: `TEST INVITATION\n\n${personalizeTournamentInvite(body, (myMember as any)?.name)}\n\n${details}\n${testUrl}`,
+            body: `TEST INVITATION\n\n${body}\n\n${details}\n${testUrl}`,
           });
           if (wa.results?.[0]?.status !== "sent") {
             throw new Error(wa.results?.[0]?.error || "The WhatsApp test could not be sent.");
@@ -12200,7 +12191,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         entryFeeRand={entryFeeRand}
         inviteExtraDetails={inviteExtraDetails}
         hasMultipleLeagues={(numGroups || 0) > 1}
-        previewRecipientName={testInvitePreviewAs?.name ?? sampleInvitee?.name ?? null}
+        previewRecipientName={testInvitePreviewAs?.name ?? sampleInvitee?.name ?? inviteeOptions[0]?.name ?? null}
         footer={
           editingChampId ? (
             <div className="rounded-md border border-dashed border-border/60 p-3 space-y-2">
@@ -12435,7 +12426,6 @@ function InvitePreviewDialog({
   inviteExtraDetails?: string;
   /** True when the fixture setup holds more than one league — only then does the CTA offer a category choice. */
   hasMultipleLeagues?: boolean;
-  /** Example recipient used to demonstrate delivery-time personalisation. */
   previewRecipientName?: string | null;
   /** Test-invite controls live under the preview, never on the messaging step. */
   footer?: React.ReactNode;
@@ -12450,6 +12440,7 @@ function InvitePreviewDialog({
     },
   });
   const clubLabel = previewClub || "Your club";
+  const recipientLabel = previewRecipientName || "Player name";
   const extras = inviteExtraDetails?.trim()
     ? inviteExtraDetails.trim().split("\n").map((l) => l.trim()).filter(Boolean).join("\n\n")
     : "";
@@ -12478,11 +12469,12 @@ function InvitePreviewDialog({
   const waDetails = inviteShortMessage || !waFullDetails
     ? waCallToAction
     : `${waFullDetails}\n\n${waCallToAction}`;
-  const previewGreetingName = previewRecipientName || "Player name";
   const waBody =
-    `*${clubLabel}*\n\n` +
-    `${personalizeTournamentInvite(waDetails, previewGreetingName)}\n\n` +
-    `To accept or decline, tap here: https://squashhub.co.za/i/ab3k9xq2mt`;
+    `Tournament update from *${clubLabel}*.\n\n` +
+    `Dear ${recipientLabel},\n\n` +
+    `${waDetails}\n\n` +
+    `To view your tournament entry, tap here: https://squashhub.co.za/i/ab3k9xq2mt\n\n` +
+    `Thank you.`;
 
 
   // WhatsApp templates are capped at 1024 characters once the variables are
@@ -12542,7 +12534,7 @@ function InvitePreviewDialog({
                 <p className="text-xs text-muted-foreground">Subject</p>
                 <p className="font-semibold">You're invited: {tournamentName}</p>
                 <Separator />
-                <p>{buildTournamentInviteGreeting(previewGreetingName)}</p>
+                <p>Dear {recipientLabel},</p>
                 {/* The email body is the exact same message that will be sent,
                     so custom edits and short-message mode are shown verbatim. */}
                 <div className="text-sm whitespace-pre-wrap text-muted-foreground">

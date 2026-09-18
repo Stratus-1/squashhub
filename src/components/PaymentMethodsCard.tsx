@@ -290,6 +290,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       toast.error("This setup has no link left — cancel it and start again.");
       return;
     }
+    if (m.gateway === "payfast") {
+      // PayFast hosts the card page in the same tab.
+      window.location.assign(m.auth_url);
+      return;
+    }
     await refreshMandate(m.id, true);
     setAwaitingDone(false);
     setAwaitingUrl(normalizeAuthUrl(m.auth_url));

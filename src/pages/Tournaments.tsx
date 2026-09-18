@@ -277,10 +277,24 @@ export default function Tournaments() {
       const champEntries = (allEntries as any[]).filter((e) => e.champ_id === champ.id);
       const groupMap = new Map<number, Map<string, number>>();
       const groupNums = [...new Set(champEntries.map((e) => e.group_number))] as number[];
+      const mode = normalisePoolAllocation((champ as any).pool_allocation);
+      const manualDivs = new Set<number>(
+        (((champ as any).manual_seed_divisions as number[] | null) || []).map((d) => Number(d) + 1),
+      );
       for (const gn of groupNums) {
         const pc = Math.max(1, Number(cfg[String(gn)]) || 1);
         if (pc <= 1) continue;
-        groupMap.set(gn, assignPools(champEntries as SwissEntry[], gn, pc, isDoubles));
+        // Must mirror the draw generator exactly (serpentine / banded / manual),
+        // otherwise a game shows the wrong Pool letter.
+        const ordered = (champEntries as any[])
+          .filter((e) => e.group_number === gn)
+          .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+        const pools = distributeIntoPools(ordered, pc, { manual: manualDivs.has(Number(gn)), mode });
+        const map = new Map<string, number>();
+        pools.forEach((poolEntries, pi) =>
+          poolEntries.forEach((e: any) => map.set(entityIdForEntry(e as SwissEntry, isDoubles), pi + 1)),
+        );
+        groupMap.set(gn, map);
       }
       if (groupMap.size) champPoolMaps.set(champ.id, groupMap);
     }
@@ -666,10 +680,13 @@ export default function Tournaments() {
           const items = groups.get(n)!;
           // Progress is measured against every game of that round, not just
           // the filtered view.
+          // Only the tournaments actually shown in this section count — a
+          // round heading must never total up round 1 of every tournament.
+          const champsHere = new Set(items.map((m: any) => m.champ_id));
           const all = (allMatches as any[]).filter((m: any) => {
             const r = Number(m.round_number);
             const k = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
-            return k === n && m.status !== "placeholder";
+            return k === n && m.status !== "placeholder" && champsHere.has(m.champ_id);
           });
           const done = all.filter((m: any) => isTerminalMatchStatus(m.status)).length;
           const outstanding = all.length - done;

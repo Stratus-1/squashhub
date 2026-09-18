@@ -135,6 +135,34 @@ export function KnockoutCard({
   const [setupKey, setSetupKey] = useState<string | null>(null);
   const [setup, setSetup] = useState<NextRoundReady | null>(null);
   const setupState = setupKey ? states.find((s) => keyOf(s) === setupKey) ?? null : null;
+  /** League (division) whose cross-pool play-off the organiser is drawing. */
+  const [playoff, setPlayoff] = useState<number | null>(null);
+
+  /** Doubles: the partner a survivor last played with, so pairs stay intact. */
+  const partnerOf = (memberId: string): string | null => {
+    for (const m of koMatches as any[]) {
+      if (m.player_a_member_id === memberId) return m.partner_a_member_id ?? null;
+      if (m.player_b_member_id === memberId) return m.partner_b_member_id ?? null;
+    }
+    return null;
+  };
+
+  const playoffProps = useMemo(() => {
+    if (playoff === null) return null;
+    const mine = states.filter((s) => s.groupNumber === playoff);
+    const pools = mine.filter((s) => s.section > 0).sort((a, b) => a.section - b.section);
+    const alive = pools.flatMap((s) => s.entrants.filter((e) => !e.eliminated).map((e) => e.memberId));
+    if (alive.length < 2) return null;
+    const round =
+      Math.max(
+        1,
+        ...(koMatches as any[])
+          .filter((m) => m.group_number === playoff)
+          .map((m) => Number(m.round_number ?? 1)),
+      ) + 1;
+    return { alive, round };
+  }, [playoff, states, koMatches]);
+
 
 
 
@@ -246,18 +274,18 @@ export function KnockoutCard({
 
               {canManage && playoffReady && !finals && (
                 <div className="space-y-1">
-                  <Button size="sm" disabled={generate.isPending} onClick={() => generate.mutate({ groupNumber: gn })}>
+                  <Button size="sm" onClick={() => setPlayoff(gn)}>
                     {allDecided
-                      ? `Generate league final (${draws.length} section winners)`
-                      : `Generate ${leaguePlayoffStageLabel(aliveInLeague)} (${aliveInLeague} still in)`}
+                      ? `Set up league final (${draws.length} section winners)`
+                      : `Set up ${leaguePlayoffStageLabel(aliveInLeague)} (${aliveInLeague} still in)`}
                   </Button>
-                  {!allDecided && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Any pool game still outstanding no longer affects this play-off.
-                    </p>
-                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    You choose the matchups on the draw board — nothing is created until you confirm.
+                    {!allDecided && " Any pool game still outstanding no longer affects this play-off."}
+                  </p>
                 </div>
               )}
+
 
             </div>
           );

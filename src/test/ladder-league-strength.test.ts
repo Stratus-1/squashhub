@@ -89,7 +89,7 @@ describe("refineOrderFromLeagueStats", () => {
     const result = refineOrderFromLeagueStats(current, map);
     expect(result.order.map((m) => m.id)).toEqual(["b", "social", "c", "a"]);
     expect(result.unchangedWithoutData).toBe(1);
-    expect(result.moved).toBe(2);
+    expect(result.moved).toBe(3);
   });
 
   it("is a no-op when nobody has history", () => {

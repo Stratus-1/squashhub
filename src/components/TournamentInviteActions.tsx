@@ -392,8 +392,6 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                   <XCircle className="w-3 h-3 mr-1" /> Decline
                 </Button>
               </div>
-              {yocoReady && paymentRequired && (
-              )}
             </>
             );
           })()}

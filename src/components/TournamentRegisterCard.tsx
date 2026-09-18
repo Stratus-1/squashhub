@@ -483,8 +483,6 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           )}
 
 
-          {cardReady && paymentGateway === "yoco" && (
-          )}
         </div>
       )}
 

@@ -252,5 +252,6 @@ export function clearReturnParams(searchParams: URLSearchParams): URLSearchParam
 export function clearPendingClubSession(gateway: GatewayId, sid?: string) {
   if (gateway === "yoco") clearPendingYocoSession(sid);
   else if (gateway === "paynow") clearPendingPaynowSession(sid);
+  else if (gateway === "payfast") clearPendingPayfastSession(sid);
   else clearPendingStitchSession(sid);
 }

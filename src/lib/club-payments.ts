@@ -132,6 +132,27 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
     window.location.assign(redirect);
     return { session_id: (data as any).session_id as string };
   }
+  if (gateway === "payfast") {
+    // PayFast hosts the checkout and redirects back to return_url with our
+    // payfast_session param; the ITN callback confirms the payment.
+    const return_url = buildStitchReturnUrl(opts.returnPath);
+    const { data, error } = await supabase.functions.invoke("payfast-create-checkout", {
+      body: {
+        club_id: opts.clubId, club_member_id: opts.clubMemberId,
+        amount: opts.amount, purpose: opts.purpose,
+        fee_ids: opts.fee_ids || [],
+        champ_registration_id: opts.champ_registration_id ?? null,
+        description: opts.description, return_url,
+      },
+    });
+    if (error) throw new Error(error.message || "Could not start PayFast checkout");
+    if ((data as any)?.error) throw new Error((data as any).error);
+    const redirect = (data as any)?.redirect_url;
+    if (!redirect) throw new Error("PayFast did not return a redirect URL");
+    rememberPendingPayfastSession((data as any).session_id, opts.returnPath);
+    window.location.assign(redirect);
+    return { session_id: (data as any).session_id as string };
+  }
 
   throw new Error(`Unsupported gateway: ${gateway}`);
 }
@@ -139,6 +160,7 @@ export async function startClubCheckout(gateway: GatewayId, opts: StartCheckoutO
 export async function verifyClubCheckout(gateway: GatewayId, sessionId: string | null) {
   const fnName = gateway === "stitch" ? "stitch-verify-payment"
     : gateway === "paynow" ? "paynow-verify-checkout"
+    : gateway === "payfast" ? "payfast-verify-checkout"
     : "yoco-verify-checkout";
   return supabase.functions.invoke(fnName, { body: sessionId ? { session_id: sessionId } : {} });
 }

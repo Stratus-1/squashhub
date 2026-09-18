@@ -284,10 +284,8 @@ export default function Ladder() {
   // one club's choice never decides another club's default.
   const viewStorageKey = clubId ? `sh.ladder.view.${clubId}` : null;
   const [viewMode, setViewMode] = useState<"pyramid" | "list">("pyramid");
-  const [viewModeTouched, setViewModeTouched] = useState(false);
   useEffect(() => {
     if (!viewStorageKey) return;
-    setViewModeTouched(false);
     try {
       const stored = window.localStorage.getItem(viewStorageKey);
       setViewMode(stored === "list" ? "list" : "pyramid");
@@ -297,11 +295,9 @@ export default function Ladder() {
   }, [viewStorageKey]);
   const chooseViewMode = (mode: "pyramid" | "list") => {
     setViewMode(mode);
-    setViewModeTouched(true);
     if (!viewStorageKey) return;
     try { window.localStorage.setItem(viewStorageKey, mode); } catch { /* ignore */ }
   };
-  void viewModeTouched;
 
   // Blocked challenge dialog
   const [blockedChallenge, setBlockedChallenge] = useState<{

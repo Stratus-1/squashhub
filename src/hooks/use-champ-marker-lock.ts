@@ -164,23 +164,20 @@ export function useChampMarkerHeartbeat(
         }, { onConflict: "match_id" });
       } catch (e) { console.warn("Champ marker heartbeat failed", e); }
     };
-    const releaseNow = () => {
-      try { table().delete().eq("match_id", matchId).eq("user_id", userId).then(() => {}, () => {}); } catch {}
-    };
     beat();
     const id = setInterval(() => { if (!cancelled) beat(); }, HEARTBEAT_MS);
-    // Hard close / app switch: drop the lock immediately so the game does not
-    // stay flagged as "being marked" for up to a minute.
-    const onPageHide = () => releaseNow();
-    const onVisibility = () => { if (document.visibilityState === "hidden") releaseNow(); else beat(); };
-    window.addEventListener("pagehide", onPageHide);
+    // NOTE: we deliberately do NOT release the lock when the tab is hidden.
+    // A marker who locks their phone, takes a call or checks WhatsApp between
+    // rallies would otherwise drop the lock, someone else could claim the game
+    // and the original marker gets thrown out of the scoreboard mid-match.
+    // Coming back to the foreground refreshes the heartbeat immediately.
+    const onVisibility = () => { if (document.visibilityState === "visible") beat(); };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       cancelled = true;
       clearInterval(id);
-      window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
-      releaseNow();
+      try { table().delete().eq("match_id", matchId).eq("user_id", userId).then(() => {}, () => {}); } catch {}
     };
   }, [active, matchId, userId]);
 

@@ -1716,3 +1716,9 @@ Fix: the `league_planning` section now requires (a) at least one non-archived le
 - To keep access unchanged for legitimate users, added a `tournaments` SELECT policy for registrants/entrants and extended `can_view_tournament()` to include registrations, partners and entries (covers cross-club entrants).
 - `club_members.id_number` / `address`: already protected by column-level grants (authenticated has SELECT on 49 of 51 columns); read via `club_member_private_fields()` for self/admins. Finding was stale — no change needed.
 - 17 Sep 15:29: REVERTED `club_champs` to `security_invoker = off`. Enabling invoker broke guest/anon access to tournament pages ("Tournament not found" when Vian tried to pay R600). The `tournaments` entrant policy and widened `can_view_tournament()` were kept (harmless, additive). Any future fix for the Security Definer View finding MUST preserve anonymous read of `club_champs` for invite/payment pages.
+
+## 18 Sep 2026 — Tournament invitation recipient greeting
+
+- **Symptom:** invitation emails could say `Dear <member name>`, but the admin preview showed a generic greeting and WhatsApp invitations sent through the editable `club_notice` template carried no player name.
+- **Fix:** the preview now demonstrates `Dear <selected preview player>,` (or `Dear Player name,` before a player is selected), and each real WhatsApp invitation adds the resolved recipient name at delivery time. Test invitations use the same rule.
+- **Guard:** the greeting is delivery-time personalisation, not stored tournament wording. Organisers can still edit or remove the invitation/reminder opening without embedding one member's name into messages for everyone.

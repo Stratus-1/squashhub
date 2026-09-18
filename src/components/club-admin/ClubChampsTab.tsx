@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import {
   buildDefaultTournamentInviteText,
+  buildTournamentInviteGreeting,
   personalizeTournamentInvite,
   migrateLegacyTournamentInviteText,
 } from "@/lib/tournaments/invite-message";

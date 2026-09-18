@@ -1121,10 +1121,13 @@ export default function Bookings() {
 
 
     setSubmittingBooking(true);
+    // Legacy website mode books by whole hour, so it still needs 60-minute
+    // slots. The official API matches GoBook's own slots by start/end time,
+    // so any club slot length (30/40/45/60) can be pushed through.
     const usingGobook =
       !!(myClub as any)?.uses_gobook &&
-      ((myClub as any)?.booking_slot_minutes ?? 60) === 60 &&
-      !!activeMember?.id;
+      !!activeMember?.id &&
+      (gobookApiMode || ((myClub as any)?.booking_slot_minutes ?? 60) === 60);
     const usingGobookApi = usingGobook && gobookApiMode;
     const progressToastId = usingGobook
       ? toast.loading(usingGobookApi ? "Submitting booking to GoBook…" : "Submitting booking to GoBook…", {

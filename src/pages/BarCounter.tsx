@@ -112,6 +112,8 @@ export default function BarCounter() {
     if (!boardError || !code || !token) return;
     if (/unlock|revok|token|permission/i.test(String((boardError as any)?.message ?? ""))) {
       localStorage.removeItem(tokenKey(code));
+      localStorage.removeItem(operatorKey(code));
+      setOperator(null);
       setToken(null);
       setPin("");
       setActiveTabId(null);

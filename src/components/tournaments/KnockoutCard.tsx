@@ -139,22 +139,8 @@ export function KnockoutCard({
   const setupState = setupKey ? states.find((s) => keyOf(s) === setupKey) ?? null : null;
   /** League (division) whose cross-pool play-off the organiser is drawing. */
   const [playoff, setPlayoff] = useState<number | null>(null);
-
-  /** Doubles: the partner a survivor last played with, so pairs stay intact. */
-  const partnerOf = (memberId: string): string | null => {
-    for (const m of koMatches as any[]) {
-      if (m.player_a_member_id === memberId) return m.partner_a_member_id ?? null;
-      if (m.player_b_member_id === memberId) return m.partner_b_member_id ?? null;
-    }
-    return null;
-  };
-
   const playoffProps = useMemo(() => {
     if (playoff === null) return null;
-    const mine = states.filter((s) => s.groupNumber === playoff);
-    const pools = mine.filter((s) => s.section > 0).sort((a, b) => a.section - b.section);
-    const alive = pools.flatMap((s) => s.entrants.filter((e) => !e.eliminated).map((e) => e.memberId));
-    if (alive.length < 2) return null;
     const round =
       Math.max(
         1,
@@ -162,8 +148,9 @@ export function KnockoutCard({
           .filter((m) => m.group_number === playoff)
           .map((m) => Number(m.round_number ?? 1)),
       ) + 1;
-    return { alive, round };
-  }, [playoff, states, koMatches]);
+    return { round };
+  }, [playoff, koMatches]);
+
 
 
 

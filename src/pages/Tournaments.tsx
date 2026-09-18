@@ -703,10 +703,23 @@ export default function Tournaments() {
       const prev = order.get(key);
       if (prev === undefined || num < prev) order.set(key, num);
     });
+    // Play-off stages always lead, in draw order: Quarter-final, Semi-final,
+    // Final — then numbered rounds, then pool games last.
+    const stageRank = (key: string): number => {
+      const k = key.trim().toLowerCase();
+      if (k === "quarter-final" || k === "quarterfinal") return 0;
+      if (k === "semi-final" || k === "semifinal") return 1;
+      if (k === "final") return 2;
+      return 3;
+    };
     const keys = Array.from(groups.keys()).sort((a, b) => {
       if (a === "\u0000pool") return 1;
       if (b === "\u0000pool") return -1;
-      return (order.get(a) ?? 0) - (order.get(b) ?? 0) || a.localeCompare(b);
+      return (
+        stageRank(a) - stageRank(b) ||
+        (order.get(a) ?? 0) - (order.get(b) ?? 0) ||
+        a.localeCompare(b)
+      );
     });
 
     return (

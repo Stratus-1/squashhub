@@ -656,6 +656,35 @@ export function LadderTab({ clubId }: { clubId: string }) {
         <Switch checked={mixedEnabled} onCheckedChange={toggleMixed} />
       </Card>
 
+      <Card className="p-3 flex items-center gap-3">
+        <Sparkles className="w-4 h-4 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">Refine rankings from regional league stats</p>
+          <p className="text-xs text-muted-foreground">
+            Uses each member's regional league record — the league they play in, the position they
+            usually play in their team and how often they win — to suggest a more accurate order.
+            Members without league history stay exactly where they are. Nothing is saved until you
+            press Save on a ladder.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {strengthLoading
+              ? "Loading league history…"
+              : `${leagueStrength?.size ?? 0} members have league history`}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1 shrink-0"
+          disabled={strengthLoading || !leagueStrength?.size}
+          onClick={handleRefineFromLeague}
+        >
+          {strengthLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+          Refine
+        </Button>
+      </Card>
+
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input

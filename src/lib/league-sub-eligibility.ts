@@ -38,6 +38,12 @@ export interface PlayerCtx {
   homePosition: number | null;
   /** 'men' | 'ladies' | 'mixed' (or null if unknown). */
   gender: "men" | "ladies" | "mixed" | "open" | null;
+  /**
+   * Lady who plays men's league under the cross-gender rule (NSA): she may play
+   * in a men's team at ANY level, so the direction and movement-cap rules do
+   * not apply to her men's-team placements.
+   */
+  crossGenderLeaguePlayer?: boolean;
 }
 
 export interface TargetCtx {

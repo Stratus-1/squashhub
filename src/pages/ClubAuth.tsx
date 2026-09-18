@@ -104,7 +104,13 @@ export default function ClubAuth() {
   // are reached via links underneath the sign-in form (per UX redesign).
   const intent = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("intent") : null;
   const initialTab: "login" | "existing" | "new" | "visitor" =
-    intent === "visitor" ? "visitor" : intent === "apply" ? "new" : "login";
+    intent === "visitor"
+      ? "visitor"
+      : intent === "apply"
+        ? "new"
+        : intent === "existing"
+          ? "existing"
+          : "login";
   const [activeTab, setActiveTab] = useState<"login" | "existing" | "new" | "visitor">(initialTab);
 
   // Storage key for pending Google-visitor completion (survives OAuth round-trip).

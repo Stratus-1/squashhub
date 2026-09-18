@@ -137,6 +137,15 @@ export const COMMS_ACTIONS: CommsActionDef[] = [
     path: () => "/",
   },
   {
+    // Direct link to the EXISTING member sign-up form (not the new-member
+    // application) — used by club onboarding/welcome messages.
+    key: "register_existing_member",
+    label: "Register as an existing member",
+    group: "Club",
+    defaultLabel: "Register as an existing member",
+    path: () => "/auth?intent=existing",
+  },
+  {
     key: "external",
     label: "External link",
     group: "General",

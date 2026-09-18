@@ -691,9 +691,21 @@ export default function Tournaments() {
           });
           const done = all.filter((m: any) => isTerminalMatchStatus(m.status)).length;
           const outstanding = all.length - done;
+          // The fixture's own stage label (Semi-final, Final…) is what the
+          // organiser chose when planning the round — always prefer it over
+          // the generic "Round N" fallback.
           const labels = Array.from(
-            new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).label).filter(Boolean)),
+            new Set(
+              items
+                .map(
+                  (m: any) =>
+                    String(m?.stage_label || "").trim() ||
+                    roundMeta(m.champ_id, m.round_number).label,
+                )
+                .filter(Boolean),
+            ),
           );
+
           const heading = n === 0 ? "Pool games" : labels.join(" / ") || `Round ${n}`;
           const dates = Array.from(
             new Set(items.map((m: any) => matchPlayBy(m)).filter(Boolean)),

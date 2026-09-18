@@ -666,12 +666,33 @@ export function LadderTab({ clubId }: { clubId: string }) {
     async (ordered: LadderMember[], genderFilter: string) => {
       setSaving(true);
       try {
-        const ids = ordered.map((p) => p.id);
+        // Ladies shown on the men's ladder keep their own ladies' place: they are
+        // saved separately as a men's-ladder listing, never in the men's order.
+        const crossIds =
+          genderFilter === "male"
+            ? ordered.filter((p) => isLadiesGender(p.gender)).map((p) => p.id)
+            : [];
+        const ids = ordered
+          .filter((p) => !(genderFilter === "male" && isLadiesGender(p.gender)))
+          .map((p) => p.id);
         const { error: err } = await rpcExt("admin_reorder_ladder", {
           player_ids: ids,
           gender_filter: genderFilter,
         });
         if (err) throw err;
+        if (genderFilter === "male" && crossGenderOn) {
+          // Positions are the slot each lady occupies in the displayed men's list.
+          const orderedCross = ordered
+            .map((p, idx) => ({ p, idx }))
+            .filter(({ p }) => isLadiesGender(p.gender))
+            .sort((a, b) => a.idx - b.idx)
+            .map(({ p }) => p.id);
+          const { error: crossErr } = await rpcExt("admin_set_cross_gender_ladder", {
+            p_club_id: clubId,
+            p_member_ids: orderedCross,
+          });
+          if (crossErr) throw crossErr;
+        }
         toast.success("Ladder order saved");
         if (genderFilter === "male") setMenOrder(null);
         else if (genderFilter === "female") setLadiesOrder(null);
@@ -684,7 +705,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
         setSaving(false);
       }
     },
-    [queryClient]
+    [queryClient, clubId, crossGenderOn]
   );
 
   // Propose (never save) a ladder order based on regional league history.
@@ -701,9 +722,17 @@ export function LadderTab({ clubId }: { clubId: string }) {
       moved += res.moved;
       ranked += res.order.length - res.unchangedWithoutData;
     } else {
-      const men = refineOrderFromLeagueStats(menOrder ?? menMembers, leagueStrength);
+      // Men's ladder ranks on men's-league form (which is what cross-listed
+      // ladies have too); the ladies' ladder ranks on ladies-league form.
+      const men = refineOrderFromLeagueStats(
+        menOrder ?? menMembers,
+        strengthSets?.mens ?? leagueStrength
+      );
       setMenOrder(men.order);
-      const ladies = refineOrderFromLeagueStats(ladiesOrder ?? ladiesMembers, leagueStrength);
+      const ladies = refineOrderFromLeagueStats(
+        ladiesOrder ?? ladiesMembers,
+        strengthSets?.ladies ?? leagueStrength
+      );
       setLadiesOrder(ladies.order);
       moved += men.moved + ladies.moved;
       ranked +=
@@ -714,7 +743,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
     } else {
       toast.success(`Suggested ${moved} change${moved === 1 ? "" : "s"} from ${ranked} league players — review and save`);
     }
-  }, [leagueStrength, mixedEnabled, mixedOrder, mixedMembersList, menOrder, menMembers, ladiesOrder, ladiesMembers]);
+  }, [leagueStrength, strengthSets, mixedEnabled, mixedOrder, mixedMembersList, menOrder, menMembers, ladiesOrder, ladiesMembers]);
 
   if (isLoading) {
     return (

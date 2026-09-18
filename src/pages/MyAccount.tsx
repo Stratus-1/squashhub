@@ -25,7 +25,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
 import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
 
-import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { checkoutGateways, gatewayLabel } from "@/lib/club-gateways";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 import {
@@ -958,7 +957,6 @@ export default function MyAccount() {
                   </p>
                 </Card>
                 <GatewayPicker />
-                <FnbPaymentNotice gateway={payGateway} />
               </>
             )}
 
@@ -1113,7 +1111,6 @@ export default function MyAccount() {
                   </p>
                 </Card>
                 <GatewayPicker />
-                <FnbPaymentNotice gateway={payGateway} />
               </>
             )}
 

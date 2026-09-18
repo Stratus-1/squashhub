@@ -442,9 +442,10 @@ export default function Ladder() {
     } else {
       menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
       ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+      unknownGenderPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
     }
     return map;
-  }, [menPlayers, ladiesPlayers, mixedLadderEnabled, players]);
+  }, [menPlayers, ladiesPlayers, unknownGenderPlayers, mixedLadderEnabled, players]);
 
   const myPosition = useMemo(() => {
     if (!myMemberId) return null;
@@ -520,8 +521,7 @@ export default function Ladder() {
   const getPlayerGenderGroup = (player: LadderPlayer): string => {
     // One combined ladder → everyone is in the same challenge group.
     if (mixedLadderEnabled) return myGenderGroup;
-    const g = (player.gender || "").toLowerCase();
-    return (g === "female" || g === "ladies" || g === "f") ? "ladies" : "men";
+    return genderBucket(player.gender);
   };
 
   const canChallenge = (player: LadderPlayer): string | null => {

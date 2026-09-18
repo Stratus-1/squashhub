@@ -364,10 +364,11 @@ interface GenderLadderProps {
   sportyHqRatings?: Map<string, SportyHqRating>;
   associationNumbers?: Map<string, string[]>;
   leagueStrength?: Map<string, LeagueStrength | null>;
+  crossGender?: Map<string, CrossGenderQualification>;
   onAllocated: () => void;
 }
 
-function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, associationNumbers, leagueStrength, onAllocated }: GenderLadderProps) {
+function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, associationNumbers, leagueStrength, crossGender, onAllocated }: GenderLadderProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })

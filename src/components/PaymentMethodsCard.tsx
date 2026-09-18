@@ -192,9 +192,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     }
   }, [clubMemberId, qc]);
 
-  // Auto-sync any pending mandates on mount (covers missed webhooks)
+  // Auto-sync any pending mandates on mount (covers missed webhooks).
+  // PayFast arrangements are activated by their own notification, so they are
+  // never refreshed through Stitch.
   useEffect(() => {
-    const pending = mandates.filter((m) => m.status === "pending");
+    const pending = mandates.filter((m) => m.status === "pending" && m.gateway !== "payfast");
     pending.forEach((m) => refreshMandate(m.id, true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mandates.length]);

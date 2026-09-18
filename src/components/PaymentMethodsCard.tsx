@@ -205,7 +205,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   // Stitch webhooks can be delayed, and members were re-starting the whole
   // setup (creating duplicate mandates) because nothing changed on screen.
   useEffect(() => {
-    const pendingIds = mandates.filter((m) => m.status === "pending").map((m) => m.id);
+    const pendingIds = mandates
+      .filter((m) => m.status === "pending" && m.gateway !== "payfast")
+      .map((m) => m.id);
     if (!pendingIds.length) return;
     let ticks = 0;
     const t = setInterval(() => {

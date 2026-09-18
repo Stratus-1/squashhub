@@ -597,6 +597,35 @@ export function LadderTab({ clubId }: { clubId: string }) {
     [queryClient]
   );
 
+  // Propose (never save) a ladder order based on regional league history.
+  const handleRefineFromLeague = useCallback(() => {
+    if (!leagueStrength || leagueStrength.size === 0) {
+      toast.error("No regional league history found for these members yet");
+      return;
+    }
+    let moved = 0;
+    let ranked = 0;
+    if (mixedEnabled) {
+      const res = refineOrderFromLeagueStats(mixedOrder ?? mixedMembersList, leagueStrength);
+      setMixedOrder(res.order);
+      moved += res.moved;
+      ranked += res.order.length - res.unchangedWithoutData;
+    } else {
+      const men = refineOrderFromLeagueStats(menOrder ?? menMembers, leagueStrength);
+      setMenOrder(men.order);
+      const ladies = refineOrderFromLeagueStats(ladiesOrder ?? ladiesMembers, leagueStrength);
+      setLadiesOrder(ladies.order);
+      moved += men.moved + ladies.moved;
+      ranked +=
+        men.order.length - men.unchangedWithoutData + ladies.order.length - ladies.unchangedWithoutData;
+    }
+    if (moved === 0) {
+      toast.success(`Ladder already matches league form (${ranked} league players checked)`);
+    } else {
+      toast.success(`Suggested ${moved} change${moved === 1 ? "" : "s"} from ${ranked} league players — review and save`);
+    }
+  }, [leagueStrength, mixedEnabled, mixedOrder, mixedMembersList, menOrder, menMembers, ladiesOrder, ladiesMembers]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">

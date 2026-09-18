@@ -7,7 +7,7 @@ import {
   isSandboxCreds,
   mapPayfastStatus,
   parseOrderedForm,
-  pfItnSignature,
+  pfItnSignatureMatches,
   pfValidateItn,
 } from "../_shared/payfast.ts";
 import { nextChargeDate } from "../_shared/payfast-recurring.ts";
@@ -56,8 +56,7 @@ Deno.serve(async (req) => {
       return new Response("ok");
     }
 
-    const expected = pfItnSignature(ordered, creds.passphrase || "");
-    if ((fields.signature || "").toLowerCase() !== expected.toLowerCase()) {
+    if (!pfItnSignatureMatches(ordered, fields.signature || "", creds.passphrase || "")) {
       console.error("payfast-itn: signature mismatch", { reference });
       return new Response("ok");
     }

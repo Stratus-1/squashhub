@@ -186,11 +186,12 @@ export function useGenerateNextRound(opts: {
           .filter((e) => !e.eliminated)
           .map((e) => ({ section: s.section, memberId: e.memberId, partnerId: partnerFor(s, e.memberId) })),
       );
-      if (!LEAGUE_PLAYOFF_SIZES.includes(survivors.length)) {
+      if (!leaguePlayoffReady(sections.every((s) => s.complete), survivors.length)) {
         throw new Error(
           `A league play-off needs 2, 4 or 8 players still in — this league has ${survivors.length}.`,
         );
       }
+
 
       const rows = buildLeagueFinals({
         champId,

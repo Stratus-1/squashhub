@@ -21,6 +21,8 @@ import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
+import { LeagueFinalsDrawDialog } from "./LeagueFinalsDrawDialog";
+
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 
 
@@ -135,6 +137,21 @@ export function KnockoutCard({
   const [setupKey, setSetupKey] = useState<string | null>(null);
   const [setup, setSetup] = useState<NextRoundReady | null>(null);
   const setupState = setupKey ? states.find((s) => keyOf(s) === setupKey) ?? null : null;
+  /** League (division) whose cross-pool play-off the organiser is drawing. */
+  const [playoff, setPlayoff] = useState<number | null>(null);
+  const playoffProps = useMemo(() => {
+    if (playoff === null) return null;
+    const round =
+      Math.max(
+        1,
+        ...(koMatches as any[])
+          .filter((m) => m.group_number === playoff)
+          .map((m) => Number(m.round_number ?? 1)),
+      ) + 1;
+    return { round };
+  }, [playoff, koMatches]);
+
+
 
 
 
@@ -246,18 +263,18 @@ export function KnockoutCard({
 
               {canManage && playoffReady && !finals && (
                 <div className="space-y-1">
-                  <Button size="sm" disabled={generate.isPending} onClick={() => generate.mutate({ groupNumber: gn })}>
+                  <Button size="sm" onClick={() => setPlayoff(gn)}>
                     {allDecided
-                      ? `Generate league final (${draws.length} section winners)`
-                      : `Generate ${leaguePlayoffStageLabel(aliveInLeague)} (${aliveInLeague} still in)`}
+                      ? `Set up league final (${draws.length} section winners)`
+                      : `Set up ${leaguePlayoffStageLabel(aliveInLeague)} (${aliveInLeague} still in)`}
                   </Button>
-                  {!allDecided && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Any pool game still outstanding no longer affects this play-off.
-                    </p>
-                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    You choose the matchups on the draw board — nothing is created until you confirm.
+                    {!allDecided && " Any pool game still outstanding no longer affects this play-off."}
+                  </p>
                 </div>
               )}
+
 
             </div>
           );
@@ -308,7 +325,22 @@ export function KnockoutCard({
             }}
           />
         )}
+
+        {playoff !== null && (
+          <LeagueFinalsDrawDialog
+            open
+            onOpenChange={(o) => !o && setPlayoff(null)}
+            champId={champId}
+            groupNumber={playoff}
+            sections={states.filter((s) => s.groupNumber === playoff)}
+            divisionLabel={groupLabel(playoff)}
+            playBy={selfScheduled ? playByForRound?.(playoffProps?.round ?? 0) ?? null : null}
+            onConfirmed={() => setPlayoff(null)}
+          />
+
+        )}
       </CardContent>
+
     </Card>
   );
 }

@@ -158,7 +158,7 @@ export function TournamentNextActionBar({
         setReviewKey(`${reviewState.groupNumber}-${reviewState.section}`);
         return setSetupOpen(true);
       }
-      if (mode === "card") return goToDetail("progress");
+      if (mode === "card" || na.section === 0) return goToDetail("progress");
       return generate.mutate({ groupNumber: na.groupNumber, section: na.section });
     }
     if (mode === "card") return goToDetail("fixtures");

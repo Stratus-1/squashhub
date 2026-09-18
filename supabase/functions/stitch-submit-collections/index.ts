@@ -64,6 +64,8 @@ Deno.serve(async (req) => {
       .from("stitch_collections")
       .select("id, club_id, mandate_id, club_member_id, amount_cents, due_date, fee_payable_id, attempt_number, stitch_mandates(stitch_mandate_id, mandate_type)")
       .eq("status", "approved")
+      // PayFast card collections are handled by payfast-charge-mandates.
+      .eq("gateway", "stitch")
       .lte("due_date", today);
     if (restrictClubId) dueQ = dueQ.eq("club_id", restrictClubId);
     const { data: due, error: dueErr } = await dueQ;

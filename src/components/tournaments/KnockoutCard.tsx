@@ -152,9 +152,16 @@ export function KnockoutCard({
           const draws = sections.filter((s) => s.section > 0).sort((a, b) => a.section - b.section);
           const finals = sections.find((s) => s.section === 0);
           const allDecided = draws.length > 1 && draws.every((s) => s.complete);
+          // The league is ready for its own play-off on total survivors, not
+          // on "every pool decided": 2 pools decided + 1 pool with 2 left = 4
+          // still in = semi-finals.
+          const aliveInLeague = draws.reduce(
+            (n, s) => n + s.entrants.filter((e) => !e.eliminated).length,
+            0,
+          );
+          const playoffReady = draws.length > 1 && leaguePlayoffReady(allDecided, aliveInLeague);
           const champion = finals?.complete ? finals.winner : draws.length === 1 ? draws[0].winner : null;
-          return (
-            <div key={gn} className="space-y-3">
+
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{groupLabel(gn)}</div>
                 {champion && (

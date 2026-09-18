@@ -327,7 +327,7 @@ export default function Bookings() {
     guestName: string;
     playerMode: "none" | "member" | "guest" | "visitor";
     isFriendly: boolean;
-    duration: 30 | 40 | 60;
+    duration: 30 | 40 | 45 | 60 | 90;
     lightsOn: boolean;
     lightFeeSplit: "booker" | "shared";
     /** Confirmation + reminder choices for this booking. */

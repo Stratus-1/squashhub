@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
         club_member_id,
         user_id: userId,
         amount: amt,
-        currency: club.currency || "ZAR",
+        currency: (club as any).currency_code || "ZAR",
         purpose,
         fee_ids,
         champ_registration_id,

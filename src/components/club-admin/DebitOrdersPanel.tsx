@@ -11,6 +11,8 @@ type Mandate = {
   id: string;
   club_member_id: string;
   rail: string;
+  gateway?: string | null;
+  next_charge_date?: string | null;
   max_amount_cents: number;
   debit_day: number | null;
   status: string;
@@ -24,6 +26,7 @@ type Mandate = {
 type Collection = {
   id: string;
   club_member_id: string;
+  gateway?: string | null;
   amount_cents: number;
   due_date: string;
   status: string;
@@ -114,6 +117,17 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
     refresh();
   };
 
+  const runCardCharges = async () => {
+    setBusy("cards");
+    const { data, error } = await supabase.functions.invoke("payfast-charge-mandates", { body: { club_id: clubId } });
+    setBusy(null);
+    if (error || (data as any)?.error) {
+      return toast.error((data as any)?.error || error?.message || "Could not run card charges");
+    }
+    toast.success(`Processed ${(data as any)?.processed ?? 0} card arrangement(s)`);
+    refresh();
+  };
+
   // --- Pending mandate helpers (admin can help members finish setup) ---
   const checkMandate = async (id: string) => {
     setBusy(`chk-${id}`);
@@ -181,7 +195,9 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
   };
   const cancelMandate = async (id: string) => {
     if (!confirm("Cancel this mandate? Future debits will stop.")) return;
-    const { data, error } = await supabase.functions.invoke("stitch-cancel-mandate", { body: { mandate_id: id } });
+    const row = (mandates || []).find(m => m.id === id);
+    const fn = row?.gateway === "payfast" ? "payfast-cancel-mandate" : "stitch-cancel-mandate";
+    const { data, error } = await supabase.functions.invoke(fn, { body: { mandate_id: id } });
     if (error || (data as any)?.error) {
       return toast.error((data as any)?.error || error?.message || "Failed to cancel");
     }
@@ -260,6 +276,9 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
           <Button size="sm" className="h-7 text-xs gap-1" onClick={runSubmit} disabled={busy !== null}>
             <CheckCircle2 className="h-3 w-3" /> {busy === "submit" ? "Submitting…" : "Submit due"}
           </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={runCardCharges} disabled={busy !== null}>
+            <RefreshCw className="h-3 w-3" /> {busy === "cards" ? "Charging…" : "Run card charges"}
+          </Button>
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground">
@@ -334,7 +353,7 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
             <Clock className="h-3 w-3" /> Awaiting authorisation ({(mandates || []).filter(m => m.status === "pending").length})
           </h4>
           <p className="text-[11px] text-muted-foreground">
-            These members started a monthly payment setup but haven't completed it at Stitch. Re-send their link or re-check the status.
+            These members started a monthly payment setup but haven't completed it at their payment provider. Re-send their link or re-check the status.
           </p>
           <div className="border rounded divide-y text-xs">
             {(mandates || []).filter(m => m.status === "pending").map(m => (
@@ -345,14 +364,18 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
                     max {fmt(m.max_amount_cents)} · day {m.debit_day ?? "—"} · started {new Date(m.created_at).toLocaleDateString("en-ZA")}
                   </div>
                 </div>
-                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
-                  disabled={busy === `chk-${m.id}`} onClick={() => checkMandate(m.id)}>
-                  {busy === `chk-${m.id}` ? "Checking…" : "Check status"}
-                </Button>
-                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
-                  disabled={busy === `mark-${m.id}`} onClick={() => markMandate(m.id, "confirm")}>
-                  {busy === `mark-${m.id}` ? "Saving…" : "Mark authorised"}
-                </Button>
+                {m.gateway !== "payfast" && (
+                  <>
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
+                      disabled={busy === `chk-${m.id}`} onClick={() => checkMandate(m.id)}>
+                      {busy === `chk-${m.id}` ? "Checking…" : "Check status"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2"
+                      disabled={busy === `mark-${m.id}`} onClick={() => markMandate(m.id, "confirm")}>
+                      {busy === `mark-${m.id}` ? "Saving…" : "Mark authorised"}
+                    </Button>
+                  </>
+                )}
                 <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => whatsappAuthLink(m)}>
                   WhatsApp link
                 </Button>
@@ -391,7 +414,8 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
                     )}
                   </div>
                   <div className="text-[10px] text-muted-foreground">
-                    {m.rail} · max {fmt(m.max_amount_cents)} · day {m.debit_day ?? "—"}
+                    {m.gateway === "payfast" ? "PayFast card" : m.rail} · max {fmt(m.max_amount_cents)} · day {m.debit_day ?? "—"}
+                    {m.next_charge_date && m.status === "active" && <span> · next {m.next_charge_date}</span>}
                     {m.consecutive_failures > 0 && (
                       <span className="ml-1 text-red-600">· {m.consecutive_failures} fail(s)</span>
                     )}
@@ -421,6 +445,7 @@ export default function DebitOrdersPanel({ clubId }: { clubId: string }) {
                   <div className="truncate">{c.club_members?.full_name || "—"}</div>
                   <div className="text-[10px] text-muted-foreground">
                     {fmt(c.amount_cents)} · due {c.due_date}
+                    {c.gateway === "payfast" && <span> · PayFast card</span>}
                     {c.attempt_number > 1 && <span> · retry #{c.attempt_number}</span>}
                     {c.failed_reason && <span className="text-red-600"> · {c.failed_reason}</span>}
                   </div>

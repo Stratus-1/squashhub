@@ -423,10 +423,23 @@ export default function Ladder() {
     return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
   };
 
-  const menPlayers = useMemo(() =>
-    (players || []).filter((p: any) => genderBucket(p.gender) === "men") as LadderPlayer[],
-    [players]
-  );
+  // Men's ladder also lists ladies who play men's league (cross-gender rule),
+  // slotted at their saved men's place. Their ladies' place is unaffected.
+  const menPlayers = useMemo(() => {
+    const men = (players || []).filter((p: any) => genderBucket(p.gender) === "men") as LadderPlayer[];
+    const crossListed = (players || []).filter(
+      (p: any) => genderBucket(p.gender) === "ladies" && p.cross_gender_rank != null,
+    ) as LadderPlayer[];
+    if (crossListed.length === 0) return men;
+    const merged = [...men];
+    [...crossListed]
+      .sort((a: any, b: any) => (a.cross_gender_rank ?? 0) - (b.cross_gender_rank ?? 0))
+      .forEach((lady: any) => {
+        const idx = Math.max(0, Math.min(merged.length, (lady.cross_gender_rank ?? merged.length + 1) - 1));
+        merged.splice(idx, 0, lady);
+      });
+    return merged;
+  }, [players]);
 
   const ladiesPlayers = useMemo(() =>
     (players || []).filter((p: any) => genderBucket(p.gender) === "ladies") as LadderPlayer[],

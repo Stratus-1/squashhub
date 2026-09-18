@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
@@ -39,6 +39,8 @@ import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibi
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberPermission } from "@/hooks/use-club-permissions";
+import { useAssociationNumbers } from "@/hooks/use-association-numbers";
+import { useCrossGenderLeagueSetting, useCrossGenderPlayers } from "@/hooks/use-cross-gender-league";
 
 type Props = {
   clubId: string;
@@ -634,6 +636,20 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     return m;
   }, [members]);
 
+  // "Ladies may play and be ranked in the men's league" (NSA default).
+  // Ladies with recent men's-league games are offered automatically in men's
+  // pools and may be placed at ANY men's level (no movement cap).
+  const { data: crossGenderOn = false } = useCrossGenderLeagueSetting(
+    clubId,
+    rulesAssociationId ?? associationId ?? null,
+  );
+  const { data: crossGenderNumbers } = useAssociationNumbers(memberIds);
+  const { data: crossGenderPlayers } = useCrossGenderPlayers(clubId, crossGenderNumbers, crossGenderOn);
+  const isCrossGenderPlayer = useCallback(
+    (memberId: string) => !!crossGenderOn && !!crossGenderPlayers?.has(memberId),
+    [crossGenderOn, crossGenderPlayers],
+  );
+
   // Determine if these leagues belong to an internal association (no external number issued).
   // For internal leagues we fall back to the member's club_member_number as the league number.
   const associationIds = useMemo(
@@ -1095,18 +1111,25 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
         .filter(r => sortedLeagues.find(l => l.id === r.league_id && isLadiesLeague(l.name)))
         .map(r => r.club_member_id),
     );
-    const pulledLadies = isMensLeague(lg.name)
+    const pulledLadiesIds = isMensLeague(lg.name)
       ? statuses
           .filter(s => s.league_id === lg.id && ladiesPoolMemberIds.has(s.club_member_id))
-          .filter(s => !baseMemberIds.has(s.club_member_id))
-          .map(s => ({
-            memberId: s.club_member_id,
-            rank: null,
-            isPulled: true,
-            isCascaded: false,
-            cascadedFromCode: null as string | null,
-          }))
+          .map(s => s.club_member_id)
       : [];
+    // Ladies who play men's league under the cross-gender rule are offered
+    // automatically in every men's pool, at any level.
+    const autoCrossGenderIds = isMensLeague(lg.name) && crossGenderOn
+      ? Array.from(crossGenderPlayers?.keys() ?? []).filter(id => memberMap.has(id))
+      : [];
+    const pulledLadies = Array.from(new Set([...pulledLadiesIds, ...autoCrossGenderIds]))
+      .filter(id => !baseMemberIds.has(id))
+      .map(id => ({
+        memberId: id,
+        rank: null,
+        isPulled: true,
+        isCascaded: false,
+        cascadedFromCode: null as string | null,
+      }));
 
     // Bye-league pull: when an earlier league in the same gender group has NO
     // fixture this week (a bye), surface its base players in this league's
@@ -1260,7 +1283,12 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     )).sort((a, b) => a - b);
     return checkSubEligibility(
       { ...subRules, league_number_order: leagueNumberOrder },
-      { homeLeagueNumber, homePosition, gender: memberMap.get(memberId)?.gender as any },
+      {
+        homeLeagueNumber,
+        homePosition,
+        gender: memberMap.get(memberId)?.gender as any,
+        crossGenderLeaguePlayer: targetGender === "men" && isCrossGenderPlayer(memberId),
+      },
       { leagueNumber: targetLeagueNumber, position: targetPosition, gender: targetGender },
     );
   };

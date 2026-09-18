@@ -616,7 +616,7 @@ export function useLadder(clubId?: string) {
       // as FK targets for tournament tables and must never appear on the ladder.
       let query = supabase
         .from("club_members")
-        .select("id, name, email, user_id, gender, skill_level, plays_league, ladder_position, avatar_url, role")
+        .select("id, name, email, user_id, gender, skill_level, plays_league, ladder_position, cross_gender_ladder_position, avatar_url, role")
         .neq("role", "visitor");
       if (clubId) {
         query = query.eq("club_id", clubId);
@@ -789,6 +789,9 @@ export function useLadder(clubId?: string) {
           league_rank: ladderPos,
           user_id: m.user_id,
           gender: m.gender || null,
+          // Ladies who also play men's league (cross-gender rule) carry their
+          // men's-ladder slot here; their own ladies' place is unaffected.
+          cross_gender_rank: (m as any).cross_gender_ladder_position ?? null,
           ladder_position: null as number | null,
         };
       });

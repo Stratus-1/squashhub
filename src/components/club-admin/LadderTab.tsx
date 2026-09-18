@@ -36,6 +36,12 @@ import { useSportyHqRatings, type SportyHqRating } from "@/hooks/use-sportyhq-ra
 import { useAssociationNumbers } from "@/hooks/use-association-numbers";
 import { useLeagueStrength } from "@/hooks/use-league-strength";
 import { refineOrderFromLeagueStats, describeStrength, type LeagueStrength } from "@/lib/ladder/league-strength";
+import { useCrossGenderLeagueSetting, useCrossGenderPlayers } from "@/hooks/use-cross-gender-league";
+import {
+  crossGenderStrengthKey,
+  describeCrossGender,
+  type CrossGenderQualification,
+} from "@/lib/leagues/cross-gender";
 import { Sparkles } from "lucide-react";
 
 
@@ -45,6 +51,7 @@ interface LadderMember {
   avatar_url: string | null;
   gender: string | null;
   ladder_position: number | null;
+  cross_gender_ladder_position: number | null;
   plays_league: boolean;
   enable_league_association_id: string | null;
 }
@@ -70,9 +77,11 @@ function DraggablePlayerRow({
   sportyHqRating,
   associationNumbers = [],
   strengthSummary,
+  crossGenderNote,
   onAllocated,
 }: {
   strengthSummary?: string;
+  crossGenderNote?: string;
   player: LadderMember;
   index: number;
   total: number;
@@ -227,6 +236,14 @@ function DraggablePlayerRow({
                 No gender
               </span>
             )}
+            {crossGenderNote && (
+              <span
+                title={crossGenderNote}
+                className="text-[9px] font-semibold px-1.5 py-0 rounded-full border border-primary/40 bg-primary/10 text-primary shrink-0 leading-tight"
+              >
+                ♀ men's league
+              </span>
+            )}
           </div>
           {currentAffiliations.size > 0 && (
             <p className="text-[10px] text-muted-foreground truncate">
@@ -235,6 +252,9 @@ function DraggablePlayerRow({
                 .map((l) => l.abbreviation || l.name)
                 .join(" · ")}
             </p>
+          )}
+          {crossGenderNote && (
+            <p className="text-[10px] text-muted-foreground truncate">{crossGenderNote}</p>
           )}
           {strengthSummary && (
             <p className="text-[10px] text-muted-foreground truncate">{strengthSummary}</p>
@@ -344,10 +364,11 @@ interface GenderLadderProps {
   sportyHqRatings?: Map<string, SportyHqRating>;
   associationNumbers?: Map<string, string[]>;
   leagueStrength?: Map<string, LeagueStrength | null>;
+  crossGender?: Map<string, CrossGenderQualification>;
   onAllocated: () => void;
 }
 
-function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, associationNumbers, leagueStrength, onAllocated }: GenderLadderProps) {
+function GenderLadder({ title, players, order, setOrder, genderFilter, saving, onSave, searchQuery, leagues, affiliationsByMember, sportyHqRatings, associationNumbers, leagueStrength, crossGender, onAllocated }: GenderLadderProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
@@ -416,6 +437,11 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
                       ? describeStrength(leagueStrength.get(player.id)!)
                       : undefined
                   }
+                  crossGenderNote={
+                    genderFilter === "male" && isLadiesGender(player.gender) && crossGender?.get(player.id)
+                      ? describeCrossGender(crossGender.get(player.id)!)
+                      : undefined
+                  }
                   onAllocated={onAllocated}
                   onMoveTo={(playerId, targetIndex) => {
                     const fromIdx = list.findIndex((p) => p.id === playerId);
@@ -441,7 +467,10 @@ export function LadderTab({ clubId }: { clubId: string }) {
   const memberIdList = useMemo(() => (members as { id: string }[]).map((m) => m.id), [members]);
   const { data: sportyHqRatings } = useSportyHqRatings(memberIdList);
   const { data: associationNumbers } = useAssociationNumbers(memberIdList);
-  const { data: leagueStrength, isFetching: strengthLoading } = useLeagueStrength(clubId, associationNumbers);
+  const { data: strengthSets, isFetching: strengthLoading } = useLeagueStrength(clubId, associationNumbers);
+  const leagueStrength = strengthSets?.all;
+  const { data: crossGenderOn = false } = useCrossGenderLeagueSetting(clubId);
+  const { data: crossGenderPlayers } = useCrossGenderPlayers(clubId, associationNumbers, crossGenderOn);
   const queryClient = useQueryClient();
   const [menOrder, setMenOrder] = useState<LadderMember[] | null>(null);
   const [ladiesOrder, setLadiesOrder] = useState<LadderMember[] | null>(null);
@@ -455,11 +484,15 @@ export function LadderTab({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("mixed_ladder_enabled, challenge_levels_up")
+        .select("mixed_ladder_enabled, challenge_levels_up, cross_gender_league_play_allowed")
         .eq("id", clubId)
         .maybeSingle();
       if (error) throw error;
-      return data as { mixed_ladder_enabled: boolean; challenge_levels_up: number | null } | null;
+      return data as {
+        mixed_ladder_enabled: boolean;
+        challenge_levels_up: number | null;
+        cross_gender_league_play_allowed: boolean | null;
+      } | null;
     },
     enabled: !!clubId,
   });
@@ -537,6 +570,25 @@ export function LadderTab({ clubId }: { clubId: string }) {
     toast.success(next ? "Mixed ladder enabled" : "Separate ladders enabled");
   };
 
+  const toggleCrossGender = async (next: boolean) => {
+    const { error: err } = await supabase
+      .from("clubs")
+      .update({ cross_gender_league_play_allowed: next } as any)
+      .eq("id", clubId);
+    if (err) {
+      toast.error(err.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["club-ladder-flags", clubId] });
+    queryClient.invalidateQueries({ queryKey: ["cross-gender-setting"] });
+    setMenOrder(null);
+    toast.success(
+      next
+        ? "Ladies with men's league history will be offered in men's teams and listed on the men's ladder"
+        : "Ladies play in the ladies' league only"
+    );
+  };
+
   const allMembers = useMemo(
     () =>
       members
@@ -548,6 +600,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
           avatar_url: m.profiles?.avatar_url || null,
           gender: m.gender || null,
           ladder_position: m.ladder_position ?? null,
+          cross_gender_ladder_position: m.cross_gender_ladder_position ?? null,
           plays_league: !!m.plays_league,
           enable_league_association_id: m.enable_league_association_id || null,
         })),
@@ -562,10 +615,36 @@ export function LadderTab({ clubId }: { clubId: string }) {
     return a.name.localeCompare(b.name);
   };
 
-  const menMembers = useMemo(
-    () => allMembers.filter((m) => !isLadiesGender(m.gender)).sort(sortByLadder),
-    [allMembers]
-  );
+  /** Ladies who may also appear on the men's ladder (feature on + recent men's history). */
+  const crossListedLadies = useMemo(() => {
+    if (!crossGenderOn || !crossGenderPlayers || crossGenderPlayers.size === 0) return [];
+    return allMembers
+      .filter((m) => isLadiesGender(m.gender) && crossGenderPlayers.has(m.id))
+      .sort((a, b) => {
+        const ap = a.cross_gender_ladder_position;
+        const bp = b.cross_gender_ladder_position;
+        if (ap != null && bp != null) return ap - bp;
+        if (ap != null) return -1;
+        if (bp != null) return 1;
+        return (
+          crossGenderStrengthKey(crossGenderPlayers.get(a.id)!) -
+          crossGenderStrengthKey(crossGenderPlayers.get(b.id)!)
+        );
+      });
+  }, [allMembers, crossGenderOn, crossGenderPlayers]);
+
+  const menMembers = useMemo(() => {
+    const men = allMembers.filter((m) => !isLadiesGender(m.gender)).sort(sortByLadder);
+    if (crossListedLadies.length === 0) return men;
+    // Place a cross-listed lady at her saved men's-ladder slot; otherwise append.
+    const combined = [...men];
+    for (const lady of crossListedLadies) {
+      const pos = lady.cross_gender_ladder_position;
+      if (pos != null && pos >= 1 && pos <= combined.length) combined.splice(pos - 1, 0, lady);
+      else combined.push(lady);
+    }
+    return combined;
+  }, [allMembers, crossListedLadies]);
 
   const ladiesMembers = useMemo(
     () => allMembers.filter((m) => isLadiesGender(m.gender)).sort(sortByLadder),
@@ -587,12 +666,33 @@ export function LadderTab({ clubId }: { clubId: string }) {
     async (ordered: LadderMember[], genderFilter: string) => {
       setSaving(true);
       try {
-        const ids = ordered.map((p) => p.id);
+        // Ladies shown on the men's ladder keep their own ladies' place: they are
+        // saved separately as a men's-ladder listing, never in the men's order.
+        const crossIds =
+          genderFilter === "male"
+            ? ordered.filter((p) => isLadiesGender(p.gender)).map((p) => p.id)
+            : [];
+        const ids = ordered
+          .filter((p) => !(genderFilter === "male" && isLadiesGender(p.gender)))
+          .map((p) => p.id);
         const { error: err } = await rpcExt("admin_reorder_ladder", {
           player_ids: ids,
           gender_filter: genderFilter,
         });
         if (err) throw err;
+        if (genderFilter === "male" && crossGenderOn) {
+          // Positions are the slot each lady occupies in the displayed men's list.
+          const orderedCross = ordered
+            .map((p, idx) => ({ p, idx }))
+            .filter(({ p }) => isLadiesGender(p.gender))
+            .sort((a, b) => a.idx - b.idx)
+            .map(({ p }) => p.id);
+          const { error: crossErr } = await rpcExt("admin_set_cross_gender_ladder", {
+            p_club_id: clubId,
+            p_member_ids: orderedCross,
+          });
+          if (crossErr) throw crossErr;
+        }
         toast.success("Ladder order saved");
         if (genderFilter === "male") setMenOrder(null);
         else if (genderFilter === "female") setLadiesOrder(null);
@@ -605,7 +705,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
         setSaving(false);
       }
     },
-    [queryClient]
+    [queryClient, clubId, crossGenderOn]
   );
 
   // Propose (never save) a ladder order based on regional league history.
@@ -622,9 +722,17 @@ export function LadderTab({ clubId }: { clubId: string }) {
       moved += res.moved;
       ranked += res.order.length - res.unchangedWithoutData;
     } else {
-      const men = refineOrderFromLeagueStats(menOrder ?? menMembers, leagueStrength);
+      // Men's ladder ranks on men's-league form (which is what cross-listed
+      // ladies have too); the ladies' ladder ranks on ladies-league form.
+      const men = refineOrderFromLeagueStats(
+        menOrder ?? menMembers,
+        strengthSets?.mens ?? leagueStrength
+      );
       setMenOrder(men.order);
-      const ladies = refineOrderFromLeagueStats(ladiesOrder ?? ladiesMembers, leagueStrength);
+      const ladies = refineOrderFromLeagueStats(
+        ladiesOrder ?? ladiesMembers,
+        strengthSets?.ladies ?? leagueStrength
+      );
       setLadiesOrder(ladies.order);
       moved += men.moved + ladies.moved;
       ranked +=
@@ -635,7 +743,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
     } else {
       toast.success(`Suggested ${moved} change${moved === 1 ? "" : "s"} from ${ranked} league players — review and save`);
     }
-  }, [leagueStrength, mixedEnabled, mixedOrder, mixedMembersList, menOrder, menMembers, ladiesOrder, ladiesMembers]);
+  }, [leagueStrength, strengthSets, mixedEnabled, mixedOrder, mixedMembersList, menOrder, menMembers, ladiesOrder, ladiesMembers]);
 
   if (isLoading) {
     return (
@@ -666,6 +774,29 @@ export function LadderTab({ clubId }: { clubId: string }) {
         </div>
         <Switch checked={mixedEnabled} onCheckedChange={toggleMixed} />
       </Card>
+
+      {!mixedEnabled && (
+        <Card className="p-3 flex items-center gap-3">
+          <ArrowRightLeft className="w-4 h-4 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">Ladies may play and be ranked in the men's league</p>
+            <p className="text-xs text-muted-foreground">
+              Ladies who played men's league games this season or last are offered automatically when
+              filling men's teams and are also shown on the men's ladder, keeping their place on the
+              ladies' ladder. They may play at any men's league level.
+              {clubFlags?.cross_gender_league_play_allowed == null
+                ? " Currently following your league's setting."
+                : ""}
+            </p>
+            {crossGenderOn && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {crossListedLadies.length} lady player{crossListedLadies.length === 1 ? "" : "s"} qualify
+              </p>
+            )}
+          </div>
+          <Switch checked={crossGenderOn} onCheckedChange={toggleCrossGender} />
+        </Card>
+      )}
 
       <Card className="p-3 flex items-center gap-3">
         <Sparkles className="w-4 h-4 text-primary shrink-0" />
@@ -763,7 +894,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
             affiliationsByMember={affiliationsByMember}
             sportyHqRatings={sportyHqRatings}
             associationNumbers={associationNumbers}
-            leagueStrength={leagueStrength}
+            leagueStrength={strengthSets?.mens ?? leagueStrength}
+            crossGender={crossGenderPlayers}
             onAllocated={handleAllocated}
           />
         </div>

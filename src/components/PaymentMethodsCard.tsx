@@ -278,12 +278,13 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     if (n > 0 && annual > 0) setAmount((annual / n).toFixed(2));
   }, [months, selectedCategory, amountTouched, fallbackAnnual]);
 
-  if (paymentGateway !== "stitch") return null;
-  
+  const isPayfast = paymentGateway === "payfast";
+  if (paymentGateway !== "stitch" && !isPayfast) return null;
+
 
   const pendingMandate = mandates.find((m) => m.status === "pending") || null;
 
-  // Re-open the existing Stitch link instead of creating another mandate.
+  // Re-open the existing authorisation link instead of creating another mandate.
   async function resumeSetup(m: Mandate) {
     if (!m.auth_url) {
       toast.error("This setup has no link left — cancel it and start again.");

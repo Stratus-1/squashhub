@@ -14,6 +14,7 @@ import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTria
 import { BarQrLabelsDialog } from "./BarQrLabelsDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
+import { StockLevelsTab } from "./bar/StockLevelsTab";
 import { BarMenuQrDialog } from "@/components/BarMenuQrDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";

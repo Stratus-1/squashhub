@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       return json({ error: "Member not found or not yours" }, 403);
     }
 
-    const { data: club } = await admin
+    const { data: club, error: clubErr } = await admin
       .from("clubs")
       .select("id, name, payment_gateway, payment_gateways, currency_code")
       .eq("id", club_id)

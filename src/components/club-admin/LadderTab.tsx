@@ -570,6 +570,25 @@ export function LadderTab({ clubId }: { clubId: string }) {
     toast.success(next ? "Mixed ladder enabled" : "Separate ladders enabled");
   };
 
+  const toggleCrossGender = async (next: boolean) => {
+    const { error: err } = await supabase
+      .from("clubs")
+      .update({ cross_gender_league_play_allowed: next } as any)
+      .eq("id", clubId);
+    if (err) {
+      toast.error(err.message);
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["club-ladder-flags", clubId] });
+    queryClient.invalidateQueries({ queryKey: ["cross-gender-setting"] });
+    setMenOrder(null);
+    toast.success(
+      next
+        ? "Ladies with men's league history will be offered in men's teams and listed on the men's ladder"
+        : "Ladies play in the ladies' league only"
+    );
+  };
+
   const allMembers = useMemo(
     () =>
       members
@@ -581,6 +600,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
           avatar_url: m.profiles?.avatar_url || null,
           gender: m.gender || null,
           ladder_position: m.ladder_position ?? null,
+          cross_gender_ladder_position: m.cross_gender_ladder_position ?? null,
           plays_league: !!m.plays_league,
           enable_league_association_id: m.enable_league_association_id || null,
         })),
@@ -595,10 +615,36 @@ export function LadderTab({ clubId }: { clubId: string }) {
     return a.name.localeCompare(b.name);
   };
 
-  const menMembers = useMemo(
-    () => allMembers.filter((m) => !isLadiesGender(m.gender)).sort(sortByLadder),
-    [allMembers]
-  );
+  /** Ladies who may also appear on the men's ladder (feature on + recent men's history). */
+  const crossListedLadies = useMemo(() => {
+    if (!crossGenderOn || !crossGenderPlayers || crossGenderPlayers.size === 0) return [];
+    return allMembers
+      .filter((m) => isLadiesGender(m.gender) && crossGenderPlayers.has(m.id))
+      .sort((a, b) => {
+        const ap = a.cross_gender_ladder_position;
+        const bp = b.cross_gender_ladder_position;
+        if (ap != null && bp != null) return ap - bp;
+        if (ap != null) return -1;
+        if (bp != null) return 1;
+        return (
+          crossGenderStrengthKey(crossGenderPlayers.get(a.id)!) -
+          crossGenderStrengthKey(crossGenderPlayers.get(b.id)!)
+        );
+      });
+  }, [allMembers, crossGenderOn, crossGenderPlayers]);
+
+  const menMembers = useMemo(() => {
+    const men = allMembers.filter((m) => !isLadiesGender(m.gender)).sort(sortByLadder);
+    if (crossListedLadies.length === 0) return men;
+    // Place a cross-listed lady at her saved men's-ladder slot; otherwise append.
+    const combined = [...men];
+    for (const lady of crossListedLadies) {
+      const pos = lady.cross_gender_ladder_position;
+      if (pos != null && pos >= 1 && pos <= combined.length) combined.splice(pos - 1, 0, lady);
+      else combined.push(lady);
+    }
+    return combined;
+  }, [allMembers, crossListedLadies]);
 
   const ladiesMembers = useMemo(
     () => allMembers.filter((m) => isLadiesGender(m.gender)).sort(sortByLadder),

@@ -39,6 +39,8 @@ import { checkSubEligibility, parseLeagueNumber } from "@/lib/league-sub-eligibi
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberPermission } from "@/hooks/use-club-permissions";
+import { useAssociationNumbers } from "@/hooks/use-association-numbers";
+import { useCrossGenderLeagueSetting, useCrossGenderPlayers } from "@/hooks/use-cross-gender-league";
 
 type Props = {
   clubId: string;

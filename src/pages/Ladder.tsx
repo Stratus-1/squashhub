@@ -677,6 +677,7 @@ export default function Ladder() {
               highlightChallengeable={isChallengeable(player)}
               leagues={getPlayerLeagues(player)}
               sportyHqRating={sportyHqRatings?.get(player.club_member_id)}
+              associationNumbers={associationNumbers?.get(player.club_member_id)}
               onLeagueClick={handleLeagueClick}
               activeLeagueFilter={activeLeagueFilter}
             />
@@ -742,6 +743,7 @@ export default function Ladder() {
                     highlightChallengeable={isChallengeable(player)}
                     leagues={getPlayerLeagues(player)}
                     sportyHqRating={sportyHqRatings?.get(player.club_member_id)}
+                    associationNumbers={associationNumbers?.get(player.club_member_id)}
                     onLeagueClick={handleLeagueClick}
                     activeLeagueFilter={activeLeagueFilter}
                   />

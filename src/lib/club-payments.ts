@@ -13,8 +13,8 @@ import {
 
 
 
-export type GatewayId = "yoco" | "stitch" | "paynow";
-export const SUPPORTED_GATEWAYS: GatewayId[] = ["yoco", "stitch", "paynow"];
+export type GatewayId = "yoco" | "stitch" | "paynow" | "payfast";
+export const SUPPORTED_GATEWAYS: GatewayId[] = ["yoco", "stitch", "paynow", "payfast"];
 export const isSupportedGateway = (g: string | null | undefined): g is GatewayId =>
   !!g && (SUPPORTED_GATEWAYS as string[]).includes(g);
 

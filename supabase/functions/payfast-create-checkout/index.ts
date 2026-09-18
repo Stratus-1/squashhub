@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
 
     const { data: club } = await admin
       .from("clubs")
-      .select("id, name, payment_gateway, payment_gateways, currency")
+      .select("id, name, payment_gateway, payment_gateways, currency_code")
       .eq("id", club_id)
       .maybeSingle();
     if (!club || !gatewayEnabled(club, "payfast")) {

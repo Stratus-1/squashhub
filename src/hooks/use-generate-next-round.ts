@@ -12,7 +12,11 @@ import { fromExt } from "@/lib/supabase-ext";
 import { buildLeagueFinals, buildNextRound, sectionLetter } from "@/lib/tournaments/knockout";
 import { buildGraduatedNextRound } from "@/lib/tournaments/graduated";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
-import type { SectionProgression } from "@/lib/tournaments/knockout-progression";
+import {
+  leaguePlayoffReady,
+  type SectionProgression,
+} from "@/lib/tournaments/knockout-progression";
+
 
 /**
  * Every newly created round tells its players who they play, through exactly

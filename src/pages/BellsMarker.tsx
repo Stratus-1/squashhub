@@ -548,7 +548,7 @@ export default function BellsMarker() {
             _game_scores: null,
             _duration_s: capMinutes * 60 - remaining,
             _confirmed: true,
-            _notes: `Bells doubles tournament: ${champ?.name || ""} (League ${match.group_number}). ${pairAName} vs ${pairBName}. Final ${scoreStr}.`,
+            _notes: `${match.partner_a_member_id || match.partner_b_member_id ? "Bells doubles tournament" : "Bells tournament"}: ${champ?.name || ""} (League ${match.group_number}). ${pairAName} vs ${pairBName}. Final ${scoreStr}.`,
             _tournament_match_id: match.id,
           });
           if (mirrorError) throw mirrorError;

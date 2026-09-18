@@ -21,11 +21,26 @@ export function finalsPools(sections: SectionProgression[]): SectionProgression[
   return sections.filter((s) => s.section > 0).sort((a, b) => a.section - b.section);
 }
 
-/** Ready only when EVERY pool of the league is decided and 2+ winners exist. */
+/** Total players still standing across the pools of one league. */
+export function leagueSurvivorCount(sections: SectionProgression[]): number {
+  return finalsPools(sections).reduce(
+    (n, p) => n + p.entrants.filter((e) => !e.eliminated).length,
+    0,
+  );
+}
+
+/**
+ * Ready when every pool is decided, OR the pools together are down to a
+ * bracket-sized field (2 / 4 / 8) — two decided pools plus a pool with two
+ * players left is a semi-final, not a wait.
+ */
 export function finalsReady(sections: SectionProgression[]): boolean {
   const pools = finalsPools(sections);
-  return pools.length >= 2 && pools.every((p) => p.complete && !!p.winner);
+  if (pools.length < 2) return false;
+  if (pools.every((p) => p.complete && !!p.winner)) return true;
+  return leaguePlayoffReady(false, leagueSurvivorCount(sections));
 }
+
 
 /** Round number the finals sit at: one after the deepest pool round. */
 export function finalsRoundNumber(sections: SectionProgression[]): number {

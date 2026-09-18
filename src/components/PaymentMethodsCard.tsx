@@ -338,6 +338,28 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     setSubmitting(true);
 
     try {
+      if (isPayfast) {
+        const { data, error } = await supabase.functions.invoke("payfast-create-mandate", {
+          body: {
+            club_id: clubId,
+            club_member_id: clubMemberId,
+            fee_category_id: selectedCategory.id === "__general__" ? null : selectedCategory.id,
+            monthly_amount: amt,
+            debit_day: Number(debitDay) || 1,
+            months_total: Number(months) || null,
+            return_url: `${window.location.origin}/my-account?mandate=pending`,
+          },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        if ((data as any)?.redirect_url) {
+          setSetupOpen(false);
+          window.location.assign((data as any).redirect_url);
+          return;
+        }
+        throw new Error("PayFast did not return a card page");
+      }
+
       const returnUrl = buildStitchReturnUrl("/my-account?mandate=pending");
       const { data, error } = await supabase.functions.invoke("stitch-create-mandate", {
         body: {

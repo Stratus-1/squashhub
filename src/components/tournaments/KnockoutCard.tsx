@@ -12,8 +12,11 @@ import {
 
   progressSummary,
   sectionProgression,
+  leaguePlayoffReady,
+  leaguePlayoffStageLabel,
   type ChampRound,
 } from "@/lib/tournaments/knockout-progression";
+
 import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";

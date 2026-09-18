@@ -10815,18 +10815,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <Button
                 variant="outline" size="sm"
                 onClick={() => {
-                  if (selectedPlayerIds.size === allSelectablePlayers.length) {
+                  if (selectedPlayerIds.size === availablePlayers.length) {
                     setSelectedPlayerIds(new Set());
                   } else {
-                    setSelectedPlayerIds(new Set(allSelectablePlayers.map((m: any) => m.id)));
+                    setSelectedPlayerIds(new Set(availablePlayers.map((m: any) => m.id)));
                   }
                 }}
               >
-                {selectedPlayerIds.size === allSelectablePlayers.length ? "Deselect All" : "Select All"}
+                {selectedPlayerIds.size === availablePlayers.length ? "Deselect All" : "Select All"}
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              {selectedPlayerIds.size} of {allSelectablePlayers.length} selected
+              {selectedPlayerIds.size} of {availablePlayers.length} selected
               {visitorAsMembers.length > 0 && ` (incl. ${visitorAsMembers.filter((v: any) => selectedPlayerIds.has(v.id)).length} visitors)`}
             </p>
             {selfPairInviteSelection && (
@@ -10851,7 +10851,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           </CardHeader>
 
           <CardContent>
-            {allSelectablePlayers.length === 0 ? (
+            {availablePlayers.length === 0 ? (
               <p className="text-muted-foreground py-4">No matching players found. Check member gender settings.</p>
             ) : (
               <>
@@ -10864,10 +10864,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {(() => {
                   const q = playerSearch.trim().toLowerCase();
                   const filtered = q
-                    ? allSelectablePlayers.filter((m: any) =>
+                    ? availablePlayers.filter((m: any) =>
                         ((m.name || m.profiles?.name || "") as string).toLowerCase().includes(q)
                       )
-                    : allSelectablePlayers;
+                    : availablePlayers;
                   if (filtered.length === 0) {
                     return (
                       <p className="text-sm text-muted-foreground py-4 text-center">
@@ -10880,7 +10880,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   return (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                       {filtered.map((m: any) => {
-                        const i = allSelectablePlayers.findIndex((p: any) => p.id === m.id);
+                        const i = availablePlayers.findIndex((p: any) => p.id === m.id);
                         return (
                           <label key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
                             <Checkbox

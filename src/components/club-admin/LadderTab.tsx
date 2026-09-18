@@ -484,11 +484,15 @@ export function LadderTab({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clubs")
-        .select("mixed_ladder_enabled, challenge_levels_up")
+        .select("mixed_ladder_enabled, challenge_levels_up, cross_gender_league_play_allowed")
         .eq("id", clubId)
         .maybeSingle();
       if (error) throw error;
-      return data as { mixed_ladder_enabled: boolean; challenge_levels_up: number | null } | null;
+      return data as {
+        mixed_ladder_enabled: boolean;
+        challenge_levels_up: number | null;
+        cross_gender_league_play_allowed: boolean | null;
+      } | null;
     },
     enabled: !!clubId,
   });

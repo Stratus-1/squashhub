@@ -1732,3 +1732,20 @@ Fix: the `league_planning` section now requires (a) at least one non-archived le
   - `payfast-verify-checkout` — read-only status report for the return page; confirmation is always the ITN's job.
 - Signature rule: MD5 over fields in submission order, RFC1738 encoding (spaces as `+`, uppercase hex), blank fields dropped, passphrase appended last. Never reorder the field list in `payfast-create-checkout` without recomputing.
 - Client: `GatewayId`/`SUPPORTED_GATEWAYS` include `payfast`; pending session stored under `sh.payfast.pending`; return params `payfast_session` / `payfast_cancelled`.
+
+## 18 Sep 2026 — Empty member lists (tournament Players step, Riverside)
+
+Symptom: the tournament wizard's "Select Players" step listed no club members;
+only individually picked (directory) players appeared.
+
+Cause: `club_members` uses COLUMN-level SELECT grants for `authenticated`. The
+recently added `cross_gender_ladder_position` column was never granted, so every
+query using `CLUB_MEMBER_COLUMNS` (useClubMembers, tournament member pool, etc.)
+failed with `42501 permission denied for table club_members` and fell back to an
+empty list. RLS was fine — this was a missing grant.
+
+Fix: `GRANT SELECT (cross_gender_ladder_position) ON public.club_members TO authenticated;`
+
+Rule: when adding a column to `club_members` (or any table with column-level
+grants), grant SELECT on the new column in the same migration, or all roster
+reads break silently.

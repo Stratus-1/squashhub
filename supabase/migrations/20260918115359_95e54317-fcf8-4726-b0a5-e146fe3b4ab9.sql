@@ -1,0 +1,1 @@
+GRANT SELECT (cross_gender_ladder_position) ON public.club_members TO authenticated;

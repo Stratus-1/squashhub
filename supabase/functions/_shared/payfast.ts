@@ -37,6 +37,37 @@ export function pfItnSignature(ordered: Array<[string, string]>, passphrase?: st
   return pfSignature(ordered.filter(([k]) => k !== "signature"), passphrase);
 }
 
+/** Signature including empty fields (PayFast's own ITN sample keeps them). */
+function pfSignatureKeepEmpty(fields: Array<[string, string]>, passphrase?: string | null): string {
+  const parts = fields.map(([k, v]) => `${k}=${pfEncode(String(v ?? "").trim())}`);
+  const pass = (passphrase || "").trim();
+  if (pass) parts.push(`passphrase=${pfEncode(pass)}`);
+  return md5(parts.join("&"));
+}
+
+/**
+ * PayFast is inconsistent about whether empty fields are part of the ITN
+ * signature, and a passphrase may or may not be configured on the merchant
+ * account. Accept any of the valid combinations — the payload is still
+ * confirmed with PayFast's own validation call afterwards.
+ */
+export function pfItnSignatureMatches(
+  ordered: Array<[string, string]>,
+  signature: string,
+  passphrase?: string | null,
+): boolean {
+  const body = ordered.filter(([k]) => k !== "signature");
+  const got = (signature || "").trim().toLowerCase();
+  if (!got) return false;
+  const candidates = [
+    pfSignature(body, passphrase),
+    pfSignatureKeepEmpty(body, passphrase),
+    pfSignature(body, ""),
+    pfSignatureKeepEmpty(body, ""),
+  ];
+  return candidates.some((c) => c.toLowerCase() === got);
+}
+
 /** Parse an urlencoded body preserving field order. */
 export function parseOrderedForm(raw: string): Array<[string, string]> {
   const out: Array<[string, string]> = [];

@@ -9,7 +9,7 @@
  *
  * Pure logic: no React, no network. Completed pool matches are only READ.
  */
-import type { SectionProgression } from "./knockout-progression";
+import { leaguePlayoffReady, type SectionProgression } from "./knockout-progression";
 import { sectionLetter } from "./knockout";
 import { suggestNextRoundBoard, type DrawBoard, type DrawEntrant } from "./draw-board";
 

@@ -244,11 +244,21 @@ export function KnockoutCard({
                 </div>
               )}
 
-              {canManage && allDecided && !finals && (
-                <Button size="sm" disabled={generate.isPending} onClick={() => generate.mutate({ groupNumber: gn })}>
-                  Generate league final ({draws.length} section winners)
-                </Button>
+              {canManage && playoffReady && !finals && (
+                <div className="space-y-1">
+                  <Button size="sm" disabled={generate.isPending} onClick={() => generate.mutate({ groupNumber: gn })}>
+                    {allDecided
+                      ? `Generate league final (${draws.length} section winners)`
+                      : `Generate ${leaguePlayoffStageLabel(aliveInLeague)} (${aliveInLeague} still in)`}
+                  </Button>
+                  {!allDecided && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Any pool game still outstanding no longer affects this play-off.
+                    </p>
+                  )}
+                </div>
               )}
+
             </div>
           );
         })}

@@ -15825,6 +15825,10 @@ export type Database = {
           tenant_type: string
         }[]
       }
+      seed_club_welcome_template: {
+        Args: { p_club_id: string }
+        Returns: string
+      }
       seed_linked_national_body_fees: {
         Args: { p_league_association_id: string; p_season_year?: number }
         Returns: number

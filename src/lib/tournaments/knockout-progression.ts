@@ -370,3 +370,27 @@ export function progressSummary(section: SectionProgression): string {
   else if (section.nextRound?.label) parts.push(`Next: ${section.nextRound.label}`);
   return parts.join(" · ");
 }
+
+/**
+ * Cross-pool play-off readiness for a league.
+ *
+ * A league is ready for its own play-off when either every pool has produced
+ * a single winner (the classic case) or the pools TOGETHER are down to a
+ * bracket-sized field — 2 (final), 4 (semi-finals) or 8 (quarter-finals).
+ * Nelspruit's third league is the second case: two pools decided, one pool
+ * with two players left = four still in, i.e. a semi-final.
+ */
+export const LEAGUE_PLAYOFF_SIZES = [2, 4, 8];
+
+export function leaguePlayoffReady(allSectionsDecided: boolean, survivors: number): boolean {
+  if (survivors < 2) return false;
+  if (allSectionsDecided) return true;
+  return LEAGUE_PLAYOFF_SIZES.includes(survivors);
+}
+
+/** "Final" / "Semi-finals" / "Quarter-finals" for a play-off of `survivors` players. */
+export function leaguePlayoffStageLabel(survivors: number): string {
+  if (survivors <= 2) return "league final";
+  if (survivors <= 4) return "semi-finals";
+  return "quarter-finals";
+}

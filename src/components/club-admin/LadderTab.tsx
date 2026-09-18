@@ -236,6 +236,9 @@ function DraggablePlayerRow({
                 .join(" · ")}
             </p>
           )}
+          {strengthSummary && (
+            <p className="text-[10px] text-muted-foreground truncate">{strengthSummary}</p>
+          )}
         </div>
 
         {leagues.length > 0 && (

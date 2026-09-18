@@ -85,3 +85,20 @@ describe("confirmation summary", () => {
     expect(inviteConfirmSummary("all", ["A", "B"])).toMatch(/all 2 invited members/);
   });
 });
+
+describe("reminder to everyone", () => {
+  it("includes already registered and paid entrants, but never cancelled ones", () => {
+    const res = resolveInviteRecipients({ mode: "all", registrations: regs, includeRegistered: true });
+    expect(res.ok && res.rows.map((r) => r.id)).toEqual(["r1", "r2", "r3"]);
+  });
+
+  it("does not widen a selective send", () => {
+    const res = resolveInviteRecipients({
+      mode: "selected",
+      registrations: regs,
+      selectedIds: ["r1"],
+      includeRegistered: true,
+    });
+    expect(res.ok && res.rows.map((r) => r.id)).toEqual(["r1"]);
+  });
+});

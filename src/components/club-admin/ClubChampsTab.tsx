@@ -5717,7 +5717,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // `mode` is explicit: "selected" NEVER widens to the full roster, for any reason.
   async function sendChampInvites(
     champId: string,
-    opts?: { confirm?: boolean; registrationIds?: string[]; mode?: InviteSendMode },
+    opts?: {
+      confirm?: boolean;
+      registrationIds?: string[];
+      mode?: InviteSendMode;
+      /** Reminder to everyone, including members who already registered/paid. */
+      includeRegistered?: boolean;
+    },
   ) {
     const mode: InviteSendMode = opts?.mode || (opts?.registrationIds ? "selected" : "all");
     const only = mode === "selected";
@@ -5855,6 +5861,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         mode,
         registrations: (regs || []) as any[],
         selectedIds: opts?.registrationIds,
+        includeRegistered: !only && !!opts?.includeRegistered,
       });
       let resolved: ResolveResult = first;
       if (!first.ok && mode === "all" && first.error === "Everyone is already registered.") {
@@ -6561,6 +6568,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const effectiveAllInviteCount =
     resolvedAudience.memberIds.length || allInviteCount || structureInviteCount;
   const selectedInviteCount = selectedInviteeRegIds.size;
+  /** Everyone still in the tournament — including players who already registered or paid. */
+  const everyoneInviteCount = useMemo(
+    () =>
+      (inviteeRows as any[]).filter(
+        (r: any) => r.club_member_id && String(r.status || "").toLowerCase() !== "cancelled",
+      ).length,
+    [inviteeRows],
+  );
 
   /** Live acceptance picture for this tournament (drives the Players step). */
   const entrantCounts = useMemo(
@@ -10549,20 +10564,40 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <div className="pt-2 border-t border-border/50 space-y-3">
                 {editingChampId ? (
                   <div className="space-y-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={invitesSendingFor === editingChampId || effectiveAllInviteCount === 0}
-                      onClick={() => sendChampInvites(editingChampId, { confirm: true, mode: "all" })}
-                    >
-                      <Send className="w-4 h-4 mr-1" />
-                      {invitesSendingFor === editingChampId
-                        ? "Sending…"
-                        : `Send invites now (${effectiveAllInviteCount})`}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={invitesSendingFor === editingChampId || effectiveAllInviteCount === 0}
+                        onClick={() => sendChampInvites(editingChampId, { confirm: true, mode: "all" })}
+                      >
+                        <Send className="w-4 h-4 mr-1" />
+                        {invitesSendingFor === editingChampId
+                          ? "Sending…"
+                          : `Send to those who haven't entered yet (${effectiveAllInviteCount})`}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={invitesSendingFor === editingChampId || everyoneInviteCount === 0}
+                        onClick={() =>
+                          sendChampInvites(editingChampId, { confirm: true, mode: "all", includeRegistered: true })
+                        }
+                      >
+                        <Send className="w-4 h-4 mr-1" />
+                        {invitesSendingFor === editingChampId
+                          ? "Sending…"
+                          : `Send to everyone, entered or not (${everyoneInviteCount})`}
+                      </Button>
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
                       Goes to the invitation audience above ({audienceLabel(inviteAudience, eligibilityScope)}) via{" "}
                       {Array.from(inviteMethods.size ? inviteMethods : new Set(["app"])).join(", ")}. {resolvedAudience.summary}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Use the second button for a reminder or a change of detail — it also reaches players who have
+                      already entered or paid. Players who pulled out are never messaged again.
                     </p>
                     {lastInviteSend && (
                       <p className="text-[11px] text-muted-foreground">

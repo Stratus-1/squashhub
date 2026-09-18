@@ -5861,6 +5861,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         mode,
         registrations: (regs || []) as any[],
         selectedIds: opts?.registrationIds,
+        includeRegistered: !only && !!opts?.includeRegistered,
       });
       let resolved: ResolveResult = first;
       if (!first.ok && mode === "all" && first.error === "Everyone is already registered.") {

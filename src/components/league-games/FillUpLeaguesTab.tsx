@@ -1283,7 +1283,12 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     )).sort((a, b) => a - b);
     return checkSubEligibility(
       { ...subRules, league_number_order: leagueNumberOrder },
-      { homeLeagueNumber, homePosition, gender: memberMap.get(memberId)?.gender as any },
+      {
+        homeLeagueNumber,
+        homePosition,
+        gender: memberMap.get(memberId)?.gender as any,
+        crossGenderLeaguePlayer: targetGender === "men" && isCrossGenderPlayer(memberId),
+      },
       { leagueNumber: targetLeagueNumber, position: targetPosition, gender: targetGender },
     );
   };

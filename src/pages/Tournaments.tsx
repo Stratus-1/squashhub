@@ -648,33 +648,67 @@ export default function Tournaments() {
   };
 
   /**
+   * The round row that belongs to ONE fixture: its own league + section first,
+   * then the league, then the tournament. Sections of the same round number can
+   * be at completely different stages (a pool round-5 game and a semi-final),
+   * so a fixture must never read another section's row.
+   */
+  const matchRoundRow = (m: any): any | undefined => {
+    const rows = roundsByChamp.get(m.champ_id) || [];
+    const sameRound = rows.filter((r: any) => Number(r.round_number) === Number(m.round_number));
+    return (
+      sameRound.find(
+        (r: any) =>
+          Number(r.group_number) === Number(m.group_number) &&
+          Number(r.section_number) === Number(m.section_number),
+      ) ||
+      sameRound.find((r: any) => Number(r.group_number) === Number(m.group_number)) ||
+      undefined
+    );
+  };
+
+  const isGenericRoundLabel = (s: string) => !s || /^round\s*\d+$/i.test(s.trim());
+
+  /** Semi-final / Quarter-final / Round 5 — the stage THIS fixture belongs to. */
+  const matchStageLabel = (m: any): string => {
+    const own = String(m?.stage_label || "").trim();
+    if (!isGenericRoundLabel(own)) return own;
+    const row = String(matchRoundRow(m)?.label || "").trim();
+    if (!isGenericRoundLabel(row)) return row;
+    const planned = roundMeta(m.champ_id, m.round_number).label;
+    return planned || `Round ${Number(m.round_number) || 1}`;
+  };
+
+  /**
    * The play-by date for ONE fixture: its own section's round row first, so a
    * later section of the same round never changes another section's date.
    */
   const matchPlayBy = (m: any): string | null => {
-    // The round's published date is fixed for everyone in that round. Only a
-    // round the plan never dated falls back to the section's own row.
-    const planned = roundMeta(m.champ_id, m.round_number).date;
-    if (planned) return planned;
-    const rows = roundsByChamp.get(m.champ_id) || [];
-    const exact = rows.find(
-      (r: any) =>
-        Number(r.round_number) === Number(m.round_number) &&
-        Number(r.group_number) === Number(m.group_number) &&
-        Number(r.section_number) === Number(m.section_number),
-    );
-    return exact?.play_by ? String(exact.play_by).slice(0, 10) : null;
+    const own = matchRoundRow(m)?.play_by;
+    if (own) return String(own).slice(0, 10);
+    return roundMeta(m.champ_id, m.round_number).date;
   };
 
   const renderRoundGroups = (list: any[]) => {
-    const groups = new Map<number, any[]>();
+    // Grouped by STAGE, not by round number: a league that reached its
+    // semi-final in round 5 must not sit under another league's "Round 5".
+    const groups = new Map<string, any[]>();
+    const order = new Map<string, number>();
     list.forEach((m) => {
       const n = Number(m.round_number);
-      const key = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
+      const num = Number.isFinite(n) && n >= 1 && n < 99 ? n : 0;
+      const key = num === 0 ? "\u0000pool" : matchStageLabel(m);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
+      const prev = order.get(key);
+      if (prev === undefined || num < prev) order.set(key, num);
     });
-    const keys = Array.from(groups.keys()).sort((a, b) => (a === 0 ? 1 : b === 0 ? -1 : a - b));
+    const keys = Array.from(groups.keys()).sort((a, b) => {
+      if (a === "\u0000pool") return 1;
+      if (b === "\u0000pool") return -1;
+      return (order.get(a) ?? 0) - (order.get(b) ?? 0) || a.localeCompare(b);
+    });
+
     return (
       <div className="space-y-2">
         {keys.map((n) => {

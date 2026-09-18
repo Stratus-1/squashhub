@@ -6568,6 +6568,56 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     [inviteeRows, paymentRequired, entryFeeAmount],
   );
 
+  /**
+   * Players who withdrew (their own invitation link) or were cancelled by the
+   * organiser. They must never sit in the Players shortlist or an allocation —
+   * the draw would otherwise keep handing them fixtures/byes.
+   */
+  const withdrawnMemberIds = useMemo(() => {
+    const out = new Set<string>();
+    (inviteeRows as any[]).forEach((r) => {
+      if (!r.club_member_id) return;
+      if (classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }) === "declined") {
+        out.add(String(r.club_member_id));
+      }
+    });
+    return out;
+  }, [inviteeRows, paymentRequired, entryFeeAmount]);
+
+  useEffect(() => {
+    if (withdrawnMemberIds.size === 0) return;
+    setSelectedPlayerIds((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      withdrawnMemberIds.forEach((id) => {
+        if (next.delete(id)) changed = true;
+      });
+      return changed ? next : prev;
+    });
+    setPlayerOrder((prev) => {
+      const next = prev.filter((id) => !withdrawnMemberIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+    setGroupAssignments((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      withdrawnMemberIds.forEach((id) => {
+        if (next.delete(id)) changed = true;
+      });
+      return changed ? next : prev;
+    });
+  }, [withdrawnMemberIds]);
+
+  /** The Players step may only offer people who have not withdrawn/declined. */
+  const availablePlayers = useMemo(
+    () => (allSelectablePlayers as any[]).filter((m: any) => !withdrawnMemberIds.has(String(m.id))),
+    [allSelectablePlayers, withdrawnMemberIds],
+  );
+
+
+
+
+
   /** Accepted entrants who belong to no source league — need a division by hand. */
   const acceptedNeedingDivision = useMemo(() => {
     const inAnyLeague = new Set<string>();
@@ -7357,12 +7407,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [doublesPairs]);
 
   const availableForPairing = useMemo(() => {
-    const pool = allSelectablePlayers as ClubMember[];
+    const pool = (allSelectablePlayers as ClubMember[]).filter((m) => !withdrawnMemberIds.has(String(m.id)));
     if (gender === "mixed" || gender === "open") return pool.filter((m) => !usedPlayerIds.has(m.id));
     const matchValues = gender === "men" ? ["men", "male", "m"] : ["ladies", "female", "f", "women"];
     return pool
       .filter((m) => m.gender && matchValues.includes(m.gender.toLowerCase()) && !usedPlayerIds.has(m.id));
-  }, [allSelectablePlayers, gender, usedPlayerIds]);
+  }, [allSelectablePlayers, gender, usedPlayerIds, withdrawnMemberIds]);
 
   // Returns a list of friendly reasons why the current step can't advance.
   // Empty array means the user can click Next.
@@ -10765,18 +10815,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               <Button
                 variant="outline" size="sm"
                 onClick={() => {
-                  if (selectedPlayerIds.size === allSelectablePlayers.length) {
+                  if (selectedPlayerIds.size === availablePlayers.length) {
                     setSelectedPlayerIds(new Set());
                   } else {
-                    setSelectedPlayerIds(new Set(allSelectablePlayers.map((m: any) => m.id)));
+                    setSelectedPlayerIds(new Set(availablePlayers.map((m: any) => m.id)));
                   }
                 }}
               >
-                {selectedPlayerIds.size === allSelectablePlayers.length ? "Deselect All" : "Select All"}
+                {selectedPlayerIds.size === availablePlayers.length ? "Deselect All" : "Select All"}
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              {selectedPlayerIds.size} of {allSelectablePlayers.length} selected
+              {selectedPlayerIds.size} of {availablePlayers.length} selected
               {visitorAsMembers.length > 0 && ` (incl. ${visitorAsMembers.filter((v: any) => selectedPlayerIds.has(v.id)).length} visitors)`}
             </p>
             {selfPairInviteSelection && (
@@ -10801,7 +10851,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           </CardHeader>
 
           <CardContent>
-            {allSelectablePlayers.length === 0 ? (
+            {availablePlayers.length === 0 ? (
               <p className="text-muted-foreground py-4">No matching players found. Check member gender settings.</p>
             ) : (
               <>
@@ -10814,10 +10864,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {(() => {
                   const q = playerSearch.trim().toLowerCase();
                   const filtered = q
-                    ? allSelectablePlayers.filter((m: any) =>
+                    ? availablePlayers.filter((m: any) =>
                         ((m.name || m.profiles?.name || "") as string).toLowerCase().includes(q)
                       )
-                    : allSelectablePlayers;
+                    : availablePlayers;
                   if (filtered.length === 0) {
                     return (
                       <p className="text-sm text-muted-foreground py-4 text-center">
@@ -10830,7 +10880,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   return (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                       {filtered.map((m: any) => {
-                        const i = allSelectablePlayers.findIndex((p: any) => p.id === m.id);
+                        const i = availablePlayers.findIndex((p: any) => p.id === m.id);
                         return (
                           <label key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
                             <Checkbox

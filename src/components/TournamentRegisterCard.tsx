@@ -13,7 +13,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Trophy, Loader2, CreditCard, Check, Landmark, Copy, Search } from "lucide-react";
 import { toast } from "sonner";
-import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
 import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/payment-methods";
 import { GroupEntryCard } from "@/components/tournaments/GroupEntryCard";
@@ -485,7 +484,6 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
 
 
           {cardReady && paymentGateway === "yoco" && (
-            <FnbPaymentNotice showEftFallback={acceptsEft} />
           )}
         </div>
       )}

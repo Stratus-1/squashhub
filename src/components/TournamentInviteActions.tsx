@@ -9,7 +9,6 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { cn } from "@/lib/utils";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";
 import { parseRoundDeadlines } from "@/lib/tournaments/round-deadlines";
@@ -394,7 +393,6 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                 </Button>
               </div>
               {yocoReady && paymentRequired && (
-                <FnbPaymentNotice className="mt-2" gateway={clubInfo?.payment_gateway} />
               )}
             </>
             );

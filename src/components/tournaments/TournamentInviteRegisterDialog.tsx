@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
-import { FnbPaymentNotice } from "@/components/FnbPaymentNotice";
 import { isSupportedGateway, startClubCheckout, pollStitchPayment, clearPendingClubSession, type GatewayId } from "@/lib/club-payments";
 import { CalendarClock, Check, CheckCircle, CreditCard, Landmark, Loader2, Search, Users } from "lucide-react";
 import { DoublesPartnerPicker } from "@/components/tournaments/DoublesPartnerPicker";
@@ -403,7 +402,6 @@ export function TournamentInviteRegisterDialog({
                     {payByCard.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <CreditCard className="w-3 h-3 mr-1" />}
                     Pay {money(entryFeeCents)} by card
                   </Button>
-                  <FnbPaymentNotice gateway={paymentGateway} />
                 </>
               )}
               {acceptsEft && !showEft && status !== "pending_eft" && (

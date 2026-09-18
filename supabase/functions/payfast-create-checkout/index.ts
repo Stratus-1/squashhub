@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
     const { data: member } = await admin
       .from("club_members")
-      .select("id, club_id, user_id, first_name, last_name, email")
+      .select("id, club_id, user_id, name, email")
       .eq("id", club_member_id)
       .maybeSingle();
     if (!member || member.club_id !== club_id || member.user_id !== userId) {
@@ -136,8 +136,8 @@ Deno.serve(async (req) => {
       ["return_url", returnUrl],
       ["cancel_url", cancelUrl],
       ["notify_url", notifyUrl],
-      ["name_first", (member.first_name || "").slice(0, 100)],
-      ["name_last", (member.last_name || "").slice(0, 100)],
+      ["name_first", String(member.name || "").split(" ")[0].slice(0, 100)],
+      ["name_last", String(member.name || "").split(" ").slice(1).join(" ").slice(0, 100)],
       ["email_address", (member.email || userData.user.email || "").slice(0, 100)],
       ["m_payment_id", session.id],
       ["amount", amt.toFixed(2)],

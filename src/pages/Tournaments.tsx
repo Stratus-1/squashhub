@@ -711,36 +711,21 @@ export default function Tournaments() {
 
     return (
       <div className="space-y-2">
-        {keys.map((n) => {
-          const items = groups.get(n)!;
-          // Progress is measured against every game of that round, not just
-          // the filtered view.
-          // Only the tournaments actually shown in this section count — a
-          // round heading must never total up round 1 of every tournament.
+        {keys.map((key) => {
+          const items = groups.get(key)!;
+          const isPool = key === "\u0000pool";
+          // Progress is measured against every game at this stage, not just
+          // the filtered view — and only for the tournaments shown here.
           const champsHere = new Set(items.map((m: any) => m.champ_id));
           const all = (allMatches as any[]).filter((m: any) => {
+            if (m.status === "placeholder" || !champsHere.has(m.champ_id)) return false;
             const r = Number(m.round_number);
-            const k = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
-            return k === n && m.status !== "placeholder" && champsHere.has(m.champ_id);
+            const num = Number.isFinite(r) && r >= 1 && r < 99 ? r : 0;
+            return isPool ? num === 0 : num !== 0 && matchStageLabel(m) === key;
           });
           const done = all.filter((m: any) => isTerminalMatchStatus(m.status)).length;
           const outstanding = all.length - done;
-          // The fixture's own stage label (Semi-final, Final…) is what the
-          // organiser chose when planning the round — always prefer it over
-          // the generic "Round N" fallback.
-          const labels = Array.from(
-            new Set(
-              items
-                .map(
-                  (m: any) =>
-                    String(m?.stage_label || "").trim() ||
-                    roundMeta(m.champ_id, m.round_number).label,
-                )
-                .filter(Boolean),
-            ),
-          );
-
-          const heading = n === 0 ? "Pool games" : labels.join(" / ") || `Round ${n}`;
+          const heading = isPool ? "Pool games" : key;
           const dates = Array.from(
             new Set(items.map((m: any) => matchPlayBy(m)).filter(Boolean)),
           ).sort() as string[];
@@ -749,7 +734,7 @@ export default function Tournaments() {
             new Set(items.map((m: any) => roundMeta(m.champ_id, m.round_number).notes).filter(Boolean)),
           );
           return (
-            <details key={n} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
+            <details key={key} open className="rounded-lg border border-border bg-card/60 overflow-hidden group">
               <summary className="cursor-pointer select-none flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 bg-muted/40 hover:bg-muted/60 text-xs font-semibold">
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90" />
                 <span className="uppercase tracking-wider">{heading}</span>
@@ -758,7 +743,7 @@ export default function Tournaments() {
                     ? `${outstanding} game${outstanding === 1 ? "" : "s"} left of ${all.length}`
                     : `${items.length} game${items.length === 1 ? "" : "s"}`}
                 </span>
-                {n !== 0 && outstanding > 0 && done > 0 && (
+                {!isPool && outstanding > 0 && done > 0 && (
                   <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500/60 text-amber-700 dark:text-amber-300">
                     still outstanding
                   </Badge>
@@ -776,6 +761,7 @@ export default function Tournaments() {
             </details>
           );
         })}
+
       </div>
     );
   };

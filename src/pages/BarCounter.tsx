@@ -368,7 +368,9 @@ export default function BarCounter() {
 
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
         <div>
-          <h1 className="text-base font-semibold leading-tight">{board.club_name} · Bar counter</h1>
+          <h1 className="text-base font-semibold leading-tight">
+            {board.club_name} · Bar counter{operator ? ` · ${operator}` : ""}
+          </h1>
           <p className="text-xs text-muted-foreground">
             {board.tabs.length} open tab{board.tabs.length === 1 ? "" : "s"} ·{" "}
             {money(board.tabs.reduce((s, t) => s + Number(t.total || 0), 0))} outstanding

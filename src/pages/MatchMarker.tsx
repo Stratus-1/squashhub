@@ -104,6 +104,7 @@ export default function MatchMarker() {
     fresh: champLockFresh,
     approveTakeover,
     declineTakeover,
+    claim: claimChampLock,
   } = useChampMarkerLock(tournamentMatchId, user?.id, markerName);
   const [handoverOpen, setHandoverOpen] = useState(false);
   const [tournamentLoadState, setTournamentLoadState] = useState<"idle" | "loading" | "error">("idle");

@@ -1111,18 +1111,25 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
         .filter(r => sortedLeagues.find(l => l.id === r.league_id && isLadiesLeague(l.name)))
         .map(r => r.club_member_id),
     );
-    const pulledLadies = isMensLeague(lg.name)
+    const pulledLadiesIds = isMensLeague(lg.name)
       ? statuses
           .filter(s => s.league_id === lg.id && ladiesPoolMemberIds.has(s.club_member_id))
-          .filter(s => !baseMemberIds.has(s.club_member_id))
-          .map(s => ({
-            memberId: s.club_member_id,
-            rank: null,
-            isPulled: true,
-            isCascaded: false,
-            cascadedFromCode: null as string | null,
-          }))
+          .map(s => s.club_member_id)
       : [];
+    // Ladies who play men's league under the cross-gender rule are offered
+    // automatically in every men's pool, at any level.
+    const autoCrossGenderIds = isMensLeague(lg.name) && crossGenderOn
+      ? Array.from(crossGenderPlayers?.keys() ?? []).filter(id => memberMap.has(id))
+      : [];
+    const pulledLadies = Array.from(new Set([...pulledLadiesIds, ...autoCrossGenderIds]))
+      .filter(id => !baseMemberIds.has(id))
+      .map(id => ({
+        memberId: id,
+        rank: null,
+        isPulled: true,
+        isCascaded: false,
+        cascadedFromCode: null as string | null,
+      }));
 
     // Bye-league pull: when an earlier league in the same gender group has NO
     // fixture this week (a bye), surface its base players in this league's

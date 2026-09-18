@@ -806,6 +806,7 @@ export default function MatchMarker() {
             <AlertDialogAction
               onClick={async () => {
                 const id = tournamentMatchId;
+                handedOverRef.current = true;
                 await approveTakeover();
                 try {
                   localStorage.removeItem(MARKER_CONFIG_KEY);
@@ -817,6 +818,41 @@ export default function MatchMarker() {
             >
               Yes, hand over
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Someone else claimed this game while we were still marking it.
+          We never leave the scoreboard on our own — the marker chooses. */}
+      <AlertDialog open={!!stolenBy} onOpenChange={(o) => { if (!o) setStolenBy(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{stolenBy} has started marking this game</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are still on the scoreboard and your score is safe. Keep marking to take the game
+              back, or switch to the live view and let them carry on.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={async () => {
+                await claimChampLock();
+                setStolenBy(null);
+                toast.success("You are marking this game");
+              }}
+            >
+              Keep marking
+            </AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => {
+                const id = tournamentMatchId;
+                handedOverRef.current = true;
+                setStolenBy(null);
+                if (id) navigate(`/tournament-live/${id}`, { replace: true });
+              }}
+            >
+              Watch live instead
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

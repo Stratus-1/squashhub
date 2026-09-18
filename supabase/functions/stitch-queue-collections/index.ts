@@ -36,6 +36,8 @@ Deno.serve(async (req) => {
       .from("stitch_mandates")
       .select("id, club_id, club_member_id, max_amount_cents, debit_day, fee_category_id, status, created_at")
       .eq("status", "active")
+      // PayFast card arrangements are charged by payfast-charge-mandates.
+      .eq("gateway", "stitch")
       .order("created_at", { ascending: false });
     if (restrictClubId) mandatesQ = mandatesQ.eq("club_id", restrictClubId);
     const { data: allMandates, error: mErr } = await mandatesQ;

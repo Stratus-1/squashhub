@@ -339,25 +339,18 @@ export function KnockoutCard({
           />
         )}
 
-        {playoff !== null && playoffProps && (
-          <LeaguePlayoffDrawDialog
+        {playoff !== null && (
+          <LeagueFinalsDrawDialog
             open
             onOpenChange={(o) => !o && setPlayoff(null)}
             champId={champId}
             groupNumber={playoff}
-            round={playoffProps.round}
-            stageLabel={leaguePlayoffStageLabel(playoffProps.alive.length)}
+            sections={states.filter((s) => s.groupNumber === playoff)}
             divisionLabel={groupLabel(playoff)}
-            playBy={selfScheduled ? playByForRound?.(playoffProps.round) ?? null : null}
-            entrants={playoffProps.alive.map((id, i) => ({
-              id,
-              name: names.get(id) || "Player",
-              partnerId: partnerOf(id),
-              partnerName: partnerOf(id) ? names.get(partnerOf(id)!) ?? null : null,
-              seed: i + 1,
-            }))}
+            playBy={selfScheduled ? playByForRound?.(playoffProps?.round ?? 0) ?? null : null}
             onConfirmed={() => setPlayoff(null)}
           />
+
         )}
       </CardContent>
 

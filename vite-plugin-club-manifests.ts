@@ -37,17 +37,29 @@ const BASE = {
 };
 
 function shortName(name: string): string {
-  const trimmed = name.trim();
+  let trimmed = name.trim();
+  if (trimmed.length > 12) {
+    // Prefer dropping generic suffixes over chopping mid-word
+    // ("Uitsig Squash Club" -> "Uitsig", not "Uitsig Squas").
+    const stripped = trimmed
+      .replace(/\s+(squash\s+)?(racketball\s+)?(sports?\s+)?(club|centre|center)$/i, "")
+      .replace(/\s+squash$/i, "")
+      .trim();
+    if (stripped) trimmed = stripped;
+  }
   return trimmed.length > 12 ? trimmed.slice(0, 12).trim() : trimmed;
 }
 
-export function buildClubManifest(name: string): string {
+export function buildClubManifest(name: string, subdomain?: string): string {
+  const tag = subdomain ? `&club=${subdomain}` : "";
   return JSON.stringify(
     {
       name,
       short_name: shortName(name),
-      id: "/?source=pwa",
-      start_url: "/?source=pwa",
+      // Distinct id per club so a phone that already saw the generic
+      // SquashHub manifest does not reuse its cached identity/name.
+      id: `/?source=pwa${tag}`,
+      start_url: `/?source=pwa${tag}`,
       ...BASE,
     },
     null,
@@ -89,7 +101,7 @@ export function clubManifestsPlugin(): Plugin {
         const clubs = await fetchClubs(env);
         const club = clubs.find((c) => (c.subdomain || "").toLowerCase() === match[1].toLowerCase());
         res.setHeader("Content-Type", "application/manifest+json");
-        res.end(buildClubManifest(club?.name?.trim() || "SquashHub"));
+        res.end(buildClubManifest(club?.name?.trim() || "SquashHub", match[1].toLowerCase()));
       });
     },
     async generateBundle() {
@@ -101,7 +113,7 @@ export function clubManifestsPlugin(): Plugin {
         this.emitFile({
           type: "asset",
           fileName: `club-manifests/${sub}.webmanifest`,
-          source: buildClubManifest(name),
+          source: buildClubManifest(name, sub),
         });
       }
     },

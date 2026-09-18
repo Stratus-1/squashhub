@@ -20,6 +20,32 @@
     <!-- PWA -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="application-name" content="SquashHub" />
+    <script>
+      /* Point the manifest at the club-specific one BEFORE the browser parses
+         the rest of the document, so an install started immediately on load
+         captures the club name instead of the generic "SquashHub". */
+      (function () {
+        try {
+          var host = location.hostname.toLowerCase();
+          var roots = ["squashhub.co.za", "squashhub.app"];
+          var sub = null;
+          var q = new URLSearchParams(location.search).get("club");
+          for (var i = 0; i < roots.length; i++) {
+            if (host.endsWith("." + roots[i])) {
+              var label = host.slice(0, host.length - roots[i].length - 1);
+              if (label.indexOf(".") === -1) sub = label;
+              break;
+            }
+          }
+          if (!sub && q) sub = q.toLowerCase().trim();
+          if (!sub || sub === "www" || !/^[a-z0-9][a-z0-9-]{1,31}$/.test(sub)) return;
+          var link = document.querySelector('link[rel="manifest"]');
+          if (link) link.setAttribute("href", "/club-manifests/" + sub + ".webmanifest");
+        } catch (e) {
+          /* keep the default manifest */
+        }
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

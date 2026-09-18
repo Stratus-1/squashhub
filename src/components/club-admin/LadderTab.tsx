@@ -437,6 +437,11 @@ function GenderLadder({ title, players, order, setOrder, genderFilter, saving, o
                       ? describeStrength(leagueStrength.get(player.id)!)
                       : undefined
                   }
+                  crossGenderNote={
+                    genderFilter === "male" && isLadiesGender(player.gender) && crossGender?.get(player.id)
+                      ? describeCrossGender(crossGender.get(player.id)!)
+                      : undefined
+                  }
                   onAllocated={onAllocated}
                   onMoveTo={(playerId, targetIndex) => {
                     const fromIdx = list.findIndex((p) => p.id === playerId);

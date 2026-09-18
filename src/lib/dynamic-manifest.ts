@@ -52,20 +52,28 @@ export async function applyDynamicManifest(): Promise<void> {
     if (!sub) return; // root host — keep default SquashHub manifest
 
     // Real, same-origin, per-club manifest generated at build time
-    // (/club-manifests/<subdomain>.webmanifest). Only swap the link once we
-    // know the file exists, so installability never breaks on a 404/SPA HTML.
+    // (/club-manifests/<subdomain>.webmanifest). Point the link at it
+    // IMMEDIATELY (synchronously): the browser can read the manifest as soon
+    // as the install affordance is used, and awaiting a fetch first left a
+    // window in which Chrome/Android captured the generic SquashHub manifest,
+    // so installed apps ended up named "SquashHub" instead of the club.
+    // We then verify in the background and fall back only if the file is
+    // missing (404 / SPA HTML), which keeps installability safe.
     const clubManifestUrl = `/club-manifests/${encodeURIComponent(sub.toLowerCase())}.webmanifest`;
-    try {
-      const res = await fetch(clubManifestUrl, { headers: { Accept: "application/manifest+json" } });
-      const type = res.headers.get("content-type") || "";
-      if (res.ok && !type.includes("text/html")) {
-        setManifestHref(clubManifestUrl);
-      } else {
-        setManifestHref(`${BASE_MANIFEST_URL}?club=${encodeURIComponent(sub)}`);
+    setManifestHref(clubManifestUrl);
+    void (async () => {
+      try {
+        const res = await fetch(clubManifestUrl, {
+          headers: { Accept: "application/manifest+json" },
+        });
+        const type = res.headers.get("content-type") || "";
+        if (!res.ok || type.includes("text/html")) {
+          setManifestHref(`${BASE_MANIFEST_URL}?club=${encodeURIComponent(sub)}`);
+        }
+      } catch {
+        /* keep the club manifest; a transient network error is not a 404 */
       }
-    } catch {
-      setManifestHref(`${BASE_MANIFEST_URL}?club=${encodeURIComponent(sub)}`);
-    }
+    })();
 
     const club = await getPublicClubBySubdomain(sub);
     const clubName = club?.name?.trim();

@@ -1,3 +1,9 @@
+## 2026-09-18 — Tournament invitation opening is editable
+
+- The automatic “You have been invited to …” sentence now lives inside the invitation message editor and preview instead of being prepended only during sending.
+- Organisers may edit or remove it when resending a reminder. New and legacy tournaments keep the familiar opening by default, without duplicating it.
+- In-app, email, WhatsApp and SMS previews use the same edited wording. Tournament WhatsApp sends use the approved generic utility notice so no separate template can reinsert a fixed invitation sentence.
+
 # ***** PERMANENT STITCH STANDARD — DO NOT CHANGE WITHOUT VALIDATION *****
 
 ## 2026-09-17 — Existing Android installation kept showing valid invitations as unavailable

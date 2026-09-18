@@ -21,6 +21,8 @@ import { useGenerateNextRound } from "@/hooks/use-generate-next-round";
 import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
+import { LeaguePlayoffDrawDialog } from "./LeaguePlayoffDrawDialog";
+
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 
 
@@ -336,7 +338,29 @@ export function KnockoutCard({
             }}
           />
         )}
+
+        {playoff !== null && playoffProps && (
+          <LeaguePlayoffDrawDialog
+            open
+            onOpenChange={(o) => !o && setPlayoff(null)}
+            champId={champId}
+            groupNumber={playoff}
+            round={playoffProps.round}
+            stageLabel={leaguePlayoffStageLabel(playoffProps.alive.length)}
+            divisionLabel={groupLabel(playoff)}
+            playBy={selfScheduled ? playByForRound?.(playoffProps.round) ?? null : null}
+            entrants={playoffProps.alive.map((id, i) => ({
+              id,
+              name: names.get(id) || "Player",
+              partnerId: partnerOf(id),
+              partnerName: partnerOf(id) ? names.get(partnerOf(id)!) ?? null : null,
+              seed: i + 1,
+            }))}
+            onConfirmed={() => setPlayoff(null)}
+          />
+        )}
       </CardContent>
+
     </Card>
   );
 }

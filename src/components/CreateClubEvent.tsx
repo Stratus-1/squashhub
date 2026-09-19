@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarPlus, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil, Info, Send, LogOut } from "lucide-react";
+import { CalendarPlus, CalendarOff, Pause, Play, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil, Info, Send, LogOut } from "lucide-react";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -305,7 +305,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       const { data, error } = await fromExt("club_events")
         .select("*, club_event_courts(court_id)")
         .eq("club_id", clubId!)
-        .eq("status", "active")
+        // Paused events stay visible to the organiser so they can resume them;
+        // reminders/invites skip them because the reminders job only looks at
+        // status = 'active'.
+        .in("status", ["active", "paused"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];

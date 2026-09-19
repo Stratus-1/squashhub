@@ -415,11 +415,12 @@ export default function Ladder() {
     ? leaguesList.find((l) => l.id === activeLeagueFilter) || null
     : null;
 
-  // Gender buckets. A member with no gender saved is not on any ladder until an
-  // admin sets their gender, so they fall into neither bucket.
-  const genderBucket = (gender?: string | null): "ladies" | "men" | null => {
+  // Gender buckets. Members with no gender saved sit in their own "unknown"
+  // bucket, shown as a separate "Gender not set" ladder so admins can see and
+  // fix them. They can't challenge or be challenged until a gender is set.
+  const genderBucket = (gender?: string | null): "ladies" | "men" | "unknown" => {
     const g = (gender || "").toLowerCase().trim();
-    if (!g) return null;
+    if (!g) return "unknown";
     return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
   };
 
@@ -446,6 +447,11 @@ export default function Ladder() {
     [players]
   );
 
+  const unknownGenderPlayers = useMemo(() =>
+    (players || []).filter((p: any) => genderBucket(p.gender) === "unknown") as LadderPlayer[],
+    [players]
+  );
+
 
   const positionMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -460,9 +466,10 @@ export default function Ladder() {
     } else {
       menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
       ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
+      unknownGenderPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
     }
     return map;
-  }, [menPlayers, ladiesPlayers, mixedLadderEnabled, players]);
+  }, [menPlayers, ladiesPlayers, unknownGenderPlayers, mixedLadderEnabled, players]);
 
   const myPosition = useMemo(() => {
     if (!myMemberId) return null;
@@ -514,9 +521,9 @@ export default function Ladder() {
   };
 
   const myGenderGroup = useMemo(() => {
-    const toGenderGroup = (gender?: string | null): "ladies" | "men" | null => {
+    const toGenderGroup = (gender?: string | null): "ladies" | "men" | "unknown" | null => {
       const g = (gender || "").toLowerCase().trim();
-      if (!g) return null;
+      if (!g) return "unknown";
       return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
     };
 
@@ -841,6 +848,8 @@ export default function Ladder() {
               <div className="grid grid-cols-1 gap-4">
                 {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
                 {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
+                {unknownGenderPlayers.length > 0 &&
+                  (groupByLeague ? renderGrouped("Gender not set", unknownGenderPlayers) : renderColumn("Gender not set", unknownGenderPlayers))}
               </div>
             )
           }
@@ -859,6 +868,8 @@ export default function Ladder() {
         <div className="px-4 mt-3 mb-4 grid grid-cols-1 gap-4">
           {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
           {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
+          {unknownGenderPlayers.length > 0 &&
+            (groupByLeague ? renderGrouped("Gender not set", unknownGenderPlayers) : renderColumn("Gender not set", unknownGenderPlayers))}
         </div>
       )}
 

@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarPlus, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil, Info, Send, LogOut } from "lucide-react";
+import { CalendarPlus, CalendarOff, Pause, Play, Loader2, Users, Trash2, Check, X, ChevronRight, ChevronLeft, Pencil, Info, Send, LogOut } from "lucide-react";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -197,6 +197,8 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
   const skipScopePretick = useRef(false);
   const [step, setStep] = useState(1);
   const [deleteBookings, setDeleteBookings] = useState(true);
+  // Event whose individual dates the organiser is managing (skip a week)
+  const [skipEvent, setSkipEvent] = useState<any>(null);
   const [memberSearch, setMemberSearch] = useState("");
 
   const [form, setForm] = useState({
@@ -305,7 +307,10 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
       const { data, error } = await fromExt("club_events")
         .select("*, club_event_courts(court_id)")
         .eq("club_id", clubId!)
-        .eq("status", "active")
+        // Paused events stay visible to the organiser so they can resume them;
+        // reminders/invites skip them because the reminders job only looks at
+        // status = 'active'.
+        .in("status", ["active", "paused"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -1136,6 +1141,82 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
     onError: (err: any) => toast.error(err.message || "Failed to delete event"),
   });
 
+  // ---------------------------------------------------------------------
+  // Skip a single date / pause the whole series
+  // ---------------------------------------------------------------------
+
+  // Dates of the event the organiser is managing, upcoming first.
+  const { data: skipInstances } = useQuery({
+    queryKey: ["club-event-instances", skipEvent?.id],
+    queryFn: async () => {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const { data, error } = await fromExt("club_event_instances")
+        .select("id, instance_date, status")
+        .eq("event_id", skipEvent.id)
+        .gte("instance_date", today)
+        .order("instance_date", { ascending: true });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!skipEvent?.id,
+  });
+
+  // Skip one date: the occurrence is cancelled (confirmed members are notified
+  // by the database trigger) and its court bookings are released. Restoring
+  // puts the date back — courts must be re-booked by hand.
+  const skipInstanceMutation = useMutation({
+    mutationFn: async ({ instanceId, date, skip }: { instanceId: string; date: string; skip: boolean }) => {
+      const { error } = await fromExt("club_event_instances")
+        .update({ status: skip ? "cancelled" : "scheduled" })
+        .eq("id", instanceId);
+      if (error) throw error;
+
+      let releasedCourts = 0;
+      const courtIds = (skipEvent?.club_event_courts || []).map((c: any) => c.court_id);
+      if (skip && courtIds.length > 0) {
+        const { data: removed } = await supabase
+          .from("bookings")
+          .update({ status: "cancelled" })
+          .in("court_id", courtIds)
+          .eq("date", date)
+          .eq("status", "active")
+          .lt("start_time", skipEvent.end_time)
+          .gt("end_time", skipEvent.start_time)
+          .select("id");
+        releasedCourts = removed?.length || 0;
+      }
+      return { skip, releasedCourts };
+    },
+    onSuccess: ({ skip, releasedCourts }) => {
+      queryClient.invalidateQueries({ queryKey: ["club-event-instances"] });
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["club-event-booking-coverage"] });
+      toast.success(
+        skip
+          ? `Date skipped${releasedCourts > 0 ? ` — ${releasedCourts} court booking${releasedCourts === 1 ? "" : "s"} released` : ""}`
+          : "Date put back on — re-book the courts if you need them",
+      );
+    },
+    onError: (err: any) => toast.error(err.message || "Could not change that date"),
+  });
+
+  // Pause / resume the whole series: no invitations or reminders while paused.
+  const pauseMutation = useMutation({
+    mutationFn: async ({ eventId, pause }: { eventId: string; pause: boolean }) => {
+      const { error } = await fromExt("club_events")
+        .update({ status: pause ? "paused" : "active" })
+        .eq("id", eventId);
+      if (error) throw error;
+      return pause;
+    },
+    onSuccess: (paused) => {
+      queryClient.invalidateQueries({ queryKey: ["club-events"] });
+      queryClient.invalidateQueries({ queryKey: ["club-events-list"] });
+      toast.success(paused ? "Event paused — no more invitations until you resume it" : "Event resumed");
+    },
+    onError: (err: any) => toast.error(err.message || "Could not change the event"),
+  });
+
 
   // Start editing an event — pre-fill form with everything that was saved:
   // schedule, courts, the people who were invited and the chosen channels.
@@ -1635,6 +1716,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Badge variant="secondary" className="text-[9px] capitalize">{e.event_type}</Badge>
                       {e.is_club_booking && <Badge variant="outline" className="text-[9px]">Club</Badge>}
+                      {e.status === "paused" && <Badge variant="destructive" className="text-[9px]">Paused</Badge>}
                     </div>
                   </div>
 
@@ -1760,6 +1842,31 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                           </AlertDialogContent>
                         </AlertDialog>
                       ))}
+                      {(isCreator || isAdmin) && e.recurrence && e.recurrence !== "once" && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          title="Skip a date"
+                          onClick={() => setSkipEvent(e)}
+                        >
+                          <CalendarOff className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                      )}
+                      {(isCreator || isAdmin) && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          title={e.status === "paused" ? "Resume this event" : "Pause this event (no invitations until you resume)"}
+                          disabled={pauseMutation.isPending}
+                          onClick={() => pauseMutation.mutate({ eventId: e.id, pause: e.status !== "paused" })}
+                        >
+                          {e.status === "paused"
+                            ? <Play className="w-3 h-3 text-primary" />
+                            : <Pause className="w-3 h-3 text-muted-foreground" />}
+                        </Button>
+                      )}
                       {(isCreator || isAdmin) && (
                         <Button
                           size="icon"
@@ -2423,6 +2530,52 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                   : (createMutation.isPending ? "Creating..." : "Create Event")}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Skip a single date of a repeating event */}
+      <Dialog open={!!skipEvent} onOpenChange={(o) => { if (!o) setSkipEvent(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Skip a date — {skipEvent?.title}</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Skipping a date cancels that one occurrence only. Anyone who confirmed is told it is off,
+            the courts for that date are released, and the rest of the series carries on as normal.
+          </p>
+          <div className="max-h-72 overflow-y-auto space-y-1.5">
+            {(skipInstances || []).length === 0 && (
+              <p className="text-xs text-muted-foreground">No upcoming dates.</p>
+            )}
+            {(skipInstances || []).map((inst: any) => {
+              const skipped = String(inst.status) !== "scheduled";
+              return (
+                <div key={inst.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-2">
+                  <span className={cn("text-xs", skipped && "line-through text-muted-foreground")}>
+                    {format(new Date(String(inst.instance_date) + "T00:00:00"), "EEE d MMM yyyy")}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant={skipped ? "outline" : "ghost"}
+                    className="h-6 text-[10px] px-2"
+                    disabled={skipInstanceMutation.isPending}
+                    onClick={() =>
+                      skipInstanceMutation.mutate({
+                        instanceId: inst.id,
+                        date: String(inst.instance_date),
+                        skip: !skipped,
+                      })
+                    }
+                  >
+                    {skipped ? "Put back" : "Skip"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSkipEvent(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

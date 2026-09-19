@@ -521,9 +521,9 @@ export default function Ladder() {
   };
 
   const myGenderGroup = useMemo(() => {
-    const toGenderGroup = (gender?: string | null): "ladies" | "men" | null => {
+    const toGenderGroup = (gender?: string | null): "ladies" | "men" | "unknown" | null => {
       const g = (gender || "").toLowerCase().trim();
-      if (!g) return null;
+      if (!g) return "unknown";
       return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
     };
 
@@ -848,6 +848,8 @@ export default function Ladder() {
               <div className="grid grid-cols-1 gap-4">
                 {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
                 {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
+                {unknownGenderPlayers.length > 0 &&
+                  (groupByLeague ? renderGrouped("Gender not set", unknownGenderPlayers) : renderColumn("Gender not set", unknownGenderPlayers))}
               </div>
             )
           }
@@ -866,6 +868,8 @@ export default function Ladder() {
         <div className="px-4 mt-3 mb-4 grid grid-cols-1 gap-4">
           {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
           {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
+          {unknownGenderPlayers.length > 0 &&
+            (groupByLeague ? renderGrouped("Gender not set", unknownGenderPlayers) : renderColumn("Gender not set", unknownGenderPlayers))}
         </div>
       )}
 

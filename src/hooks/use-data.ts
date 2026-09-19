@@ -786,7 +786,10 @@ export function useLadder(clubId?: string) {
       }
 
       // 4. Build ladder entries (single source of truth: club_members.ladder_position)
-      const ladder = (members || []).map(m => {
+      // Members with no gender saved are left off the ladder entirely until an
+      // admin sets their gender — they are not silently placed in the men's ladder.
+      const hasGender = (g?: string | null) => !!(g || "").trim();
+      const ladder = (members || []).filter((m: any) => hasGender(m.gender)).map(m => {
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
         const ladderPos = m.ladder_position ?? null;
         const liveStats = [

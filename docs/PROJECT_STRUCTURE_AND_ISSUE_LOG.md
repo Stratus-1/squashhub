@@ -1,3 +1,9 @@
+## 2026-09-19 — Bells games display as one chronological schedule
+
+- **Symptom:** Gordon's Bay's singles Bells games were split under generated Round 1, Round 2, etc. headings, although Bells is played as one continuous timed programme.
+- **Fix:** Active Bells tournaments now show one list ordered by scheduled date, time and court. The round/list grouping control is hidden for Bells; standard tournaments retain their existing grouping choices.
+- **Scope:** Presentation only. No fixtures, results, draw generation or tournament rules changed.
+
 ## 2026-09-18 — Browser push notification setup no longer hangs
 
 - Confirmed the web notification hook waited indefinitely for a service worker after app-shell/offline worker registration was removed.

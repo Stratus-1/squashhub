@@ -2301,6 +2301,82 @@ export default function ClubChampsView() {
     );
   }
 
+  /**
+   * Match history for one league: every completed match — pool games,
+   * quarter-finals, semi-finals and the final — in the order they were played,
+   * with the score and who won. Read-only; the live fixtures list stays above.
+   */
+  function renderLeagueHistory(gn: number) {
+    const memberIds = new Set<string>(
+      entries.filter((e: any) => e.group_number === gn)
+        .flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
+    );
+    const played = (matches as any[])
+      .filter((m: any) => {
+        if (m.is_bye || m.status !== "completed") return false;
+        if (isVoidResult(m)) return false;
+        if (isCrossLeague) {
+          return [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id]
+            .filter(Boolean)
+            .some((id: string) => memberIds.has(id));
+        }
+        return m.group_number === gn;
+      });
+    if (played.length === 0) return null;
+
+    const ordered = sortMatchesChrono(played);
+    const stageOf = (m: any) => {
+      if (m.stage_label) return String(m.stage_label);
+      if ((m.stage || "group") !== "group") return "Play-off";
+      const p = resolvePoolNumber(m, gn);
+      return p != null && poolCountFor(gn) > 1 ? `Pool ${poolLabel(p)}` : "Pool match";
+    };
+
+    return (
+      <CollapsibleSection
+        className="space-y-2"
+        defaultOpen={false}
+        header={
+          <>
+            <Badge variant="outline" className="text-xs font-semibold">Match history</Badge>
+            <span className="text-xs text-muted-foreground">
+              {ordered.length} match{ordered.length === 1 ? "" : "es"} played
+            </span>
+          </>
+        }
+      >
+        <div className="space-y-1">
+          {ordered.map((m: any) => {
+            const aWon = m.winner_member_id && m.winner_member_id === m.player_a_member_id;
+            const bWon = m.winner_member_id && m.winner_member_id === m.player_b_member_id;
+            const winner = aWon ? getMatchTeamA(m) : bWon ? getMatchTeamB(m) : null;
+            return (
+              <div key={m.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-muted/30 p-2 text-sm">
+                <span className="w-24 shrink-0 text-xs text-muted-foreground">
+                  {m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "—"}
+                </span>
+                <Badge variant="secondary" className="text-[10px]">{stageOf(m)}</Badge>
+                <span className={cn("font-medium", aWon && "text-green-700 dark:text-green-300")}>
+                  {getMatchTeamA(m)}
+                </span>
+                <span className="text-xs text-muted-foreground">vs</span>
+                <span className={cn("font-medium", bWon && "text-green-700 dark:text-green-300")}>
+                  {getMatchTeamB(m)}
+                </span>
+                {m.score && <Badge variant="outline" className="ml-auto text-xs tabular-nums">{m.score}</Badge>}
+                {winner && (
+                  <span className="text-xs text-muted-foreground">
+                    Winner: <span className="font-medium text-foreground">{winner}</span>
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CollapsibleSection>
+    );
+  }
+
   function renderAllGroups() {
 
     const summary = renderCrossLeagueSummary();
@@ -2615,6 +2691,7 @@ export default function ClubChampsView() {
       const isLeading = !!leagueTotal && leagueTotal.pf > 0 && leagueTotal.pf === maxLeaguePf;
 
       const standingsTable = renderGroupStandings(gn);
+      const historySection = renderLeagueHistory(gn);
 
 
       const titleNode = (
@@ -2668,6 +2745,7 @@ export default function ClubChampsView() {
             >
               {swissControlsFor(gn)}
               {standingsTable}
+              {historySection}
             </CollapsibleCard>
           );
           if (groupMatches.length > 0) {
@@ -2695,6 +2773,7 @@ export default function ClubChampsView() {
                   </div>
                 </>
               )}
+              {historySection}
             </CollapsibleCard>
           );
         }
@@ -2719,6 +2798,7 @@ export default function ClubChampsView() {
                 </div>
               </>
             )}
+            {historySection}
           </CollapsibleCard>
         );
       }

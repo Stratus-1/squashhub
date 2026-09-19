@@ -623,6 +623,7 @@ function SubscriptionSummaryPanel({
   const status = sub?.status || "—";
   const trialing = sub?.trial_ends_at && new Date(sub.trial_ends_at) > new Date();
   const nextRenewal = trialing ? sub?.trial_ends_at : sub?.current_period_end;
+  const cancelled = status === "cancelled";
 
   return (
     <Card className="p-3 md:p-4 border-primary/30 bg-primary/5">

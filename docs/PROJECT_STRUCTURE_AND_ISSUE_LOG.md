@@ -1,3 +1,10 @@
+## 2026-09-19 — Rounds headings only when the admin set up rounds
+
+- **Symptom:** Generated round numbers surfaced on pre-planned timed events and could appear out of time order (e.g. a "Round 5" game earlier than a "Round 3" game after manual moves).
+- **Rule:** Round/stage headings show only when the admin created rounds (round rows with play-by dates or real labels) or the event is self-scheduled (players book own courts). Any event whose games carry pre-planned times shows one flat chronological schedule.
+- **Fix:** renderMatchList in Tournaments.tsx now picks flat chronological display for pre-planned timed events without admin rounds; Bells behaviour unchanged.
+- **Scope:** Presentation only.
+
 ## 2026-09-19 — Bells games display as one chronological schedule
 
 - **Symptom:** Gordon's Bay's singles Bells games were split under generated Round 1, Round 2, etc. headings, although Bells is played as one continuous timed programme.

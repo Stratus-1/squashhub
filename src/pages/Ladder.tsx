@@ -415,12 +415,11 @@ export default function Ladder() {
     ? leaguesList.find((l) => l.id === activeLeagueFilter) || null
     : null;
 
-  // Gender buckets. A member with no gender saved is treated as men's — matching the
-  // database challenge rule and the admin ladder, which lists them in the men's ladder
-  // (with a badge) until their gender is set.
-  const genderBucket = (gender?: string | null): "ladies" | "men" => {
+  // Gender buckets. A member with no gender saved is not on any ladder until an
+  // admin sets their gender, so they fall into neither bucket.
+  const genderBucket = (gender?: string | null): "ladies" | "men" | null => {
     const g = (gender || "").toLowerCase().trim();
-    if (!g) return "men";
+    if (!g) return null;
     return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
   };
 
@@ -540,7 +539,7 @@ export default function Ladder() {
     return "men";
   }, [activeMember?.id, activeMember?.gender, myClubMember?.gender, myMemberId, players]);
 
-  const getPlayerGenderGroup = (player: LadderPlayer): string => {
+  const getPlayerGenderGroup = (player: LadderPlayer): string | null => {
     // One combined ladder → everyone is in the same challenge group.
     if (mixedLadderEnabled) return myGenderGroup;
     return genderBucket(player.gender);

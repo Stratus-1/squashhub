@@ -1842,6 +1842,31 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                           </AlertDialogContent>
                         </AlertDialog>
                       ))}
+                      {(isCreator || isAdmin) && e.recurrence && e.recurrence !== "once" && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          title="Skip a date"
+                          onClick={() => setSkipEvent(e)}
+                        >
+                          <CalendarOff className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                      )}
+                      {(isCreator || isAdmin) && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          title={e.status === "paused" ? "Resume this event" : "Pause this event (no invitations until you resume)"}
+                          disabled={pauseMutation.isPending}
+                          onClick={() => pauseMutation.mutate({ eventId: e.id, pause: e.status !== "paused" })}
+                        >
+                          {e.status === "paused"
+                            ? <Play className="w-3 h-3 text-primary" />
+                            : <Pause className="w-3 h-3 text-muted-foreground" />}
+                        </Button>
+                      )}
                       {(isCreator || isAdmin) && (
                         <Button
                           size="icon"

@@ -1716,6 +1716,7 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Badge variant="secondary" className="text-[9px] capitalize">{e.event_type}</Badge>
                       {e.is_club_booking && <Badge variant="outline" className="text-[9px]">Club</Badge>}
+                      {e.status === "paused" && <Badge variant="destructive" className="text-[9px]">Paused</Badge>}
                     </div>
                   </div>
 

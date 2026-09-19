@@ -676,9 +676,75 @@ function SubscriptionSummaryPanel({
           }
         />
       </div>
+      <div className="mt-3 pt-3 border-t flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-[11px] text-muted-foreground max-w-xl">
+          {cancelled
+            ? "This subscription is cancelled. Contact SquashHub support to start it again."
+            : "Cancelling stops future billing. Any unpaid invoices already issued remain payable."}
+        </p>
+        {!cancelled && <CancelSubscriptionButton clubId={clubId} />}
+      </div>
     </Card>
   );
 }
+
+function CancelSubscriptionButton({ clubId }: { clubId: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const cancel = async () => {
+    setBusy(true);
+    try {
+      const { error } = await (supabase as any).rpc("club_cancel_subscription", {
+        _club_id: clubId,
+        _reason: reason.trim() || null,
+      });
+      if (error) throw error;
+      toast.success("Subscription cancelled. Future billing has been stopped.");
+      setOpen(false);
+      setReason("");
+      qc.invalidateQueries({ queryKey: ["club-subscription-summary", clubId] });
+    } catch (e: any) {
+      toast.error(e?.message || "Could not cancel the subscription.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" className="text-destructive" onClick={() => setOpen(true)}>
+        Cancel subscription
+      </Button>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel your SquashHub subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              No further invoices will be raised for this club. Invoices already issued and unpaid stay
+              payable. You can ask SquashHub support to reactivate at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            placeholder="Reason for cancelling (optional)"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Keep subscription</AlertDialogCancel>
+            <AlertDialogAction disabled={busy} onClick={(e) => { e.preventDefault(); cancel(); }}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, cancel subscription"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 
 function SummaryCell({ label, value }: { label: string; value: React.ReactNode }) {
   return (

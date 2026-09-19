@@ -415,11 +415,12 @@ export default function Ladder() {
     ? leaguesList.find((l) => l.id === activeLeagueFilter) || null
     : null;
 
-  // Gender buckets. A member with no gender saved is not on any ladder until an
-  // admin sets their gender, so they fall into neither bucket.
-  const genderBucket = (gender?: string | null): "ladies" | "men" | null => {
+  // Gender buckets. Members with no gender saved sit in their own "unknown"
+  // bucket, shown as a separate "Gender not set" ladder so admins can see and
+  // fix them. They can't challenge or be challenged until a gender is set.
+  const genderBucket = (gender?: string | null): "ladies" | "men" | "unknown" => {
     const g = (gender || "").toLowerCase().trim();
-    if (!g) return null;
+    if (!g) return "unknown";
     return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
   };
 
@@ -443,6 +444,11 @@ export default function Ladder() {
 
   const ladiesPlayers = useMemo(() =>
     (players || []).filter((p: any) => genderBucket(p.gender) === "ladies") as LadderPlayer[],
+    [players]
+  );
+
+  const unknownGenderPlayers = useMemo(() =>
+    (players || []).filter((p: any) => genderBucket(p.gender) === "unknown") as LadderPlayer[],
     [players]
   );
 

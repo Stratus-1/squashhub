@@ -2798,6 +2798,7 @@ export default function ClubChampsView() {
                 </div>
               </>
             )}
+            {historySection}
           </CollapsibleCard>
         );
       }

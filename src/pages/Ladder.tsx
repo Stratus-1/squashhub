@@ -415,11 +415,12 @@ export default function Ladder() {
     ? leaguesList.find((l) => l.id === activeLeagueFilter) || null
     : null;
 
-  // Gender buckets. A member with no gender saved is NOT a man — keeping them in the
-  // men's ladder makes a split ladder look like one mixed ladder, so they get their own group.
-  const genderBucket = (gender?: string | null): "ladies" | "men" | "unknown" => {
+  // Gender buckets. A member with no gender saved is treated as men's — matching the
+  // database challenge rule and the admin ladder, which lists them in the men's ladder
+  // (with a badge) until their gender is set.
+  const genderBucket = (gender?: string | null): "ladies" | "men" => {
     const g = (gender || "").toLowerCase().trim();
-    if (!g) return "unknown";
+    if (!g) return "men";
     return g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
   };
 
@@ -446,10 +447,6 @@ export default function Ladder() {
     [players]
   );
 
-  const unknownGenderPlayers = useMemo(() =>
-    (players || []).filter((p: any) => genderBucket(p.gender) === "unknown") as LadderPlayer[],
-    [players]
-  );
 
   const positionMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -464,10 +461,9 @@ export default function Ladder() {
     } else {
       menPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
       ladiesPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
-      unknownGenderPlayers.forEach((player, index) => setPositionKeys(player, index + 1));
     }
     return map;
-  }, [menPlayers, ladiesPlayers, unknownGenderPlayers, mixedLadderEnabled, players]);
+  }, [menPlayers, ladiesPlayers, mixedLadderEnabled, players]);
 
   const myPosition = useMemo(() => {
     if (!myMemberId) return null;
@@ -846,10 +842,6 @@ export default function Ladder() {
               <div className="grid grid-cols-1 gap-4">
                 {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
                 {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
-                {unknownGenderPlayers.length > 0 &&
-                  (groupByLeague
-                    ? renderGrouped("Gender not set", unknownGenderPlayers)
-                    : renderColumn("Gender not set", unknownGenderPlayers))}
               </div>
             )
           }
@@ -868,10 +860,6 @@ export default function Ladder() {
         <div className="px-4 mt-3 mb-4 grid grid-cols-1 gap-4">
           {groupByLeague ? renderGrouped("Ladies' Ladder", ladiesPlayers) : renderColumn("Ladies' Ladder", ladiesPlayers)}
           {groupByLeague ? renderGrouped("Men's Ladder", menPlayers) : renderColumn("Men's Ladder", menPlayers)}
-          {unknownGenderPlayers.length > 0 &&
-            (groupByLeague
-              ? renderGrouped("Gender not set", unknownGenderPlayers)
-              : renderColumn("Gender not set", unknownGenderPlayers))}
         </div>
       )}
 

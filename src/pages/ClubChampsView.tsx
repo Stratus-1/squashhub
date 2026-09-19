@@ -643,6 +643,7 @@ export default function ClubChampsView() {
             <CollapsibleSection
               key={pool.section}
               className="space-y-2"
+              defaultOpen={!(playoffStarted && pool.section !== 0 && pool.complete)}
               header={
                 <>
                   <Badge variant="outline" className="text-xs font-semibold">{title}</Badge>

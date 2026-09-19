@@ -43,6 +43,7 @@ import { WithdrawPlayerButton } from "@/components/tournaments/WithdrawPlayerBut
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
 import { parseRoundDeadlines, deadlineForRound, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
+import { chronologicalTournamentMatches } from "@/lib/tournaments/schedule-order";
 
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
@@ -117,6 +118,7 @@ export default function Tournaments() {
     () => new Map((allChamps as any[]).map((champ: any) => [champ.id, champ] as const)),
     [allChamps],
   );
+  const hasActiveBells = champs.some((champ: any) => champ.scoring_mode === "time_capped_points");
 
   const champIds = allChamps.map((c: any) => c.id);
   const champIdsKey = champIds.slice().sort().join("|");
@@ -782,6 +784,12 @@ export default function Tournaments() {
   };
 
   const renderMatchList = (list: any[]) => {
+    // Bells is one continuous timed programme. Generated round numbers are an
+    // internal scheduling detail and must never split or reorder this list.
+    if (hasActiveBells) {
+      const schedule = chronologicalTournamentMatches(list);
+      return <div className="space-y-1.5">{schedule.map(renderMatchRow)}</div>;
+    }
     if (groupMode === "round") {
       return renderRoundGroups(list);
     }
@@ -893,7 +901,7 @@ export default function Tournaments() {
 
     // Self-scheduled rounds carry a "must be played by" date. Show it on any
     // fixture that still has no court/time so players know their booking cut-off.
-    const playBy = !m.scheduled_date && !isPlaceholder && groupMode !== "round"
+    const playBy = !m.scheduled_date && !isPlaceholder && (hasActiveBells || groupMode !== "round")
       ? playByNudge(matchPlayBy(m), todayISO())
       : null;
 
@@ -1613,25 +1621,27 @@ export default function Tournaments() {
                           </SelectContent>
                         </Select>
                       )}
-                      <div className="inline-flex rounded-md border overflow-hidden">
-                        {([
-                          { v: "round", l: "By round" },
-                          { v: "slot", l: "By slot" },
-                          { v: "flat", l: "List" },
-                        ] as const).map((o) => (
-                          <button
-                            key={o.v}
-                            type="button"
-                            onClick={() => setGroupMode(o.v)}
-                            className={cn(
-                              "h-8 px-2.5 text-xs font-medium",
-                              groupMode === o.v ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted",
-                            )}
-                          >
-                            {o.l}
-                          </button>
-                        ))}
-                      </div>
+                      {!hasActiveBells && (
+                        <div className="inline-flex rounded-md border overflow-hidden">
+                          {([
+                            { v: "round", l: "By round" },
+                            { v: "slot", l: "By slot" },
+                            { v: "flat", l: "List" },
+                          ] as const).map((o) => (
+                            <button
+                              key={o.v}
+                              type="button"
+                              onClick={() => setGroupMode(o.v)}
+                              className={cn(
+                                "h-8 px-2.5 text-xs font-medium",
+                                groupMode === o.v ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted",
+                              )}
+                            >
+                              {o.l}
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
                       {(poolFilter !== "all" || dateFilter !== "all") && (
                         <Button

@@ -853,9 +853,7 @@ export function useLadder(clubId?: string) {
       } else {
         const genderGroups = new Map<string, number>();
         for (const entry of ladder) {
-          // Members with no gender saved are numbered with the men — matching the
-          // database challenge rule and the admin ladder, which lists them there
-          // (with a badge) until their gender is set.
+          // Members with no gender saved were already excluded above.
           const g = (entry.gender || "").toLowerCase().trim();
           const gKey = g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
           const pos = (genderGroups.get(gKey) ?? 0) + 1;

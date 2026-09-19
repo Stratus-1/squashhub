@@ -14788,6 +14788,10 @@ export type Database = {
           units_submitted: number
         }[]
       }
+      club_cancel_subscription: {
+        Args: { _club_id: string; _reason?: string }
+        Returns: Json
+      }
       club_gateway_fee_percent: {
         Args: { _club_id: string; _method?: string }
         Returns: number

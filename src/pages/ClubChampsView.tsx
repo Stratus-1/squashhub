@@ -622,6 +622,9 @@ export default function ClubChampsView() {
     if (pools.length === 0) return null;
     const all = getGroupStandings(gn);
     const multi = pools.filter((p) => p.section > 0).length > 1;
+    // Once the play-off (section 0) exists, decided pools are history — show
+    // them collapsed so the standings focus on who is still playing.
+    const playoffStarted = pools.some((p) => p.section === 0);
 
     return (
       <div className="space-y-4">
@@ -640,6 +643,7 @@ export default function ClubChampsView() {
             <CollapsibleSection
               key={pool.section}
               className="space-y-2"
+              defaultOpen={!(playoffStarted && pool.section !== 0 && pool.complete)}
               header={
                 <>
                   <Badge variant="outline" className="text-xs font-semibold">{title}</Badge>

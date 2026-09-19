@@ -907,7 +907,11 @@ export default function Tournaments() {
       ? { backgroundColor: color.chipBg, color: color.chipText, borderColor: color.border }
       : undefined;
 
+    // Dragging is only allowed once the admin has actually grabbed the handle.
+    // Making the whole row draggable meant a normal finger-scroll over the
+    // list could pick a fixture up and drop it on another slot.
     const canDrag = isClubAdmin && !!m.scheduled_date && !!m.scheduled_time && m.status !== "completed" && !swapping;
+    const armed = dragArmedId === m.id;
     const isDragging = dragId === m.id;
     const draggingMatch = dragId ? (allMatches as any[]).find((x) => x.id === dragId) : null;
     const isHoverTarget = hoverId === m.id && dragId && dragId !== m.id;
@@ -929,10 +933,10 @@ export default function Tournaments() {
         )}
         <div
           style={rowStyle}
-          draggable={canDrag}
+          draggable={canDrag && armed}
 
         onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; }}
-        onDragEnd={() => { setDragId(null); setHoverId(null); }}
+        onDragEnd={() => { setDragId(null); setHoverId(null); setDragArmedId(null); }}
         onDragOver={(e) => { if (dragId && dragId !== m.id) { e.preventDefault(); setHoverId(m.id); } }}
         onDragLeave={() => { if (hoverId === m.id) setHoverId(null); }}
         onDrop={(e) => {

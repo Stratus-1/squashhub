@@ -2691,6 +2691,7 @@ export default function ClubChampsView() {
       const isLeading = !!leagueTotal && leagueTotal.pf > 0 && leagueTotal.pf === maxLeaguePf;
 
       const standingsTable = renderGroupStandings(gn);
+      const historySection = renderLeagueHistory(gn);
 
 
       const titleNode = (

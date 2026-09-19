@@ -539,7 +539,7 @@ export default function Ladder() {
     return "men";
   }, [activeMember?.id, activeMember?.gender, myClubMember?.gender, myMemberId, players]);
 
-  const getPlayerGenderGroup = (player: LadderPlayer): string => {
+  const getPlayerGenderGroup = (player: LadderPlayer): string | null => {
     // One combined ladder → everyone is in the same challenge group.
     if (mixedLadderEnabled) return myGenderGroup;
     return genderBucket(player.gender);

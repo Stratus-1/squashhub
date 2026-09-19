@@ -2533,6 +2533,52 @@ export function CreateClubEvent({ onClose }: { onClose?: () => void }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Skip a single date of a repeating event */}
+      <Dialog open={!!skipEvent} onOpenChange={(o) => { if (!o) setSkipEvent(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Skip a date — {skipEvent?.title}</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Skipping a date cancels that one occurrence only. Anyone who confirmed is told it is off,
+            the courts for that date are released, and the rest of the series carries on as normal.
+          </p>
+          <div className="max-h-72 overflow-y-auto space-y-1.5">
+            {(skipInstances || []).length === 0 && (
+              <p className="text-xs text-muted-foreground">No upcoming dates.</p>
+            )}
+            {(skipInstances || []).map((inst: any) => {
+              const skipped = String(inst.status) !== "scheduled";
+              return (
+                <div key={inst.id} className="flex items-center justify-between gap-2 rounded-md border border-border p-2">
+                  <span className={cn("text-xs", skipped && "line-through text-muted-foreground")}>
+                    {format(new Date(String(inst.instance_date) + "T00:00:00"), "EEE d MMM yyyy")}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant={skipped ? "outline" : "ghost"}
+                    className="h-6 text-[10px] px-2"
+                    disabled={skipInstanceMutation.isPending}
+                    onClick={() =>
+                      skipInstanceMutation.mutate({
+                        instanceId: inst.id,
+                        date: String(inst.instance_date),
+                        skip: !skipped,
+                      })
+                    }
+                  >
+                    {skipped ? "Put back" : "Skip"}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSkipEvent(null)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

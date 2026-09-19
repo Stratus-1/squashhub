@@ -466,6 +466,8 @@ export default function Tournaments() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [swapping, setSwapping] = useState(false);
+  /** Fixture whose drag handle is currently held — only that row may be dragged. */
+  const [dragArmedId, setDragArmedId] = useState<string | null>(null);
   const [addSlotOpen, setAddSlotOpen] = useState(false);
   const [addSlotChampId, setAddSlotChampId] = useState<string | undefined>(undefined);
 
@@ -953,9 +955,9 @@ export default function Tournaments() {
             }
             setDragId(null); setHoverId(null); return;
           }
-          if (chk.warn) {
-            const ok = window.confirm(`Warning: this swap will create a ${chk.warn}. Continue?`);
-            if (!ok) { setDragId(null); setHoverId(null); return; }
+          const extra = chk.warn ? `\n\nWarning: this will create a ${chk.warn}.` : "";
+          if (!window.confirm(`Swap these two fixtures' courts and times?${extra}`)) {
+            setDragId(null); setHoverId(null); setDragArmedId(null); return;
           }
           doSwap(draggingMatch, m);
         }}
@@ -963,7 +965,7 @@ export default function Tournaments() {
         className={cn(
           "w-full flex flex-col sm:flex-row sm:items-center gap-2 text-sm p-2 rounded transition-all",
           today && !color ? "bg-primary/10 border border-primary/20" : (today && color ? "ring-1 ring-primary/40" : !color && "bg-muted/50"),
-          canDrag && "cursor-grab active:cursor-grabbing",
+          armed && "cursor-grabbing",
           isDragging && "opacity-40",
           isPlaceholder && "bg-muted/30 border border-dashed border-muted-foreground/30 italic text-muted-foreground",
           dropOk && !dropWarn && "ring-2 ring-green-500",
@@ -973,9 +975,16 @@ export default function Tournaments() {
       >
         {isClubAdmin && (
           <span
-            className={cn("shrink-0 flex items-center justify-center rounded", canDrag ? "cursor-grab active:cursor-grabbing text-muted-foreground hover:bg-muted hover:text-foreground" : "text-muted-foreground/30")}
-            title={canDrag ? "Drag to swap with another fixture on the same court" : "Drag not available"}
+            className={cn(
+              "shrink-0 flex items-center justify-center rounded touch-none p-1 -m-1",
+              canDrag ? "cursor-grab active:cursor-grabbing text-muted-foreground hover:bg-muted hover:text-foreground" : "text-muted-foreground/30",
+              armed && "bg-muted text-foreground",
+            )}
+            title={canDrag ? "Hold this handle to drag and swap with another fixture" : "Drag not available"}
             aria-label="Drag to swap"
+            onPointerDown={() => { if (canDrag) setDragArmedId(m.id); }}
+            onPointerUp={() => setDragArmedId((cur) => (cur === m.id ? null : cur))}
+            onPointerCancel={() => setDragArmedId((cur) => (cur === m.id ? null : cur))}
           >
             <GripVertical className="w-4 h-4" />
           </span>

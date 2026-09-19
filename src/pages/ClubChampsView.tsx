@@ -2745,6 +2745,7 @@ export default function ClubChampsView() {
             >
               {swissControlsFor(gn)}
               {standingsTable}
+              {historySection}
             </CollapsibleCard>
           );
           if (groupMatches.length > 0) {

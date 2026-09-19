@@ -783,10 +783,24 @@ export default function Tournaments() {
     );
   };
 
+  /**
+   * Rounds only exist for the player when the ADMIN created them: rounds with
+   * play-by dates or real labels set up in the tournament, or self-scheduled
+   * events where players book their own courts. A pre-planned event whose
+   * games already carry times is one continuous programme — generated round
+   * numbers are internal scheduling detail and must never split or reorder it.
+   */
+  const hasAdminRounds = (list: any[]) =>
+    list.some((m: any) => {
+      const champ = champById.get(m.champ_id) as any;
+      if (String(champ?.scheduling_mode || "") === "self") return true;
+      return (roundsByChamp.get(m.champ_id) || []).some(
+        (r: any) => r.play_by || !isGenericRoundLabel(String(r.label || "")),
+      );
+    });
+
   const renderMatchList = (list: any[]) => {
-    // Bells is one continuous timed programme. Generated round numbers are an
-    // internal scheduling detail and must never split or reorder this list.
-    if (hasActiveBells) {
+    if (hasActiveBells || (list.some((m: any) => m.scheduled_time) && !hasAdminRounds(list))) {
       const schedule = chronologicalTournamentMatches(list);
       return <div className="space-y-1.5">{schedule.map(renderMatchRow)}</div>;
     }

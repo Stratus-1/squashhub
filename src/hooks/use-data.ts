@@ -786,10 +786,9 @@ export function useLadder(clubId?: string) {
       }
 
       // 4. Build ladder entries (single source of truth: club_members.ladder_position)
-      // Members with no gender saved are left off the ladder entirely until an
-      // admin sets their gender — they are not silently placed in the men's ladder.
-      const hasGender = (g?: string | null) => !!(g || "").trim();
-      const ladder = (members || []).filter((m: any) => hasGender(m.gender)).map(m => {
+      // Members with no gender saved stay on the ladder in their own
+      // "Gender not set" group so admins can see they need fixing.
+      const ladder = (members || []).map(m => {
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
         const ladderPos = m.ladder_position ?? null;
         const liveStats = [
@@ -853,9 +852,10 @@ export function useLadder(clubId?: string) {
       } else {
         const genderGroups = new Map<string, number>();
         for (const entry of ladder) {
-          // Members with no gender saved were already excluded above.
+          // Members with no gender saved get their own "unknown" sequence so
+          // the member-facing list matches the separate "Gender not set" group.
           const g = (entry.gender || "").toLowerCase().trim();
-          const gKey = g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
+          const gKey = !g ? "unknown" : g === "female" || g === "ladies" || g === "f" ? "ladies" : "men";
           const pos = (genderGroups.get(gKey) ?? 0) + 1;
           genderGroups.set(gKey, pos);
           entry.ladder_position = pos;

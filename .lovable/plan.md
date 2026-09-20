@@ -18,6 +18,12 @@ A member on a monthly arrangement may carry their outstanding membership fees, b
 - Paid R100: outstanding R1 500 → needs at least **−R1 480**.
 - The requirement drops by exactly what they pay.
 
+## Kailash's R120 family fee — and increasing the monthly payment
+
+- **No R120 fee was raised.** Kailash has no fee rows at all, even though the "Member of family" category (R120/year) exists and is active. Adding a family member does not currently raise the R120 fee — that is a gap to fix (raise it on the primary payer's account, per the family billing rule).
+- **It counts as carryable anyway.** Once raised, the R120 sits as an outstanding family fee and — because she is on a monthly arrangement — she does not have to pay it upfront to book; it just adds to what the arrangement must cover.
+- **Can the monthly amount be increased?** Not by editing. Her card authorisation is capped at exactly R133.33/month (R1 600 ÷ 12, day 25) — that cap is what she approved with her bank. To charge more (R1 720 ÷ 12 = R143.33), she must authorise a new recurring payment at the higher amount; the old one is cancelled at the same time. We can make this a smooth "increase monthly payment" action instead of a manual cancel-and-redo.
+
 ## What the code actually does today — three problems
 
 **A. The requirement never moves (main bug).**

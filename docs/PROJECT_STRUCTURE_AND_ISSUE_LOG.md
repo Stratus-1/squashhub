@@ -1804,3 +1804,17 @@ plan entry) and ignored the fixture's own `club_champs_matches.play_by`. Nelspru
 finals carried 22 Sep on the match rows but displayed 20 Sep / 17 Sep. Fixed:
 fixture's own date wins, then its section round row, then `deadlineForStage`,
 then the positional plan entry.
+
+## 2026-09-20 — Pool/section "Final" is really the league semi-final
+
+A league running several sections has not reached its final: the Section A and
+Section B winners still have to meet. The draw engine nevertheless named a
+section's last game "Section B · Final", so it inherited the FINAL's planned
+deadline (22 Sep) instead of the semi-final's (20 Sep).
+
+Fix: `composeStageLabel(label, sectionLabel)` in `src/lib/tournaments/knockout.ts`
+demotes a section-scoped "Final" to "Semi-final" (the league-wide "League finals"
+bracket keeps its real names); used by knockout.ts, graduated.ts and draw-board.ts.
+`src/pages/Tournaments.tsx` reads legacy rows back through the same demotion.
+Data: Nelspruit Club Champs 2026 section finals relabelled and moved to 20 Sep.
+Tests: `src/test/stage-label-section-final.test.ts`.

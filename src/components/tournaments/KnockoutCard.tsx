@@ -40,7 +40,7 @@ interface KnockoutCardProps {
   /** Knockout + players arrange their own court/date/time. */
   selfScheduled?: boolean;
   /** Deadline for a given round number (self-scheduled knockouts). */
-  playByForRound?: (round: number) => string | null;
+  playByForRound?: (round: number, stageLabel?: string | null) => string | null;
 }
 
 /** Display name for a member id, harvested from the embedded match relations. */
@@ -296,6 +296,9 @@ export function KnockoutCard({
             selfScheduled={selfScheduled}
             plannedPlayBy={
               playByForRound?.(setupState.nextRound?.round_number ?? setupState.currentRound + 1) ?? null
+            }
+            plannedPlayByForStage={(stage) =>
+              playByForRound?.(setupState.nextRound?.round_number ?? setupState.currentRound + 1, stage) ?? null
             }
             divisionLabel={`${groupLabel(setupState.groupNumber)} · Pool ${sectionLetter(setupState.section)}`}
             onReady={(v) => {

@@ -60,7 +60,7 @@ interface Props {
    * The tournament's configured play-by date per round number
    * (`round_play_by` from setup). Always preferred over the +7-day guess.
    */
-  playByForRound?: (round: number) => string | null;
+  playByForRound?: (round: number, stageLabel?: string | null) => string | null;
   scopeLabel: (groupNumber: number, section: number) => string;
   /** Called once every board has been confirmed, with the keys that were done. */
   onConfirmed?: (keys: string[]) => void;
@@ -151,7 +151,14 @@ export function AllNextRoundDrawsDialog({
               // Priority: saved round row → configured round deadline → +7d guess.
               playBy: state.nextRound?.play_by
                 ? String(state.nextRound.play_by).slice(0, 10)
-                : playByForRound?.(scope.roundNumber) ?? defaultPlayBy(),
+                : playByForRound?.(
+                    scope.roundNumber,
+                    suggestStageName({
+                      plannedLabel: state.nextRound?.label,
+                      roundNumber: scope.roundNumber,
+                      qualifiers: scope.qualifiers,
+                    }),
+                  ) ?? defaultPlayBy(),
               board: suggested,
               suggested,
             };

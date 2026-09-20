@@ -81,7 +81,7 @@ export function useGenerateNextRound(opts: {
   champId: string;
   states: SectionProgression[];
   selfScheduled?: boolean;
-  playByForRound?: (round: number) => string | null;
+  playByForRound?: (round: number, stageLabel?: string | null) => string | null;
   onGenerated?: (count: number, vars: GenerateNextRoundVars) => void;
 }) {
   const { champId, states, selfScheduled = false, playByForRound, onGenerated } = opts;

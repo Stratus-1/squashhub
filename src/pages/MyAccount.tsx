@@ -35,6 +35,7 @@ import {
 
 import { SharedAccessCard } from "@/components/SharedAccessCard";
 import { MyFamilyCard } from "@/components/family/MyFamilyCard";
+import { checkBookingBalance } from "@/lib/booking-balance-gate";
 import { FamilyInviteCard } from "@/components/family/FamilyInviteCard";
 
 import PaymentMethodsCard from "@/components/PaymentMethodsCard";
@@ -306,6 +307,20 @@ export default function MyAccount() {
   })();
 
   const creditBalance = -netOwing;
+
+  // Minimum top-up needed before this member may book a court (club float +
+  // allowed arrears under a recurring arrangement). Shown right under the balance.
+  const { data: bookingGate } = useQuery({
+    queryKey: ["account-booking-gate", clubMemberId, clubId, netOwing],
+    enabled: !!clubMemberId && !!clubId,
+    staleTime: 30_000,
+    queryFn: async () =>
+      await checkBookingBalance({
+        clubMemberId: clubMemberId!,
+        clubId: clubId!,
+        minBookingBalance: (club as any)?.min_booking_balance ?? null,
+      }),
+  });
 
   // Registration completion lands here with `onboarding=payment`. Once the
   // newly-created account charges have loaded, open the SAME normal top-up
@@ -809,6 +824,28 @@ export default function MyAccount() {
               Top Up
             </Button>
           </div>
+
+          {bookingGate && !bookingGate.allowed && bookingGate.shortfall > 0 && (
+            <div className="mt-3 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-2">
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Top up at least <span className="font-semibold">{money(bookingGate.shortfall)}</span> to be able to book a court.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 h-7 text-[11px]"
+                onClick={() => { setTopUpAmount(bookingGate.shortfall.toFixed(2)); setTopUpOpen(true); }}
+              >
+                Top up {money(bookingGate.shortfall)}
+              </Button>
+            </div>
+          )}
+
+          {bookingGate && bookingGate.allowed && creditBalance < 0 && bookingGate.requiredBuffer > 0 && (
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Your balance is within your payment arrangement — you can still book a court.
+            </p>
+          )}
 
           {pendingTopUps.length > 0 && (
             <div className="mt-3 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20">

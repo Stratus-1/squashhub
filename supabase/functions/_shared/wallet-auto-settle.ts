@@ -25,6 +25,23 @@ export async function autoSettleFeesFromTopup(
   let remaining = Number(opts.amount);
   if (!clubId || !clubMemberId || !(remaining > 0)) return;
 
+  // Protect the club's floating booking balance: a top-up first fills the
+  // member's required buffer (e.g. R20 at Gordon's Bay); only money above the
+  // buffer is swept onto old fees. Without this, a top-up made to unblock
+  // bookings was immediately swallowed by the oldest unpaid fee.
+  try {
+    const { data: clubRow } = await admin
+      .from("clubs")
+      .select("min_booking_balance")
+      .eq("id", clubId)
+      .maybeSingle();
+    const buffer = Number(clubRow?.min_booking_balance ?? 0);
+    if (buffer > 0) remaining = Math.max(0, remaining - buffer);
+  } catch (e) {
+    console.error("auto-settle: club buffer lookup failed, settling full amount:", e);
+  }
+  if (remaining <= 0) return;
+
   const { data: unpaid, error } = await admin
     .from("club_member_fee_payments")
     .select("id, fee_label, amount")

@@ -185,6 +185,7 @@ import {
   parseMilestones,
   parseRoundDefinitions,
   serializeRoundDefinitions,
+  validateMilestones,
   type MilestonePlayBy,
 } from "@/lib/tournaments/round-definitions";
 import {

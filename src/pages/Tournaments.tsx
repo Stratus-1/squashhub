@@ -41,7 +41,7 @@ import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { WithdrawPlayerButton } from "@/components/tournaments/WithdrawPlayerButton";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
-import { parseRoundDeadlines, deadlineForRound, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches } from "@/lib/tournaments/schedule-order";
 

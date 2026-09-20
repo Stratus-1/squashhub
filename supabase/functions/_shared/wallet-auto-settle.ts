@@ -53,10 +53,9 @@ export async function autoSettleFeesFromTopup(
     return;
   }
 
-  // Members on an active monthly arrangement may carry their membership fee.
-  // Sweeping a top-up onto it swallows money paid to clear court lights / bar
-  // charges and leaves the booking gate exactly where it was.
-  let carryMembership = false;
+  // A member on an active recurring arrangement is already paying their fees
+  // monthly — a top-up must stay as balance (it covers lights, bar and court
+  // fees), not be swallowed by the very fees the arrangement is settling.
   try {
     const { data: mandate } = await admin
       .from("stitch_mandates")
@@ -66,17 +65,12 @@ export async function autoSettleFeesFromTopup(
       .eq("frequency", "monthly")
       .is("suspended_at", null)
       .maybeSingle();
-    carryMembership = !!mandate;
+    if (mandate) return;
   } catch (e) {
     console.error("auto-settle: mandate lookup failed:", e);
   }
-  const MEMBERSHIP_TYPES = ["membership", "club_membership", "club"];
 
-  const fees = (unpaid || []).filter(
-    (f: any) =>
-      Number(f.amount) > 0 &&
-      !(carryMembership && MEMBERSHIP_TYPES.includes(f.fee_type ?? "")),
-  );
+  const fees = (unpaid || []).filter((f: any) => Number(f.amount) > 0);
   if (!fees.length) return;
 
   const settledLabels: string[] = [];

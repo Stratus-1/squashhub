@@ -872,6 +872,20 @@ export default function Bookings() {
   const courts = (courtsData || []).map((c: any) => c.id);
   const getCourtName = (id: number) => courtsData?.find((c: any) => c.id === id)?.name || `Court ${id}`;
 
+  // Court grid sizing: each court column keeps a readable minimum width; on
+  // narrow (portrait) screens the grid scrolls horizontally instead of squeezing
+  // names into unreadable slivers. On wide screens minmax() still expands to 1fr
+  // so the layout is unchanged. 116px = 110px column + 6px gap.
+  const courtGridTemplate = `60px repeat(${courts.length}, minmax(110px, 1fr))`;
+  const courtGridMinWidth = `calc(60px + ${courts.length} * 116px + 32px)`;
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const rowsScrollRef = useRef<HTMLDivElement>(null);
+  const syncGridScroll = (e: { currentTarget: HTMLDivElement }) => {
+    const src = e.currentTarget;
+    const dst = src === rowsScrollRef.current ? headerScrollRef.current : rowsScrollRef.current;
+    if (dst && dst.scrollLeft !== src.scrollLeft) dst.scrollLeft = src.scrollLeft;
+  };
+
   const { data: availablePlayers } = useQuery({
     queryKey: ["available-players-club", dateStr, bookingClubId],
     queryFn: async () => {
@@ -1964,16 +1978,21 @@ export default function Bookings() {
           </div>
         </div>
 
-        <div className="gap-x-1.5 px-4 pb-2" style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}>
-          <div className="flex flex-col items-center justify-center">
-            <span className="text-[11px] font-bold text-foreground">{format(selectedDate, "EEE")}</span>
-            <span className="text-[10px] text-muted-foreground">{format(selectedDate, "d MMM")}</span>
-          </div>
-          {courts.map((c: number) => (
-            <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              {getCourtName(c)}
+        <div ref={headerScrollRef} className="overflow-x-auto pb-2" onScroll={syncGridScroll}>
+          <div
+            className="gap-x-1.5 px-4"
+            style={{ display: "grid", gridTemplateColumns: courtGridTemplate, minWidth: courtGridMinWidth }}
+          >
+            <div className="sticky left-0 z-10 bg-background flex flex-col items-center justify-center">
+              <span className="text-[11px] font-bold text-foreground">{format(selectedDate, "EEE")}</span>
+              <span className="text-[10px] text-muted-foreground">{format(selectedDate, "d MMM")}</span>
             </div>
-          ))}
+            {courts.map((c: number) => (
+              <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate px-1">
+                {getCourtName(c)}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1983,11 +2002,14 @@ export default function Bookings() {
         </div>
       ) : (
         <motion.div
-          className="px-4 space-y-[3px] mb-20"
+          ref={rowsScrollRef}
+          className="overflow-x-auto space-y-[3px] mb-20"
+          onScroll={syncGridScroll}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
+          <div className="px-4" style={{ minWidth: courtGridMinWidth }}>
           {dynamicTimeSlots.map((time, idx) => {
             const isHour = time.endsWith(":00");
             // For 40-min clubs, slots don't align to the hour, so label every
@@ -2001,10 +2023,10 @@ export default function Bookings() {
                   "gap-x-1.5",
                   showHourSeparator && "pt-1.5 mt-1.5 border-t border-border/40"
                 )}
-                style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}
+                style={{ display: "grid", gridTemplateColumns: courtGridTemplate }}
               >
                 <div className={cn(
-                  "text-[10px] flex items-center justify-end pr-1.5 font-medium tabular-nums",
+                  "sticky left-0 z-10 bg-background text-[10px] flex items-center justify-end pr-1.5 font-medium tabular-nums",
                   showTimeLabel ? "text-foreground/70" : "text-muted-foreground/40"
                 )}>
                   {showTimeLabel ? formatTimeDisplay(time) : ""}
@@ -2194,6 +2216,7 @@ export default function Bookings() {
               </div>
             );
           })}
+          </div>
         </motion.div>
       )}
 

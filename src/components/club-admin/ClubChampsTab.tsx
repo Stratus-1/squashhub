@@ -8420,99 +8420,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </WizardSection>
             ) : (
               <div className="rounded-lg border p-3 space-y-2">
-                {simplifiedKnockoutSchedule && (
+                {/* ONE central round list for the whole tournament. Progressing a
+                    league, generating a draw or editing a fixture references
+                    these dates — they are never re-entered anywhere else. */}
+                {(simplifiedKnockoutSchedule || schedulingMode === "self") && (
                   <div className="pt-1">
-                    <SelfScheduledRounds
+                    <CentralRoundSchedule
                       deadlines={roundDeadlines}
                       onChange={setRoundDeadlines}
+                      milestones={milestonePlayBy}
+                      onMilestonesChange={setMilestonePlayBy}
+                      requireMilestones={simplifiedKnockoutSchedule}
                       progress={knockoutProgress}
-                      totalRounds={knockoutRoundCount(
-                        Math.max(0, ...(groups as any[][]).map((g) => (g?.length ?? 0))),
-                      )}
                       minDate={startDate || undefined}
                     />
                   </div>
                 )}
-                {schedulingMode === "self" && !simplifiedKnockoutSchedule && (
-                  <div className="pt-1 space-y-2">
-                    <Label className="text-sm">Play-by deadlines per round</Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Players arrange their own court and time — you only set the date each round must be finished by.
-                    </p>
-                    <div className="space-y-2">
-                      {roundDeadlines.map((d, i) => (
-                        <div key={i} className="grid gap-2 lg:grid-cols-[1fr_1fr_1.5fr_auto]">
-                          <div>
-                            <Label className="text-xs">Round name</Label>
-                            <Input
-                              value={d.label}
-                              placeholder={defaultRoundLabel(i)}
-                              onChange={(e) =>
-                                setRoundDeadlines((prev) =>
-                                  prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
-                                )
-                              }
-                              className="h-8"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Must be played by</Label>
-                            <Input
-                              type="date"
-                              value={d.date}
-                              min={startDate || undefined}
-                              onChange={(e) =>
-                                setRoundDeadlines((prev) =>
-                                  prev.map((x, j) => (j === i ? { ...x, date: e.target.value } : x)),
-                                )
-                              }
-                              className="h-8"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Notes (optional)</Label>
-                            <Textarea
-                              value={d.notes ?? ""}
-                              rows={1}
-                              placeholder="Shown with this round's fixtures"
-                              onChange={(e) =>
-                                setRoundDeadlines((prev) =>
-                                  prev.map((x, j) => (j === i ? { ...x, notes: e.target.value } : x)),
-                                )
-                              }
-                              className="min-h-8 h-8 py-1.5 text-sm resize-none"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={() => setRoundDeadlines((prev) => prev.filter((_, j) => j !== i))}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setRoundDeadlines((prev) => [
-                          ...prev,
-                          { label: defaultRoundLabel(prev.length), date: "" },
-                        ])
-                      }
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Add round
-                    </Button>
-                  </div>
-                )}
               </div>
+
             )}
 
             {/* Capacity validation — lives here because it needs BOTH the structure

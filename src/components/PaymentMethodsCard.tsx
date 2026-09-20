@@ -143,11 +143,14 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
         .eq("status", "active")
         .maybeSingle();
       if (!group) return ownAnnual;
+      // Count only the ADDITIONAL people — the primary's own row sits in the same
+      // group and is already covered by the package fee.
       const { count } = await (supabase as any)
         .from("club_family_members")
         .select("id", { count: "exact", head: true })
         .eq("family_group_id", group.id)
-        .neq("status", "removed");
+        .neq("status", "removed")
+        .neq("club_member_id", clubMemberId);
       const n = count ?? 0;
       if (!n) return ownAnnual;
       const { data: addCat } = await supabase

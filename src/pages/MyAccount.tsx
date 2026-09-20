@@ -185,6 +185,30 @@ export default function MyAccount() {
     enabled: !!clubMemberId && !!clubId,
   });
 
+  // Fees raised against OTHER members that this member is the recorded payer
+  // for (family package). They stay booked on the other member's account for
+  // accounting, but the payer must see and be able to settle them here.
+  const { data: payerFees } = useQuery({
+    queryKey: ["family-payer-fees", clubMemberId],
+    enabled: !!clubMemberId,
+    queryFn: async () => {
+      const { data: rows } = await fromExt("club_member_fee_payments")
+        .select("*")
+        .eq("paid_by_member_id", clubMemberId!)
+        .neq("club_member_id", clubMemberId!);
+      const list = (rows || []) as any[];
+      if (!list.length) return [] as any[];
+      const memberIds = Array.from(new Set(list.map((r) => r.club_member_id)));
+      const { data: people } = await fromExt("club_members").select("id, name").in("id", memberIds);
+      const nameOf = (id: string) => (people || []).find((p: any) => p.id === id)?.name || "Family member";
+      return list.map((r) => ({
+        ...r,
+        billed_for_name: nameOf(r.club_member_id),
+        fee_label: `${nameOf(r.club_member_id)} — ${r.fee_label}`,
+      }));
+    },
+  });
+
   const { data: fees, isLoading: feesLoading } = useQuery({
     queryKey: ["club-member-fee-payments", clubMemberId],
     queryFn: async () => {
@@ -203,6 +227,20 @@ export default function MyAccount() {
 
   // Light sessions no longer needed separately — light fees come through member_credit_transactions
 
+  // What this member is actually asked to settle: their own fees, minus any of
+  // their own fees another person is the recorded payer for, plus the family
+  // fees they themselves pay for. Each fee is therefore demanded exactly once.
+  const feesBilledElsewhere = new Set(
+    ((fees || []) as any[])
+      .filter((f: any) => f.paid_by_member_id && f.paid_by_member_id !== clubMemberId)
+      .map((f: any) => f.id),
+  );
+  const combinedFees: any[] = [
+    ...((fees || []) as any[]).filter((f: any) => !feesBilledElsewhere.has(f.id)),
+    ...((payerFees || []) as any[]),
+  ];
+
+
   // Build statement lines from the GL control accounts.
   // Running balance is computed chronologically (oldest → newest), then the list is
   // reversed for display so the newest transaction appears first.
@@ -212,6 +250,8 @@ export default function MyAccount() {
     const lines: Omit<StatementLine, "balance">[] = [];
 
     for (const entry of (journalEntries || [])) {
+      // A fee somebody else is recorded as paying belongs on THEIR statement.
+      if ((entry as any).fee_payment_id && feesBilledElsewhere.has((entry as any).fee_payment_id)) continue;
       const debit = Math.abs(Number((entry as any).debit || 0));
       const credit = Math.abs(Number((entry as any).credit || 0));
       if (debit <= 0 && credit <= 0) continue;
@@ -224,6 +264,23 @@ export default function MyAccount() {
         status: "confirmed",
       });
     }
+
+    // Family fees this member pays for. Once settled the fee is cleared on the
+    // family member's account, so only what is still owing shows here.
+    for (const fee of ((payerFees || []) as any[])) {
+      const amount = Number(fee.amount || 0);
+      if (fee.paid || amount <= 0) continue;
+      lines.push({
+        id: `famfee-${fee.id}`,
+        date: fee.created_at,
+        description: `Fee raised: ${fee.fee_label}`,
+        debit: amount,
+        credit: 0,
+        status: "confirmed",
+      });
+    }
+
+
 
     // Sort oldest first so the running balance accumulates correctly
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -290,7 +347,7 @@ export default function MyAccount() {
 
   // Available "cash" in wallet (top-ups minus confirmed account charges),
   // i.e. how much can still be spent paying outstanding fees via credit.
-  const unpaidFeesTotal = (fees || [])
+  const unpaidFeesTotal = combinedFees
     .filter((f: any) => !f.paid)
     .reduce((s: number, f: any) => s + Number(f.amount), 0);
   const availableCash = creditBalance + unpaidFeesTotal;
@@ -319,6 +376,7 @@ export default function MyAccount() {
           toast.success("Payment received — thank you!");
           queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
           queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+          queryClient.invalidateQueries({ queryKey: ["family-payer-fees"] });
           queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
         } else if (status === "failed") {
           clearPendingClubSession(gateway, sid);
@@ -366,6 +424,7 @@ export default function MyAccount() {
               toast.success("Payment received — thank you!");
               queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
               queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+              queryClient.invalidateQueries({ queryKey: ["family-payer-fees"] });
               queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
               return;
             }
@@ -443,6 +502,7 @@ export default function MyAccount() {
         toast.success("Payment received — thank you!");
         queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
         queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+        queryClient.invalidateQueries({ queryKey: ["family-payer-fees"] });
         queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
       } else if (status === "failed") {
         clearPendingClubSession("stitch", res.session_id);
@@ -521,7 +581,7 @@ export default function MyAccount() {
   const payFeeMutation = useMutation({
     mutationFn: async ({ feeIds, method, customAmount }: { feeIds: string[]; method: string; customAmount?: number }) => {
       if (!clubId || !clubMemberId) throw new Error("No club membership found for this account.");
-      const selectedFees = (fees || []).filter((f: any) => feeIds.includes(f.id));
+      const selectedFees = combinedFees.filter((f: any) => feeIds.includes(f.id));
       if (!selectedFees.length) throw new Error("No fees selected");
       const totalOwed = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
       const payAmount = customAmount != null ? customAmount : totalOwed;
@@ -604,6 +664,7 @@ export default function MyAccount() {
       if (vars.method === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["family-payer-fees"] });
       queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
       if (vars.method === "eft") {
         toast.success("EFT payment recorded. Your secretary/admin will confirm receipt.");
@@ -637,10 +698,10 @@ export default function MyAccount() {
     }
   };
 
-  const payingFee = (fees || []).find((f: any) => f.id === payFeeId);
+  const payingFee = combinedFees.find((f: any) => f.id === payFeeId);
 
-  const unpaidFees = (fees || []).filter((f: any) => !f.paid);
-  const paidFees = (fees || []).filter((f: any) => f.paid);
+  const unpaidFees = combinedFees.filter((f: any) => !f.paid);
+  const paidFees = combinedFees.filter((f: any) => f.paid);
   const isAccountPayment = creditBalance < 0 && Number(topUpAmount) === Math.abs(creditBalance);
   const selectedFeeTotal = unpaidFees
     .filter((f: any) => selectedFeeIds.includes(f.id))

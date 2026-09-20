@@ -2914,13 +2914,6 @@ export default function ClubChampsView() {
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
           championScope={(champ as any)?.champion_scope || undefined}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
-          playByForRound={(round, stage) =>
-            deadlineForStage(
-              mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[]),
-              round,
-              stage,
-            )
-          }
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
         />
         {survivorsCard}

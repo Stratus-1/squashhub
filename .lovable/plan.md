@@ -1,107 +1,164 @@
-# Tournament rounds and stages: per-league knockout, upfront round robin
+# Tournament rounds and stages: one central round list, per-league progress
 
-Investigation complete. This plan changes how rounds, stages and deadlines are decided. No code has been changed.
+Investigation complete against the code and the live Nelspruit Club Champs 2026 data. No code has been changed.
+
+The core idea: **round definitions and dates are tournament-wide and edited in exactly one place. Progress through those rounds is per league.** Today both halves are muddled — dates live in four places and stages are guessed per pool.
 
 ## A) What causes the confusion today
 
-Verified against the code and the live Nelspruit Club Champs 2026 data.
+### A1. The same round date can be entered in four different places
 
-1. **One deadline list for the whole tournament.** `tournaments.round_play_by` is a single jsonb list of rounds ("Round 1 → 5 Sep, Round 2 → 12 Sep…"). Every league reads the same list *by position*. A league on round 5 and a league on round 7 can be at completely different stages, so a league's final picks up whichever date happens to sit at that slot. Nelspruit's 1st League final sat at round 7 and the 3rd League final at round 5 — same plan, different meaning.
-2. **Stage names are guessed from bracket slots, then frozen into the fixture.** When a round is created the name is computed from the number of slots and written into the match row. Nelspruit has rounds of 6 matches labelled "Round of 16", the same label "Quarter-final" on two consecutive rounds, and in the 2nd League two different round-6 rows labelled "Quarter-final" and "Section A · Semi-final" with different dates. Those wrong names are now permanent text on completed fixtures.
-3. **A pool's last match is treated as that pool's "Final".** The round plan is validated per *section*: the last round of a section must be "final", the one before it "semi_final". But a section winner still has to meet the other sections' winners, so that match is really a league semi-final. A recent patch renames it at display time; the stored labels and the plan's `round_type` values are still wrong.
-4. **The stored plan is self-contradictory.** In the live data, rounds labelled "Semi-final" carry `round_type: final`, rounds labelled "Round 5" carry `round_type: semi_final`. Nothing reconciles label, type and the actual field size.
-5. **Round-setup UI works on the current round position.** The setup panel edits `deadlines[currentRound - 1]`, i.e. the global list again, and only lets the organiser touch the current and next round.
-6. **The whole-tournament banner picks one league's stage.** The event-level "next action" reduces every league to a single focus section, so the fastest league's stage becomes the headline for the whole championship.
-7. **Notifications inherit all of it.** The notice builder uses the round's stored label and `COALESCE(match.play_by, round.play_by)` — so a wrong label and a borrowed date go straight into the message.
+| Where | What it writes | Problem |
+|---|---|---|
+| Edit Tournament → round schedule panel (`SelfScheduledRounds` inside `ClubChampsTab`) | `tournaments.round_play_by` (a positional list) | Only lets the organiser edit the *current* and *next* round, indexed by position |
+| "Set up the next round" dialog when progressing a league (`NextRoundSetupDialog`) | A new `club_champs_rounds` row **and** back-fills `tournaments.round_play_by` | Creates a second definition of the same round, per league and per pool |
+| Fixture generation (`use-generate-next-round`) | `club_champs_matches.play_by` on each new fixture | A third copy, frozen onto the fixture |
+| Dates & Courts | the fixture's scheduled date | Separate concern, but reads the same muddled deadline |
+
+Because there are several copies, the app has a `mergeRoundDeadlines` helper whose only job is to reconcile them ("earliest date wins"), and the notice builder has to fall back through three of them (`match.play_by` → `round.play_by` → generic). Whichever copy was written last wins, which is exactly why dates appeared to move.
+
+### A2. One positional list shared by leagues at different stages
+
+`tournaments.round_play_by` is read *by position*: "round 6" means slot 6 for every league. A 20-player league and a 4-player league reach completely different stages at round 6, so the wrong date is handed out. In Nelspruit the 1st League's final is round 7 and the 3rd League's is round 5.
+
+### A3. Stage names are guessed from bracket slots, then frozen
+
+Names are computed from the number of slots when a round is created and written permanently into the fixture. In the live data that produced rounds of 6 matches labelled "Round of 16", "Quarter-final" on two consecutive rounds, and two different round-6 rows in the 2nd League labelled "Quarter-final" and "Section A · Semi-final" with different dates.
+
+### A4. A pool's last match is treated as that pool's "Final"
+
+The stored plan is validated per *pool*: a pool's last round must be "final". But the pool winner still has to meet the other pools' winners, so that match is really a league semi-final. A recent patch renames it on screen; the stored names and types are still wrong, and the plan contradicts itself (rows labelled "Semi-final" carry type "final", rows labelled "Round 5" carry type "semi-final").
+
+### A5. The event banner picks one league's stage
+
+The tournament-level "next action" reduces every league to a single focus, so the fastest league's stage becomes the headline for the whole championship.
 
 ## B) Model changes
 
-No destructive schema work. Additions only.
+Additive only. Nothing is dropped or deleted.
 
-**`tournaments`** — new jsonb `milestone_play_by`:
+**`tournaments.round_definitions`** (new jsonb) — **the single source of truth** for early rounds:
 ```json
-{ "quarter_final": "2026-09-15", "semi_final": "2026-09-20", "final": "2026-09-22" }
+[ { "round": 1, "label": "Round 1", "play_by": "2026-08-29", "notes": "" },
+  { "round": 2, "label": "Round 2", "play_by": "2026-09-05" } ]
 ```
-Required at setup for knockout events. `round_play_by` stays as-is and keeps meaning "early rounds", used for round-robin and early knockout rounds only.
+One entry per round number, tournament-wide. Round 6 may exist even though only the biggest league ever uses it.
 
-**`club_champs_rounds`** — three new columns:
-- `stage_key text` — one of `early`, `quarter_final`, `semi_final`, `final`, `third_place`. The machine-readable truth; `label` stays the free-text display name.
-- `scope text` — `section` (a pool round) or `league` (a cross-pool round). Section 0 rows become `league`.
-- `field_size int` — how many players in the whole league contested this round. Recorded at generation, so history can never be re-derived wrongly later.
+**`tournaments.milestone_play_by`** (new jsonb) — centrally defined championship deadlines, required at knockout setup:
+```json
+{ "quarter_final": "2026-09-17", "semi_final": "2026-09-20", "final": "2026-09-22" }
+```
 
-**`club_champs_matches`** — `stage_key text`, filled at generation. `stage_label` stays for display and is never rewritten for completed matches.
+**`club_champs_rounds`** stops being a competing date store and becomes a per-league *reference* to a central definition:
+- `stage_key text` — `early` | `quarter_final` | `semi_final` | `final` | `third_place`
+- `scope text` — `section` (pool round) or `league` (cross-pool round)
+- `field_size int` — league survivors when the round was created, recorded once for audit
+- `play_by` becomes an **override**, normally null. When null the effective date is resolved centrally. Existing values are preserved as overrides on historical rounds.
 
-No column is dropped; no existing row is deleted.
+**`club_champs_matches`** gains `stage_key`. Its `play_by` stays, but is only written for completed/historical fixtures and genuine per-match exceptions; live fixtures resolve their date centrally.
+
+**Resolution order (one rule, used everywhere):** match override → round override → `milestone_play_by[stage_key]` if the league is at a milestone → `round_definitions[round]`.
+
+**`tournaments.round_play_by`** is retained read-only for backward compatibility and migrated into `round_definitions`.
+
+**Audit:** editing a central round date writes a row recording who changed it, from what to what, and how many fixtures were affected.
 
 ## C) Generation and progression, per league
 
 Each league (`group_number`) is an independent competition. Nothing at tournament level decides its stage.
 
-**League field size.** After every result, count the players still alive across *all* the league's pools plus the league bracket — a pool winner who then loses a cross-pool match is out. Byes never eliminate. Withdrawals count as eliminations.
+**League field size.** After every result, count players still alive across all the league's pools *and* its cross-pool bracket. A pool winner who then loses a cross-pool match is out. Byes never eliminate. Withdrawals count as eliminations.
 
-**Stage rule (league level, not pool level).**
-
+**Stage rule — league level, never pool level:**
 ```text
 alive = players still in the whole league
-alive == 2          -> Final
-alive == 3 or 4     -> Semi-final
-alive 5..8          -> Quarter-final
-alive > 8           -> early round, named "Round N"
+alive == 2        -> Final
+alive == 3 or 4   -> Semi-final
+alive 5..8        -> Quarter-final
+alive > 8         -> early round, named from the central definition ("Round N")
 ```
+Uneven pools and byes are handled because the rule counts *survivors*, not matches or slots. Three pools with 1, 1 and 2 left = 4 alive = semi-finals, even though no single pool is at a semi-final.
 
-Uneven pools and byes are handled because the rule counts *survivors*, never matches or slots. Three pools with 1, 1 and 2 left = 4 alive = semi-finals, even though no single pool is at a semi-final.
+**Which deadline applies.** Milestone stage → the central milestone date. Early round → the central definition for that league's next round number. A league reaching its final early simply waits for the common Final date; the app never forces an earlier play-by.
 
-**Which deadline applies.** If the stage is a milestone, use `milestone_play_by[stage]`. Otherwise use the early-round deadline for that league's round number. A league that reaches its final early simply waits for the common Final date — the app never forces an earlier play-by.
+**Progressing a league** references the central definition rather than creating anything:
+- If the next applicable round is already centrally defined: *"Progress 2nd League to Round 6 — play by Fri 12 Sep (central tournament round)."* The date is shown read-only with an "Edit central round dates" link.
+- If it is a milestone stage: *"Progress 2nd League to the Semi-final — play by Sun 20 Sep (championship milestone)."*
+- If the next early round does not exist centrally yet: the organiser is stopped and prompted — *"Round 7 is not defined for this tournament yet. Add it?"* — which opens the same single central editor. Once added, every league references it.
+- Per-league overrides are still possible but are an explicit, labelled exception ("Override this league's date"), never the default path.
 
 **What gets generated when.**
-- *Knockout:* only round 1 of each pool is created at setup. Each subsequent round is created when its feeder round is fully resolved, for that league alone. A league finishing early never triggers generation in another league.
-- *Cross-pool stage:* created when the league's survivors reach a bracket size (2/4/8) or every pool is decided — existing rule, now the only trigger.
-- *Round robin:* the complete fixture list is generated at setup, with one date per round from the organiser's round dates. Playoff fixtures are still generated only once qualification is known, and use the milestone dates.
+- *Knockout:* only round 1 of each pool at setup. Each later round is created when its feeder round is fully resolved, for that league alone. A league finishing early never pushes another league forward.
+- *Cross-pool stage:* created when the league's survivors reach 2/4/8 or every pool is decided.
+- *Round robin:* the full fixture list is generated at setup, dated from the central round definitions, because all opponents are known. Playoff fixtures are still generated only once qualification is known, and use the milestone dates.
 
-**Admin control is preserved.** Manual placement, seeding and the drag-and-drop draw board stay exactly as they are; generation only proposes pairings, and the organiser can still override the round name and play-by date before confirming.
+**Admin control is preserved.** Manual placement, seeding and the drag-and-drop draw board are unchanged. Generation proposes pairings; the organiser can still rearrange them before confirming.
 
-**Labelling rule.** A round is only ever called "Final" when winning it makes that player the league champion. Anything else in a multi-pool league is named by the league-level rule: a pool's last match while another pool still runs is "2nd League Semi-final", never "Section A Final". Section letters may still appear as a secondary tag on early rounds.
+**Labelling rule.** A round is only called "Final" when winning it makes that player the league champion. In a multi-pool league a pool's last match while another pool still runs is "2nd League Semi-final", never "Section A Final". Section letters may still appear as a secondary tag on early rounds.
 
-## D) UI changes
+## D) UI changes and consolidation
 
-**Knockout setup** splits into two clearly separated blocks:
-- *Early rounds* — Round 1, Round 2, … each with a play-by date, optional notes, and an "Add another round" button available at any time, including after the event starts.
-- *Championship milestones* (required) — Quarter-final, Semi-final, Final play-by dates, described as "must be played by" rather than fixed match dates.
+**One authoritative editor — "Tournament rounds & deadlines"** — reachable from Edit Tournament and from every progress screen via a link. It contains:
+- *Early rounds*: Round 1, Round 2, Round 3 … each with a name and one play-by date, an "Add another round" button available at any time (including mid-tournament), and a note of which leagues currently use each round.
+- *Championship milestones* (required for knockout): Quarter-final, Semi-final, Final play-by dates, described as "must be played by", not fixed match dates.
 
-**Round robin setup** keeps a single list of round dates, plus the milestone block only when playoffs are enabled.
+**Screens that currently duplicate entry, and what happens to them:**
+- `SelfScheduledRounds` inside Edit Tournament → becomes the central editor (extended to all rounds, not just current/next). It is the one place dates are typed.
+- `NextRoundSetupDialog` → stops writing `tournaments.round_play_by` and stops inventing dates. It shows the referenced central round and date read-only, with the stage name suggested from the league rule, plus the explicit override and "Add central round" paths above.
+- `AllNextRoundDrawsDialog`, `TournamentNextActionBar`, `KnockoutCard`, `TournamentProgressCard`, `ConfirmDrawDialog` → display the resolved central date; no date inputs.
+- `use-generate-next-round` → stamps the resolved date onto new fixtures for history, and refuses to generate when the required round is not centrally defined.
+- `mergeRoundDeadlines` ("earliest of the copies wins") is retired in favour of the single resolution order.
 
-**Progress display** drops the single "Current round: Semi-Finals" banner for multi-league knockouts and shows one line per league: "1st League — Semi-finals, 4 players left, play by 20 Sep". The tournament-level card shows a summary ("3 of 6 leagues decided") and never a single global stage.
+**Editing a central date** updates every league and fixture that references it. Fixtures that are completed, or already booked onto a court, are protected: the organiser is shown how many would be affected and completed ones are left untouched, with the change recorded in the audit log.
 
-**Fixture lists and player-facing labels** read the stage from `stage_key`, so admin views, the games page, invitations and notices all say the same thing.
+**Progress display** drops the single "Current round: Semi-Finals" banner for multi-league knockouts. Each league gets its own line — "1st League — Semi-finals, 4 players left, play by 20 Sep" — and the tournament card shows a summary ("3 of 6 leagues decided"), never one global stage.
+
+**Fixture lists, invitations and notices** all read the stage from `stage_key` and the date from the single resolution order, so admin screens, the games page and player messages always agree.
 
 ## E) Migration and Nelspruit safety
 
-1. Backfill `milestone_play_by` for existing knockout tournaments from any plan rows already named Quarter-final/Semi-final/Final; leave blank where absent and prompt the organiser once.
-2. Backfill `stage_key`, `scope` and `field_size` on existing round and match rows by recomputing survivors from the actual results, **write-once and only where currently null**.
-3. **Completed matches are never relabelled or regenerated.** Their scores, winners, dates and ledger effects are untouched. Where a completed match carries a historically wrong `stage_label`, the display falls back to the recomputed `stage_key`, but the stored text stays for audit.
-4. For Nelspruit specifically: correct the contradictory plan rows (label vs `round_type`), set milestones to QF 17 Sep / SF 20 Sep / Final 22 Sep, and resolve the duplicate round-6 rows in the 2nd League. Each correction is listed and confirmed before it runs.
-5. Everything ships behind the recomputation path first, so the new stage names can be compared against the current screens before anything is written.
+1. Build `round_definitions` from each tournament's existing `round_play_by`, taking the organiser's dates as-is.
+2. Backfill `milestone_play_by` from any plan rows already named Quarter-final / Semi-final / Final; leave blank where absent and prompt the organiser once.
+3. Backfill `stage_key`, `scope` and `field_size` on existing round and match rows by recomputing survivors from the actual results — **write-once, only where null**.
+4. Where an existing `club_champs_rounds.play_by` differs from the new central definition, keep it as an explicit override rather than silently rewriting it, and list the differences for review.
+5. **Completed matches are never relabelled or regenerated.** Scores, winners, dates and any ledger effects are untouched. Where a completed match carries a historically wrong stage name the display falls back to the recomputed stage, but the stored text stays for audit.
+6. Nelspruit specifically: set the central milestones to QF 17 Sep / SF 20 Sep / Final 22 Sep, correct the contradictory plan rows (name vs type), and resolve the duplicate round-6 rows in the 2nd League. Each correction is listed and confirmed before it runs.
+7. The recomputation runs in comparison mode first, so the new stage names and dates can be checked against the current screens before anything is written.
 
 ## F) Tests and acceptance
 
-Unit tests on the league-level stage rule:
+**Central definition**
+- Progressing a league to an already-defined round references that date and creates no new definition.
+- Progressing a league to an undefined round is blocked and prompts to add it centrally.
+- A central round exists and is used by one league while another league never reaches it.
+- Editing a central date updates all referencing unplayed fixtures and leaves completed ones alone; the audit row records the change.
+- No screen other than the central editor can write a round date, except the explicitly labelled per-league override.
+
+**Stage rule**
 - 4 entrants, one pool: R1 = Semi-final, R2 = Final.
-- 6 entrants, one pool: R1 has 2 byes, alive 4 → Semi-final, then Final.
-- 8 entrants, two pools of 4: pool rounds = Quarter-final then Semi-final (not "Pool Final"), cross-pool = Final.
-- 12 entrants, three pools of 4: pools of 1, 1, 2 survivors → 4 alive → Semi-final at league level.
-- 20 entrants, two pools of 10: early "Round 1/2" while alive > 8, then QF/SF/Final by survivor count.
-- Byes and withdrawals never change the survivor count wrongly.
+- 6 entrants, one pool: R1 with 2 byes, 4 alive → Semi-final, then Final.
+- 8 entrants, two pools of 4: pool rounds = Quarter-final then Semi-final (not "Pool Final"); cross-pool = Final.
+- 12 entrants, three pools of 4: survivors 1, 1, 2 → 4 alive → league Semi-final.
+- 20 entrants, two pools of 10: early rounds while alive > 8, then QF/SF/Final by survivor count.
+- Byes and withdrawals never distort the survivor count.
 
-Deadline tests: milestone stage takes the milestone date; early round takes the early date; a league reaching the final early still gets the common Final date; two leagues on the same round number at different stages get different dates.
+**Deadlines**
+- Milestone stage takes the milestone date; early round takes the central round date.
+- A league reaching its final early still gets the common Final date.
+- Two leagues on the same round number but different stages get different dates.
 
-Independence tests: a decided 1st League never changes the 3rd League's stage, action or deadline.
+**Independence**
+- A decided 1st League never changes the 3rd League's stage, action or deadline.
 
-Notification tests: the generated message names the league-level stage and the correct play-by.
+**Notifications**
+- The generated message names the league-level stage and the centrally resolved play-by.
 
-Regression: the full existing suite (948 tests) must stay green; a fixture built from the real Nelspruit rows must produce the current correct results and no relabelling of completed matches.
+**Regression**
+- The existing suite (948 tests) stays green; a fixture built from the real Nelspruit rows reproduces the current correct results with no relabelling of completed matches.
 
 ## Assumptions
 
-- Milestone deadlines are shared across all leagues of a championship (one Final day for the event). If a league should be allowed its own Final date, say so and I will make the milestone block per league.
-- Third-place playoffs stay optional and out of scope unless you want them included.
+- Milestone deadlines are shared across all leagues of a championship (one Final day for the event). Say the word if a league should be allowed its own Final date.
+- Per-league date overrides remain possible but as a deliberate exception, not a second entry point.
+- Third-place playoffs stay out of scope unless you want them included.
 - No publish until you ask.

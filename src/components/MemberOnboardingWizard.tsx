@@ -557,6 +557,25 @@ export function MemberOnboardingWizard({
     if (!on) setFamilyDrafts([]);
   }, [familyPrimaryCat?.id]);
 
+  // Family-plan expectation: a family plan does NOT cover everyone automatically.
+  // Each family member still needs their own (separate) registration — spell that
+  // out the moment the joiner picks the family category.
+  useEffect(() => {
+    if (!familyPrimaryCat) return;
+    const fee = familyAdditionalCat?.annual_fee;
+    const feeText = fee === null || fee === undefined
+      ? "the club's family member fee"
+      : fee > 0
+        ? `R${fee.toFixed(0)} each per year`
+        : "no fee";
+    toast.info("A family plan needs one registration per person", {
+      description: `Please register each of your other family members separately (${feeText}). You can add them on the next step, or later from My Account.`,
+      duration: 8000,
+    });
+    // Only remind once per category selection, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familyPrimaryCat?.id]);
+
   // Renewal date comes from the fee category itself (falls back to the club default).
   const dueMonth = (selectedCategory as any)?.due_month || (club as any)?.member_fee_due_month || 1;
   const dueDay = (selectedCategory as any)?.due_day || 1;

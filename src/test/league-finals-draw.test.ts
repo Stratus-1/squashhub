@@ -3,6 +3,8 @@ import {
   finalsReady,
   finalsRoundNumber,
   leagueFinalsEntrants,
+  leagueSurvivorCount,
+  leagueSurvivors,
   suggestLeagueFinalsBoard,
 } from "@/lib/tournaments/league-finals-draw";
 import type { SectionProgression } from "@/lib/tournaments/knockout-progression";

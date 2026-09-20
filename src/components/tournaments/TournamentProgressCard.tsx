@@ -139,7 +139,9 @@ export function TournamentProgressCard({
     // Every draw goes through the visual board, including the cross-pool
     // league finals (section 0), where the organiser picks the pairings.
     const viaBoard = !!st && s.section > 0;
-    const finalsBoard = s.section === 0 && !st && s.action === "generate";
+    // Every cross-pool play-off round is drawn on the board — including the one
+    // after a play-off round that has already been played (section 0 exists).
+    const finalsBoard = s.section === 0 && s.action === "generate";
     const safety = st ? roundRedrawState(st.currentRoundMatches as any[]) : null;
     const canRedraw = !!st && s.action !== "generate" && !s.decided && !!safety?.canRedraw;
 

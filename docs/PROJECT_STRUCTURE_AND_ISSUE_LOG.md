@@ -1797,3 +1797,10 @@ of treating them as "gateway not configured".
 **Cause:** the planned `round_play_by` list was read positionally (`[round - 1]`). Divisions reach the final on different round numbers, so round 6 picked up the "Quarter-final" entry. `NextRoundSetupDialog` then treated that as a fixed, uneditable date.
 **Fix:** new `deadlineForStage()` matches the round's stage name (Final / Semi-final / Quarter-final, section prefixes and plurals normalised) against the plan, falling back to the positional lookup only for unnamed rounds. `playByForRound(round, stageLabel)` threaded through ClubChampsView, ClubChampsTab, KnockoutCard, TournamentNextActionBar, AllNextRoundDrawsDialog. The play-by field is now always editable, with the planned date shown as guidance. Tests in `src/test/round-deadlines.test.ts`.
 **Data:** Nelspruit Club Champs finals e774…/8a76…/a03e…/732a… corrected to 2026-09-22.
+
+### 2026-09-20 — Fixture "play by" showed the wrong date on finals
+Tournaments page: `matchPlayBy` read the section's round row (or the positional
+plan entry) and ignored the fixture's own `club_champs_matches.play_by`. Nelspruit
+finals carried 22 Sep on the match rows but displayed 20 Sep / 17 Sep. Fixed:
+fixture's own date wins, then its section round row, then `deadlineForStage`,
+then the positional plan entry.

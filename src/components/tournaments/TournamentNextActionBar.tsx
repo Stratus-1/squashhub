@@ -303,7 +303,6 @@ export function TournamentNextActionBar({
           state={reviewState}
           qualifiers={reviewState.activeCount}
           selfScheduled={selfScheduled}
-          {/* Dates come from the tournament's central round list. */}
           divisionLabel={scopeLabel(reviewState.groupNumber, reviewState.section)}
           onReady={(v) => {
             setSetup(v);

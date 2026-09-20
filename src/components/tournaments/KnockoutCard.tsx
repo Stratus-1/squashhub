@@ -303,8 +303,6 @@ export function KnockoutCard({
             state={setupState}
             qualifiers={setupState.activeCount}
             selfScheduled={selfScheduled}
-            {/* Dates come from the tournament's central round list — this
-                dialog never asks for one. */}
             divisionLabel={`${groupLabel(setupState.groupNumber)} · Pool ${sectionLetter(setupState.section)}`}
             onReady={(v) => {
               setSetup(v);

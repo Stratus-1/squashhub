@@ -44,7 +44,7 @@ export async function autoSettleFeesFromTopup(
 
   const { data: unpaid, error } = await admin
     .from("club_member_fee_payments")
-    .select("id, fee_label, amount")
+    .select("id, fee_label, amount, fee_type")
     .eq("club_member_id", clubMemberId)
     .eq("paid", false)
     .order("created_at", { ascending: true });
@@ -52,7 +52,31 @@ export async function autoSettleFeesFromTopup(
     console.error("auto-settle: fee lookup failed:", error);
     return;
   }
-  const fees = (unpaid || []).filter((f: any) => Number(f.amount) > 0);
+
+  // Members on an active monthly arrangement may carry their membership fee.
+  // Sweeping a top-up onto it swallows money paid to clear court lights / bar
+  // charges and leaves the booking gate exactly where it was.
+  let carryMembership = false;
+  try {
+    const { data: mandate } = await admin
+      .from("stitch_mandates")
+      .select("id")
+      .eq("club_member_id", clubMemberId)
+      .eq("status", "active")
+      .eq("frequency", "monthly")
+      .is("suspended_at", null)
+      .maybeSingle();
+    carryMembership = !!mandate;
+  } catch (e) {
+    console.error("auto-settle: mandate lookup failed:", e);
+  }
+  const MEMBERSHIP_TYPES = ["membership", "club_membership", "club"];
+
+  const fees = (unpaid || []).filter(
+    (f: any) =>
+      Number(f.amount) > 0 &&
+      !(carryMembership && MEMBERSHIP_TYPES.includes(f.fee_type ?? "")),
+  );
   if (!fees.length) return;
 
   const settledLabels: string[] = [];

@@ -179,7 +179,14 @@ import {
   roundDeadlineLines,
   roundDeadlineSummary,
 } from "@/lib/tournaments/round-deadlines";
-import { SelfScheduledRounds } from "@/components/club-admin/tournament/SelfScheduledRounds";
+import { CentralRoundSchedule } from "@/components/club-admin/tournament/CentralRoundSchedule";
+import {
+  fromLegacyDeadlines,
+  parseMilestones,
+  parseRoundDefinitions,
+  serializeRoundDefinitions,
+  type MilestonePlayBy,
+} from "@/lib/tournaments/round-definitions";
 import {
   isSelfScheduledKnockout,
   roundProgress as computeRoundProgress,
@@ -1018,7 +1025,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    *              next band, Pool C the weakest.
    */
   const [poolAllocation, setPoolAllocation] = useState<PoolAllocationMode>("snake");
+  /**
+   * The tournament's CENTRAL round list and championship deadlines — the one
+   * place these are entered. Every other screen references them.
+   */
   const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
+  const [milestonePlayBy, setMilestonePlayBy] = useState<MilestonePlayBy>({});
 
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
@@ -2570,6 +2582,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Keep it separate from entries/registrations so saving progress never
       // accepts an invite or changes a payment state.
       draft_player_ids: Array.from(selectedPlayerIds),
+      // The single source of truth for round names/dates and the championship
+      // deadlines. Nothing else in the app may write these.
+      round_definitions: serializeRoundDefinitions(
+        fromLegacyDeadlines(serializeRoundDeadlines(roundDeadlines) || []),
+      ),
+      milestone_play_by: milestonePlayBy,
     };
 
     const saveExtras = async (id: string) => {

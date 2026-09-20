@@ -84,20 +84,20 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
               onCheckedChange={(v) => setForm((p) => ({ ...p, visitorsCanBook: v }))}
             />
           </div>
-          {form.visitorsCanBook && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{symbol}</span>
-              <Input
-                type="number"
-                min={0}
-                step={1}
-                className="h-8 text-xs w-28"
-                value={form.selfFee}
-                onChange={(e) => setForm((p) => ({ ...p, selfFee: Math.max(0, parseFloat(e.target.value) || 0) }))}
-              />
-              <span className="text-[11px] text-muted-foreground">charged per visit to the visitor</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-xs text-muted-foreground">{symbol}</span>
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              className="h-8 text-xs w-28"
+              value={form.selfFee}
+              onChange={(e) => setForm((p) => ({ ...p, selfFee: Math.max(0, parseFloat(e.target.value) || 0) }))}
+            />
+            <span className="text-[11px] text-muted-foreground">
+              per booking, charged to the visitor (0 = no charge)
+            </span>
+          </div>
         </div>
 
         {/* 2. Member brings a visitor */}

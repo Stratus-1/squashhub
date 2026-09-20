@@ -303,12 +303,8 @@ export function KnockoutCard({
             state={setupState}
             qualifiers={setupState.activeCount}
             selfScheduled={selfScheduled}
-            plannedPlayBy={
-              playByForRound?.(setupState.nextRound?.round_number ?? setupState.currentRound + 1) ?? null
-            }
-            plannedPlayByForStage={(stage) =>
-              playByForRound?.(setupState.nextRound?.round_number ?? setupState.currentRound + 1, stage) ?? null
-            }
+            {/* Dates come from the tournament's central round list — this
+                dialog never asks for one. */}
             divisionLabel={`${groupLabel(setupState.groupNumber)} · Pool ${sectionLetter(setupState.section)}`}
             onReady={(v) => {
               setSetup(v);

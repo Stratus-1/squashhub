@@ -1818,3 +1818,8 @@ bracket keeps its real names); used by knockout.ts, graduated.ts and draw-board.
 `src/pages/Tournaments.tsx` reads legacy rows back through the same demotion.
 Data: Nelspruit Club Champs 2026 section finals relabelled and moved to 20 Sep.
 Tests: `src/test/stage-label-section-final.test.ts`.
+
+## 2026-09-20 — Mandate-increase notification on family growth
+- `family_add_member` RPC: after raising the additional-family fee, compares the new family season total /12 against the primary's active stitch_mandates cap; if the monthly amount no longer covers it, inserts a deduped `mandate_increase` notification (unread-check) for the primary pointing to /my-account.
+- Backfilled the notification for Katya Fulton (Gordon's Bay) whose R133.33 cap no longer covers R1,720 season total (R143.33/month).
+- Notification bell realtime surfaces it as a toast; tapping opens My Account where the "Increase to R…/month" button re-authorises at the higher amount.

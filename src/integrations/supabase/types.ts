@@ -14913,12 +14913,12 @@ export type Database = {
       }
       family_add_member: {
         Args: {
-          _email?: string
-          _existing_member_id?: string
-          _name?: string
-          _phone?: string
+          _email: string
+          _existing_member_id: string
+          _name: string
+          _phone: string
           _primary_member_id: string
-          _relationship?: string
+          _relationship: string
         }
         Returns: string
       }

@@ -145,6 +145,9 @@ export type PoolState = {
   matchesDone: number;
 };
 
+/** Section 0 holds the division's cross-pool play-off. */
+const LEAGUE_PLAYOFF_SECTION = 0;
+
 /** Per-pool (section) state inside one division. */
 export function divisionPools(
   matches: KnockoutMatchLike[],

@@ -74,33 +74,48 @@ export function NextRoundSetupDialog({
   divisionLabel,
   selfScheduled,
   plannedPlayBy,
+  plannedPlayByForStage,
   onReady,
 }: Props) {
   const qc = useQueryClient();
   const roundNumber = state.nextRound?.round_number ?? state.currentRound + 1;
   const [label, setLabel] = useState("");
   const [playBy, setPlayBy] = useState<string>("");
+  const [dateTouched, setDateTouched] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // A round whose date was published when the tournament was planned is FIXED:
-  // players have been told to play by that date, so setting up a section may
-  // never move it.
-  const fixedPlayBy =
-    plannedPlayBy && /^\d{4}-\d{2}-\d{2}/.test(plannedPlayBy) ? plannedPlayBy.slice(0, 10) : null;
+  const asDate = (v: unknown) =>
+    typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null;
+
+  // The date published for THIS stage ("Final" → 22 Sep) wins over the date
+  // that merely sits at this round's position in the plan: divisions reach the
+  // final on different round numbers, so position alone sent players the wrong
+  // deadline.
+  const stagePlanned = asDate(plannedPlayByForStage?.(label));
+  const plannedForRound = asDate(plannedPlayBy);
+  const suggestedPlanned = stagePlanned ?? plannedForRound;
 
   useEffect(() => {
     if (!open) return;
+    setDateTouched(false);
     setLabel(suggestStageName({ plannedLabel: state.nextRound?.label, roundNumber, qualifiers }));
-    // Priority: the fixed published date → saved round row → +7d guess.
     setPlayBy(
-      fixedPlayBy ?? (state.nextRound?.play_by ? String(state.nextRound.play_by).slice(0, 10) : defaultPlayBy()),
+      asDate(state.nextRound?.play_by) ?? plannedForRound ?? defaultPlayBy(),
     );
-  }, [open, state.nextRound?.label, state.nextRound?.play_by, fixedPlayBy, roundNumber, qualifiers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, state.nextRound?.label, state.nextRound?.play_by, roundNumber, qualifiers]);
+
+  // Naming the round (e.g. picking "Final") pulls in that stage's published
+  // date, unless the organiser has already typed a date of their own.
+  useEffect(() => {
+    if (!open || dateTouched || !stagePlanned) return;
+    setPlayBy((cur) => (cur === stagePlanned ? cur : stagePlanned));
+  }, [open, dateTouched, stagePlanned]);
 
   const today = new Date().toISOString().slice(0, 10);
-  // A fixed published date may already be in the past — that must not block the
+  // A published date may already be in the past — that must not block the
   // organiser from setting the section up.
-  const earliest = fixedPlayBy && fixedPlayBy < today ? fixedPlayBy : today;
+  const earliest = suggestedPlanned && suggestedPlanned < today ? suggestedPlanned : today;
   const setup: NextRoundSetup = { label: label.trim(), playBy: playBy || null };
   const problems = useMemo(
     () => validateNextRoundSetup(setup, { requirePlayBy: !!selfScheduled, today: earliest }),

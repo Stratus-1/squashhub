@@ -799,8 +799,29 @@ export default function Tournaments() {
       );
     });
 
+  /**
+   * A tournament is shown as one flat chronological programme when it is a
+   * Bells (timed) event, or when its games already carry times and the admin
+   * never created real rounds. This is decided PER tournament — a timed event
+   * running alongside a multi-round club championship must never flatten the
+   * other tournament's round view.
+   */
+  const champIsChronological = (champId: string, list: any[]) => {
+    const champ = champById.get(champId) as any;
+    if (champ?.scoring_mode === "time_capped_points") return true;
+    const own = list.filter((m: any) => m.champ_id === champId);
+    return own.some((m: any) => m.scheduled_time) && !hasAdminRounds(own);
+  };
+
+  /** True only when every tournament in the list is a flat chronological one. */
+  const listIsChronological = (list: any[]) => {
+    if (!list.length) return false;
+    const ids = Array.from(new Set(list.map((m: any) => m.champ_id)));
+    return ids.every((id) => champIsChronological(id as string, list));
+  };
+
   const renderMatchList = (list: any[]) => {
-    if (hasActiveBells || (list.some((m: any) => m.scheduled_time) && !hasAdminRounds(list))) {
+    if (listIsChronological(list)) {
       const schedule = chronologicalTournamentMatches(list);
       return <div className="space-y-1.5">{schedule.map(renderMatchRow)}</div>;
     }
@@ -915,7 +936,8 @@ export default function Tournaments() {
 
     // Self-scheduled rounds carry a "must be played by" date. Show it on any
     // fixture that still has no court/time so players know their booking cut-off.
-    const playBy = !m.scheduled_date && !isPlaceholder && (hasActiveBells || groupMode !== "round")
+    const playBy = !m.scheduled_date && !isPlaceholder
+      && ((champById.get(m.champ_id) as any)?.scoring_mode === "time_capped_points" || groupMode !== "round")
       ? playByNudge(matchPlayBy(m), todayISO())
       : null;
 

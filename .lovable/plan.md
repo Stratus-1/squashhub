@@ -40,7 +40,9 @@ The allowance looks for fees typed "membership"/"club_membership". Gordon's Bay 
 1. **Booking gate** (`src/lib/booking-balance-gate.ts`): drop the bump-up that re-allows her full balance; allowance = outstanding membership fees (active monthly arrangement → all outstanding fees); recognise "club" membership fees; result shown to member: owe, required floating balance, and the exact amount to pay now.
 2. **Wallet auto-settle** (`wallet-auto-settle.ts`): keep the club's `min_booking_balance` in the wallet; only sweep the excess onto old fees.
 3. **My Account** (`src/components/PaymentMethodsCard.tsx`): show the fallback "Monthly club fees" row only when the member has no recurring-eligible category of their own — removes the duplicate.
-4. Add regression tests for the "pays R100 → requirement moves from −1580 to −1480" scenario.
+4. **Family fee on adding a member**: raise the "Member of family" fee (R120) automatically against the primary payer when a linked family member is added.
+5. **Increase monthly payment**: when a family's fees grow, offer a one-tap "increase monthly payment" that authorises a new recurring payment at the new amount and cancels the old one on activation.
+6. Add regression tests for the "pays R100 → requirement moves from −1580 to −1480" scenario.
 
 ## For Katya today (only on your word)
 

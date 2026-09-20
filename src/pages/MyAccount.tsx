@@ -35,6 +35,7 @@ import {
 
 import { SharedAccessCard } from "@/components/SharedAccessCard";
 import { MyFamilyCard } from "@/components/family/MyFamilyCard";
+import { checkBookingBalance } from "@/lib/booking-balance-gate";
 import { FamilyInviteCard } from "@/components/family/FamilyInviteCard";
 
 import PaymentMethodsCard from "@/components/PaymentMethodsCard";

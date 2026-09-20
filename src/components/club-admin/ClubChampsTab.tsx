@@ -8758,13 +8758,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                               </Button>
                               <Button
                                 type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-muted-foreground"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
                                 onClick={() => duplicateLeagueAt(gn)}
-                                title="Duplicate this division (same rules, new class)"
+                                title="Create another division with exactly these settings"
                               >
-                                <Copy className="h-4 w-4" />
+                                <Copy className="h-3.5 w-3.5 mr-1" />
+                                Duplicate
                               </Button>
                               <Button
 

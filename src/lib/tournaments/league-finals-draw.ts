@@ -54,7 +54,7 @@ export function leagueSurvivors(sections: SectionProgression[]): string[] {
     const list =
       p.entrants.length > 0
         ? p.entrants
-        : p.winner
+        : p.complete && p.winner
           ? [{ memberId: p.winner, eliminated: false } as any]
           : [];
     for (const e of list) {

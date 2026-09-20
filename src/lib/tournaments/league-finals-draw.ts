@@ -21,32 +21,83 @@ export function finalsPools(sections: SectionProgression[]): SectionProgression[
   return sections.filter((s) => s.section > 0).sort((a, b) => a.section - b.section);
 }
 
-/** Total players still standing across the pools of one league. */
-export function leagueSurvivorCount(sections: SectionProgression[]): number {
-  return finalsPools(sections).reduce(
-    (n, p) => n + p.entrants.filter((e) => !e.eliminated).length,
-    0,
-  );
+/** The play-off bracket itself (section 0), once it has been started. */
+export function finalsSection(sections: SectionProgression[]): SectionProgression | null {
+  return sections.find((s) => s.section === LEAGUE_FINALS_SECTION) ?? null;
+}
+
+/** Everyone knocked out in the play-off bracket already. */
+function finalsEliminated(sections: SectionProgression[]): Set<string> {
+  const f = finalsSection(sections);
+  return new Set((f?.entrants || []).filter((e) => e.eliminated).map((e) => String(e.memberId)));
 }
 
 /**
- * Ready when every pool is decided, OR the pools together are down to a
- * bracket-sized field (2 / 4 / 8) — two decided pools plus a pool with two
- * players left is a semi-final, not a wait.
+ * Who is still standing in this league, pools AND play-off together.
+ *
+ * Once the play-off has started, a pool winner who lost a play-off match is
+ * out — their pool row is history. Survivors are therefore the players still
+ * alive in the play-off, plus any pool winner who has not been drawn into it
+ * yet (e.g. a pool that finished later).
+ */
+export function leagueSurvivors(sections: SectionProgression[]): string[] {
+  const pools = finalsPools(sections);
+  const out = finalsEliminated(sections);
+  const f = finalsSection(sections);
+  const inFinals = new Set((f?.entrants || []).map((e) => String(e.memberId)));
+  const ids: string[] = [];
+  for (const e of f?.entrants || []) {
+    if (!e.eliminated) ids.push(String(e.memberId));
+  }
+  for (const p of pools) {
+    // A decided pool with no entrant detail still has its winner standing.
+    const list =
+      p.entrants.length > 0
+        ? p.entrants
+        : p.complete && p.winner
+          ? [{ memberId: p.winner, eliminated: false } as any]
+          : [];
+    for (const e of list) {
+      const id = String(e.memberId);
+      if (e.eliminated || out.has(id) || inFinals.has(id) || ids.includes(id)) continue;
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
+/** Total players still standing across one league. */
+export function leagueSurvivorCount(sections: SectionProgression[]): number {
+  return leagueSurvivors(sections).length;
+}
+
+/**
+ * Ready when every pool is decided, OR the field is down to a bracket-sized
+ * number (2 / 4 / 8) — two decided pools plus a pool with two players left is
+ * a semi-final, not a wait. Once the play-off has started the same rule keeps
+ * applying, so two survivors of the semi-finals can be drawn into the final.
  */
 export function finalsReady(sections: SectionProgression[]): boolean {
   const pools = finalsPools(sections);
   if (pools.length < 2) return false;
+  const f = finalsSection(sections);
+  const survivors = leagueSurvivorCount(sections);
+  if (survivors < 2) return false;
+  // A play-off round still being played is not a new draw.
+  if (f && !f.currentRoundComplete) return false;
+  if (f && f.nextRoundGenerated) return false;
   if (pools.every((p) => p.complete && !!p.winner)) return true;
-  return leaguePlayoffReady(false, leagueSurvivorCount(sections));
+  return leaguePlayoffReady(false, survivors);
 }
 
 
-/** Round number the finals sit at: one after the deepest pool round. */
+/** Round number the finals sit at: one after the deepest round in the league. */
 export function finalsRoundNumber(sections: SectionProgression[]): number {
-  const pools = finalsPools(sections);
-  if (pools.length === 0) return 1;
-  return Math.max(...pools.map((p) => p.currentRound)) + 1;
+  const rounds = [...finalsPools(sections), ...(finalsSection(sections) ? [finalsSection(sections)!] : [])].map(
+    (p) => p.currentRound,
+  );
+  if (rounds.length === 0) return 1;
+  return Math.max(...rounds) + 1;
 }
 
 /**
@@ -66,7 +117,16 @@ export function leagueFinalsEntrants(
     }
     return null;
   };
+  // Anyone already knocked out of the play-off never returns to the board.
+  const survivors = new Set(leagueSurvivors(sections));
+  const fin = finalsSection(sections);
   const out: DrawEntrant[] = [];
+  const pushed = new Set<string>();
+  const add = (id: string, from: SectionProgression, label: string) => {
+    if (!id || pushed.has(id) || !survivors.has(id)) return;
+    pushed.add(id);
+    out.push({ id, name: nameOf(id), partnerId: partnerOf(from, id), seed: out.length + 1, rankLabel: label });
+  };
   for (const p of pools) {
     // Decided pool → its winner. Pool still running → everyone still in it.
     const ids = allDecided
@@ -77,17 +137,17 @@ export function leagueFinalsEntrants(
         ? [p.winner]
         : p.entrants.filter((e) => !e.eliminated).map((e) => e.memberId);
     for (const id of ids) {
-      out.push({
-        id,
-        name: nameOf(id),
-        partnerId: partnerOf(p, id),
-        seed: out.length + 1,
-        rankLabel:
-          p.complete && p.winner === id
-            ? `Pool ${sectionLetter(p.section)} winner`
-            : `Pool ${sectionLetter(p.section)}`,
-      });
+      add(
+        String(id),
+        p,
+        p.complete && p.winner === id ? `Pool ${sectionLetter(p.section)} winner` : `Pool ${sectionLetter(p.section)}`,
+      );
     }
+  }
+  // Players who already won a play-off round belong on the next board even
+  // though their pool row is now history.
+  if (fin) {
+    for (const e of fin.entrants) add(String(e.memberId), fin, "Play-off winner");
   }
   return out;
 }

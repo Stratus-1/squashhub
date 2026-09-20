@@ -12,7 +12,7 @@ import {
 
   progressSummary,
   sectionProgression,
-  leaguePlayoffReady,
+
   leaguePlayoffStageLabel,
   type ChampRound,
 } from "@/lib/tournaments/knockout-progression";
@@ -22,6 +22,7 @@ import { ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 import { prepareActionLabel, roundRedrawState } from "@/lib/tournaments/round-draw";
 import { NextRoundDrawDialog, type NextRoundDrawMode } from "./NextRoundDrawDialog";
 import { LeagueFinalsDrawDialog } from "./LeagueFinalsDrawDialog";
+import { finalsReady, leagueSurvivorCount } from "@/lib/tournaments/league-finals-draw";
 
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 
@@ -172,12 +173,16 @@ export function KnockoutCard({
           // The league is ready for its own play-off on total survivors, not
           // on "every pool decided": 2 pools decided + 1 pool with 2 left = 4
           // still in = semi-finals.
-          const aliveInLeague = draws.reduce(
-            (n, s) => n + s.entrants.filter((e) => !e.eliminated).length,
-            0,
-          );
-          const playoffReady = draws.length > 1 && leaguePlayoffReady(allDecided, aliveInLeague);
-          const champion = finals?.complete ? finals.winner : draws.length === 1 ? draws[0].winner : null;
+          // Survivors count pools AND the play-off together, so a pool winner
+          // beaten in the play-off no longer counts as still in.
+          const aliveInLeague = leagueSurvivorCount(sections);
+          const playoffReady = finalsReady(sections);
+          const champion =
+            finals?.complete && aliveInLeague <= 1
+              ? finals.winner
+              : draws.length === 1
+                ? draws[0].winner
+                : null;
           return (
             <div key={gn} className="space-y-3">
 
@@ -256,15 +261,19 @@ export function KnockoutCard({
                   <div className="text-[11px] font-medium text-muted-foreground">League final</div>
                   {koMatches
                     .filter((m: any) => m.group_number === gn && m.section_number === 0)
-                    .sort((a: any, b: any) => (a.bracket_position ?? 0) - (b.bracket_position ?? 0))
+                    .sort(
+                      (a: any, b: any) =>
+                        (a.round_number ?? 0) - (b.round_number ?? 0) ||
+                        (a.bracket_position ?? 0) - (b.bracket_position ?? 0),
+                    )
                     .map((m: any) => renderMatchRow(m))}
                 </div>
               )}
 
-              {canManage && playoffReady && !finals && (
+              {canManage && playoffReady && (
                 <div className="space-y-1">
                   <Button size="sm" onClick={() => setPlayoff(gn)}>
-                    {allDecided
+                    {allDecided && !finals
                       ? `Set up league final (${draws.length} section winners)`
                       : `Set up ${leaguePlayoffStageLabel(aliveInLeague)} (${aliveInLeague} still in)`}
                   </Button>

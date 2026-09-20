@@ -19,6 +19,7 @@ import {
   type ChampRound,
   type SectionProgression,
 } from "./knockout-progression";
+import { finalsReady, leagueSurvivorCount } from "./league-finals-draw";
 
 
 /** The single next thing an admin can do with a draw. */
@@ -236,6 +237,37 @@ export function divisionControls(
 
         sorted.sort((a, b) => a.section - b.section);
       }
+
+      // The play-off itself can need more than one round: three pool winners
+      // means a semi-final and then a final. While two or more players are
+      // still standing across the whole league the play-off is NOT decided.
+      if (scope === "division" && pools.length > 1 && hasFinalsBracket) {
+        const leagueStates = states.filter((s) => s.groupNumber === groupNumber);
+        const alive = leagueSurvivorCount(leagueStates);
+        if (alive > 1) {
+          const ready = finalsReady(leagueStates);
+          const label = leaguePlayoffStageLabel(alive).replace(/^./, (c) => c.toUpperCase());
+          sorted = sorted.map((s) =>
+            s.section === 0
+              ? {
+                  ...s,
+                  decided: false,
+                  winner: null,
+                  stageLabel: label,
+                  activeCount: alive,
+                  headline: ready
+                    ? `${alive} players still in — ready for the ${label.toLowerCase()}.`
+                    : s.headline,
+                  action: ready ? "generate" : s.action,
+                  actionLabel: ready ? `Generate ${label.toLowerCase()}` : s.actionLabel,
+                  canGenerate: ready || s.canGenerate,
+                  blockedReason: ready ? null : s.blockedReason,
+                }
+              : s,
+          );
+        }
+      }
+
 
       const focus =
         [...sorted].sort(

@@ -227,6 +227,20 @@ export default function MyAccount() {
 
   // Light sessions no longer needed separately — light fees come through member_credit_transactions
 
+  // What this member is actually asked to settle: their own fees, minus any of
+  // their own fees another person is the recorded payer for, plus the family
+  // fees they themselves pay for. Each fee is therefore demanded exactly once.
+  const feesBilledElsewhere = new Set(
+    ((fees || []) as any[])
+      .filter((f: any) => f.paid_by_member_id && f.paid_by_member_id !== clubMemberId)
+      .map((f: any) => f.id),
+  );
+  const combinedFees: any[] = [
+    ...((fees || []) as any[]).filter((f: any) => !feesBilledElsewhere.has(f.id)),
+    ...((payerFees || []) as any[]),
+  ];
+
+
   // Build statement lines from the GL control accounts.
   // Running balance is computed chronologically (oldest → newest), then the list is
   // reversed for display so the newest transaction appears first.

@@ -625,6 +625,19 @@ export default function ClubChampsView() {
     // Once the play-off (section 0) exists, decided pools are history — show
     // them collapsed so the standings focus on who is still playing.
     const playoffStarted = pools.some((p) => p.section === 0);
+    // Everyone still alive in the division, whatever pool they came from. The
+    // play-off board must show every survivor — including a pool winner who is
+    // waiting for their next opponent and has not played a play-off match yet.
+    const divisionAlive = new Set<string>(
+      pools.filter((p) => p.section !== 0).flatMap((p) => p.activeIds),
+    );
+    pools
+      .filter((p) => p.section === 0)
+      .forEach((p) => p.activeIds.forEach((id) => divisionAlive.add(id)));
+    pools.forEach((p) => {
+      if (p.section === 0) return;
+      p.eliminated.forEach((e) => divisionAlive.delete(e.memberId));
+    });
 
     return (
       <div className="space-y-4">
@@ -632,11 +645,12 @@ export default function ClubChampsView() {
           const inPool = (r: any) =>
             pool.entrantIds.includes(r.club_member_id) ||
             (r.partner_member_id && pool.entrantIds.includes(r.partner_member_id));
-          const active = all.filter(
-            (r: any) =>
-              inPool(r) &&
-              pool.activeIds.includes(r.club_member_id),
-          );
+          const active =
+            pool.section === 0
+              ? all.filter((r: any) => divisionAlive.has(r.club_member_id))
+              : all.filter(
+                  (r: any) => inPool(r) && pool.activeIds.includes(r.club_member_id),
+                );
           const out = pool.eliminated.length;
           const title = pool.section === 0 ? "Finals" : multi ? `Pool ${pool.letter}` : "Draw";
           return (

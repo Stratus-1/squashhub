@@ -2624,8 +2624,24 @@ export default function Bookings() {
               )}
 
 
+              {/* A visitor booking on their own pays the club's per-visit fee. */}
+              {String((activeMember as any)?.role || "").toLowerCase() === "visitor" && visitorSelfFee > 0 && (
+                <p className="text-[11px] text-amber-600 leading-snug">
+                  A visitor fee of {money(visitorSelfFee)} will be charged for this visit. It's added after
+                  the booking time has passed.
+                </p>
+              )}
+
               <div className="space-y-2">
-                <Label className="text-xs font-semibold">2nd Player (optional)</Label>
+                <Label className="text-xs font-semibold">
+                  {requireVisitorNamed ? "2nd Player (required)" : "2nd Player (optional)"}
+                </Label>
+                {requireVisitorNamed && (
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Name your opponent. If they're not a member, choose Visitor
+                    {visitorFee > 0 ? ` — a ${money(visitorFee)} visitor fee applies.` : "."}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-1.5">
                   {(["member", "visitor"] as const).map((mode) => (
                     <Button

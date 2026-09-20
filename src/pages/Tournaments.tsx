@@ -635,12 +635,16 @@ export default function Tournaments() {
 
   // Round name + play-by date for a given match, taken from the round plan
   // merged with the rounds actually created from the draw.
-  const roundMeta = (champId: string, roundNumber?: number | null) => {
+  const roundPlan = (champId: string) => {
     const champ = champs.find((c: any) => c.id === champId);
-    const list = mergeRoundDeadlines(
+    return mergeRoundDeadlines(
       parseRoundDeadlines((champ as any)?.round_play_by),
       roundsByChamp.get(champId) || [],
     );
+  };
+
+  const roundMeta = (champId: string, roundNumber?: number | null) => {
+    const list = roundPlan(champId);
     const n = Number(roundNumber);
     const entry = Number.isFinite(n) && n >= 1 ? list[n - 1] : undefined;
     return {

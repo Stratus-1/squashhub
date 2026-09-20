@@ -173,6 +173,7 @@ import {
   mergeRoundDeadlines,
   serializeRoundDeadlines,
   deadlineForRound,
+  deadlineForStage,
   defaultRoundLabel,
   lastDeadline,
   roundDeadlineLines,

@@ -45,6 +45,80 @@ const pool = (
     entrants: [],
   }) as SectionProgression;
 
+/** The division's play-off bracket (section 0) with explicit entrant states. */
+const playoff = (
+  entrants: Array<[string, boolean]>,
+  round = 5,
+  currentRoundComplete = true,
+): SectionProgression =>
+  ({
+    ...pool(0, null, false, round),
+    section: 0,
+    entrants: entrants.map(([memberId, eliminated]) => ({ memberId, eliminated })) as any,
+    currentRoundComplete,
+    complete: false,
+    winner: null,
+  }) as SectionProgression;
+
+describe("league play-off survivors", () => {
+  it("drops a pool winner who lost in the play-off", () => {
+    const sections = [
+      pool(1, "a", true),
+      pool(2, "b", true),
+      pool(3, "c", true),
+      playoff([
+        ["a", false],
+        ["b", true],
+      ]),
+    ];
+    expect(leagueSurvivors(sections).sort()).toEqual(["a", "c"]);
+    expect(leagueSurvivorCount(sections)).toBe(2);
+  });
+
+  it("offers the next play-off round while two are still standing", () => {
+    const sections = [
+      pool(1, "a", true),
+      pool(2, "b", true),
+      pool(3, "c", true),
+      playoff([
+        ["a", false],
+        ["b", true],
+      ]),
+    ];
+    expect(finalsReady(sections)).toBe(true);
+  });
+
+  it("waits while the play-off round is still being played", () => {
+    const sections = [
+      pool(1, "a", true),
+      pool(2, "b", true),
+      pool(3, "c", true),
+      playoff(
+        [
+          ["a", false],
+          ["b", false],
+        ],
+        5,
+        false,
+      ),
+    ];
+    expect(finalsReady(sections)).toBe(false);
+  });
+
+  it("is over once one player is left", () => {
+    const sections = [
+      pool(1, "a", true),
+      pool(2, "b", true),
+      playoff([
+        ["a", false],
+        ["b", true],
+      ]),
+    ];
+    expect(leagueSurvivorCount(sections)).toBe(1);
+    expect(finalsReady(sections)).toBe(false);
+  });
+});
+
 describe("league finals draw", () => {
   it("is not ready until every pool is decided", () => {
     expect(finalsReady([pool(1, "a", true), pool(2, "b", false)])).toBe(false);

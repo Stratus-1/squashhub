@@ -1,42 +1,48 @@
-# Gordon's Bay R20 booking balance — what happened to Katya
+# Gordon's Bay R20 booking balance — Katya Fulton
 
-## The short answers
+## Answers to the questions
 
-**1. Was the "3D-Secure Verification Failed" our fault?** No. That message comes from her bank's card verification step during the payment. Her bank declined to verify the card; nothing on our side produced or caused it. The payment she started this morning (R20, 11:03) is still sitting unfinished — it never completed, so no money reached the club and nothing was credited to her.
+**1. Was "3D-Secure Verification Failed" our fault?** No — that screen comes from her bank's card verification during the payment. Her bank declined to verify the card; nothing in the app caused it. Her R20 payment attempt this morning (11:03) never completed, so no money arrived and nothing was credited.
 
-**2. Her R20 bank transfer.** She did the R20 as a manual bank transfer instead. The app cannot see a manual transfer until the club loads its bank statement and matches it, so as far as the app is concerned she still has nothing on her account — hence no court access.
+**2. Her R20 bank transfer.** She paid R20 by manual EFT instead, but did not log it in the app, and there is no proof of payment — so nothing is credited and we do not treat it as received. It would only show once the club loads its bank statement and matches it.
 
-## How the R20 rule works today at Gordon's Bay
+**3. Why is the amount listed twice under My Account?** One row is real, one is a duplicate:
+- **Family Plan — R1 600/year** is her actual fee category.
+- **Monthly club fees — R1 600/year** is a built-in fallback row that is always added for members whose own category isn't flagged for recurring payments. Hers IS flagged, so the fallback should not appear — and it then copies her outstanding total (R1 600), which is why the same amount shows twice. Fix: only add the fallback row when the member has no eligible category of their own.
 
-- Gordon's Bay requires a R20 floating balance on top of whatever a member owes, before a booking is allowed.
-- Katya owes R1 635.33 — R1 600 family membership (raised 6 August, still unpaid) plus court light charges since then, less two recurring card payments of R133.33.
-- She does have an active monthly recurring arrangement.
+## The recurring-payment logic, as it should work (your description)
 
-## Three real problems in that logic
+A member on a monthly arrangement may carry their outstanding membership fees, but must hold the club's floating balance (Gordon's Bay: R20) on top:
 
-**A. A member who owes anything can never satisfy the R20.**
-The rule says "whatever you already owe is allowed, but you must have R20 on top". In practice, each time it checks, it re-reads what she owes and re-allows exactly that amount — so paying R20 lowers what she owes by R20 and lowers the allowance by R20 at the same time. She is short exactly R20 forever, no matter how many times she pays. This is why it "just feels unnecessary for R20": the R20 genuinely never clears.
+- Nothing paid yet: owes R1 600 → needs at least **−R1 600 + R20 = −R1 580** on the account to book.
+- Paid R100: outstanding R1 500 → needs at least **−R1 480**.
+- The requirement drops by exactly what they pay.
 
-**B. Her top-up would be swallowed anyway.**
-When a member tops up their wallet, the system immediately uses the money to pay off their oldest unpaid fee. Her oldest unpaid fee is the R1 600 membership. So even a successful R20 top-up would go straight onto the membership and leave her wallet at zero — still blocked.
+## What the code actually does today — three problems
 
-**C. The membership allowance does not recognise Gordon's Bay's fee type.**
-The allowance is meant to forgive outstanding *membership* fees. It only looks for fees typed "membership"/"club_membership". Gordon's Bay membership fees are typed "club", so they are not recognised at all.
+**A. The requirement never moves (main bug).**
+In `src/lib/booking-balance-gate.ts`, when what she owes (R1 635.33 — R1 600 membership + R35.33 court lights) is more than her unpaid fees (R1 600), the allowance is bumped up to match what she owes. The result: she is short exactly R20 forever. Every rand she pays lowers her balance owed AND her allowance by the same amount, so the R20 shortfall never clears. That is why it "feels unnecessary for R20" — paying it genuinely changes nothing.
 
-## Proposed logic (nothing changed yet)
+**B. A wallet top-up gets swallowed by her old fee.**
+When a member tops up, the system immediately pays their oldest unpaid fee with it (`supabase/functions/_shared/wallet-auto-settle.ts`). Her oldest unpaid fee is the R1 600 membership, so even a successful R20 top-up leaves her floating balance at zero — still blocked. The floating balance must be protected: only money above the club's buffer goes onto old fees.
 
-1. **Floating balance means wallet credit, not a moving target.** A member passes if the balance they have *available* (credit, ignoring forgiven membership debt) is at least R20. Paying R20 must actually clear the requirement.
-2. **Protect the floating balance from auto-settlement.** A wallet top-up should only be swept onto outstanding fees above the club's floating-balance amount; the buffer itself stays in the wallet so the member can book.
-3. **Recognise all membership fee types**, including "club", as forgivable debt when a member is on an active monthly arrangement.
-4. **Clear wording when a booking is blocked**: what they owe, what the floating balance is, and exactly how much to pay now.
+**C. Gordon's Bay's membership fee type isn't recognised.**
+The allowance looks for fees typed "membership"/"club_membership". Gordon's Bay membership fees are typed "club", so they are not counted at all.
 
-## Immediate options for Katya (say the word)
+## Proposed fixes (nothing changed yet)
 
-- Credit her R20 manually against the bank transfer she made, so she and the boys can get onto court today.
-- Cancel the unfinished R20 payment attempt so it does not double up if it later completes.
+1. **Booking gate** (`src/lib/booking-balance-gate.ts`): drop the bump-up that re-allows her full balance; allowance = outstanding membership fees (active monthly arrangement → all outstanding fees); recognise "club" membership fees; result shown to member: owe, required floating balance, and the exact amount to pay now.
+2. **Wallet auto-settle** (`wallet-auto-settle.ts`): keep the club's `min_booking_balance` in the wallet; only sweep the excess onto old fees.
+3. **My Account** (`src/components/PaymentMethodsCard.tsx`): show the fallback "Monthly club fees" row only when the member has no recurring-eligible category of their own — removes the duplicate.
+4. Add regression tests for the "pays R100 → requirement moves from −1580 to −1480" scenario.
+
+## For Katya today (only on your word)
+
+- Nothing to approve: no proof of the EFT, no logged payment — she stays blocked until money is confirmed.
+- Her unfinished R20 card attempt can be cancelled so it cannot double up later.
 
 ## Technical notes
 
-- `src/lib/booking-balance-gate.ts` — the grandfathering block (`if (currentOwing > planAllowedDebt) planAllowedDebt = currentOwing`) makes `shortfall` permanently equal the buffer; the membership filter matches only `membership` / `club_membership`.
-- `supabase/functions/_shared/wallet-auto-settle.ts` — sweeps the full top-up into unpaid fees; needs to retain the club's `min_booking_balance`.
-- Katya: club_member `04b1e11b…`, Stitch session `c5437b70…` (R20 topup, `paybybank`, status `processing`), active mandate `18e2d429…`.
+- Katya: club_member `04b1e11b…`, owes R1 635.33, active monthly arrangement R133.33 on day 25, failed R20 session `c5437b70…` (status `processing`).
+- Gordon's Bay: `min_booking_balance` = 20.
+- Gate rule after fix: allowed if `owing − unpaid_membership_fees ≤ floating balance`; arrangement members get all unpaid fees as allowance.

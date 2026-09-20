@@ -152,6 +152,21 @@ export function roundLabel(playersInRound: number): string {
 }
 
 /**
+ * A league that still runs SEVERAL sections has not reached its final: the
+ * winner of Section B still has to meet the winner of Section A. So a section's
+ * last game is the league's SEMI-FINAL, never its "Section B · Final" — which
+ * also means it inherits the semi-final deadline, not the final's.
+ * The league-wide bracket ("League finals", section 0) keeps its real names.
+ */
+export function composeStageLabel(label: string, sectionLabel?: string | null): string {
+  const section = String(sectionLabel || "").trim();
+  if (!section) return label;
+  const isLeagueBracket = /league final/i.test(section);
+  const demoted = !isLeagueBracket && /^final$/i.test(label.trim()) ? "Semi-final" : label;
+  return `${section} · ${demoted}`;
+}
+
+/**
  * Drop repeat entrants. A player may legitimately play in SEVERAL divisions,
  * but may only occupy ONE slot inside a single division/section draw —
  * otherwise the bracket pairs them with themselves.
@@ -224,7 +239,7 @@ export function buildSectionFirstRound(opts: {
       round_number: 1,
       bracket_position: position,
       stage: "ko",
-      stage_label: opts.sectionLabel ? `${opts.sectionLabel} · ${label}` : label,
+      stage_label: composeStageLabel(label, opts.sectionLabel),
       player_a_member_id: a?.memberId ?? null,
       partner_a_member_id: a?.partnerId ?? null,
       player_b_member_id: b?.memberId ?? null,
@@ -373,7 +388,7 @@ export function buildNextRound(opts: {
       round_number: round,
       bracket_position: i / 2 + 1,
       stage: "ko",
-      stage_label: opts.sectionLabel ? `${opts.sectionLabel} · ${label}` : label,
+      stage_label: composeStageLabel(label, opts.sectionLabel),
       player_a_member_id: a?.winner ?? null,
       partner_a_member_id: a ? partnerOfWinner(a.match, a.winner) : null,
       player_b_member_id: b?.winner ?? null,

@@ -677,8 +677,19 @@ export default function Tournaments() {
   const isGenericRoundLabel = (s: string) => !s || /^round\s*\d+$/i.test(s.trim());
 
   /** Semi-final / Quarter-final / Round 5 — the stage THIS fixture belongs to. */
+  /**
+   * A section's last game is not the league's final while another section is
+   * still running — the two section winners must still meet. Older rows were
+   * stored as "Section B · Final", so they are read back as a semi-final.
+   */
+  const demoteSectionFinal = (label: string): string => {
+    const [section, stage] = label.split("·").map((s) => s.trim());
+    if (!stage || /league final/i.test(section)) return label;
+    return /^finals?$/i.test(stage) ? `${section} · Semi-final` : label;
+  };
+
   const matchStageLabel = (m: any): string => {
-    const own = String(m?.stage_label || "").trim();
+    const own = demoteSectionFinal(String(m?.stage_label || "").trim());
     if (!isGenericRoundLabel(own)) return own;
     const row = String(matchRoundRow(m)?.label || "").trim();
     if (!isGenericRoundLabel(row)) return row;

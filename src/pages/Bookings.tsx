@@ -986,6 +986,18 @@ export default function Bookings() {
       toast.error("Please enter the visitor's name.");
       return;
     }
+    // Some clubs require every booking to name either a member opponent or a
+    // visitor, so the visitor fee can never be missed.
+    if (
+      requireVisitorNamed &&
+      !isVisitorRole &&
+      bookingDialog.bookingType === "match" &&
+      bookingDialog.playerMode === "member" &&
+      !bookingDialog.opponentId
+    ) {
+      toast.error("Choose a member as your opponent, or select Visitor and give their name.");
+      return;
+    }
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
     const bookingId = crypto.randomUUID();
 

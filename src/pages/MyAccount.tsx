@@ -347,7 +347,7 @@ export default function MyAccount() {
 
   // Available "cash" in wallet (top-ups minus confirmed account charges),
   // i.e. how much can still be spent paying outstanding fees via credit.
-  const unpaidFeesTotal = (fees || [])
+  const unpaidFeesTotal = combinedFees
     .filter((f: any) => !f.paid)
     .reduce((s: number, f: any) => s + Number(f.amount), 0);
   const availableCash = creditBalance + unpaidFeesTotal;
@@ -578,7 +578,7 @@ export default function MyAccount() {
   const payFeeMutation = useMutation({
     mutationFn: async ({ feeIds, method, customAmount }: { feeIds: string[]; method: string; customAmount?: number }) => {
       if (!clubId || !clubMemberId) throw new Error("No club membership found for this account.");
-      const selectedFees = (fees || []).filter((f: any) => feeIds.includes(f.id));
+      const selectedFees = combinedFees.filter((f: any) => feeIds.includes(f.id));
       if (!selectedFees.length) throw new Error("No fees selected");
       const totalOwed = selectedFees.reduce((s: number, f: any) => s + Number(f.amount), 0);
       const payAmount = customAmount != null ? customAmount : totalOwed;
@@ -694,10 +694,10 @@ export default function MyAccount() {
     }
   };
 
-  const payingFee = (fees || []).find((f: any) => f.id === payFeeId);
+  const payingFee = combinedFees.find((f: any) => f.id === payFeeId);
 
-  const unpaidFees = (fees || []).filter((f: any) => !f.paid);
-  const paidFees = (fees || []).filter((f: any) => f.paid);
+  const unpaidFees = combinedFees.filter((f: any) => !f.paid);
+  const paidFees = combinedFees.filter((f: any) => f.paid);
   const isAccountPayment = creditBalance < 0 && Number(topUpAmount) === Math.abs(creditBalance);
   const selectedFeeTotal = unpaidFees
     .filter((f: any) => selectedFeeIds.includes(f.id))

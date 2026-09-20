@@ -2548,7 +2548,7 @@ export default function Bookings() {
 
       {/* Booking Confirmation Dialog */}
       <Dialog open={!!bookingDialog} onOpenChange={() => setBookingDialog(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[92dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading">Book Court</DialogTitle>
             <DialogDescription className="sr-only">Confirm the selected court, time, opponent, guest, visitor, and lights options.</DialogDescription>

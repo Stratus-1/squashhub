@@ -12,13 +12,16 @@
 - **Family Plan — R1 600/year** is her actual fee category.
 - **Monthly club fees — R1 600/year** is a built-in fallback row that is always added for members whose own category isn't flagged for recurring payments. Hers IS flagged, so the fallback should not appear — and it then copies her outstanding total (R1 600), which is why the same amount shows twice. Fix: only add the fallback row when the member has no eligible category of their own.
 
-## The recurring-payment logic, as it should work (your description)
+## The final rule (as agreed)
 
-A member on a monthly arrangement may carry their outstanding membership fees, but must hold the club's floating balance (Gordon's Bay: R20) on top:
+For a member on an active monthly arrangement, the amount they may carry (the "allowable negative") is:
 
-- Nothing paid yet: owes R1 600 → needs at least **−R1 600 + R20 = −R1 580** on the account to book.
-- Paid R100: outstanding R1 500 → needs at least **−R1 480**.
-- The requirement drops by exactly what they pay.
+**total family/membership fees for the season − payments already made** — plus the club's floating balance on top.
+
+- Katya with son added: R1 600 + R120 = **R1 720** total fees; two payments of R133.33 made → may carry **R1 453.34**.
+- Booking allowed while her balance owing is at most **R1 453.34 + R20 float**; anything beyond that (e.g. unpaid court lights) must be settled.
+- The monthly recurring charge keeps running as normal; each successful payment reduces what she carries.
+- The recurring amount itself should ideally be increased to cover the R120 (R1 720 ÷ 12 = R143.33) — see fix 6.
 
 ## Kailash's R120 family fee — and increasing the monthly payment
 

@@ -382,7 +382,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       let remainder = 0;
       if (tx.type === "debit" && tx.club_member_id) {
         const { data: unpaidFees } = await fromExt("club_member_fee_payments")
-          .select("id, fee_label, amount, created_at")
+          .select("id, fee_label, amount, fee_type, created_at")
           .eq("club_member_id", tx.club_member_id)
           .eq("paid", false)
           .order("created_at", { ascending: true });
@@ -393,8 +393,22 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         // outstanding fees (oldest first) up to the confirmed amount, mirroring the
         // gateway top-up auto-settlement. Any remainder stays as wallet credit.
         if (feesToMark.length === 0 && /top[- ]?up/i.test(descStr)) {
+          // Members on an active monthly arrangement may carry their membership
+          // fee — sweeping a top-up onto it swallows money they paid to clear
+          // court lights / bar charges and leaves their booking gate unmoved.
+          const { data: mandate } = await fromExt("stitch_mandates")
+            .select("id")
+            .eq("club_member_id", tx.club_member_id)
+            .eq("status", "active")
+            .eq("frequency", "monthly")
+            .is("suspended_at", null)
+            .maybeSingle();
+          const MEMBERSHIP_TYPES = ["membership", "club_membership", "club"];
+          const sweepable = (unpaidFees || []).filter(
+            (f: any) => !(mandate && MEMBERSHIP_TYPES.includes(f.fee_type ?? "")),
+          );
           let remaining = Math.abs(Number(tx.amount));
-          for (const fee of unpaidFees || []) {
+          for (const fee of sweepable) {
             if (remaining <= 0) break;
             const feeAmt = Number(fee.amount);
             if (feeAmt <= 0) continue;

@@ -669,10 +669,13 @@ export default function ClubChampsView() {
                       {pool.qualifierIds.length === 1 ? "Pool decided" : "Pool complete"}
                     </Badge>
                   )}
-                  {pool.complete && pool.qualifierIds.length > 0 && (
+                  {/* Only advertise a pool winner who is still in the division —
+                      a pool winner beaten in the play-off is out and must not
+                      keep appearing as "Winner". */}
+                  {pool.complete && pool.survivingQualifierIds.length > 0 && (
                     <Badge variant="secondary" className="text-[10px]">
-                      {pool.qualifierIds.length === 1 ? "Winner" : "Qualified"}:{" "}
-                      {pool.qualifierIds
+                      {pool.survivingQualifierIds.length === 1 ? "Winner" : "Qualified"}:{" "}
+                      {pool.survivingQualifierIds
                         .map((id) => all.find((r: any) => r.club_member_id === id)?.name || "—")
                         .join(", ")}
                     </Badge>

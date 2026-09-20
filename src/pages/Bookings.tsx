@@ -991,7 +991,6 @@ export default function Bookings() {
     if (
       requireVisitorNamed &&
       !isVisitorRole &&
-      bookingDialog.bookingType === "match" &&
       bookingDialog.playerMode === "member" &&
       !bookingDialog.opponentId
     ) {

@@ -185,6 +185,30 @@ export default function MyAccount() {
     enabled: !!clubMemberId && !!clubId,
   });
 
+  // Fees raised against OTHER members that this member is the recorded payer
+  // for (family package). They stay booked on the other member's account for
+  // accounting, but the payer must see and be able to settle them here.
+  const { data: payerFees } = useQuery({
+    queryKey: ["family-payer-fees", clubMemberId],
+    enabled: !!clubMemberId,
+    queryFn: async () => {
+      const { data: rows } = await fromExt("club_member_fee_payments")
+        .select("*")
+        .eq("paid_by_member_id", clubMemberId!)
+        .neq("club_member_id", clubMemberId!);
+      const list = (rows || []) as any[];
+      if (!list.length) return [] as any[];
+      const memberIds = Array.from(new Set(list.map((r) => r.club_member_id)));
+      const { data: people } = await fromExt("club_members").select("id, name").in("id", memberIds);
+      const nameOf = (id: string) => (people || []).find((p: any) => p.id === id)?.name || "Family member";
+      return list.map((r) => ({
+        ...r,
+        billed_for_name: nameOf(r.club_member_id),
+        fee_label: `${nameOf(r.club_member_id)} — ${r.fee_label}`,
+      }));
+    },
+  });
+
   const { data: fees, isLoading: feesLoading } = useQuery({
     queryKey: ["club-member-fee-payments", clubMemberId],
     queryFn: async () => {

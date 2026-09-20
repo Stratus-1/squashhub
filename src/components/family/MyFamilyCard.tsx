@@ -245,6 +245,13 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
                     {m.outstanding > 0 ? ` · ${money(m.outstanding)} outstanding` : " · nothing outstanding"}
                   </p>
                 </div>
+                {(!m.email || !m.phone) && m.club_member_id !== clubMemberId && (
+                    <p className="text-[10px] text-amber-600 mt-0.5">
+                      Missing {!m.email && !m.phone ? "email and cell number" : !m.email ? "email address" : "cell number"} —{" "}
+                      <button type="button" className="underline" onClick={() => openDetails(m)}>complete details</button>
+                    </p>
+                  )}
+                </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Badge variant={m.status === "active" ? "default" : "secondary"} className="text-[9px] h-4 px-1.5">
                     {m.status === "active" ? "Linked" : "Pending"}

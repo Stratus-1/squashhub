@@ -41,6 +41,34 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
   const [phone, setPhone] = useState("");
   const [relationship, setRelationship] = useState<string>("child");
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [savingDetails, setSavingDetails] = useState(false);
+
+  const openDetails = (m: any) => {
+    setEditing(m);
+    setEditEmail(m.email || "");
+    setEditPhone(m.phone || "");
+  };
+
+  const saveDetails = async () => {
+    if (!editing) return;
+    setSavingDetails(true);
+    try {
+      const { error } = await fromExt("club_members")
+        .update({ email: editEmail.trim() || null, phone: editPhone.trim() || null } as any)
+        .eq("id", editing.club_member_id);
+      if (error) throw error;
+      toast.success("Details saved");
+      setEditing(null);
+      qc.invalidateQueries({ queryKey: ["my-family", clubMemberId] });
+    } catch (e: any) {
+      toast.error(e.message || "Could not save those details");
+    } finally {
+      setSavingDetails(false);
+    }
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["my-family", clubMemberId],

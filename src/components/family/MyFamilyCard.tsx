@@ -329,7 +329,32 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
 
             <Button className="w-full" disabled={busy || (mode === "existing" ? !memberNo.trim() : !name.trim())} onClick={add}>
               {busy && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Add {additionalCat ? `(${money(additionalCat.annual_fee)})` : ""}
+              Add {additionalCat && additionalCat.annual_fee > 0 ? `(${money(additionalCat.annual_fee)})` : "(free)"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Complete {editing?.name}'s details</DialogTitle>
+            <DialogDescription>
+              Add their own email address and cell number. If they don't have their own, use yours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Email</Label>
+              <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="h-9" inputMode="email" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Cell phone</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-9" inputMode="tel" />
+            </div>
+            <Button className="w-full" disabled={savingDetails || (!editEmail.trim() && !editPhone.trim())} onClick={saveDetails}>
+              {savingDetails && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Save details
             </Button>
           </div>
         </DialogContent>

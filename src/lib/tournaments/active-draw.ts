@@ -140,6 +140,8 @@ export type PoolState = {
   complete: boolean;
   /** Pool decided down to its winner(s) — the ones who go through. */
   qualifierIds: string[];
+  /** Qualifiers who have not since been knocked out of the division. */
+  survivingQualifierIds: string[];
   latestRound: number;
   matchesTotal: number;
   matchesDone: number;
@@ -207,6 +209,9 @@ export function divisionPools(
         .map(([memberId, round]) => ({ memberId, round })),
       complete,
       qualifierIds: complete ? poolWinnerIds : [],
+      // Pool winners who are STILL in the division (not knocked out in the
+      // cross-pool play-off) — what the standings should advertise.
+      survivingQualifierIds: complete ? poolWinnerIds.filter((id) => !elimMap.has(id)) : [],
       latestRound,
       matchesTotal: playable.length,
       matchesDone,

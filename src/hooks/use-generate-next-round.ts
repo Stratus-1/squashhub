@@ -90,9 +90,13 @@ export function useGenerateNextRound(opts: {
   return useMutation({
     mutationFn: async ({ groupNumber, section }: GenerateNextRoundVars) => {
       const mine = states.filter((s) => s.groupNumber === groupNumber);
-      // Section 0 is the league finals bracket. Asking for it before it exists
-      // means "create the cross-pool decider", which is the branch below.
-      const wantsLeagueFinal = section === 0 && !mine.some((s) => s.section === 0);
+      // Section 0 is the league play-off bracket. Asking for it means "draw the
+      // next cross-pool round" — whether or not a play-off round already exists.
+      // A section-0 row that is "decided" on its own (one survivor of the last
+      // play-off round) still has pool winners waiting to be drawn in, so the
+      // league branch below owns that case too.
+      const finalsState = mine.find((s) => s.section === 0) ?? null;
+      const wantsLeagueFinal = section === 0 && (!finalsState || !finalsState.canGenerateNext);
 
       if (section !== undefined && !wantsLeagueFinal) {
 

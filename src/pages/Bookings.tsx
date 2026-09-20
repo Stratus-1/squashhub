@@ -1979,15 +1979,21 @@ export default function Bookings() {
         </div>
 
         <div className="gap-x-1.5 px-4 pb-2" style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}>
-          <div className="flex flex-col items-center justify-center">
-            <span className="text-[11px] font-bold text-foreground">{format(selectedDate, "EEE")}</span>
-            <span className="text-[10px] text-muted-foreground">{format(selectedDate, "d MMM")}</span>
-          </div>
-          {courts.map((c: number) => (
-            <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              {getCourtName(c)}
+        <div ref={headerScrollRef} className="overflow-x-auto pb-2" onScroll={syncGridScroll}>
+          <div
+            className="gap-x-1.5 px-4"
+            style={{ display: "grid", gridTemplateColumns: courtGridTemplate, minWidth: courtGridMinWidth }}
+          >
+            <div className="sticky left-0 z-10 bg-background flex flex-col items-center justify-center">
+              <span className="text-[11px] font-bold text-foreground">{format(selectedDate, "EEE")}</span>
+              <span className="text-[10px] text-muted-foreground">{format(selectedDate, "d MMM")}</span>
             </div>
-          ))}
+            {courts.map((c: number) => (
+              <div key={c} className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate px-1">
+                {getCourtName(c)}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1997,11 +2003,14 @@ export default function Bookings() {
         </div>
       ) : (
         <motion.div
-          className="px-4 space-y-[3px] mb-20"
+          ref={rowsScrollRef}
+          className="overflow-x-auto space-y-[3px] mb-20"
+          onScroll={syncGridScroll}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
+          <div className="px-4" style={{ minWidth: courtGridMinWidth }}>
           {dynamicTimeSlots.map((time, idx) => {
             const isHour = time.endsWith(":00");
             // For 40-min clubs, slots don't align to the hour, so label every

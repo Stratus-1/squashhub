@@ -67,7 +67,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
           .neq("status", "removed");
         const ids = (rows || []).map((r: any) => r.club_member_id);
         const { data: people } = ids.length
-          ? await fromExt("club_members").select("id, name, club_member_number").in("id", ids)
+          ? await fromExt("club_members").select("id, name, club_member_number, email, phone").in("id", ids)
           : { data: [] as any[] };
         const { data: fees } = ids.length
           ? await fromExt("club_member_fee_payments").select("club_member_id, amount, paid").in("club_member_id", ids)
@@ -75,6 +75,8 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
         members = (rows || []).map((r: any) => ({
           ...r,
           name: (people || []).find((p: any) => p.id === r.club_member_id)?.name || "Member",
+          email: (people || []).find((p: any) => p.id === r.club_member_id)?.email || "",
+          phone: (people || []).find((p: any) => p.id === r.club_member_id)?.phone || "",
           outstanding: (fees || [])
             .filter((f: any) => f.club_member_id === r.club_member_id && !f.paid)
             .reduce((s: number, f: any) => s + Number(f.amount || 0), 0),

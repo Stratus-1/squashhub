@@ -5440,6 +5440,7 @@ export type Database = {
           ranking_provisional_enabled: boolean
           ranking_provisional_min_matches: number
           ranking_provisional_start_points: number
+          require_visitor_for_member_booking: boolean
           roster_seeded_at: string | null
           secretary_member_id: string | null
           shelly_integration_enabled: boolean
@@ -5463,6 +5464,7 @@ export type Database = {
           variance_threshold_pct: number | null
           visitor_booking_fee: number
           visitor_home_clubs_enabled: boolean
+          visitor_self_booking_fee: number
           visitors_access_control: boolean
           visitors_can_book: boolean
           whatsapp_enabled: boolean
@@ -5585,6 +5587,7 @@ export type Database = {
           ranking_provisional_enabled?: boolean
           ranking_provisional_min_matches?: number
           ranking_provisional_start_points?: number
+          require_visitor_for_member_booking?: boolean
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean
@@ -5608,6 +5611,7 @@ export type Database = {
           variance_threshold_pct?: number | null
           visitor_booking_fee?: number
           visitor_home_clubs_enabled?: boolean
+          visitor_self_booking_fee?: number
           visitors_access_control?: boolean
           visitors_can_book?: boolean
           whatsapp_enabled?: boolean
@@ -5730,6 +5734,7 @@ export type Database = {
           ranking_provisional_enabled?: boolean
           ranking_provisional_min_matches?: number
           ranking_provisional_start_points?: number
+          require_visitor_for_member_booking?: boolean
           roster_seeded_at?: string | null
           secretary_member_id?: string | null
           shelly_integration_enabled?: boolean
@@ -5753,6 +5758,7 @@ export type Database = {
           variance_threshold_pct?: number | null
           visitor_booking_fee?: number
           visitor_home_clubs_enabled?: boolean
+          visitor_self_booking_fee?: number
           visitors_access_control?: boolean
           visitors_can_book?: boolean
           whatsapp_enabled?: boolean

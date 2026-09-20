@@ -1,5 +1,7 @@
 # Gordon's Bay R20 booking balance — Katya Fulton
 
+**Confirmed from her records:** Katya has made two recurring payments (R133.33 × 2 = R266.66), but neither was applied to her membership fee — the R1 600 fee still shows fully unpaid, and her court light charges (R301.99) quietly consumed the money she paid. So per the correct logic her carryable membership debt is R1 600 − R266.66 = **R1 333.34**, her booking requirement is **−R1 313.34**, and her actual balance is **−R1 635.33** — she is short because of the unpaid lights (R301.99) plus the R20 buffer, not because of the membership.
+
 ## Answers to the questions
 
 **1. Was "3D-Secure Verification Failed" our fault?** No — that screen comes from her bank's card verification during the payment. Her bank declined to verify the card; nothing in the app caused it. Her R20 payment attempt this morning (11:03) never completed, so no money arrived and nothing was credited.
@@ -37,12 +39,13 @@ The allowance looks for fees typed "membership"/"club_membership". Gordon's Bay 
 
 ## Proposed fixes (nothing changed yet)
 
-1. **Booking gate** (`src/lib/booking-balance-gate.ts`): drop the bump-up that re-allows her full balance; allowance = outstanding membership fees (active monthly arrangement → all outstanding fees); recognise "club" membership fees; result shown to member: owe, required floating balance, and the exact amount to pay now.
-2. **Wallet auto-settle** (`wallet-auto-settle.ts`): keep the club's `min_booking_balance` in the wallet; only sweep the excess onto old fees.
-3. **My Account** (`src/components/PaymentMethodsCard.tsx`): show the fallback "Monthly club fees" row only when the member has no recurring-eligible category of their own — removes the duplicate.
-4. **Family fee on adding a member**: raise the "Member of family" fee (R120) automatically against the primary payer when a linked family member is added.
-5. **Increase monthly payment**: when a family's fees grow, offer a one-tap "increase monthly payment" that authorises a new recurring payment at the new amount and cancels the old one on activation.
-6. Add regression tests for the "pays R100 → requirement moves from −1580 to −1480" scenario.
+1. **Recurring payments settle the membership fee first.** When the monthly charge succeeds, apply it to the membership fee immediately — so the unpaid fee always equals the annual amount minus payments made. Katya's two payments get applied retroactively (fee drops from R1 600 to R1 333.34).
+2. **Booking gate** (`src/lib/booking-balance-gate.ts`): allowance = annual membership fee − payments already made (active monthly arrangement → all outstanding fees); drop the bump-up that re-allows her full balance; recognise "club" membership fees; show the member: what they owe, the floating balance required, and the exact amount to pay now.
+3. **Wallet auto-settle** (`wallet-auto-settle.ts`): keep the club's `min_booking_balance` in the wallet; only sweep the excess onto old fees.
+4. **My Account** (`src/components/PaymentMethodsCard.tsx`): show the fallback "Monthly club fees" row only when the member has no recurring-eligible category of their own — removes the duplicate.
+5. **Family fee on adding a member**: raise the "Member of family" fee (R120) automatically against the primary payer when a linked family member is added.
+6. **Increase monthly payment**: when a family's fees grow, offer a one-tap "increase monthly payment" that authorises a new recurring payment at the new amount and cancels the old one on activation.
+7. Add regression tests for the "pays R100 → requirement moves from −1580 to −1480" scenario.
 
 ## For Katya today (only on your word)
 

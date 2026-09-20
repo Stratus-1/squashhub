@@ -307,6 +307,20 @@ export default function MyAccount() {
 
   const creditBalance = -netOwing;
 
+  // Minimum top-up needed before this member may book a court (club float +
+  // allowed arrears under a recurring arrangement). Shown right under the balance.
+  const { data: bookingGate } = useQuery({
+    queryKey: ["account-booking-gate", clubMemberId, clubId, netOwing],
+    enabled: !!clubMemberId && !!clubId,
+    staleTime: 30_000,
+    queryFn: async () =>
+      await checkBookingBalance({
+        clubMemberId: clubMemberId!,
+        clubId: clubId!,
+        minBookingBalance: (club as any)?.min_booking_balance ?? null,
+      }),
+  });
+
   // Registration completion lands here with `onboarding=payment`. Once the
   // newly-created account charges have loaded, open the SAME normal top-up
   // dialog used by the Top Up / Pay Account buttons. Never route onboarding

@@ -825,6 +825,28 @@ export default function MyAccount() {
             </Button>
           </div>
 
+          {bookingGate && !bookingGate.allowed && bookingGate.shortfall > 0 && (
+            <div className="mt-3 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-2">
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Top up at least <span className="font-semibold">{money(bookingGate.shortfall)}</span> to be able to book a court.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 h-7 text-[11px]"
+                onClick={() => { setTopUpAmount(bookingGate.shortfall.toFixed(2)); setTopUpOpen(true); }}
+              >
+                Top up {money(bookingGate.shortfall)}
+              </Button>
+            </div>
+          )}
+
+          {bookingGate && bookingGate.allowed && creditBalance < 0 && bookingGate.requiredBuffer > 0 && (
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Your balance is within your payment arrangement — you can still book a court.
+            </p>
+          )}
+
           {pendingTopUps.length > 0 && (
             <div className="mt-3 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20">
               <p className="text-xs text-amber-700 dark:text-amber-400">

@@ -127,6 +127,40 @@ export function deadlineForRound(list: RoundDeadline[], roundNumber?: number | n
   return (clean[idx] || clean[clean.length - 1]).date;
 }
 
+/**
+ * Round NUMBERS drift: a division that needed an extra round reaches the final
+ * on round 7 while another gets there on round 6, so position in the planned
+ * list stops meaning anything. What the organiser published is a STAGE — "the
+ * final is played by 22 Sep" — so when the round being set up carries a real
+ * stage name, that name picks the planned date. Only nameless rounds fall back
+ * to the positional lookup.
+ */
+function normaliseStage(label: unknown): string {
+  return String(label || "")
+    .split("·")
+    .pop()!
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/s$/, "");
+}
+
+const GENERIC_STAGE = /^round\s*\d*$/;
+
+export function deadlineForStage(
+  list: RoundDeadline[],
+  roundNumber?: number | null,
+  stageLabel?: string | null,
+): string | null {
+  const clean = serializeRoundDeadlines(list) || [];
+  const wanted = normaliseStage(stageLabel);
+  if (wanted && !GENERIC_STAGE.test(wanted)) {
+    const hit = clean.find((d) => normaliseStage(d.label) === wanted);
+    if (hit) return hit.date;
+  }
+  return deadlineForRound(clean, roundNumber);
+}
+
 /** The very last date any game may be played on — useful as the tournament end. */
 export function lastDeadline(list: RoundDeadline[]): string | null {
   const clean = serializeRoundDeadlines(list) || [];

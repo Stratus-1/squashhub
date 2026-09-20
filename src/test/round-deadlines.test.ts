@@ -6,6 +6,7 @@ import {
   lastDeadline,
   roundDeadlineLines,
   mergeRoundDeadlines,
+  deadlineForStage,
 } from "@/lib/tournaments/round-deadlines";
 
 describe("round deadlines", () => {
@@ -61,5 +62,30 @@ describe("mergeRoundDeadlines — a set date must never move", () => {
       { round_number: 1, label: "Round 3", play_by: "2026-09-09" },
     ]);
     expect(merged[0].date).toBe("2026-09-09");
+  });
+});
+
+describe("deadlineForStage", () => {
+  const plan = [
+    { label: "Round 1", date: "2026-08-29" },
+    { label: "Round 2", date: "2026-09-05" },
+    { label: "Quarter-final", date: "2026-09-17" },
+    { label: "Semi-Finals", date: "2026-09-20" },
+    { label: "Finals", date: "2026-09-22" },
+  ];
+
+  it("uses the named stage, not the round position", () => {
+    // Round 3 positionally = 17 Sep, but this division is playing its final.
+    expect(deadlineForStage(plan, 3, "Final")).toBe("2026-09-22");
+    expect(deadlineForStage(plan, 3, "Section A · Semi-final")).toBe("2026-09-20");
+  });
+
+  it("falls back to the round position for unnamed rounds", () => {
+    expect(deadlineForStage(plan, 2, "Round 2")).toBe("2026-09-05");
+    expect(deadlineForStage(plan, 2, null)).toBe("2026-09-05");
+  });
+
+  it("falls back when the stage is not in the plan", () => {
+    expect(deadlineForStage(plan, 1, "Play-off")).toBe("2026-08-29");
   });
 });

@@ -34,7 +34,7 @@ import { TournamentNextActionBar } from "@/components/tournaments/TournamentNext
 
 
 import { useChampRounds } from "@/hooks/use-champ-rounds";
-import { parseRoundDeadlines, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+import { parseRoundDeadlines, mergeRoundDeadlines, deadlineForStage } from "@/lib/tournaments/round-deadlines";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
@@ -2877,8 +2877,12 @@ export default function ClubChampsView() {
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
           championScope={(champ as any)?.champion_scope || undefined}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
-          playByForRound={(round) =>
-            mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[])[round - 1]?.date ?? null
+          playByForRound={(round, stage) =>
+            deadlineForStage(
+              mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[]),
+              round,
+              stage,
+            )
           }
           mode="detail"
           onFocusFixtures={() =>
@@ -2920,8 +2924,12 @@ export default function ClubChampsView() {
           renderMatchRow={renderMatchRow}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
-          playByForRound={(round) =>
-            mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[])[round - 1]?.date ?? null
+          playByForRound={(round, stage) =>
+            deadlineForStage(
+              mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[]),
+              round,
+              stage,
+            )
           }
         />
         {playoffCard}

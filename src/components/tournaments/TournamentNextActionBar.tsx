@@ -55,7 +55,7 @@ interface Props {
   /** Division label resolver for multi-division next-round selection. */
   groupLabel?: (groupNumber: number) => string;
   /** Configured play-by date per round (`round_play_by`) — beats the +7-day guess. */
-  playByForRound?: (round: number) => string | null;
+  playByForRound?: (round: number, stageLabel?: string | null) => string | null;
   className?: string;
 }
 
@@ -305,6 +305,9 @@ export function TournamentNextActionBar({
           selfScheduled={selfScheduled}
           plannedPlayBy={
             playByForRound?.(reviewState.nextRound?.round_number ?? reviewState.currentRound + 1) ?? null
+          }
+          plannedPlayByForStage={(stage) =>
+            playByForRound?.(reviewState.nextRound?.round_number ?? reviewState.currentRound + 1, stage) ?? null
           }
           divisionLabel={scopeLabel(reviewState.groupNumber, reviewState.section)}
           onReady={(v) => {

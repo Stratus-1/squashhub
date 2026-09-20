@@ -1791,3 +1791,9 @@ of treating them as "gateway not configured".
 - PaymentMethodsCard: generic "Monthly club fees" row hidden when member's own category is recurring-eligible; family primaries see an "Increase to R x/month" action when family growth outgrows the active cap (new mandate cancels the old).
 - Data: Katya's fee reduced 1600→1333.34, her two Stitch journal credits tagged to the fee, Kailash's missing R120 family fee raised (payer Katya), stuck session c5437b70 cancelled. She needs R201.99 (R181.99 other charges + R20 float) to book.
 - Tests: src/test/booking-balance-gate.test.ts (5 tests).
+
+## 2026-09-20 — Round dates ignored when a later stage is set up
+**Symptom (Nelspruit):** the Final draw notice told players to play "before 17 Sep 2026" although the event was created with Finals = 22 Sep, and the admin could not change the date (field was disabled).
+**Cause:** the planned `round_play_by` list was read positionally (`[round - 1]`). Divisions reach the final on different round numbers, so round 6 picked up the "Quarter-final" entry. `NextRoundSetupDialog` then treated that as a fixed, uneditable date.
+**Fix:** new `deadlineForStage()` matches the round's stage name (Final / Semi-final / Quarter-final, section prefixes and plurals normalised) against the plan, falling back to the positional lookup only for unnamed rounds. `playByForRound(round, stageLabel)` threaded through ClubChampsView, ClubChampsTab, KnockoutCard, TournamentNextActionBar, AllNextRoundDrawsDialog. The play-by field is now always editable, with the planned date shown as guidance. Tests in `src/test/round-deadlines.test.ts`.
+**Data:** Nelspruit Club Champs finals e774…/8a76…/a03e…/732a… corrected to 2026-09-22.

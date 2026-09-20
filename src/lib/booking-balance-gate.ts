@@ -80,9 +80,15 @@ export async function checkBookingBalance(opts: {
   );
 
   // 2. Allowed debt = outstanding membership fees (always) + all outstanding fees if an
-  //    authorised monthly Stitch mandate exists. This means until debit-order arrangements
+  //    authorised monthly arrangement exists. This means until debit-order arrangements
   //    are set up, a member is allowed to sit at "minus their outstanding membership fee"
   //    on their account and still book — they just need the minimum court-fee buffer on top.
+  //
+  //    Outstanding fee rows SHRINK as payments are made (each instalment reduces
+  //    the fee it settles), so the allowance is effectively
+  //    "season fees − payments made" — paying R100 moves the requirement by R100.
+  //    Linked family fees (raised on a family member's account with this member
+  //    as payer) count towards the arrangement too.
   const { data: mandate } = await (supabase as any)
     .from("stitch_mandates")
     .select("id")
@@ -95,26 +101,20 @@ export async function checkBookingBalance(opts: {
   const { data: fees } = await (supabase as any)
     .from("club_member_fee_payments")
     .select("amount, fee_type")
-    .eq("club_member_id", opts.clubMemberId)
-    .eq("paid", false);
+    .eq("paid", false)
+    .or(`club_member_id.eq.${opts.clubMemberId},paid_by_member_id.eq.${opts.clubMemberId}`);
 
   let planAllowedDebt = 0;
   if (mandate) {
+    // Active monthly arrangement → ALL outstanding fees may be carried.
     planAllowedDebt = (fees || []).reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
   } else {
-    // No mandate yet — allow the outstanding membership portion only.
-    // Note: fee_type values used across the app include 'membership' and 'club_membership'.
+    // No arrangement yet — allow the outstanding membership portion only.
+    // Fee types used across the app: 'membership', 'club_membership' and 'club'
+    // (club membership fees, incl. family package lines, are stored as 'club').
     planAllowedDebt = (fees || [])
-      .filter((f: any) => f.fee_type === "membership" || f.fee_type === "club_membership")
+      .filter((f: any) => ["membership", "club_membership", "club"].includes(f.fee_type ?? ""))
       .reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
-
-  }
-
-  // Any existing owing is grandfathered — the buffer is the only NEW amount required
-  // before a booking. This means "Please top up" reflects the booking buffer only,
-  // not the member's total carried balance.
-  if (currentOwing > planAllowedDebt) {
-    planAllowedDebt = currentOwing;
   }
 
   const shortfall = currentOwing - planAllowedDebt + buffer;

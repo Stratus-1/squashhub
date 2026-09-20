@@ -7497,6 +7497,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // only per-round play-by deadlines.
         if (schedulingMode === "self") {
           if (!serializeRoundDeadlines(roundDeadlines)) m.push("At least one round play-by deadline");
+          // A knockout must know when the championship stages are due — the
+          // system decides which league is at which stage, but the dates are
+          // set once, here.
+          if (simplifiedKnockoutSchedule) {
+            for (const p of validateMilestones(milestonePlayBy, { require: true })) m.push(p);
+          }
         } else {
           if (!startTime) m.push("Start time");
           if (!endTime) m.push("End time");

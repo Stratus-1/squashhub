@@ -7,7 +7,7 @@ import {
   leagueSurvivors,
   suggestLeagueFinalsBoard,
 } from "@/lib/tournaments/league-finals-draw";
-import type { SectionProgression } from "@/lib/tournaments/knockout-progression";
+import { sectionProgression, type SectionProgression } from "@/lib/tournaments/knockout-progression";
 
 const pool = (
   section: number,
@@ -154,5 +154,47 @@ describe("league finals draw", () => {
     expect(board.matches.every((m) => m.section === 0)).toBe(true);
     expect(board.matches[0]).toMatchObject({ a: "a", b: "b" });
     expect(board.matches[1]).toMatchObject({ a: "c", b: null });
+  });
+});
+
+describe("second play-off round (Nelspruit league 3)", () => {
+  // Three pools decided (Hendrik / Stiaan / Raymond), one play-off match
+  // already played: Hendrik beat Stiaan. Raymond has not played a play-off.
+  const M: any[] = [];
+  const mk = (s: number, r: number, a: string, b: string | null, w: string) =>
+    M.push({
+      id: `${s}-${r}`,
+      group_number: 3,
+      section_number: s,
+      round_number: r,
+      bracket_position: 1,
+      stage: "ko",
+      player_a_member_id: a,
+      player_b_member_id: b,
+      winner_member_id: w,
+      status: "completed",
+      is_bye: !b,
+    });
+  mk(1, 5, "H", "W", "H");
+  mk(2, 5, "S", "J", "S");
+  mk(3, 5, "R", "K", "R");
+  mk(0, 6, "H", "S", "H");
+  const states = sectionProgression(M as any, []).filter((s) => s.groupNumber === 3);
+
+  it("keeps only the survivors of the whole league", () => {
+    expect(leagueSurvivors(states).sort()).toEqual(["H", "R"]);
+  });
+
+  it("is ready to draw the final even though a play-off round exists", () => {
+    expect(finalsReady(states)).toBe(true);
+    expect(finalsRoundNumber(states)).toBe(7);
+  });
+
+  it("puts Hendrik against Raymond on the board", () => {
+    const winners = leagueFinalsEntrants(states);
+    expect(winners.map((w) => w.id).sort()).toEqual(["H", "R"]);
+    const board = suggestLeagueFinalsBoard({ groupNumber: 3, round: 7, winners });
+    expect(board.matches).toHaveLength(1);
+    expect(board.matches[0].section).toBe(0);
   });
 });

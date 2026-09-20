@@ -16,6 +16,7 @@ import {
   leaguePlayoffReady,
   type SectionProgression,
 } from "@/lib/tournaments/knockout-progression";
+import { finalsRoundNumber, leagueSurvivors } from "@/lib/tournaments/league-finals-draw";
 
 
 /**
@@ -90,9 +91,13 @@ export function useGenerateNextRound(opts: {
   return useMutation({
     mutationFn: async ({ groupNumber, section }: GenerateNextRoundVars) => {
       const mine = states.filter((s) => s.groupNumber === groupNumber);
-      // Section 0 is the league finals bracket. Asking for it before it exists
-      // means "create the cross-pool decider", which is the branch below.
-      const wantsLeagueFinal = section === 0 && !mine.some((s) => s.section === 0);
+      // Section 0 is the league play-off bracket. Asking for it means "draw the
+      // next cross-pool round" — whether or not a play-off round already exists.
+      // A section-0 row that is "decided" on its own (one survivor of the last
+      // play-off round) still has pool winners waiting to be drawn in, so the
+      // league branch below owns that case too.
+      const finalsState = mine.find((s) => s.section === 0) ?? null;
+      const wantsLeagueFinal = section === 0 && (!finalsState || !finalsState.canGenerateNext);
 
       if (section !== undefined && !wantsLeagueFinal) {
 
@@ -167,47 +172,58 @@ export function useGenerateNextRound(opts: {
       // TOTAL survivor count (2, 4 or 8), not "one survivor per pool".
       const sections = mine.filter((s) => s.section > 0);
       if (sections.length < 2) throw new Error("This league only has one section");
-      if (mine.some((s) => s.section === 0)) throw new Error("The league play-off already exists");
-      const deepest = Math.max(...sections.map((s) => s.currentRound));
-      const { data: existingFinal, error: fErr } = await fromExt("club_champs_matches")
-        .select("id")
-        .eq("champ_id", champId)
-        .eq("group_number", groupNumber)
-        .eq("section_number", 0)
-        .limit(1);
-      if (fErr) throw fErr;
-      if (existingFinal && existingFinal.length > 0) throw new Error("The league play-off already exists");
-
-      const partnerFor = (s: SectionProgression, memberId: string): string | null => {
-        for (const m of s.currentRoundMatches as any[]) {
-          if (m?.player_a_member_id === memberId) return m?.partner_a_member_id ?? null;
-          if (m?.player_b_member_id === memberId) return m?.partner_b_member_id ?? null;
+      // Survivors count the pools AND any play-off round already played, so a
+      // pool winner beaten in the play-off never returns to the board.
+      const survivorIds = leagueSurvivors(mine);
+      const round = finalsRoundNumber(mine);
+      const partnerFor = (memberId: string): string | null => {
+        for (const s of mine) {
+          for (const m of s.currentRoundMatches as any[]) {
+            if (m?.player_a_member_id === memberId) return m?.partner_a_member_id ?? null;
+            if (m?.player_b_member_id === memberId) return m?.partner_b_member_id ?? null;
+          }
         }
         return null;
       };
-      const survivors = sections.flatMap((s) =>
-        s.entrants
-          .filter((e) => !e.eliminated)
-          .map((e) => ({ section: s.section, memberId: e.memberId, partnerId: partnerFor(s, e.memberId) })),
-      );
+      const sectionOf = (memberId: string): number => {
+        for (const s of sections) {
+          if (s.entrants.some((e) => String(e.memberId) === memberId)) return s.section;
+        }
+        return 0;
+      };
+      const survivors = survivorIds.map((memberId) => ({
+        section: sectionOf(memberId),
+        memberId,
+        partnerId: partnerFor(memberId),
+      }));
       if (!leaguePlayoffReady(sections.every((s) => s.complete), survivors.length)) {
         throw new Error(
           `A league play-off needs 2, 4 or 8 players still in — this league has ${survivors.length}.`,
         );
       }
 
+      // Idempotency: never create the same play-off round twice.
+      const { data: existingFinal, error: fErr } = await fromExt("club_champs_matches")
+        .select("id")
+        .eq("champ_id", champId)
+        .eq("group_number", groupNumber)
+        .eq("section_number", 0)
+        .eq("round_number", round)
+        .limit(1);
+      if (fErr) throw fErr;
+      if (existingFinal && existingFinal.length > 0) throw new Error("This play-off round already exists");
 
       const rows = buildLeagueFinals({
         champId,
         groupNumber,
-        round: deepest + 1,
+        round,
         sectionWinners: survivors,
 
       });
       if (rows.length === 0) throw new Error("Nothing to generate");
       const { error } = await fromExt("club_champs_matches").insert(rows as any);
       if (error) throw error;
-      await announceRound(champId, deepest + 1, groupNumber, 0);
+      await announceRound(champId, round, groupNumber, 0);
       return rows.length;
     },
     onSuccess: (n, vars) => {

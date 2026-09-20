@@ -51,12 +51,13 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
           .eq("club_id", clubId).eq("debit_order_eligible", true),
         fromExt("national_body_fees").select("body_name, abbreviation")
           .eq("club_id", clubId).eq("debit_order_eligible", true),
-        supabase.from("club_member_fee_payments").select("amount, fee_label")
+        supabase.from("club_member_fee_payments").select("amount, amount_paid, fee_label")
           .eq("club_member_id", clubMemberId!).eq("paid", false),
       ]);
 
-      // Gate 1: Stitch must be the club's active gateway.
-      if (String(clubRes.data?.payment_gateway || "").toLowerCase() !== "stitch") {
+      // Gate 1: the club's gateway must support recurring pulls.
+      const gateway = String(clubRes.data?.payment_gateway || "").toLowerCase();
+      if (gateway !== "stitch" && gateway !== "payfast") {
         return { eligible: false, outstanding: 0 };
       }
       // Gate 2: no active/pending mandate already.
@@ -76,15 +77,21 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
         if (r.abbreviation) labels.add(String(r.abbreviation).toLowerCase());
       });
 
-      // Sum only unpaid fees whose label matches a debit-order-eligible source.
+      // Sum only unpaid fees whose label matches a debit-order-eligible source,
+      // net of anything already paid against that fee.
       const outstanding = (feesRes.data || []).reduce((sum, f: any) => {
         const lbl = String(f.fee_label || "").toLowerCase();
         if (!lbl) return sum;
+        const due = Number(f.amount || 0) - Number((f as any).amount_paid || 0);
+        if (due <= 0) return sum;
         for (const el of labels) {
-          if (lbl === el || lbl.includes(el)) return sum + Number(f.amount || 0);
+          if (lbl === el || lbl.includes(el)) return sum + due;
         }
         return sum;
       }, 0);
+
+      // Gate 3: fees must actually have been raised and still be owed.
+      if (outstanding <= 0) return { eligible: false, outstanding: 0 };
 
       return { eligible: true, outstanding };
     },
@@ -92,7 +99,7 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
 
   const visible = useMemo(() => {
     if (hidden || !data || !data.eligible) return false;
-    return true;
+    return data.outstanding > 0;
   }, [hidden, data]);
 
   if (!visible) return null;

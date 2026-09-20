@@ -265,19 +265,21 @@ export default function MyAccount() {
       });
     }
 
-    // Family fees this member pays for: charged when raised, cleared when paid.
+    // Family fees this member pays for. Once settled the fee is cleared on the
+    // family member's account, so only what is still owing shows here.
     for (const fee of ((payerFees || []) as any[])) {
       const amount = Number(fee.amount || 0);
+      if (fee.paid || amount <= 0) continue;
       lines.push({
         id: `famfee-${fee.id}`,
         date: fee.created_at,
         description: `Fee raised: ${fee.fee_label}`,
-        debit: fee.paid ? 0 : amount,
+        debit: amount,
         credit: 0,
         status: "confirmed",
       });
-      if (fee.paid) continue;
     }
+
 
 
     // Sort oldest first so the running balance accumulates correctly

@@ -444,6 +444,9 @@ export default function Bookings() {
     [(myClub as any)?.booking_reminder_channels, (myClub as any)?.booking_confirm_channels, msgChannelsAllowed],
   );
   const visitorFee = Number((myClub as any)?.visitor_booking_fee ?? 0);
+  // Fee a registered visitor pays each time they book a court on their own.
+  const visitorSelfFee = Number((myClub as any)?.visitor_self_booking_fee ?? 0);
+  const requireVisitorNamed = !!(myClub as any)?.require_visitor_for_member_booking;
   const rawSlot = Number((myClub as any)?.booking_slot_minutes);
   const slotMinutes: 30 | 40 | 45 | 60 = (rawSlot === 60 ? 60 : rawSlot === 40 ? 40 : rawSlot === 45 ? 45 : 30);
   const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));
@@ -981,6 +984,17 @@ export default function Bookings() {
     // visitor fee for letting them play.
     if (bookingDialog.playerMode === "visitor" && !bookingDialog.guestName.trim()) {
       toast.error("Please enter the visitor's name.");
+      return;
+    }
+    // Some clubs require every booking to name either a member opponent or a
+    // visitor, so the visitor fee can never be missed.
+    if (
+      requireVisitorNamed &&
+      !isVisitorRole &&
+      bookingDialog.playerMode === "member" &&
+      !bookingDialog.opponentId
+    ) {
+      toast.error("Choose a member as your opponent, or select Visitor and give their name.");
       return;
     }
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
@@ -2610,8 +2624,24 @@ export default function Bookings() {
               )}
 
 
+              {/* A visitor booking on their own pays the club's per-visit fee. */}
+              {String((activeMember as any)?.role || "").toLowerCase() === "visitor" && visitorSelfFee > 0 && (
+                <p className="text-[11px] text-amber-600 leading-snug">
+                  A visitor fee of {money(visitorSelfFee)} will be charged for this visit. It's added after
+                  the booking time has passed.
+                </p>
+              )}
+
               <div className="space-y-2">
-                <Label className="text-xs font-semibold">2nd Player (optional)</Label>
+                <Label className="text-xs font-semibold">
+                  {requireVisitorNamed ? "2nd Player (required)" : "2nd Player (optional)"}
+                </Label>
+                {requireVisitorNamed && (
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Name your opponent. If they're not a member, choose Visitor
+                    {visitorFee > 0 ? ` — a ${money(visitorFee)} visitor fee applies.` : "."}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-1.5">
                   {(["member", "visitor"] as const).map((mode) => (
                     <Button

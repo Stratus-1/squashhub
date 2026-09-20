@@ -274,23 +274,38 @@ Deno.serve(async (req) => {
         .eq("id", (b as any).id);
     }
 
-    // 1b) Visitor fees — charged to the booking member once the slot has passed.
+    // 1b) Visitor fees — charged once the slot has passed. Two cases:
+    //  - a member who brought a visitor (guest named, no member opponent)
+    //  - a registered visitor who booked the court on their own
+    // The RPC decides which fee applies and is idempotent per booking.
     section = "visitor_fees";
     const { data: visitorBookings } = await supabaseAdmin
       .from("bookings")
-      .select("id")
+      .select("id, club_member_id, guest_name, opponent_member_id")
       .eq("status", "active")
       .is("visitor_fee_charged_at", null)
-      .is("opponent_member_id", null)
-      .not("guest_name", "is", null)
       .gte("date", isoDateInTz(addDays(now, -7), timeZone))
       .lte("date", today)
-      .limit(500);
+      .limit(1000);
+    const candidateIds = (visitorBookings || []).map((b: any) => b.club_member_id).filter(Boolean);
+    const visitorMemberIds = new Set<string>();
+    if (candidateIds.length) {
+      const { data: visitorMembers } = await supabaseAdmin
+        .from("club_members")
+        .select("id")
+        .in("id", [...new Set(candidateIds)])
+        .eq("role", "visitor");
+      for (const m of visitorMembers || []) visitorMemberIds.add((m as any).id);
+    }
     for (const vb of visitorBookings || []) {
+      const b = vb as any;
+      const broughtVisitor = !!b.guest_name && !b.opponent_member_id;
+      const visitorBooked = b.club_member_id && visitorMemberIds.has(b.club_member_id);
+      if (!broughtVisitor && !visitorBooked) continue;
       try {
-        await supabaseAdmin.rpc("charge_visitor_booking_fee", { p_booking_id: (vb as any).id });
+        await supabaseAdmin.rpc("charge_visitor_booking_fee", { p_booking_id: b.id });
       } catch (e) {
-        console.error("visitor fee charge failed", (vb as any).id, e);
+        console.error("visitor fee charge failed", b.id, e);
       }
     }
 

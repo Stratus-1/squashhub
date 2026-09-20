@@ -90,7 +90,12 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
     [data, myCat],
   );
   const members = data?.members || [];
-  const activeCount = members.length;
+  // Only the ADDITIONAL people carry the extra fee — the primary's own row is in
+  // the same list and must never be charged the additional amount as well.
+  const additionalMembers = members.filter(
+    (m: any) => m.club_member_id !== clubMemberId && m.relationship !== "primary",
+  );
+  const activeCount = additionalMembers.length;
 
   if (!clubMemberId || !clubId) return null;
   if (isLoading) return null;

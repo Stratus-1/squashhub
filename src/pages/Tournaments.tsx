@@ -1657,7 +1657,7 @@ export default function Tournaments() {
                           </SelectContent>
                         </Select>
                       )}
-                      {!hasActiveBells && (
+                      {!listIsChronological(filteredUpcoming) && (
                         <div className="inline-flex rounded-md border overflow-hidden">
                           {([
                             { v: "round", l: "By round" },

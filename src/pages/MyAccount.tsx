@@ -250,6 +250,8 @@ export default function MyAccount() {
     const lines: Omit<StatementLine, "balance">[] = [];
 
     for (const entry of (journalEntries || [])) {
+      // A fee somebody else is recorded as paying belongs on THEIR statement.
+      if ((entry as any).fee_payment_id && feesBilledElsewhere.has((entry as any).fee_payment_id)) continue;
       const debit = Math.abs(Number((entry as any).debit || 0));
       const credit = Math.abs(Number((entry as any).credit || 0));
       if (debit <= 0 && credit <= 0) continue;
@@ -262,6 +264,21 @@ export default function MyAccount() {
         status: "confirmed",
       });
     }
+
+    // Family fees this member pays for: charged when raised, cleared when paid.
+    for (const fee of ((payerFees || []) as any[])) {
+      const amount = Number(fee.amount || 0);
+      lines.push({
+        id: `famfee-${fee.id}`,
+        date: fee.created_at,
+        description: `Fee raised: ${fee.fee_label}`,
+        debit: fee.paid ? 0 : amount,
+        credit: 0,
+        status: "confirmed",
+      });
+      if (fee.paid) continue;
+    }
+
 
     // Sort oldest first so the running balance accumulates correctly
     lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

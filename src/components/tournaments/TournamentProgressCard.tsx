@@ -26,6 +26,7 @@ import { LeagueFinalsDrawDialog } from "./LeagueFinalsDrawDialog";
 import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialog";
 import { sectionLetter } from "@/lib/tournaments/knockout";
 import { outstandingDrawsHeadline, readyNextRoundScopes } from "@/lib/tournaments/next-round-setup";
+import { finalsRoundNumber } from "@/lib/tournaments/league-finals-draw";
 
 
 
@@ -42,6 +43,8 @@ interface Props {
   onlyGroup?: number;
   /** Take the admin to the scheduling view for the newly generated fixtures. */
   onSchedule?: (groupNumber: number) => void;
+  /** Resolve the tournament-wide deadline for a round/stage. */
+  playByForRound?: (round: number, stageLabel?: string | null) => string | null;
   /** Optional pool-stage hand-off (play-off generation) where that flow exists. */
   onGeneratePlayoffs?: (groupNumber: number) => void;
   /** Compact inline treatment (standings header) instead of a full card. */
@@ -57,6 +60,7 @@ export function TournamentProgressCard({
   groupLabel,
   onlyGroup,
   onSchedule,
+  playByForRound,
   onGeneratePlayoffs,
   compact = false,
   className,
@@ -299,6 +303,10 @@ export function TournamentProgressCard({
           groupNumber={finalsGroup}
           sections={states.filter((s) => s.groupNumber === finalsGroup)}
           divisionLabel={`${label(finalsGroup)} · Finals`}
+          playBy={playByForRound?.(
+            finalsRoundNumber(states.filter((s) => s.groupNumber === finalsGroup)),
+            "Final",
+          ) ?? null}
           onConfirmed={() => {
             const gn = finalsGroup;
             setFinalsGroup(null);

@@ -1823,3 +1823,12 @@ Tests: `src/test/stage-label-section-final.test.ts`.
 - `family_add_member` RPC: after raising the additional-family fee, compares the new family season total /12 against the primary's active stitch_mandates cap; if the monthly amount no longer covers it, inserts a deduped `mandate_increase` notification (unread-check) for the primary pointing to /my-account.
 - Backfilled the notification for Katya Fulton (Gordon's Bay) whose R133.33 cap no longer covers R1,720 season total (R143.33/month).
 - Notification bell realtime surfaces it as a toast; tapping opens My Account where the "Increase to R…/month" button re-authorises at the higher amount.
+
+## 2026-09-20 — Nelspruit third-league final did not generate
+
+- **Symptom:** The third league showed Hendrik Vorster and Raymond Gates as the two survivors, but **Create final** did not add their fixture.
+- **Cause:** A completed section-0 semi-final made the old generation path treat the cross-pool bracket as decided instead of starting its next round.
+- **Fix:** Every cross-pool round now uses the finals draw path even when section 0 already exists. The draw counts survivors across the complete league and excludes players eliminated in an earlier cross-pool round.
+- **Data repair:** Added Hendrik Vorster v Raymond Gates as the third-league Final (round 7), scheduled status, play-by 22 Sep 2026.
+- **Deadline:** The progress card now passes the centrally resolved Final deadline into the draw confirmation, matching the tournament milestone and player notices.
+- **Regression:** `src/test/league-finals-draw.test.ts` covers this exact second play-off round: Hendrik remains after beating Stiaan, Raymond joins from Pool C, and the round-7 board contains their final.

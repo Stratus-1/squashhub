@@ -2023,10 +2023,10 @@ export default function Bookings() {
                   "gap-x-1.5",
                   showHourSeparator && "pt-1.5 mt-1.5 border-t border-border/40"
                 )}
-                style={{ display: "grid", gridTemplateColumns: `60px repeat(${courts.length}, 1fr)` }}
+                style={{ display: "grid", gridTemplateColumns: courtGridTemplate }}
               >
                 <div className={cn(
-                  "text-[10px] flex items-center justify-end pr-1.5 font-medium tabular-nums",
+                  "sticky left-0 z-10 bg-background text-[10px] flex items-center justify-end pr-1.5 font-medium tabular-nums",
                   showTimeLabel ? "text-foreground/70" : "text-muted-foreground/40"
                 )}>
                   {showTimeLabel ? formatTimeDisplay(time) : ""}

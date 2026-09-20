@@ -120,6 +120,46 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubMemberId,
   });
 
+  // Family primaries: total season fees (own package + each linked family
+  // member's additional fee). Used to detect when the active monthly amount no
+  // longer covers the family and offer a one-tap increase.
+  const { data: familyTotalAnnual = 0 } = useQuery({
+    queryKey: ["family-mandate-annual", clubMemberId, memberFeeCategoryId],
+    queryFn: async () => {
+      if (!memberFeeCategoryId) return 0;
+      const { data: cat } = await supabase
+        .from("member_fee_categories")
+        .select("annual_fee, family_role, family_additional_category_id")
+        .eq("id", memberFeeCategoryId)
+        .maybeSingle();
+      if (!cat || (cat as any).family_role !== "primary") return 0;
+      const ownAnnual = Number((cat as any).annual_fee || 0);
+      const addCatId = (cat as any).family_additional_category_id as string | null;
+      if (!addCatId) return ownAnnual;
+      const { data: group } = await (supabase as any)
+        .from("club_family_groups")
+        .select("id")
+        .eq("primary_member_id", clubMemberId)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!group) return ownAnnual;
+      const { count } = await (supabase as any)
+        .from("club_family_members")
+        .select("id", { count: "exact", head: true })
+        .eq("family_group_id", group.id)
+        .neq("status", "removed");
+      const n = count ?? 0;
+      if (!n) return ownAnnual;
+      const { data: addCat } = await supabase
+        .from("member_fee_categories")
+        .select("annual_fee")
+        .eq("id", addCatId)
+        .maybeSingle();
+      return ownAnnual + Number((addCat as any)?.annual_fee || 0) * n;
+    },
+    enabled: !!clubMemberId && !!memberFeeCategoryId,
+  });
+
   // Every member must be able to set up a monthly recurring payment, even if
   // their fee category isn't flagged debit-order eligible (or they have none).
   const GENERAL_CATEGORY: FeeCategory = {

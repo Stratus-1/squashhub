@@ -55,6 +55,12 @@ interface Props {
    * (`round_play_by` from setup). Always preferred over the +7-day guess.
    */
   plannedPlayBy?: string | null;
+  /**
+   * The configured date for a NAMED stage ("Final", "Semi-final", …). Round
+   * numbers drift between divisions, so once the organiser names this round the
+   * date published for that stage is the one that must be offered.
+   */
+  plannedPlayByForStage?: (stageLabel: string) => string | null;
   /** Metadata saved — open the visual draw for this round. */
   onReady: (v: NextRoundReady) => void;
 }

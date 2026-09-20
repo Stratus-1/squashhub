@@ -2,10 +2,15 @@
  * "Define the next round" — the small popup that opens straight from the
  * tournament card / next-action bar instead of navigating away.
  *
- * It asks for the bare minimum a round needs: its name (auto-suggested from
- * the real bracket) and the date it must be played by. On submit the round
- * metadata is saved to `club_champs_rounds` and the visual draw for THAT
- * tournament + division + round opens immediately.
+ * Dates are NOT entered here. The tournament has one central round list and one
+ * set of championship deadlines (quarter-final / semi-final / final), set in
+ * tournament setup. This dialog only shows which of those applies to the league
+ * being progressed, and offers to add a round to the central list if the
+ * organiser has run past the end of it.
+ *
+ * The stage itself is worked out from the players still standing, never typed:
+ * two left is a final, three or four a semi-final, five to eight a
+ * quarter-final. Anything bigger is an ordinary numbered round.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,7 +19,6 @@ import { CalendarClock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -25,18 +29,14 @@ import {
 } from "@/components/ui/dialog";
 import { fromExt } from "@/lib/supabase-ext";
 import { typeForPlayers, type SectionProgression } from "@/lib/tournaments/knockout-progression";
+import type { NextRoundSetup } from "@/lib/tournaments/next-round-setup";
 import {
-  defaultPlayBy,
-  stageNameOptions,
-  suggestStageName,
-  validateNextRoundSetup,
-  type NextRoundSetup,
-} from "@/lib/tournaments/next-round-setup";
-import {
-  mergeRoundDeadlines,
-  parseRoundDeadlines,
-  serializeRoundDeadlines,
-} from "@/lib/tournaments/round-deadlines";
+  addRoundDefinition,
+  nextRoundReference,
+  stageForAlive,
+  stageName,
+} from "@/lib/tournaments/round-definitions";
+import { useRoundDefinitions, useSaveRoundDefinitions } from "@/hooks/use-round-definitions";
 
 export type NextRoundReady = NextRoundSetup & { roundId: string | null; roundNumber: number };
 
@@ -44,23 +44,13 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   champId: string;
+  clubId?: string | null;
   state: SectionProgression;
   /** How many players came through the feeder round. */
   qualifiers: number;
   divisionLabel?: string | null;
   /** Players arrange their own court/date — the play-by date then matters most. */
   selfScheduled?: boolean;
-  /**
-   * The tournament's configured play-by date for this round number
-   * (`round_play_by` from setup). Always preferred over the +7-day guess.
-   */
-  plannedPlayBy?: string | null;
-  /**
-   * The configured date for a NAMED stage ("Final", "Semi-final", …). Round
-   * numbers drift between divisions, so once the organiser names this round the
-   * date published for that stage is the one that must be offered.
-   */
-  plannedPlayByForStage?: (stageLabel: string) => string | null;
   /** Metadata saved — open the visual draw for this round. */
   onReady: (v: NextRoundReady) => void;
 }
@@ -69,62 +59,57 @@ export function NextRoundSetupDialog({
   open,
   onOpenChange,
   champId,
+  clubId,
   state,
   qualifiers,
   divisionLabel,
   selfScheduled,
-  plannedPlayBy,
-  plannedPlayByForStage,
   onReady,
 }: Props) {
   const qc = useQueryClient();
   const roundNumber = state.nextRound?.round_number ?? state.currentRound + 1;
-  const [label, setLabel] = useState("");
-  const [playBy, setPlayBy] = useState<string>("");
-  const [dateTouched, setDateTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [newRoundDate, setNewRoundDate] = useState("");
 
-  const asDate = (v: unknown) =>
-    typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null;
+  const { data: central, isLoading } = useRoundDefinitions(open ? champId : null);
+  const saveCentral = useSaveRoundDefinitions({ champId, clubId });
 
-  // The date published for THIS stage ("Final" → 22 Sep) wins over the date
-  // that merely sits at this round's position in the plan: divisions reach the
-  // final on different round numbers, so position alone sent players the wrong
-  // deadline.
-  const stagePlanned = asDate(plannedPlayByForStage?.(label));
-  const plannedForRound = asDate(plannedPlayBy);
-  const suggestedPlanned = stagePlanned ?? plannedForRound;
-
-  useEffect(() => {
-    if (!open) return;
-    setDateTouched(false);
-    setLabel(suggestStageName({ plannedLabel: state.nextRound?.label, roundNumber, qualifiers }));
-    setPlayBy(
-      asDate(state.nextRound?.play_by) ?? plannedForRound ?? defaultPlayBy(),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, state.nextRound?.label, state.nextRound?.play_by, roundNumber, qualifiers]);
-
-  // Naming the round (e.g. picking "Final") pulls in that stage's published
-  // date, unless the organiser has already typed a date of their own.
-  useEffect(() => {
-    if (!open || dateTouched || !stagePlanned) return;
-    setPlayBy((cur) => (cur === stagePlanned ? cur : stagePlanned));
-  }, [open, dateTouched, stagePlanned]);
-
-  const today = new Date().toISOString().slice(0, 10);
-  // A published date may already be in the past — that must not block the
-  // organiser from setting the section up.
-  const earliest = suggestedPlanned && suggestedPlanned < today ? suggestedPlanned : today;
-  const setup: NextRoundSetup = { label: label.trim(), playBy: playBy || null };
-  const problems = useMemo(
-    () => validateNextRoundSetup(setup, { requirePlayBy: !!selfScheduled, today: earliest }),
-    [setup.label, setup.playBy, selfScheduled, earliest],
+  const reference = useMemo(
+    () =>
+      nextRoundReference({
+        alive: qualifiers,
+        roundNumber,
+        definitions: central?.definitions ?? [],
+        milestones: central?.milestones ?? {},
+        leagueLabel: divisionLabel,
+      }),
+    [qualifiers, roundNumber, central, divisionLabel],
   );
-  const options = useMemo(() => stageNameOptions(qualifiers, roundNumber), [qualifiers, roundNumber]);
+
+  const stage = stageForAlive(qualifiers);
+  const label = reference.label;
+
+  useEffect(() => {
+    if (open) setNewRoundDate("");
+  }, [open]);
+
+  // A milestone with no central date is a setup gap, not something to patch here.
+  const missingMilestone = stage !== "early" && !reference.playBy;
+  const missingRound = reference.needsDefinition;
+
+  const addCentralRound = async () => {
+    if (!newRoundDate) return;
+    await saveCentral.mutateAsync({
+      definitions: addRoundDefinition(central?.definitions ?? [], roundNumber, {
+        label: `Round ${roundNumber}`,
+        play_by: newRoundDate,
+      }),
+      milestones: central?.milestones ?? {},
+    });
+  };
 
   const submit = async () => {
-    if (problems.length > 0) return;
+    if (missingRound || missingMilestone) return;
     setSaving(true);
     try {
       let roundId = state.nextRound?.id ?? null;
@@ -134,14 +119,22 @@ export function NextRoundSetupDialog({
         section_number: state.section,
         round_number: roundNumber,
         round_type: typeForPlayers(Math.max(2, qualifiers)),
-        label: setup.label,
-        play_by: setup.playBy,
+        label,
+        stage_key: stage,
+        // Mirrored from the central list so fixtures print a date offline;
+        // the central list stays the thing that is edited.
+        play_by: reference.playBy,
         scheduling_mode: selfScheduled ? "self" : "club",
         status: "pending",
       };
       if (roundId) {
         const { error } = await fromExt("club_champs_rounds")
-          .update({ label: payload.label, play_by: payload.play_by, round_type: payload.round_type })
+          .update({
+            label: payload.label,
+            play_by: payload.play_by,
+            round_type: payload.round_type,
+            stage_key: payload.stage_key,
+          } as any)
           .eq("id", roundId);
         if (error) throw error;
       } else {
@@ -152,30 +145,9 @@ export function NextRoundSetupDialog({
         if (error) throw error;
         roundId = (data as any)?.id ?? null;
       }
-      // Keep the tournament's own round plan in step, so the setup screen and
-      // the "book your court by …" nudges show this round too.
-      // Only FILL IN a round the plan does not cover yet. Sections of the same
-      // round are set up on different days, and rewriting a date the organiser
-      // already published would make the round's date appear to move.
-      if (setup.playBy) {
-        const { data: t } = await fromExt("tournaments")
-          .select("round_play_by")
-          .eq("id", champId)
-          .maybeSingle();
-        const planned = parseRoundDeadlines((t as any)?.round_play_by);
-        const alreadyPlanned = /^\d{4}-\d{2}-\d{2}/.test(String(planned[roundNumber - 1]?.date || ""));
-        if (!alreadyPlanned) {
-          const merged = serializeRoundDeadlines(
-            mergeRoundDeadlines(planned, [
-              { round_number: roundNumber, label: setup.label, play_by: setup.playBy },
-            ]),
-          );
-          if (merged) await fromExt("tournaments").update({ round_play_by: merged } as any).eq("id", champId);
-        }
-      }
       qc.invalidateQueries({ queryKey: ["club-champ-rounds", champId] });
       onOpenChange(false);
-      onReady({ ...setup, roundId, roundNumber });
+      onReady({ label, playBy: reference.playBy, roundId, roundNumber });
     } catch (e: any) {
       toast.error(e?.message || "Could not save this round");
     } finally {
@@ -192,68 +164,72 @@ export function NextRoundSetupDialog({
           </DialogTitle>
           <DialogDescription>
             {divisionLabel ? `${divisionLabel} — ` : ""}
-            {qualifiers} player{qualifiers === 1 ? "" : "s"} came through. Name this round and set the date it must be
-            played by, then arrange the matchups.
+            {qualifiers} player{qualifiers === 1 ? "" : "s"} left. This is {label.toLowerCase()}
+            {stage === "early" ? "" : " for this league"}. Check the date and arrange the matchups.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label htmlFor="next-round-label" className="text-xs">Round / stage name</Label>
-            <Input
-              id="next-round-label"
-              value={label}
-              maxLength={60}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="Semi-final"
-            />
-            <div className="flex flex-wrap gap-1 pt-1">
-              {options.map((o) => (
-                <Badge
-                  key={o}
-                  variant={o === label ? "default" : "outline"}
-                  className="cursor-pointer text-[10px]"
-                  onClick={() => setLabel(o)}
-                >
-                  {o}
-                </Badge>
-              ))}
-            </div>
+          <div className="rounded-md border bg-muted/30 p-2.5 space-y-1">
+            <div className="text-xs text-muted-foreground">Stage</div>
+            <div className="text-sm font-medium">{label}</div>
+            <p className="text-[11px] text-muted-foreground">
+              Worked out from the {qualifiers} player{qualifiers === 1 ? "" : "s"} still standing —
+              {stage === "early"
+                ? " an ordinary round of this league."
+                : ` every league plays its ${stageName(stage).toLowerCase()} by the same date.`}
+            </p>
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="next-round-playby" className="text-xs">
-              Play by {selfScheduled ? "" : "(optional)"}
-            </Label>
-            <Input
-              id="next-round-playby"
-              type="date"
-              value={playBy}
-              min={earliest}
-              onChange={(e) => {
-                setDateTouched(true);
-                setPlayBy(e.target.value);
-              }}
-            />
-            {suggestedPlanned && (
-              <p className="text-[11px] text-muted-foreground">
-                {playBy === suggestedPlanned
-                  ? `This is the date set for ${stagePlanned ? (label.trim() || "this round") : "this round"} when the tournament was planned — players were told to play by it.`
-                  : `Planned date for this stage: ${suggestedPlanned}. Changing it here is what players will be told.`}
+          {isLoading ? (
+            <p className="text-[11px] text-muted-foreground">Loading the tournament's dates…</p>
+          ) : missingRound ? (
+            <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5">
+              <p className="text-[11px]">
+                Round {roundNumber} is not on this tournament's round list yet. Add it here and it
+                becomes the date for every league that reaches Round {roundNumber}.
               </p>
-            )}
-          </div>
-
-          {problems.map((p) => (
-            <p key={p} className="text-[11px] text-destructive">{p}</p>
-          ))}
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Label className="text-xs">Round {roundNumber} played by</Label>
+                  <Input
+                    type="date"
+                    value={newRoundDate}
+                    onChange={(e) => setNewRoundDate(e.target.value)}
+                    className="h-8"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={addCentralRound}
+                  disabled={!newRoundDate || saveCentral.isPending}
+                >
+                  {saveCentral.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add round"}
+                </Button>
+              </div>
+            </div>
+          ) : missingMilestone ? (
+            <p className="rounded-md border border-destructive/40 bg-destructive/5 p-2.5 text-[11px] text-destructive">
+              No {stageName(stage).toLowerCase()} date has been set for this tournament. Set it once
+              in Edit tournament → Rounds and every league will use it.
+            </p>
+          ) : (
+            <div className="rounded-md border bg-muted/30 p-2.5 space-y-0.5">
+              <div className="text-xs text-muted-foreground">Must be played by</div>
+              <div className="text-sm font-medium">{reference.playBy}</div>
+              <p className="text-[11px] text-muted-foreground">
+                {reference.sourceLabel} — change it in Edit tournament → Rounds and every league that
+                uses it follows.
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={problems.length > 0 || saving}>
+          <Button onClick={submit} disabled={saving || isLoading || missingRound || missingMilestone}>
             {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
             Save &amp; arrange matchups
           </Button>

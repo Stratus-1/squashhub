@@ -34,7 +34,7 @@ import { TournamentNextActionBar } from "@/components/tournaments/TournamentNext
 
 
 import { useChampRounds } from "@/hooks/use-champ-rounds";
-import { parseRoundDeadlines, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+import { parseRoundDeadlines, mergeRoundDeadlines, deadlineForStage } from "@/lib/tournaments/round-deadlines";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";

@@ -1,5 +1,7 @@
 # Gordon's Bay R20 booking balance — Katya Fulton
 
+**Confirmed from her records:** Katya has made two recurring payments (R133.33 × 2 = R266.66), but neither was applied to her membership fee — the R1 600 fee still shows fully unpaid, and her court light charges (R301.99) quietly consumed the money she paid. So per the correct logic her carryable membership debt is R1 600 − R266.66 = **R1 333.34**, her booking requirement is **−R1 313.34**, and her actual balance is **−R1 635.33** — she is short because of the unpaid lights (R301.99) plus the R20 buffer, not because of the membership.
+
 ## Answers to the questions
 
 **1. Was "3D-Secure Verification Failed" our fault?** No — that screen comes from her bank's card verification during the payment. Her bank declined to verify the card; nothing in the app caused it. Her R20 payment attempt this morning (11:03) never completed, so no money arrived and nothing was credited.

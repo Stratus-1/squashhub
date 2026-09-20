@@ -41,7 +41,7 @@ import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { WithdrawPlayerButton } from "@/components/tournaments/WithdrawPlayerButton";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
-import { parseRoundDeadlines, deadlineForRound, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches } from "@/lib/tournaments/schedule-order";
 
@@ -635,12 +635,16 @@ export default function Tournaments() {
 
   // Round name + play-by date for a given match, taken from the round plan
   // merged with the rounds actually created from the draw.
-  const roundMeta = (champId: string, roundNumber?: number | null) => {
+  const roundPlan = (champId: string) => {
     const champ = champs.find((c: any) => c.id === champId);
-    const list = mergeRoundDeadlines(
+    return mergeRoundDeadlines(
       parseRoundDeadlines((champ as any)?.round_play_by),
       roundsByChamp.get(champId) || [],
     );
+  };
+
+  const roundMeta = (champId: string, roundNumber?: number | null) => {
+    const list = roundPlan(champId);
     const n = Number(roundNumber);
     const entry = Number.isFinite(n) && n >= 1 ? list[n - 1] : undefined;
     return {
@@ -683,13 +687,22 @@ export default function Tournaments() {
   };
 
   /**
-   * The play-by date for ONE fixture: its own section's round row first, so a
-   * later section of the same round never changes another section's date.
+   * The play-by date for ONE fixture. The fixture's OWN date wins: that is what
+   * the organiser set when the round was drawn, and it is the date players were
+   * told. Only when a fixture carries none do we fall back to its section's
+   * round row, then to the planned date for that STAGE (round numbers drift
+   * between leagues, so position in the plan means nothing), and finally to the
+   * positional plan entry.
    */
   const matchPlayBy = (m: any): string | null => {
+    const mine = m?.play_by;
+    if (mine) return String(mine).slice(0, 10);
     const own = matchRoundRow(m)?.play_by;
     if (own) return String(own).slice(0, 10);
-    return roundMeta(m.champ_id, m.round_number).date;
+    return (
+      deadlineForStage(roundPlan(m.champ_id), m.round_number, matchStageLabel(m)) ??
+      roundMeta(m.champ_id, m.round_number).date
+    );
   };
 
   const renderRoundGroups = (list: any[]) => {

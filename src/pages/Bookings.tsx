@@ -444,6 +444,9 @@ export default function Bookings() {
     [(myClub as any)?.booking_reminder_channels, (myClub as any)?.booking_confirm_channels, msgChannelsAllowed],
   );
   const visitorFee = Number((myClub as any)?.visitor_booking_fee ?? 0);
+  // Fee a registered visitor pays each time they book a court on their own.
+  const visitorSelfFee = Number((myClub as any)?.visitor_self_booking_fee ?? 0);
+  const requireVisitorNamed = !!(myClub as any)?.require_visitor_for_member_booking;
   const rawSlot = Number((myClub as any)?.booking_slot_minutes);
   const slotMinutes: 30 | 40 | 45 | 60 = (rawSlot === 60 ? 60 : rawSlot === 40 ? 40 : rawSlot === 45 ? 45 : 30);
   const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));

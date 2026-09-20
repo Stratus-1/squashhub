@@ -120,6 +120,46 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubMemberId,
   });
 
+  // Family primaries: total season fees (own package + each linked family
+  // member's additional fee). Used to detect when the active monthly amount no
+  // longer covers the family and offer a one-tap increase.
+  const { data: familyTotalAnnual = 0 } = useQuery({
+    queryKey: ["family-mandate-annual", clubMemberId, memberFeeCategoryId],
+    queryFn: async () => {
+      if (!memberFeeCategoryId) return 0;
+      const { data: cat } = await supabase
+        .from("member_fee_categories")
+        .select("annual_fee, family_role, family_additional_category_id")
+        .eq("id", memberFeeCategoryId)
+        .maybeSingle();
+      if (!cat || (cat as any).family_role !== "primary") return 0;
+      const ownAnnual = Number((cat as any).annual_fee || 0);
+      const addCatId = (cat as any).family_additional_category_id as string | null;
+      if (!addCatId) return ownAnnual;
+      const { data: group } = await (supabase as any)
+        .from("club_family_groups")
+        .select("id")
+        .eq("primary_member_id", clubMemberId)
+        .eq("status", "active")
+        .maybeSingle();
+      if (!group) return ownAnnual;
+      const { count } = await (supabase as any)
+        .from("club_family_members")
+        .select("id", { count: "exact", head: true })
+        .eq("family_group_id", group.id)
+        .neq("status", "removed");
+      const n = count ?? 0;
+      if (!n) return ownAnnual;
+      const { data: addCat } = await supabase
+        .from("member_fee_categories")
+        .select("annual_fee")
+        .eq("id", addCatId)
+        .maybeSingle();
+      return ownAnnual + Number((addCat as any)?.annual_fee || 0) * n;
+    },
+    enabled: !!clubMemberId && !!memberFeeCategoryId,
+  });
+
   // Every member must be able to set up a monthly recurring payment, even if
   // their fee category isn't flagged debit-order eligible (or they have none).
   const GENERAL_CATEGORY: FeeCategory = {
@@ -140,8 +180,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     const mine = memberFeeCategoryId
       ? categories.filter((c) => c.id === memberFeeCategoryId)
       : [];
-    const base = mine.length > 0 ? mine : categories;
-    return [...base, GENERAL_CATEGORY];
+    // The generic "Monthly club fees" fallback row exists only for members
+    // whose own category isn't recurring-eligible (or who have none). Showing
+    // it alongside their own category duplicates the same amount on screen.
+    if (mine.length > 0) return mine;
+    return [...categories, GENERAL_CATEGORY];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, memberFeeCategoryId]);
 
@@ -524,6 +567,35 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                       </div>
                     </div>
                   )}
+
+                  {m.status === "active" && familyTotalAnnual > 0 && (() => {
+                    const needed = Math.round((familyTotalAnnual / 12) * 100) / 100;
+                    const current = m.max_amount_cents / 100;
+                    if (needed <= current + 0.01) return null;
+                    return (
+                      <div className="mt-1 space-y-1">
+                        <p className="text-[11px] text-amber-700 leading-snug">
+                          Your family fees grew — {money(familyTotalAnnual)} for the season needs{" "}
+                          {money(needed)} per month, but this payment is capped at {money(current)}.
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[11px] px-2"
+                          onClick={() => {
+                            const cat =
+                              categories.find((c) => c.id === memberFeeCategoryId) || GENERAL_CATEGORY;
+                            openSetup(cat);
+                            setMonths("12");
+                            setAmount(needed.toFixed(2));
+                            setAmountTouched(true);
+                          }}
+                        >
+                          Increase to {money(needed)} / month
+                        </Button>
+                      </div>
+                    );
+                  })()}
 
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => cancelMandate(m.id)} className="h-7 px-2">

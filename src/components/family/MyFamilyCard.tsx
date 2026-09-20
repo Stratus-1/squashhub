@@ -41,6 +41,34 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
   const [phone, setPhone] = useState("");
   const [relationship, setRelationship] = useState<string>("child");
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [savingDetails, setSavingDetails] = useState(false);
+
+  const openDetails = (m: any) => {
+    setEditing(m);
+    setEditEmail(m.email || "");
+    setEditPhone(m.phone || "");
+  };
+
+  const saveDetails = async () => {
+    if (!editing) return;
+    setSavingDetails(true);
+    try {
+      const { error } = await fromExt("club_members")
+        .update({ email: editEmail.trim() || null, phone: editPhone.trim() || null } as any)
+        .eq("id", editing.club_member_id);
+      if (error) throw error;
+      toast.success("Details saved");
+      setEditing(null);
+      qc.invalidateQueries({ queryKey: ["my-family", clubMemberId] });
+    } catch (e: any) {
+      toast.error(e.message || "Could not save those details");
+    } finally {
+      setSavingDetails(false);
+    }
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["my-family", clubMemberId],
@@ -67,7 +95,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
           .neq("status", "removed");
         const ids = (rows || []).map((r: any) => r.club_member_id);
         const { data: people } = ids.length
-          ? await fromExt("club_members").select("id, name, club_member_number").in("id", ids)
+          ? await fromExt("club_members").select("id, name, club_member_number, email, phone").in("id", ids)
           : { data: [] as any[] };
         const { data: fees } = ids.length
           ? await fromExt("club_member_fee_payments").select("club_member_id, amount, paid").in("club_member_id", ids)
@@ -75,6 +103,8 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
         members = (rows || []).map((r: any) => ({
           ...r,
           name: (people || []).find((p: any) => p.id === r.club_member_id)?.name || "Member",
+          email: (people || []).find((p: any) => p.id === r.club_member_id)?.email || "",
+          phone: (people || []).find((p: any) => p.id === r.club_member_id)?.phone || "",
           outstanding: (fees || [])
             .filter((f: any) => f.club_member_id === r.club_member_id && !f.paid)
             .reduce((s: number, f: any) => s + Number(f.amount || 0), 0),
@@ -195,8 +225,10 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
         </div>
 
         <p className="text-[11px] text-muted-foreground mb-3">
-          You are on the {FAMILY_PRIMARY_LABEL} ({money(myCat.annual_fee)}). Each {FAMILY_ADDITIONAL_LABEL} costs{" "}
-          {money(additionalCat?.annual_fee ?? 0)}.{" "}
+          You are on the {FAMILY_PRIMARY_LABEL} ({money(myCat.annual_fee)}).{" "}
+          {(additionalCat?.annual_fee ?? 0) > 0
+            ? `Each ${FAMILY_ADDITIONAL_LABEL} costs ${money(additionalCat?.annual_fee ?? 0)}. `
+            : "Family members are included at no extra cost. "}
           {left === null ? "There is no limit on how many you may add." : full ? "Your package is full — ask your club if you need another slot." : `You can still add ${left}.`}
         </p>
 
@@ -212,6 +244,12 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
                     {m.relationship || "family"} · {m.status === "invited" ? "waiting for them to accept" : "linked"}
                     {m.outstanding > 0 ? ` · ${money(m.outstanding)} outstanding` : " · nothing outstanding"}
                   </p>
+                  {(!m.email || !m.phone) && m.club_member_id !== clubMemberId && (
+                    <p className="text-[10px] text-amber-600 mt-0.5">
+                      Missing {!m.email && !m.phone ? "email and cell number" : !m.email ? "email address" : "cell number"} —{" "}
+                      <button type="button" className="underline" onClick={() => openDetails(m)}>complete details</button>
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Badge variant={m.status === "active" ? "default" : "secondary"} className="text-[9px] h-4 px-1.5">
@@ -291,7 +329,32 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
 
             <Button className="w-full" disabled={busy || (mode === "existing" ? !memberNo.trim() : !name.trim())} onClick={add}>
               {busy && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Add {additionalCat ? `(${money(additionalCat.annual_fee)})` : ""}
+              Add {additionalCat && additionalCat.annual_fee > 0 ? `(${money(additionalCat.annual_fee)})` : "(free)"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Complete {editing?.name}'s details</DialogTitle>
+            <DialogDescription>
+              Add their own email address and cell number. If they don't have their own, use yours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Email</Label>
+              <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="h-9" inputMode="email" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Cell phone</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="h-9" inputMode="tel" />
+            </div>
+            <Button className="w-full" disabled={savingDetails || (!editEmail.trim() && !editPhone.trim())} onClick={saveDetails}>
+              {savingDetails && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Save details
             </Button>
           </div>
         </DialogContent>

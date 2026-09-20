@@ -131,20 +131,12 @@ export async function checkBookingBalance(opts: {
     .eq("paid", false)
     .or(`club_member_id.eq.${opts.clubMemberId},paid_by_member_id.eq.${opts.clubMemberId}`);
 
-  let planAllowedDebt = 0;
-  if (mandate) {
-    // Active monthly arrangement → ALL outstanding fees may be carried.
-    planAllowedDebt = (fees || []).reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
-  } else {
-    // No arrangement yet — allow the outstanding membership portion only.
-    // Fee types used across the app: 'membership', 'club_membership' and 'club'
-    // (club membership fees, incl. family package lines, are stored as 'club').
-    planAllowedDebt = (fees || [])
-      .filter((f: any) => ["membership", "club_membership", "club"].includes(f.fee_type ?? ""))
-      .reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
-  }
-
-  const shortfall = currentOwing - planAllowedDebt + buffer;
+  const { planAllowedDebt, shortfall } = computeBookingGate({
+    currentOwing,
+    fees: (fees || []) as { amount: number; fee_type?: string | null }[],
+    hasMandate: !!mandate,
+    buffer,
+  });
   return {
     allowed: shortfall <= 0,
     shortfall: shortfall > 0 ? Math.round(shortfall * 100) / 100 : 0,

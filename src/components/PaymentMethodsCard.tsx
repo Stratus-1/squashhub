@@ -140,8 +140,11 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     const mine = memberFeeCategoryId
       ? categories.filter((c) => c.id === memberFeeCategoryId)
       : [];
-    const base = mine.length > 0 ? mine : categories;
-    return [...base, GENERAL_CATEGORY];
+    // The generic "Monthly club fees" fallback row exists only for members
+    // whose own category isn't recurring-eligible (or who have none). Showing
+    // it alongside their own category duplicates the same amount on screen.
+    if (mine.length > 0) return mine;
+    return [...categories, GENERAL_CATEGORY];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, memberFeeCategoryId]);
 

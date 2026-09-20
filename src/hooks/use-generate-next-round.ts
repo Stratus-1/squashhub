@@ -16,6 +16,7 @@ import {
   leaguePlayoffReady,
   type SectionProgression,
 } from "@/lib/tournaments/knockout-progression";
+import { finalsRoundNumber, leagueSurvivors } from "@/lib/tournaments/league-finals-draw";
 
 
 /**

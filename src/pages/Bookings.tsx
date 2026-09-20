@@ -880,7 +880,7 @@ export default function Bookings() {
   const courtGridMinWidth = `calc(60px + ${courts.length} * 116px + 32px)`;
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const rowsScrollRef = useRef<HTMLDivElement>(null);
-  const syncGridScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const syncGridScroll = (e: { currentTarget: HTMLDivElement }) => {
     const src = e.currentTarget;
     const dst = src === rowsScrollRef.current ? headerScrollRef.current : rowsScrollRef.current;
     if (dst && dst.scrollLeft !== src.scrollLeft) dst.scrollLeft = src.scrollLeft;

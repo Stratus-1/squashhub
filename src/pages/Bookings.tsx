@@ -872,6 +872,20 @@ export default function Bookings() {
   const courts = (courtsData || []).map((c: any) => c.id);
   const getCourtName = (id: number) => courtsData?.find((c: any) => c.id === id)?.name || `Court ${id}`;
 
+  // Court grid sizing: each court column keeps a readable minimum width; on
+  // narrow (portrait) screens the grid scrolls horizontally instead of squeezing
+  // names into unreadable slivers. On wide screens minmax() still expands to 1fr
+  // so the layout is unchanged. 116px = 110px column + 6px gap.
+  const courtGridTemplate = `60px repeat(${courts.length}, minmax(110px, 1fr))`;
+  const courtGridMinWidth = `calc(60px + ${courts.length} * 116px + 32px)`;
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const rowsScrollRef = useRef<HTMLDivElement>(null);
+  const syncGridScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const src = e.currentTarget;
+    const dst = src === rowsScrollRef.current ? headerScrollRef.current : rowsScrollRef.current;
+    if (dst && dst.scrollLeft !== src.scrollLeft) dst.scrollLeft = src.scrollLeft;
+  };
+
   const { data: availablePlayers } = useQuery({
     queryKey: ["available-players-club", dateStr, bookingClubId],
     queryFn: async () => {

@@ -179,7 +179,15 @@ import {
   roundDeadlineLines,
   roundDeadlineSummary,
 } from "@/lib/tournaments/round-deadlines";
-import { SelfScheduledRounds } from "@/components/club-admin/tournament/SelfScheduledRounds";
+import { CentralRoundSchedule } from "@/components/club-admin/tournament/CentralRoundSchedule";
+import {
+  fromLegacyDeadlines,
+  parseMilestones,
+  parseRoundDefinitions,
+  serializeRoundDefinitions,
+  validateMilestones,
+  type MilestonePlayBy,
+} from "@/lib/tournaments/round-definitions";
 import {
   isSelfScheduledKnockout,
   roundProgress as computeRoundProgress,
@@ -1018,7 +1026,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    *              next band, Pool C the weakest.
    */
   const [poolAllocation, setPoolAllocation] = useState<PoolAllocationMode>("snake");
+  /**
+   * The tournament's CENTRAL round list and championship deadlines — the one
+   * place these are entered. Every other screen references them.
+   */
   const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
+  const [milestonePlayBy, setMilestonePlayBy] = useState<MilestonePlayBy>({});
 
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
@@ -2570,6 +2583,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Keep it separate from entries/registrations so saving progress never
       // accepts an invite or changes a payment state.
       draft_player_ids: Array.from(selectedPlayerIds),
+      // The single source of truth for round names/dates and the championship
+      // deadlines. Nothing else in the app may write these.
+      round_definitions: serializeRoundDefinitions(
+        fromLegacyDeadlines(serializeRoundDeadlines(roundDeadlines) || []),
+      ),
+      milestone_play_by: milestonePlayBy,
     };
 
     const saveExtras = async (id: string) => {
@@ -4955,6 +4974,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         champId = champ.id;
       }
 
+      // Write the central round list and championship deadlines. These live on
+      // the tournament itself, not on the legacy view, and are the only copy
+      // any other screen is allowed to read.
+      if (champId) {
+        const { error: centralErr } = await fromExt("tournaments")
+          .update({
+            round_definitions: serializeRoundDefinitions(
+              fromLegacyDeadlines(serializeRoundDeadlines(roundDeadlines) || []),
+            ),
+            milestone_play_by: milestonePlayBy,
+          } as any)
+          .eq("id", champId);
+        if (centralErr) console.warn("[champs] central round save failed", centralErr.message);
+      }
+
       if (awaitingPlayerPairs) {
         if (registrationUsesInviteList) {
           const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
@@ -6980,10 +7014,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setSchedulingMode(((champ as any).scheduling_mode as any) === "self" ? "self" : "club");
     setChampionScope(((champ as any).champion_scope as any) === "pool" ? "pool" : "division");
     setPoolAllocation(normalisePoolAllocation((champ as any).pool_allocation));
-    setRoundDeadlines(parseRoundDeadlines((champ as any).round_play_by));
-    // Rounds added later from the knockout screen (e.g. round 4) live in
-    // club_champs_rounds — pull them in so the setup screen shows them too.
+    // Central definitions win. Older tournaments only have the legacy
+    // round_play_by list, so fall back to it and let the next save lift it
+    // into the central column.
+    const centralDefs = parseRoundDefinitions((champ as any).round_definitions);
+    setRoundDeadlines(
+      centralDefs.length > 0
+        ? centralDefs.map((d) => ({ label: d.label, date: d.play_by ?? "", notes: d.notes ?? undefined }))
+        : parseRoundDeadlines((champ as any).round_play_by),
+    );
+    setMilestonePlayBy(parseMilestones((champ as any).milestone_play_by));
+    // Rounds added later from the knockout screen (e.g. round 4) were written
+    // straight onto club_champs_rounds before there was a central list. Pull
+    // those in ONCE so nothing is lost; from now on they are added centrally.
     void (async () => {
+      if (centralDefs.length > 0) return;
       const { data: liveRounds } = await fromExt("club_champs_rounds")
         .select("round_number, label, play_by")
         .eq("champ_id", champ.id);
@@ -7453,6 +7498,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         // only per-round play-by deadlines.
         if (schedulingMode === "self") {
           if (!serializeRoundDeadlines(roundDeadlines)) m.push("At least one round play-by deadline");
+          // A knockout must know when the championship stages are due — the
+          // system decides which league is at which stage, but the dates are
+          // set once, here.
+          if (simplifiedKnockoutSchedule) {
+            for (const p of validateMilestones(milestonePlayBy, { require: true })) m.push(p);
+          }
         } else {
           if (!startTime) m.push("Start time");
           if (!endTime) m.push("End time");
@@ -8402,99 +8453,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               </WizardSection>
             ) : (
               <div className="rounded-lg border p-3 space-y-2">
-                {simplifiedKnockoutSchedule && (
+                {/* ONE central round list for the whole tournament. Progressing a
+                    league, generating a draw or editing a fixture references
+                    these dates — they are never re-entered anywhere else. */}
+                {(simplifiedKnockoutSchedule || schedulingMode === "self") && (
                   <div className="pt-1">
-                    <SelfScheduledRounds
+                    <CentralRoundSchedule
                       deadlines={roundDeadlines}
                       onChange={setRoundDeadlines}
+                      milestones={milestonePlayBy}
+                      onMilestonesChange={setMilestonePlayBy}
+                      requireMilestones={simplifiedKnockoutSchedule}
                       progress={knockoutProgress}
-                      totalRounds={knockoutRoundCount(
-                        Math.max(0, ...(groups as any[][]).map((g) => (g?.length ?? 0))),
-                      )}
                       minDate={startDate || undefined}
                     />
                   </div>
                 )}
-                {schedulingMode === "self" && !simplifiedKnockoutSchedule && (
-                  <div className="pt-1 space-y-2">
-                    <Label className="text-sm">Play-by deadlines per round</Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Players arrange their own court and time — you only set the date each round must be finished by.
-                    </p>
-                    <div className="space-y-2">
-                      {roundDeadlines.map((d, i) => (
-                        <div key={i} className="grid gap-2 lg:grid-cols-[1fr_1fr_1.5fr_auto]">
-                          <div>
-                            <Label className="text-xs">Round name</Label>
-                            <Input
-                              value={d.label}
-                              placeholder={defaultRoundLabel(i)}
-                              onChange={(e) =>
-                                setRoundDeadlines((prev) =>
-                                  prev.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
-                                )
-                              }
-                              className="h-8"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Must be played by</Label>
-                            <Input
-                              type="date"
-                              value={d.date}
-                              min={startDate || undefined}
-                              onChange={(e) =>
-                                setRoundDeadlines((prev) =>
-                                  prev.map((x, j) => (j === i ? { ...x, date: e.target.value } : x)),
-                                )
-                              }
-                              className="h-8"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Notes (optional)</Label>
-                            <Textarea
-                              value={d.notes ?? ""}
-                              rows={1}
-                              placeholder="Shown with this round's fixtures"
-                              onChange={(e) =>
-                                setRoundDeadlines((prev) =>
-                                  prev.map((x, j) => (j === i ? { ...x, notes: e.target.value } : x)),
-                                )
-                              }
-                              className="min-h-8 h-8 py-1.5 text-sm resize-none"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={() => setRoundDeadlines((prev) => prev.filter((_, j) => j !== i))}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setRoundDeadlines((prev) => [
-                          ...prev,
-                          { label: defaultRoundLabel(prev.length), date: "" },
-                        ])
-                      }
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Add round
-                    </Button>
-                  </div>
-                )}
               </div>
+
             )}
 
             {/* Capacity validation — lives here because it needs BOTH the structure

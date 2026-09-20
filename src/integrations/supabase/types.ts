@@ -1697,6 +1697,51 @@ export type Database = {
           },
         ]
       }
+      champ_round_date_audit: {
+        Row: {
+          champ_id: string
+          changed_by: string | null
+          club_id: string
+          created_at: string
+          fixtures_affected: number
+          fixtures_protected: number
+          id: string
+          new_play_by: string | null
+          old_play_by: string | null
+          round_number: number | null
+          scope: string
+          stage_key: string | null
+        }
+        Insert: {
+          champ_id: string
+          changed_by?: string | null
+          club_id: string
+          created_at?: string
+          fixtures_affected?: number
+          fixtures_protected?: number
+          id?: string
+          new_play_by?: string | null
+          old_play_by?: string | null
+          round_number?: number | null
+          scope: string
+          stage_key?: string | null
+        }
+        Update: {
+          champ_id?: string
+          changed_by?: string | null
+          club_id?: string
+          created_at?: string
+          fixtures_affected?: number
+          fixtures_protected?: number
+          id?: string
+          new_play_by?: string | null
+          old_play_by?: string | null
+          round_number?: number | null
+          scope?: string
+          stage_key?: string | null
+        }
+        Relationships: []
+      }
       club_ai_settings: {
         Row: {
           actions_enabled: boolean
@@ -2527,6 +2572,7 @@ export type Database = {
           side_a_points: number | null
           side_b_points: number | null
           stage: string
+          stage_key: string | null
           stage_label: string | null
           status: string
           updated_at: string
@@ -2567,6 +2613,7 @@ export type Database = {
           side_a_points?: number | null
           side_b_points?: number | null
           stage?: string
+          stage_key?: string | null
           stage_label?: string | null
           status?: string
           updated_at?: string
@@ -2607,6 +2654,7 @@ export type Database = {
           side_a_points?: number | null
           side_b_points?: number | null
           stage?: string
+          stage_key?: string | null
           stage_label?: string | null
           status?: string
           updated_at?: string
@@ -2829,6 +2877,7 @@ export type Database = {
         Row: {
           champ_id: string
           created_at: string
+          field_size: number | null
           generated_at: string | null
           generated_by: string | null
           group_number: number
@@ -2839,13 +2888,16 @@ export type Database = {
           round_number: number
           round_type: string
           scheduling_mode: string
+          scope: string | null
           section_number: number
+          stage_key: string | null
           status: string
           updated_at: string
         }
         Insert: {
           champ_id: string
           created_at?: string
+          field_size?: number | null
           generated_at?: string | null
           generated_by?: string | null
           group_number?: number
@@ -2856,13 +2908,16 @@ export type Database = {
           round_number: number
           round_type?: string
           scheduling_mode?: string
+          scope?: string | null
           section_number?: number
+          stage_key?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           champ_id?: string
           created_at?: string
+          field_size?: number | null
           generated_at?: string | null
           generated_by?: string | null
           group_number?: number
@@ -2873,7 +2928,9 @@ export type Database = {
           round_number?: number
           round_type?: string
           scheduling_mode?: string
+          scope?: string | null
           section_number?: number
+          stage_key?: string | null
           status?: string
           updated_at?: string
         }
@@ -13308,6 +13365,7 @@ export type Database = {
           match_type: string
           max_entrants: number | null
           max_per_league: number | null
+          milestone_play_by: Json
           name: string
           num_groups: number
           owner_org_id: string | null
@@ -13318,6 +13376,7 @@ export type Database = {
           playoff_date: string | null
           pool_allocation: string
           pool_sizes: Json
+          round_definitions: Json
           round_play_by: Json
           schedule_mode: string
           scheduling_mode: string
@@ -13398,6 +13457,7 @@ export type Database = {
           match_type?: string
           max_entrants?: number | null
           max_per_league?: number | null
+          milestone_play_by?: Json
           name: string
           num_groups?: number
           owner_org_id?: string | null
@@ -13408,6 +13468,7 @@ export type Database = {
           playoff_date?: string | null
           pool_allocation?: string
           pool_sizes?: Json
+          round_definitions?: Json
           round_play_by?: Json
           schedule_mode?: string
           scheduling_mode?: string
@@ -13488,6 +13549,7 @@ export type Database = {
           match_type?: string
           max_entrants?: number | null
           max_per_league?: number | null
+          milestone_play_by?: Json
           name?: string
           num_groups?: number
           owner_org_id?: string | null
@@ -13498,6 +13560,7 @@ export type Database = {
           playoff_date?: string | null
           pool_allocation?: string
           pool_sizes?: Json
+          round_definitions?: Json
           round_play_by?: Json
           schedule_mode?: string
           scheduling_mode?: string
@@ -16030,6 +16093,7 @@ export type Database = {
           side_a_points: number | null
           side_b_points: number | null
           stage: string
+          stage_key: string | null
           stage_label: string | null
           status: string
           updated_at: string
@@ -16246,6 +16310,7 @@ export type Database = {
           side_a_points: number | null
           side_b_points: number | null
           stage: string
+          stage_key: string | null
           stage_label: string | null
           status: string
           updated_at: string

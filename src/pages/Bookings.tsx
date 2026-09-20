@@ -2199,7 +2199,7 @@ export default function Bookings() {
 
       {/* Booking Details Dialog */}
       <Dialog open={!!bookingDetails} onOpenChange={() => setBookingDetails(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[92dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading">Booking Details</DialogTitle>
             <DialogDescription className="sr-only">Court booking details, players, time, and light session information.</DialogDescription>
@@ -2873,7 +2873,7 @@ export default function Bookings() {
         open={topUpPrompt.open}
         onOpenChange={(open) => setTopUpPrompt((s) => ({ ...s, open }))}
       >
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[92dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading">Top up needed to book</DialogTitle>
             <DialogDescription>
@@ -2950,7 +2950,7 @@ export default function Bookings() {
         open={calendarPrompt.open}
         onOpenChange={(open) => setCalendarPrompt((s) => ({ ...s, open }))}
       >
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[92dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading">Add to Calendar?</DialogTitle>
             <DialogDescription className="sr-only">Choose whether to share the booking or add it to Google Calendar.</DialogDescription>
@@ -3056,7 +3056,7 @@ export default function Bookings() {
 
       {/* Transfer Court Dialog */}
       <Dialog open={!!transferDialog} onOpenChange={() => setTransferDialog(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[92dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading">Transfer to Another Court</DialogTitle>
             <DialogDescription className="sr-only">Select another court and transfer the active light session.</DialogDescription>
@@ -3094,7 +3094,7 @@ export default function Bookings() {
 
       {/* Confirm End Session Dialog */}
       <Dialog open={!!confirmEndSession} onOpenChange={() => setConfirmEndSession(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[92dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading flex items-center gap-2">
               <ZapOff className="w-4 h-4" /> End Court Session?

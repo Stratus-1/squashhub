@@ -2216,6 +2216,7 @@ export default function Bookings() {
               </div>
             );
           })}
+          </div>
         </motion.div>
       )}
 

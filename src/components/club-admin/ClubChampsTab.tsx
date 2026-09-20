@@ -4973,6 +4973,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         champId = champ.id;
       }
 
+      // Write the central round list and championship deadlines. These live on
+      // the tournament itself, not on the legacy view, and are the only copy
+      // any other screen is allowed to read.
+      if (champId) {
+        const { error: centralErr } = await fromExt("tournaments")
+          .update({
+            round_definitions: serializeRoundDefinitions(
+              fromLegacyDeadlines(serializeRoundDeadlines(roundDeadlines) || []),
+            ),
+            milestone_play_by: milestonePlayBy,
+          } as any)
+          .eq("id", champId);
+        if (centralErr) console.warn("[champs] central round save failed", centralErr.message);
+      }
+
       if (awaitingPlayerPairs) {
         if (registrationUsesInviteList) {
           const fee = Math.max(0, Math.round(Number(entryFeeRand) * 100) || 0);
@@ -6998,10 +7013,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setSchedulingMode(((champ as any).scheduling_mode as any) === "self" ? "self" : "club");
     setChampionScope(((champ as any).champion_scope as any) === "pool" ? "pool" : "division");
     setPoolAllocation(normalisePoolAllocation((champ as any).pool_allocation));
-    setRoundDeadlines(parseRoundDeadlines((champ as any).round_play_by));
-    // Rounds added later from the knockout screen (e.g. round 4) live in
-    // club_champs_rounds — pull them in so the setup screen shows them too.
+    // Central definitions win. Older tournaments only have the legacy
+    // round_play_by list, so fall back to it and let the next save lift it
+    // into the central column.
+    const centralDefs = parseRoundDefinitions((champ as any).round_definitions);
+    setRoundDeadlines(
+      centralDefs.length > 0
+        ? centralDefs.map((d) => ({ label: d.label, date: d.play_by ?? "", notes: d.notes ?? undefined }))
+        : parseRoundDeadlines((champ as any).round_play_by),
+    );
+    setMilestonePlayBy(parseMilestones((champ as any).milestone_play_by));
+    // Rounds added later from the knockout screen (e.g. round 4) were written
+    // straight onto club_champs_rounds before there was a central list. Pull
+    // those in ONCE so nothing is lost; from now on they are added centrally.
     void (async () => {
+      if (centralDefs.length > 0) return;
       const { data: liveRounds } = await fromExt("club_champs_rounds")
         .select("round_number, label, play_by")
         .eq("champ_id", champ.id);

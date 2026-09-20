@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.booking_notice_data(public.bookings) FROM PUBLIC, anon, authenticated;

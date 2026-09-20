@@ -14623,6 +14623,10 @@ export type Database = {
         Returns: string
       }
       bill_wifi_monthly: { Args: never; Returns: Json }
+      booking_notice_data: {
+        Args: { p_booking: Database["public"]["Tables"]["bookings"]["Row"] }
+        Returns: Json
+      }
       can_access_champ_match: {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean

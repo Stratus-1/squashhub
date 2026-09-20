@@ -41,11 +41,11 @@ The allowance looks for fees typed "membership"/"club_membership". Gordon's Bay 
 
 1. **Recurring payments settle the membership fee first.** When the monthly charge succeeds, apply it to the membership fee immediately — so the unpaid fee always equals the annual amount minus payments made. Katya's two payments get applied retroactively (fee drops from R1 600 to R1 333.34).
 2. **Booking gate** (`src/lib/booking-balance-gate.ts`): allowance = annual membership fee − payments already made (active monthly arrangement → all outstanding fees); drop the bump-up that re-allows her full balance; recognise "club" membership fees; show the member: what they owe, the floating balance required, and the exact amount to pay now.
-2. **Wallet auto-settle** (`wallet-auto-settle.ts`): keep the club's `min_booking_balance` in the wallet; only sweep the excess onto old fees.
-3. **My Account** (`src/components/PaymentMethodsCard.tsx`): show the fallback "Monthly club fees" row only when the member has no recurring-eligible category of their own — removes the duplicate.
-3. **Family fee on adding a member**: raise the "Member of family" fee (R120) automatically against the primary payer when a linked family member is added.
-4. **Increase monthly payment**: when a family's fees grow, offer a one-tap "increase monthly payment" that authorises a new recurring payment at the new amount and cancels the old one on activation.
-5. Add regression tests for the "pays R100 → requirement moves from −1580 to −1480" scenario.
+3. **Wallet auto-settle** (`wallet-auto-settle.ts`): keep the club's `min_booking_balance` in the wallet; only sweep the excess onto old fees.
+4. **My Account** (`src/components/PaymentMethodsCard.tsx`): show the fallback "Monthly club fees" row only when the member has no recurring-eligible category of their own — removes the duplicate.
+5. **Family fee on adding a member**: raise the "Member of family" fee (R120) automatically against the primary payer when a linked family member is added.
+6. **Increase monthly payment**: when a family's fees grow, offer a one-tap "increase monthly payment" that authorises a new recurring payment at the new amount and cancels the old one on activation.
+7. Add regression tests for the "pays R100 → requirement moves from −1580 to −1480" scenario.
 
 ## For Katya today (only on your word)
 

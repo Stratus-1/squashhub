@@ -11,12 +11,13 @@ const DISMISS_KEY = "sh.debit.prompt.dismissedUntil";
 
 /**
  * Shows the "Switch to a monthly debit order" prompt only when:
- *  1. The club's active payment gateway is Stitch.
- *  2. The member has no active/pending Stitch mandate.
- *  3. At least R500 is outstanding on fees whose category is flagged
- *     `debit_order_eligible = true` (i.e. actually pullable by Stitch).
+ *  1. The club's active payment gateway supports recurring pulls (Stitch or PayFast).
+ *  2. The member has no active/pending mandate.
+ *  3. Fees have actually been raised and are still unpaid on a category flagged
+ *     `debit_order_eligible = true` (i.e. actually pullable by the gateway).
  *
- * Non-eligible fees (once/off, EFT-only, etc.) never trigger the prompt.
+ * Members who owe nothing — and non-eligible fees (once/off, EFT-only, etc.) —
+ * never trigger the prompt.
  */
 export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: string | null | undefined }) {
   const navigate = useNavigate();

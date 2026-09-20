@@ -118,7 +118,6 @@ export default function Tournaments() {
     () => new Map((allChamps as any[]).map((champ: any) => [champ.id, champ] as const)),
     [allChamps],
   );
-  const hasActiveBells = champs.some((champ: any) => champ.scoring_mode === "time_capped_points");
 
   const champIds = allChamps.map((c: any) => c.id);
   const champIdsKey = champIds.slice().sort().join("|");

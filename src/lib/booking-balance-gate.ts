@@ -12,14 +12,12 @@ export type BookingBalanceResult = {
 /**
  * Pure gate maths, exported for tests.
  *
- * Allowed debt:
- *   - Active monthly arrangement → ALL outstanding fees (membership + family
- *     fees carried by this payer). Fee rows shrink as instalments settle, so
- *     the allowance is effectively "season fees − payments made".
- *   - No arrangement → membership-typed fees only ('membership',
- *     'club_membership', 'club').
- * Shortfall = owing − allowedDebt + buffer. Positive shortfall = must pay that
- * much (at least) before booking.
+ * One rule for every club:
+ *   allowance = outstanding fees covered by an active recurring arrangement
+ *               (no arrangement → no allowance)
+ *   shortfall = balance owing − allowance + the club's booking float
+ *
+ * Positive shortfall = the member must pay that much before booking.
  */
 export function computeBookingGate(opts: {
   currentOwing: number;
@@ -30,9 +28,7 @@ export function computeBookingGate(opts: {
   const { currentOwing, fees, hasMandate, buffer } = opts;
   const planAllowedDebt = hasMandate
     ? fees.reduce((s, f) => s + Number(f.amount || 0), 0)
-    : fees
-        .filter((f) => ["membership", "club_membership", "club"].includes(f.fee_type ?? ""))
-        .reduce((s, f) => s + Number(f.amount || 0), 0);
+    : 0;
   return { planAllowedDebt, shortfall: currentOwing - planAllowedDebt + buffer };
 }
 

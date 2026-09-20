@@ -51,7 +51,7 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
           .eq("club_id", clubId).eq("debit_order_eligible", true),
         fromExt("national_body_fees").select("body_name, abbreviation")
           .eq("club_id", clubId).eq("debit_order_eligible", true),
-        supabase.from("club_member_fee_payments").select("amount, amount_paid, fee_label")
+        supabase.from("club_member_fee_payments").select("amount, fee_label")
           .eq("club_member_id", clubMemberId!).eq("paid", false),
       ]);
 
@@ -82,7 +82,7 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
       const outstanding = (feesRes.data || []).reduce((sum, f: any) => {
         const lbl = String(f.fee_label || "").toLowerCase();
         if (!lbl) return sum;
-        const due = Number(f.amount || 0) - Number((f as any).amount_paid || 0);
+        const due = Number(f.amount || 0);
         if (due <= 0) return sum;
         for (const el of labels) {
           if (lbl === el || lbl.includes(el)) return sum + due;

@@ -568,6 +568,35 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     </div>
                   )}
 
+                  {m.status === "active" && familyTotalAnnual > 0 && (() => {
+                    const needed = Math.round((familyTotalAnnual / 12) * 100) / 100;
+                    const current = m.max_amount_cents / 100;
+                    if (needed <= current + 0.01) return null;
+                    return (
+                      <div className="mt-1 space-y-1">
+                        <p className="text-[11px] text-amber-700 leading-snug">
+                          Your family fees grew — {money(familyTotalAnnual)} for the season needs{" "}
+                          {money(needed)} per month, but this payment is capped at {money(current)}.
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[11px] px-2"
+                          onClick={() => {
+                            const cat =
+                              categories.find((c) => c.id === memberFeeCategoryId) || GENERAL_CATEGORY;
+                            openSetup(cat);
+                            setMonths("12");
+                            setAmount(needed.toFixed(2));
+                            setAmountTouched(true);
+                          }}
+                        >
+                          Increase to {money(needed)} / month
+                        </Button>
+                      </div>
+                    );
+                  })()}
+
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => cancelMandate(m.id)} className="h-7 px-2">
                   <X className="w-3.5 h-3.5" />

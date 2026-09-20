@@ -12020,7 +12020,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 selfScheduled={schedulingMode === "self"}
                 championScope={championScope}
                 groupLabel={(gn) => groupLabels[String(gn)] || `League ${gn}`}
-                playByForRound={(round, stage) => deadlineForStage(roundDeadlines, round, stage)}
               />
             )}
 

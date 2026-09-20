@@ -27,6 +27,8 @@ import { NextRoundSetupDialog, type NextRoundReady } from "./NextRoundSetupDialo
 import { sectionLetter } from "@/lib/tournaments/knockout";
 import { outstandingDrawsHeadline, readyNextRoundScopes } from "@/lib/tournaments/next-round-setup";
 import { finalsRoundNumber } from "@/lib/tournaments/league-finals-draw";
+import { useRoundDefinitions } from "@/hooks/use-round-definitions";
+import { resolvePlayBy } from "@/lib/tournaments/round-definitions";
 
 
 
@@ -43,8 +45,6 @@ interface Props {
   onlyGroup?: number;
   /** Take the admin to the scheduling view for the newly generated fixtures. */
   onSchedule?: (groupNumber: number) => void;
-  /** Resolve the tournament-wide deadline for a round/stage. */
-  playByForRound?: (round: number, stageLabel?: string | null) => string | null;
   /** Optional pool-stage hand-off (play-off generation) where that flow exists. */
   onGeneratePlayoffs?: (groupNumber: number) => void;
   /** Compact inline treatment (standings header) instead of a full card. */
@@ -60,12 +60,12 @@ export function TournamentProgressCard({
   groupLabel,
   onlyGroup,
   onSchedule,
-  playByForRound,
   onGeneratePlayoffs,
   compact = false,
   className,
 }: Props) {
   const { data: rounds = [] } = useChampRounds(champId);
+  const { data: centralRounds } = useRoundDefinitions(champId);
   const { data: matches = [] } = useQuery({
     // Distinct cache slot: this join-less select must never overwrite the page's
     // joined match rows (player/court names). Prefix invalidations still hit it.
@@ -303,10 +303,12 @@ export function TournamentProgressCard({
           groupNumber={finalsGroup}
           sections={states.filter((s) => s.groupNumber === finalsGroup)}
           divisionLabel={`${label(finalsGroup)} · Finals`}
-          playBy={playByForRound?.(
-            finalsRoundNumber(states.filter((s) => s.groupNumber === finalsGroup)),
-            "Final",
-          ) ?? null}
+          playBy={resolvePlayBy({
+            stage: "final",
+            roundNumber: finalsRoundNumber(states.filter((s) => s.groupNumber === finalsGroup)),
+            definitions: centralRounds?.definitions,
+            milestones: centralRounds?.milestones,
+          }).date}
           onConfirmed={() => {
             const gn = finalsGroup;
             setFinalsGroup(null);

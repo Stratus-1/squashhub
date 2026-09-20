@@ -244,8 +244,7 @@ export function MyFamilyCard({ clubMemberId, clubId }: Props) {
                     {m.relationship || "family"} · {m.status === "invited" ? "waiting for them to accept" : "linked"}
                     {m.outstanding > 0 ? ` · ${money(m.outstanding)} outstanding` : " · nothing outstanding"}
                   </p>
-                </div>
-                {(!m.email || !m.phone) && m.club_member_id !== clubMemberId && (
+                  {(!m.email || !m.phone) && m.club_member_id !== clubMemberId && (
                     <p className="text-[10px] text-amber-600 mt-0.5">
                       Missing {!m.email && !m.phone ? "email and cell number" : !m.email ? "email address" : "cell number"} —{" "}
                       <button type="button" className="underline" onClick={() => openDetails(m)}>complete details</button>

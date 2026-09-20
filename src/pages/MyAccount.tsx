@@ -376,6 +376,7 @@ export default function MyAccount() {
           toast.success("Payment received — thank you!");
           queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
           queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+          queryClient.invalidateQueries({ queryKey: ["family-payer-fees"] });
           queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
         } else if (status === "failed") {
           clearPendingClubSession(gateway, sid);
@@ -423,6 +424,7 @@ export default function MyAccount() {
               toast.success("Payment received — thank you!");
               queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
               queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+              queryClient.invalidateQueries({ queryKey: ["family-payer-fees"] });
               queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
               return;
             }
@@ -500,6 +502,7 @@ export default function MyAccount() {
         toast.success("Payment received — thank you!");
         queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
         queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+        queryClient.invalidateQueries({ queryKey: ["family-payer-fees"] });
         queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
       } else if (status === "failed") {
         clearPendingClubSession("stitch", res.session_id);
@@ -661,6 +664,7 @@ export default function MyAccount() {
       if (vars.method === "card") return;
       queryClient.invalidateQueries({ queryKey: ["credit-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["club-member-fee-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["family-payer-fees"] });
       queryClient.invalidateQueries({ queryKey: ["member-journal-entries"] });
       if (vars.method === "eft") {
         toast.success("EFT payment recorded. Your secretary/admin will confirm receipt.");

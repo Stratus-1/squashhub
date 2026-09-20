@@ -46,3 +46,8 @@
 - [x] Round headings prefer each fixture's own stage label over "Round N"
 - [ ] Round headings group by stage, not round number (semi-finals under a QF heading)
 - [ ] Play-by date shown per heading must match the round actually planned
+
+## Nelspruit third-league final (20 Sep 2026)
+- [x] Create Hendrik Vorster v Raymond Gates final with play-by date 22 Sep 2026
+- [x] Keep later cross-pool rounds on the finals draw path after section 0 already exists
+- [x] Pass the central Final deadline into the progress-card draw confirmation

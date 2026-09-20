@@ -166,12 +166,26 @@ export function divisionPools(
     for (const m of sectionRows) {
       for (const id of sidesOf(m)) if (!entrantIds.includes(id)) entrantIds.push(id);
     }
+    // Elimination is DIVISION-wide, not pool-wide: a pool winner who then
+    // loses in the play-off is out of the competition, so their pool must not
+    // keep showing them as "still in".
+    // Losses in THIS pool plus losses in the division's play-off (section 0).
+    // Other pools are separate fields and never eliminate anyone here.
     const elimMap = new Map<string, number>();
-    for (const m of sectionRows) {
+    for (const m of rows) {
+      const s = Number(m.section_number ?? 1);
+      if (s !== section && s !== LEAGUE_PLAYOFF_SECTION) continue;
       if (m.is_bye || !isResolved(m)) continue;
       const round = Number(m.round_number) || 0;
       for (const id of losingSideIds(m)) if (!elimMap.has(id)) elimMap.set(id, round);
     }
+    // Who won THIS pool stays on record even after losing in the play-off.
+    const poolElim = new Set<string>();
+    for (const m of sectionRows) {
+      if (m.is_bye || !isResolved(m)) continue;
+      for (const id of losingSideIds(m)) poolElim.add(id);
+    }
+    const poolWinnerIds = entrantIds.filter((id) => !poolElim.has(id));
     const activeIds = entrantIds.filter((id) => !elimMap.has(id));
     const latestRound = sectionRows.reduce(
       (max, m) => Math.max(max, Number(m.round_number) || 0),
@@ -185,9 +199,11 @@ export function divisionPools(
       letter: String.fromCharCode(64 + Math.max(1, section)),
       entrantIds,
       activeIds,
-      eliminated: Array.from(elimMap.entries()).map(([memberId, round]) => ({ memberId, round })),
+      eliminated: Array.from(elimMap.entries())
+        .filter(([memberId]) => entrantIds.includes(memberId))
+        .map(([memberId, round]) => ({ memberId, round })),
       complete,
-      qualifierIds: complete ? activeIds : [],
+      qualifierIds: complete ? poolWinnerIds : [],
       latestRound,
       matchesTotal: playable.length,
       matchesDone,

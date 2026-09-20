@@ -1782,3 +1782,12 @@ of treating them as "gateway not configured".
 - **Cause:** our ITN signature always excluded empty fields and always appended the club passphrase. PayFast's own ITN sample keeps empty fields, and a merchant account may have no passphrase configured.
 - **Fix:** `pfItnSignatureMatches()` in `_shared/payfast.ts` accepts any of the four valid combinations (empty fields kept/dropped x passphrase/no passphrase). The payload is still confirmed with PayFast's server-side validate call, so security is unchanged. The stranded R20 session was settled manually.
 - **Recurring card payments (PayFast tokenisation):** `payfast-create-mandate`, `payfast-charge-mandates` (daily), `payfast-cancel-mandate`, and `payfast-itn` mandate activation. Stitch queue/submit jobs now filter `gateway='stitch'` so the two rails never collect the same mandate.
+
+## 2026-09-20 — Recurring instalments now reduce fees (Gordon's Bay / Katya Fulton)
+- record_collection_payment + record_mandate_initial_payment: added partial settlement — an instalment smaller than a fee now reduces the fee and posts Dr bank / Cr debtors against it (previously the fee stayed full and money sat as account credit).
+- journal_fee_payment_received trigger: on final settlement posts only the remainder after existing part-payment credits (idempotent).
+- booking-balance-gate: removed grandfathering bump-up; recognises fee_type 'club'; includes family fees (paid_by_member_id); allowance = season fees − payments made, buffer on top.
+- wallet-auto-settle: top-ups now retain the club's min_booking_balance before sweeping old fees.
+- PaymentMethodsCard: generic "Monthly club fees" row hidden when member's own category is recurring-eligible; family primaries see an "Increase to R x/month" action when family growth outgrows the active cap (new mandate cancels the old).
+- Data: Katya's fee reduced 1600→1333.34, her two Stitch journal credits tagged to the fee, Kailash's missing R120 family fee raised (payer Katya), stuck session c5437b70 cancelled. She needs R201.99 (R181.99 other charges + R20 float) to book.
+- Tests: src/test/booking-balance-gate.test.ts (5 tests).

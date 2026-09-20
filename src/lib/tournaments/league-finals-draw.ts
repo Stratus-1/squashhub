@@ -50,7 +50,14 @@ export function leagueSurvivors(sections: SectionProgression[]): string[] {
     if (!e.eliminated) ids.push(String(e.memberId));
   }
   for (const p of pools) {
-    for (const e of p.entrants) {
+    // A decided pool with no entrant detail still has its winner standing.
+    const list =
+      p.entrants.length > 0
+        ? p.entrants
+        : p.winner
+          ? [{ memberId: p.winner, eliminated: false } as any]
+          : [];
+    for (const e of list) {
       const id = String(e.memberId);
       if (e.eliminated || out.has(id) || inFinals.has(id) || ids.includes(id)) continue;
       ids.push(id);

@@ -1392,7 +1392,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setUsePerLeagueFormats(true);
     copy(setLeagueFormats as any);
     copy(setLeagueSections as any);
-    copy(setLeagueSources as any);
     copy(setSwissPools as any);
     copy(setSwissRounds as any);
     copy(setGroupDurations as any);
@@ -1405,7 +1404,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     copy(setLeagueBestOf as any);
     copy(setLeagueWinConditions as any);
     copy(setLeaguePlayoffs as any);
+    // The copy keeps the rules but NOT the entrants — the organiser picks the
+    // leagues/players for the new division, which is the whole point of it.
+    setSourceForLeague(Number(to), { mode: "all", leagueIds: [] });
     setGroupLabels((m) => ({ ...m, [to]: `${(m[from] || `League ${gn}`).trim()} (copy)` }));
+    // Open the new division so the next thing they see is "who plays in it".
+    setCollapsedLeagues((m) => ({ ...m, [to]: false }));
     toast.success("Division duplicated — rename it and pick who plays in it");
   };
 

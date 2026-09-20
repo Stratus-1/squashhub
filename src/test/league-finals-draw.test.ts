@@ -7,7 +7,7 @@ import {
   leagueSurvivors,
   suggestLeagueFinalsBoard,
 } from "@/lib/tournaments/league-finals-draw";
-import type { SectionProgression } from "@/lib/tournaments/knockout-progression";
+import { sectionProgression, type SectionProgression } from "@/lib/tournaments/knockout-progression";
 
 const pool = (
   section: number,

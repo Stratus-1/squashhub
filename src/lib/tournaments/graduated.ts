@@ -27,6 +27,7 @@ import {
   dedupeSeeds,
   assertNoSelfMatches,
   roundLabel,
+  composeStageLabel,
   winnerOf,
 } from "./knockout";
 
@@ -119,7 +120,7 @@ export function buildGraduatedFirstRound(opts: {
       round_number: round,
       bracket_position: i + 1,
       stage: "ko",
-      stage_label: opts.sectionLabel ? `${opts.sectionLabel} · ${label}` : label,
+      stage_label: composeStageLabel(label, opts.sectionLabel),
       player_a_member_id: pair.a.memberId,
       partner_a_member_id: pair.a.partnerId ?? null,
       player_b_member_id: pair.b?.memberId ?? null,
@@ -206,7 +207,7 @@ export function buildGraduatedNextRound(opts: {
       round_number: round,
       bracket_position: i + 1,
       stage: "ko",
-      stage_label: opts.sectionLabel ? `${opts.sectionLabel} · ${label}` : label,
+      stage_label: composeStageLabel(label, opts.sectionLabel),
       player_a_member_id: pair.a.memberId,
       partner_a_member_id: pair.a.partnerId ?? null,
       player_b_member_id: pair.b?.memberId ?? null,

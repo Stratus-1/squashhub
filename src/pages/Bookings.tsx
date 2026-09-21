@@ -2765,10 +2765,10 @@ export default function Bookings() {
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[280px] p-0" align="start">
-                      <Command>
+                    <PopoverContent className="w-[min(320px,calc(100vw-2.5rem))] p-0" align="start">
+                      <Command className="[&_[cmdk-item]]:py-2.5">
                         <CommandInput placeholder="Search visitor..." />
-                        <CommandList>
+                        <CommandList className="max-h-[min(55vh,420px)] overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
                           <CommandEmpty>No visitors registered yet.</CommandEmpty>
                           <CommandGroup>
                             {clubVisitors.map((v) => {

@@ -22,17 +22,17 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
 
   const initial = () => ({
     guestFee: Number((club as any).visitor_booking_fee ?? 0),
-    visitorCourtFee: Number((club as any).visitor_self_booking_fee ?? 0),
     requireVisitor: !!(club as any).require_visitor_for_member_booking,
     allowSolo: (club as any).allow_solo_bookings ?? true,
   });
+
   const [form, setForm] = useState(initial);
   useEffect(() => setForm(initial()), [
     club.id,
     (club as any).visitor_booking_fee,
-    (club as any).visitor_self_booking_fee,
     (club as any).require_visitor_for_member_booking,
     (club as any).allow_solo_bookings,
+
   ]);
   const lock = useEditLock(() => setForm(initial()));
 
@@ -41,8 +41,8 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
       await updateClub.mutateAsync({
         id: club.id,
         visitor_booking_fee: Math.max(0, form.guestFee || 0),
-        visitor_self_booking_fee: Math.max(0, form.visitorCourtFee || 0),
         require_visitor_for_member_booking: form.requireVisitor,
+
         allow_solo_bookings: form.allowSolo,
       } as any);
       toast.success("Visitor booking rules saved");
@@ -92,31 +92,14 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
           )}
         </div>
 
-        {/* Court fee for a visitor booking their own court. Whether visitors may
-            book at all, and what a visitor PASS costs, stay on the Visitors page
-            and Fee Structure respectively. */}
-        <div className="space-y-2 rounded-lg border p-3">
-          <Label className="text-xs font-semibold">Visitor books their own court</Label>
-          <p className="text-[11px] text-muted-foreground">
-            Court fee charged to a visitor with a valid pass each time they book a court themselves.
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{symbol}</span>
-            <Input
-              type="number"
-              min={0}
-              step={1}
-              className="h-8 text-xs w-28"
-              value={form.visitorCourtFee}
-              onChange={(e) => setForm((p) => ({ ...p, visitorCourtFee: Math.max(0, parseFloat(e.target.value) || 0) }))}
-            />
-            <span className="text-[11px] text-muted-foreground">per booking (0 = no charge)</span>
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            Whether visitors may book at all is on the Visitors page; visitor pass prices are under Fees &rarr; Fee
-            Structure.
-          </p>
-        </div>
+        {/* A visitor booking their own court pays through their visitor PASS —
+            the old per-booking visitor fee has been folded into the Day Pass.
+            Pass prices live in Fees → Fee Structure. */}
+        <p className="text-[11px] text-muted-foreground rounded-lg border border-dashed p-3">
+          A visitor booking a court on their own pays through their visitor pass (day, 3-day or monthly). Pass
+          prices are under Fees &rarr; Fee Structure; whether visitors may book at all is on the Visitors page.
+        </p>
+
 
 
 

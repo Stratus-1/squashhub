@@ -83,6 +83,9 @@ import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
+import { visitorBookingDecision } from "@/lib/visitor-pass";
+import { useMyVisitorPass } from "@/hooks/use-visitor-pass";
+
 
 function timeToMinutes(t: string) {
   const [hh, mm] = t.split(":").map((x) => Number(x));
@@ -444,8 +447,9 @@ export default function Bookings() {
     [(myClub as any)?.booking_reminder_channels, (myClub as any)?.booking_confirm_channels, msgChannelsAllowed],
   );
   const visitorFee = Number((myClub as any)?.visitor_booking_fee ?? 0);
-  // Fee a registered visitor pays each time they book a court on their own.
-  const visitorSelfFee = Number((myClub as any)?.visitor_self_booking_fee ?? 0);
+  // Visitors pay through their visitor pass, not a per-booking court fee.
+  const { data: myVisitorPass } = useMyVisitorPass(activeMember?.id);
+
   const requireVisitorNamed = !!(myClub as any)?.require_visitor_for_member_booking;
   // Some clubs don't allow ANYONE to hold a court on their own — no admin or
   // staff exemptions. Events, tournaments and maintenance use separate
@@ -995,12 +999,22 @@ export default function Bookings() {
       toast.error(accessGate.reason || "Account suspended — settle outstanding fees to book courts.");
       return;
     }
-    // Enforce club-level visitor booking permission
+    // Enforce club-level visitor booking permission AND a live visitor pass —
+    // the pass (day / 3-day / monthly) is what a visitor pays to book courts,
+    // so there is no separate per-booking visitor court fee any more.
     const isVisitorRole = String((activeMember as any)?.role || "").toLowerCase() === "visitor";
-    if (isVisitorRole && !(myClub as any)?.visitors_can_book) {
-      toast.error("Visitor bookings aren't enabled at this club. Please ask a member or the club admin to book on your behalf.");
-      return;
+    if (isVisitorRole) {
+      const decision = visitorBookingDecision({
+        isVisitor: true,
+        visitorsCanBook: !!(myClub as any)?.visitors_can_book,
+        pass: myVisitorPass ?? null,
+      });
+      if (!decision.allowed) {
+        toast.error(decision.reason);
+        return;
+      }
     }
+
     // A visitor must always be named — the club charges the booking member a
     // visitor fee for letting them play.
     if (bookingDialog.playerMode === "visitor" && !bookingDialog.guestName.trim()) {
@@ -2658,13 +2672,14 @@ export default function Bookings() {
               )}
 
 
-              {/* A visitor booking on their own pays the club's per-visit fee. */}
-              {String((activeMember as any)?.role || "").toLowerCase() === "visitor" && visitorSelfFee > 0 && (
-                <p className="text-[11px] text-amber-600 leading-snug">
-                  A visitor fee of {money(visitorSelfFee)} will be charged for this visit. It's added after
-                  the booking time has passed.
+              {/* A visitor books on the strength of their pass — no extra court fee. */}
+              {String((activeMember as any)?.role || "").toLowerCase() === "visitor" && myVisitorPass?.valid_until && (
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Booking with your visitor pass, valid until{" "}
+                  {new Date(myVisitorPass.valid_until).toLocaleString()}.
                 </p>
               )}
+
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">

@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyClub } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
+import { VisitorPassesPanel } from "./VisitorPassesPanel";
+
 
 interface Visitor {
   id: string;

@@ -148,12 +148,16 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       });
       if (error) throw error;
 
+      // Retired visitors (people who now belong to another club) keep all their
+      // history but drop off this list.
       const { data: memberVisitors, error: memberError } = await fromExt("club_members")
-        .select("id, name, email, phone, club_member_number, gender, joined_at, home_club_name, suspension_status, profiles:user_id(email, phone)")
+        .select("id, name, email, phone, club_member_number, gender, joined_at, home_club_name, suspension_status, status, profiles:user_id(email, phone)")
         .eq("club_id", clubId)
         .eq("role", "visitor")
+        .neq("status", "resigned")
         .order("joined_at", { ascending: false });
       if (memberError) throw memberError;
+
 
       const registeredVisitors = (data || []).map((v: Visitor) => ({ ...v, source: "visitor_registration" as const }));
       // Shadow member rows (created by the tournament wizard to satisfy FKs)

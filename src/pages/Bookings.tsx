@@ -2666,9 +2666,9 @@ export default function Bookings() {
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">
-                  {requireVisitorNamed ? "2nd Player (required)" : "2nd Player (optional)"}
+                  {secondPlayerRequired ? "2nd Player (required)" : "2nd Player (optional)"}
                 </Label>
-                {requireVisitorNamed && (
+                {secondPlayerRequired && (
                   <p className="text-[11px] text-muted-foreground leading-snug">
                     Name your opponent. If they're not a member, choose Visitor
                     {visitorFee > 0 ? ` — a ${money(visitorFee)} visitor fee applies.` : "."}

@@ -16883,6 +16883,7 @@ export type Database = {
           owner_org_id: string
         }[]
       }
+      tournament_pair_list: { Args: { p_champ_id: string }; Returns: Json }
       tournament_public_summary: { Args: { p_champ_id: string }; Returns: Json }
       tournament_withdrawal_deadline: {
         Args: { p_cutoff_days: number; p_start_date: string }

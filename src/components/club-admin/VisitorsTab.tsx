@@ -55,9 +55,10 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   // Visitor policy state (persisted on clubs row)
   const [canBook, setCanBook] = useState<boolean>(!!club?.visitors_can_book);
   const [accessCtrl, setAccessCtrl] = useState<boolean>(!!club?.visitors_access_control);
-  // Fee a REGISTERED visitor pays when booking a court themselves. The separate
-  // "member brings a guest" fee lives with the court booking rules.
-  const [visitorFee, setVisitorFee] = useState<string>(String(club?.visitor_self_booking_fee ?? 0));
+  // The per-booking court fee a registered visitor pays is owned by the Courts
+  // booking-rules card (single source of truth); visitor PASS prices are owned
+  // by Fee Structure. Neither is edited here any more.
+
   const [policySaving, setPolicySaving] = useState(false);
   const [policyDirty, setPolicyDirty] = useState(false);
   /**

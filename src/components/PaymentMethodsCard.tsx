@@ -96,6 +96,25 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubId,
   });
 
+  // The member's OWN fee category, whether or not the club flagged it
+  // debit-order eligible. This is the only category that should ever be
+  // offered for a monthly payment — a member never pays another category's fee.
+  const { data: myCategory = null } = useQuery({
+    queryKey: ["my-fee-category", memberFeeCategoryId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("member_fee_categories")
+        .select("id, name, annual_fee, debit_order_eligible, debit_order_rail")
+        .eq("id", memberFeeCategoryId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as unknown as FeeCategory) || null;
+    },
+    enabled: !!memberFeeCategoryId,
+  });
+
+
+
   // Fallback annual amount: the member's own fee category (even if it isn't
   // flagged debit-order eligible) and, failing that, their outstanding fees.
   const { data: fallbackAnnual = 0 } = useQuery({
@@ -180,16 +199,14 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   };
 
   const visibleCategories = useMemo(() => {
-    const mine = memberFeeCategoryId
-      ? categories.filter((c) => c.id === memberFeeCategoryId)
-      : [];
-    // The generic "Monthly club fees" fallback row exists only for members
-    // whose own category isn't recurring-eligible (or who have none). Showing
-    // it alongside their own category duplicates the same amount on screen.
-    if (mine.length > 0) return mine;
-    return [...categories, GENERAL_CATEGORY];
+    // Only ever offer the fee that actually applies to this member. If the club
+    // hasn't assigned them a category, fall back to the generic monthly row —
+    // never list every category in the club's fee structure.
+    if (myCategory) return [myCategory];
+    return [GENERAL_CATEGORY];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories, memberFeeCategoryId]);
+  }, [myCategory]);
+
 
 
   const activeMandates = useMemo(

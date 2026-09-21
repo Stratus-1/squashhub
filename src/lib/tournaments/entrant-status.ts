@@ -105,8 +105,19 @@ export const ENTRANT_CATEGORY_VARIANT: Record<
   declined: "destructive",
 };
 
+/**
+ * The words the organiser sees. "Paid" is only ever shown when the tournament
+ * actually charges an entry fee and money has changed hands. A free tournament
+ * says "Entered", and a player the admin simply picked off the members list
+ * says "Selected".
+ */
 export function entrantStatusLabel(row: EntrantRowLike, ctx: EntrantContext = {}): string {
-  return ENTRANT_CATEGORY_LABEL[classifyEntrant(row, ctx)];
+  const category = classifyEntrant(row, ctx);
+  if (category !== "registered") return ENTRANT_CATEGORY_LABEL[category];
+  if (isAdminSelected(row)) return "Selected";
+  if (!ctx.paymentRequired) return "Entered";
+  if (normalizeEntrantStatus(row.status) === "waived") return "Entered — fee waived";
+  return "Paid — entered";
 }
 
 /**

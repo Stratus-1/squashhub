@@ -199,16 +199,14 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   };
 
   const visibleCategories = useMemo(() => {
-    const mine = memberFeeCategoryId
-      ? categories.filter((c) => c.id === memberFeeCategoryId)
-      : [];
-    // The generic "Monthly club fees" fallback row exists only for members
-    // whose own category isn't recurring-eligible (or who have none). Showing
-    // it alongside their own category duplicates the same amount on screen.
-    if (mine.length > 0) return mine;
-    return [...categories, GENERAL_CATEGORY];
+    // Only ever offer the fee that actually applies to this member. If the club
+    // hasn't assigned them a category, fall back to the generic monthly row —
+    // never list every category in the club's fee structure.
+    if (myCategory) return [myCategory];
+    return [GENERAL_CATEGORY];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categories, memberFeeCategoryId]);
+  }, [myCategory]);
+
 
 
   const activeMandates = useMemo(

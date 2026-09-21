@@ -5147,6 +5147,92 @@ export type Database = {
           },
         ]
       }
+      club_visitor_passes: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          fee_category_id: string | null
+          fee_payment_id: string | null
+          id: string
+          pass_kind: string
+          status: string
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          fee_category_id?: string | null
+          fee_payment_id?: string | null
+          id?: string
+          pass_kind: string
+          status?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          fee_category_id?: string | null
+          fee_payment_id?: string | null
+          id?: string
+          pass_kind?: string
+          status?: string
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_visitor_passes_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_visitor_passes_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_visitor_passes_fee_category_id_fkey"
+            columns: ["fee_category_id"]
+            isOneToOne: false
+            referencedRelation: "member_fee_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_visitor_passes_fee_payment_id_fkey"
+            columns: ["fee_payment_id"]
+            isOneToOne: false
+            referencedRelation: "club_member_fee_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_visitors: {
         Row: {
           category: string
@@ -5468,6 +5554,7 @@ export type Database = {
           variance_threshold_pct: number | null
           visitor_booking_fee: number
           visitor_home_clubs_enabled: boolean
+          visitor_pass_requires_approval: boolean
           visitor_self_booking_fee: number
           visitors_access_control: boolean
           visitors_can_book: boolean
@@ -5616,6 +5703,7 @@ export type Database = {
           variance_threshold_pct?: number | null
           visitor_booking_fee?: number
           visitor_home_clubs_enabled?: boolean
+          visitor_pass_requires_approval?: boolean
           visitor_self_booking_fee?: number
           visitors_access_control?: boolean
           visitors_can_book?: boolean
@@ -5764,6 +5852,7 @@ export type Database = {
           variance_threshold_pct?: number | null
           visitor_booking_fee?: number
           visitor_home_clubs_enabled?: boolean
+          visitor_pass_requires_approval?: boolean
           visitor_self_booking_fee?: number
           visitors_access_control?: boolean
           visitors_can_book?: boolean
@@ -8899,6 +8988,7 @@ export type Database = {
           show_on_landing: boolean
           sort_order: number
           updated_at: string
+          visitor_pass_kind: string | null
         }
         Insert: {
           active?: boolean
@@ -8926,6 +9016,7 @@ export type Database = {
           show_on_landing?: boolean
           sort_order?: number
           updated_at?: string
+          visitor_pass_kind?: string | null
         }
         Update: {
           active?: boolean
@@ -8953,6 +9044,7 @@ export type Database = {
           show_on_landing?: boolean
           sort_order?: number
           updated_at?: string
+          visitor_pass_kind?: string | null
         }
         Relationships: [
           {
@@ -14551,6 +14643,33 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_decide_visitor_pass: {
+        Args: { p_approve: boolean; p_pass_id: string; p_reason?: string }
+        Returns: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          fee_category_id: string | null
+          fee_payment_id: string | null
+          id: string
+          pass_kind: string
+          status: string
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "club_visitor_passes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_delete_journal_group: {
         Args: { _journal_ref: string; _note?: string }
         Returns: Json
@@ -14870,6 +14989,10 @@ export type Database = {
       booking_notice_data: {
         Args: { p_booking: Database["public"]["Tables"]["bookings"]["Row"] }
         Returns: Json
+      }
+      booking_visitor_entitled: {
+        Args: { p_club_id: string; p_club_member_id: string; p_user_id: string }
+        Returns: boolean
       }
       can_access_champ_match: {
         Args: { _match_id: string; _user_id: string }
@@ -15645,6 +15768,10 @@ export type Database = {
           unpaid_amount: number
           wifi_enabled: boolean
         }[]
+      }
+      has_active_visitor_pass: {
+        Args: { p_club_member_id: string }
+        Returns: boolean
       }
       has_org_role: {
         Args: {
@@ -16782,6 +16909,65 @@ export type Database = {
         }
         Returns: boolean
       }
+      visitor_charge_court_fee: {
+        Args: { p_booking_id: string }
+        Returns: boolean
+      }
+      visitor_pass_duration: { Args: { p_kind: string }; Returns: string }
+      visitor_pass_sync: {
+        Args: { p_pass_id: string }
+        Returns: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          fee_category_id: string | null
+          fee_payment_id: string | null
+          id: string
+          pass_kind: string
+          status: string
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "club_visitor_passes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      visitor_purchase_pass: {
+        Args: { p_club_member_id: string; p_pass_kind: string }
+        Returns: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          club_id: string
+          club_member_id: string
+          created_at: string
+          fee_category_id: string | null
+          fee_payment_id: string | null
+          id: string
+          pass_kind: string
+          status: string
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "club_visitor_passes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       whatsapp_rate: {
         Args: { _category?: string; _club_id: string }
         Returns: number
@@ -16829,6 +17015,7 @@ export type Database = {
         | "cleaning_services"
         | "wifi_income"
         | "security"
+        | "visitor_income"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -17006,6 +17193,7 @@ export const Constants = {
         "cleaning_services",
         "wifi_income",
         "security",
+        "visitor_income",
       ],
       integration_provider: [
         "strava",

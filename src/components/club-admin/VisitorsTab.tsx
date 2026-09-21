@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMyClub } from "@/hooks/use-club";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
+import { VisitorPassesPanel } from "./VisitorPassesPanel";
+
 
 interface Visitor {
   id: string;
@@ -55,9 +57,10 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   // Visitor policy state (persisted on clubs row)
   const [canBook, setCanBook] = useState<boolean>(!!club?.visitors_can_book);
   const [accessCtrl, setAccessCtrl] = useState<boolean>(!!club?.visitors_access_control);
-  // Fee a REGISTERED visitor pays when booking a court themselves. The separate
-  // "member brings a guest" fee lives with the court booking rules.
-  const [visitorFee, setVisitorFee] = useState<string>(String(club?.visitor_self_booking_fee ?? 0));
+  // The per-booking court fee a registered visitor pays is owned by the Courts
+  // booking-rules card (single source of truth); visitor PASS prices are owned
+  // by Fee Structure. Neither is edited here any more.
+
   const [policySaving, setPolicySaving] = useState(false);
   const [policyDirty, setPolicyDirty] = useState(false);
   /**
@@ -75,21 +78,19 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       setCanBook(!!club.visitors_can_book);
       setAccessCtrl(!!club.visitors_access_control);
       setAskHomeClub(!!club.visitor_home_clubs_enabled);
-      setVisitorFee(String(club.visitor_self_booking_fee ?? 0));
       setPolicyDirty(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_self_booking_fee]);
+  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_home_clubs_enabled]);
 
   const savePolicy = async () => {
     setPolicySaving(true);
     try {
-      const fee = Number(visitorFee) || 0;
       const { error } = await (supabase.from("clubs") as any)
         .update({
           visitors_can_book: canBook,
           visitors_access_control: accessCtrl,
-          visitor_self_booking_fee: fee,
+
           visitor_home_clubs_enabled: askHomeClub,
         })
         .eq("id", clubId);
@@ -574,26 +575,16 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         </label>
 
         {canBook && (
-          <div className="flex items-center gap-3 rounded-md border border-border bg-card p-2.5">
-            <div className="flex-1 min-w-0">
-              <Label htmlFor="visitor-fee" className="text-xs font-semibold">Registered visitor booking fee</Label>
-              <p className="text-[10px] text-muted-foreground">Charged per booking a registered visitor makes for themselves. Set to 0 for free. A guest brought along by a member is handled under Courts &rarr; booking rules.</p>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <span className="text-xs text-muted-foreground">{currencySymbol}</span>
-              <Input
-                id="visitor-fee"
-                type="number"
-                min={0}
-                step="0.01"
-                value={visitorFee}
-                onChange={(e) => { setVisitorFee(e.target.value); setPolicyDirty(true); }}
-                className="w-24 h-8 text-right"
-              />
-            </div>
-          </div>
+          <p className="text-[10px] text-muted-foreground rounded-md border border-dashed p-2.5">
+            The court fee a visitor pays for each booking they make themselves is set under Courts &rarr; booking rules,
+            next to the fee a member pays for bringing a guest. Visitor pass prices are set under Fees &rarr; Fee
+            Structure.
+          </p>
         )}
       </Card>
+
+      <VisitorPassesPanel clubId={clubId} requiresApproval={!!club?.visitor_pass_requires_approval} />
+
 
 
       <div className="relative">

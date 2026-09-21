@@ -550,6 +550,7 @@ export default function SuperAdminOutreachCampaignEditor() {
                     <SelectItem value="engaged">Opened or clicked before</SelectItem>
                     <SelectItem value="opened">Opened before</SelectItem>
                     <SelectItem value="clicked">Clicked a link before</SelectItem>
+                    <SelectItem value="new">New — never emailed before</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-[11px] text-white/50 mt-1">

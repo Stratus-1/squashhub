@@ -35,6 +35,7 @@ export function VisitorPassCard({
   const { data: pass } = useMyVisitorPass(clubMemberId);
   const purchase = usePurchaseVisitorPass();
   const [busyKind, setBusyKind] = useState<VisitorPassKind | null>(null);
+  const [showBuyOptions, setShowBuyOptions] = useState(false);
 
   const offered = useMemo(
     () =>

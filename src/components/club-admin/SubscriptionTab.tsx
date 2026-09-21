@@ -848,7 +848,7 @@ function renderInvoiceHtml(
   billTo?: any
 ) {
   const money = (n: number) => fmtMoney(n, inv.currency);
-  const platformName = bank.company_name || "SquashHub / HKFT Services";
+  const platformName = bank.company_name || "SquashHub / Stratus Software Solutions (Pty) Ltd";
   const platformAddr = bank.company_address || "";
   const vatNo = bank.vat_number ? `VAT No: ${bank.vat_number}` : "";
   return `<!doctype html>

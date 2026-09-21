@@ -92,7 +92,7 @@ function mergeVars(prospect: any, contact: any, campaign?: any) {
 const CONTACT_FOOTER = `
 <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#64748b;max-width:600px;margin-top:26px;border-top:1px solid #e2e8f0;padding-top:12px">
 You can simply reply to this email and it comes straight to us.<br>
-SquashHub — HKFT Services &middot; Willem Pretorius &middot; +27 83 375 9003 &middot;
+SquashHub — Stratus Software Solutions (Pty) Ltd &middot; Willem Pretorius &middot; +27 83 375 9003 &middot;
 <a href="mailto:support@squashhub.co.za" style="color:#1d4ed8">support@squashhub.co.za</a> &middot;
 <a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a>
 </div>`;
@@ -158,7 +158,7 @@ function applyTracking(
     ? `<a href="${TRACK_BASE}/u?r=${recipientId}" style="color:#94a3b8">Unsubscribe</a>`
     : `<span style="color:#94a3b8">Unsubscribe</span>`;
   const footer = `<div style="margin-top:26px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:11px;color:#94a3b8;line-height:1.5">
-SquashHub — HKFT Services, South Africa.<br>
+SquashHub — Stratus Software Solutions (Pty) Ltd, South Africa.<br>
 You are receiving this because you are listed as a contact for a squash club. ${unsub} and we will not contact you again.
 </div>`;
   const pixel = trackable

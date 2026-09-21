@@ -43,6 +43,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const [overrideRegId, setOverrideRegId] = useState<string | null>(null);
   const [overridePartnerId, setOverridePartnerId] = useState<string>("");
   const [showCancelled, setShowCancelled] = useState(false);
+  const [showProofOnly, setShowProofOnly] = useState(false);
   const [withdrawReg, setWithdrawReg] = useState<any | null>(null);
   const [withdrawGroup, setWithdrawGroup] = useState<string>("all");
 
@@ -256,7 +257,15 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
   const activeRegistrations = registrations.filter((r: any) => r.status !== "cancelled");
   const cancelledCount = registrations.length - activeRegistrations.length;
-  const visibleRegistrations = showCancelled ? registrations : activeRegistrations;
+  /** Proof of payment uploaded but the money has not been confirmed yet — needs an admin decision. */
+  const awaitingProofCheck = (r: any) =>
+    !!r.proof_url && (r.status === "pending_eft" || r.status === "pending_payment");
+  const proofPendingCount = activeRegistrations.filter(awaitingProofCheck).length;
+
+  const baseRegistrations = showCancelled ? registrations : activeRegistrations;
+  const visibleRegistrations = showProofOnly
+    ? baseRegistrations.filter(awaitingProofCheck)
+    : baseRegistrations;
 
   const feeRequired = entryFee > 0 && !!champ?.payment_required;
   const participatingCount = activeRegistrations.filter((r: any) => isParticipatingEntrant(r, { paymentRequired: feeRequired })).length;
@@ -275,6 +284,17 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
             <Badge variant="default">{feeRequired ? "Registered" : "Entered"} {participatingCount}</Badge>
             {feeRequired && <Badge variant="secondary">Paid {paidCount}</Badge>}
             {feeRequired && <Badge variant="outline">Pending {pendingCount}</Badge>}
+            {proofPendingCount > 0 && (
+              <Badge
+                variant="default"
+                className="cursor-pointer bg-amber-600 hover:bg-amber-700"
+                title="Proof of payment uploaded — confirm or waive these entries"
+                onClick={() => setShowProofOnly((v) => !v)}
+              >
+                <FileText className="w-3 h-3 mr-1" />
+                {showProofOnly ? "Showing " : ""}Proof to check {proofPendingCount}
+              </Badge>
+            )}
             <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
               Active {activeRegistrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
             </Badge>
@@ -357,6 +377,11 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           if (s?.has_account) return <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-500">Invited, not activated</Badge>;
                           return <Badge variant="outline" className="text-[10px] text-rose-700 border-rose-500">No account</Badge>;
                         })()}
+                        {awaitingProofCheck(r) && (
+                          <Badge variant="default" className="text-[10px] bg-amber-600 hover:bg-amber-600">
+                            Proof uploaded — check
+                          </Badge>
+                        )}
                         {r.status === "cancelled" && (
                           <Badge variant="destructive" className="text-[10px]">Declined</Badge>
                         )}

@@ -2704,7 +2704,16 @@ export default function Bookings() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[280px] p-0" align="start">
-                      <Command>
+                      <Command
+                        filter={(value, search) => {
+                          const q = search.trim().toLowerCase();
+                          if (!q) return 1;
+                          const v = value.toLowerCase();
+                          // Plain word matching — every typed word must appear,
+                          // so "andre visser" and "visser" both find the player.
+                          return q.split(/\s+/).every((w) => v.includes(w)) ? 1 : 0;
+                        }}
+                      >
                         <CommandInput placeholder="Search member..." />
                         <CommandList>
                           <CommandEmpty>

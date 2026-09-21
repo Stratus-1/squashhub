@@ -523,7 +523,9 @@ export default function ClubChampsView() {
         ...e,
         ...buildRow(stats),
         name: isDoubles
-          ? getTeamName(e.club_members, e.partner)
+          ? (e.partner
+              ? getTeamName(e.club_members, e.partner)
+              : `${getPlayerName(e.club_members)}${e.is_provisional_entry ? " (awaiting partner)" : ""}`)
           : getPlayerName(e.club_members),
         leaguePlayerRank: playerRankByMember.get(e.club_member_id) ?? null,
         clubLadderRank: ladders.length ? Math.min(...ladders) : null,

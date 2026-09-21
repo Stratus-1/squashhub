@@ -55,6 +55,9 @@ export function TournamentInviteRegisterDialog({
   const [showEft, setShowEft] = useState(false);
   const [chosenDivisions, setChosenDivisions] = useState<number[]>([]);
   const [divisionError, setDivisionError] = useState("");
+  // WhatsApp group opt-in, chosen at entry time. Default on; unticking means
+  // the organiser's group join link is never sent to this player.
+  const [waGroupOptIn, setWaGroupOptIn] = useState<boolean>(registration?.whatsapp_group_opt_in !== false);
 
   // Divisions this member may enter — the invitee ticks the ones they want.
   const { data: divisionOptions = [] } = useQuery({
@@ -190,6 +193,12 @@ export function TournamentInviteRegisterDialog({
         p_divisions: chosenDivisions.length > 0 ? chosenDivisions : null,
       });
       if (error) throw error;
+      // Record the WhatsApp group choice made at entry time. Players who
+      // unticked the box are never sent the group join link.
+      const { error: optErr } = await fromExt("club_champs_registrations")
+        .update({ whatsapp_group_opt_in: waGroupOptIn } as any)
+        .eq("id", registration.id);
+      if (optErr) throw optErr;
       await onAccepted?.();
       return (data as any)?.status as string;
     },

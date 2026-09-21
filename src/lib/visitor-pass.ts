@@ -130,14 +130,16 @@ export function visitorBookingDecision(opts: {
   now?: Date;
 }): VisitorBookingDecision {
   if (!opts.isVisitor) return { allowed: true };
+  const pass = opts.pass;
+  // A paid, live pass is what a visitor buys the right to book with — it stands
+  // on its own, including booking a court alone.
+  if (isPassLive(pass, opts.now ?? new Date())) return { allowed: true };
   if (!opts.visitorsCanBook) {
     return {
       allowed: false,
       reason: "Visitor bookings aren't enabled at this club. Please ask a member or the club admin to book on your behalf.",
     };
   }
-  const pass = opts.pass;
-  if (isPassLive(pass, opts.now ?? new Date())) return { allowed: true };
   if (!pass || pass.status === "expired" || pass.status === "cancelled") {
     return { allowed: false, reason: "You need a valid visitor pass to book a court. Buy one from your account." };
   }

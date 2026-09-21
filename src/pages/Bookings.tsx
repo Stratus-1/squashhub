@@ -1470,7 +1470,15 @@ export default function Bookings() {
         return;
       }
 
-      toast.error(err.message || "Failed to book");
+      // A visitor without a live pass is blocked by the server rule. Show the
+      // plain-language reason and a way to fix it, never the raw rule text.
+      if (/active pass|visitor_entitled/i.test(String(err?.message || ""))) {
+        toast.error("Your visitor pass isn't active yet — pay for it and you can book on your own.", {
+          action: { label: "Go to My Account", onClick: () => navigate("/my-account") },
+        });
+      } else {
+        toast.error(err.message || "Failed to book");
+      }
     } finally {
       if (progressToastId !== null) {
         toast.dismiss(progressToastId);

@@ -89,8 +89,8 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
           </div>
           {!form.allowSolo && (
             <p className="text-[11px] text-muted-foreground pt-1">
-              Club admins, and anyone with unlimited bookings or maintenance/cleaning booking rights, can still
-              book on their own.
+              This applies to everyone, including club admins — events, tournaments and maintenance are booked
+              through their own functions, so no exceptions are needed here.
             </p>
           )}
         </div>

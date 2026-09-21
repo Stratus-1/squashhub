@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
         action_url: String(campaign.action_url || ""),
       });
       const subject = renderMerge(campaign.subject || "Update from SquashHub", vars);
-      const html = renderMerge(campaign.body_html || "", vars);
+      const html = withEmailFooter(renderMerge(campaign.body_html || "", vars));
       const plain = htmlToPlainText(html);
       const actionUrl = renderMerge(campaign.action_url || "", vars);
       const actionLabel = String(campaign.action_label || "").trim();

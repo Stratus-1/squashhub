@@ -198,6 +198,54 @@ export default function ClubChampsView() {
     enabled: !!champId,
   });
 
+  /**
+   * Everyone who accepted their entry should be visible in the standings, even
+   * before the draw puts them into a division. Accepted registrations that have
+   * no entry row yet are shown as provisional rows (all zeros) so members can
+   * see who has entered. These rows are display-only: they are never fed to the
+   * draw, pool assignment or seeding logic, which keeps using `entries`.
+   */
+  const provisionalEntries = useMemo(() => {
+    const known = new Set<string>();
+    (entries as any[]).forEach((e: any) => {
+      if (e.club_member_id) known.add(e.club_member_id);
+      if (e.partner_member_id) known.add(e.partner_member_id);
+    });
+    const fallbackGroup = (entries as any[])[0]?.group_number ?? 1;
+    const seen = new Set<string>();
+    const out: any[] = [];
+    for (const r of registrations as any[]) {
+      if (!r.confirmed_at) continue;
+      if (r.status === "cancelled" || r.status === "withdrawn") continue;
+      const mid = r.club_member_id as string | null;
+      if (!mid || known.has(mid) || seen.has(mid)) continue;
+      const pid: string | null =
+        r.partner_member_id && !known.has(r.partner_member_id) && !seen.has(r.partner_member_id)
+          ? r.partner_member_id
+          : null;
+      seen.add(mid);
+      if (pid) seen.add(pid);
+      out.push({
+        id: `reg-${r.id}`,
+        champ_id: champId,
+        club_member_id: mid,
+        partner_member_id: pid,
+        group_number: Number(Array.isArray(r.division_choices) ? r.division_choices[0] : null) || fallbackGroup,
+        order_index: 9000,
+        club_members: r.member,
+        partner: pid ? r.partner : null,
+        is_provisional_entry: true,
+      });
+    }
+    return out;
+  }, [entries, registrations, champId]);
+
+  // Entry list used for standings display only (real entries + accepted registrations).
+  const standingsEntries = useMemo(
+    () => [...(entries as any[]), ...provisionalEntries],
+    [entries, provisionalEntries],
+  );
+
   // Real league ranks (player_rank from member_league_registrations) for the source leagues.
   // Used to order players within each league group by their actual league position
   // (e.g. Terence = #1 in 7th League) instead of the entry insertion order.

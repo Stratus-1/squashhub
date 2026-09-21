@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { VisitorPassCard } from "@/components/VisitorPassCard";
+import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
 
 
 export default function ClubAuth() {
@@ -92,6 +93,13 @@ export default function ClubAuth() {
   const [visitorDone, setVisitorDone] = useState(false);
   // Set once the visitor membership exists, so they can buy their pass straight away.
   const [visitorMemberId, setVisitorMemberId] = useState<string | null>(null);
+  // Pass step of visitor registration: when the club offers passes, choosing one
+  // is part of signing up — the visitor cannot continue without one.
+  const { data: visitorPassOptions = [] } = useVisitorPassOptions(visitorDone ? club?.id : undefined);
+  const { data: visitorPass } = useMyVisitorPass(visitorDone ? (visitorMemberId ?? undefined) : undefined);
+  const visitorPassOffered = visitorPassOptions.some((o) => o.active);
+  const visitorPassChosen =
+    !!visitorPass && ["pending_payment", "pending_approval", "active"].includes(visitorPass.status);
 
   // Pre-flight gate for the Visitor tab:
   //   null   → show the two-question intro (are you a SquashHub user? / NSA member?)
@@ -975,8 +983,9 @@ export default function ClubAuth() {
             {club?.id && visitorMemberId && (
               <div className="text-left">
                 <p className="text-xs text-muted-foreground mb-2">
-                  To book courts yourself, choose a visitor pass below. Your access starts once it's paid
-                  {(club as any)?.visitor_pass_requires_approval ? " and approved by the club" : ""}.
+                  {visitorPassOffered
+                    ? `Last step: choose your visitor pass below to finish registering. Your access starts once it's paid${(club as any)?.visitor_pass_requires_approval ? " and approved by the club" : ""}.`
+                    : `To book courts yourself, choose a visitor pass below. Your access starts once it's paid${(club as any)?.visitor_pass_requires_approval ? " and approved by the club" : ""}.`}
                 </p>
                 <VisitorPassCard
                   clubId={club.id}
@@ -985,8 +994,17 @@ export default function ClubAuth() {
                 />
               </div>
             )}
-            <Button className="w-full" onClick={() => { window.location.href = "/"; }}>
-              Continue to {clubName}
+            {visitorPassOffered && !visitorPassChosen && (
+              <p className="text-[11px] text-destructive">
+                Please choose a Day, 3-day or Monthly pass above to complete your registration.
+              </p>
+            )}
+            <Button
+              className="w-full"
+              disabled={visitorPassOffered && !visitorPassChosen}
+              onClick={() => { window.location.href = "/"; }}
+            >
+              {visitorPassOffered && !visitorPassChosen ? "Choose a pass to continue" : `Continue to ${clubName}`}
             </Button>
 
           </Card>

@@ -98,7 +98,7 @@ SquashHub — HKFT Services &middot; Willem Pretorius &middot; +27 83 375 9003 &
 </div>`;
 
 function withContactFooter(html: string) {
-  return html.includes("support@squashhub.co.za") ? html + CONTACT_FOOTER : html + CONTACT_FOOTER;
+  return html + CONTACT_FOOTER;
 }
 
 async function getSettings() {

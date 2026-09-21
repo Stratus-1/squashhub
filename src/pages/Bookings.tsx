@@ -444,8 +444,9 @@ export default function Bookings() {
     [(myClub as any)?.booking_reminder_channels, (myClub as any)?.booking_confirm_channels, msgChannelsAllowed],
   );
   const visitorFee = Number((myClub as any)?.visitor_booking_fee ?? 0);
-  // Fee a registered visitor pays each time they book a court on their own.
-  const visitorSelfFee = Number((myClub as any)?.visitor_self_booking_fee ?? 0);
+  // Visitors pay through their visitor pass, not a per-booking court fee.
+  const { data: myVisitorPass } = useMyVisitorPass(activeMember?.id);
+
   const requireVisitorNamed = !!(myClub as any)?.require_visitor_for_member_booking;
   // Some clubs don't allow ANYONE to hold a court on their own — no admin or
   // staff exemptions. Events, tournaments and maintenance use separate
@@ -995,12 +996,22 @@ export default function Bookings() {
       toast.error(accessGate.reason || "Account suspended — settle outstanding fees to book courts.");
       return;
     }
-    // Enforce club-level visitor booking permission
+    // Enforce club-level visitor booking permission AND a live visitor pass —
+    // the pass (day / 3-day / monthly) is what a visitor pays to book courts,
+    // so there is no separate per-booking visitor court fee any more.
     const isVisitorRole = String((activeMember as any)?.role || "").toLowerCase() === "visitor";
-    if (isVisitorRole && !(myClub as any)?.visitors_can_book) {
-      toast.error("Visitor bookings aren't enabled at this club. Please ask a member or the club admin to book on your behalf.");
-      return;
+    if (isVisitorRole) {
+      const decision = visitorBookingDecision({
+        isVisitor: true,
+        visitorsCanBook: !!(myClub as any)?.visitors_can_book,
+        pass: myVisitorPass ?? null,
+      });
+      if (!decision.allowed) {
+        toast.error(decision.reason);
+        return;
+      }
     }
+
     // A visitor must always be named — the club charges the booking member a
     // visitor fee for letting them play.
     if (bookingDialog.playerMode === "visitor" && !bookingDialog.guestName.trim()) {

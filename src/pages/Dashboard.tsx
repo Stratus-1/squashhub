@@ -36,6 +36,7 @@ import { useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadde
 import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } from "@/hooks/use-club";
 import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
+import { VisitorPassCard } from "@/components/VisitorPassCard";
 import { DashboardTournamentInvitesCard } from "@/components/DashboardTournamentInvitesCard";
 import { LinkExistingMembershipCard } from "@/components/LinkExistingMembershipCard";
 
@@ -127,6 +128,9 @@ export default function Dashboard() {
   const eventsEnabled = capOn("events");
   const barEnabled = capOn("bar");
   const hasLeagues = capOn("leagues") && (clubLeagueAssociations || []).length > 0;
+  /** Independent visitor — they need a visitor pass before they can book. */
+  const isVisitorRoleMember =
+    String((myClubMember as any)?.role || "").toLowerCase() === "visitor";
   // One-time intro toast for clubs where the Bar / POS module is live.
   // Shows once per member (localStorage).
   useEffect(() => {
@@ -667,6 +671,16 @@ export default function Dashboard() {
           actionsOnly
         />
 
+        {isVisitorRoleMember && effectiveClub?.id && myClubMember?.id && (
+          <div className="px-8 pt-3">
+            <VisitorPassCard
+              clubId={effectiveClub.id}
+              clubMemberId={myClubMember.id}
+              requiresApproval={!!(effectiveClub as any)?.visitor_pass_requires_approval}
+            />
+          </div>
+        )}
+
         {hasLeagues && (
           <div className="px-8 pt-3">
             <LeagueWeekAvailabilityCard />
@@ -784,6 +798,17 @@ export default function Dashboard() {
               {(activeMember.club_member_number.match(/\d/g) || []).join("") || activeMember.club_member_number}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Independent visitor: buy / see their pass right on the dashboard */}
+      {isVisitorRoleMember && effectiveClub?.id && myClubMember?.id && (
+        <div className="px-4 mt-3">
+          <VisitorPassCard
+            clubId={effectiveClub.id}
+            clubMemberId={myClubMember.id}
+            requiresApproval={!!(effectiveClub as any)?.visitor_pass_requires_approval}
+          />
         </div>
       )}
 

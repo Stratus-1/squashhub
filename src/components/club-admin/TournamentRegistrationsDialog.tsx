@@ -284,6 +284,17 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
             <Badge variant="default">{feeRequired ? "Registered" : "Entered"} {participatingCount}</Badge>
             {feeRequired && <Badge variant="secondary">Paid {paidCount}</Badge>}
             {feeRequired && <Badge variant="outline">Pending {pendingCount}</Badge>}
+            {proofPendingCount > 0 && (
+              <Badge
+                variant="default"
+                className="cursor-pointer bg-amber-600 hover:bg-amber-700"
+                title="Proof of payment uploaded — confirm or waive these entries"
+                onClick={() => setShowProofOnly((v) => !v)}
+              >
+                <FileText className="w-3 h-3 mr-1" />
+                {showProofOnly ? "Showing " : ""}Proof to check {proofPendingCount}
+              </Badge>
+            )}
             <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
               Active {activeRegistrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
             </Badge>

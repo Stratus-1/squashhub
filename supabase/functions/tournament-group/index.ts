@@ -285,6 +285,7 @@ Deno.serve(async (req) => {
             template_key: "club_notice",
             template_variables: { message: text },
             system: true,
+            interaction: { kind: "champ_entry", target_id: champId },
           },
           "send-whatsapp",
         );

@@ -75,11 +75,11 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       setCanBook(!!club.visitors_can_book);
       setAccessCtrl(!!club.visitors_access_control);
       setAskHomeClub(!!club.visitor_home_clubs_enabled);
-      setVisitorFee(String(club.visitor_booking_fee ?? 0));
+      setVisitorFee(String(club.visitor_self_booking_fee ?? 0));
       setPolicyDirty(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_booking_fee]);
+  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_self_booking_fee]);
 
   const savePolicy = async () => {
     setPolicySaving(true);
@@ -89,7 +89,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         .update({
           visitors_can_book: canBook,
           visitors_access_control: accessCtrl,
-          visitor_booking_fee: fee,
+          visitor_self_booking_fee: fee,
           visitor_home_clubs_enabled: askHomeClub,
         })
         .eq("id", clubId);

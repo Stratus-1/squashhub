@@ -109,28 +109,43 @@ export function VisitorPassCard({
             </p>
           ) : (
             <div className="space-y-2">
-              {!live && <p className="text-xs text-muted-foreground">Choose a pass to book courts yourself:</p>}
-              {live && <p className="text-xs text-muted-foreground">Need longer? Buy another pass when this one ends.</p>}
-              <div className="grid gap-2 sm:grid-cols-3">
-                {offered.map((o) => (
-                  <div key={o.id} className="rounded-md border p-2.5 space-y-1">
-                    <div className="text-xs font-semibold">{VISITOR_PASS_LABEL[o.kind]}</div>
-                    <div className="text-sm font-bold">{isFreePass(o) ? "Free" : money(o.amount)}</div>
-                    <div className="text-[10px] text-muted-foreground">{VISITOR_PASS_VALIDITY[o.kind]}</div>
-                    {requiresApproval && (
-                      <div className="text-[10px] text-muted-foreground">Needs club approval before it starts.</div>
-                    )}
-                    <Button
-                      size="sm"
-                      className="w-full h-7 text-[11px]"
-                      disabled={!!busyKind || live}
-                      onClick={() => buy(o.kind)}
-                    >
-                      {busyKind === o.kind ? <Loader2 className="w-3 h-3 animate-spin" /> : isFreePass(o) ? "Get pass" : "Buy pass"}
-                    </Button>
+              {live && !showBuyOptions ? (
+                <Button size="sm" variant="outline" className="w-full h-7 text-[11px]" onClick={() => setShowBuyOptions(true)}>
+                  Buy another pass
+                </Button>
+              ) : (
+                <>
+                  {!live && <p className="text-xs text-muted-foreground">Choose a pass to book courts yourself:</p>}
+                  {live && (
+                    <p className="text-xs text-muted-foreground">Need longer? Buy another pass when this one ends.</p>
+                  )}
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {offered.map((o) => (
+                      <div key={o.id} className="rounded-md border p-2.5 space-y-1">
+                        <div className="text-xs font-semibold">{VISITOR_PASS_LABEL[o.kind]}</div>
+                        <div className="text-sm font-bold">{isFreePass(o) ? "Free" : money(o.amount)}</div>
+                        <div className="text-[10px] text-muted-foreground">{VISITOR_PASS_VALIDITY[o.kind]}</div>
+                        {requiresApproval && (
+                          <div className="text-[10px] text-muted-foreground">Needs club approval before it starts.</div>
+                        )}
+                        <Button
+                          size="sm"
+                          className="w-full h-7 text-[11px]"
+                          disabled={!!busyKind || live}
+                          onClick={() => buy(o.kind)}
+                        >
+                          {busyKind === o.kind ? <Loader2 className="w-3 h-3 animate-spin" /> : isFreePass(o) ? "Get pass" : "Buy pass"}
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                  {live && (
+                    <Button size="sm" variant="ghost" className="w-full h-6 text-[10px] text-muted-foreground" onClick={() => setShowBuyOptions(false)}>
+                      Hide pass options
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
           )}
         </>

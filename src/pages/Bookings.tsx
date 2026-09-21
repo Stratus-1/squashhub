@@ -2703,7 +2703,7 @@ export default function Bookings() {
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[280px] p-0" align="start">
+                    <PopoverContent className="w-[min(320px,calc(100vw-2.5rem))] p-0" align="start">
                       <Command
                         filter={(value, search) => {
                           const q = search.trim().toLowerCase();
@@ -2713,9 +2713,13 @@ export default function Bookings() {
                           // so "andre visser" and "visser" both find the player.
                           return q.split(/\s+/).every((w) => v.includes(w)) ? 1 : 0;
                         }}
+                        className="[&_[cmdk-item]]:py-2.5"
                       >
                         <CommandInput placeholder="Search member..." />
-                        <CommandList>
+                        {/* Touch-friendly scrolling: taller list, scrolling stays
+                            inside the dropdown (the dialog behind won't jerk around),
+                            and momentum scrolling on phones. */}
+                        <CommandList className="max-h-[min(55vh,420px)] overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
                           <CommandEmpty>
                             {bookingDialog.isFriendly
                               ? "No other players found."

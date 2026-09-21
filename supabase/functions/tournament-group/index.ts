@@ -101,13 +101,15 @@ Deno.serve(async (req) => {
 
       const { data: regs } = await admin
         .from("club_champs_registrations")
-        .select("club_member_id, status")
+        .select("club_member_id, status, whatsapp_group_opt_in")
         .eq("champ_id", champId);
 
       const paidOnly = payload.paid_only === true;
       const recipients = (regs ?? []).filter((r: any) => {
         const s = String(r.status ?? "").toLowerCase();
         if (!r.club_member_id) return false;
+        // Players who unticked the WhatsApp group box at entry are never sent the link.
+        if (r.whatsapp_group_opt_in === false) return false;
         return paidOnly ? s === "paid" : ENTERED.has(s);
       });
 

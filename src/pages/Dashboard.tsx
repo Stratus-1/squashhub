@@ -128,6 +128,9 @@ export default function Dashboard() {
   const eventsEnabled = capOn("events");
   const barEnabled = capOn("bar");
   const hasLeagues = capOn("leagues") && (clubLeagueAssociations || []).length > 0;
+  /** Independent visitor — they need a visitor pass before they can book. */
+  const isVisitorRoleMember =
+    String((myClubMember as any)?.role || "").toLowerCase() === "visitor";
   // One-time intro toast for clubs where the Bar / POS module is live.
   // Shows once per member (localStorage).
   useEffect(() => {

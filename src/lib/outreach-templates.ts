@@ -44,6 +44,42 @@ export interface OutreachTemplate {
 
 export const OUTREACH_TEMPLATES: OutreachTemplate[] = [
   {
+    key: "club-ready",
+    name: "Your club is already set up — players just register",
+    audienceHint: "Clubs already loaded on SquashHub — invite their players to join",
+    subject: "{{club_name}} is already on SquashHub — you can just hop on",
+    preheader:
+      "Your club is already set up. Register in 30 seconds and start using it — free for players, always.",
+    bodyHtml: WRAP(`<p>Dear {{contact_name}},</p>
+
+<p>Good news — <strong>there is nothing for you to set up.</strong></p>
+
+<p style="background:#ecfdf5;border-left:4px solid #059669;padding:14px 16px;margin:20px 0">
+<strong>{{club_name}} is already on SquashHub.</strong><br><br>
+Your club page is live at {{club_link}}. You simply register and you're in — it takes about 30 seconds, and it's free for players, always.
+</p>
+
+<p style="margin:20px 0"><a href="{{club_url}}" style="display:inline-block;background:#0E1F35;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:bold">Register at {{club_name}}</a></p>
+
+<p>Once you're in you can book a court, see who's playing, follow the ladder and leagues, enter tournaments and keep your own match record — all from your phone.</p>
+
+${VIDEO_BLOCK_PLACEHOLDER}
+
+<p style="background:#f1f5f9;border-left:4px solid #0E1F35;padding:14px 16px;margin:20px 0">
+<strong>Not sure which club to join, or joining from somewhere else?</strong><br>
+<a href="https://squashhub.co.za/clubs" style="color:#1d4ed8">Register here — look up your club and sign up</a>. Search for your club by name, pick it, and register the normal way.
+</p>
+
+<p>If your committee would like the full club functionality as well — bookings, fees, leagues and tournaments — just let us know and we'll switch it on for them at no cost so they can see it end to end.</p>
+
+<p>Kind regards,<br><br>
+<strong>Willem Pretorius</strong><br>
+SquashHub — Stratus Software Solutions (Pty) Ltd<br>
++27 83 375 9003<br>
+<a href="mailto:support@squashhub.co.za" style="color:#1d4ed8">support@squashhub.co.za</a><br>
+<a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a></p>`),
+  },
+  {
     key: "nsa",
     name: "NSA clubs (Pretoria / Squash Northerns)",
     audienceHint: "Member clubs affiliated to NSA",

@@ -538,6 +538,24 @@ export default function SuperAdminOutreachCampaignEditor() {
                   Only clubs with an email address can actually be sent to.
                 </p>
               </div>
+              <div>
+                <Label className="text-xs">Previous engagement</Label>
+                <Select
+                  value={filter.engagement ?? "all"}
+                  onValueChange={(v) => setFilter({ engagement: v === "all" ? undefined : v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Everyone</SelectItem>
+                    <SelectItem value="engaged">Opened or clicked before</SelectItem>
+                    <SelectItem value="opened">Opened before</SelectItem>
+                    <SelectItem value="clicked">Clicked a link before</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-white/50 mt-1">
+                  Based on earlier campaigns they were sent.
+                </p>
+              </div>
             </div>
 
 

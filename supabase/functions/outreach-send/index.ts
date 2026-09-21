@@ -202,9 +202,27 @@ async function prepare(campaign: any) {
         .in("prospect_id", ids)
     : { data: [] as any[] };
 
-  const eligible = (contacts ?? []).filter(
+  let eligible = (contacts ?? []).filter(
     (c: any) => c.email && c.email.includes("@") && !c.opted_out && !c.bounced,
   );
+
+  // Engagement filter: only contacts who opened and/or clicked an earlier campaign.
+  if (f.engagement === "opened" || f.engagement === "clicked" || f.engagement === "engaged") {
+    const { data: prior } = await admin
+      .from("outreach_recipients")
+      .select("contact_id,first_opened_at,first_clicked_at")
+      .neq("campaign_id", campaign.id);
+    const engaged = new Set<string>();
+    for (const r of prior ?? []) {
+      const opened = !!(r as any).first_opened_at;
+      const clicked = !!(r as any).first_clicked_at;
+      const match =
+        f.engagement === "opened" ? opened : f.engagement === "clicked" ? clicked : opened || clicked;
+      if (match && (r as any).contact_id) engaged.add((r as any).contact_id);
+    }
+    eligible = eligible.filter((c: any) => engaged.has(c.id));
+  }
+
   const skipped = (contacts ?? []).length - eligible.length;
 
   // Prune queued (not yet sent) recipients that no longer match the audience.

@@ -24,6 +24,8 @@ import {
   normaliseGroupInviteUrl,
   type GroupStatus,
 } from "@/lib/tournaments/whatsapp-group";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useSaveTournamentWhatsAppGroup,
   useSendGroupJoinLinks,
@@ -49,6 +51,23 @@ export function TournamentWhatsAppGroupCard({
   subdomain,
   tournamentStatus,
 }: Props) {
+  // Falls back to the owning club when the caller does not pass the branding.
+  const { data: clubRow } = useQuery({
+    queryKey: ["tournament-group-club", clubId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("clubs")
+        .select("name, subdomain")
+        .eq("id", clubId as string)
+        .maybeSingle();
+      return data as { name: string | null; subdomain: string | null } | null;
+    },
+    enabled: !!clubId && (!ownerName || !subdomain),
+    staleTime: 5 * 60 * 1000,
+  });
+  const owner = ownerName ?? clubRow?.name ?? null;
+  const sub = subdomain ?? clubRow?.subdomain ?? null;
+
   const { data: group, isLoading } = useTournamentWhatsAppGroup(champId);
   const save = useSaveTournamentWhatsAppGroup(champId, clubId);
   const sendLinks = useSendGroupJoinLinks(champId);
@@ -60,13 +79,13 @@ export function TournamentWhatsAppGroupCard({
 
   useEffect(() => {
     setUrl(group?.invite_url ?? "");
-    setName(group?.group_name ?? defaultGroupName(champName, ownerName));
+    setName(group?.group_name ?? defaultGroupName(champName, owner));
     setAnnounceOnly(group?.announcements_only ?? true);
-  }, [group, champName, ownerName]);
+  }, [group, champName, owner]);
 
   const description = useMemo(
-    () => groupDescriptionText({ champId, tournamentName: champName, ownerName, subdomain }),
-    [champId, champName, ownerName, subdomain],
+    () => groupDescriptionText({ champId, tournamentName: champName, ownerName: owner, subdomain: sub }),
+    [champId, champName, owner, sub],
   );
 
   const status: GroupStatus = (group?.status as GroupStatus) ?? "active";
@@ -86,7 +105,7 @@ export function TournamentWhatsAppGroupCard({
     save.mutate(
       {
         invite_url: clean,
-        group_name: name.trim() || defaultGroupName(champName, ownerName),
+        group_name: name.trim() || defaultGroupName(champName, owner),
         description,
         announcements_only: announceOnly,
         status: "active",

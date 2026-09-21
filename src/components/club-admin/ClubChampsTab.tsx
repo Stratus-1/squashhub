@@ -8484,8 +8484,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       champId={editingChampId}
                       champName={champName}
                       clubId={clubId}
-                      ownerName={club?.name}
-                      subdomain={club?.subdomain}
                     />
                   </div>
                 )}

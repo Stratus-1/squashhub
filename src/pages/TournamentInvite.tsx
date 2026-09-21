@@ -12,6 +12,7 @@ import { CalendarDays, CheckCircle2, Clock, CreditCard, Loader2, LogIn, LogOut, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { JoinWhatsAppGroupButton } from "@/components/tournaments/JoinWhatsAppGroupButton";
 import {
   afterAcceptPath,
   defaultDivisionSelection,

@@ -12,8 +12,8 @@ import { toast } from "sonner";
 import { openWhatsApp, normalisePhoneForWhatsApp } from "@/lib/whatsapp";
 import {
   classifyEntrant,
-  ENTRANT_CATEGORY_LABEL,
   ENTRANT_CATEGORY_VARIANT,
+  entrantStatusLabel,
   isParticipatingEntrant,
 } from "@/lib/tournaments/entrant-status";
 import { withdrawalUpdates } from "@/lib/tournaments/withdraw";

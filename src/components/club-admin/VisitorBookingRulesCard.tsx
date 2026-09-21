@@ -22,8 +22,6 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
   const { symbol } = useClubCurrency();
 
   const initial = () => ({
-    visitorsCanBook: !!(club as any).visitors_can_book,
-    selfFee: Number((club as any).visitor_self_booking_fee ?? 0),
     guestFee: Number((club as any).visitor_booking_fee ?? 0),
     requireVisitor: !!(club as any).require_visitor_for_member_booking,
     allowSolo: (club as any).allow_solo_bookings ?? true,
@@ -31,8 +29,6 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
   const [form, setForm] = useState(initial);
   useEffect(() => setForm(initial()), [
     club.id,
-    (club as any).visitors_can_book,
-    (club as any).visitor_self_booking_fee,
     (club as any).visitor_booking_fee,
     (club as any).require_visitor_for_member_booking,
     (club as any).allow_solo_bookings,
@@ -43,8 +39,6 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
     try {
       await updateClub.mutateAsync({
         id: club.id,
-        visitors_can_book: form.visitorsCanBook,
-        visitor_self_booking_fee: Math.max(0, form.selfFee || 0),
         visitor_booking_fee: Math.max(0, form.guestFee || 0),
         require_visitor_for_member_booking: form.requireVisitor,
         allow_solo_bookings: form.allowSolo,

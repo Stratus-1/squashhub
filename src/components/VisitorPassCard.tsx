@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -83,10 +84,15 @@ export function VisitorPassCard({
       )}
 
       {!live && pass?.status === "pending_payment" && (
-        <p className="text-xs text-muted-foreground">
-          Your {VISITOR_PASS_LABEL[pass.pass_kind]} is waiting for payment of {money(Number(pass.amount || 0))}. Pay it
-          below and your booking access starts straight away.
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Your {VISITOR_PASS_LABEL[pass.pass_kind]} is waiting for payment of {money(Number(pass.amount || 0))}. Pay it
+            from My Account and your booking access starts straight away.
+          </p>
+          <Button size="sm" className="w-full h-8 text-xs" asChild>
+            <Link to="/my-account">Go to My Account to pay</Link>
+          </Button>
+        </div>
       )}
       {!live && pass?.status === "pending_approval" && (
         <p className="text-xs text-muted-foreground">

@@ -920,9 +920,11 @@ export default function Bookings() {
         if (seen.has(key)) continue;
         seen.add(key);
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
+        // The club roster is the source of truth for names — login profiles are
+        // often just a first name, which makes searching by surname fail.
         combined.push({
           id: m.user_id || m.id,
-          name: profile?.name || m.name || m.email || "Unknown",
+          name: m.name || profile?.name || m.email || "Unknown",
           rank: m.ladder_position ?? null,
           email: profile?.email || m.email || null,
           memberId: m.id,

@@ -76,7 +76,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       setCanBook(!!club.visitors_can_book);
       setAccessCtrl(!!club.visitors_access_control);
       setAskHomeClub(!!club.visitor_home_clubs_enabled);
-      setVisitorFee(String(club.visitor_self_booking_fee ?? 0));
+      setPolicyDirty(false);
       setPolicyDirty(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

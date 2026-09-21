@@ -92,6 +92,13 @@ export default function ClubAuth() {
   const [visitorDone, setVisitorDone] = useState(false);
   // Set once the visitor membership exists, so they can buy their pass straight away.
   const [visitorMemberId, setVisitorMemberId] = useState<string | null>(null);
+  // Pass step of visitor registration: when the club offers passes, choosing one
+  // is part of signing up — the visitor cannot continue without one.
+  const { data: visitorPassOptions = [] } = useVisitorPassOptions(visitorDone ? club?.id : undefined);
+  const { data: visitorPass } = useMyVisitorPass(visitorDone ? (visitorMemberId ?? undefined) : undefined);
+  const visitorPassOffered = visitorPassOptions.some((o) => o.active);
+  const visitorPassChosen =
+    !!visitorPass && ["pending_payment", "pending_approval", "active"].includes(visitorPass.status);
 
   // Pre-flight gate for the Visitor tab:
   //   null   → show the two-question intro (are you a SquashHub user? / NSA member?)

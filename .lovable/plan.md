@@ -1,105 +1,64 @@
-# Tournament WhatsApp groups — findings and plan
+# Independent visitor passes (day / 3-day / monthly)
 
-## Headline finding (this changes the recommendation)
+A visitor who is in town for a while can register at a club, buy a pass, pay for it, and then book courts themselves for as long as the pass is valid. This is separate from the existing "a member brings a guest" flow, which stays exactly as it is.
 
-Meta does have a native WhatsApp Groups API (launched 6 Oct 2025, Cloud API), **but**:
+## A) What exists today (inspected)
 
-- **Maximum 8 participants per group.** That is a Meta platform limit, not ours.
-- Our two live CSIR tournaments have **111 and 49 invited/entered players**. A native group cannot hold them.
-- **Twilio does not expose the native Groups API.** Twilio's "WhatsApp group messaging" sample is a Conversations fan-out — parallel 1-to-1 chats behind one business number, 24-hour reply windows, no real group, no invite link, no group icon. Twilio's sample repo is archived. Not equivalent, and we should not ship it as a group.
-- Using Meta Cloud API directly would require migrating our number out of Twilio (or registering a second number), plus Official Business Account status. Meta does not support one number being driven by two providers at once.
-- Native groups are also invite-link-only (no adding people directly), and block interactive messages, view-once, edit and delete.
+- **Visitor sign-up** (`ClubAuth.tsx` → `register-visitor-user`) creates a login, a profile and a `club_members` row with role `visitor`. No fee, no pass, no expiry.
+- **Visitor booking permission** is a single club switch, `visitors_can_book` (all-or-nothing, forever).
+- **Two visitor amounts exist today:**
+  - `clubs.visitor_booking_fee` — member brings a guest (Gordons Bay R20, Nelspruit R50). Untouched.
+  - `clubs.visitor_self_booking_fee` — what a visitor pays when they book a court themselves (Gordons Bay R40, Nelspruit R0). This is a *court fee per booking*, not a pass fee.
+- **Fees** live in `member_fee_categories` (name, amount, `active` on/off, due date, billing period). Charges are raised as `club_member_fee_payments` rows; a database trigger automatically posts the double entry (owing vs income) and picks the income category from the fee type.
+- **Ledger / My Account** already exists for any `club_members` row, visitors included.
+- **Court fee for visitors** is charged today *after* the slot has passed, into the account-credits table, by `charge_visitor_booking_fee`.
+- **Booking balance gate** (`booking-balance-gate.ts`) already blocks bookings when someone owes too much.
 
-**Conclusion:** native tournament WhatsApp groups are not achievable for tournaments of our size on any provider today. The plan below therefore builds everything the user-facing feature needs around an **admin-provided WhatsApp group invite link** (an ordinary WhatsApp group, up to 1024 members, created once on the admin's phone), with the API-native path kept as a clean future swap behind one interface.
+### Assumption that needs your nod
+Requirement 2 says remove the visitor fee from the Visitors page, but requirement 7 still needs a per-booking court fee for visitors. So: the pass prices move to Fee Structure, and the existing R40/R0 amount stays alive as the **visitor court fee**, edited on the Courts booking-rules card next to the guest fee — not deleted, not silently turned into a pass price. No club's money changes.
 
-## A. Current architecture (verified)
+## B) Schema and settings changes
 
-- `supabase/functions/send-whatsapp` — one shared SquashHub sender via the Twilio connector gateway; falls back to a club's own Twilio credentials in `club_secrets`. Honours `clubs.whatsapp_enabled`, per-member `whatsapp_opt_out`, approved templates in `whatsapp_templates`, logs to `whatsapp_send_log`, and bills per message.
-- `supabase/functions/whatsapp-inbound` — Twilio webhook; matches a reply to a pending `whatsapp_interactions` row by phone and writes the answer back (RSVP, tournament entry).
-- `whatsapp-templates-sync` — registers/approves templates on Twilio Content API.
-- Invites already have a canonical tenant-aware link shape: `https://<club>.squashhub.co.za/i/<token>` plus short codes (`src/lib/tournaments/invite-link.ts`).
-- Tournaments live in `club_champs` (+ `club_champs_registrations`, `entries_locked`, `registration_closes_at`). Withdrawal logic is centralised in `src/lib/tournaments/withdraw.ts` (walkover to opponent on unplayed games, purge from seeding/draw).
+- `member_fee_categories.visitor_pass_kind` — `day` / `three_day` / `month`, null for normal fees.
+- Seed three rows per club (every existing club and every new one): **Visitor Day Pass**, **Visitor 3-Day Pass**, **Visitor Monthly Pass**, amount 0, `active = false`. `active = false` means "not offered"; `active = true` with amount 0 means a deliberate **free pass**. No prices invented.
+- New table `club_visitor_passes`: club, visitor member, pass kind, fee row, amount, status (`pending_payment`, `pending_approval`, `active`, `expired`, `cancelled`), valid from/until, approved by/at, timestamps. GRANTs + RLS: a visitor sees only their own, club admins see their club's.
+- `clubs.visitor_pass_requires_approval` boolean, default false.
+- New income account **Visitor Fee Income** added to the ledger account list so pass revenue reports separately.
+- Fee-to-ledger trigger extended: fee type `visitor_pass` posts to Visitor Fee Income.
 
-None of this is touched destructively by the plan.
+## C) Activation and expiry rules
 
-## B/C. Options compared
+- A pass becomes **active** only when: the charge is fully settled (or the pass is configured active at 0), **and** admin approval is either off or granted.
+- `valid_from` = the moment it activates. `valid_until` = +24 hours (day), +72 hours (3-day), +1 calendar month (monthly). All stored as timestamps, compared server-side against `now()`.
+- Booking rights end the instant `valid_until` passes; a scheduled/expiry check flips status to `expired`.
+- A new pass can be bought on the same visitor record — no duplicate person.
 
-| | Native Meta Groups API | Twilio Conversations | Admin-pasted group link (recommended now) |
-|---|---|---|---|
-| Real WhatsApp group | Yes | No | Yes |
-| Size limit | 8 | ~50 (simulated) | 1024 |
-| Reachable with our Twilio setup | No | Yes | Yes |
-| Name / description | API | n/a | Manual |
-| Icon | Not documented as settable | n/a | Manual |
-| Admin-only posting | "Update group settings" exists; parameter not documented | n/a | Manual toggle in WhatsApp (announcement mode), members can still be allowed to add others |
-| Add people | Invite link only | n/a | Invite link |
-| Delete/close | API | n/a | Manual |
+## D) Accounting
 
-## D. Recommended architecture
+- Raising a pass charge: **owing (debtors) up / Visitor Fee Income up** — posted by the existing fee trigger, not by new hand-written entries.
+- Payment: handled by the existing payment settlement path (bank/clearing up, owing down) — no new payment code, so retries stay idempotent.
+- Court booking fees stay separate lines with their own description, distinct from the pass line.
+- Admin rejection does **not** delete anything: the pass is marked cancelled and a reversal/credit is raised through the existing journal reversal helper, leaving the audit trail.
 
-One `tournament_whatsapp_group` record per tournament with a `provider` field (`manual` today, `meta_native` reserved). Everything in the app — settings card, join buttons, deep links, invite tracking — reads that record and does not care which provider produced the link. If Meta lifts the 8-person cap or Twilio ships the API, we add a provider without touching the UI.
+## E) Server-side entitlement
 
-## E. Schema
+- `has_active_visitor_pass(member_id)` database function; the booking insert policy for visitor-role members requires it, so a visitor cannot bypass the UI by calling the API directly.
+- Approval state and validity window are both checked in the database.
+- Only rows with role `visitor` are affected — full members are never treated as visitors.
 
-New table `public.tournament_whatsapp_groups`:
-`id, champ_id (fk club_champs, unique), club_id, provider ('manual'|'meta_native'), invite_url, group_name, description, announcements_only (bool), created_by, status ('active'|'closed'|'archived'), closed_at, created_at, updated_at`.
-GRANTs: select/insert/update/delete to `authenticated`, all to `service_role`; RLS — read by anyone who may view the tournament, write by tournament admins only.
+## F) Court fee at booking time
 
-New table `public.tournament_whatsapp_group_invites`:
-`id, group_id, champ_id, member_id, phone, sent_at, join_clicked_at, channel, created_at` — tracks who we sent the link to and who tapped it. WhatsApp gives us no join confirmation, so "joined" is inferred from the click only and labelled as such.
+- An active pass grants the right to book; the club's visitor court fee still applies.
+- For a visitor, the fee must be covered before the booking is confirmed (checked against their account balance using the existing gate), and it posts as its own ledger line.
+- The "member brings a guest" fee logic is untouched.
 
-## F. UI and flows
+## G) UI
 
-**Admin (tournament setup → new "Tournament WhatsApp group" card):**
-- Explains the 8-person native limit plainly and asks for a group invite link created on the admin's phone.
-- Suggested group name defaults to the tournament name prefixed by the owning tenant (club / association / federation — resolved from `club_champs.owner_org_id`/`club_id`, never hard-coded).
-- Copy-ready description text containing the two deep links below, so the admin can paste it into the group description and pin it.
-- Checkbox "announcements only" with step-by-step instructions (WhatsApp: Group settings → Send messages → Only admins; "Edit group info/add members" can stay open to everyone, so participants may invite others while only admins post).
-- Buttons: send the link to all entrants, close group (stops automation, keeps history), archive.
+- **Visitor registration**: pass options with live prices read from Fee Structure, validity, "free" or "payment required", approval notice, and after activation "Visitor pass active until …".
+- **My Account** (visitor): pass charge, payment, and court-booking charges as separate lines.
+- **Visitors admin page**: pass fee amounts become read-only with a link to Fee Structure; new list of active / pending / expired passes; approve / reject actions for pending ones.
+- **Fee Structure**: the three pass rows appear with the other fees, priced and switched on there.
 
-**Player:** "Join tournament WhatsApp group" on the registration success page and in My Tournaments, shown only when a link exists. Joining is never treated as registration — SquashHub stays the source of truth.
+## H) Tests
 
-**ENTER deep link** `/t/<champ-short-code>/enter`:
-1. Ask membership number + last 4 digits of the registered mobile — lookup only.
-2. On match, send a one-tap confirmation link to the full registered number (or use an existing signed-in session) before anything is written. Last-4 is never accepted as authentication on its own.
-3. No member record: club championship → that club's registration/onboarding, then straight back to the tournament; regional/national → general SquashHub registration with club selection first, then back.
-4. Then the normal entry flow (divisions, partner, fee, payment) unchanged.
-
-**WITHDRAW deep link** `/t/<champ-short-code>/withdraw`:
-1. Same lookup, same confirmation-to-full-number step.
-2. Before draw/fixtures exist and while entries are open: confirmed self-withdrawal, using the existing `withdraw.ts` path (cancel entry, purge from seeding/draft).
-3. After fixtures exist or `entries_locked`: no silent change — create an admin-routed withdrawal request; the organiser applies the existing walkover logic so opponents stay alive.
-
-## G. CSIR backfill (Nelspruit excluded)
-
-Two tournaments at CSIR (`e41098d4-…`):
-- `6th vs 7th League Players Bells Get Together at CSIR` — 10 paid, 38 invited.
-- `CSIR Doubles Rotation Bells Open - 24 Sep 2026` — 8 paid, 101 invited.
-
-For each: the admin creates the group on their phone, pastes the link, and we send a one-off template message with the join link to every non-cancelled entrant who has not opted out (paid entrants first, invited entrants optional). No one is added automatically — WhatsApp does not allow it, and opt-in is respected. Sends go through the existing `send-whatsapp` function, templates and billing.
-
-## H. Safeguards
-
-- Membership number + last-4 is a lookup, never authentication; the confirming step always goes to the full registered number or an existing session.
-- Rate-limit and lock lookups after repeated failures; never reveal whether a membership number exists, and never echo a full phone number or email back to the browser.
-- Group links are shown only to people the tournament's own eligibility rules already allow to see it.
-- Existing WhatsApp opt-out and club opt-in are honoured for every group-related send.
-
-## I. Fallback
-
-The manual link *is* the fallback and the day-one path, so a missing group never blocks a tournament: every screen hides the join button when no link exists and everything else works unchanged.
-
-## J. Acceptance tests
-
-- Group record saves, is tenant-scoped, and is readable only by people allowed to see the tournament.
-- Join button appears on the success page and My Tournaments only when a link exists; joining does not create or change an entry.
-- Enter deep link: matched member reaches the correct tournament entry flow after confirmation; unmatched member lands in the right registration path and returns to the same tournament.
-- Withdraw deep link: before fixtures → entry cancelled via existing logic; after fixtures → request created, draw untouched.
-- Last-4 alone never completes an enter or withdraw.
-- Existing WhatsApp sends, templates, opt-outs and billing behave exactly as before.
-
-## Questions
-
-1. Given the 8-participant native cap, confirm we proceed with the admin-pasted group link approach (recommended) rather than pausing the feature.
-2. For the two CSIR groups: send the join link to paid entrants only, or to all invited players as well?
-3. Should the group link also be included in tournament invite emails, or WhatsApp/in-app only?
+Unit tests for the validity-window maths and the entitlement decision (paid day/3-day/monthly, free configured pass, unconfigured pass, awaiting approval, expired, renewal). Plus build and the full existing suite.

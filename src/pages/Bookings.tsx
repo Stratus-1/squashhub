@@ -447,6 +447,11 @@ export default function Bookings() {
   // Fee a registered visitor pays each time they book a court on their own.
   const visitorSelfFee = Number((myClub as any)?.visitor_self_booking_fee ?? 0);
   const requireVisitorNamed = !!(myClub as any)?.require_visitor_for_member_booking;
+  // Some clubs don't allow a member to hold a court on their own. Admins and
+  // operational roles (cleaning, maintenance, extra bookings) are exempt.
+  const soloBookingsAllowed = (myClub as any)?.allow_solo_bookings ?? true;
+  const soloExempt = isMemberAdmin || isSuperAdmin || canOpsBook || canBypassBookingLimits;
+  const secondPlayerRequired = requireVisitorNamed || (!soloBookingsAllowed && !soloExempt);
   const rawSlot = Number((myClub as any)?.booking_slot_minutes);
   const slotMinutes: 30 | 40 | 45 | 60 = (rawSlot === 60 ? 60 : rawSlot === 40 ? 40 : rawSlot === 45 ? 45 : 30);
   const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));
@@ -1003,12 +1008,16 @@ export default function Bookings() {
     // Some clubs require every booking to name either a member opponent or a
     // visitor, so the visitor fee can never be missed.
     if (
-      requireVisitorNamed &&
+      secondPlayerRequired &&
       !isVisitorRole &&
       bookingDialog.playerMode === "member" &&
       !bookingDialog.opponentId
     ) {
-      toast.error("Choose a member as your opponent, or select Visitor and give their name.");
+      toast.error(
+        !soloBookingsAllowed && !requireVisitorNamed
+          ? "This club doesn't allow booking a court on your own — choose a member, or select Visitor and give their name."
+          : "Choose a member as your opponent, or select Visitor and give their name.",
+      );
       return;
     }
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);
@@ -2657,9 +2666,9 @@ export default function Bookings() {
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">
-                  {requireVisitorNamed ? "2nd Player (required)" : "2nd Player (optional)"}
+                  {secondPlayerRequired ? "2nd Player (required)" : "2nd Player (optional)"}
                 </Label>
-                {requireVisitorNamed && (
+                {secondPlayerRequired && (
                   <p className="text-[11px] text-muted-foreground leading-snug">
                     Name your opponent. If they're not a member, choose Visitor
                     {visitorFee > 0 ? ` — a ${money(visitorFee)} visitor fee applies.` : "."}

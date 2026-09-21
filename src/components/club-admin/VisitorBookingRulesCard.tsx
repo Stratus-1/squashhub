@@ -47,6 +47,7 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
         visitor_self_booking_fee: Math.max(0, form.selfFee || 0),
         visitor_booking_fee: Math.max(0, form.guestFee || 0),
         require_visitor_for_member_booking: form.requireVisitor,
+        allow_solo_bookings: form.allowSolo,
       } as any);
       toast.success("Visitor booking rules saved");
       onDone?.();
@@ -70,6 +71,28 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
           <p className="text-xs text-muted-foreground">
             What a visitor pays to play here, whether they come on their own or with a member.
           </p>
+        </div>
+
+        {/* 0. Solo bookings */}
+        <div className="space-y-1 rounded-lg border p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <Label className="text-xs font-semibold">Allow members to book a court on their own</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Switch this off and every booking must name a second player — another member or a visitor.
+              </p>
+            </div>
+            <Switch
+              checked={form.allowSolo}
+              onCheckedChange={(v) => setForm((p) => ({ ...p, allowSolo: v }))}
+            />
+          </div>
+          {!form.allowSolo && (
+            <p className="text-[11px] text-muted-foreground pt-1">
+              Club admins, and anyone with unlimited bookings or maintenance/cleaning booking rights, can still
+              book on their own.
+            </p>
+          )}
         </div>
 
         {/* 1. Visitor booking on their own */}

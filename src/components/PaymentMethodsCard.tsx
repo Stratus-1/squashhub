@@ -96,6 +96,25 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
     enabled: !!clubId,
   });
 
+  // The member's OWN fee category, whether or not the club flagged it
+  // debit-order eligible. This is the only category that should ever be
+  // offered for a monthly payment — a member never pays another category's fee.
+  const { data: myCategory = null } = useQuery({
+    queryKey: ["my-fee-category", memberFeeCategoryId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("member_fee_categories")
+        .select("id, name, annual_fee, debit_order_eligible, debit_order_rail")
+        .eq("id", memberFeeCategoryId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as unknown as FeeCategory) || null;
+    },
+    enabled: !!memberFeeCategoryId,
+  });
+
+
+
   // Fallback annual amount: the member's own fee category (even if it isn't
   // flagged debit-order eligible) and, failing that, their outstanding fees.
   const { data: fallbackAnnual = 0 } = useQuery({

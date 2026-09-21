@@ -1006,13 +1006,13 @@ export default function Bookings() {
       return;
     }
     // Some clubs require every booking to name either a member opponent or a
-    // visitor, so the visitor fee can never be missed.
-    if (
-      secondPlayerRequired &&
-      !isVisitorRole &&
-      bookingDialog.playerMode === "member" &&
-      !bookingDialog.opponentId
-    ) {
+    // visitor, so nobody can book a court on their own (and the visitor fee is
+    // never missed). This covers every mode, including "nothing picked yet".
+    const hasSecondPlayer =
+      (bookingDialog.playerMode === "member" && !!bookingDialog.opponentId) ||
+      ((bookingDialog.playerMode === "visitor" || bookingDialog.playerMode === "guest") &&
+        !!bookingDialog.guestName.trim());
+    if (secondPlayerRequired && !isVisitorRole && !hasSecondPlayer) {
       toast.error(
         !soloBookingsAllowed && !requireVisitorNamed
           ? "This club doesn't allow booking a court on your own — choose a member, or select Visitor and give their name."

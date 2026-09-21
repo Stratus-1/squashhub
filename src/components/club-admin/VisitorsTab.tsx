@@ -576,8 +576,8 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         {canBook && (
           <div className="flex items-center gap-3 rounded-md border border-border bg-card p-2.5">
             <div className="flex-1 min-w-0">
-              <Label htmlFor="visitor-fee" className="text-xs font-semibold">Visitor booking fee</Label>
-              <p className="text-[10px] text-muted-foreground">Charged per booking made by a visitor. Set to 0 for free.</p>
+              <Label htmlFor="visitor-fee" className="text-xs font-semibold">Registered visitor booking fee</Label>
+              <p className="text-[10px] text-muted-foreground">Charged per booking a registered visitor makes for themselves. Set to 0 for free. A guest brought along by a member is handled under Courts &rarr; booking rules.</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <span className="text-xs text-muted-foreground">{currencySymbol}</span>

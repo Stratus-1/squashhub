@@ -151,10 +151,12 @@ export function VisitorPassCard({
         </>
       )}
 
-      <p className="text-[10px] text-muted-foreground leading-snug">
-        A pass lets you book a court. The club's court fee for each booking is charged separately and shows on your
-        account.
-      </p>
+      {(!live || showBuyOptions) && (
+        <p className="text-[10px] text-muted-foreground leading-snug">
+          A pass lets you book a court. The club's court fee for each booking is charged separately and shows on your
+          account.
+        </p>
+      )}
     </Card>
   );
 }

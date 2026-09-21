@@ -41,6 +41,7 @@ interface UnifiedFee {
   billingPeriod: "annual" | "monthly";
   debitOrderEligible: boolean;
   debitOrderRail: "debicheck" | "eft" | "either";
+  visitorPassKind?: "day" | "three_day" | "month";
   source: "member_fee_categories" | "league_associations" | "national_body_fees";
   raw: MemberFeeCategory | LeagueAssociation | NationalBodyFee;
 }
@@ -93,6 +94,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
       billingPeriod: ((c as any).billing_period ?? "annual") as any,
       debitOrderEligible: (c as any).debit_order_eligible ?? false,
       debitOrderRail: ((c as any).debit_order_rail ?? "either") as any,
+      visitorPassKind: (c as any).visitor_pass_kind ?? undefined,
       source: "member_fee_categories", raw: c,
     }));
 
@@ -302,7 +304,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                     <Badge variant="outline" className="text-[10px]">{fee.typeLabel}</Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{money(fee.amount)}{fee.billingPeriod === "monthly" ? <span className="text-[10px] text-muted-foreground">/mo</span> : null}</TableCell>
-                  <TableCell className="text-sm">{fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : fee.billingPeriod === "monthly" ? <span className="text-muted-foreground">Monthly (day {fee.dueDay})</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
+                  <TableCell className="text-sm">{fee.visitorPassKind ? <span className="text-muted-foreground italic">On purchase</span> : fee.type === "registration" ? <span className="text-muted-foreground italic">On join</span> : fee.billingPeriod === "monthly" ? <span className="text-muted-foreground">Monthly (day {fee.dueDay})</span> : `${fee.dueDay} ${SHORT_MONTHS[fee.dueMonth - 1]}`}</TableCell>
                   <TableCell className="text-center">{fee.proRate ? "Yes" : "No"}</TableCell>
                   <TableCell className="text-center">
                     <Switch checked={fee.active} onCheckedChange={() => handleToggleActive(fee)} className="mx-auto" />
@@ -392,6 +394,7 @@ interface FeeDialogProps {
 function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", tenantName = "", stitchEnabled = false }: FeeDialogProps) {
   const isAssociation = tenantType === "association";
   const isEdit = !!existing;
+  const isVisitorPass = !!existing?.visitorPassKind;
   const [feeType, setFeeType] = useState<FeeType>(existing?.type ?? (isAssociation ? "league_affiliation" : "membership"));
   const qc = useQueryClient();
   const { symbol: currencySymbol } = useClubCurrency();
@@ -564,8 +567,14 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             </div>
           )}
 
-          {/* Amount + Due Month (hide date for registration — it's once-off on join) */}
-          {feeType === "registration" ? (
+          {/* Visitor passes start on purchase/activation and never have a calendar due date. */}
+          {isVisitorPass ? (
+            <div className="space-y-1">
+              <Label>Pass Fee ({currencySymbol})</Label>
+              <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
+              <p className="text-[10px] text-muted-foreground">Charged when the visitor buys this pass; no due date applies.</p>
+            </div>
+          ) : feeType === "registration" ? (
             <div className="space-y-1">
               <Label>Registration Fee ({currencySymbol})</Label>
               <Input type="number" min={0} value={amount} onChange={e => setAmount(Number(e.target.value))} />
@@ -632,7 +641,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
           )}
 
           {/* Pro-rate */}
-          {feeType !== "registration" && billingPeriod !== "monthly" && (
+          {!isVisitorPass && feeType !== "registration" && billingPeriod !== "monthly" && (
             <div className="flex items-center gap-2 h-10">
               <Switch checked={proRate} onCheckedChange={setProRate} id="pro-rate" />
               <Label htmlFor="pro-rate" className="cursor-pointer">Pro-rate</Label>
@@ -641,7 +650,7 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
 
           {/* Recurring card payment eligibility — only when Stitch gateway configured */}
 
-          {feeType !== "registration" && stitchEnabled && (
+          {!isVisitorPass && feeType !== "registration" && stitchEnabled && (
             <Card className="p-3 bg-muted/30 space-y-2">
               <div className="flex items-center gap-2">
                 <Switch checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />

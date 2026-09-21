@@ -494,7 +494,15 @@ export function TournamentInviteRegisterDialog({
                     champId={String(champ.id)}
                     clubId={clubId}
                     divisions={doublesPickerDivisions}
+                    onPay={() => {
+                      // Straight from naming a partner to paying — card if the
+                      // club has a gateway, otherwise open the EFT details.
+                      if (!feeOutstanding) return;
+                      if (gatewayReady) payByCard.mutate();
+                      else if (acceptsEft && status !== "pending_eft") { setShowEft(true); markEft.mutate(); }
+                    }}
                   />
+
                 </>
               ) : (
                 <>

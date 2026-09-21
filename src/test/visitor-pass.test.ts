@@ -73,7 +73,10 @@ describe("entitlement", () => {
   it("full members are never gated by a visitor pass", () => {
     expect(visitorBookingDecision({ isVisitor: false, visitorsCanBook: false, pass: null, now }).allowed).toBe(true);
   });
-  it("visitor bookings switched off at the club always block", () => {
-    expect(visitorBookingDecision({ isVisitor: true, visitorsCanBook: false, pass: live, now }).allowed).toBe(false);
+  it("a live pass lets a visitor book on their own even if the club switch is off", () => {
+    expect(visitorBookingDecision({ isVisitor: true, visitorsCanBook: false, pass: live, now }).allowed).toBe(true);
+  });
+  it("no pass and the club switch off still blocks", () => {
+    expect(visitorBookingDecision({ isVisitor: true, visitorsCanBook: false, pass: null, now }).allowed).toBe(false);
   });
 });

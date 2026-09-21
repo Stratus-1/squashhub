@@ -210,6 +210,9 @@ function FamilyDivisionPairs({
       setMemberB("");
       await Promise.all([onChanged(), refetch()]);
       toast.success(job.kind === "create" ? "Family pair added." : "Family pair removed.");
+      // Naming the pair is the moment the entry becomes payable — take the
+      // player straight to payment instead of making them hunt for a button.
+      if (job.kind === "create" && feeCents > 0 && onPay) onPay(feeCents * 2);
     },
     onError: (e: any) => toast.error(e?.message || "Could not update the family pairs"),
   });

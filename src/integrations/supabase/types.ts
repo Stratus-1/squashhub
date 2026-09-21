@@ -16909,6 +16909,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      visitor_charge_court_fee: {
+        Args: { p_booking_id: string }
+        Returns: boolean
+      }
       visitor_pass_duration: { Args: { p_kind: string }; Returns: string }
       visitor_pass_sync: {
         Args: { p_pass_id: string }

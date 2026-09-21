@@ -2769,6 +2769,7 @@ export type Database = {
           proof_url: string | null
           status: string
           updated_at: string
+          whatsapp_group_opt_in: boolean
         }
         Insert: {
           champ_id: string
@@ -2798,6 +2799,7 @@ export type Database = {
           proof_url?: string | null
           status?: string
           updated_at?: string
+          whatsapp_group_opt_in?: boolean
         }
         Update: {
           champ_id?: string
@@ -2827,6 +2829,7 @@ export type Database = {
           proof_url?: string | null
           status?: string
           updated_at?: string
+          whatsapp_group_opt_in?: boolean
         }
         Relationships: [
           {

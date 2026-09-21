@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { JoinLeagueAssociationCard } from "@/components/JoinLeagueAssociationCard";
 import { JoinedAssociationsCard } from "@/components/JoinedAssociationsCard";
+import { VisitorPassCard } from "@/components/VisitorPassCard";
+
 
 import { checkoutGateways, gatewayLabel } from "@/lib/club-gateways";
 import { buildYocoReturnUrl, clearPendingYocoSession, getPendingYocoSession, openYocoCheckout, rememberPendingYocoSession } from "@/lib/yoco-native-checkout";

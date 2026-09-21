@@ -14372,6 +14372,7 @@ export type Database = {
           league_win_conditions: Json | null
           match_duration_minutes: number | null
           match_type: string | null
+          milestone_play_by: Json | null
           name: string | null
           no_show_opponent_points: number | null
           no_show_player_points: number | null
@@ -14396,6 +14397,7 @@ export type Database = {
           registration_mode: string | null
           registration_opens_at: string | null
           registration_required: boolean | null
+          round_definitions: Json | null
           round_format: string | null
           round_play_by: Json | null
           sanction_notes: string | null

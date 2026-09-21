@@ -74,6 +74,18 @@ export function classifyEntrant(row: EntrantRowLike, ctx: EntrantContext = {}): 
   return "pending_invite";
 }
 
+/**
+ * The admin put this player in without any payment event: no acceptance, no
+ * money. They were simply selected off the members list.
+ */
+export function isAdminSelected(row: EntrantRowLike): boolean {
+  const s = normalizeEntrantStatus(row.status);
+  if (!REGISTERED_STATUSES.has(s)) return false;
+  if (row.confirmed_at) return false;
+  if (row.paid_at) return false;
+  return Number(row.fee_paid_cents || 0) <= 0;
+}
+
 export const ENTRANT_CATEGORY_LABEL: Record<EntrantCategory, string> = {
   pending_invite: "Invited — no response",
   accepted: "Accepted — fee due",

@@ -12,8 +12,8 @@ import { toast } from "sonner";
 import { openWhatsApp, normalisePhoneForWhatsApp } from "@/lib/whatsapp";
 import {
   classifyEntrant,
-  ENTRANT_CATEGORY_LABEL,
   ENTRANT_CATEGORY_VARIANT,
+  entrantStatusLabel,
   isParticipatingEntrant,
 } from "@/lib/tournaments/entrant-status";
 import { withdrawalUpdates } from "@/lib/tournaments/withdraw";
@@ -272,9 +272,9 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
         <div className="space-y-3">
           <div className="flex items-center gap-3 text-xs flex-wrap">
-            <Badge variant="default">Registered {participatingCount}</Badge>
-            <Badge variant="secondary">Paid {paidCount}</Badge>
-            <Badge variant="outline">Pending {pendingCount}</Badge>
+            <Badge variant="default">{feeRequired ? "Registered" : "Entered"} {participatingCount}</Badge>
+            {feeRequired && <Badge variant="secondary">Paid {paidCount}</Badge>}
+            {feeRequired && <Badge variant="outline">Pending {pendingCount}</Badge>}
             <Badge variant="default" className="bg-sky-600 hover:bg-sky-600">
               Active {activeRegistrations.filter((r: any) => signupMap.get(r.club_member_id)?.has_signed_in).length}
             </Badge>
@@ -367,7 +367,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                       const category = classifyEntrant(r, { paymentRequired: feeRequired });
                       return (
                         <Badge variant={ENTRANT_CATEGORY_VARIANT[category]} className="text-[10px]">
-                          {ENTRANT_CATEGORY_LABEL[category]}
+                          {entrantStatusLabel(r, { paymentRequired: feeRequired })}
                         </Badge>
                       );
                     })()}

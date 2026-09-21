@@ -74,6 +74,18 @@ export function classifyEntrant(row: EntrantRowLike, ctx: EntrantContext = {}): 
   return "pending_invite";
 }
 
+/**
+ * The admin put this player in without any payment event: no acceptance, no
+ * money. They were simply selected off the members list.
+ */
+export function isAdminSelected(row: EntrantRowLike): boolean {
+  const s = normalizeEntrantStatus(row.status);
+  if (!REGISTERED_STATUSES.has(s)) return false;
+  if (row.confirmed_at) return false;
+  if (row.paid_at) return false;
+  return Number(row.fee_paid_cents || 0) <= 0;
+}
+
 export const ENTRANT_CATEGORY_LABEL: Record<EntrantCategory, string> = {
   pending_invite: "Invited — no response",
   accepted: "Accepted — fee due",
@@ -93,8 +105,19 @@ export const ENTRANT_CATEGORY_VARIANT: Record<
   declined: "destructive",
 };
 
+/**
+ * The words the organiser sees. "Paid" is only ever shown when the tournament
+ * actually charges an entry fee and money has changed hands. A free tournament
+ * says "Entered", and a player the admin simply picked off the members list
+ * says "Selected".
+ */
 export function entrantStatusLabel(row: EntrantRowLike, ctx: EntrantContext = {}): string {
-  return ENTRANT_CATEGORY_LABEL[classifyEntrant(row, ctx)];
+  const category = classifyEntrant(row, ctx);
+  if (category !== "registered") return ENTRANT_CATEGORY_LABEL[category];
+  if (isAdminSelected(row)) return "Selected";
+  if (!ctx.paymentRequired) return "Entered";
+  if (normalizeEntrantStatus(row.status) === "waived") return "Entered — fee waived";
+  return "Paid — entered";
 }
 
 /**

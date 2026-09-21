@@ -5334,6 +5334,7 @@ export type Database = {
           address: string | null
           allow_annual_billing: boolean
           allow_biannual_billing: boolean
+          allow_solo_bookings: boolean
           annual_billing_request_note: string | null
           annual_billing_requested_at: string | null
           annual_billing_requested_by: string | null
@@ -5481,6 +5482,7 @@ export type Database = {
           address?: string | null
           allow_annual_billing?: boolean
           allow_biannual_billing?: boolean
+          allow_solo_bookings?: boolean
           annual_billing_request_note?: string | null
           annual_billing_requested_at?: string | null
           annual_billing_requested_by?: string | null
@@ -5628,6 +5630,7 @@ export type Database = {
           address?: string | null
           allow_annual_billing?: boolean
           allow_biannual_billing?: boolean
+          allow_solo_bookings?: boolean
           annual_billing_request_note?: string | null
           annual_billing_requested_at?: string | null
           annual_billing_requested_by?: string | null

@@ -83,6 +83,9 @@ import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
+import { visitorBookingDecision } from "@/lib/visitor-pass";
+import { useMyVisitorPass } from "@/hooks/use-visitor-pass";
+
 
 function timeToMinutes(t: string) {
   const [hh, mm] = t.split(":").map((x) => Number(x));
@@ -2669,13 +2672,14 @@ export default function Bookings() {
               )}
 
 
-              {/* A visitor booking on their own pays the club's per-visit fee. */}
-              {String((activeMember as any)?.role || "").toLowerCase() === "visitor" && visitorSelfFee > 0 && (
-                <p className="text-[11px] text-amber-600 leading-snug">
-                  A visitor fee of {money(visitorSelfFee)} will be charged for this visit. It's added after
-                  the booking time has passed.
+              {/* A visitor books on the strength of their pass — no extra court fee. */}
+              {String((activeMember as any)?.role || "").toLowerCase() === "visitor" && myVisitorPass?.valid_until && (
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Booking with your visitor pass, valid until{" "}
+                  {new Date(myVisitorPass.valid_until).toLocaleString()}.
                 </p>
               )}
+
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold">

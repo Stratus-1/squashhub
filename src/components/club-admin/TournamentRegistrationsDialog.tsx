@@ -43,6 +43,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   const [overrideRegId, setOverrideRegId] = useState<string | null>(null);
   const [overridePartnerId, setOverridePartnerId] = useState<string>("");
   const [showCancelled, setShowCancelled] = useState(false);
+  const [showProofOnly, setShowProofOnly] = useState(false);
   const [withdrawReg, setWithdrawReg] = useState<any | null>(null);
   const [withdrawGroup, setWithdrawGroup] = useState<string>("all");
 

@@ -36,6 +36,7 @@ import { useMyScheduledMatches, useProfile, useBookings, useMyBookings, useLadde
 import { useMyClub, useIsClubAdmin, useMyClubMember, useMyLeagueRegistration } from "@/hooks/use-club";
 import { DashboardDesktop } from "@/components/DashboardDesktop";
 import { LeagueWeekAvailabilityCard } from "@/components/LeagueWeekAvailabilityCard";
+import { VisitorPassCard } from "@/components/VisitorPassCard";
 import { DashboardTournamentInvitesCard } from "@/components/DashboardTournamentInvitesCard";
 import { LinkExistingMembershipCard } from "@/components/LinkExistingMembershipCard";
 

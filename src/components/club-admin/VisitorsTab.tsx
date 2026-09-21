@@ -356,7 +356,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     }
     setAddSaving(true);
     try {
-      const { error } = await fromExt("club_visitors").insert({
+      const { data: inserted, error } = await fromExt("club_visitors").insert({
         club_id: clubId,
         first_name: first,
         last_name: last,
@@ -365,8 +365,25 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         home_club_name: homeClubsEnabled ? home : "Visitor",
         member_number: addMemberNumber.trim() || null,
         category: addCategory,
-      });
+      }).select("id").single();
       if (error) throw error;
+
+      // A visitor the club registers on purpose is a real player: give them a
+      // visitor-role member record so they appear in tournament invitations,
+      // partner lists and match results. The member record is linked back to
+      // the visitor row so the list above still shows one person, not two.
+      const { error: memberError } = await fromExt("club_members").insert({
+        club_id: clubId,
+        name: `${first} ${last}`.trim(),
+        role: "visitor",
+        email: addEmail.trim() || null,
+        phone: addPhone.trim() || null,
+        gender: addCategory === "Ladies" ? "Ladies" : "Men",
+        home_club_name: homeClubsEnabled ? home : null,
+        club_member_number: (inserted as any)?.id ? `visitor:${(inserted as any).id}` : null,
+      });
+      if (memberError) throw memberError;
+
       // If the typed home club isn't already in the curated list, add it
       if (
         homeClubsEnabled &&

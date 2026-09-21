@@ -491,7 +491,9 @@ export default function TournamentInvite() {
             View tournament
           </Button>
         )}
+        {data?.champ_id && <JoinWhatsAppGroupButton champId={data.champ_id} className="w-full" size="default" />}
         {withdrawSection}
+
       </>,
     );
   }

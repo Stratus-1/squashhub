@@ -15,6 +15,16 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST,OPTIONS",
 };
 
+/** Identity + unsubscribe strip appended to every emailed platform update. */
+function withEmailFooter(html: string) {
+  return `${html}
+<div style="margin-top:26px;border-top:1px solid #e2e8f0;padding-top:12px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#94a3b8;line-height:1.6">
+SquashHub — Stratus Software Solutions (Pty) Ltd, South Africa.<br>
+You are receiving this as a club administrator on SquashHub. You can reply to this email, or
+<a href="https://squashhub.co.za/settings" style="color:#94a3b8">unsubscribe from these updates</a>.
+</div>`;
+}
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, {

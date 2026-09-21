@@ -187,6 +187,7 @@ export default function ClubAuth() {
           toast.error((data as any)?.error || error?.message || "Failed to finish visitor registration");
         } else {
           setVisitorFirstName(payload.first_name || "");
+          setVisitorMemberId(((data as any)?.club_member_id as string) || null);
           setVisitorDone(true);
           toast.success("Welcome! You're signed in as a visitor.");
         }

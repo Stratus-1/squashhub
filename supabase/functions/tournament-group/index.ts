@@ -105,11 +105,17 @@ Deno.serve(async (req) => {
         .eq("champ_id", champId);
 
       const paidOnly = payload.paid_only === true;
+      // Optional explicit targeting: players already placed in the draw whose
+      // registration status has not caught up yet (organiser's judgement call).
+      const targetIds: string[] = Array.isArray(payload.member_ids)
+        ? payload.member_ids.map((id: unknown) => String(id))
+        : [];
       const recipients = (regs ?? []).filter((r: any) => {
         const s = String(r.status ?? "").toLowerCase();
         if (!r.club_member_id) return false;
         // Players who unticked the WhatsApp group box at entry are never sent the link.
         if (r.whatsapp_group_opt_in === false) return false;
+        if (targetIds.length > 0) return targetIds.includes(r.club_member_id);
         return paidOnly ? s === "paid" : ENTERED.has(s);
       });
 
@@ -144,6 +150,9 @@ Deno.serve(async (req) => {
               category: "utility",
               template_key: "club_notice",
               template_variables: { message },
+              // Lets the sender resolve players entered from other clubs in the
+              // region — without this, cross-club entrants read as "no phone".
+              interaction: { kind: "champ_entry", target_id: champId },
             },
             "send-whatsapp",
           );

@@ -8476,18 +8476,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   </div>
                 )}
 
-                {/* WhatsApp group for this tournament. Optional — leaving it
-                    empty never affects setup, entries or the draw. */}
-                {editingChampId && (
-                  <div className="pt-1">
-                    <TournamentWhatsAppGroupCard
-                      champId={editingChampId}
-                      champName={champName}
-                      clubId={clubId}
-                    />
-                  </div>
-                )}
               </div>
+
 
 
             )}
@@ -10834,6 +10824,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
             </div>
             </WizardSection>
+
+            {/* WhatsApp group for this tournament. Lives on the Invites &
+                messaging step — the group invite is part of the messaging
+                flow. Optional: leaving it empty never affects setup,
+                entries or the draw. */}
+            {editingChampId && (
+              <TournamentWhatsAppGroupCard
+                champId={editingChampId}
+                champName={champName}
+                clubId={clubId}
+              />
+            )}
           </CardContent>
         </Card>
       )}

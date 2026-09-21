@@ -218,9 +218,57 @@ export default function ClubChampsView() {
    * display-only: they are never fed to the draw, pool assignment or seeding
    * logic, which keeps using `entries`.
    */
+  /** member id -> the pair they belong to, for attaching partners to entry rows. */
+  const pairByMember = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const p of doublesPairs as any[]) {
+      const a = String(p.member_a || "");
+      const b = String(p.member_b || "");
+      if (!a || !b) continue;
+      map.set(a, p);
+      map.set(b, p);
+    }
+    return map;
+  }, [doublesPairs]);
+
+  /**
+   * Real entry rows, with the doubles partner filled in from the pairing when the
+   * entry itself was created before the players paired up. The second member of a
+   * pair is folded into their partner's row instead of appearing on their own.
+   */
+  const displayEntries = useMemo(() => {
+    const entryMemberIds = new Set(
+      (entries as any[]).map((e: any) => String(e.club_member_id || "")).filter(Boolean),
+    );
+    const folded = new Set<string>();
+    const out: any[] = [];
+    for (const e of entries as any[]) {
+      const mid = String(e.club_member_id || "");
+      if (mid && folded.has(mid)) continue;
+      if (e.partner_member_id) {
+        out.push(e);
+        continue;
+      }
+      const pair = mid ? pairByMember.get(mid) : null;
+      if (!pair) {
+        out.push(e);
+        continue;
+      }
+      const otherId = String(pair.member_a) === mid ? String(pair.member_b) : String(pair.member_a);
+      const otherName = String(pair.member_a) === mid ? pair.member_b_name : pair.member_a_name;
+      if (entryMemberIds.has(otherId)) folded.add(otherId);
+      out.push({
+        ...e,
+        partner_member_id: otherId,
+        partner: { id: otherId, name: otherName },
+      });
+    }
+    return out;
+  }, [entries, pairByMember]);
+
   const provisionalEntries = useMemo(() => {
     const known = new Set<string>();
-    (entries as any[]).forEach((e: any) => {
+    (displayEntries as any[]).forEach((e: any) => {
       if (e.club_member_id) known.add(e.club_member_id);
       if (e.partner_member_id) known.add(e.partner_member_id);
     });
@@ -281,13 +329,13 @@ export default function ClubChampsView() {
       });
     }
     return out;
-  }, [entries, registrations, doublesPairs, champId]);
+  }, [entries, displayEntries, registrations, doublesPairs, champId]);
 
 
   // Entry list used for standings display only (real entries + accepted registrations).
   const standingsEntries = useMemo(
-    () => [...(entries as any[]), ...provisionalEntries],
-    [entries, provisionalEntries],
+    () => [...(displayEntries as any[]), ...provisionalEntries],
+    [displayEntries, provisionalEntries],
   );
 
   // Real league ranks (player_rank from member_league_registrations) for the source leagues.

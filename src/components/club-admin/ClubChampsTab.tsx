@@ -9519,7 +9519,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             {sourceLeagueIds.length > 0 ? listNames(sourceLeagueIds) : "no league"}.{" "}
                             {memberLeagueIds.length > 0
                               ? `This player is registered in ${listNames(memberLeagueIds)}.`
-                              : "This player is not registered in any club league."}
+                              : scopeIsWide
+                                ? "This player is not registered in any league in the region for this season."
+                                : "This player is not registered in any club league."}
                           </span>
                         </span>
                         <Button

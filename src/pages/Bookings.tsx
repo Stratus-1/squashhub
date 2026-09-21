@@ -447,6 +447,11 @@ export default function Bookings() {
   // Fee a registered visitor pays each time they book a court on their own.
   const visitorSelfFee = Number((myClub as any)?.visitor_self_booking_fee ?? 0);
   const requireVisitorNamed = !!(myClub as any)?.require_visitor_for_member_booking;
+  // Some clubs don't allow a member to hold a court on their own. Admins and
+  // operational roles (cleaning, maintenance, extra bookings) are exempt.
+  const soloBookingsAllowed = (myClub as any)?.allow_solo_bookings ?? true;
+  const soloExempt = isMemberAdmin || isSuperAdmin || canOpsBook || canBypassBookingLimits;
+  const secondPlayerRequired = requireVisitorNamed || (!soloBookingsAllowed && !soloExempt);
   const rawSlot = Number((myClub as any)?.booking_slot_minutes);
   const slotMinutes: 30 | 40 | 45 | 60 = (rawSlot === 60 ? 60 : rawSlot === 40 ? 40 : rawSlot === 45 ? 45 : 30);
   const maxPeakPerDay = Math.max(1, Number((myClub as any)?.max_peak_bookings_per_day ?? 1));

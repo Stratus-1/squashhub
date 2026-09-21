@@ -59,7 +59,7 @@ describe("labels", () => {
   it("labels each category for organisers", () => {
     expect(entrantStatusLabel({ status: "invited" }, paid)).toBe("Invited — no response");
     expect(entrantStatusLabel({ status: "pending_payment", confirmed_at: "x" }, paid)).toBe("Accepted — fee due");
-    expect(entrantStatusLabel({ status: "paid" }, paid)).toBe("Registered");
+    expect(entrantStatusLabel({ status: "paid", paid_at: "x" }, paid)).toBe("Paid — entered");
     expect(entrantStatusLabel({ status: "cancelled" }, paid)).toBe("Declined");
   });
 });

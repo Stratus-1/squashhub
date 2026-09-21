@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
     if (contact?.opted_out) {
       return page("Unsubscribed", `<h1>You're unsubscribed</h1>
 <p>${escapeHtml(contact.email)} will not receive any further emails from SquashHub.</p>
-<small>SquashHub — HKFT Services</small>`);
+<small>SquashHub — Stratus Software Solutions (Pty) Ltd</small>`);
     }
 
     return page("Unsubscribe", `<h1>Unsubscribe from SquashHub</h1>

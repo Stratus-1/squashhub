@@ -88,7 +88,7 @@ Your players simply open that link and register with their NSA number (or their 
 
 <p>Kind regards,<br><br>
 <strong>Willem Pretorius</strong><br>
-SquashHub — HKFT Services<br>
+SquashHub — Stratus Software Solutions (Pty) Ltd<br>
 +27 83 375 9003<br>
 <a href="mailto:support@squashhub.co.za" style="color:#1d4ed8">support@squashhub.co.za</a><br>
 <a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a></p>`),
@@ -131,7 +131,7 @@ ${VIDEO_BLOCK_PLACEHOLDER}
 
 <p>Kind regards,<br><br>
 <strong>Willem Pretorius</strong><br>
-SquashHub — HKFT Services<br>
+SquashHub — Stratus Software Solutions (Pty) Ltd<br>
 +27 83 375 9003<br>
 <a href="mailto:support@squashhub.co.za" style="color:#1d4ed8">support@squashhub.co.za</a><br>
 <a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a></p>`),
@@ -172,7 +172,7 @@ ${VIDEO_BLOCK_PLACEHOLDER}
 
 <p>Kind regards,<br><br>
 <strong>Willem Pretorius</strong><br>
-SquashHub — HKFT Services<br>
+SquashHub — Stratus Software Solutions (Pty) Ltd<br>
 +27 83 375 9003<br>
 <a href="mailto:support@squashhub.co.za" style="color:#1d4ed8">support@squashhub.co.za</a><br>
 <a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a></p>`),
@@ -213,7 +213,7 @@ ${VIDEO_BLOCK_PLACEHOLDER}
 
 <p>Kind regards,<br><br>
 <strong>Willem Pretorius</strong><br>
-SquashHub — HKFT Services<br>
+SquashHub — Stratus Software Solutions (Pty) Ltd<br>
 +27 83 375 9003<br>
 <a href="mailto:support@squashhub.co.za" style="color:#1d4ed8">support@squashhub.co.za</a><br>
 <a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a></p>`),
@@ -250,7 +250,7 @@ ${VIDEO_BLOCK_PLACEHOLDER}
 
 <p>Kind regards,<br><br>
 <strong>Willem Pretorius</strong><br>
-SquashHub — HKFT Services<br>
+SquashHub — Stratus Software Solutions (Pty) Ltd<br>
 +27 83 375 9003<br>
 <a href="mailto:support@squashhub.co.za" style="color:#1d4ed8">support@squashhub.co.za</a><br>
 <a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a></p>`),

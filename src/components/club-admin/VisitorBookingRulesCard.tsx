@@ -95,35 +95,12 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
           )}
         </div>
 
-        {/* 1. Visitor booking on their own */}
-        <div className="space-y-2 rounded-lg border p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <Label className="text-xs font-semibold">Allow registered visitors to make a booking</Label>
-              <p className="text-[11px] text-muted-foreground">
-                A visitor stays a visitor on the books and pays each time they play.
-              </p>
-            </div>
-            <Switch
-              checked={form.visitorsCanBook}
-              onCheckedChange={(v) => setForm((p) => ({ ...p, visitorsCanBook: v }))}
-            />
-          </div>
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-xs text-muted-foreground">{symbol}</span>
-            <Input
-              type="number"
-              min={0}
-              step={1}
-              className="h-8 text-xs w-28"
-              value={form.selfFee}
-              onChange={(e) => setForm((p) => ({ ...p, selfFee: Math.max(0, parseFloat(e.target.value) || 0) }))}
-            />
-            <span className="text-[11px] text-muted-foreground">
-              per booking, charged to the visitor (0 = no charge)
-            </span>
-          </div>
-        </div>
+        {/* Registered visitors are managed on the Visitors page — single source of truth. */}
+        <p className="text-[11px] text-muted-foreground rounded-lg border border-dashed p-3">
+          Whether registered visitors may book for themselves, and what they pay per visit, is set on the
+          Visitors page where you manage your registered visitors.
+        </p>
+
 
         {/* 2. Member brings a visitor */}
         <div className="space-y-2 rounded-lg border p-3">

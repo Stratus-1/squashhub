@@ -114,3 +114,17 @@ describe("partitionByDivisionAssignment", () => {
     expect([...assigned, ...needsDivision].some((r) => r.club_member_id === "b")).toBe(false);
   });
 });
+
+describe("wording when no payment is required", () => {
+  it("never says paid for a free tournament", () => {
+    expect(entrantStatusLabel({ status: "paid", confirmed_at: "x" }, free)).toBe("Entered");
+  });
+  it("says selected when the admin simply picked the player", () => {
+    expect(entrantStatusLabel({ status: "paid", fee_paid_cents: 0 }, free)).toBe("Selected");
+    expect(entrantStatusLabel({ status: "paid", fee_paid_cents: 0 }, paid)).toBe("Selected");
+  });
+  it("still says paid when money actually changed hands", () => {
+    expect(entrantStatusLabel({ status: "paid", paid_at: "x", fee_paid_cents: 5000 }, paid)).toBe("Paid — entered");
+    expect(entrantStatusLabel({ status: "waived", paid_at: "x" }, paid)).toBe("Entered — fee waived");
+  });
+});

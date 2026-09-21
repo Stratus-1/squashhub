@@ -1,3 +1,9 @@
+## 2026-09-21 — Visitor passes have no calendar due date
+
+- **Issue:** Day, 3-day and monthly visitor-pass rows inherited the normal membership fee date controls, even though each pass is charged only when a visitor buys it.
+- **Fix:** Fee Structure now labels these rows **On purchase** and their editor shows only the pass amount. Due-day/month, pro-rate and recurring-payment controls remain available for ordinary fees but are omitted for visitor passes.
+- **Scope:** Presentation and fee setup only. Pass activation windows, prices, transactions and historical dates are unchanged.
+
 ## 2026-09-19 — Rounds headings only when the admin set up rounds
 
 - **Symptom:** Generated round numbers surfaced on pre-planned timed events and could appear out of time order (e.g. a "Round 5" game earlier than a "Round 3" game after manual moves).

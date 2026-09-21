@@ -2191,14 +2191,78 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    */
   const [eligibilityOverrides, setEligibilityOverrides] = useState<Set<string>>(new Set());
 
+  /**
+   * Regional / federation tournaments: "6th League" is the REGION's 6th league,
+   * so a player registered in his own club's 6th league for the same season is
+   * part of the division's population. The saved division sources still point at
+   * the host club's league ids — only the population behind them is widened.
+   */
+  const regionLeagueEquivalents = useMemo(() => {
+    if (!scopeIsWide) return new Map<string, string[]>();
+    return regionEquivalentLeagueIds(
+      (availableLeagues as any[]).map((l) => ({
+        id: l.id as string,
+        level: l.level ?? null,
+        season_year: l.season_year ?? null,
+        is_reserve: l.is_reserve ?? false,
+      })),
+      (scopeLeagueRows as any[]).map((r) => ({
+        league_id: r.league_id as string,
+        level: r.level ?? null,
+        season_year: r.season_year ?? null,
+        is_reserve: r.is_reserve ?? false,
+      })),
+    );
+  }, [scopeIsWide, availableLeagues, scopeLeagueRows]);
+
+  const regionEligibilityLeagueIds = useMemo(
+    () => regionLeagueIdsToResolve(regionLeagueEquivalents),
+    [regionLeagueEquivalents],
+  );
+
+  const { data: regionEligibilityMembers = new Map<string, string[]>() } = useQuery({
+    queryKey: [
+      "division-region-registrations",
+      editingChampId,
+      clubId,
+      eligibilityScope,
+      regionEligibilityLeagueIds.slice().sort().join(","),
+      inviteIncludeReserves,
+    ],
+    queryFn: () =>
+      fetchScopeLeagueMemberIds({
+        tournamentId: editingChampId,
+        clubId,
+        scope: eligibilityScope,
+        leagueIds: regionEligibilityLeagueIds,
+        includeReserves: inviteIncludeReserves,
+        contactableOnly: false,
+      }),
+    enabled: !!clubId && showWizard && scopeIsWide && regionEligibilityLeagueIds.length > 0,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const eligibilityRegistrationsByLeague = useMemo(
+    () =>
+      scopeIsWide
+        ? widenRegistrationsRegionwide({
+            base: registrationsByLeague,
+            equivalents: regionLeagueEquivalents,
+            regionMembersByLeague: regionEligibilityMembers as Map<string, string[]>,
+          })
+        : registrationsByLeague,
+    [scopeIsWide, registrationsByLeague, regionLeagueEquivalents, regionEligibilityMembers],
+  );
+
   const eligibilityCtx: EligibilityContext = useMemo(
     () => ({
       sources: leagueSources,
       allLeagueIds: (availableLeagues as any[]).map((l) => l.id as string),
-      registrationsByLeague,
+      registrationsByLeague: eligibilityRegistrationsByLeague,
       overrides: eligibilityOverrides,
     }),
-    [leagueSources, availableLeagues, registrationsByLeague, eligibilityOverrides],
+    [leagueSources, availableLeagues, eligibilityRegistrationsByLeague, eligibilityOverrides],
   );
 
   /**

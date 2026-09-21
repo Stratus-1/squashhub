@@ -16829,6 +16829,7 @@ export type Database = {
         | "cleaning_services"
         | "wifi_income"
         | "security"
+        | "visitor_income"
       integration_provider:
         | "strava"
         | "apple_health"
@@ -17006,6 +17007,7 @@ export const Constants = {
         "cleaning_services",
         "wifi_income",
         "security",
+        "visitor_income",
       ],
       integration_provider: [
         "strava",

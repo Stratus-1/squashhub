@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { EftPaymentPanel } from "@/components/payments/EftPaymentPanel";
 import { acceptsAccountCharge, accountChargeLabel } from "@/lib/tournaments/payment-methods";
 import { GroupEntryCard } from "@/components/tournaments/GroupEntryCard";
+import { entrantStatusLabel } from "@/lib/tournaments/entrant-status";
 
 import {
   isSupportedGateway, readReturnSession, clearReturnParams,

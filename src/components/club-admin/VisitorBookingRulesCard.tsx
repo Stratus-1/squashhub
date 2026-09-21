@@ -9,12 +9,11 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import { EditLock, useEditLock } from "./setup/EditLock";
 
 /**
- * Two separate visitor situations on court bookings:
- *  1. A registered visitor books a court on their own — charged their own
- *     per-visit fee every time they play.
- *  2. A member books and brings a visitor instead of naming another member —
- *     the member is charged the club's visitor fee for that booking.
- * Both fees are raised after the booking slot has passed, so a cancelled
+ * Court booking rules for guests a MEMBER brings along, plus the solo-booking
+ * rule. Registered visitors (who they are, whether they may book for
+ * themselves, and their per-visit fee) are owned by the Visitors page — that
+ * is the single source of truth; do not duplicate those controls here.
+ * The guest fee is raised after the booking slot has passed, so a cancelled
  * booking never costs anything.
  */
 export function VisitorBookingRulesCard({ club }: { club: Club }) {
@@ -22,8 +21,6 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
   const { symbol } = useClubCurrency();
 
   const initial = () => ({
-    visitorsCanBook: !!(club as any).visitors_can_book,
-    selfFee: Number((club as any).visitor_self_booking_fee ?? 0),
     guestFee: Number((club as any).visitor_booking_fee ?? 0),
     requireVisitor: !!(club as any).require_visitor_for_member_booking,
     allowSolo: (club as any).allow_solo_bookings ?? true,
@@ -31,8 +28,6 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
   const [form, setForm] = useState(initial);
   useEffect(() => setForm(initial()), [
     club.id,
-    (club as any).visitors_can_book,
-    (club as any).visitor_self_booking_fee,
     (club as any).visitor_booking_fee,
     (club as any).require_visitor_for_member_booking,
     (club as any).allow_solo_bookings,
@@ -43,8 +38,6 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
     try {
       await updateClub.mutateAsync({
         id: club.id,
-        visitors_can_book: form.visitorsCanBook,
-        visitor_self_booking_fee: Math.max(0, form.selfFee || 0),
         visitor_booking_fee: Math.max(0, form.guestFee || 0),
         require_visitor_for_member_booking: form.requireVisitor,
         allow_solo_bookings: form.allowSolo,
@@ -69,7 +62,7 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
         <div>
           <h3 className="font-semibold text-sm">Visitors and court bookings</h3>
           <p className="text-xs text-muted-foreground">
-            What a visitor pays to play here, whether they come on their own or with a member.
+            Who must be named on a booking, and what a member pays when they bring a guest.
           </p>
         </div>
 
@@ -95,35 +88,12 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
           )}
         </div>
 
-        {/* 1. Visitor booking on their own */}
-        <div className="space-y-2 rounded-lg border p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <Label className="text-xs font-semibold">Allow registered visitors to make a booking</Label>
-              <p className="text-[11px] text-muted-foreground">
-                A visitor stays a visitor on the books and pays each time they play.
-              </p>
-            </div>
-            <Switch
-              checked={form.visitorsCanBook}
-              onCheckedChange={(v) => setForm((p) => ({ ...p, visitorsCanBook: v }))}
-            />
-          </div>
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-xs text-muted-foreground">{symbol}</span>
-            <Input
-              type="number"
-              min={0}
-              step={1}
-              className="h-8 text-xs w-28"
-              value={form.selfFee}
-              onChange={(e) => setForm((p) => ({ ...p, selfFee: Math.max(0, parseFloat(e.target.value) || 0) }))}
-            />
-            <span className="text-[11px] text-muted-foreground">
-              per booking, charged to the visitor (0 = no charge)
-            </span>
-          </div>
-        </div>
+        {/* Registered visitors are managed on the Visitors page — single source of truth. */}
+        <p className="text-[11px] text-muted-foreground rounded-lg border border-dashed p-3">
+          Whether registered visitors may book for themselves, and what they pay per visit, is set on the
+          Visitors page where you manage your registered visitors.
+        </p>
+
 
         {/* 2. Member brings a visitor */}
         <div className="space-y-2 rounded-lg border p-3">
@@ -159,8 +129,8 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
         </div>
 
         <p className="text-[10px] text-muted-foreground leading-snug">
-          Both fees are added to the account after the booking time has passed, so a cancelled booking is
-          never charged.
+          The guest fee is added to the member's account after the booking time has passed, so a cancelled
+          booking is never charged.
         </p>
       </EditLock>
     </Card>

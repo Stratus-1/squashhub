@@ -55,7 +55,9 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
   // Visitor policy state (persisted on clubs row)
   const [canBook, setCanBook] = useState<boolean>(!!club?.visitors_can_book);
   const [accessCtrl, setAccessCtrl] = useState<boolean>(!!club?.visitors_access_control);
-  const [visitorFee, setVisitorFee] = useState<string>(String(club?.visitor_booking_fee ?? 0));
+  // Fee a REGISTERED visitor pays when booking a court themselves. The separate
+  // "member brings a guest" fee lives with the court booking rules.
+  const [visitorFee, setVisitorFee] = useState<string>(String(club?.visitor_self_booking_fee ?? 0));
   const [policySaving, setPolicySaving] = useState(false);
   const [policyDirty, setPolicyDirty] = useState(false);
   /**
@@ -73,11 +75,11 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       setCanBook(!!club.visitors_can_book);
       setAccessCtrl(!!club.visitors_access_control);
       setAskHomeClub(!!club.visitor_home_clubs_enabled);
-      setVisitorFee(String(club.visitor_booking_fee ?? 0));
+      setVisitorFee(String(club.visitor_self_booking_fee ?? 0));
       setPolicyDirty(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_booking_fee]);
+  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_self_booking_fee]);
 
   const savePolicy = async () => {
     setPolicySaving(true);
@@ -87,7 +89,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         .update({
           visitors_can_book: canBook,
           visitors_access_control: accessCtrl,
-          visitor_booking_fee: fee,
+          visitor_self_booking_fee: fee,
           visitor_home_clubs_enabled: askHomeClub,
         })
         .eq("id", clubId);
@@ -574,8 +576,8 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
         {canBook && (
           <div className="flex items-center gap-3 rounded-md border border-border bg-card p-2.5">
             <div className="flex-1 min-w-0">
-              <Label htmlFor="visitor-fee" className="text-xs font-semibold">Visitor booking fee</Label>
-              <p className="text-[10px] text-muted-foreground">Charged per booking made by a visitor. Set to 0 for free.</p>
+              <Label htmlFor="visitor-fee" className="text-xs font-semibold">Registered visitor booking fee</Label>
+              <p className="text-[10px] text-muted-foreground">Charged per booking a registered visitor makes for themselves. Set to 0 for free. A guest brought along by a member is handled under Courts &rarr; booking rules.</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <span className="text-xs text-muted-foreground">{currencySymbol}</span>

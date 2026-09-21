@@ -793,6 +793,20 @@ export default function MyAccount() {
         </div>
       )}
 
+      {/* Independent visitor: their pass (buy / status / valid until) */}
+      {!isPayingForOther && clubId && clubMemberId &&
+        String((activeClubMember as any)?.role || (activeMember as any)?.role || "").toLowerCase() === "visitor" && (
+        <div className="px-4 mt-3">
+          <VisitorPassCard
+            clubId={clubId}
+            clubMemberId={clubMemberId}
+            requiresApproval={!!(club as any)?.visitor_pass_requires_approval}
+          />
+        </div>
+      )}
+
+
+
 
 
       {/* Credit Balance Card */}

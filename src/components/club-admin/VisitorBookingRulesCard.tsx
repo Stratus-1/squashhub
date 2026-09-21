@@ -30,9 +30,7 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
   useEffect(() => setForm(initial()), [
     club.id,
     (club as any).visitor_booking_fee,
-    (club as any).require_visitor_for_member_booking,
 
-    (club as any).require_visitor_for_member_booking,
     (club as any).allow_solo_bookings,
   ]);
   const lock = useEditLock(() => setForm(initial()));

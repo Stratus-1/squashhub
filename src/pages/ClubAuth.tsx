@@ -983,8 +983,9 @@ export default function ClubAuth() {
             {club?.id && visitorMemberId && (
               <div className="text-left">
                 <p className="text-xs text-muted-foreground mb-2">
-                  To book courts yourself, choose a visitor pass below. Your access starts once it's paid
-                  {(club as any)?.visitor_pass_requires_approval ? " and approved by the club" : ""}.
+                  {visitorPassOffered
+                    ? `Last step: choose your visitor pass below to finish registering. Your access starts once it's paid${(club as any)?.visitor_pass_requires_approval ? " and approved by the club" : ""}.`
+                    : `To book courts yourself, choose a visitor pass below. Your access starts once it's paid${(club as any)?.visitor_pass_requires_approval ? " and approved by the club" : ""}.`}
                 </p>
                 <VisitorPassCard
                   clubId={club.id}
@@ -993,8 +994,17 @@ export default function ClubAuth() {
                 />
               </div>
             )}
-            <Button className="w-full" onClick={() => { window.location.href = "/"; }}>
-              Continue to {clubName}
+            {visitorPassOffered && !visitorPassChosen && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                Please choose a Day, 3-day or Monthly pass above to complete your registration.
+              </p>
+            )}
+            <Button
+              className="w-full"
+              disabled={visitorPassOffered && !visitorPassChosen}
+              onClick={() => { window.location.href = "/"; }}
+            >
+              {visitorPassOffered && !visitorPassChosen ? "Choose a pass to continue" : `Continue to ${clubName}`}
             </Button>
 
           </Card>

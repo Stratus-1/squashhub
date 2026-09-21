@@ -368,6 +368,23 @@ export function TournamentInviteRegisterDialog({
             </div>
           )}
 
+          {/* WhatsApp group opt-in — chosen at entry, applies from the draw onwards */}
+          {!accepted && (
+            <label className="flex items-start gap-2 rounded-md border p-2 text-xs cursor-pointer">
+              <Checkbox
+                checked={waGroupOptIn}
+                onCheckedChange={(v) => setWaGroupOptIn(v === true)}
+                className="mt-0.5"
+              />
+              <span className="flex-1">
+                Join the tournament WhatsApp group for draws, times and results.
+                <span className="block text-[11px] text-muted-foreground">
+                  Optional — you'll get the group join link when the organiser shares it. Untick if you don't want it.
+                </span>
+              </span>
+            </label>
+          )}
+
           {/* Step 1 — accept / register */}
           {!accepted ? (
             <div className="space-y-1.5">

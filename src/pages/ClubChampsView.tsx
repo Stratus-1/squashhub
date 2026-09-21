@@ -176,7 +176,7 @@ export default function ClubChampsView() {
     queryKey: ["club-champ-registrations", champId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_registrations")
-        .select("id, status, partner_confirmed, club_member_id, partner_member_id, confirmed_at, member:club_member_id(id, name, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, profiles:user_id(name))")
+        .select("id, status, partner_confirmed, club_member_id, partner_member_id, confirmed_at, division_choices, member:club_member_id(id, name, ladder_position, profiles:user_id(name, avatar_url)), partner:partner_member_id(id, name, ladder_position, profiles:user_id(name))")
         .eq("champ_id", champId!)
         .neq("status", "cancelled");
       if (error) throw error;
@@ -197,6 +197,54 @@ export default function ClubChampsView() {
     },
     enabled: !!champId,
   });
+
+  /**
+   * Everyone who accepted their entry should be visible in the standings, even
+   * before the draw puts them into a division. Accepted registrations that have
+   * no entry row yet are shown as provisional rows (all zeros) so members can
+   * see who has entered. These rows are display-only: they are never fed to the
+   * draw, pool assignment or seeding logic, which keeps using `entries`.
+   */
+  const provisionalEntries = useMemo(() => {
+    const known = new Set<string>();
+    (entries as any[]).forEach((e: any) => {
+      if (e.club_member_id) known.add(e.club_member_id);
+      if (e.partner_member_id) known.add(e.partner_member_id);
+    });
+    const fallbackGroup = (entries as any[])[0]?.group_number ?? 1;
+    const seen = new Set<string>();
+    const out: any[] = [];
+    for (const r of registrations as any[]) {
+      if (!r.confirmed_at) continue;
+      if (r.status === "cancelled" || r.status === "withdrawn") continue;
+      const mid = r.club_member_id as string | null;
+      if (!mid || known.has(mid) || seen.has(mid)) continue;
+      const pid: string | null =
+        r.partner_member_id && !known.has(r.partner_member_id) && !seen.has(r.partner_member_id)
+          ? r.partner_member_id
+          : null;
+      seen.add(mid);
+      if (pid) seen.add(pid);
+      out.push({
+        id: `reg-${r.id}`,
+        champ_id: champId,
+        club_member_id: mid,
+        partner_member_id: pid,
+        group_number: Number(Array.isArray(r.division_choices) ? r.division_choices[0] : null) || fallbackGroup,
+        order_index: 9000,
+        club_members: r.member,
+        partner: pid ? r.partner : null,
+        is_provisional_entry: true,
+      });
+    }
+    return out;
+  }, [entries, registrations, champId]);
+
+  // Entry list used for standings display only (real entries + accepted registrations).
+  const standingsEntries = useMemo(
+    () => [...(entries as any[]), ...provisionalEntries],
+    [entries, provisionalEntries],
+  );
 
   // Real league ranks (player_rank from member_league_registrations) for the source leagues.
   // Used to order players within each league group by their actual league position
@@ -323,14 +371,18 @@ export default function ClubChampsView() {
   const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
     // Per-division doubles: a "Doubles Bells" league must list both names.
     const isDoubles = isDoublesLeague(groupNum);
-    let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
-    // Pool-scoped filtering (Swiss with multiple pools per league).
+    let groupEntries = standingsEntries.filter((e: any) => e.group_number === groupNum);
+    // Pool-scoped filtering (Swiss with multiple pools per league). Players who
+    // have entered but are not yet drawn have no pool, so they are listed under
+    // the first pool rather than disappearing.
     if (poolNumber != null && isSwissForLeague(groupNum)) {
       const poolCount = poolCountFor(groupNum);
       const poolMap = assignPools(entries as SwissEntry[], groupNum, poolCount, isDoubles);
-      groupEntries = groupEntries.filter(
-        (e: any) => poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles)) === poolNumber,
-      );
+      groupEntries = groupEntries.filter((e: any) => {
+        const p = poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles));
+        if (p == null) return e.is_provisional_entry ? poolNumber === 1 : false;
+        return p === poolNumber;
+      });
     }
 
     const groupMemberIds = new Set<string>(
@@ -754,7 +806,7 @@ export default function ClubChampsView() {
 
 
 
-  const groupNumbers = [...new Set(entries.map((e: any) => e.group_number as number))].sort();
+  const groupNumbers = [...new Set(standingsEntries.map((e: any) => e.group_number as number))].sort();
 
   const hcLabel = (h: any) => {
     const n = Number(h) || 0;

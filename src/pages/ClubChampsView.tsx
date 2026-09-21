@@ -806,7 +806,7 @@ export default function ClubChampsView() {
 
 
 
-  const groupNumbers = [...new Set(entries.map((e: any) => e.group_number as number))].sort();
+  const groupNumbers = [...new Set(standingsEntries.map((e: any) => e.group_number as number))].sort();
 
   const hcLabel = (h: any) => {
     const n = Number(h) || 0;

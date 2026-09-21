@@ -107,10 +107,15 @@ export function groupJoinMessage(opts: {
 }
 
 /**
- * Who may be sent the group link: entrants who have actually entered. Merely
- * invited prospects are never added to the group.
+ * Who may be sent the group link: entrants who have actually entered AND who
+ * did not untick the WhatsApp group box at entry. Merely invited prospects
+ * and explicit opt-outs are never sent the link.
  */
-export type GroupInviteCandidate = { club_member_id: string; status?: string | null };
+export type GroupInviteCandidate = {
+  club_member_id: string;
+  status?: string | null;
+  whatsapp_group_opt_in?: boolean | null;
+};
 
 const ENTERED = new Set(["paid", "confirmed", "entered", "accepted", "pending_payment"]);
 
@@ -121,6 +126,7 @@ export function groupInviteRecipients<T extends GroupInviteCandidate>(
   return (registrations || []).filter((r) => {
     const s = String(r.status ?? "").toLowerCase();
     if (!r.club_member_id) return false;
+    if (r.whatsapp_group_opt_in === false) return false;
     if (opts.paidOnly) return s === "paid";
     return ENTERED.has(s);
   });

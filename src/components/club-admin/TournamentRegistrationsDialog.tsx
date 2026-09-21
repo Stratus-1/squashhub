@@ -124,6 +124,17 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
   // Mark EFT paid
   const markPaid = useMutation({
     mutationFn: async (reg: any) => {
+      // Settle the linked fee row first — trg_fee_paid_marks_champ_entries then
+      // flips the registration to paid itself, keeping statement and entry in
+      // sync. (Manually marking only the registration leaves an unpaid fee on
+      // the member's statement.)
+      if (reg.fee_payment_id) {
+        const { error: feeErr } = await fromExt("club_member_fee_payments")
+          .update({ paid: true, paid_at: new Date().toISOString() })
+          .eq("id", reg.fee_payment_id)
+          .eq("paid", false);
+        if (feeErr) throw feeErr;
+      }
       const { error } = await fromExt("club_champs_registrations")
         .update({
           status: "paid",

@@ -329,13 +329,13 @@ export default function ClubChampsView() {
       });
     }
     return out;
-  }, [entries, registrations, doublesPairs, champId]);
+  }, [entries, displayEntries, registrations, doublesPairs, champId]);
 
 
   // Entry list used for standings display only (real entries + accepted registrations).
   const standingsEntries = useMemo(
-    () => [...(entries as any[]), ...provisionalEntries],
-    [entries, provisionalEntries],
+    () => [...(displayEntries as any[]), ...provisionalEntries],
+    [displayEntries, provisionalEntries],
   );
 
   // Real league ranks (player_rank from member_league_registrations) for the source leagues.

@@ -30,7 +30,8 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
   useEffect(() => setForm(initial()), [
     club.id,
     (club as any).visitor_booking_fee,
-    (club as any).visitor_booking_fee,
+    (club as any).require_visitor_for_member_booking,
+
     (club as any).require_visitor_for_member_booking,
     (club as any).allow_solo_bookings,
   ]);
@@ -41,7 +42,7 @@ export function VisitorBookingRulesCard({ club }: { club: Club }) {
       await updateClub.mutateAsync({
         id: club.id,
         visitor_booking_fee: Math.max(0, form.guestFee || 0),
-        visitor_self_booking_fee: Math.max(0, form.visitorCourtFee || 0),
+        require_visitor_for_member_booking: form.requireVisitor,
         require_visitor_for_member_booking: form.requireVisitor,
         allow_solo_bookings: form.allowSolo,
       } as any);

@@ -66,6 +66,8 @@ const ClubLanding = lazy(() => import("./pages/ClubLanding"));
 const ClubAuth = lazy(() => import("./pages/ClubAuth"));
 const BookingResponse = lazy(() => import("./pages/BookingResponse"));
 const TournamentInvite = lazy(() => import("./pages/TournamentInvite"));
+const TournamentGroupAction = lazy(() => import("./pages/TournamentGroupAction"));
+
 const MobileBillingBridge = lazy(() => import("./pages/MobileBillingBridge"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const Feed = lazy(() => import("./pages/Feed"));
@@ -536,6 +538,12 @@ function AppRoutes() {
         <Route path="/i/:token" element={<TournamentInvite />} />
         <Route path="/c/:subdomain/i/test/:champId" element={<TournamentInvite />} />
         <Route path="/c/:subdomain/i/:token" element={<TournamentInvite />} />
+        {/* Deep links that live in the tournament WhatsApp group description */}
+        <Route path="/t/:champId/enter" element={<TournamentGroupAction action="enter" />} />
+        <Route path="/t/:champId/withdraw" element={<TournamentGroupAction action="withdraw" />} />
+        <Route path="/c/:subdomain/t/:champId/enter" element={<TournamentGroupAction action="enter" />} />
+        <Route path="/c/:subdomain/t/:champId/withdraw" element={<TournamentGroupAction action="withdraw" />} />
+
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
         <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />

@@ -389,7 +389,8 @@ function DivisionPartner({
           /* notification failure must never block the pairing itself */
         }
       }
-      if (job.kind === "propose" && job.payForPartner && onPay) onPay(feeCents * 2);
+      // Picking a partner is the moment the entry becomes payable.
+      if (job.kind === "propose" && hasFee && onPay) onPay(job.payForPartner ? feeCents * 2 : feeCents);
     },
     onError: (e: any) => toast.error(e?.message || "Could not update your doubles pair"),
   });

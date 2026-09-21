@@ -202,7 +202,7 @@ export default function ClubChampsView() {
   const { data: doublesPairs = [] } = useQuery({
     queryKey: ["champ-pair-list", champId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("tournament_pair_list", { p_champ_id: champId });
+      const { data, error } = await rpcExt("tournament_pair_list", { p_champ_id: champId });
       if (error) throw error;
       return (Array.isArray(data) ? data : []) as any[];
     },

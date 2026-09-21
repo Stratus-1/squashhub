@@ -90,6 +90,9 @@ export default function ClubAuth() {
   const [visitorPassword, setVisitorPassword] = useState("");
   const [visitorCategory, setVisitorCategory] = useState("Men");
   const [visitorDone, setVisitorDone] = useState(false);
+  // Set once the visitor membership exists, so they can buy their pass straight away.
+  const [visitorMemberId, setVisitorMemberId] = useState<string | null>(null);
+
   // Pre-flight gate for the Visitor tab:
   //   null   → show the two-question intro (are you a SquashHub user? / NSA member?)
   //   "ok"   → show the visitor registration form
@@ -761,6 +764,8 @@ export default function ClubAuth() {
         return;
       }
       localStorage.removeItem(pendingVisitorKey);
+      setVisitorMemberId(((data as any)?.club_member_id as string) || null);
+
       if (googleMode) {
         toast.success("Welcome! You're signed in as a visitor.");
         setVisitorDone(true);
@@ -966,9 +971,23 @@ export default function ClubAuth() {
             <p className="text-sm text-muted-foreground">
               You're signed in as a visitor at <span className="font-medium text-foreground">{clubName}</span>. You can now be selected for tournaments and league matches.
             </p>
+            {club?.id && visitorMemberId && (
+              <div className="text-left">
+                <p className="text-xs text-muted-foreground mb-2">
+                  To book courts yourself, choose a visitor pass below. Your access starts once it's paid
+                  {(club as any)?.visitor_pass_requires_approval ? " and approved by the club" : ""}.
+                </p>
+                <VisitorPassCard
+                  clubId={club.id}
+                  clubMemberId={visitorMemberId}
+                  requiresApproval={!!(club as any)?.visitor_pass_requires_approval}
+                />
+              </div>
+            )}
             <Button className="w-full" onClick={() => { window.location.href = "/"; }}>
               Continue to {clubName}
             </Button>
+
           </Card>
           <PoweredBySquashHub />
         </motion.div>

@@ -367,7 +367,7 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                       const category = classifyEntrant(r, { paymentRequired: feeRequired });
                       return (
                         <Badge variant={ENTRANT_CATEGORY_VARIANT[category]} className="text-[10px]">
-                          {ENTRANT_CATEGORY_LABEL[category]}
+                          {entrantStatusLabel(r, { paymentRequired: feeRequired })}
                         </Badge>
                       );
                     })()}

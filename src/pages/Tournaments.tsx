@@ -40,6 +40,7 @@ import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
 import { ScheduleMatchDialog } from "@/components/tournaments/ScheduleMatchDialog";
 import { WithdrawPlayerButton } from "@/components/tournaments/WithdrawPlayerButton";
+import { JoinWhatsAppGroupButton } from "@/components/tournaments/JoinWhatsAppGroupButton";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
 import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
@@ -1586,6 +1587,7 @@ export default function Tournaments() {
                       {(isClubAdmin || canManageChamps) && champs.length > 0 && (
                         <WithdrawPlayerButton champs={champs} />
                       )}
+                      {champs.length === 1 && <JoinWhatsAppGroupButton champId={champs[0].id} />}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="gap-1 h-7">

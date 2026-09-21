@@ -13160,6 +13160,30 @@ export type Database = {
           },
         ]
       }
+      tournament_lookup_attempts: {
+        Row: {
+          champ_id: string | null
+          created_at: string
+          id: string
+          member_number: string | null
+          ok: boolean
+        }
+        Insert: {
+          champ_id?: string | null
+          created_at?: string
+          id?: string
+          member_number?: string | null
+          ok?: boolean
+        }
+        Update: {
+          champ_id?: string | null
+          created_at?: string
+          id?: string
+          member_number?: string | null
+          ok?: boolean
+        }
+        Relationships: []
+      }
       tournament_rules: {
         Row: {
           affects_ranking_points: boolean
@@ -13301,6 +13325,218 @@ export type Database = {
             columns: ["tournament_id"]
             isOneToOne: false
             referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_whatsapp_group_invites: {
+        Row: {
+          champ_id: string
+          channel: string | null
+          club_member_id: string | null
+          created_at: string
+          group_id: string
+          id: string
+          link_opened_at: string | null
+          phone: string | null
+          send_error: string | null
+          sent_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          champ_id: string
+          channel?: string | null
+          club_member_id?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          link_opened_at?: string | null
+          phone?: string | null
+          send_error?: string | null
+          sent_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          champ_id?: string
+          channel?: string | null
+          club_member_id?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          link_opened_at?: string | null
+          phone?: string | null
+          send_error?: string | null
+          sent_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_whatsapp_group_invites_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_whatsapp_group_invites_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_whatsapp_group_invites_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_whatsapp_group_invites_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_whatsapp_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_whatsapp_groups: {
+        Row: {
+          announcements_only: boolean
+          champ_id: string
+          closed_at: string | null
+          club_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          group_name: string | null
+          id: string
+          invite_url: string | null
+          provider: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          announcements_only?: boolean
+          champ_id: string
+          closed_at?: string | null
+          club_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          group_name?: string | null
+          id?: string
+          invite_url?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          announcements_only?: boolean
+          champ_id?: string
+          closed_at?: string | null
+          club_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          group_name?: string | null
+          id?: string
+          invite_url?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_whatsapp_groups_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: true
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_whatsapp_groups_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: true
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_whatsapp_groups_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_withdrawal_requests: {
+        Row: {
+          champ_id: string
+          club_member_id: string
+          created_at: string
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          reason: string | null
+          registration_id: string | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          champ_id: string
+          club_member_id: string
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          reason?: string | null
+          registration_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          champ_id?: string
+          club_member_id?: string
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          reason?: string | null
+          registration_id?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_withdrawal_requests_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_withdrawal_requests_champ_id_fkey"
+            columns: ["champ_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_withdrawal_requests_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_withdrawal_requests_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs_registrations"
             referencedColumns: ["id"]
           },
         ]
@@ -16500,6 +16736,10 @@ export type Database = {
           registered_count: number
         }[]
       }
+      tournament_member_lookup: {
+        Args: { p_champ_id: string; p_last4: string; p_member_number: string }
+        Returns: Json
+      }
       tournament_owner_entity: {
         Args: { p_tournament_id: string }
         Returns: {
@@ -16508,6 +16748,7 @@ export type Database = {
           owner_org_id: string
         }[]
       }
+      tournament_public_summary: { Args: { p_champ_id: string }; Returns: Json }
       tournament_withdrawal_deadline: {
         Args: { p_cutoff_days: number; p_start_date: string }
         Returns: string

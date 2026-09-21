@@ -180,6 +180,8 @@ import {
   roundDeadlineSummary,
 } from "@/lib/tournaments/round-deadlines";
 import { CentralRoundSchedule } from "@/components/club-admin/tournament/CentralRoundSchedule";
+import { TournamentWhatsAppGroupCard } from "@/components/club-admin/tournament/TournamentWhatsAppGroupCard";
+
 import {
   fromLegacyDeadlines,
   parseMilestones,
@@ -8473,7 +8475,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     />
                   </div>
                 )}
+
+                {/* WhatsApp group for this tournament. Optional — leaving it
+                    empty never affects setup, entries or the draw. */}
+                {editingChampId && (
+                  <div className="pt-1">
+                    <TournamentWhatsAppGroupCard
+                      champId={editingChampId}
+                      champName={champName}
+                      clubId={clubId}
+                    />
+                  </div>
+                )}
               </div>
+
 
             )}
 

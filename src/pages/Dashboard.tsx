@@ -856,18 +856,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Profile Completion — only show if incomplete */}
-      <div className="px-4 mt-2">
-        <ProfileCompletionMeter
-          profile={profile}
-          onAction={(action) => {
-            if (action === "edit") openProfile("/profile?edit=1");
-            if (action === "edit-then-account") openProfile("/profile?edit=1&next=account");
-            if (action === "account") navigate("/my-account");
-            if (action === "face") setShowFaceEnrolment(true);
-          }}
-        />
-      </div>
+      {/* Profile Completion — only show if incomplete. Visitors are not asked to complete a profile. */}
+      {!isVisitorRoleMember && (
+        <div className="px-4 mt-2">
+          <ProfileCompletionMeter
+            profile={profile}
+            onAction={(action) => {
+              if (action === "edit") openProfile("/profile?edit=1");
+              if (action === "edit-then-account") openProfile("/profile?edit=1&next=account");
+              if (action === "account") navigate("/my-account");
+              if (action === "face") setShowFaceEnrolment(true);
+            }}
+          />
+        </div>
+      )}
 
       {/* Primary Actions — My Account first, then Book, Ladder, Profile */}
       <div className="px-4 mt-4">

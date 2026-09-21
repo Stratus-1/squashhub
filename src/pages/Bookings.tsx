@@ -1008,12 +1008,16 @@ export default function Bookings() {
     // Some clubs require every booking to name either a member opponent or a
     // visitor, so the visitor fee can never be missed.
     if (
-      requireVisitorNamed &&
+      secondPlayerRequired &&
       !isVisitorRole &&
       bookingDialog.playerMode === "member" &&
       !bookingDialog.opponentId
     ) {
-      toast.error("Choose a member as your opponent, or select Visitor and give their name.");
+      toast.error(
+        !soloBookingsAllowed && !requireVisitorNamed
+          ? "This club doesn't allow booking a court on your own — choose a member, or select Visitor and give their name."
+          : "Choose a member as your opponent, or select Visitor and give their name.",
+      );
       return;
     }
     const endTime = addMinutesToTime(bookingDialog.time, bookingDialog.duration);

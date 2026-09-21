@@ -198,12 +198,25 @@ export default function ClubChampsView() {
     enabled: !!champId,
   });
 
+  // Doubles pairings (names only) so a doubles tournament lists teams, not singles.
+  const { data: doublesPairs = [] } = useQuery({
+    queryKey: ["champ-pair-list", champId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("tournament_pair_list", { p_champ_id: champId });
+      if (error) throw error;
+      return (Array.isArray(data) ? data : []) as any[];
+    },
+    enabled: !!champId,
+  });
+
   /**
    * Everyone who accepted their entry should be visible in the standings, even
    * before the draw puts them into a division. Accepted registrations that have
    * no entry row yet are shown as provisional rows (all zeros) so members can
-   * see who has entered. These rows are display-only: they are never fed to the
-   * draw, pool assignment or seeding logic, which keeps using `entries`.
+   * see who has entered. In a doubles tournament, players who have paired up are
+   * listed as the team; anyone still unpaired shows on their own. These rows are
+   * display-only: they are never fed to the draw, pool assignment or seeding
+   * logic, which keeps using `entries`.
    */
   const provisionalEntries = useMemo(() => {
     const known = new Set<string>();
@@ -212,8 +225,38 @@ export default function ClubChampsView() {
       if (e.partner_member_id) known.add(e.partner_member_id);
     });
     const fallbackGroup = (entries as any[])[0]?.group_number ?? 1;
+    const accepted = new Map<string, any>();
+    for (const r of registrations as any[]) {
+      if (!r.confirmed_at) continue;
+      if (r.status === "cancelled" || r.status === "withdrawn") continue;
+      if (r.club_member_id) accepted.set(String(r.club_member_id), r);
+    }
+
     const seen = new Set<string>();
     const out: any[] = [];
+
+    // Pairs first, so both names land on one row.
+    for (const p of doublesPairs as any[]) {
+      const a = String(p.member_a || "");
+      const b = String(p.member_b || "");
+      if (!a || !b) continue;
+      if (known.has(a) || known.has(b) || seen.has(a) || seen.has(b)) continue;
+      if (!accepted.has(a) && !accepted.has(b)) continue;
+      seen.add(a);
+      seen.add(b);
+      out.push({
+        id: `pair-${p.id}`,
+        champ_id: champId,
+        club_member_id: a,
+        partner_member_id: b,
+        group_number: Number(p.group_number) || fallbackGroup,
+        order_index: 9000,
+        club_members: { id: a, name: p.member_a_name },
+        partner: { id: b, name: p.member_b_name },
+        is_provisional_entry: true,
+      });
+    }
+
     for (const r of registrations as any[]) {
       if (!r.confirmed_at) continue;
       if (r.status === "cancelled" || r.status === "withdrawn") continue;
@@ -231,14 +274,15 @@ export default function ClubChampsView() {
         club_member_id: mid,
         partner_member_id: pid,
         group_number: Number(Array.isArray(r.division_choices) ? r.division_choices[0] : null) || fallbackGroup,
-        order_index: 9000,
+        order_index: 9500,
         club_members: r.member,
         partner: pid ? r.partner : null,
         is_provisional_entry: true,
       });
     }
     return out;
-  }, [entries, registrations, champId]);
+  }, [entries, registrations, doublesPairs, champId]);
+
 
   // Entry list used for standings display only (real entries + accepted registrations).
   const standingsEntries = useMemo(

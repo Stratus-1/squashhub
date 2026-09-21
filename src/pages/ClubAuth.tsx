@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { VisitorPassCard } from "@/components/VisitorPassCard";
+import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
 
 
 export default function ClubAuth() {

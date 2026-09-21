@@ -77,20 +77,18 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       setAccessCtrl(!!club.visitors_access_control);
       setAskHomeClub(!!club.visitor_home_clubs_enabled);
       setPolicyDirty(false);
-      setPolicyDirty(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_self_booking_fee]);
+  }, [club?.id, club?.visitors_can_book, club?.visitors_access_control, club?.visitor_home_clubs_enabled]);
 
   const savePolicy = async () => {
     setPolicySaving(true);
     try {
-      const fee = Number(visitorFee) || 0;
       const { error } = await (supabase.from("clubs") as any)
         .update({
           visitors_can_book: canBook,
           visitors_access_control: accessCtrl,
-          visitor_self_booking_fee: fee,
+
           visitor_home_clubs_enabled: askHomeClub,
         })
         .eq("id", clubId);

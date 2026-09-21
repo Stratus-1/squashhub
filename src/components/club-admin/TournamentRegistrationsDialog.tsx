@@ -377,6 +377,11 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
                           if (s?.has_account) return <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-500">Invited, not activated</Badge>;
                           return <Badge variant="outline" className="text-[10px] text-rose-700 border-rose-500">No account</Badge>;
                         })()}
+                        {awaitingProofCheck(r) && (
+                          <Badge variant="default" className="text-[10px] bg-amber-600 hover:bg-amber-600">
+                            Proof uploaded — check
+                          </Badge>
+                        )}
                         {r.status === "cancelled" && (
                           <Badge variant="destructive" className="text-[10px]">Declined</Badge>
                         )}

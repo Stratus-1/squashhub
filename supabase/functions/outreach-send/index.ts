@@ -88,6 +88,19 @@ function mergeVars(prospect: any, contact: any, campaign?: any) {
 }
 
 
+/** Always-present contact block so every recipient can reach a human. */
+const CONTACT_FOOTER = `
+<div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#64748b;max-width:600px;margin-top:26px;border-top:1px solid #e2e8f0;padding-top:12px">
+You can simply reply to this email and it comes straight to us.<br>
+SquashHub — HKFT Services &middot; Willem Pretorius &middot; +27 83 375 9003 &middot;
+<a href="mailto:support@squashhub.co.za" style="color:#1d4ed8">support@squashhub.co.za</a> &middot;
+<a href="https://squashhub.co.za" style="color:#1d4ed8">squashhub.co.za</a>
+</div>`;
+
+function withContactFooter(html: string) {
+  return html.includes("support@squashhub.co.za") ? html + CONTACT_FOOTER : html + CONTACT_FOOTER;
+}
+
 async function getSettings() {
   const keys = [
     "platform_smtp_host", "platform_smtp_port", "platform_smtp_user",
@@ -335,7 +348,7 @@ Deno.serve(async (req) => {
       const vars = mergeVars(prospect, contact, campaign);
       const label = prospect?.club_name ? ` ${prospect.club_name}` : "";
 
-      const html = applyTracking(renderMerge(campaign.body_html, vars), new Map(), "", false);
+      const html = applyTracking(withContactFooter(renderMerge(campaign.body_html, vars)), new Map(), "", false);
       let info: any = null;
       try {
         try {
@@ -432,7 +445,7 @@ Deno.serve(async (req) => {
         }
 
         const vars = mergeVars(prospect, contact, campaign);
-        const html = applyTracking(renderMerge(campaign.body_html || "", vars), linkMap, (rec as any).id, true);
+        const html = applyTracking(withContactFooter(renderMerge(campaign.body_html || "", vars)), linkMap, (rec as any).id, true);
         try {
           await smtp.transporter.sendMail({
             from: smtp.from,
@@ -593,7 +606,7 @@ async function runCampaign(campaignId: string) {
       continue;
     }
     const vars = mergeVars(pMap.get(r.prospect_id), contact, campaign);
-    const html = applyTracking(renderMerge(campaign.body_html || "", vars), linkMap, r.id, true);
+    const html = applyTracking(withContactFooter(renderMerge(campaign.body_html || "", vars)), linkMap, r.id, true);
     const subject = renderMerge(campaign.subject || "", vars);
 
     try {

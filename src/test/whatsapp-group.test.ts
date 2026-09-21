@@ -54,6 +54,7 @@ describe("tournament whatsapp group", () => {
       { club_member_id: "b", status: "invited" },
       { club_member_id: "c", status: "cancelled" },
       { club_member_id: "d", status: "pending_payment" },
+      { club_member_id: "e", status: "paid", whatsapp_group_opt_in: false },
     ];
     expect(groupInviteRecipients(regs).map((r) => r.club_member_id)).toEqual(["a", "d"]);
     expect(groupInviteRecipients(regs, { paidOnly: true }).map((r) => r.club_member_id)).toEqual(["a"]);

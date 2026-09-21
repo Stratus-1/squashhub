@@ -257,7 +257,15 @@ export function TournamentRegistrationsDialog({ open, onOpenChange, champ, clubI
 
   const activeRegistrations = registrations.filter((r: any) => r.status !== "cancelled");
   const cancelledCount = registrations.length - activeRegistrations.length;
-  const visibleRegistrations = showCancelled ? registrations : activeRegistrations;
+  /** Proof of payment uploaded but the money has not been confirmed yet — needs an admin decision. */
+  const awaitingProofCheck = (r: any) =>
+    !!r.proof_url && (r.status === "pending_eft" || r.status === "pending_payment");
+  const proofPendingCount = activeRegistrations.filter(awaitingProofCheck).length;
+
+  const baseRegistrations = showCancelled ? registrations : activeRegistrations;
+  const visibleRegistrations = showProofOnly
+    ? baseRegistrations.filter(awaitingProofCheck)
+    : baseRegistrations;
 
   const feeRequired = entryFee > 0 && !!champ?.payment_required;
   const participatingCount = activeRegistrations.filter((r: any) => isParticipatingEntrant(r, { paymentRequired: feeRequired })).length;

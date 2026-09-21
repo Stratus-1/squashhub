@@ -371,14 +371,18 @@ export default function ClubChampsView() {
   const getGroupStandings = (groupNum: number, poolNumber?: number | null) => {
     // Per-division doubles: a "Doubles Bells" league must list both names.
     const isDoubles = isDoublesLeague(groupNum);
-    let groupEntries = entries.filter((e: any) => e.group_number === groupNum);
-    // Pool-scoped filtering (Swiss with multiple pools per league).
+    let groupEntries = standingsEntries.filter((e: any) => e.group_number === groupNum);
+    // Pool-scoped filtering (Swiss with multiple pools per league). Players who
+    // have entered but are not yet drawn have no pool, so they are listed under
+    // the first pool rather than disappearing.
     if (poolNumber != null && isSwissForLeague(groupNum)) {
       const poolCount = poolCountFor(groupNum);
       const poolMap = assignPools(entries as SwissEntry[], groupNum, poolCount, isDoubles);
-      groupEntries = groupEntries.filter(
-        (e: any) => poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles)) === poolNumber,
-      );
+      groupEntries = groupEntries.filter((e: any) => {
+        const p = poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles));
+        if (p == null) return e.is_provisional_entry ? poolNumber === 1 : false;
+        return p === poolNumber;
+      });
     }
 
     const groupMemberIds = new Set<string>(

@@ -92,6 +92,7 @@ async function getSettings() {
   const keys = [
     "platform_smtp_host", "platform_smtp_port", "platform_smtp_user",
     "platform_smtp_pass", "platform_sender_email", "platform_sender_name",
+    "platform_reply_to_email",
   ];
   const { data } = await admin.from("app_settings").select("key,value").in("key", keys);
   const map: Record<string, string> = {};
@@ -348,7 +349,7 @@ Deno.serve(async (req) => {
         info = await smtp.transporter.sendMail({
           from: smtp.from,
           to,
-          replyTo: s.platform_smtp_user || undefined,
+          replyTo: smtp.replyTo,
           subject: `[TEST${label}] ${renderMerge(campaign.subject, vars)}`,
           html,
           text: stripHtml(html),
@@ -435,6 +436,7 @@ Deno.serve(async (req) => {
         try {
           await smtp.transporter.sendMail({
             from: smtp.from,
+            replyTo: smtp.replyTo,
             to: contact.email,
             subject: renderMerge(campaign.subject || "", vars),
             html,
@@ -496,7 +498,10 @@ async function makeTransport(s: Record<string, string>) {
     auth: { user: s.platform_smtp_user, pass: s.platform_smtp_pass },
   });
   const from = `${s.platform_sender_name || "SquashHub"} <${s.platform_sender_email}>`;
-  return { transporter, from } as const;
+  // Replies must reach a real mailbox — the sender address is a no-reply one.
+  const replyTo =
+    s.platform_reply_to_email || s.platform_smtp_user || "support@squashhub.co.za";
+  return { transporter, from, replyTo } as const;
 }
 
 async function runCampaign(campaignId: string) {
@@ -594,6 +599,7 @@ async function runCampaign(campaignId: string) {
     try {
       await smtp.transporter.sendMail({
         from: smtp.from,
+        replyTo: smtp.replyTo,
         to: contact.email,
         subject,
         html,

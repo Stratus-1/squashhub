@@ -920,9 +920,11 @@ export default function Bookings() {
         if (seen.has(key)) continue;
         seen.add(key);
         const profile = m.user_id ? profileMap.get(m.user_id) : null;
+        // The club roster is the source of truth for names — login profiles are
+        // often just a first name, which makes searching by surname fail.
         combined.push({
           id: m.user_id || m.id,
-          name: profile?.name || m.name || m.email || "Unknown",
+          name: m.name || profile?.name || m.email || "Unknown",
           rank: m.ladder_position ?? null,
           email: profile?.email || m.email || null,
           memberId: m.id,
@@ -2702,7 +2704,16 @@ export default function Bookings() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[280px] p-0" align="start">
-                      <Command>
+                      <Command
+                        filter={(value, search) => {
+                          const q = search.trim().toLowerCase();
+                          if (!q) return 1;
+                          const v = value.toLowerCase();
+                          // Plain word matching — every typed word must appear,
+                          // so "andre visser" and "visser" both find the player.
+                          return q.split(/\s+/).every((w) => v.includes(w)) ? 1 : 0;
+                        }}
+                      >
                         <CommandInput placeholder="Search member..." />
                         <CommandList>
                           <CommandEmpty>

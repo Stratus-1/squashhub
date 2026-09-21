@@ -96,6 +96,12 @@ export async function fetchScopeLeagueMemberIds(input: {
   scope?: string | null;
   leagueIds: string[];
   includeReserves?: boolean;
+  /**
+   * Invitations only make sense for players we can reach, but ELIGIBILITY does
+   * not depend on contact details — a registered league player belongs in the
+   * division either way. Callers checking eligibility pass false.
+   */
+  contactableOnly?: boolean;
 }): Promise<Map<string, string[]>> {
   const byLeague = new Map<string, string[]>();
   if (!input.leagueIds || input.leagueIds.length === 0) return byLeague;
@@ -105,7 +111,7 @@ export async function fetchScopeLeagueMemberIds(input: {
     p_scope: input.scope || null,
     p_league_ids: input.leagueIds,
     p_include_reserves: input.includeReserves !== false,
-    p_contactable_only: true,
+    p_contactable_only: input.contactableOnly !== false,
   });
   if (error) throw error;
   ((data as Array<{ member_id: string; league_id: string }>) || []).forEach((r) => {

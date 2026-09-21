@@ -26,6 +26,11 @@ import {
   fetchScopeLeagueMemberIds,
   fetchScopeLeagueTree,
 } from "@/lib/tournaments/invite-league-tree";
+import {
+  regionEquivalentLeagueIds,
+  regionLeagueIdsToResolve,
+  widenRegistrationsRegionwide,
+} from "@/lib/tournaments/region-eligibility";
 
 import { InviteScopeTree } from "@/components/tournaments/InviteScopeTree";
 

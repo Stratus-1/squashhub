@@ -248,12 +248,26 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
     const visitor = visitors.find((v) => v.id === id);
     if (!visitor) return;
     const label = `${visitor.first_name} ${visitor.last_name}`.trim();
-    if (!confirm(`Delete visitor "${label}"? This cannot be undone.`)) return;
+    if (!confirm(`Remove visitor "${label}" from the list?`)) return;
     setDeleting(id);
     try {
       if (visitor.source === "member_record") {
         const { error } = await fromExt("club_members").delete().eq("id", id);
-        if (error) throw error;
+        if (error) {
+          // A visitor with history (matches, tournament entries, payments) cannot be
+          // erased without destroying those records — retire the record instead so it
+          // drops off the list while the history stays intact.
+          const hasHistory = String((error as any).code) === "23503";
+          if (!hasHistory) throw error;
+          const { error: retireError } = await fromExt("club_members")
+            .update({ status: "resigned" })
+            .eq("id", id);
+          if (retireError) throw retireError;
+          toast.success("Visitor removed from the list (their match and entry history was kept)");
+          queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
+          queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
+          return;
+        }
       } else {
         const { error } = await fromExt("club_visitors").delete().eq("id", id);
         if (error) throw error;
@@ -262,7 +276,7 @@ export function VisitorsTab({ clubId }: { clubId: string }) {
       queryClient.invalidateQueries({ queryKey: ["club-visitors", clubId] });
       queryClient.invalidateQueries({ queryKey: ["club-members", clubId] });
     } catch (e: any) {
-      toast.error(e.message || "Failed to delete visitor");
+      toast.error(e.message || "Failed to remove visitor");
     } finally {
       setDeleting(null);
     }

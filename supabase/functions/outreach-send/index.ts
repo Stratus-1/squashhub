@@ -54,7 +54,7 @@ function videoBlock(campaign: any) {
   if (!desktopUrl && !mobileUrl) return "";
   const primary = desktopUrl || mobileUrl;
   const thumb = thumbUrl
-    ? `<a href="${primary}"><img src="${thumbUrl}" alt="Watch the SquashHub overview" width="560" style="display:block;width:100%;max-width:560px;border-radius:10px;border:1px solid #e2e8f0"></a>`
+    ? `<div style="text-align:center"><a href="${primary}"><img src="${thumbUrl}" alt="Watch the SquashHub overview" width="320" style="display:inline-block;width:100%;max-width:320px;height:auto;border-radius:10px;border:1px solid #e2e8f0"></a></div>`
     : "";
   const mobileLine =
     mobileUrl && desktopUrl
@@ -235,6 +235,16 @@ async function prepare(campaign: any) {
       if (match && (r as any).contact_id) engaged.add((r as any).contact_id);
     }
     eligible = eligible.filter((c: any) => engaged.has(c.id));
+  }
+
+  // "New" filter: only contacts who have never received any campaign email.
+  if (f.engagement === "new") {
+    const { data: prior } = await admin
+      .from("outreach_recipients")
+      .select("contact_id")
+      .neq("campaign_id", campaign.id);
+    const mailed = new Set<string>((prior ?? []).map((r: any) => r.contact_id).filter(Boolean));
+    eligible = eligible.filter((c: any) => !mailed.has(c.id));
   }
 
   const skipped = (contacts ?? []).length - eligible.length;

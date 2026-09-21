@@ -995,7 +995,7 @@ export default function ClubAuth() {
               </div>
             )}
             {visitorPassOffered && !visitorPassChosen && (
-              <p className="text-[11px] text-amber-700 dark:text-amber-400">
+              <p className="text-[11px] text-destructive">
                 Please choose a Day, 3-day or Monthly pass above to complete your registration.
               </p>
             )}

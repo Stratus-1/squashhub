@@ -1103,6 +1103,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPoolSizeOverrides((m) => (m[key] === undefined ? m : { ...m, [key]: undefined as any }));
     // Keep the legacy section map aligned so nothing reads a stale value.
     setLeagueSections((m) => (m[key] === undefined ? m : { ...m, [key]: pools }));
+    // Staged events (Diamond League) play the SAME people again in the next
+    // stage, so a division played after this one mirrors its pool count.
+    // Still editable afterwards.
+    Array.from({ length: numGroups || 0 }, (_, i) => i + 1).forEach((other) => {
+      if (other === gn) return;
+      if (followsDivision(divisionFollows, other) !== gn) return;
+      const ok = String(other);
+      setSwissPools((m) => ({ ...m, [ok]: pools }));
+      setLeagueSections((m) => (m[ok] === undefined ? m : { ...m, [ok]: pools }));
+    });
     const n = Number(expectedPlayers[key]) || 0;
     if (formatForLeague(gn) === "swiss" && n >= 2) {
       const perPool = Math.max(2, Math.ceil(n / pools));

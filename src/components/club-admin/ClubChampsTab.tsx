@@ -9646,6 +9646,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       );
                     })}
                     <p className="text-[10px] text-muted-foreground italic pt-1">Tip: there is no limit — add a division per class (League 1-4, Ladies, Junior Boys, Junior Girls…). Use the copy icon on a division to clone its rules.</p>
+
+                    {/* Ready-made structures — one click fills in the stages,
+                        game lengths and pairing; everything stays editable. */}
+                    <div className="pt-2 border-t border-border space-y-2">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ready-made structures</div>
+                      {TOURNAMENT_PRESETS.map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => applyPreset(preset)}
+                          className="w-full text-left rounded-lg border border-border bg-card p-2.5 shadow-sm hover:border-violet-500/50 hover:shadow-md transition-all group"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 group-hover:bg-violet-500 group-hover:text-white transition-colors">
+                              <Sparkles className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="text-xs font-semibold">{preset.name}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{preset.description}</p>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

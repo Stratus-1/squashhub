@@ -4393,7 +4393,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           //   end) and both leagues finish at roughly the same time.
           const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
           const caps = leagues.map(capFor);
-          const step = Math.max(1, caps.reduce((a, b) => gcd(a, b), caps[0] || 1));
+          // The timeline must tick finely enough to land on EVERY pool's own
+          // slot (playing time + changeover). With 20/19/18/14-minute pools a
+          // 20-minute tick would force everything onto the 20-minute grid.
+          const slotLengths: number[] = [];
+          for (const gn of leagues) {
+            const brk = breakFor(gn);
+            const poolNums = Array.from(new Set(byLeague.get(gn)!.map((m) => m.poolNum ?? 1)));
+            for (const p of poolNums) slotLengths.push(Math.max(1, capFor(gn, p) + brk));
+          }
+          const step = Math.max(
+            1,
+            slotLengths.reduce((a, b) => gcd(a, b), slotLengths[0] || 1),
+          );
 
           const remainingByLeague = new Map<number, MatchDef[]>();
           for (const gn of leagues) remainingByLeague.set(gn, [...byLeague.get(gn)!]);

@@ -1231,6 +1231,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const matchTypeForLeague = (gn: number): "singles" | "doubles" =>
     leagueMatchTypes[String(gn)] ??
     (Object.keys(leagueMatchTypes).length > 0 ? "singles" : matchType);
+  /** Human label for a "to be decided" slot of a later stage, e.g. "Doubles team 3 (TBD)". */
+  const tbdLabel = (id: string): string => {
+    const [, gnRaw, idxRaw] = String(id).split(":");
+    const gn = Number(gnRaw) || 0;
+    const label = groupLabels[String(gn)]?.trim() || `League ${gn}`;
+    const noun = matchTypeForLeague(gn) === "doubles" ? "team" : "player";
+    return `${label} ${noun} ${idxRaw || "?"} (TBD)`;
+  };
   /** Does this member satisfy the category set for the given league? */
   const memberFitsLeague = (m: any, gn: number): boolean => {
     const g = genderForLeague(gn);

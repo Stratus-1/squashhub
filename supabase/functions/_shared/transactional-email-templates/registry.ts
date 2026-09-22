@@ -46,4 +46,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'association-invoice': associationInvoice,
   'subscription-invoice-reminder': subscriptionInvoiceReminder,
   'family-member-invite': familyMemberInvite,
+  'choose-your-club': chooseYourClub,
 }

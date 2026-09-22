@@ -1,0 +1,1 @@
+UPDATE public.club_champs_registrations SET status = 'invited', declined_at = NULL, updated_at = now() WHERE id = '28a2ad04-f73d-43b0-addd-1575cdb3b27f' AND champ_id = '606bac95-fabe-4f49-936b-fed681a23f68';

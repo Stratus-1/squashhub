@@ -1203,7 +1203,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [leagueGenders, setLeagueGenders] = useState<Record<string, GenderCategory>>({});
   const [leagueMatchTypes, setLeagueMatchTypes] = useState<Record<string, "singles" | "doubles">>({});
   const genderForLeague = (gn: number): GenderCategory => leagueGenders[String(gn)] ?? gender;
-  const matchTypeForLeague = (gn: number): "singles" | "doubles" => leagueMatchTypes[String(gn)] ?? matchType;
+  /**
+   * Singles/doubles is per division. Once ANY division has its own setting the
+   * tournament-level `matchType` is just a roll-up ("doubles if any division is
+   * doubles") and must never be used as a fallback — that is what made setting
+   * one division to Doubles flip every other division with it.
+   */
+  const matchTypeForLeague = (gn: number): "singles" | "doubles" =>
+    leagueMatchTypes[String(gn)] ??
+    (Object.keys(leagueMatchTypes).length > 0 ? "singles" : matchType);
   /** Does this member satisfy the category set for the given league? */
   const memberFitsLeague = (m: any, gn: number): boolean => {
     const g = genderForLeague(gn);

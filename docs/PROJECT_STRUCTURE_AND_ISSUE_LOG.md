@@ -1,3 +1,10 @@
+## 2026-09-22 — Tournament result emails understand the stage
+
+- **Symptom:** A winner of a completed championship final received the generic "next round is coming" email because the result-email trigger only distinguished wins from losses.
+- **Fix:** Result emails now classify pool play, early knockout rounds, quarter-finals, semi-finals, title finals, third-place play-offs and other placement finals before choosing the subject and message. True final winners are congratulated as champions, final losers as runners-up, and doubles partners receive the same team-aware outcome.
+- **Guard:** A final label awards a title only when it agrees with the tournament's champion scope and bracket structure. Section finals feeding a league-wide final remain semi-finals; Position 2 and lower finals remain placement matches; pool and Bells results never promise a next round.
+- **History:** Previously sent email remains unchanged and no historical result was resent.
+
 ## 2026-09-21 — Visitor passes have no calendar due date
 
 - **Issue:** Day, 3-day and monthly visitor-pass rows inherited the normal membership fee date controls, even though each pass is charged only when a visitor buys it.

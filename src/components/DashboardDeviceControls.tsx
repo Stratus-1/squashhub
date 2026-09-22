@@ -11,6 +11,9 @@ import { useMyClub } from "@/hooks/use-club";
 import { useHasCapability } from "@/hooks/use-club-capabilities";
 import { useClubDevices, useDeviceControl } from "@/hooks/use-club-devices";
 import { useDoorControl, type DoorControl } from "@/hooks/use-door-control";
+import { useClubSecrets } from "@/hooks/use-club-secrets";
+import { useMemberContext } from "@/contexts/MemberContext";
+import { pulseAccessDeviceBle } from "@/lib/shelly-door";
 import { formatLatLngDM } from "@/lib/geo-format";
 import {
   DEVICE_CATEGORY_LIST,

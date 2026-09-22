@@ -1870,3 +1870,7 @@ Tests: `src/test/stage-label-section-final.test.ts`.
   `association_affiliated_clubs`, with an admin warning listing affiliated clubs
   missing from the tree (NSA: 22 in tree vs 46 affiliated).
 - Tests: src/test/tournament-venues.test.ts (6). Full suite 1160 passed.
+
+## 2026-09-22 — Association tournament player picker grouped by club
+
+The association tournament Players step showed one long, mixed list of members from affiliated clubs, with some cross-club records labelled visitors. Group the visible list by each player's owning club, provide expandable club rows and per-player or per-club selection, and allow searching by player or club. Do not change eligibility, visitor identity, registration, or the club-owned tournament picker.

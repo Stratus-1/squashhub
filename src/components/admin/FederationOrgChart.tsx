@@ -176,6 +176,8 @@ export default function FederationOrgChart({
   creating?: boolean;
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
+  const panRef = useRef<HTMLDivElement | null>(null);
+  const [panning, setPanning] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
   const [abbr, setAbbr] = useState("");

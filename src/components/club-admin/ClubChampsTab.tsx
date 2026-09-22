@@ -3741,13 +3741,58 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     });
     // Seed order per division: club ladder ascending, unranked last, unless
     // the organiser deliberately reordered that division by hand.
-    return g.map((list, gi) =>
+    const sorted = g.map((list, gi) =>
       sortDivisionEntrants(list as any, {
         manual: manualSeedGroups.has(gi),
         manualOrder: playerOrder,
       }) as ClubMember[],
     );
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups]);
+    // Staged events (Diamond League): a division played AFTER another is not
+    // seeded by the club ladder — it is seeded by that stage's finishing order.
+    // Until it has been played we mirror the source stage's order exactly, so
+    // the organiser sees the same people in the same pools.
+    for (let gi = 0; gi < sorted.length; gi++) {
+      const src = followsDivision(divisionFollows, gi + 1);
+      if (!src || src === gi + 1 || src > sorted.length) continue;
+      if (manualSeedGroups.has(gi)) continue;
+      const order = new Map(sorted[src - 1].map((p: any, i) => [p.id, i]));
+      sorted[gi] = [...sorted[gi]].sort(
+        (a: any, b: any) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9),
+      );
+    }
+    return sorted;
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows]);
+
+  /**
+   * Staged events field the SAME players again in the next stage, so every
+   * entrant of a division is automatically entered into any division played
+   * after it. The organiser never re-picks the field for stage 2.
+   */
+  useEffect(() => {
+    if (isDoubles) return;
+    const n = numGroups || 0;
+    if (n < 2) return;
+    const pairsOfStages: Array<[number, number]> = [];
+    for (let gn = 1; gn <= n; gn++) {
+      const src = followsDivision(divisionFollows, gn);
+      if (src && src !== gn && src >= 1 && src <= n) pairsOfStages.push([gn - 1, src - 1]);
+    }
+    if (pairsOfStages.length === 0) return;
+    let changed = false;
+    const next = new Map(Array.from(extraDivisions, ([k, v]) => [k, new Set(v)] as [string, Set<number>]));
+    selectedPlayers.forEach((p: any) => {
+      const primary = groupAssignments.get(p.id);
+      const has = (idx: number) => primary === idx || !!next.get(p.id)?.has(idx);
+      pairsOfStages.forEach(([followerIdx, sourceIdx]) => {
+        if (!has(sourceIdx) || has(followerIdx)) return;
+        const set = next.get(p.id) ?? new Set<number>();
+        set.add(followerIdx);
+        next.set(p.id, set);
+        changed = true;
+      });
+    });
+    if (changed) setExtraDivisions(next);
+  }, [isDoubles, numGroups, divisionFollows, selectedPlayers, groupAssignments, extraDivisions]);
 
   // Schedule preview
   const schedulePreview = useMemo(() => {

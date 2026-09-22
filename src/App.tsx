@@ -31,6 +31,7 @@ import { ViewingAsBanner } from "@/components/ViewingAsBanner";
 import { ClubBrandedBackground } from "@/components/ClubBrandedBackground";
 const Home = lazy(() => import("./pages/Home"));
 const Clubs = lazy(() => import("./pages/Clubs"));
+const FindClub = lazy(() => import("./pages/FindClub"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Bookings = lazy(() => import("./pages/Bookings"));
 const Ladder = lazy(() => import("./pages/Ladder"));

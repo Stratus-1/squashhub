@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Building2, ChevronDown, ChevronRight, Flag, Plus, Settings, Trophy } from "lucide-react";
+import { Building2, ChevronDown, ChevronLeft, ChevronRight, Flag, Plus, Settings, Trophy } from "lucide-react";
 import type { OrgNode } from "@/hooks/use-federation";
 import { OrgSettingsDialog } from "@/components/admin/OrgSettingsDialog";
 
@@ -106,6 +106,9 @@ function AssociationCard({
           over ? "border-primary/70 bg-primary/20" : "border-white/12 bg-white/[0.06]"
         }`}
       >
+        {/* Sticky so the association name stays visible while its long club
+            list scrolls past. */}
+        <div className="sticky top-0 z-10 -mx-2.5 -mt-2 px-2.5 pt-2 pb-1 rounded-t-lg bg-[hsl(var(--card))]/95 backdrop-blur-sm">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -135,6 +138,7 @@ function AssociationCard({
         >
           <Settings className="w-3 h-3" /> Settings & admins
         </button>
+        </div>
 
         {open && (
           <div className="mt-2 flex flex-col gap-1">
@@ -172,6 +176,8 @@ export default function FederationOrgChart({
   creating?: boolean;
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
+  const panRef = useRef<HTMLDivElement | null>(null);
+  const [panning, setPanning] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
   const [abbr, setAbbr] = useState("");
@@ -199,6 +205,39 @@ export default function FederationOrgChart({
     return list.sort((a, b) => a.name.localeCompare(b.name));
   }, [roots, federation, unaffiliatedHolder]);
 
+  /* Grab-and-drag panning across the tree. Ignores presses that start on a
+     club chip or a button so re-affiliating and expanding still work. */
+  const nudge = (dir: 1 | -1) => {
+    panRef.current?.scrollBy({ left: dir * 400, behavior: "smooth" });
+  };
+
+  const onPanStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = panRef.current;
+    if (!el || e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('[draggable="true"], button, a, input, [role="button"]')) return;
+
+    const startX = e.clientX;
+    const startScroll = el.scrollLeft;
+    let moved = false;
+
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      if (!moved && Math.abs(dx) > 3) {
+        moved = true;
+        setPanning(true);
+      }
+      if (moved) el.scrollLeft = startScroll - dx;
+    };
+    const up = () => {
+      setPanning(false);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   if (!federation) {
     return <p className="text-xs text-white/50 py-6">No federation organisation found.</p>;
   }
@@ -207,7 +246,29 @@ export default function FederationOrgChart({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto pb-2">
+      <div className="relative">
+        {/* Nudge buttons for people who'd rather click than drag. */}
+        <button
+          type="button"
+          aria-label="Scroll left"
+          onClick={() => nudge(-1)}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 rounded-full border border-white/15 bg-black/60 p-1.5 text-white/70 hover:text-white hover:bg-black/80"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          aria-label="Scroll right"
+          onClick={() => nudge(1)}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 rounded-full border border-white/15 bg-black/60 p-1.5 text-white/70 hover:text-white hover:bg-black/80"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+        <div
+          ref={panRef}
+          onPointerDown={onPanStart}
+          className={`overflow-x-auto pb-2 select-none ${panning ? "cursor-grabbing" : "cursor-grab"}`}
+        >
         <div className="min-w-max flex flex-col items-center px-2">
           {/* Federation */}
           <div
@@ -332,7 +393,9 @@ export default function FederationOrgChart({
             </div>
           </div>
         </div>
+        </div>
       </div>
+
 
 
       <OrgSettingsDialog

@@ -12530,7 +12530,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {deferredStageLabels.length > 0 && (
                   <p className="text-muted-foreground">
                     ⏭️ {deferredStageLabels.join(", ")} {deferredStageLabels.length === 1 ? "is" : "are"} played after an earlier
-                    stage — those matches are built once that stage is finished, so they are not in this schedule.
+                    stage. Those games are included here and hold their court slots, but show as “to be decided” until the earlier
+                    stage is finished — then the names are filled in.
                   </p>
                 )}
               </div>

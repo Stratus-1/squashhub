@@ -12295,6 +12295,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <span className="text-[10px] text-muted-foreground">slot</span>
                           </div>
                           <span className="text-muted-foreground text-xs">−</span>
+                          </>
+                          )}
                           <div className="flex items-center gap-1">
                             <Input
                               key={`break-${gn}-${groupBreakMinutes[String(gn)] ?? ""}-${defaultBreakMinutes}`}

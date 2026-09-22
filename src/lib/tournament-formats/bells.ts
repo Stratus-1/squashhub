@@ -5,6 +5,7 @@ import type {
   StandingsStats,
   TournamentFormat,
 } from "./types";
+import { poolMinutes } from "@/lib/tournaments/stage-sequence";
 
 /**
  * Bells — time-capped doubles round-robin, ranked by total points scored.
@@ -28,14 +29,19 @@ export const BellsFormat: TournamentFormat = {
 
   badge: { label: "Bells", variant: "secondary" },
 
-  getTimeCapMinutes(champ: ChampLike, groupNumber) {
+  getTimeCapMinutes(champ: ChampLike, groupNumber, pool) {
     if (!champ) return null;
-    const slotMap = (champ.group_durations || {}) as Record<string, number>;
     const breakMap = ((champ as any).group_break_minutes || {}) as Record<string, number>;
-    const fromGroup = groupNumber != null ? Number(slotMap[String(groupNumber)]) : 0;
-    const slot = fromGroup > 0
-      ? fromGroup
-      : (Number(champ.match_duration_minutes) > 0 ? Number(champ.match_duration_minutes) : 30);
+    // Pool override first (a strong pool may play 30 minutes while a weaker
+    // pool in the same division plays 20), then the division, then the event.
+    const slot =
+      poolMinutes({
+        poolDurations: (champ as any).pool_durations || null,
+        groupDurations: (champ.group_durations || null) as Record<string, unknown> | null,
+        groupNumber: groupNumber ?? null,
+        pool: pool ?? null,
+        fallbackMinutes: Number(champ.match_duration_minutes) || null,
+      }) ?? 30;
     const groupBreakRaw = groupNumber != null ? Number(breakMap[String(groupNumber)]) : NaN;
     const breakMin = Number.isFinite(groupBreakRaw) && groupBreakRaw >= 0
       ? groupBreakRaw

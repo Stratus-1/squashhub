@@ -4056,7 +4056,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const ingestRounds = (gi: number, ids: string[]) => {
       // Rotating-partner doubles: no fixed pairs. Each round re-pairs every
       // player, so the draw comes from the rotation design, not a round robin.
-      if (rotatePartners) {
+      // Only the divisions that actually play DOUBLES rotate — a singles
+      // division in the same event keeps its normal round robin. A division
+      // that waits for an earlier stage holds "to be decided" slots, so it is
+      // drawn as a plain round robin over those placeholders.
+      const rotateThisLeague =
+        rotatePartners &&
+        matchTypeForLeague(gi + 1) === "doubles" &&
+        !followsDivision(divisionFollows, gi + 1);
+      if (rotateThisLeague) {
         const rotation = generateRotatingDoublesSchedule(ids);
         for (const g of rotation.games) {
           allMatches.push({

@@ -12325,7 +12325,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                             <span className="text-[10px] text-muted-foreground">break</span>
                           </div>
                           <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
-                            bell @ <strong>{bell}</strong> min
+                            {hasPoolTimes
+                              ? <>break <strong>{brk || 0}</strong> min · bell @ pool time − break</>
+                              : <>bell @ <strong>{bell}</strong> min</>}
                           </span>
                         </div>
                       );

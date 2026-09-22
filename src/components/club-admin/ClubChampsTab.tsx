@@ -2887,6 +2887,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const { error: govErr } = await fromExt("tournament_governance")
         .upsert(sanitizeDraftPayload({ tournament_id: id, eligibility_scope: eligibilityScope }), { onConflict: "tournament_id" } as any);
       if (govErr) console.warn("Eligibility save failed:", govErr.message);
+      await persistVenues(id);
     };
 
     try {
@@ -2896,7 +2897,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         await saveExtras(editingChampId);
       } else {
         const { data, error } = await fromExt("club_champs")
-          .insert({ club_id: clubId, owner_org_id: ownerOrgId ?? undefined, status: "planning", ...payload })
+          .insert({ club_id: clubId, owner_org_id: resolvedOwnerOrgId ?? undefined, status: "planning", ...payload })
           .select("id")
           .single();
         if (error) throw error;

@@ -1437,18 +1437,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    * any division is doubles", which is what the entry/invite flows read.
    */
   const setLeagueMatchType = (gn: number, mt: "singles" | "doubles") => {
-    setLeagueMatchTypes((prev) => {
-      const next: Record<string, "singles" | "doubles"> = { ...prev };
-      for (let i = 1; i <= (numGroups || 0); i++) {
-        if (next[String(i)] === undefined) next[String(i)] = matchType;
-      }
-      next[String(gn)] = mt;
-      const anyDoubles = Object.keys(next).some(
-        (k) => Number(k) <= (numGroups || 0) && next[k] === "doubles",
-      );
-      setMatchType(anyDoubles ? "doubles" : "singles");
-      return next;
-    });
+    const next: Record<string, "singles" | "doubles"> = { ...leagueMatchTypes };
+    for (let i = 1; i <= (numGroups || 0); i++) {
+      if (next[String(i)] === undefined) next[String(i)] = matchType;
+    }
+    next[String(gn)] = mt;
+    setLeagueMatchTypes(next);
+    const anyDoubles = Object.keys(next).some(
+      (k) => Number(k) <= (numGroups || 0) && next[k] === "doubles",
+    );
+    setMatchType(anyDoubles ? "doubles" : "singles");
   };
   /**
    * Clone a division: every setting (format, pools, category, scoring, source)

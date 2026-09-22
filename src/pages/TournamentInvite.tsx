@@ -720,14 +720,41 @@ export default function TournamentInvite() {
           </p>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-2 pt-1">
-        <Button variant="outline" disabled={busy} onClick={() => act(false)}>
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Decline"}
-        </Button>
-        <Button disabled={busy} onClick={() => act(true)}>
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : feeCents > 0 ? "Accept & pay" : "Accept"}
-        </Button>
-      </div>
+      {confirmDecline ? (
+        // A mis-tap must never take someone out of a tournament: declining is
+        // always a two-step, clearly worded choice.
+        <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
+          <p className="text-xs">
+            Are you sure you don't want to play in {data?.tournament_name || "this tournament"}? The
+            organiser will be told you are not entering.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => setConfirmDecline(false)}>
+              No, go back
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setConfirmDecline(false);
+                act(false);
+              }}
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, I'm not playing"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          <Button variant="outline" disabled={busy} onClick={() => setConfirmDecline(true)}>
+            Decline
+          </Button>
+          <Button disabled={busy} onClick={() => act(true)}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : feeCents > 0 ? "Accept & pay" : "Accept"}
+          </Button>
+        </div>
+      )}
       {!isTest && (
         <button
           type="button"

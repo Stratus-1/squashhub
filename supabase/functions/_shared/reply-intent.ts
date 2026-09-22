@@ -121,6 +121,23 @@ export function classifyReply(payload: string | null | undefined, text?: string 
     }
   }
 
+  // A question is never an answer. "...but no link shows where I can pay?"
+  // contains the word "no", yet the member is asking for help, not declining.
+  // Questions and long free-text messages go to a human instead of mutating
+  // an entry.
+  const rawBody = (text ?? "").trim();
+  if (!button) {
+    if (/[?？]/.test(rawBody)) {
+      return { intent: "unknown", normalised, reason: "question" };
+    }
+    if (/^(hi|hello|hey|goeie|more|hallo)\b/.test(body) && body.split(" ").length > 3) {
+      return { intent: "unknown", normalised, reason: "conversational" };
+    }
+    if (body.split(" ").length > 12) {
+      return { intent: "unknown", normalised, reason: "long-free-text" };
+    }
+  }
+
   // Idioms that merely *contain* a negative word ("no problem", "can't wait")
   // are neutralised before the negative pass so they can't flip a yes to a no.
   const scored = normalised.replace(IDIOMS, " ").replace(/\s+/g, " ").trim();

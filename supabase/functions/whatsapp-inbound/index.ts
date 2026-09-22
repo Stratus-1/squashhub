@@ -280,6 +280,21 @@ Deno.serve(async (req) => {
             .select("num_groups")
             .eq("id", interaction.target_id)
             .maybeSingle();
+          // A YES after an earlier decline reopens the invitation, so the
+          // personal link is actionable again instead of saying "not entered".
+          const { data: prior } = await admin
+            .from("club_champs_registrations")
+            .select("id, status")
+            .eq("champ_id", interaction.target_id)
+            .eq("club_member_id", interaction.member_id)
+            .maybeSingle();
+          if (prior && String(prior.status ?? "").toLowerCase() === "cancelled") {
+            const { error: reopenErr } = await admin
+              .from("club_champs_registrations")
+              .update({ status: "invited" })
+              .eq("id", prior.id);
+            if (reopenErr) console.error("champ entry reopen failed", reopenErr);
+          }
           const multi = Number(champRow?.num_groups ?? 0) > 1;
           const step = multi ? " and choose your category" : "";
           reply = link

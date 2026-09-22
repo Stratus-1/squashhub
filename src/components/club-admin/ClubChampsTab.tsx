@@ -9709,46 +9709,49 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                          </>
                                        );
                                      })()}
-                                     {pools > 1 && (
-                                       <div className="space-y-1">
-                                         <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                           Minutes per pool (optional)
-                                         </Label>
-                                         <div className="grid grid-cols-3 gap-2">
-                                           {Array.from({ length: pools }, (_, i) => i + 1).map((pool) => {
-                                             const pk = poolDurationKey(gn, pool);
-                                             return (
-                                               <div key={pk}>
-                                                 <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                                   Pool {String.fromCharCode(64 + pool)}
-                                                 </Label>
-                                                 <Input
-                                                   type="number"
-                                                   min={1}
-                                                   value={poolDurations[pk] ?? ""}
-                                                   placeholder={String(
-                                                     Number(groupDurations[key]) || matchDuration || 20,
-                                                   )}
-                                                   onChange={(e) => {
-                                                     const n = Math.max(0, Number(e.target.value) || 0);
-                                                     setPoolDurations((m) => {
-                                                       const next = { ...m };
-                                                       if (n <= 0) delete next[pk];
-                                                       else next[pk] = n;
-                                                       return next;
-                                                     });
-                                                   }}
-                                                   className="h-8 text-xs"
-                                                 />
-                                               </div>
-                                             );
-                                           })}
-                                         </div>
-                                         <p className="text-[10px] text-muted-foreground">
-                                           Leave blank to use this division's time.
-                                         </p>
-                                       </div>
-                                     )}
+                                      {pools > 1 && (
+                                        <div className="space-y-1">
+                                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                            Slot minutes per pool (optional)
+                                          </Label>
+                                          <div className="grid grid-cols-3 gap-2">
+                                            {Array.from({ length: pools }, (_, i) => i + 1).map((pool) => {
+                                              const pk = poolDurationKey(gn, pool);
+                                              return (
+                                                <div key={pk}>
+                                                  <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                                    Pool {String.fromCharCode(64 + pool)}
+                                                  </Label>
+                                                  <Input
+                                                    type="number"
+                                                    min={1}
+                                                    value={poolDurations[pk] ?? ""}
+                                                    placeholder={String(
+                                                      Number(groupDurations[key]) || matchDuration || 20,
+                                                    )}
+                                                    onChange={(e) => {
+                                                      const n = Math.max(0, Number(e.target.value) || 0);
+                                                      setPoolDurations((m) => {
+                                                        const next = { ...m };
+                                                        if (n <= 0) delete next[pk];
+                                                        else next[pk] = n;
+                                                        return next;
+                                                      });
+                                                    }}
+                                                    className="h-8 text-xs"
+                                                  />
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                          <p className="text-[10px] text-muted-foreground">
+                                            This is the playing time (bell slot) for that pool — e.g. 15 means a
+                                            15-minute game. The {Number(groupBreakMinutes[key]) || defaultBreakMinutes || 3}
+                                            -minute break above applies to every pool. Leave blank to use this
+                                            division's time.
+                                          </p>
+                                        </div>
+                                      )}
                                    </div>
                                  );
                                })()}

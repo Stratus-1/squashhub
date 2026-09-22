@@ -1322,6 +1322,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   };
 
   /**
+   * Apply a ready-made structure (e.g. Durbanville's Diamond League) in one
+   * click. It only fills in the division settings — every value stays
+   * editable afterwards, and nothing already entered on other steps is lost.
+   */
+  const applyPreset = (preset: TournamentPreset) => {
+    const maps = presetToMaps(preset);
+    setNumGroups(maps.numGroups);
+    setUsePerLeagueFormats(true);
+    setGroupLabels((m) => ({ ...m, ...maps.labels }));
+    setLeagueFormats((m) => ({ ...m, ...maps.formats }) as any);
+    setLeagueMatchTypes((m) => ({ ...m, ...maps.matchTypes }));
+    setLeagueScoringModes((m) => ({ ...m, ...maps.scoringModes }));
+    setGroupDurations((m) => ({ ...m, ...maps.durations }));
+    setSwissPools((m) => ({ ...m, ...maps.pools }));
+    setDivisionFollows((m) => ({ ...m, ...maps.follows }));
+    setDivisionPairing((m) => ({ ...m, ...maps.pairing }));
+    setLeagueGenders((m) => {
+      const next = { ...m };
+      preset.divisions.forEach((d) => { next[String(d.gn)] = next[String(d.gn)] ?? gender; });
+      return next;
+    });
+    if (!roundFormat || roundFormat === "cross_league") setRoundFormat("single_round_robin");
+    setScoringMode("time_capped_points");
+    setMatchDuration(maps.matchDuration);
+    toast.success(`${preset.name} structure applied — adjust anything you like`);
+  };
+
+  /**
    * "All leagues" → one independent competition division per club league.
    *
    * The template division's settings (format, pools, category, scoring) are

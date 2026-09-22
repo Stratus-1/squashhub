@@ -1,3 +1,8 @@
+## 2026-09-22 — NSA tournament venue picker showed no Federation clubs
+
+- **Cause:** The association tenant has many league-association rows. The venue planner used only the first returned row to find its Federation organisation; that row was not linked to the organisation, leaving the tree owner empty.
+- **Fix:** Look up the linked association organisation across all the tenant's league rows before deriving clubs from its Federation descendants. The tree remains authoritative, so unrelated legacy affiliations still do not become venues. Added a regression test for an unrelated first row.
+
 ## 2026-09-22 — Tournament result emails understand the stage
 
 - **Symptom:** A winner of a completed championship final received the generic "next round is coming" email because the result-email trigger only distinguished wins from losses.

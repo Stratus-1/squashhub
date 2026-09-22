@@ -38,6 +38,15 @@ export interface RelRow {
   effective_to?: string | null;
 }
 
+/** A tenant can have many league rows; only the one linked to its association organisation owns its Federation tree. */
+export function associationOrgForTenant(
+  leagueIds: string[],
+  orgs: Pick<OrgRow, "id" | "kind" | "league_association_id">[],
+): string | null {
+  const ids = new Set(leagueIds);
+  return orgs.find((o) => o.kind === "association" && !!o.league_association_id && ids.has(o.league_association_id))?.id ?? null;
+}
+
 const activeRels = (rels: RelRow[]) =>
   rels.filter((r) => !r.effective_to || new Date(r.effective_to) >= new Date());
 

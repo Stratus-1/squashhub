@@ -4337,6 +4337,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       const leagues = Array.from(byLeague.keys()).sort((a, b) => a - b);
 
+      // Pools inside one division can have different bell times. When they do,
+      // keep each of those pools on its own court — otherwise a 20-minute pool
+      // and a 30-minute pool share a court and stagger each other, and the
+      // games read as "all of Pool A, then all of Pool B".
+      const poolUnitsToBind: string[] = [];
+      for (const gn of leagues) {
+        const poolNums = Array.from(new Set(byLeague.get(gn)!.map((m) => m.poolNum ?? 1)));
+        const poolCaps = poolNums.map((p) => capFor(gn, p));
+        if (poolNums.length > 1 && new Set(poolCaps).size > 1) {
+          poolNums.forEach((p) => poolUnitsToBind.push(`${gn}:${p}`));
+        }
+      }
+      // Only bind when there is a court for every such pool, otherwise some
+      // pool could never be placed at all.
+      const bindPools = poolUnitsToBind.length > 0 && poolUnitsToBind.length <= courtIds.length;
+
       if (leagues.length > 0 && courtIds.length > 0) {
         const rotateMin = Number(courtRotationMinutes) > 0 ? Number(courtRotationMinutes) : 0;
 
@@ -4411,6 +4427,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           let currentBlock = -1;
           let assignedInBlock = new Map<number, number>();
 
+          // One court per pool when pools of a division play different lengths.
+          const poolCourt = new Map<string, number>();
+          const courtPool = new Map<number, string>();
+          const unitOf = (gn: number, m: MatchDef) => `${gn}:${m.poolNum ?? 1}`;
+          const bindOk = (gn: number, m: MatchDef, cid: number): boolean => {
+            if (!bindPools) return true;
+            const u = unitOf(gn, m);
+            if (!poolUnitsToBind.includes(u)) return true;
+            const bound = poolCourt.get(u);
+            if (bound != null) return bound === cid;
+            return !courtPool.has(cid);
+          };
+
           const scoreMatch = (
             m: MatchDef,
             gn: number,
@@ -4418,6 +4447,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             cid: number,
             enforceBreak: boolean,
           ): number[] | null => {
+            if (!bindOk(gn, m, cid)) return null;
             const cap = capFor(gn, m.poolNum ?? null);
             const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
             for (const pid of players) {
@@ -4632,17 +4662,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                 const pool = remainingByLeague.get(picked.league)!;
                 const [m] = pool.splice(picked.idx, 1);
+                // The court is held for THIS pool's playing time, not the
+                // division's longest pool.
+                const playCap = capFor(picked.league, m.poolNum ?? null) || picked.cap;
                 const h = Math.floor(t / 60);
                 const mm = t % 60;
                 m.date = s.date;
                 m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
                 m.courtId = cid;
-                courtBusyUntil.set(cid, nowAbs + picked.cap);
+                if (bindPools) {
+                  const u = unitOf(picked.league, m);
+                  if (poolUnitsToBind.includes(u) && !poolCourt.has(u)) {
+                    poolCourt.set(u, cid);
+                    courtPool.set(cid, u);
+                  }
+                }
+                courtBusyUntil.set(cid, nowAbs + playCap);
                 assignedInBlock.set(picked.league, (assignedInBlock.get(picked.league) || 0) + 1);
                 const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
                 players.forEach((pid) => {
-                  playerBusyUntil.set(pid, nowAbs + picked!.cap);
-                  lastPlayedEnd.set(pid, nowAbs + picked!.cap);
+                  playerBusyUntil.set(pid, nowAbs + playCap);
+                  lastPlayedEnd.set(pid, nowAbs + playCap);
                   playCount.set(pid, (playCount.get(pid) || 0) + 1);
                   lastCourtByPlayer.set(pid, cid);
                 });
@@ -9709,46 +9749,49 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                          </>
                                        );
                                      })()}
-                                     {pools > 1 && (
-                                       <div className="space-y-1">
-                                         <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                           Minutes per pool (optional)
-                                         </Label>
-                                         <div className="grid grid-cols-3 gap-2">
-                                           {Array.from({ length: pools }, (_, i) => i + 1).map((pool) => {
-                                             const pk = poolDurationKey(gn, pool);
-                                             return (
-                                               <div key={pk}>
-                                                 <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
-                                                   Pool {String.fromCharCode(64 + pool)}
-                                                 </Label>
-                                                 <Input
-                                                   type="number"
-                                                   min={1}
-                                                   value={poolDurations[pk] ?? ""}
-                                                   placeholder={String(
-                                                     Number(groupDurations[key]) || matchDuration || 20,
-                                                   )}
-                                                   onChange={(e) => {
-                                                     const n = Math.max(0, Number(e.target.value) || 0);
-                                                     setPoolDurations((m) => {
-                                                       const next = { ...m };
-                                                       if (n <= 0) delete next[pk];
-                                                       else next[pk] = n;
-                                                       return next;
-                                                     });
-                                                   }}
-                                                   className="h-8 text-xs"
-                                                 />
-                                               </div>
-                                             );
-                                           })}
-                                         </div>
-                                         <p className="text-[10px] text-muted-foreground">
-                                           Leave blank to use this division's time.
-                                         </p>
-                                       </div>
-                                     )}
+                                      {pools > 1 && (
+                                        <div className="space-y-1">
+                                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                            Slot minutes per pool (optional)
+                                          </Label>
+                                          <div className="grid grid-cols-3 gap-2">
+                                            {Array.from({ length: pools }, (_, i) => i + 1).map((pool) => {
+                                              const pk = poolDurationKey(gn, pool);
+                                              return (
+                                                <div key={pk}>
+                                                  <Label className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                                                    Pool {String.fromCharCode(64 + pool)}
+                                                  </Label>
+                                                  <Input
+                                                    type="number"
+                                                    min={1}
+                                                    value={poolDurations[pk] ?? ""}
+                                                    placeholder={String(
+                                                      Number(groupDurations[key]) || matchDuration || 20,
+                                                    )}
+                                                    onChange={(e) => {
+                                                      const n = Math.max(0, Number(e.target.value) || 0);
+                                                      setPoolDurations((m) => {
+                                                        const next = { ...m };
+                                                        if (n <= 0) delete next[pk];
+                                                        else next[pk] = n;
+                                                        return next;
+                                                      });
+                                                    }}
+                                                    className="h-8 text-xs"
+                                                  />
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                          <p className="text-[10px] text-muted-foreground">
+                                            This is the playing time (bell slot) for that pool — e.g. 15 means a
+                                            15-minute game. The {Number(groupBreakMinutes[key]) || defaultBreakMinutes || 3}
+                                            -minute break above applies to every pool. Leave blank to use this
+                                            division's time.
+                                          </p>
+                                        </div>
+                                      )}
                                    </div>
                                  );
                                })()}

@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.club_champs_compat_stage_write() FROM PUBLIC, anon, authenticated;

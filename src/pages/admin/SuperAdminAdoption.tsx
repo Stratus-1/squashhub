@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEO } from "@/components/SEO";
-import { Search, ShieldCheck, Activity } from "lucide-react";
+import { Search, ShieldCheck, Activity, UserPlus } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 type Row = {

@@ -11683,11 +11683,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 {(() => {
                   const q = playerSearch.trim().toLowerCase();
                   const clubForPlayer = (m: any) => {
-                    const id = m.club_id || m.home_club_id || null;
-                    const name = m.club?.name || (id
+                    const id = m._isVisitor ? (m.home_club_id || m.club_id || null) : (m.club_id || m.home_club_id || null);
+                    const name = (m._isVisitor ? m._homeClub || m.home_club_name : null) || m.club?.name || (id
                       ? orgHierarchy?.orgs.find((o) => o.kind === "club" && o.club_id === id)?.name
-                      : null) || m._homeClub || m.home_club_name || (id === clubId ? ownerOrgName : null) || "Other club";
-                    return { key: id || `name:${name}`, name };
+                      : null) || m.home_club_name || (id === clubId ? ownerOrgName : null) || "Other club";
+                    return { key: m._isVisitor && m._homeClub ? `name:${name.toLowerCase()}` : id || `name:${name.toLowerCase()}`, name };
                   };
                   const filtered = q
                     ? availablePlayers.filter((m: any) =>

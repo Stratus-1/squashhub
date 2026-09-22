@@ -34,6 +34,7 @@ import { useClubContext } from "@/contexts/ClubContext";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
+import { hostFeeCents } from "@/lib/tournaments/venues";
 
 
 interface Props {
@@ -170,7 +171,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
     federationFeePct: Number(form?.federation_fee_pct ?? 0),
     associationFeeCents: form?.association_fee_cents ?? 0,
     associationFeePct: Number(form?.association_fee_pct ?? 0),
-    hostFeeCents: venues.reduce((s, v) => s + (v.host_fee_cents || 0), 0),
+    hostFeeCents: venues.reduce((s, v) => s + hostFeeCents(v), 0),
     hostSharePct: venues.reduce((s, v) => s + Number(v.host_share_pct || 0), 0),
     otherExpensesCents: form?.other_expenses_cents ?? 0,
     platformFeePct: platformPct ?? 0,
@@ -561,11 +562,15 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                   <p className="p-3 text-sm text-muted-foreground">No venues yet.</p>
                 )}
                 {venues.map((v) => (
-                  <div key={v.id} className="p-3 grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                  <div key={v.id} className="p-3 grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 items-end">
                     <div>
                       <div className="text-sm font-medium">{clubName(v.club_id)}</div>
                       {v.is_primary && <Badge variant="outline" className="text-[10px]">Primary</Badge>}
                       <div className="text-[11px] text-muted-foreground">{clubRates(v.club_id)}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {(v.court_ids || []).length} court{(v.court_ids || []).length === 1 ? "" : "s"} used ·
+                        {" "}hosting R {centsToRand(hostFeeCents(v))}
+                      </div>
                     </div>
 
                     <div className="space-y-1">
@@ -578,6 +583,30 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
                         }
                       />
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Charged as</Label>
+                      <Select
+                        value={v.host_fee_basis || "fixed"}
+                        onValueChange={(val) => saveVenue.mutate({ ...v, host_fee_basis: val as any })}
+                      >
+                        <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fixed">Fixed amount</SelectItem>
+                          <SelectItem value="per_court_hour">Per court hour</SelectItem>
+                          <SelectItem value="per_day">Per day</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {(v.host_fee_basis || "fixed") !== "fixed" && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">{v.host_fee_basis === "per_day" ? "Days" : "Court hours"}</Label>
+                        <Input
+                          className="w-24" type="number" min={0} step="0.5"
+                          defaultValue={String(v.host_fee_qty ?? 0)}
+                          onBlur={(e) => saveVenue.mutate({ ...v, host_fee_qty: Number(e.target.value) || 0 })}
+                        />
+                      </div>
+                    )}
                     <div className="space-y-1">
                       <Label className="text-xs">Share (%)</Label>
                       <Input

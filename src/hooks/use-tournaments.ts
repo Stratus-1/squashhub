@@ -80,9 +80,16 @@ export interface TournamentVenue {
   court_ids: number[];
   is_primary: boolean;
   host_fee_cents: number;
+  /** How the hosting fee is counted: fixed amount, per court hour, or per day. */
+  host_fee_basis: "fixed" | "per_court_hour" | "per_day";
+  /** Number of court hours / days when the basis is not a fixed amount. */
+  host_fee_qty: number;
   host_share_pct: number;
   notes: string | null;
 }
+
+const VENUE_FIELDS =
+  "id, tournament_id, club_id, court_ids, is_primary, host_fee_cents, host_fee_basis, host_fee_qty, host_share_pct, notes";
 
 const GOV_FIELDS =
   "tournament_id, sanction_status, sanctioning_org_id, sanction_reference, sanction_notes, competition_level, eligibility_min_age, eligibility_max_age, eligibility_requires_licence, eligibility_scope, eligibility_notes, registration_required, registration_mode, registration_opens_at, registration_closes_at, entry_fee_cents, federation_fee_cents, federation_fee_pct, association_fee_cents, association_fee_pct, other_expenses_cents, other_expenses_label, payment_methods, payment_required, refund_policy, refund_cutoff_date";
@@ -214,7 +221,7 @@ export function useTournamentVenues(tournamentId: string | null) {
     enabled: !!tournamentId,
     queryFn: async () => {
       const { data, error } = await fromExt("tournament_venues")
-        .select("id, tournament_id, club_id, court_ids, is_primary, host_fee_cents, host_share_pct, notes")
+        .select(VENUE_FIELDS)
         .eq("tournament_id", tournamentId as string)
         .order("is_primary", { ascending: false });
       if (error) throw error;
@@ -234,6 +241,8 @@ export function useSaveTournamentVenue(tournamentId: string | null) {
           court_ids: venue.court_ids ?? [],
           is_primary: venue.is_primary ?? false,
           host_fee_cents: venue.host_fee_cents ?? 0,
+          host_fee_basis: venue.host_fee_basis ?? "fixed",
+          host_fee_qty: venue.host_fee_qty ?? 0,
           host_share_pct: venue.host_share_pct ?? 0,
           notes: venue.notes ?? null,
         },
@@ -254,6 +263,38 @@ export function useDeleteTournamentVenue(tournamentId: string | null) {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tournament-venues", tournamentId] }),
   });
+}
+
+/**
+ * Mirror the wizard's host clubs + chosen courts into `tournament_venues`,
+ * which is the authoritative venue list. Hosting fees already captured for a
+ * venue are preserved; venues no longer used are removed.
+ */
+export async function syncTournamentVenues(args: {
+  tournamentId: string;
+  rows: { club_id: string; court_ids: number[]; is_primary: boolean }[];
+}) {
+  const { tournamentId, rows } = args;
+  if (!tournamentId || rows.length === 0) return;
+
+  const { data: existing } = await fromExt("tournament_venues")
+    .select("id, club_id")
+    .eq("tournament_id", tournamentId);
+
+  const keep = new Set(rows.map((r) => r.club_id));
+  const stale = ((existing || []) as { id: string; club_id: string }[]).filter((v) => !keep.has(v.club_id));
+
+  const { error } = await fromExt("tournament_venues").upsert(
+    rows.map((r) => ({ tournament_id: tournamentId, ...r })),
+    { onConflict: "tournament_id,club_id" },
+  );
+  if (error) throw error;
+
+  if (stale.length > 0) {
+    await fromExt("tournament_venues")
+      .delete()
+      .in("id", stale.map((v) => v.id));
+  }
 }
 
 /* --------------------------------------------------------------------- audit */

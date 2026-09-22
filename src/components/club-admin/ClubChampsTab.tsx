@@ -178,7 +178,8 @@ import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
 import { Users as UsersIcon, ShieldCheck, RefreshCw, Shuffle, Smartphone, Sparkles } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
-import { useTournamentGovernance } from "@/hooks/use-tournaments";
+import { useTournamentGovernance, syncTournamentVenues } from "@/hooks/use-tournaments";
+import { deriveVenueRows } from "@/lib/tournaments/venues";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
@@ -864,6 +865,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return owningAssociation(scopeOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.name ?? null;
   }, [orgHierarchy, scopeOrgId]);
 
+  // The body that OWNS the event — always explicit. Owner is not the venue and
+  // not the audience: a regional association can own an event played entirely
+  // on other clubs' courts. At club level this resolves to the club's own
+  // organisation, so nothing changes for a normal club tournament.
+  const clubOrgId = useMemo(
+    () => orgHierarchy?.orgs.find((o) => o.kind === "club" && o.club_id === clubId)?.id ?? null,
+    [orgHierarchy, clubId],
+  );
+  const resolvedOwnerOrgId = ownerOrgId ?? eligibilityOrgId ?? clubOrgId;
+  const ownerOrgName = useMemo(
+    () => orgHierarchy?.orgs.find((o) => o.id === resolvedOwnerOrgId)?.name ?? null,
+    [orgHierarchy, resolvedOwnerOrgId],
+  );
+
   const eventTypeOptions = useMemo(() => eventTypesFor(scope), [scope]);
   const eligibilityOptions = useMemo(
     () => eligibilityScopesFor(scope, associationName),
@@ -961,6 +976,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     },
     enabled: venueClubIds.length > 0,
   });
+
+  /**
+   * `tournament_venues` is the authoritative venue list: one row per host club
+   * with that club's own courts. The flat `court_ids` / `participating_club_ids`
+   * columns stay in sync as mirrors, so every existing scheduler keeps working.
+   */
+  const persistVenues = async (tournamentId: string) => {
+    try {
+      await syncTournamentVenues({
+        tournamentId,
+        rows: deriveVenueRows({
+          primaryClubId: clubId,
+          venueClubIds,
+          selectedCourtIds: Array.from(selectedCourtIds),
+          courts,
+        }),
+      });
+      qc.invalidateQueries({ queryKey: ["tournament-venues", tournamentId] });
+    } catch (e: any) {
+      console.warn("[champs] venue save failed", e?.message || e);
+    }
+  };
+
+  /** Which club owns a court — the venue a fixture is actually played at. */
+  const courtClubId = (courtId: number) =>
+    courts.find((c) => c.id === courtId)?.club_id || clubId;
+
+
 
   const { data: existingChamps = [], isLoading: champsLoading } = useQuery({
     queryKey: ["club-champs", clubId, ownerOrgId],
@@ -2873,6 +2916,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const { error: govErr } = await fromExt("tournament_governance")
         .upsert(sanitizeDraftPayload({ tournament_id: id, eligibility_scope: eligibilityScope }), { onConflict: "tournament_id" } as any);
       if (govErr) console.warn("Eligibility save failed:", govErr.message);
+      await persistVenues(id);
     };
 
     try {
@@ -2882,7 +2926,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         await saveExtras(editingChampId);
       } else {
         const { data, error } = await fromExt("club_champs")
-          .insert({ club_id: clubId, owner_org_id: ownerOrgId ?? undefined, status: "planning", ...payload })
+          .insert({ club_id: clubId, owner_org_id: resolvedOwnerOrgId ?? undefined, status: "planning", ...payload })
           .select("id")
           .single();
         if (error) throw error;
@@ -5340,6 +5384,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         const { data: champ, error: champErr } = await fromExt("club_champs")
           .insert(sanitizeDraftPayload({
             club_id: clubId,
+            // The body that owns the event (club, association or federation).
+            owner_org_id: resolvedOwnerOrgId ?? undefined,
             name: champName || defaultName,
             gender,
             match_type: effectiveMatchType,
@@ -5439,9 +5485,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               fromLegacyDeadlines(serializeRoundDeadlines(roundDeadlines) || []),
             ),
             milestone_play_by: milestonePlayBy,
+            participating_club_ids: venueClubIds.filter((id) => id !== clubId),
           } as any)
           .eq("id", champId);
         if (centralErr) console.warn("[champs] central round save failed", centralErr.message);
+        await persistVenues(champId);
       }
 
       if (awaitingPlayerPairs) {
@@ -5893,7 +5941,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
 
       const bookings = Array.from(slotMap.values()).map((s) => ({
-        club_id: clubId,
+        // A court always belongs to its own club — an association event played
+        // at PCC must reserve PCC's court in PCC's own diary, not the organiser's.
+        club_id: courtClubId(s.courtId),
         court_id: s.courtId,
         user_id: null,
         club_member_id: null,
@@ -5912,10 +5962,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (schedulingMode === "club" && bookings.length > 0) {
 
         // Clear prior per-match bookings for this tournament so re-saves don't
-        // leave stale rows alongside the consolidated blocks.
+        // leave stale rows alongside the consolidated blocks. The external id
+        // already identifies the tournament, so venue clubs are covered too.
         await fromExt("bookings")
           .delete()
-          .eq("club_id", clubId)
           .eq("source", "club_event")
           .like("external_id", `champ:${champId}:%`);
         const { error: bookErr } = await fromExt("bookings")
@@ -6087,7 +6137,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         }
 
         rows = Array.from(blocks.values()).map((s) => ({
-          club_id: clubId,
+          club_id: courtClubId(s.courtId),
           court_id: s.courtId,
           user_id: null,
           club_member_id: null,
@@ -6132,7 +6182,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         }
 
         rows = Array.from(slotMap.values()).map((s) => ({
-            club_id: clubId,
+            club_id: courtClubId(s.courtId),
             court_id: s.courtId,
             user_id: null,
             club_member_id: null,
@@ -6149,7 +6199,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
       await fromExt("bookings")
         .delete()
-        .eq("club_id", clubId)
         .eq("source", "club_event")
         .like("external_id", `champ:${champId}:%`);
       const { data: inserted, error: bErr } = await fromExt("bookings")
@@ -8395,6 +8444,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
             {/* Category, eligibility, capacity and seeding — same block at every level. */}
             <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm space-y-3">
+              {/* Owner is not the venue and not the audience — say plainly who runs this event. */}
+              <div className="rounded-md border bg-white dark:bg-slate-950 p-2">
+                <Label className="text-sm font-semibold">Organised by</Label>
+                <p className="text-sm mt-0.5">
+                  {ownerOrgName || "This club"}
+                  {scope !== "club" && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {" "}— {scope === "federation" ? "national federation" : "association"} level
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  The owning body runs the event and carries its finances. The courts come from the host
+                  club(s) chosen under <strong>Courts &amp; daily schedule</strong>.
+                </p>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-sm font-semibold">Tournament category <span className="text-destructive">*</span></Label>
@@ -8747,7 +8812,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 defaultOpen={true}
               >
                 <div>
-                  <Label className="text-sm">Courts used by the tournament</Label>
+                  <Label className="text-sm">
+                    {multiClub ? "Venues and the courts each one provides" : "Courts used by the tournament"}
+                  </Label>
                   {(() => {
                     const homeCourts = courts.filter((c) => !c.is_external);
                     const externalCourts = courts.filter((c) => c.is_external);
@@ -8756,6 +8823,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                       (acc[key] ||= []).push(c);
                       return acc;
                     }, {});
+                    const shortName = (c: any) =>
+                      multiClub && c.club?.name ? String(c.name).replace(`${c.club.name} — `, "") : c.name;
                     const renderCheckbox = (c: typeof courts[number]) => (
                       <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
                         <Checkbox
@@ -8766,14 +8835,53 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             setSelectedCourtIds(next);
                           }}
                         />
-                        <span className="text-sm">{c.name}</span>
+                        <span className="text-sm">{shortName(c)}</span>
                       </label>
                     );
+                    // One block per host club: a venue only ever offers its own courts.
+                    const homeByClub = homeCourts.reduce<Record<string, typeof homeCourts>>((acc, c) => {
+                      const key = (c as any).club_id || clubId;
+                      (acc[key] ||= []).push(c);
+                      return acc;
+                    }, {});
                     return (
                       <div className="space-y-2 mt-1">
-                        {homeCourts.length > 0 && (
+                        {!multiClub && homeCourts.length > 0 && (
                           <div className="flex flex-wrap gap-2">{homeCourts.map(renderCheckbox)}</div>
                         )}
+                        {multiClub &&
+                          Object.entries(homeByClub).map(([cid, list]) => {
+                            const venueName = (list[0] as any)?.club?.name || "Host club";
+                            const chosen = list.filter((c) => selectedCourtIds.has(c.id)).length;
+                            const allOn = chosen === list.length;
+                            return (
+                              <div key={cid} className="rounded-md border p-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="text-[11px] font-semibold">
+                                    🏟 {venueName}
+                                    {cid === clubId && <span className="text-muted-foreground"> · primary</span>}
+                                    <span className="text-muted-foreground">
+                                      {" "}· {chosen} of {list.length} court{list.length === 1 ? "" : "s"}
+                                    </span>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-[11px]"
+                                    onClick={() => {
+                                      const next = new Set(selectedCourtIds);
+                                      list.forEach((c) => (allOn ? next.delete(c.id) : next.add(c.id)));
+                                      setSelectedCourtIds(next);
+                                    }}
+                                  >
+                                    {allOn ? "Clear" : "Select all"}
+                                  </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">{list.map(renderCheckbox)}</div>
+                              </div>
+                            );
+                          })}
                         {Object.entries(externalByVenue).map(([venue, list]) => (
                           <div key={venue} className="rounded-md border border-dashed p-2">
                             <div className="text-[11px] font-semibold text-muted-foreground mb-1">📍 {venue}</div>

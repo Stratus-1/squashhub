@@ -484,9 +484,10 @@ function AppRoutes() {
           isClubSubdomain && !user
             ? <ClubLanding hostClub={clubFromHost} hostSubdomain={clubSubdomain} />
             : user
-              ? <SubdomainMembershipGate><Dashboard /></SubdomainMembershipGate>
+              ? <RootClubGate><SubdomainMembershipGate><Dashboard /></SubdomainMembershipGate></RootClubGate>
               : <Home />
         } />
+        <Route path="/find-club" element={<FindClub />} />
         <Route path="/welcome" element={<Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route path="/clubs" element={<Clubs />} />

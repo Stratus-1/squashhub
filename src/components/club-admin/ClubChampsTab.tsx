@@ -4535,12 +4535,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           ): { league: number; idx: number; cap: number } | null => {
             let best: { league: number; idx: number; cap: number; score: number[] } | null = null;
             for (const gn of leagues) {
-              const cap = capFor(gn);
+              const cap = capMinFor(gn);
               if (tRel + cap > sessionEndMin) continue;
               const pool = remainingByLeague.get(gn);
               if (!pool || !pool.length) continue;
               for (let i = 0; i < pool.length; i++) {
-                const score = scoreMatch(pool[i], gn, nowAbs, cid, enforceBreak);
+                const score = scoreMatch(pool[i], gn, nowAbs, cid, enforceBreak, tRel, sessionEndMin);
                 if (!score) continue;
                 if (!best || cmpScore(score, best.score) < 0) {
                   best = { league: gn, idx: i, cap, score };

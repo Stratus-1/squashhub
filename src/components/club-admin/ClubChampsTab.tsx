@@ -102,6 +102,7 @@ import {
 import { applyDivisionOrder, isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
 import {
   PAIRING_METHOD_LABELS,
+  isPairingMethod,
   followsDivision,
   pairingMethodFor,
   poolDurationKey,
@@ -9439,29 +9440,55 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                          }}
                                        />
                                      )}
-                                     {isDoublesDivision && (
-                                       <>
-                                         <SegRow
-                                           label="How pairs are formed"
-                                           value={pairingMethodFor(divisionPairing, gn)}
-                                           color="cyan"
-                                           options={[
-                                             { v: "adjacent", l: "Automatic — adjacent (6+5, 4+3, 2+1)" },
-                                             { v: "balanced", l: "Automatic — balanced (1+6, 2+5, 3+4)" },
-                                             { v: "manual", l: "Players pick their own partner" },
-                                           ]}
-                                           onChange={(v) =>
-                                             setDivisionPairing((m) => ({ ...m, [key]: v as PairingMethod }))
-                                           }
-                                         />
-                                         <p className="text-[10px] text-muted-foreground">
-                                           {PAIRING_METHOD_LABELS[pairingMethodFor(divisionPairing, gn)]}
-                                           {waitsFor != null
-                                             ? ` — taken from the finishing order of ${nameOf(waitsFor)}.`
-                                             : " — taken from the seeded order of this division."}
-                                         </p>
-                                       </>
-                                     )}
+                                     {isDoublesDivision && (() => {
+                                       // ONE place to decide how partners come about for this
+                                       // doubles division: the two automatic orders (Diamond
+                                       // League style) plus the ordinary tournament choices.
+                                       const raw = (divisionPairing as Record<string, unknown>)[key];
+                                       const explicit = isPairingMethod(raw) ? (raw as PairingMethod) : null;
+                                       const isAuto = explicit === "adjacent" || explicit === "balanced";
+                                       const current = isAuto ? explicit : (partnerMode || "");
+                                       return (
+                                         <>
+                                           <SegRow
+                                             label="How pairs are formed"
+                                             value={current}
+                                             color="cyan"
+                                             options={[
+                                               { v: "admin", l: "Admin pairs the players" },
+                                               { v: "players", l: "Players pick their own partner" },
+                                               { v: "rotate", l: "Players rotate (everyone partners everyone)" },
+                                               { v: "adjacent", l: "Automatic — adjacent (6+5, 4+3, 2+1)" },
+                                               { v: "balanced", l: "Automatic — balanced (1+6, 2+5, 3+4)" },
+                                             ]}
+                                             onChange={(v) => {
+                                               if (v === "adjacent" || v === "balanced") {
+                                                 setDivisionPairing((m) => ({ ...m, [key]: v as PairingMethod }));
+                                                 setPartnerMode((p: any) => p || "admin");
+                                               } else {
+                                                 setDivisionPairing((m) => ({ ...m, [key]: "manual" as PairingMethod }));
+                                                 setPartnerMode(v as any);
+                                               }
+                                             }}
+                                           />
+                                           <p className="text-[10px] text-muted-foreground">
+                                             {isAuto
+                                               ? `${PAIRING_METHOD_LABELS[explicit as PairingMethod]}${
+                                                   waitsFor != null
+                                                     ? ` — taken from the finishing order of ${nameOf(waitsFor)}.`
+                                                     : " — taken from the seeded order of this division."
+                                                 }`
+                                               : current === "rotate"
+                                                 ? "No fixed pairs: every round re-pairs the players so everyone partners everyone. Points are banked per player."
+                                                 : current === "players"
+                                                   ? "Entrants choose their own partner on their invitation; an admin can still override."
+                                                   : current === "admin"
+                                                     ? "The organiser builds every pair by hand."
+                                                     : "Pick how partners come about for this division."}
+                                           </p>
+                                         </>
+                                       );
+                                     })()}
                                      {pools > 1 && (
                                        <div className="space-y-1">
                                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -10250,48 +10277,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-            <WizardSection
-              title={"Partner selection"}
-              summary={isDoublesCategory ? (partnerMode === "admin" ? "Admin pairs players" : partnerMode === "players" ? "Players choose partners" : partnerMode === "rotate" ? "Players rotate automatically" : "Not set") : "Singles — no partners needed"}
-              complete={!isDoublesCategory || !!partnerMode}
-              defaultOpen={true}
-            >
-            {/* Partner mode — doubles only */}
-            {isDoublesCategory && (
-              <div className="space-y-2">
-                <Label className="text-sm">Partner selection</Label>
-                <Select
-                  value={partnerMode}
-                  onValueChange={(v) => setPartnerMode(v as any)}
-                  onOpenChange={(open) => {
-                    if (!open) return;
-                    const y = window.scrollY;
-                    requestAnimationFrame(() => window.scrollTo({ top: y }));
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="admin">Admin pairs all players</SelectItem>
-                    <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
-                    <SelectItem value="rotate">Players rotate automatically (everyone partners everyone)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {partnerMode === "rotate"
-                    ? "No fixed pairs: just pick the players. Every round re-pairs them so each player partners every other player and faces everybody else. Points are banked per player."
-                    : "Only applies to doubles. Switch to Singles in Step 1 to hide this option."}
-                </p>
-              </div>
-            )}
-            {!isDoublesCategory && (
-              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                <strong className="text-foreground">Partner selection</strong> appears here for doubles tournaments. This tournament is set to <em>Singles</em> — go back to Step 1 (Category) and pick <em>Doubles</em> to enable partner pairing options.
-              </div>
-            )}
-
-
-            </WizardSection>
+            {/* Partner selection is NOT repeated here: it lives on each doubles
+                division in the Structure step ("How pairs are formed"), which is
+                the single source of truth for pairing. */}
           </CardContent>
         </Card>
       )}

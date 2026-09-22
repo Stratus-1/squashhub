@@ -1030,6 +1030,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Stage sequencing: which division waits for another (group_number -> group_number),
   // how a following doubles division builds its pairs, and per-pool game lengths.
   const [divisionFollows, setDivisionFollows] = useState<Record<string, number>>({});
+  /**
+   * How a staged division is seeded: "previous" (default) takes the finishing
+   * order of the stage it follows, "ladder" seeds it from the club ladder just
+   * like a stand-alone division.
+   */
+  const [divisionSeedSource, setDivisionSeedSource] = useState<Record<string, "previous" | "ladder">>({});
+  const seedSourceFor = useCallback(
+    (gn: number): "previous" | "ladder" =>
+      divisionSeedSource[String(gn)] === "ladder" ? "ladder" : "previous",
+    [divisionSeedSource],
+  );
   const [divisionPairing, setDivisionPairing] = useState<Record<string, PairingMethod>>({});
   const [poolDurations, setPoolDurations] = useState<Record<string, number>>({});
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});

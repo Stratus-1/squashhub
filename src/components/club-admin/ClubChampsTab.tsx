@@ -100,6 +100,14 @@ import {
   type EligibilityContext,
 } from "@/lib/tournaments/divisions";
 import { applyDivisionOrder, isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
+import {
+  PAIRING_METHOD_LABELS,
+  followsDivision,
+  pairingMethodFor,
+  poolDurationKey,
+  wouldCycle,
+  type PairingMethod,
+} from "@/lib/tournaments/stage-sequence";
 import { distributeIntoPools, flattenPools, moveVisual, normalisePoolAllocation, poolBlocks, poolCounts, poolLetter, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { generateRotatingDoublesSchedule, parseRotationEntity, rotationEntityId } from "@/lib/tournaments/rotating-doubles";
 import {
@@ -1016,6 +1024,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [winCondition, setWinCondition] = useState<"win_by_2" | "sudden_death">("win_by_2");
   const [groupDurations, setGroupDurations] = useState<Record<string, number>>({});
   const [groupBreakMinutes, setGroupBreakMinutes] = useState<Record<string, number>>({});
+  // Stage sequencing: which division waits for another (group_number -> group_number),
+  // how a following doubles division builds its pairs, and per-pool game lengths.
+  const [divisionFollows, setDivisionFollows] = useState<Record<string, number>>({});
+  const [divisionPairing, setDivisionPairing] = useState<Record<string, PairingMethod>>({});
+  const [poolDurations, setPoolDurations] = useState<Record<string, number>>({});
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
   // 'club'  — the club books courts and publishes a fixed schedule.
   // 'self'  — players arrange their own games and must play by a deadline.
@@ -1403,6 +1416,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     copy(setSwissRounds as any);
     copy(setGroupDurations as any);
     copy(setGroupBreakMinutes as any);
+    copy(setDivisionPairing as any);
     copy(setExpectedPlayers as any);
     copy(setLeagueGenders as any);
     copy(setLeagueMatchTypes as any);
@@ -1440,6 +1454,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setGroupLabels(shift);
     setGroupDurations(shift);
     setGroupBreakMinutes(shift);
+    setDivisionFollows(shift);
+    setDivisionPairing(shift);
     setExpectedPlayers(shift);
     setLeagueGenders(shift);
     setLeagueMatchTypes(shift);
@@ -2568,6 +2584,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       win_condition: winCondition,
       group_durations: groupDurations,
       group_break_minutes: groupBreakMinutes,
+      division_follows: divisionFollows,
+      division_pairing_method: divisionPairing,
+      pool_durations: poolDurations,
       group_labels: groupLabels,
       default_break_minutes: defaultBreakMinutes,
       court_rotation_minutes: courtRotationMinutes,
@@ -4888,6 +4907,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             win_condition: winCondition,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
+            division_follows: divisionFollows,
+            division_pairing_method: divisionPairing,
+            pool_durations: poolDurations,
             group_labels: groupLabels,
             default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
@@ -4991,6 +5013,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             win_condition: winCondition,
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
+            division_follows: divisionFollows,
+            division_pairing_method: divisionPairing,
+            pool_durations: poolDurations,
             group_labels: groupLabels,
             default_break_minutes: defaultBreakMinutes,
             court_rotation_minutes: courtRotationMinutes,
@@ -6963,6 +6988,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setPlayAllGames(false);
     setGroupDurations({});
     setGroupBreakMinutes({});
+    setDivisionFollows({});
+    setDivisionPairing({});
+    setPoolDurations({});
     setGroupLabels({});
     setDefaultBreakMinutes(0);
     setCourtRotationMinutes(null);
@@ -7081,6 +7109,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setWinCondition(((champ as any).win_condition as any) === "sudden_death" ? "sudden_death" : "win_by_2");
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
+    setDivisionFollows(((champ as any).division_follows as Record<string, number>) || {});
+    setDivisionPairing(((champ as any).division_pairing_method as Record<string, PairingMethod>) || {});
+    setPoolDurations(((champ as any).pool_durations as Record<string, number>) || {});
     setGroupLabels(((champ as any).group_labels as Record<string, string>) || {});
     setDefaultBreakMinutes(Number((champ as any).default_break_minutes) || 0);
     setCourtRotationMinutes(((champ as any).court_rotation_minutes as number | null) ?? null);

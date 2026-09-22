@@ -12283,6 +12283,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     {(roundFormat === "cross_league"
                       ? [1]
                       : Array.from({ length: numGroups }, (_, i) => i + 1)
+                          // A stage that runs AFTER another one (Diamond League:
+                          // doubles follows singles) is not built now, so don't
+                          // ask for its timing here.
+                          .filter((gn) => !followsDivision(divisionFollows, gn))
                     ).map((gn) => {
 
                       const slot = Number(groupDurations[String(gn)]) || matchDuration;

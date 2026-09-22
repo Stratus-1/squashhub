@@ -10277,48 +10277,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
 
 
-            <WizardSection
-              title={"Partner selection"}
-              summary={isDoublesCategory ? (partnerMode === "admin" ? "Admin pairs players" : partnerMode === "players" ? "Players choose partners" : partnerMode === "rotate" ? "Players rotate automatically" : "Not set") : "Singles — no partners needed"}
-              complete={!isDoublesCategory || !!partnerMode}
-              defaultOpen={true}
-            >
-            {/* Partner mode — doubles only */}
-            {isDoublesCategory && (
-              <div className="space-y-2">
-                <Label className="text-sm">Partner selection</Label>
-                <Select
-                  value={partnerMode}
-                  onValueChange={(v) => setPartnerMode(v as any)}
-                  onOpenChange={(open) => {
-                    if (!open) return;
-                    const y = window.scrollY;
-                    requestAnimationFrame(() => window.scrollTo({ top: y }));
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                  <SelectContent position="popper" sideOffset={4} onCloseAutoFocus={(e) => e.preventDefault()}>
-                    <SelectItem value="__placeholder" disabled>Please select</SelectItem>
-                    <SelectItem value="admin">Admin pairs all players</SelectItem>
-                    <SelectItem value="players">Players choose their own partner (admin can override)</SelectItem>
-                    <SelectItem value="rotate">Players rotate automatically (everyone partners everyone)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {partnerMode === "rotate"
-                    ? "No fixed pairs: just pick the players. Every round re-pairs them so each player partners every other player and faces everybody else. Points are banked per player."
-                    : "Only applies to doubles. Switch to Singles in Step 1 to hide this option."}
-                </p>
-              </div>
-            )}
-            {!isDoublesCategory && (
-              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                <strong className="text-foreground">Partner selection</strong> appears here for doubles tournaments. This tournament is set to <em>Singles</em> — go back to Step 1 (Category) and pick <em>Doubles</em> to enable partner pairing options.
-              </div>
-            )}
-
-
-            </WizardSection>
+            {/* Partner selection is NOT repeated here: it lives on each doubles
+                division in the Structure step ("How pairs are formed"), which is
+                the single source of truth for pairing. */}
           </CardContent>
         </Card>
       )}

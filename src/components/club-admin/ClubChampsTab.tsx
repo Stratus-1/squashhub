@@ -5094,7 +5094,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [scheduleGroups, isDoubles, rotatePartners, leagueMatchTypes, divisionFollows, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
+  }, [scheduleGroups, isDoubles, rotatePartners, leagueMatchTypes, divisionFollows, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, poolDurations, groupBreakMinutes, defaultBreakMinutes, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the

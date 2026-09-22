@@ -52,4 +52,3 @@
 - [x] Keep later cross-pool rounds on the finals draw path after section 0 already exists
 - [x] Pass the central Final deadline into the progress-card draw confirmation
 
-- [ ] Kaylee Hunt shows under "Northern Squash Association (this club)" in tournament invites — she belongs to Uitsig; check her membership record.

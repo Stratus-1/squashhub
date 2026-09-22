@@ -73,7 +73,11 @@ export function useMemberStatsSummary(memberId?: string | null, seasonYear?: num
   return useQuery<MemberStatsSummary>({
     queryKey: ["member-stats-summary", memberId, seasonYear ?? "all"],
     enabled: !!memberId,
-    staleTime: 60 * 60 * 1000,
+    // Keep the tiles in step with the drill-down list: a long stale window let a
+    // phone keep showing yesterday's totals against an already-corrected list.
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("get_member_stats_cached", {
         _member_id: memberId!,

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { deriveVenueRows, hostFeeCents, venueClubForCourt } from "@/lib/tournaments/venues";
+import { resolveEligibleClubs, orgDescendants } from "@/lib/tournaments/eligibility";
 
 const NSA_PCC = "pcc";
 const UITSIG = "uitsig";
@@ -14,6 +15,18 @@ const courts = [
 ];
 
 describe("tournament venues", () => {
+  it("limits NSA regional clubs to the Federation tree, excluding a legacy Durbanville affiliation", () => {
+    const orgs = [
+      { id: "nsa", kind: "association", name: "NSA", club_id: null },
+      { id: "csir-org", kind: "club", name: "CSIR", club_id: "csir" },
+      { id: "durbanville-org", kind: "club", name: "Durbanville", club_id: "durbanville" },
+    ];
+    const rels = [{ parent_org_id: "nsa", child_org_id: "csir-org" }];
+    const descendants = orgDescendants("nsa", rels);
+    expect(orgs.filter((org) => org.kind === "club" && descendants.has(org.id)).map((org) => org.club_id)).toEqual(["csir"]);
+    expect(resolveEligibleClubs({ scope: "association", clubId: "nsa-tenant", ownerOrgId: "nsa", orgs, rels }).clubIds).toEqual(["csir"]);
+  });
+
   it("single host club keeps one primary venue with its own courts", () => {
     const rows = deriveVenueRows({
       primaryClubId: NSA_PCC,

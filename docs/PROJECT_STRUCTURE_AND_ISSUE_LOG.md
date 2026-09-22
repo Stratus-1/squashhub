@@ -1878,3 +1878,7 @@ The association tournament Players step showed one long, mixed list of members f
 ## 2026-09-22 — Regional schedule labels showed Unknown
 
 The review schedule looked up fixture names only in the roster visible to the host club, so regional entrants from other clubs displayed as Unknown despite valid fixture member IDs. The review now uses the tournament's already-loaded, name-only entrant directory; the post-rebuild preview uses the same authorised tournament-scoped directory when cross-club member joins are hidden. No fixtures, registration statuses, or bookings were changed.
+
+## 2026-09-22 — Regional tournament clubs did not match Federation tree
+
+NSA's tournament venue picker merged legacy `association_affiliated_clubs` with Federation descendants, showing Durbanville despite no NSA relationship in the Federation tree. The association's club choices now come from active tree descendants only; a warning calls out legacy affiliations needing review. The regional player eligibility resolver now uses the same tree rather than expanding through league participation and affiliation rows. Platform host choices are scoped to the selected owner, and changing owners discards out-of-scope selections. Existing tournament entries and fixtures are untouched; unrelated legacy affiliations remain for review.

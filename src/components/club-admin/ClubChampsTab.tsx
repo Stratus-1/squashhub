@@ -1203,7 +1203,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const [leagueGenders, setLeagueGenders] = useState<Record<string, GenderCategory>>({});
   const [leagueMatchTypes, setLeagueMatchTypes] = useState<Record<string, "singles" | "doubles">>({});
   const genderForLeague = (gn: number): GenderCategory => leagueGenders[String(gn)] ?? gender;
-  const matchTypeForLeague = (gn: number): "singles" | "doubles" => leagueMatchTypes[String(gn)] ?? matchType;
+  /**
+   * Singles/doubles is per division. Once ANY division has its own setting the
+   * tournament-level `matchType` is just a roll-up ("doubles if any division is
+   * doubles") and must never be used as a fallback — that is what made setting
+   * one division to Doubles flip every other division with it.
+   */
+  const matchTypeForLeague = (gn: number): "singles" | "doubles" =>
+    leagueMatchTypes[String(gn)] ??
+    (Object.keys(leagueMatchTypes).length > 0 ? "singles" : matchType);
   /** Does this member satisfy the category set for the given league? */
   const memberFitsLeague = (m: any, gn: number): boolean => {
     const g = genderForLeague(gn);
@@ -3794,6 +3802,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (changed) setExtraDivisions(next);
   }, [isDoubles, numGroups, divisionFollows, selectedPlayers, groupAssignments, extraDivisions]);
 
+  /**
+   * Only the stages that can be played NOW are built. A division that runs
+   * AFTER another one (Diamond League: doubles follows singles) has no field
+   * until that stage has finished, so it is left out of this build and its
+   * fixtures are generated once the preceding stage is complete.
+   */
+  const scheduleGroups = useMemo(
+    () => (groups as any[][]).map((g, gi) => (followsDivision(divisionFollows, gi + 1) ? [] : g)),
+    [groups, divisionFollows],
+  );
+  /** Divisions held back for a later stage — surfaced on the schedule step. */
+  const deferredStageLabels = useMemo(
+    () =>
+      Array.from({ length: numGroups || 0 }, (_, i) => i + 1)
+        .filter((gn) => !!followsDivision(divisionFollows, gn))
+        .map((gn) => groupLabels[String(gn)]?.trim() || `League ${gn}`),
+    [numGroups, divisionFollows, groupLabels],
+  );
+
   // Schedule preview
   const schedulePreview = useMemo(() => {
     // Self-scheduled tournaments have no play days, courts or time slots — the
@@ -4149,8 +4176,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Singles draws are constrained to each division's eligible population
       // ("Players from"). Doubles pairs are built by hand and are left as-is.
       const perLeagueIds: string[][] = isDoubles
-        ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
-        : (groups as ClubMember[][]).map((g, gi) => eligibleIdsForDivision(gi + 1, g.map((p) => p.id)));
+        ? (scheduleGroups as DoublePair[][]).map((g) => g.map((p) => p.id))
+        : (scheduleGroups as ClubMember[][]).map((g, gi) => eligibleIdsForDivision(gi + 1, g.map((p) => p.id)));
 
 
       // Leagues on "cross league" WITHOUT their own pools play against the other
@@ -4577,8 +4604,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // pool matches don't grab them. `allSlots` is built in date/time/court
       // order, so the tail of the array is the latest end of the tournament.
       const entriesPerLeague: number[] = isDoubles
-        ? (groups as DoublePair[][]).map((g) => g.length)
-        : (groups as ClubMember[][]).map((g) => g.length);
+        ? (scheduleGroups as DoublePair[][]).map((g) => g.length)
+        : (scheduleGroups as ClubMember[][]).map((g) => g.length);
 
       // Pool mode: any league split into 2+ pools (Swiss, round robin or cross
       // league) contributes its pool split; others stay as a single pool.
@@ -4938,7 +4965,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, rotatePartners, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
+  }, [scheduleGroups, isDoubles, rotatePartners, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the
@@ -7372,7 +7399,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const inheritedM: Record<string, "singles" | "doubles"> = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedG[String(i)] = (lg?.[String(i)] as GenderCategory) ?? champ.gender;
-      inheritedM[String(i)] = (lmt?.[String(i)] as "singles" | "doubles") ?? (champ.match_type || "singles");
+      // Only adopt a per-division value that was actually saved. Filling the
+      // blanks with the tournament-level type would turn a saved singles stage
+      // into doubles the moment any other division is doubles.
+      const saved = lmt?.[String(i)] as "singles" | "doubles" | undefined;
+      if (saved) inheritedM[String(i)] = saved;
     }
     setLeagueGenders(inheritedG);
     setLeagueMatchTypes(inheritedM);
@@ -12361,6 +12392,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 <p>🏟️ <strong>{schedulePreview.totalSlots}</strong> total slots</p>
                 {schedulePreview.totalSlots < schedulePreview.totalMatches && (
                   <p className="text-destructive font-medium">⚠️ Not enough slots! Add more days, courts, or extend the time range.</p>
+                )}
+                {deferredStageLabels.length > 0 && (
+                  <p className="text-muted-foreground">
+                    ⏭️ {deferredStageLabels.join(", ")} {deferredStageLabels.length === 1 ? "is" : "are"} played after an earlier
+                    stage — those matches are built once that stage is finished, so they are not in this schedule.
+                  </p>
                 )}
               </div>
             )}

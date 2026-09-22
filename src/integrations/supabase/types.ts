@@ -15217,6 +15217,10 @@ export type Database = {
         Args: { _member_id: string }
         Returns: Json
       }
+      classify_champ_result_stage: {
+        Args: { p_match_id: string }
+        Returns: string
+      }
       club_affiliate_member_to_association: {
         Args: {
           _association_id: string

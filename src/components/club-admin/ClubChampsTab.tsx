@@ -855,49 +855,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return owningAssociation(scopeOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.name ?? null;
   }, [orgHierarchy, scopeOrgId]);
 
-  // The association whose ranking list "Regional ranking" seeds from — the
-  // owning association of this event's organiser (a club's own region too).
-  const regionalRankingAssocId = useMemo(() => {
-    if (!orgHierarchy) return null;
-    return owningAssociation(scopeOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.league_association_id ?? null;
-  }, [orgHierarchy, scopeOrgId]);
-  const needsRankMaps = seedingSource === "regional_ranking" || seedingSource === "ranking";
-  const { data: seedRankMaps } = useSeedingRankMaps(regionalRankingAssocId, showWizard && needsRankMaps);
-
-  /**
-   * Seed rank per entrant from the chosen source — lower is stronger, null
-   * means unranked. Club rating points run high-to-low, so they are negated.
-   * Anyone missing from the chosen list falls back to the club ladder rather
-   * than dropping to the bottom.
-   */
-  const seedRankOf = useCallback(
-    (p: any): number | null => {
-      const ladder =
-        typeof p?.ladder_position === "number" && p.ladder_position > 0 ? p.ladder_position : null;
-      switch (seedingSource) {
-        case "club_ranking": {
-          const pts = Number(p?.ranking_points ?? 0);
-          return pts > 0 ? -pts : ladder;
-        }
-        case "regional_ranking":
-          return (p?.person_id ? seedRankMaps?.regional.get(String(p.person_id)) : undefined) ?? ladder;
-        case "ranking":
-          return (p?.person_id ? seedRankMaps?.national.get(String(p.person_id)) : undefined) ?? ladder;
-        default:
-          return ladder;
-      }
-    },
-    [seedingSource, seedRankMaps],
-  );
-
-  const SEEDING_SOURCE_LABELS: Record<string, string> = {
-    ladder: "club ladder",
-    club_ranking: "club ranking",
-    regional_ranking: "regional ranking",
-    ranking: "national ranking",
-    manual: "manual order",
-  };
-
   const eventTypeOptions = useMemo(() => eventTypesFor(scope), [scope]);
   const eligibilityOptions = useMemo(
     () => eligibilityScopesFor(scope, associationName),

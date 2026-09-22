@@ -9638,44 +9638,72 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   others, or only once another one has been played out?
                                   A following doubles division inherits the finishing order
                                   of the stage before it and pairs players from it. */}
-                               {(() => {
-                                 const others = Array.from({ length: numGroups || 0 }, (_, i) => i + 1).filter(
-                                   (n) => n !== gn && !wouldCycle(divisionFollows, n, gn),
-                                 );
-                                 const waitsFor = followsDivision(divisionFollows, gn);
-                                 const nameOf = (n: number) => groupLabels[String(n)] || `Division ${n}`;
-                                 const pools = sectionsForLeague(gn);
-                                 const isDoublesDivision = matchTypeForLeague(gn) === "doubles";
-                                 return (
-                                   <div className="space-y-1 pt-1">
-                                     {others.length > 0 && (
-                                       <SegRow
-                                         label="When this stage runs"
-                                         value={String(waitsFor ?? 0)}
-                                         color="violet"
-                                         options={[
-                                           { v: "0", l: "Alongside the others" },
-                                           ...others.map((n) => ({ v: String(n), l: `After ${nameOf(n)}` })),
-                                         ]}
-                                         onChange={(v) => {
-                                           const n = Number(v) || 0;
-                                           setDivisionFollows((m) => {
-                                             const next = { ...m };
-                                             if (n <= 0) delete next[key];
-                                             else next[key] = n;
-                                             return next;
-                                           });
-                                           // Same players carry over, so mirror that stage's pools.
-                                           if (n > 0) {
-                                             const mirror = sectionsForLeague(n);
-                                             setSwissPools((m) => ({ ...m, [key]: mirror }));
-                                             setLeagueSections((m) =>
-                                               m[key] === undefined ? m : { ...m, [key]: mirror },
-                                             );
-                                           }
-                                         }}
-                                        />
-                                      )}
+                                {(() => {
+                                  const allOthers = Array.from({ length: numGroups || 0 }, (_, i) => i + 1).filter(
+                                    (n) => n !== gn,
+                                  );
+                                  const waitsFor = followsDivision(divisionFollows, gn);
+                                  const leadsTo =
+                                    allOthers.find((n) => followsDivision(divisionFollows, n) === gn) ?? null;
+                                  const nameOf = (n: number) => groupLabels[String(n)] || `Division ${n}`;
+                                  const pools = sectionsForLeague(gn);
+                                  const isDoublesDivision = matchTypeForLeague(gn) === "doubles";
+                                  // Mirror the pools of the stage a follower inherits from.
+                                  const mirrorPools = (followerKey: string, sourceGn: number) => {
+                                    const mirror = sectionsForLeague(sourceGn);
+                                    setSwissPools((m) => ({ ...m, [followerKey]: mirror }));
+                                    setLeagueSections((m) =>
+                                      m[followerKey] === undefined ? m : { ...m, [followerKey]: mirror },
+                                    );
+                                  };
+                                  const orderOptions = [
+                                    { v: "0", l: "Alongside the others" },
+                                    ...allOthers.flatMap((n) => [
+                                      ...(!wouldCycle(divisionFollows, n, gn)
+                                        ? [{ v: `b:${n}`, l: `Before ${nameOf(n)}` }]
+                                        : []),
+                                      ...(!wouldCycle(divisionFollows, gn, n)
+                                        ? [{ v: `a:${n}`, l: `After ${nameOf(n)}` }]
+                                        : []),
+                                    ]),
+                                  ];
+                                  const orderValue = waitsFor
+                                    ? `a:${waitsFor}`
+                                    : leadsTo
+                                      ? `b:${leadsTo}`
+                                      : "0";
+                                  return (
+                                    <div className="space-y-1 pt-1">
+                                      {allOthers.length > 0 && (
+                                        <SegRow
+                                          label="When this stage runs"
+                                          value={orderValue}
+                                          color="violet"
+                                          options={orderOptions}
+                                          onChange={(v) => {
+                                            const n = Number(v.slice(2)) || 0;
+                                            const before = v.startsWith("b:");
+                                            const after = v.startsWith("a:");
+                                            setDivisionFollows((m) => {
+                                              const next = { ...m };
+                                              // This stage never both waits for and is waited on.
+                                              delete next[key];
+                                              if (leadsTo) delete next[String(leadsTo)];
+                                              if (after && n > 0) next[key] = n;
+                                              if (before && n > 0) next[String(n)] = gn;
+                                              return next;
+                                            });
+                                            // Same players carry over, so mirror the earlier stage's pools.
+                                            if (after && n > 0) mirrorPools(key, n);
+                                            if (before && n > 0) mirrorPools(String(n), gn);
+                                          }}
+                                         />
+                                       )}
+                                       {leadsTo != null && (
+                                         <p className="text-[10px] text-muted-foreground">
+                                           {nameOf(leadsTo)} runs after this stage and inherits its finishing order.
+                                         </p>
+                                       )}
                                       {waitsFor != null && (
                                         <>
                                           <SegRow

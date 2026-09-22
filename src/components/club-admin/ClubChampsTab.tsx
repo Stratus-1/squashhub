@@ -2672,6 +2672,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       group_durations: groupDurations,
       group_break_minutes: groupBreakMinutes,
       division_follows: divisionFollows,
+      division_seed_source: divisionSeedSource,
       division_pairing_method: divisionPairing,
       pool_durations: poolDurations,
       group_labels: groupLabels,
@@ -3774,13 +3775,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const src = followsDivision(divisionFollows, gi + 1);
       if (!src || src === gi + 1 || src > sorted.length) continue;
       if (manualSeedGroups.has(gi)) continue;
+      // The organiser may deliberately keep this stage on the club ladder.
+      if (seedSourceFor(gi + 1) === "ladder") continue;
       const order = new Map(sorted[src - 1].map((p: any, i) => [p.id, i]));
       sorted[gi] = [...sorted[gi]].sort(
         (a: any, b: any) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9),
       );
     }
     return sorted;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor]);
 
   /**
    * Staged events field the SAME players again in the next stage, so every
@@ -5083,6 +5086,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
             division_follows: divisionFollows,
+            division_seed_source: divisionSeedSource,
             division_pairing_method: divisionPairing,
             pool_durations: poolDurations,
             group_labels: groupLabels,
@@ -5189,6 +5193,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
             division_follows: divisionFollows,
+            division_seed_source: divisionSeedSource,
             division_pairing_method: divisionPairing,
             pool_durations: poolDurations,
             group_labels: groupLabels,
@@ -7292,6 +7297,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
     setDivisionFollows(((champ as any).division_follows as Record<string, number>) || {});
+    setDivisionSeedSource(
+      ((champ as any).division_seed_source as Record<string, "previous" | "ladder">) || {},
+    );
     setDivisionPairing(((champ as any).division_pairing_method as Record<string, PairingMethod>) || {});
     setPoolDurations(((champ as any).pool_durations as Record<string, number>) || {});
     setGroupLabels(((champ as any).group_labels as Record<string, string>) || {});
@@ -11761,7 +11769,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   : "";
                                 return (
                                   <Badge variant="outline" className="text-[10px]">
-                                    {src ? `Seeded by ${srcLabel} results` : "Seeded by club ladder"}
+                                    {src && seedSourceFor(gi + 1) === "previous"
+                                      ? `Seeded by ${srcLabel} results`
+                                      : "Seeded by club ladder"}
                                   </Badge>
                                 );
                               })()

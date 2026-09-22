@@ -1845,3 +1845,28 @@ Tests: `src/test/stage-label-section-final.test.ts`.
 - **Data repair:** Added Hendrik Vorster v Raymond Gates as the third-league Final (round 7), scheduled status, play-by 22 Sep 2026.
 - **Deadline:** The progress card now passes the centrally resolved Final deadline into the draw confirmation, matching the tournament milestone and player notices.
 - **Regression:** `src/test/league-finals-draw.test.ts` covers this exact second play-off round: Hendrik remains after beating Stiaan, Raymond joins from Pool C, and the round-7 board contains their final.
+
+## 2026-09-22 — Regional tournaments: owner, audience and venues
+
+- Owner is now explicit on every tournament. `tournaments.owner_org_id` is set on
+  create (draft and generate paths) from the club/association context and is shown
+  as "Organised by" on the first setup step. Backfilled all existing rows; NA Open
+  now belongs to the NSA association org.
+- `tournament_venues` is the authoritative venue list. `deriveVenueRows()` +
+  `syncTournamentVenues()` (src/lib/tournaments/venues.ts, use-tournaments.ts) mirror
+  the wizard's host clubs and chosen courts into it, and keep
+  `tournaments.participating_club_ids` / `court_ids` in sync as derived columns.
+  Hosting fees on a venue row are preserved across syncs.
+- Hosting fees: `host_fee_basis` (fixed | per_court_hour | per_day) + `host_fee_qty`
+  added to `tournament_venues`; the governance venue tab edits them and the fee split
+  uses the computed amount. No GL postings in this phase.
+- Court picker groups courts by host club (with per-venue select-all) so a venue only
+  ever contributes its own courts. No tournament-only court records are created.
+- Tournament court blocks/bookings are now filed under the COURT's club, not the
+  organiser's, so a regional fixture at PCC appears in PCC's diary. Cleanup deletes
+  match on `external_id` only (they previously filtered by the organiser's club and
+  left other venues' blocks behind).
+- Association venue candidates = union of the org tree beneath the owner and
+  `association_affiliated_clubs`, with an admin warning listing affiliated clubs
+  missing from the tree (NSA: 22 in tree vs 46 affiliated).
+- Tests: src/test/tournament-venues.test.ts (6). Full suite 1160 passed.

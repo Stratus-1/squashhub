@@ -3794,6 +3794,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (changed) setExtraDivisions(next);
   }, [isDoubles, numGroups, divisionFollows, selectedPlayers, groupAssignments, extraDivisions]);
 
+  /**
+   * Only the stages that can be played NOW are built. A division that runs
+   * AFTER another one (Diamond League: doubles follows singles) has no field
+   * until that stage has finished, so it is left out of this build and its
+   * fixtures are generated once the preceding stage is complete.
+   */
+  const scheduleGroups = useMemo(
+    () => (groups as any[][]).map((g, gi) => (followsDivision(divisionFollows, gi + 1) ? [] : g)),
+    [groups, divisionFollows],
+  );
+  /** Divisions held back for a later stage — surfaced on the schedule step. */
+  const deferredStageLabels = useMemo(
+    () =>
+      Array.from({ length: numGroups || 0 }, (_, i) => i + 1)
+        .filter((gn) => !!followsDivision(divisionFollows, gn))
+        .map((gn) => groupLabels[String(gn)]?.trim() || `League ${gn}`),
+    [numGroups, divisionFollows, groupLabels],
+  );
+
   // Schedule preview
   const schedulePreview = useMemo(() => {
     // Self-scheduled tournaments have no play days, courts or time slots — the

@@ -15112,6 +15112,17 @@ export type Database = {
       }
       champ_pair_settle: { Args: { p_pair_id: string }; Returns: string }
       champ_pairing_locked: { Args: { p_champ_id: string }; Returns: boolean }
+      champ_result_stage_rule: {
+        Args: {
+          p_champion_scope: string
+          p_has_league_final: boolean
+          p_section_count: number
+          p_section_number: number
+          p_stage: string
+          p_stage_label: string
+        }
+        Returns: string
+      }
       champ_sync_pair_entries: {
         Args: {
           p_a: string
@@ -15216,6 +15227,10 @@ export type Database = {
       claim_unclaimed_membership: {
         Args: { _member_id: string }
         Returns: Json
+      }
+      classify_champ_result_stage: {
+        Args: { p_match_id: string }
+        Returns: string
       }
       club_affiliate_member_to_association: {
         Args: {

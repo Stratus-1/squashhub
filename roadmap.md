@@ -16,6 +16,7 @@
 - [x] Treat a player pulled out of a tournament as knocked out: no further fixtures/byes, name shown with a strike-through
 - [x] Move the automatic tournament invitation opening into the editable preview text so reminders can replace or remove it
 - [x] Restore browser push notifications with a notification-only worker and prevent endless setup waits
+- [x] Make tournament result emails stage-aware (quarter-final, semi-final, champion, runner-up and placement wording)
 
 ## WhatsApp invite wording (16 Sep 2026)
 - [x] Short, friendly invitation link instead of the long token URL

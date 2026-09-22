@@ -87,8 +87,12 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
   // affiliation must not make an unrelated club a venue or player source.
   const venueChoices = useMemo(() => {
     if (mode === "platform" && !activeOwner) return [];
-    return treeClubs.sort((a, b) => a.name.localeCompare(b.name));
+    return [...treeClubs].sort((a, b) => a.name.localeCompare(b.name));
   }, [treeClubs, mode, activeOwner]);
+
+  const effectiveHostClubId = mode === "platform" && !venueChoices.some((c) => c.id === hostClubId)
+    ? ""
+    : hostClubId;
 
   // Flag contradictory legacy affiliations to admins, without offering them
   // as tournament venues or entrants.
@@ -177,12 +181,12 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
                     : clubs.find((c) => c.id === clubId)?.name || "This club"}
                 </div>
               ) : (
-                <Select value={hostClubId} onValueChange={setHostClubId}>
+                 <Select value={effectiveHostClubId} onValueChange={setHostClubId}>
                   <SelectTrigger className={field}>
                     <SelectValue placeholder="Select host club" />
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
-                    {clubs.map((c) => (
+                     {venueChoices.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -225,7 +229,7 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
                   />
                    <div className={cn("max-h-56 overflow-y-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-1 rounded-md border p-2", dark && "border-white/10")}>
                     {filteredClubs
-                      .filter((c) => c.id !== hostClubId)
+                       .filter((c) => c.id !== effectiveHostClubId)
                       .map((c) => (
                         <label key={c.id} className={cn("flex items-center gap-2 text-xs", dark ? "text-white/80" : "text-foreground")}>
                           <Checkbox checked={extraClubIds.has(c.id)} onCheckedChange={() => toggleClub(c.id)} />
@@ -253,15 +257,15 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
         </CardContent>
       </Card>
 
-      {hostClubId ? (
+       {effectiveHostClubId ? (
         <div className={cn(dark && "rounded-lg bg-background text-foreground p-3")}>
           <ClubChampsTab
-            key={`${activeOwner ?? "club"}-${hostClubId}`}
-            clubId={hostClubId}
+             key={`${activeOwner ?? "club"}-${effectiveHostClubId}`}
+             clubId={effectiveHostClubId}
             ownerOrgId={mode === "club" ? null : activeOwner}
             eligibilityOrgId={mode === "club" ? assoc.orgId : null}
             scope={scope}
-            participatingClubIds={Array.from(extraClubIds)}
+             participatingClubIds={Array.from(extraClubIds).filter((id) => venueChoices.some((c) => c.id === id))}
           />
         </div>
       ) : (

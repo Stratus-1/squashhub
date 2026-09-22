@@ -30,7 +30,7 @@ import { AssociationFeesTab } from "@/components/association-admin/AssociationFe
 import { AssociationSetupTab } from "@/components/association-admin/AssociationSetupTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
 import { AssociationLeaguesTab } from "@/components/association-admin/AssociationLeaguesTab";
-import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
+import { TournamentPlanner } from "@/components/tournaments/TournamentPlanner";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { MessageLogTab } from "@/components/club-admin/MessageLogTab";

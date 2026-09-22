@@ -4328,6 +4328,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           }) || matchDuration
         );
       };
+      // Shortest playing time in a division — used for "does another match
+      // still fit before the session ends", so a 14-minute pool is not
+      // rejected because another pool of the same division plays 30.
+      const capMinFor = (gn: number) => {
+        const base =
+          poolMinutes({ groupDurations, groupNumber: gn, fallbackMinutes: matchDuration }) ||
+          matchDuration;
+        const overrides = Object.entries(poolDurations)
+          .filter(([k]) => k.startsWith(`${gn}:`))
+          .map(([, v]) => Number(v) || 0)
+          .filter((v) => v > 0);
+        return overrides.length ? Math.min(base, ...overrides) : base;
+      };
+      // Changeover after each match on that court.
+      const breakFor = (gn: number) =>
+        Math.max(0, Number(groupBreakMinutes[String(gn)]) || Number(defaultBreakMinutes) || 0);
 
       const byLeague = new Map<number, MatchDef[]>();
       for (const m of allMatches) {

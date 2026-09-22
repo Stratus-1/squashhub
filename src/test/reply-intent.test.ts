@@ -125,3 +125,22 @@ describe("classifyReply — reported regressions", () => {
     expect(classifyReply(null, text).intent).toBe("unknown");
   });
 });
+
+describe("questions are never a decline", () => {
+  it.each([
+    "Hi, Ive put the last 4 digits of my cellphone in, but no link shows where I can pay? And cant add names. Louna Stevens",
+    "Where is the link to pay? I cant find it",
+    "Hi there, I tried the link but it says I cannot enter, can you help me please with this",
+  ])("asks a human about %j", (text) => {
+    expect(classifyReply(null, text).intent).toBe("unknown");
+  });
+
+  it("still honours a clean short decline", () => {
+    expect(classifyReply(null, "No").intent).toBe("no");
+    expect(classifyReply(null, "Sorry, I cant make it").intent).toBe("no");
+  });
+
+  it("still honours a decline button even inside a question", () => {
+    expect(classifyReply("no", "why?").intent).toBe("no");
+  });
+});

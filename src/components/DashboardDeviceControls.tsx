@@ -185,7 +185,11 @@ function DoorRow({ door }: { door: DoorControl }) {
 function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
   const control = useDeviceControl(clubId);
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
+  const [bleBusy, setBleBusy] = useState(false);
   const Icon = deviceIcon(device);
+  const { data: clubSecrets } = useClubSecrets(clubId);
+  const { activeMember } = useMemberContext();
+  const d = device as any;
 
   // The switch flips immediately so it feels responsive, but any fresh reading
   // from the relay wins — otherwise a device that reported a different state

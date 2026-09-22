@@ -12375,18 +12375,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                         : [gn];
                       // Per-pool times set on the Structure step are the source
                       // of truth — don't ask for a single slot time again here.
-                      const poolTimes = Object.entries(poolDurations)
-                        .filter(([k]) => k.startsWith(`${gn}:`))
-                        .map(([k, v]) => ({ pool: k.split(":")[1], mins: Number(v) || 0 }))
-                        .filter((p) => p.mins > 0)
-                        .sort((a, b) => a.pool.localeCompare(b.pool));
+                      const poolCount = isAllLeagues ? 0 : poolsForDivision(gn);
+                      const poolTimes = Array.from({ length: poolCount }, (_, i) => i + 1)
+                        .map((pool) => ({ pool, mins: Number(poolDurations[poolDurationKey(gn, pool)]) || 0 }))
+                        .filter((p) => p.mins > 0);
                       const hasPoolTimes = !isAllLeagues && poolTimes.length > 0;
+                      // Every pool already has its own time from Structure: there
+                      // is nothing left to set here, so skip the row entirely.
+                      if (!isAllLeagues && poolCount > 0 && poolTimes.length >= poolCount) return null;
                       return (
                         <div key={gn} className="flex items-center gap-2 p-1.5 rounded border bg-muted/30 sm:col-span-2">
                           <span className="text-xs font-medium w-20 shrink-0">{isAllLeagues ? "All leagues" : `League ${gn}`}</span>
                           {hasPoolTimes ? (
                             <span className="text-[11px] text-muted-foreground">
-                              {poolTimes.map((p) => `Pool ${p.pool}: ${p.mins} min`).join(" · ")}
+                              {poolTimes.map((p) => `Pool ${String.fromCharCode(64 + p.pool)}: ${p.mins} min`).join(" · ")}
                               <span className="italic"> — set in Structure</span>
                             </span>
                           ) : (

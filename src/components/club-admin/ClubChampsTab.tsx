@@ -8444,6 +8444,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
             {/* Category, eligibility, capacity and seeding — same block at every level. */}
             <div className="rounded-lg border-2 border-border p-3 bg-slate-100 dark:bg-slate-800/40 shadow-sm space-y-3">
+              {/* Owner is not the venue and not the audience — say plainly who runs this event. */}
+              <div className="rounded-md border bg-white dark:bg-slate-950 p-2">
+                <Label className="text-sm font-semibold">Organised by</Label>
+                <p className="text-sm mt-0.5">
+                  {ownerOrgName || "This club"}
+                  {scope !== "club" && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {" "}— {scope === "federation" ? "national federation" : "association"} level
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  The owning body runs the event and carries its finances. The courts come from the host
+                  club(s) chosen under <strong>Courts &amp; daily schedule</strong>.
+                </p>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-sm font-semibold">Tournament category <span className="text-destructive">*</span></Label>

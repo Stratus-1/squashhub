@@ -13651,6 +13651,8 @@ export type Database = {
           day_schedules: Json
           default_break_minutes: number
           description: string | null
+          division_follows: Json
+          division_pairing_method: Json
           doubles_pairing_locked: boolean
           draft_player_ids: string[] | null
           draw_locked: boolean
@@ -13715,6 +13717,7 @@ export type Database = {
           playoff_break_minutes: number
           playoff_date: string | null
           pool_allocation: string
+          pool_durations: Json
           pool_sizes: Json
           round_definitions: Json
           round_play_by: Json
@@ -13743,6 +13746,8 @@ export type Database = {
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          division_follows?: Json
+          division_pairing_method?: Json
           doubles_pairing_locked?: boolean
           draft_player_ids?: string[] | null
           draw_locked?: boolean
@@ -13807,6 +13812,7 @@ export type Database = {
           playoff_break_minutes?: number
           playoff_date?: string | null
           pool_allocation?: string
+          pool_durations?: Json
           pool_sizes?: Json
           round_definitions?: Json
           round_play_by?: Json
@@ -13835,6 +13841,8 @@ export type Database = {
           day_schedules?: Json
           default_break_minutes?: number
           description?: string | null
+          division_follows?: Json
+          division_pairing_method?: Json
           doubles_pairing_locked?: boolean
           draft_player_ids?: string[] | null
           draw_locked?: boolean
@@ -13899,6 +13907,7 @@ export type Database = {
           playoff_break_minutes?: number
           playoff_date?: string | null
           pool_allocation?: string
+          pool_durations?: Json
           pool_sizes?: Json
           round_definitions?: Json
           round_play_by?: Json

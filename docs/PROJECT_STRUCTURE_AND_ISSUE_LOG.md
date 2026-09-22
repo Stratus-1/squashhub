@@ -1874,3 +1874,7 @@ Tests: `src/test/stage-label-section-final.test.ts`.
 ## 2026-09-22 — Association tournament player picker grouped by club
 
 The association tournament Players step showed one long, mixed list of members from affiliated clubs, with some cross-club records labelled visitors. Group the visible list by each player's owning club, provide expandable club rows and per-player or per-club selection, and allow searching by player or club. Do not change eligibility, visitor identity, registration, or the club-owned tournament picker.
+
+## 2026-09-22 — Regional schedule labels showed Unknown
+
+The review schedule looked up fixture names only in the roster visible to the host club, so regional entrants from other clubs displayed as Unknown despite valid fixture member IDs. The review now uses the tournament's already-loaded, name-only entrant directory; the post-rebuild preview uses the same authorised tournament-scoped directory when cross-club member joins are hidden. No fixtures, registration statuses, or bookings were changed.

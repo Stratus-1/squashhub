@@ -1,5 +1,6 @@
 # Roadmap
 
+- [x] Resolve cross-club entrant names on the regional tournament review and post-rebuild schedule without changing fixtures
 - [x] Group association tournament players by expandable club with individual and club selection
 
 - [x] Show active Bells tournament games as one chronological schedule without round headings

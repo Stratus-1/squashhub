@@ -44,6 +44,12 @@ export interface MemberMatchRow {
   played_on: string | null;
   opponent_member_id: string | null;
   opponent_name: string;
+  /** Doubles only — the member's own partner on court. */
+  partner_member_id?: string | null;
+  partner_name?: string | null;
+  /** Doubles only — the second opponent. */
+  opponent2_member_id?: string | null;
+  opponent2_name?: string | null;
   event_label: string;
   score: string | null;
   won: boolean;

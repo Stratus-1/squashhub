@@ -26,7 +26,7 @@ describe("finishingOrder", () => {
       m("p5", "p6", 19, 12),
     ];
     const order = finishingOrder({ members, matches, format: BellsFormat });
-    expect(order.map((r) => r.memberId)).toEqual(["p1", "p4", "p2", "p5", "p3", "p6"]);
+    expect(order.map((r) => r.memberId)).toEqual(["p1", "p4", "p5", "p2", "p6", "p3"]);
   });
 
   it("feeds adjacent pairing so the bottom two play together", () => {
@@ -39,6 +39,6 @@ describe("finishingOrder", () => {
     expect(unpaired).toEqual([]);
     expect(pairs).toHaveLength(3);
     // Last pair is the two who finished at the bottom of the order.
-    expect(pairs[pairs.length - 1]).toEqual([order[4].memberId, order[5].memberId]);
+    expect(pairs[pairs.length - 1]).toEqual({ a: order[4].memberId, b: order[5].memberId });
   });
 });

@@ -287,19 +287,40 @@ Deno.serve(async (req) => {
             : `Great! To complete your entry, open the invitation link in the message above${step}.`;
 
         } else {
-          const { error } = await admin.from("club_champs_registrations").upsert(
-            {
-              champ_id: interaction.target_id,
-              club_member_id: interaction.member_id,
-              status: "cancelled",
-              confirmation_source: "rsvp",
-              confirmed_at: new Date().toISOString(),
-            },
-            { onConflict: "champ_id,club_member_id" },
-          );
-          applied = !error;
-          if (error) console.error("champ entry decline failed", error);
-          reply = "Noted — you're not entered for this tournament.";
+          // A confirmed or paid entry is never cancelled by a text reply — a
+          // player who has already accepted (and possibly paid, or been paired
+          // with a partner) must go through the organiser.
+          const { data: existing } = await admin
+            .from("club_champs_registrations")
+            .select("id, status, confirmed_at, fee_paid_cents")
+            .eq("champ_id", interaction.target_id)
+            .eq("club_member_id", interaction.member_id)
+            .maybeSingle();
+          const st = String(existing?.status ?? "").toLowerCase();
+          const locked = !!existing &&
+            (["paid", "waived", "registered", "active", "pending_eft"].includes(st) ||
+              Number(existing.fee_paid_cents ?? 0) > 0 ||
+              (!!existing.confirmed_at && st !== "cancelled"));
+
+          if (locked) {
+            applied = false;
+            reply =
+              "You are already entered for this tournament, so we have not changed anything. Please contact the organiser if you need to withdraw.";
+          } else {
+            const { error } = await admin.from("club_champs_registrations").upsert(
+              {
+                champ_id: interaction.target_id,
+                club_member_id: interaction.member_id,
+                status: "cancelled",
+                confirmation_source: "rsvp",
+                confirmed_at: new Date().toISOString(),
+              },
+              { onConflict: "champ_id,club_member_id" },
+            );
+            applied = !error;
+            if (error) console.error("champ entry decline failed", error);
+            reply = "Noted — you're not entered for this tournament.";
+          }
         }
       } else {
         applied = true; // generic question: recording the answer is enough

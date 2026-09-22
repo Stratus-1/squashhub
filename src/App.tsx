@@ -340,6 +340,45 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * On the root host, a signed-in user with no club_members row anywhere has
+ * nothing to show. Send them to the club picker instead of a dead-end dashboard.
+ */
+function RootClubGate({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { subdomain } = useClubContext();
+  const isSuperAdmin = useIsSuperAdmin();
+  const [needsClub, setNeedsClub] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id || subdomain || isSuperAdmin) {
+      setNeedsClub(false);
+      return;
+    }
+    fromExt("club_members")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setNeedsClub(error ? false : !data);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, subdomain, isSuperAdmin]);
+
+  if (needsClub === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+  if (needsClub) return <Navigate to="/find-club" replace />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth();
   const { subdomain: clubSubdomain, club: clubFromHost, isLoading: clubLoading } = useClubContext();

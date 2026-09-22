@@ -256,6 +256,17 @@ function UnaffiliatedUsers({ clubs }: { clubs: { id: string; name: string }[] })
     [clubs],
   );
 
+  const emailAll = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("notify-unaffiliated", { body: {} });
+      if (error) throw error;
+      return data as { sent: number; skipped: number; candidates: number };
+    },
+    onSuccess: (d) =>
+      toast.success(`Emails sent: ${d?.sent ?? 0} (${d?.skipped ?? 0} skipped — recently emailed)`),
+    onError: (e: any) => toast.error(e.message || "Could not send the emails"),
+  });
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -263,6 +274,22 @@ function UnaffiliatedUsers({ clubs }: { clubs: { id: string; name: string }[] })
         <h2 className="text-sm font-semibold">
           Unaffiliated sign-ups {users.length ? `(${users.length})` : ""}
         </h2>
+        {users.length > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[10px] ml-auto"
+            disabled={emailAll.isPending}
+            onClick={() => {
+              if (window.confirm(`Email all ${users.length} of them asking them to choose their club?`)) {
+                emailAll.mutate();
+              }
+            }}
+          >
+            <Mail className="h-3 w-3 mr-1" />
+            {emailAll.isPending ? "Sending..." : "Email them all"}
+          </Button>
+        )}
       </div>
       <p className="text-xs opacity-70">
         People who created a login but were never linked to a club. Pick their club to add them.

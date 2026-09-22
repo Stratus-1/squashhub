@@ -142,6 +142,73 @@ export function DoublesPairsPanel({
     onError: (e: any) => toast.error(e?.message || "Could not create the pair"),
   });
 
+  // Stage settings: does this division wait for another one, and how should it
+  // pair the players it inherits?
+  const { data: champ } = useQuery({
+    queryKey: ["champ-stage-settings", champId],
+    queryFn: async () => {
+      const { data: row, error } = await (supabase as any)
+        .from("club_champs")
+        .select("id, scoring_mode, division_follows, division_pairing_method")
+        .eq("id", champId)
+        .maybeSingle();
+      if (error) throw error;
+      return row;
+    },
+    enabled: !!champId,
+  });
+
+  const pairingMethod = pairingMethodFor(champ?.division_pairing_method, groupNumber);
+  const previousStage =
+    groupNumber && pairingMethod !== "manual"
+      ? followsDivision(champ?.division_follows, groupNumber)
+      : null;
+
+  const autoPair = useMutation({
+    mutationFn: async () => {
+      if (!previousStage) throw new Error("This division does not follow another stage.");
+      // Everyone who took part in the stage before this one.
+      const stageMembers = entrants
+        .filter((r: any) => (r.division_choices || []).map(Number).includes(previousStage))
+        .map((r: any) => ({ id: r.club_member_id as string, name: r.club_members?.name || "" }));
+      if (stageMembers.length < 2) throw new Error("That stage has no players to pair.");
+
+      const { data: rows, error } = await (supabase as any)
+        .from("club_champs_matches")
+        .select(
+          "status, is_bye, group_number, side_a_points, side_b_points, winner_member_id, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id",
+        )
+        .eq("champ_id", champId)
+        .eq("group_number", previousStage);
+      if (error) throw error;
+      const played = (rows || []).filter((m: any) => m.status === "completed" && !m.is_bye);
+      if (played.length === 0) throw new Error("That stage has no completed matches yet.");
+
+      const order = finishingOrder({
+        members: stageMembers,
+        matches: played,
+        format: getTournamentFormat(champ?.scoring_mode),
+      });
+      const { pairs } = pairFromOrder(
+        order.map((r) => r.memberId).filter((id) => !pairedIds.has(id)),
+        pairingMethod,
+      );
+      if (pairs.length === 0) throw new Error("Everyone in that stage is already paired.");
+
+      let created = 0;
+      for (const p of pairs) {
+        await adminPairPlayers(champId, groupNumber, p.a, p.b);
+        created++;
+      }
+      return created;
+    },
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ["champ-doubles-pairs", champId] });
+      toast.success(`${created} pair${created === 1 ? "" : "s"} built from the previous stage.`);
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not build the pairs"),
+  });
+
   const notify = useMutation({
     mutationFn: (pairId: string) => notifyDoublesPair(pairId, clubId ?? null),
     onSuccess: (r) => toast.success(pairNotifySummary(r)),

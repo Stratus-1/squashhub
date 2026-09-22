@@ -100,7 +100,12 @@ export interface TournamentFormat {
    * with fallback to champ.match_duration_minutes). Returns null when the
    * format isn't time-capped.
    */
-  getTimeCapMinutes(champ: ChampLike, groupNumber: number | null | undefined): number | null;
+  getTimeCapMinutes(
+    champ: ChampLike,
+    groupNumber: number | null | undefined,
+    /** Pool (section) number, when the division sets a per-pool length. */
+    pool?: number | null,
+  ): number | null;
 
   /**
    * Accumulate one completed match's contribution to a given member's

@@ -5,6 +5,7 @@ import type {
   StandingsStats,
   TournamentFormat,
 } from "./types";
+import { poolMinutes } from "@/lib/tournaments/stage-sequence";
 
 /**
  * Bells — time-capped doubles round-robin, ranked by total points scored.

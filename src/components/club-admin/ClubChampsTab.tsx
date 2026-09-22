@@ -4427,6 +4427,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           let currentBlock = -1;
           let assignedInBlock = new Map<number, number>();
 
+          // One court per pool when pools of a division play different lengths.
+          const poolCourt = new Map<string, number>();
+          const courtPool = new Map<number, string>();
+          const unitOf = (gn: number, m: MatchDef) => `${gn}:${m.poolNum ?? 1}`;
+          const bindOk = (gn: number, m: MatchDef, cid: number): boolean => {
+            if (!bindPools) return true;
+            const u = unitOf(gn, m);
+            if (!poolUnitsToBind.includes(u)) return true;
+            const bound = poolCourt.get(u);
+            if (bound != null) return bound === cid;
+            return !courtPool.has(cid);
+          };
+
           const scoreMatch = (
             m: MatchDef,
             gn: number,
@@ -4434,6 +4447,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             cid: number,
             enforceBreak: boolean,
           ): number[] | null => {
+            if (!bindOk(gn, m, cid)) return null;
             const cap = capFor(gn, m.poolNum ?? null);
             const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
             for (const pid of players) {

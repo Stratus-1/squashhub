@@ -105,6 +105,7 @@ import {
   followsDivision,
   pairingMethodFor,
   poolDurationKey,
+  poolMinutes,
   wouldCycle,
   type PairingMethod,
 } from "@/lib/tournaments/stage-sequence";
@@ -3782,6 +3783,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       leg: "home" | "away" | null;
       isBye?: boolean;
       byeEntityId?: string;
+      /** Pool (section) this match belongs to — drives per-pool playing time. */
+      poolNum?: number;
       date?: string; time?: string; courtId?: number;
       /** Knockout draws only — section + round label carried through to the DB. */
       koSection?: number;
@@ -3881,23 +3884,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       // Round robin inside each pool of the league (1 pool = classic RR).
       const pools = splitIntoPools(ids, poolsForLeague(gi + 1), manualSeedGroups.has(gi));
-      for (const poolIds of pools) {
-        if (poolIds.length < 2) continue;
+      pools.forEach((poolIds, pi) => {
+        if (poolIds.length < 2) return;
         const { rounds, byesPerRound } = generateRoundRobinRounds(poolIds, rrFmtForLeague(gi));
         rounds.forEach((roundMatches, ri) => {
           roundMatches.forEach(([a, b, leg]) => {
-            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg });
+            allMatches.push({ groupNum: gi + 1, roundNum: ri + 1, entityA: a, entityB: b, leg, poolNum: pi + 1 });
           });
           const byeId = byesPerRound[ri];
           if (byeId && byeForLeague(gi + 1) !== "no_match") {
             allMatches.push({
               groupNum: gi + 1, roundNum: ri + 1,
               entityA: byeId, entityB: byeId, leg: null,
-              isBye: true, byeEntityId: byeId,
+              isBye: true, byeEntityId: byeId, poolNum: pi + 1,
             });
           }
         });
-      }
+      });
     };
 
     // Cross-league mode: every entity in group i plays every entity in group j
@@ -3961,14 +3964,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
         for (let r = 0; r < rounds; r++) {
           const src = rrRounds[r % rrRounds.length] || [];
           src.forEach(([a, b, leg]) => {
-            allMatches.push({ groupNum: gi + 1, roundNum: r + 1, entityA: a, entityB: b, leg });
+            allMatches.push({ groupNum: gi + 1, roundNum: r + 1, entityA: a, entityB: b, leg, poolNum: p + 1 });
           });
           const byeId = byesPerRound[r % byesPerRound.length];
           if (byeId && byeForLeague(gi + 1) !== "no_match") {
             allMatches.push({
               groupNum: gi + 1, roundNum: r + 1,
               entityA: byeId, entityB: byeId, leg: null,
-              isBye: true, byeEntityId: byeId,
+              isBye: true, byeEntityId: byeId, poolNum: p + 1,
             });
           }
         }
@@ -4106,8 +4109,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (isBellsMode) {
       // Bells: per-league time caps; auto-distribute courts across leagues, then
       // walk each league's matches through the available sessions, rotating courts.
-      const capFor = (gn: number) =>
-        Number(groupDurations[String(gn)]) || matchDuration;
+      const capFor = (gn: number, pool?: number | null) =>
+        poolMinutes({
+          poolDurations,
+          groupDurations,
+          groupNumber: gn,
+          pool: pool ?? null,
+          fallbackMinutes: matchDuration,
+        }) || matchDuration;
 
       const byLeague = new Map<number, MatchDef[]>();
       for (const m of allMatches) {
@@ -5418,9 +5427,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       for (const m of schedulePreview.allMatches as any[]) {
         if (m.isBye || !m.date || !m.time || !m.courtId) continue;
         const isBellsMode = scoringMode === "time_capped_points";
-        const cap = isBellsMode
-          ? (Number(groupDurations[String(m.groupNum)]) || matchDuration)
-          : matchDuration;
+        const cap =
+          poolMinutes({
+            poolDurations,
+            groupDurations: isBellsMode ? groupDurations : null,
+            groupNumber: isBellsMode ? m.groupNum : null,
+            pool: m.poolNum ?? m.koSection ?? null,
+            fallbackMinutes: matchDuration,
+          }) || matchDuration;
         const [h, min] = String(m.time).split(":").map(Number);
         const endMins = h * 60 + min + cap;
         const endH = Math.floor(endMins / 60) % 24;

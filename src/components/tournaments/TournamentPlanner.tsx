@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Flag, Building2, ChevronDown, ChevronRight } from "lucide-react";
 import { useHostClubs, useOwnerOrganisations } from "@/hooks/use-tournaments";
 import { useIsSuperAdmin } from "@/hooks/use-club";
+import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,9 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
   const { data: orgs = [] } = useOwnerOrganisations();
   const { data: clubs = [] } = useHostClubs();
   const isSuperAdmin = useIsSuperAdmin();
+  // An association tenant (a regional league) has no courts of its own — its
+  // venues and its entrant pool are the clubs affiliated to it.
+  const assoc = useAssociationTenant(mode === "club" ? clubId : undefined);
 
   const bodies = useMemo(
     () => orgs.filter((o) => o.kind === "national" || o.kind === "association"),
@@ -52,14 +56,21 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
 
   const activeOwner =
     mode === "club"
-      ? clubOrg?.id ?? null
+      ? clubOrg?.id ?? assoc.orgId ?? null
       : ownerOrgId ?? bodies.find((b) => b.kind === "national")?.id ?? null;
   const owner = mode === "club" ? clubOrg : bodies.find((b) => b.id === activeOwner) || null;
 
+  // Venue candidates: the association's affiliated clubs, or every club when a
+  // platform admin is planning nationwide.
+  const venueChoices = useMemo(
+    () => (assoc.isAssociation ? assoc.clubs : clubs.map((c) => ({ id: c.id, name: c.name }))),
+    [assoc.isAssociation, assoc.clubs, clubs],
+  );
+
   const filteredClubs = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return q ? clubs.filter((c) => c.name.toLowerCase().includes(q)) : clubs;
-  }, [clubs, search]);
+    return q ? venueChoices.filter((c) => c.name.toLowerCase().includes(q)) : venueChoices;
+  }, [venueChoices, search]);
 
   const toggleClub = (id: string) => {
     setExtraClubIds((prev) => {
@@ -70,14 +81,20 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
   };
 
   // A plain club admin never sees the multi-venue picker — only elevated users
-  // (platform / federation) plan events across clubs.
-  const canPickVenues = mode === "platform" || isSuperAdmin;
+  // (platform / federation) and associations plan events across clubs.
+  const canPickVenues = mode === "platform" || isSuperAdmin || assoc.isAssociation;
 
   const label = dark ? "text-white/50" : "text-muted-foreground";
   const field = dark ? "bg-white/[0.06] border-white/10 text-white" : "";
 
   const scope: "club" | "association" | "federation" =
-    mode === "club" ? "club" : owner?.kind === "national" ? "federation" : "association";
+    mode === "club"
+      ? assoc.isAssociation
+        ? "association"
+        : "club"
+      : owner?.kind === "national"
+        ? "federation"
+        : "association";
 
   return (
     <div className="space-y-4">
@@ -89,7 +106,7 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
               {mode === "club" ? (
                 <div className={cn("flex items-center gap-2 text-sm h-9", dark ? "text-white" : "text-foreground")}>
                   <Building2 className="w-4 h-4 opacity-60" />
-                  {clubOrg?.name || "This club"}
+                  {clubOrg?.name || assoc.name || "This club"}
                 </div>
               ) : (
                 <Select value={activeOwner ?? ""} onValueChange={(v) => setOwnerOrgId(v)}>
@@ -108,10 +125,16 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
               )}
             </div>
             <div className="space-y-1">
-              <Label className={cn("text-[11px] uppercase tracking-wide", label)}>Primary host club</Label>
+              <Label className={cn("text-[11px] uppercase tracking-wide", label)}>
+                {assoc.isAssociation ? "Venues" : "Primary host club"}
+              </Label>
               {mode === "club" ? (
                 <div className={cn("flex items-center gap-2 text-sm h-9", dark ? "text-white" : "text-foreground")}>
-                  {clubs.find((c) => c.id === clubId)?.name || "This club"}
+                  {assoc.isAssociation
+                    ? extraClubIds.size > 0
+                      ? `${extraClubIds.size} club${extraClubIds.size === 1 ? "" : "s"} hosting`
+                      : "Pick the clubs whose courts are used"
+                    : clubs.find((c) => c.id === clubId)?.name || "This club"}
                 </div>
               ) : (
                 <Select value={hostClubId} onValueChange={setHostClubId}>
@@ -148,7 +171,9 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
                 onClick={() => setShowVenues((v) => !v)}
               >
                 {showVenues ? <ChevronDown className="w-4 h-4 mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />}
-                Additional venues &amp; entrant pool ({extraClubIds.size} selected)
+                {assoc.isAssociation
+                  ? `Venues — clubs whose courts can be used (${extraClubIds.size} selected)`
+                  : `Additional venues & entrant pool (${extraClubIds.size} selected)`}
               </Button>
               {showVenues && (
                 <div className="mt-2 space-y-2">
@@ -169,7 +194,9 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
                       ))}
                   </div>
                   <p className={cn("text-[11px]", label)}>
-                    Courts and members of these clubs become available in the wizard alongside the host club.
+                    {assoc.isAssociation
+                      ? "Every court registered at the clubs you tick becomes available when you build the schedule."
+                      : "Courts and members of these clubs become available in the wizard alongside the host club."}
                   </p>
                 </div>
               )}
@@ -184,6 +211,7 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
             key={`${activeOwner ?? "club"}-${hostClubId}`}
             clubId={hostClubId}
             ownerOrgId={mode === "club" ? null : activeOwner}
+            eligibilityOrgId={mode === "club" ? assoc.orgId : null}
             scope={scope}
             participatingClubIds={Array.from(extraClubIds)}
           />

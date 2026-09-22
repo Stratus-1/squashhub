@@ -4662,17 +4662,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
 
                 const pool = remainingByLeague.get(picked.league)!;
                 const [m] = pool.splice(picked.idx, 1);
+                // The court is held for THIS pool's playing time, not the
+                // division's longest pool.
+                const playCap = capFor(picked.league, m.poolNum ?? null) || picked.cap;
                 const h = Math.floor(t / 60);
                 const mm = t % 60;
                 m.date = s.date;
                 m.time = `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
                 m.courtId = cid;
-                courtBusyUntil.set(cid, nowAbs + picked.cap);
+                if (bindPools) {
+                  const u = unitOf(picked.league, m);
+                  if (poolUnitsToBind.includes(u) && !poolCourt.has(u)) {
+                    poolCourt.set(u, cid);
+                    courtPool.set(cid, u);
+                  }
+                }
+                courtBusyUntil.set(cid, nowAbs + playCap);
                 assignedInBlock.set(picked.league, (assignedInBlock.get(picked.league) || 0) + 1);
                 const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
                 players.forEach((pid) => {
-                  playerBusyUntil.set(pid, nowAbs + picked!.cap);
-                  lastPlayedEnd.set(pid, nowAbs + picked!.cap);
+                  playerBusyUntil.set(pid, nowAbs + playCap);
+                  lastPlayedEnd.set(pid, nowAbs + playCap);
                   playCount.set(pid, (playCount.get(pid) || 0) + 1);
                   lastCourtByPlayer.set(pid, cid);
                 });

@@ -203,6 +203,39 @@ export default function FederationOrgChart({
     return list.sort((a, b) => a.name.localeCompare(b.name));
   }, [roots, federation, unaffiliatedHolder]);
 
+  /* Grab-and-drag panning across the tree. Ignores presses that start on a
+     club chip or a button so re-affiliating and expanding still work. */
+  const nudge = (dir: 1 | -1) => {
+    panRef.current?.scrollBy({ left: dir * 400, behavior: "smooth" });
+  };
+
+  const onPanStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = panRef.current;
+    if (!el || e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('[draggable="true"], button, a, input, [role="button"]')) return;
+
+    const startX = e.clientX;
+    const startScroll = el.scrollLeft;
+    let moved = false;
+
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      if (!moved && Math.abs(dx) > 3) {
+        moved = true;
+        setPanning(true);
+      }
+      if (moved) el.scrollLeft = startScroll - dx;
+    };
+    const up = () => {
+      setPanning(false);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   if (!federation) {
     return <p className="text-xs text-white/50 py-6">No federation organisation found.</p>;
   }

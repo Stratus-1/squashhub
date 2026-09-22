@@ -4709,7 +4709,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     courtPool.set(cid, u);
                   }
                 }
-                courtBusyUntil.set(cid, nowAbs + playCap);
+                // Hold the court for the game plus this division's changeover.
+                courtBusyUntil.set(cid, nowAbs + playCap + breakFor(picked.league));
                 assignedInBlock.set(picked.league, (assignedInBlock.get(picked.league) || 0) + 1);
                 const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
                 players.forEach((pid) => {

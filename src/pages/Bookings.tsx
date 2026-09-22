@@ -84,7 +84,7 @@ import { Geolocation } from "@capacitor/geolocation";
 import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { visitorBookingDecision } from "@/lib/visitor-pass";
-import { useMyVisitorPass } from "@/hooks/use-visitor-pass";
+import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
 
 
 function timeToMinutes(t: string) {
@@ -449,6 +449,11 @@ export default function Bookings() {
   const visitorFee = Number((myClub as any)?.visitor_booking_fee ?? 0);
   // Visitors pay through their visitor pass, not a per-booking court fee.
   const { data: myVisitorPass } = useMyVisitorPass(activeMember?.id);
+  const { data: visitorPassOptions } = useVisitorPassOptions((myClub as any)?.id);
+  // If the club sells no pass, the pass cannot be the gate for visitor bookings.
+  const visitorPassesOffered = visitorPassOptions
+    ? visitorPassOptions.some((o) => o.active)
+    : true;
 
   const requireVisitorNamed = !!(myClub as any)?.require_visitor_for_member_booking;
   // Some clubs don't allow ANYONE to hold a court on their own — no admin or
@@ -1008,6 +1013,7 @@ export default function Bookings() {
         isVisitor: true,
         visitorsCanBook: !!(myClub as any)?.visitors_can_book,
         pass: myVisitorPass ?? null,
+        passesOffered: visitorPassesOffered,
       });
       if (!decision.allowed) {
         toast.error(decision.reason);

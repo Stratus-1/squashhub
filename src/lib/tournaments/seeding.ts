@@ -32,10 +32,22 @@ export const entrantName = (e: SeedableEntrant): string =>
 export const isUnranked = (e: SeedableEntrant): boolean =>
   !(typeof e.ladder_position === "number" && e.ladder_position > 0);
 
-/** Ladder-first comparison, unranked last, then alphabetical for stability. */
-export function compareBySeed(a: SeedableEntrant, b: SeedableEntrant): number {
-  const ar = isUnranked(a) ? Number.POSITIVE_INFINITY : (a.ladder_position as number);
-  const br = isUnranked(b) ? Number.POSITIVE_INFINITY : (b.ladder_position as number);
+/**
+ * Rank accessor for one entrant — lower is stronger, null/undefined means
+ * unranked (sorted last, never given an invented rank). Defaults to the club
+ * ladder; tournament settings may seed from the club rating or a regional /
+ * national ranking snapshot instead.
+ */
+export type SeedRankOf = (e: SeedableEntrant) => number | null | undefined;
+
+const ladderRankOf: SeedRankOf = (e) => (isUnranked(e) ? null : (e.ladder_position as number));
+
+/** Rank-first comparison, unranked last, then alphabetical for stability. */
+export function compareBySeed(a: SeedableEntrant, b: SeedableEntrant, rankOf: SeedRankOf = ladderRankOf): number {
+  const ra = rankOf(a);
+  const rb = rankOf(b);
+  const ar = typeof ra === "number" && ra > 0 ? ra : Number.POSITIVE_INFINITY;
+  const br = typeof rb === "number" && rb > 0 ? rb : Number.POSITIVE_INFINITY;
   if (ar !== br) return ar - br;
   return entrantName(a).localeCompare(entrantName(b));
 }
@@ -46,12 +58,14 @@ export function compareBySeed(a: SeedableEntrant, b: SeedableEntrant): number {
  * @param entrants   entrants already allocated to this division
  * @param manual     the organiser deliberately reordered this division
  * @param manualOrder explicit id order captured from drag-and-drop
+ * @param rankOf     ranking source for seed order (defaults to club ladder)
  */
 export function sortDivisionEntrants<T extends SeedableEntrant>(
   entrants: T[],
-  opts?: { manual?: boolean; manualOrder?: string[] },
+  opts?: { manual?: boolean; manualOrder?: string[]; rankOf?: SeedRankOf },
 ): T[] {
   const list = [...entrants];
+  const rankOf = opts?.rankOf ?? ladderRankOf;
   if (opts?.manual && opts.manualOrder?.length) {
     const idx = new Map(opts.manualOrder.map((id, i) => [id, i]));
     return list.sort((a, b) => {
@@ -60,10 +74,10 @@ export function sortDivisionEntrants<T extends SeedableEntrant>(
       if (ai !== undefined && bi !== undefined) return ai - bi;
       if (ai !== undefined) return -1;
       if (bi !== undefined) return 1;
-      return compareBySeed(a, b);
+      return compareBySeed(a, b, rankOf);
     });
   }
-  return list.sort(compareBySeed);
+  return list.sort((a, b) => compareBySeed(a, b, rankOf));
 }
 
 /** Seed preview rows: 1-based seed plus the ladder rank behind it. */

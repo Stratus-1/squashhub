@@ -343,6 +343,14 @@ const STEP_LABELS: Record<WizardStep, string> = {
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/**
+ * Placeholder entrant of a stage that is played AFTER another one. The games
+ * are scheduled up front (we know how many there will be) but the names only
+ * arrive once the preceding stage has finished.
+ */
+const TBD_PREFIX = "tbd:";
+const isTbdEntity = (id?: string | null) => !!id && String(id).startsWith(TBD_PREFIX);
+
 interface DoublePair {
   id: string; // temporary id for UI
   player1Id: string;
@@ -1223,6 +1231,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   const matchTypeForLeague = (gn: number): "singles" | "doubles" =>
     leagueMatchTypes[String(gn)] ??
     (Object.keys(leagueMatchTypes).length > 0 ? "singles" : matchType);
+  /** Human label for a "to be decided" slot of a later stage, e.g. "Doubles team 3 (TBD)". */
+  const tbdLabel = (id: string): string => {
+    const [, gnRaw, idxRaw] = String(id).split(":");
+    const gn = Number(gnRaw) || 0;
+    const label = groupLabels[String(gn)]?.trim() || `League ${gn}`;
+    const noun = matchTypeForLeague(gn) === "doubles" ? "team" : "player";
+    return `${label} ${noun} ${idxRaw || "?"} (TBD)`;
+  };
   /** Does this member satisfy the category set for the given league? */
   const memberFitsLeague = (m: any, gn: number): boolean => {
     const g = genderForLeague(gn);
@@ -2378,6 +2394,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    * truth — mismatches are surfaced as warnings elsewhere, not by dropping.
    */
   const eligibleIdsForDivision = (gn: number, ids: string[]): string[] => {
+    // "To be decided" slots of a later stage are not real people — never filter
+    // them against a division's eligible population.
+    if (ids.some((id) => isTbdEntity(id))) return ids;
     const src = divisionSource(leagueSources, gn);
     if (src.mode === "all" || src.leagueIds.length === 0) return ids;
     return constrainIds(ids, divisionEligibleIds(gn, eligibilityCtx), [
@@ -3817,14 +3836,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [isDoubles, numGroups, divisionFollows, selectedPlayers, groupAssignments, extraDivisions]);
 
   /**
-   * Only the stages that can be played NOW are built. A division that runs
-   * AFTER another one (Diamond League: doubles follows singles) has no field
-   * until that stage has finished, so it is left out of this build and its
-   * fixtures are generated once the preceding stage is complete.
+   * A division that runs AFTER another one (Diamond League: doubles follows
+   * singles) has no names yet — the field is only known once the earlier stage
+   * has been played. We still know exactly HOW MANY games it will produce, so
+   * the whole tournament is scheduled up front and those games occupy real
+   * court slots as "to be decided" fixtures. The names are filled in when the
+   * preceding stage finishes.
    */
   const scheduleGroups = useMemo(
-    () => (groups as any[][]).map((g, gi) => (followsDivision(divisionFollows, gi + 1) ? [] : g)),
-    [groups, divisionFollows],
+    () =>
+      (groups as any[][]).map((g, gi) => {
+        const gn = gi + 1;
+        if (!followsDivision(divisionFollows, gn)) return g;
+        const label = groupLabels[String(gn)]?.trim() || `League ${gn}`;
+        // Doubles stage: every two entrants of the source stage become one team.
+        const count =
+          matchTypeForLeague(gn) === "doubles" && !isDoubles ? Math.floor(g.length / 2) : g.length;
+        return Array.from({ length: count }, (_, k) => ({
+          id: `${TBD_PREFIX}${gn}:${k + 1}`,
+          full_name: `${label} ${matchTypeForLeague(gn) === "doubles" ? "team" : "player"} ${k + 1} (TBD)`,
+        }));
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, divisionFollows, groupLabels, leagueMatchTypes, isDoubles],
   );
   /** Divisions held back for a later stage — surfaced on the schedule step. */
   const deferredStageLabels = useMemo(
@@ -5375,6 +5409,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             scheduled_time: m.time ?? null,
             court_id: m.courtId ?? null,
             leg: null,
+            is_bye: false,
+            status: "scheduled",
+            ...(schedulingMode === "self"
+              ? {
+                  scheduled_date: null,
+                  scheduled_time: null,
+                  court_id: null,
+                  play_by: deadlineForRound(roundDeadlines, m.roundNum) || endDate || null,
+                }
+              : {}),
+          };
+        }
+        // A stage played AFTER another one: the court slot is reserved now and
+        // the fixture carries a "to be decided" label instead of names. Names
+        // are written in once the preceding stage has been completed.
+        if (isTbdEntity(m.entityA) || isTbdEntity(m.entityB)) {
+          return {
+            champ_id: champId,
+            group_number: m.groupNum,
+            round_number: m.roundNum,
+            player_a_member_id: null,
+            player_b_member_id: null,
+            placeholder_a: tbdLabel(m.entityA),
+            placeholder_b: m.entityB ? tbdLabel(m.entityB) : null,
+            scheduled_date: m.date,
+            scheduled_time: m.time,
+            court_id: m.courtId,
+            leg: m.leg ?? null,
+            section_number: m.koSection ?? null,
+            pool_number: m.poolNum ?? m.koSection ?? null,
+            stage: m.koSection ? "ko" : "group",
+            stage_label: m.koStageLabel ?? null,
             is_bye: false,
             status: "scheduled",
             ...(schedulingMode === "self"
@@ -12282,11 +12348,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                     {(roundFormat === "cross_league"
                       ? [1]
+                      // A stage that runs AFTER another one (Diamond League:
+                      // doubles follows singles) is scheduled up front too — its
+                      // slots are reserved with "to be decided" fixtures — so it
+                      // still needs its slot/bell timing here.
                       : Array.from({ length: numGroups }, (_, i) => i + 1)
-                          // A stage that runs AFTER another one (Diamond League:
-                          // doubles follows singles) is not built now, so don't
-                          // ask for its timing here.
-                          .filter((gn) => !followsDivision(divisionFollows, gn))
                     ).map((gn) => {
 
                       const slot = Number(groupDurations[String(gn)]) || matchDuration;
@@ -12464,7 +12530,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {deferredStageLabels.length > 0 && (
                   <p className="text-muted-foreground">
                     ⏭️ {deferredStageLabels.join(", ")} {deferredStageLabels.length === 1 ? "is" : "are"} played after an earlier
-                    stage — those matches are built once that stage is finished, so they are not in this schedule.
+                    stage. Those games are included here and hold their court slots, but show as “to be decided” until the earlier
+                    stage is finished — then the names are filled in.
                   </p>
                 )}
               </div>

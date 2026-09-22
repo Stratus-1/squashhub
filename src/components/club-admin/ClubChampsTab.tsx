@@ -811,7 +811,7 @@ async function edgeErrorMessage(error: any, data: any, fallback: string): Promis
   return error?.message || fallback;
 }
 
-export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
+export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   // Pull the latest club-ladder positions (and entrant list) on demand — the

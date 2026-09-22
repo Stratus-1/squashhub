@@ -65,9 +65,9 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
 
   const activeOwner =
     mode === "club"
-      ? clubOrg?.id ?? assoc.orgId ?? null
+      ? (assoc.isAssociation ? assoc.orgId : clubOrg?.id) ?? null
       : ownerOrgId ?? bodies.find((b) => b.kind === "national")?.id ?? null;
-  const owner = mode === "club" ? clubOrg : bodies.find((b) => b.id === activeOwner) || null;
+  const owner = mode === "club" ? orgs.find((o) => o.id === activeOwner) || null : bodies.find((b) => b.id === activeOwner) || null;
 
   // Clubs beneath the owning body in the Super Admin organisation tree — the
   // same hierarchy eligibility uses, so venues and entrants agree.

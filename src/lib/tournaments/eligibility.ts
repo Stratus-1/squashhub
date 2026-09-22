@@ -153,7 +153,10 @@ export function resolveEligibleClubs(args: {
     orgs.forEach((o) => {
       if (o.kind === "club" && o.club_id && within.has(o.id)) ids.add(o.club_id);
     });
-    if (clubId) ids.add(clubId);
+    // The association's tenant record is not itself a member club. For a
+    // club-owned regional event, keep the host club even if its tree link is
+    // incomplete, matching the server's club-only fallback where applicable.
+    if (clubId && !orgs.some((o) => o.id === ownerOrgId && o.kind === "association")) ids.add(clubId);
     return { clubIds: Array.from(ids), scopeOrgName: assoc.name };
   }
 

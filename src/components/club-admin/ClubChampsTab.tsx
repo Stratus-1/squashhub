@@ -3817,14 +3817,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   }, [isDoubles, numGroups, divisionFollows, selectedPlayers, groupAssignments, extraDivisions]);
 
   /**
-   * Only the stages that can be played NOW are built. A division that runs
-   * AFTER another one (Diamond League: doubles follows singles) has no field
-   * until that stage has finished, so it is left out of this build and its
-   * fixtures are generated once the preceding stage is complete.
+   * A division that runs AFTER another one (Diamond League: doubles follows
+   * singles) has no names yet — the field is only known once the earlier stage
+   * has been played. We still know exactly HOW MANY games it will produce, so
+   * the whole tournament is scheduled up front and those games occupy real
+   * court slots as "to be decided" fixtures. The names are filled in when the
+   * preceding stage finishes.
    */
   const scheduleGroups = useMemo(
-    () => (groups as any[][]).map((g, gi) => (followsDivision(divisionFollows, gi + 1) ? [] : g)),
-    [groups, divisionFollows],
+    () =>
+      (groups as any[][]).map((g, gi) => {
+        const gn = gi + 1;
+        if (!followsDivision(divisionFollows, gn)) return g;
+        const label = groupLabels[String(gn)]?.trim() || `League ${gn}`;
+        // Doubles stage: every two entrants of the source stage become one team.
+        const count =
+          matchTypeForLeague(gn) === "doubles" && !isDoubles ? Math.floor(g.length / 2) : g.length;
+        return Array.from({ length: count }, (_, k) => ({
+          id: `${TBD_PREFIX}${gn}:${k + 1}`,
+          full_name: `${label} ${matchTypeForLeague(gn) === "doubles" ? "team" : "player"} ${k + 1} (TBD)`,
+        }));
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, divisionFollows, groupLabels, leagueMatchTypes, isDoubles],
   );
   /** Divisions held back for a later stage — surfaced on the schedule step. */
   const deferredStageLabels = useMemo(

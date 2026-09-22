@@ -86,6 +86,7 @@ const SuperAdminLayout = lazy(() =>
 );
 const SuperAdminDashboard = lazy(() => import("./pages/admin/SuperAdminDashboard"));
 const SuperAdminClubs = lazy(() => import("./pages/admin/SuperAdminClubs"));
+const SuperAdminAdoption = lazy(() => import("./pages/admin/SuperAdminAdoption"));
 const SuperAdminFederation = lazy(() => import("./pages/admin/SuperAdminFederation"));
 const SuperAdminTournaments = lazy(() => import("./pages/admin/SuperAdminTournaments"));
 const SuperAdminRankings = lazy(() => import("./pages/admin/SuperAdminRankings"));
@@ -515,6 +516,7 @@ function AppRoutes() {
         <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>
           <Route index element={<SuperAdminDashboard />} />
           <Route path="clubs" element={<SuperAdminClubs />} />
+          <Route path="adoption" element={<SuperAdminAdoption />} />
           <Route path="federation" element={<SuperAdminFederation />} />
           <Route path="tournaments" element={<SuperAdminTournaments />} />
           <Route path="users" element={<SuperAdminUsers />} />

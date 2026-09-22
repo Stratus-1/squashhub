@@ -211,7 +211,29 @@ export default function FederationOrgChart({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto pb-2">
+      <div className="relative">
+        {/* Nudge buttons for people who'd rather click than drag. */}
+        <button
+          type="button"
+          aria-label="Scroll left"
+          onClick={() => nudge(-1)}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 rounded-full border border-white/15 bg-black/60 p-1.5 text-white/70 hover:text-white hover:bg-black/80"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          aria-label="Scroll right"
+          onClick={() => nudge(1)}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 rounded-full border border-white/15 bg-black/60 p-1.5 text-white/70 hover:text-white hover:bg-black/80"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+        <div
+          ref={panRef}
+          onPointerDown={onPanStart}
+          className={`overflow-x-auto pb-2 select-none ${panning ? "cursor-grabbing" : "cursor-grab"}`}
+        >
         <div className="min-w-max flex flex-col items-center px-2">
           {/* Federation */}
           <div

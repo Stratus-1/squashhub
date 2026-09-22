@@ -1,6 +1,6 @@
 import { CompetitionRankingCard } from "./CompetitionRankingCard";
 import { RankingScope } from "@/lib/rankings/provisional";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -1030,6 +1030,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Stage sequencing: which division waits for another (group_number -> group_number),
   // how a following doubles division builds its pairs, and per-pool game lengths.
   const [divisionFollows, setDivisionFollows] = useState<Record<string, number>>({});
+  /**
+   * How a staged division is seeded: "previous" (default) takes the finishing
+   * order of the stage it follows, "ladder" seeds it from the club ladder just
+   * like a stand-alone division.
+   */
+  const [divisionSeedSource, setDivisionSeedSource] = useState<Record<string, "previous" | "ladder">>({});
+  const seedSourceFor = useCallback(
+    (gn: number): "previous" | "ladder" =>
+      divisionSeedSource[String(gn)] === "ladder" ? "ladder" : "previous",
+    [divisionSeedSource],
+  );
   const [divisionPairing, setDivisionPairing] = useState<Record<string, PairingMethod>>({});
   const [poolDurations, setPoolDurations] = useState<Record<string, number>>({});
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
@@ -2661,6 +2672,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       group_durations: groupDurations,
       group_break_minutes: groupBreakMinutes,
       division_follows: divisionFollows,
+      division_seed_source: divisionSeedSource,
       division_pairing_method: divisionPairing,
       pool_durations: poolDurations,
       group_labels: groupLabels,
@@ -3763,13 +3775,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       const src = followsDivision(divisionFollows, gi + 1);
       if (!src || src === gi + 1 || src > sorted.length) continue;
       if (manualSeedGroups.has(gi)) continue;
+      // The organiser may deliberately keep this stage on the club ladder.
+      if (seedSourceFor(gi + 1) === "ladder") continue;
       const order = new Map(sorted[src - 1].map((p: any, i) => [p.id, i]));
       sorted[gi] = [...sorted[gi]].sort(
         (a: any, b: any) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9),
       );
     }
     return sorted;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor]);
 
   /**
    * Staged events field the SAME players again in the next stage, so every
@@ -5072,6 +5086,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
             division_follows: divisionFollows,
+            division_seed_source: divisionSeedSource,
             division_pairing_method: divisionPairing,
             pool_durations: poolDurations,
             group_labels: groupLabels,
@@ -5178,6 +5193,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             group_durations: groupDurations,
             group_break_minutes: groupBreakMinutes,
             division_follows: divisionFollows,
+            division_seed_source: divisionSeedSource,
             division_pairing_method: divisionPairing,
             pool_durations: poolDurations,
             group_labels: groupLabels,
@@ -7281,6 +7297,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     setGroupDurations(((champ as any).group_durations as Record<string, number>) || {});
     setGroupBreakMinutes(((champ as any).group_break_minutes as Record<string, number>) || {});
     setDivisionFollows(((champ as any).division_follows as Record<string, number>) || {});
+    setDivisionSeedSource(
+      ((champ as any).division_seed_source as Record<string, "previous" | "ladder">) || {},
+    );
     setDivisionPairing(((champ as any).division_pairing_method as Record<string, PairingMethod>) || {});
     setPoolDurations(((champ as any).pool_durations as Record<string, number>) || {});
     setGroupLabels(((champ as any).group_labels as Record<string, string>) || {});
@@ -9541,9 +9560,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                              );
                                            }
                                          }}
-                                       />
-                                     )}
-                                     {isDoublesDivision && (() => {
+                                        />
+                                      )}
+                                      {waitsFor != null && (
+                                        <>
+                                          <SegRow
+                                            label="Seeding for this stage"
+                                            value={seedSourceFor(gn)}
+                                            color="amber"
+                                            options={[
+                                              { v: "previous", l: `By ${nameOf(waitsFor)} results` },
+                                              { v: "ladder", l: "By club ladder (same as the first stage)" },
+                                            ]}
+                                            onChange={(v) =>
+                                              setDivisionSeedSource((m) => ({
+                                                ...m,
+                                                [key]: v === "ladder" ? "ladder" : "previous",
+                                              }))
+                                            }
+                                          />
+                                          <p className="text-[10px] text-muted-foreground">
+                                            {seedSourceFor(gn) === "ladder"
+                                              ? `Runs after ${nameOf(waitsFor)}, but players are ordered 1, 2, 3… by the club ladder.`
+                                              : `Runs after ${nameOf(waitsFor)} — players are ordered 1, 2, 3… by how they finished there. Until it is played, the order from ${nameOf(waitsFor)} is shown.`}
+                                          </p>
+                                        </>
+                                      )}
+                                      {isDoublesDivision && (() => {
                                        // ONE place to decide how partners come about for this
                                        // doubles division: the two automatic orders (Diamond
                                        // League style) plus the ordinary tournament choices.
@@ -11750,7 +11793,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   : "";
                                 return (
                                   <Badge variant="outline" className="text-[10px]">
-                                    {src ? `Seeded by ${srcLabel} results` : "Seeded by club ladder"}
+                                    {src && seedSourceFor(gi + 1) === "previous"
+                                      ? `Seeded by ${srcLabel} results`
+                                      : "Seeded by club ladder"}
                                   </Badge>
                                 );
                               })()

@@ -65,9 +65,9 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
 
   const activeOwner =
     mode === "club"
-      ? clubOrg?.id ?? assoc.orgId ?? null
+      ? (assoc.isAssociation ? assoc.orgId : clubOrg?.id) ?? null
       : ownerOrgId ?? bodies.find((b) => b.kind === "national")?.id ?? null;
-  const owner = mode === "club" ? clubOrg : bodies.find((b) => b.id === activeOwner) || null;
+  const owner = mode === "club" ? orgs.find((o) => o.id === activeOwner) || null : bodies.find((b) => b.id === activeOwner) || null;
 
   // Clubs beneath the owning body in the Super Admin organisation tree — the
   // same hierarchy eligibility uses, so venues and entrants agree.
@@ -83,29 +83,33 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
     return out;
   }, [hierarchy, activeOwner]);
 
-  // Venue candidates: the owner's clubs from the tree, merged with the
-  // association's affiliated clubs (the two lists can still disagree while the
-  // tree is being completed), or every club for a platform admin.
+  // For an association the Federation tree is authoritative. An old league
+  // affiliation must not make an unrelated club a venue or player source.
   const venueChoices = useMemo(() => {
-    if (!assoc.isAssociation && mode === "platform" && treeClubs.length === 0) {
-      return clubs.map((c) => ({ id: c.id, name: c.name }));
-    }
-    const merged = new Map<string, string>();
-    treeClubs.forEach((c) => merged.set(c.id, c.name));
-    if (assoc.isAssociation) assoc.clubs.forEach((c) => merged.set(c.id, c.name));
-    if (merged.size === 0) clubs.forEach((c) => merged.set(c.id, c.name));
-    return Array.from(merged.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [assoc.isAssociation, assoc.clubs, clubs, treeClubs, mode]);
+    if (mode === "platform" && !activeOwner) return [];
+    return [...treeClubs].sort((a, b) => a.name.localeCompare(b.name));
+  }, [treeClubs, mode, activeOwner]);
 
-  // Affiliated clubs that are not yet in the organisation tree — worth fixing
-  // in Super Admin rather than silently keeping two lists.
+  const effectiveHostClubId = mode === "platform" && !venueChoices.some((c) => c.id === hostClubId)
+    ? ""
+    : hostClubId;
+
+  // Flag contradictory legacy affiliations to admins, without offering them
+  // as tournament venues or entrants.
   const missingFromTree = useMemo(() => {
-    if (!assoc.isAssociation || treeClubs.length === 0) return [] as string[];
+    if (!assoc.isAssociation || !activeOwner || !hierarchy) return [] as string[];
     const inTree = new Set(treeClubs.map((c) => c.id));
     return assoc.clubs.filter((c) => !inTree.has(c.id)).map((c) => c.name);
-  }, [assoc.isAssociation, assoc.clubs, treeClubs]);
+  }, [assoc.isAssociation, assoc.clubs, treeClubs, activeOwner, hierarchy]);
+
+  // Switching the owning body must not carry a venue from another region.
+  useEffect(() => {
+    setExtraClubIds((previous) => {
+      const allowed = new Set(venueChoices.map((c) => c.id));
+      const filtered = new Set([...previous].filter((id) => allowed.has(id)));
+      return filtered.size === previous.size ? previous : filtered;
+    });
+  }, [venueChoices]);
 
   const filteredClubs = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -177,12 +181,12 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
                     : clubs.find((c) => c.id === clubId)?.name || "This club"}
                 </div>
               ) : (
-                <Select value={hostClubId} onValueChange={setHostClubId}>
+                 <Select value={effectiveHostClubId} onValueChange={setHostClubId}>
                   <SelectTrigger className={field}>
                     <SelectValue placeholder="Select host club" />
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
-                    {clubs.map((c) => (
+                     {venueChoices.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -223,15 +227,16 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
                     placeholder="Search clubs…"
                     className={cn("h-8", field)}
                   />
-                  <div className={cn("max-h-56 overflow-y-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-1 rounded-md border p-2", dark && "border-white/10")}>
+                   <div className={cn("max-h-56 overflow-y-auto grid sm:grid-cols-2 lg:grid-cols-3 gap-1 rounded-md border p-2", dark && "border-white/10")}>
                     {filteredClubs
-                      .filter((c) => c.id !== hostClubId)
+                       .filter((c) => c.id !== effectiveHostClubId)
                       .map((c) => (
                         <label key={c.id} className={cn("flex items-center gap-2 text-xs", dark ? "text-white/80" : "text-foreground")}>
                           <Checkbox checked={extraClubIds.has(c.id)} onCheckedChange={() => toggleClub(c.id)} />
                           <span className="truncate">{c.name}</span>
                         </label>
                       ))}
+                     {filteredClubs.length === 0 && <p className={cn("text-xs col-span-full", label)}>No clubs in this body's Federation tree. Add a club in Federation before choosing its courts.</p>}
                   </div>
                   <p className={cn("text-[11px]", label)}>
                     {assoc.isAssociation
@@ -240,10 +245,9 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
                   </p>
                   {missingFromTree.length > 0 && (
                     <p className={cn("text-[11px]", dark ? "text-amber-300" : "text-amber-600")}>
-                      {missingFromTree.length} affiliated club{missingFromTree.length === 1 ? " is" : "s are"} not yet
-                      placed under this association in the organisation tree ({missingFromTree.slice(0, 4).join(", ")}
-                      {missingFromTree.length > 4 ? "…" : ""}). They can still host, but add them to the tree so
-                      eligibility matches.
+                       {missingFromTree.length} legacy affiliation{missingFromTree.length === 1 ? " is" : "s are"} outside this association's Federation tree
+                       ({missingFromTree.slice(0, 4).join(", ")}{missingFromTree.length > 4 ? "…" : ""}).
+                       These clubs are excluded from this tournament. Review their affiliation in Federation.
                     </p>
                   )}
                 </div>
@@ -253,15 +257,15 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
         </CardContent>
       </Card>
 
-      {hostClubId ? (
+       {effectiveHostClubId ? (
         <div className={cn(dark && "rounded-lg bg-background text-foreground p-3")}>
           <ClubChampsTab
-            key={`${activeOwner ?? "club"}-${hostClubId}`}
-            clubId={hostClubId}
+             key={`${activeOwner ?? "club"}-${effectiveHostClubId}`}
+             clubId={effectiveHostClubId}
             ownerOrgId={mode === "club" ? null : activeOwner}
             eligibilityOrgId={mode === "club" ? assoc.orgId : null}
             scope={scope}
-            participatingClubIds={Array.from(extraClubIds)}
+             participatingClubIds={Array.from(extraClubIds).filter((id) => venueChoices.some((c) => c.id === id))}
           />
         </div>
       ) : (

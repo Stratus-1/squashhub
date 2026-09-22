@@ -153,7 +153,8 @@ export function resolveEligibleClubs(args: {
     orgs.forEach((o) => {
       if (o.kind === "club" && o.club_id && within.has(o.id)) ids.add(o.club_id);
     });
-    if (clubId) ids.add(clubId);
+    // The organiser's club or association tenant is not automatically a
+    // regional entrant club; the Federation tree alone determines this set.
     return { clubIds: Array.from(ids), scopeOrgName: assoc.name };
   }
 

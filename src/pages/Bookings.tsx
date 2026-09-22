@@ -1013,6 +1013,7 @@ export default function Bookings() {
         isVisitor: true,
         visitorsCanBook: !!(myClub as any)?.visitors_can_book,
         pass: myVisitorPass ?? null,
+        passesOffered: visitorPassesOffered,
       });
       if (!decision.allowed) {
         toast.error(decision.reason);

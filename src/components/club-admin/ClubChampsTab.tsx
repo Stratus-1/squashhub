@@ -3833,12 +3833,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         g[extra].push(p);
       });
     });
-    // Seed order per division: club ladder ascending, unranked last, unless
-    // the organiser deliberately reordered that division by hand.
+    // Seed order per division: the chosen seeding source (club ladder by
+    // default; club rating / regional / national ranking when selected),
+    // unranked last, unless the organiser deliberately reordered by hand.
     const sorted = g.map((list, gi) =>
       sortDivisionEntrants(list as any, {
         manual: manualSeedGroups.has(gi),
         manualOrder: playerOrder,
+        rankOf: seedRankOf,
       }) as ClubMember[],
     );
     // Staged events (Diamond League): a division played AFTER another is not
@@ -3857,7 +3859,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       );
     }
     return sorted;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor, seedRankOf]);
 
   /**
    * Staged events field the SAME players again in the next stage, so every
@@ -12027,9 +12029,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   : "";
                                 return (
                                   <Badge variant="outline" className="text-[10px]">
-                                    {src && seedSourceFor(gi + 1) === "previous"
-                                      ? `Seeded by ${srcLabel} results`
-                                      : "Seeded by club ladder"}
+                                     {src && seedSourceFor(gi + 1) === "previous"
+                                       ? `Seeded by ${srcLabel} results`
+                                       : `Seeded by ${seedingSourceLabel}`}
                                   </Badge>
                                 );
                               })()

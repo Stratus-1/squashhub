@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { associationOrgForTenant } from "@/lib/tournaments/eligibility";
 
 export interface AssociationTenantContext {
   /** True when the signed-in tenant is an association/regional league, not a club. */
@@ -39,8 +40,7 @@ export function useAssociationTenant(clubId: string | null | undefined): Associa
           .eq("association_tenant_id", clubId as string),
         fromExt("league_associations")
           .select("id")
-          .eq("tenant_association_id", clubId as string)
-          .limit(1),
+          .eq("tenant_association_id", clubId as string),
       ]);
 
       const clubs = new Map<string, string>();
@@ -50,14 +50,16 @@ export function useAssociationTenant(clubId: string | null | undefined): Associa
         if (c?.id) clubs.set(c.id, c.name || "Club");
       });
 
+      if (laRes.error) throw laRes.error;
+      const leagueIds = ((laRes.data || []) as { id: string }[]).map((row) => row.id);
       let orgId: string | null = null;
-      const laId = ((laRes.data || []) as any[])[0]?.id;
-      if (laId) {
-        const { data: org } = await fromExt("organisations")
-          .select("id")
-          .eq("league_association_id", laId)
-          .maybeSingle();
-        orgId = (org as any)?.id ?? null;
+      if (leagueIds.length) {
+        const { data: orgs, error: orgError } = await fromExt("organisations")
+          .select("id, kind, league_association_id")
+          .eq("active", true)
+          .in("league_association_id", leagueIds);
+        if (orgError) throw orgError;
+        orgId = associationOrgForTenant(leagueIds, (orgs || []) as { id: string; kind: string; league_association_id: string | null }[]);
       }
 
       return {

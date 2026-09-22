@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { deriveVenueRows, hostFeeCents, venueClubForCourt } from "@/lib/tournaments/venues";
-import { resolveEligibleClubs, orgDescendants } from "@/lib/tournaments/eligibility";
+import { resolveEligibleClubs, orgDescendants, associationOrgForTenant } from "@/lib/tournaments/eligibility";
 
 const NSA_PCC = "pcc";
 const UITSIG = "uitsig";
@@ -15,6 +15,12 @@ const courts = [
 ];
 
 describe("tournament venues", () => {
+  it("resolves the association tree even when unrelated league rows are returned first", () => {
+    const leagueIds = ["division-1", "division-2", "nsa-owner"];
+    const orgs = [{ id: "nsa", kind: "association", league_association_id: "nsa-owner" }];
+    expect(associationOrgForTenant(leagueIds, orgs)).toBe("nsa");
+    expect(associationOrgForTenant(["division-1"], orgs)).toBeNull();
+  });
   it("limits NSA regional clubs to the Federation tree, excluding a legacy Durbanville affiliation", () => {
     const orgs = [
       { id: "nsa", kind: "association", name: "NSA", club_id: null },

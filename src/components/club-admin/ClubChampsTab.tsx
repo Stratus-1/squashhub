@@ -5413,6 +5413,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
               : {}),
           };
         }
+        // A stage played AFTER another one: the court slot is reserved now and
+        // the fixture carries a "to be decided" label instead of names. Names
+        // are written in once the preceding stage has been completed.
+        if (isTbdEntity(m.entityA) || isTbdEntity(m.entityB)) {
+          return {
+            champ_id: champId,
+            group_number: m.groupNum,
+            round_number: m.roundNum,
+            player_a_member_id: null,
+            player_b_member_id: null,
+            placeholder_a: tbdLabel(m.entityA),
+            placeholder_b: m.entityB ? tbdLabel(m.entityB) : null,
+            scheduled_date: m.date,
+            scheduled_time: m.time,
+            court_id: m.courtId,
+            leg: m.leg ?? null,
+            section_number: m.koSection ?? null,
+            pool_number: m.poolNum ?? m.koSection ?? null,
+            stage: m.koSection ? "ko" : "group",
+            stage_label: m.koStageLabel ?? null,
+            is_bye: false,
+            status: "scheduled",
+            ...(schedulingMode === "self"
+              ? {
+                  scheduled_date: null,
+                  scheduled_time: null,
+                  court_id: null,
+                  play_by: deadlineForRound(roundDeadlines, m.roundNum) || endDate || null,
+                }
+              : {}),
+          };
+        }
         // For bye rows we use the bye entity as both player_a/player_b so RLS-friendly
         // NOT NULL columns stay populated, plus set is_bye + bye_member_id explicitly.
         if (isDoubles) {

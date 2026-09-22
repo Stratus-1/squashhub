@@ -11712,7 +11712,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 </Button>
                               </>
                             ) : (
-                              <Badge variant="outline" className="text-[10px]">Seeded by club ladder</Badge>
+                              (() => {
+                                const src = followsDivision(divisionFollows, gi + 1);
+                                const srcLabel = src
+                                  ? (groupLabels[String(src)]?.trim() || `League ${src}`)
+                                  : "";
+                                return (
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {src ? `Seeded by ${srcLabel} results` : "Seeded by club ladder"}
+                                  </Badge>
+                                );
+                              })()
                             )}
                             {g.some((p) => isUnranked(p as any)) && (
                               <Badge variant="secondary" className="text-[10px]">

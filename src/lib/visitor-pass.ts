@@ -127,6 +127,8 @@ export function visitorBookingDecision(opts: {
   isVisitor: boolean;
   visitorsCanBook: boolean;
   pass: Pick<VisitorPass, "status" | "valid_from" | "valid_until"> | null | undefined;
+  /** Whether the club offers any visitor pass at all. Defaults to true. */
+  passesOffered?: boolean;
   now?: Date;
 }): VisitorBookingDecision {
   if (!opts.isVisitor) return { allowed: true };
@@ -140,6 +142,9 @@ export function visitorBookingDecision(opts: {
       reason: "Visitor bookings aren't enabled at this club. Please ask a member or the club admin to book on your behalf.",
     };
   }
+  // The club sells no pass, so a pass cannot be the gate — the club's own
+  // visitor-booking switch decides.
+  if (opts.passesOffered === false) return { allowed: true };
   if (!pass || pass.status === "expired" || pass.status === "cancelled") {
     return { allowed: false, reason: "You need a valid visitor pass to book a court. Buy one from your account." };
   }

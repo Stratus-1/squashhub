@@ -37,7 +37,9 @@ export default function FindClub() {
     try {
       const { data, error } = await (supabase.rpc as any)("join_club_request", { p_club_id: club.id });
       if (error) throw error;
-      if (data === "linked" || data === "already_member") {
+      if (data === "linked_admin" || data === "joined_admin") {
+        toast.success(`Welcome to ${club.name} — you're the first one in, so you have full club admin rights.`);
+      } else if (data === "linked" || data === "already_member") {
         toast.success(`You're in — welcome to ${club.name}`);
       } else {
         toast.success(`Request sent to ${club.name}. An admin will confirm you shortly.`);

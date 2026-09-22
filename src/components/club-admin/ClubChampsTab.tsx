@@ -1429,14 +1429,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       return next;
     });
   };
-  /** Singles/doubles per league — the engine needs one entity type per event. */
+  /**
+   * Singles/doubles is set PER division — a Diamond-League style event runs a
+   * singles stage next to a doubles stage, so changing one division must never
+   * rewrite the others (that used to silently flip a saved doubles stage back
+   * to singles). The tournament-level match type stays in sync as "doubles if
+   * any division is doubles", which is what the entry/invite flows read.
+   */
   const setLeagueMatchType = (gn: number, mt: "singles" | "doubles") => {
-    setLeagueMatchTypes(() => {
-      const next: Record<string, "singles" | "doubles"> = {};
-      for (let i = 1; i <= (numGroups || 0); i++) next[String(i)] = mt;
-      return next;
-    });
-    setMatchType(mt);
+    const next: Record<string, "singles" | "doubles"> = { ...leagueMatchTypes };
+    for (let i = 1; i <= (numGroups || 0); i++) {
+      if (next[String(i)] === undefined) next[String(i)] = matchType;
+    }
+    next[String(gn)] = mt;
+    setLeagueMatchTypes(next);
+    const anyDoubles = Object.keys(next).some(
+      (k) => Number(k) <= (numGroups || 0) && next[k] === "doubles",
+    );
+    setMatchType(anyDoubles ? "doubles" : "singles");
   };
   /**
    * Clone a division: every setting (format, pools, category, scoring, source)

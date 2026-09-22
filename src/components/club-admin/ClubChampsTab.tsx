@@ -102,6 +102,7 @@ import {
 import { applyDivisionOrder, isUnranked, seedPreview, sortDivisionEntrants } from "@/lib/tournaments/seeding";
 import {
   PAIRING_METHOD_LABELS,
+  isPairingMethod,
   followsDivision,
   pairingMethodFor,
   poolDurationKey,
@@ -9439,29 +9440,55 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                          }}
                                        />
                                      )}
-                                     {isDoublesDivision && (
-                                       <>
-                                         <SegRow
-                                           label="How pairs are formed"
-                                           value={pairingMethodFor(divisionPairing, gn)}
-                                           color="cyan"
-                                           options={[
-                                             { v: "adjacent", l: "Automatic — adjacent (6+5, 4+3, 2+1)" },
-                                             { v: "balanced", l: "Automatic — balanced (1+6, 2+5, 3+4)" },
-                                             { v: "manual", l: "Players pick their own partner" },
-                                           ]}
-                                           onChange={(v) =>
-                                             setDivisionPairing((m) => ({ ...m, [key]: v as PairingMethod }))
-                                           }
-                                         />
-                                         <p className="text-[10px] text-muted-foreground">
-                                           {PAIRING_METHOD_LABELS[pairingMethodFor(divisionPairing, gn)]}
-                                           {waitsFor != null
-                                             ? ` — taken from the finishing order of ${nameOf(waitsFor)}.`
-                                             : " — taken from the seeded order of this division."}
-                                         </p>
-                                       </>
-                                     )}
+                                     {isDoublesDivision && (() => {
+                                       // ONE place to decide how partners come about for this
+                                       // doubles division: the two automatic orders (Diamond
+                                       // League style) plus the ordinary tournament choices.
+                                       const raw = (divisionPairing as Record<string, unknown>)[key];
+                                       const explicit = isPairingMethod(raw) ? (raw as PairingMethod) : null;
+                                       const isAuto = explicit === "adjacent" || explicit === "balanced";
+                                       const current = isAuto ? explicit : (partnerMode || "");
+                                       return (
+                                         <>
+                                           <SegRow
+                                             label="How pairs are formed"
+                                             value={current}
+                                             color="cyan"
+                                             options={[
+                                               { v: "admin", l: "Admin pairs the players" },
+                                               { v: "players", l: "Players pick their own partner" },
+                                               { v: "rotate", l: "Players rotate (everyone partners everyone)" },
+                                               { v: "adjacent", l: "Automatic — adjacent (6+5, 4+3, 2+1)" },
+                                               { v: "balanced", l: "Automatic — balanced (1+6, 2+5, 3+4)" },
+                                             ]}
+                                             onChange={(v) => {
+                                               if (v === "adjacent" || v === "balanced") {
+                                                 setDivisionPairing((m) => ({ ...m, [key]: v as PairingMethod }));
+                                                 setPartnerMode((p: any) => p || "admin");
+                                               } else {
+                                                 setDivisionPairing((m) => ({ ...m, [key]: "manual" as PairingMethod }));
+                                                 setPartnerMode(v as any);
+                                               }
+                                             }}
+                                           />
+                                           <p className="text-[10px] text-muted-foreground">
+                                             {isAuto
+                                               ? `${PAIRING_METHOD_LABELS[explicit as PairingMethod]}${
+                                                   waitsFor != null
+                                                     ? ` — taken from the finishing order of ${nameOf(waitsFor)}.`
+                                                     : " — taken from the seeded order of this division."
+                                                 }`
+                                               : current === "rotate"
+                                                 ? "No fixed pairs: every round re-pairs the players so everyone partners everyone. Points are banked per player."
+                                                 : current === "players"
+                                                   ? "Entrants choose their own partner on their invitation; an admin can still override."
+                                                   : current === "admin"
+                                                     ? "The organiser builds every pair by hand."
+                                                     : "Pick how partners come about for this division."}
+                                           </p>
+                                         </>
+                                       );
+                                     })()}
                                      {pools > 1 && (
                                        <div className="space-y-1">
                                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">

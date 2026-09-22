@@ -243,6 +243,29 @@ export function DoublesPairsPanel({
                 Pair &amp; notify
               </Button>
             </div>
+            {/* Two-stage events (a singles round robin feeding a doubles one)
+                build their pairs straight off how the first stage finished. */}
+            {previousStage != null && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  disabled={autoPair.isPending}
+                  onClick={() => autoPair.mutate()}
+                >
+                  {autoPair.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <Users className="w-3.5 h-3.5 mr-1" />
+                  )}
+                  Build pairs from {label(previousStage)}
+                </Button>
+                <span className="text-[11px] text-muted-foreground">
+                  {PAIRING_METHOD_LABELS[pairingMethod]}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

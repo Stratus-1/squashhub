@@ -13653,6 +13653,7 @@ export type Database = {
           description: string | null
           division_follows: Json
           division_pairing_method: Json
+          division_seed_source: Json
           doubles_pairing_locked: boolean
           draft_player_ids: string[] | null
           draw_locked: boolean
@@ -13748,6 +13749,7 @@ export type Database = {
           description?: string | null
           division_follows?: Json
           division_pairing_method?: Json
+          division_seed_source?: Json
           doubles_pairing_locked?: boolean
           draft_player_ids?: string[] | null
           draw_locked?: boolean
@@ -13843,6 +13845,7 @@ export type Database = {
           description?: string | null
           division_follows?: Json
           division_pairing_method?: Json
+          division_seed_source?: Json
           doubles_pairing_locked?: boolean
           draft_player_ids?: string[] | null
           draw_locked?: boolean
@@ -14432,6 +14435,7 @@ export type Database = {
           description: string | null
           division_follows: Json | null
           division_pairing_method: Json | null
+          division_seed_source: Json | null
           draw_type: string | null
           eligibility_max_age: number | null
           eligibility_min_age: number | null

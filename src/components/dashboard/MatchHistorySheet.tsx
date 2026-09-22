@@ -59,8 +59,11 @@ function MatchRow({
             clickable && "hover:underline",
           )}
         >
-          {m.opponent_name}
+          {m.opponent2_name ? `vs ${opponents}` : m.opponent_name}
         </button>
+        {m.partner_name && (
+          <p className="text-[11px] text-muted-foreground truncate">with {m.partner_name}</p>
+        )}
         <p className="text-[11px] text-muted-foreground truncate">
           {fmtDate(m.played_on)} · {m.event_label}
         </p>

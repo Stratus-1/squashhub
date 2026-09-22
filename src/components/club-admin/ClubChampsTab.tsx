@@ -4328,6 +4328,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           }) || matchDuration
         );
       };
+      // Shortest playing time in a division — used for "does another match
+      // still fit before the session ends", so a 14-minute pool is not
+      // rejected because another pool of the same division plays 30.
+      const capMinFor = (gn: number) => {
+        const base =
+          poolMinutes({ groupDurations, groupNumber: gn, fallbackMinutes: matchDuration }) ||
+          matchDuration;
+        const overrides = Object.entries(poolDurations)
+          .filter(([k]) => k.startsWith(`${gn}:`))
+          .map(([, v]) => Number(v) || 0)
+          .filter((v) => v > 0);
+        return overrides.length ? Math.min(base, ...overrides) : base;
+      };
+      // Changeover after each match on that court.
+      const breakFor = (gn: number) =>
+        Math.max(0, Number(groupBreakMinutes[String(gn)]) || Number(defaultBreakMinutes) || 0);
 
       const byLeague = new Map<number, MatchDef[]>();
       for (const m of allMatches) {
@@ -4377,7 +4393,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           //   end) and both leagues finish at roughly the same time.
           const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
           const caps = leagues.map(capFor);
-          const step = Math.max(1, caps.reduce((a, b) => gcd(a, b), caps[0] || 1));
+          // The timeline must tick finely enough to land on EVERY pool's own
+          // slot (playing time + changeover). With 20/19/18/14-minute pools a
+          // 20-minute tick would force everything onto the 20-minute grid.
+          const slotLengths: number[] = [];
+          for (const gn of leagues) {
+            const brk = breakFor(gn);
+            const poolNums = Array.from(new Set(byLeague.get(gn)!.map((m) => m.poolNum ?? 1)));
+            for (const p of poolNums) slotLengths.push(Math.max(1, capFor(gn, p) + brk));
+          }
+          const step = Math.max(
+            1,
+            slotLengths.reduce((a, b) => gcd(a, b), slotLengths[0] || 1),
+          );
 
           const remainingByLeague = new Map<number, MatchDef[]>();
           for (const gn of leagues) remainingByLeague.set(gn, [...byLeague.get(gn)!]);
@@ -4446,9 +4474,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             nowAbs: number,
             cid: number,
             enforceBreak: boolean,
+            tRel?: number,
+            sessionEndMin?: number,
           ): number[] | null => {
             if (!bindOk(gn, m, cid)) return null;
             const cap = capFor(gn, m.poolNum ?? null);
+            // This pool's own game must still fit inside the session.
+            if (tRel != null && sessionEndMin != null && tRel + cap > sessionEndMin) return null;
             const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
             for (const pid of players) {
               if ((playerBusyUntil.get(pid) ?? 0) > nowAbs) return null;
@@ -4503,12 +4535,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           ): { league: number; idx: number; cap: number } | null => {
             let best: { league: number; idx: number; cap: number; score: number[] } | null = null;
             for (const gn of leagues) {
-              const cap = capFor(gn);
+              const cap = capMinFor(gn);
               if (tRel + cap > sessionEndMin) continue;
               const pool = remainingByLeague.get(gn);
               if (!pool || !pool.length) continue;
               for (let i = 0; i < pool.length; i++) {
-                const score = scoreMatch(pool[i], gn, nowAbs, cid, enforceBreak);
+                const score = scoreMatch(pool[i], gn, nowAbs, cid, enforceBreak, tRel, sessionEndMin);
                 if (!score) continue;
                 if (!best || cmpScore(score, best.score) < 0) {
                   best = { league: gn, idx: i, cap, score };
@@ -4634,13 +4666,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 // 1) Try owner league first (strict), 2) fall back to any league
                 //    so a court never sits idle when the owner has nothing to play.
                 const pickForLeague = (gn: number, enforceBreak: boolean) => {
-                  const cap = capFor(gn);
+                  const cap = capMinFor(gn);
                   if (t + cap > s.endMin) return null;
                   const pool = remainingByLeague.get(gn);
                   if (!pool || !pool.length) return null;
                   let bestIdx = -1; let bestScore: number[] | null = null;
                   for (let i = 0; i < pool.length; i++) {
-                    const score = scoreMatch(pool[i], gn, nowAbs, cid, enforceBreak);
+                    const score = scoreMatch(pool[i], gn, nowAbs, cid, enforceBreak, t, s.endMin);
                     if (!score) continue;
                     if (!bestScore || cmpScore(score, bestScore) < 0) { bestIdx = i; bestScore = score; }
                   }
@@ -4677,7 +4709,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                     courtPool.set(cid, u);
                   }
                 }
-                courtBusyUntil.set(cid, nowAbs + playCap);
+                // Hold the court for the game plus this division's changeover.
+                courtBusyUntil.set(cid, nowAbs + playCap + breakFor(picked.league));
                 assignedInBlock.set(picked.league, (assignedInBlock.get(picked.league) || 0) + 1);
                 const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
                 players.forEach((pid) => {
@@ -5061,7 +5094,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [scheduleGroups, isDoubles, rotatePartners, leagueMatchTypes, divisionFollows, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
+  }, [scheduleGroups, isDoubles, rotatePartners, leagueMatchTypes, divisionFollows, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, poolDurations, groupBreakMinutes, defaultBreakMinutes, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the

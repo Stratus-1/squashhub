@@ -358,7 +358,9 @@ export default function FederationOrgChart({
             </div>
           </div>
         </div>
+        </div>
       </div>
+
 
 
       <OrgSettingsDialog

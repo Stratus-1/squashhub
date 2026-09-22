@@ -976,6 +976,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     enabled: venueClubIds.length > 0,
   });
 
+  /**
+   * `tournament_venues` is the authoritative venue list: one row per host club
+   * with that club's own courts. The flat `court_ids` / `participating_club_ids`
+   * columns stay in sync as mirrors, so every existing scheduler keeps working.
+   */
+  const persistVenues = async (tournamentId: string) => {
+    try {
+      await syncTournamentVenues({
+        tournamentId,
+        rows: deriveVenueRows({
+          primaryClubId: clubId,
+          venueClubIds,
+          selectedCourtIds: Array.from(selectedCourtIds),
+          courts,
+        }),
+      });
+      qc.invalidateQueries({ queryKey: ["tournament-venues", tournamentId] });
+    } catch (e: any) {
+      console.warn("[champs] venue save failed", e?.message || e);
+    }
+  };
+
+
+
   const { data: existingChamps = [], isLoading: champsLoading } = useQuery({
     queryKey: ["club-champs", clubId, ownerOrgId],
     queryFn: async () => {

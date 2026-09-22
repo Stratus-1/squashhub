@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEO } from "@/components/SEO";
-import { Search, ShieldCheck, Activity } from "lucide-react";
+import { Search, ShieldCheck, Activity, UserPlus } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 type Row = {
@@ -201,6 +201,128 @@ export default function SuperAdminAdoption() {
                     ) : (
                       <span className="opacity-50">Trial</span>
                     )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <UnaffiliatedUsers clubs={rows.map((r) => ({ id: r.club_id, name: r.club_name }))} />
+    </div>
+  );
+}
+
+type Unaffiliated = {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  created_at: string;
+};
+
+function UnaffiliatedUsers({ clubs }: { clubs: { id: string; name: string }[] }) {
+  const qc = useQueryClient();
+  const [picked, setPicked] = useState<Record<string, string>>({});
+
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ["sa-unaffiliated"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("platform_unaffiliated_users");
+      if (error) throw error;
+      return (data || []) as Unaffiliated[];
+    },
+  });
+
+  const attach = useMutation({
+    mutationFn: async ({ userId, clubId }: { userId: string; clubId: string }) => {
+      const { error } = await (supabase.rpc as any)("platform_attach_user_to_club", {
+        p_user_id: userId,
+        p_club_id: clubId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Person added to the club");
+      qc.invalidateQueries({ queryKey: ["sa-unaffiliated"] });
+      qc.invalidateQueries({ queryKey: ["sa-adoption"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Could not add them"),
+  });
+
+  const sortedClubs = useMemo(
+    () => [...clubs].sort((a, b) => a.name.localeCompare(b.name)),
+    [clubs],
+  );
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <UserPlus className="h-4 w-4" />
+        <h2 className="text-sm font-semibold">
+          Unaffiliated sign-ups {users.length ? `(${users.length})` : ""}
+        </h2>
+      </div>
+      <p className="text-xs opacity-70">
+        People who created a login but were never linked to a club. Pick their club to add them.
+      </p>
+      <Card className="overflow-x-auto bg-white/5 border-white/10">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Name</TableHead>
+              <TableHead className="text-xs">Email</TableHead>
+              <TableHead className="text-xs">Phone</TableHead>
+              <TableHead className="text-xs">Signed up</TableHead>
+              <TableHead className="text-xs">Assign to club</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-6 text-xs opacity-70">Loading...</TableCell>
+              </TableRow>
+            ) : users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-6 text-xs opacity-70">
+                  Everyone who signed up is linked to a club
+                </TableCell>
+              </TableRow>
+            ) : (
+              users.map((u) => (
+                <TableRow key={u.user_id}>
+                  <TableCell className="text-xs font-medium">{u.name || "—"}</TableCell>
+                  <TableCell className="text-xs opacity-80">{u.email || "—"}</TableCell>
+                  <TableCell className="text-xs opacity-80">{u.phone || "—"}</TableCell>
+                  <TableCell className="text-xs opacity-80">{ago(u.created_at)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={picked[u.user_id] || ""}
+                        onValueChange={(v) => setPicked((p) => ({ ...p, [u.user_id]: v }))}
+                      >
+                        <SelectTrigger className="h-7 w-[200px] text-xs">
+                          <SelectValue placeholder="Choose club" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          {sortedClubs.map((c) => (
+                            <SelectItem key={c.id} value={c.id} className="text-xs">
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[10px]"
+                        disabled={!picked[u.user_id] || attach.isPending}
+                        onClick={() => attach.mutate({ userId: u.user_id, clubId: picked[u.user_id] })}
+                      >
+                        Add
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

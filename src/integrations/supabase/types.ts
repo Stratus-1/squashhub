@@ -15676,6 +15676,10 @@ export type Database = {
           match_id: string
           opponent_member_id: string
           opponent_name: string
+          opponent2_member_id: string
+          opponent2_name: string
+          partner_member_id: string
+          partner_name: string
           played_on: string
           score: string
           season_year: number

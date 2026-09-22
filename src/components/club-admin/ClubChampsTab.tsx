@@ -9560,9 +9560,33 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                              );
                                            }
                                          }}
-                                       />
-                                     )}
-                                     {isDoublesDivision && (() => {
+                                        />
+                                      )}
+                                      {waitsFor != null && (
+                                        <>
+                                          <SegRow
+                                            label="Seeding for this stage"
+                                            value={seedSourceFor(gn)}
+                                            color="amber"
+                                            options={[
+                                              { v: "previous", l: `By ${nameOf(waitsFor)} results` },
+                                              { v: "ladder", l: "By club ladder (same as the first stage)" },
+                                            ]}
+                                            onChange={(v) =>
+                                              setDivisionSeedSource((m) => ({
+                                                ...m,
+                                                [key]: v === "ladder" ? "ladder" : "previous",
+                                              }))
+                                            }
+                                          />
+                                          <p className="text-[10px] text-muted-foreground">
+                                            {seedSourceFor(gn) === "ladder"
+                                              ? `Runs after ${nameOf(waitsFor)}, but players are ordered 1, 2, 3… by the club ladder.`
+                                              : `Runs after ${nameOf(waitsFor)} — players are ordered 1, 2, 3… by how they finished there. Until it is played, the order from ${nameOf(waitsFor)} is shown.`}
+                                          </p>
+                                        </>
+                                      )}
+                                      {isDoublesDivision && (() => {
                                        // ONE place to decide how partners come about for this
                                        // doubles division: the two automatic orders (Diamond
                                        // League style) plus the ordinary tournament choices.

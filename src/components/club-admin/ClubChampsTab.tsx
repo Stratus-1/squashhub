@@ -864,6 +864,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return owningAssociation(scopeOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.name ?? null;
   }, [orgHierarchy, scopeOrgId]);
 
+  // The body that OWNS the event — always explicit. Owner is not the venue and
+  // not the audience: a regional association can own an event played entirely
+  // on other clubs' courts. At club level this resolves to the club's own
+  // organisation, so nothing changes for a normal club tournament.
+  const clubOrgId = useMemo(
+    () => orgHierarchy?.orgs.find((o) => o.kind === "club" && o.club_id === clubId)?.id ?? null,
+    [orgHierarchy, clubId],
+  );
+  const resolvedOwnerOrgId = ownerOrgId ?? eligibilityOrgId ?? clubOrgId;
+  const ownerOrgName = useMemo(
+    () => orgHierarchy?.orgs.find((o) => o.id === resolvedOwnerOrgId)?.name ?? null,
+    [orgHierarchy, resolvedOwnerOrgId],
+  );
+
   const eventTypeOptions = useMemo(() => eventTypesFor(scope), [scope]);
   const eligibilityOptions = useMemo(
     () => eligibilityScopesFor(scope, associationName),

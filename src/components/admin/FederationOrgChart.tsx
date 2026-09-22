@@ -106,6 +106,9 @@ function AssociationCard({
           over ? "border-primary/70 bg-primary/20" : "border-white/12 bg-white/[0.06]"
         }`}
       >
+        {/* Sticky so the association name stays visible while its long club
+            list scrolls past. */}
+        <div className="sticky top-0 z-10 -mx-2.5 -mt-2 px-2.5 pt-2 pb-1 rounded-t-lg bg-[hsl(var(--card))]/95 backdrop-blur-sm">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}

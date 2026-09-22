@@ -5933,7 +5933,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
 
       const bookings = Array.from(slotMap.values()).map((s) => ({
-        club_id: clubId,
+        // A court always belongs to its own club — an association event played
+        // at PCC must reserve PCC's court in PCC's own diary, not the organiser's.
+        club_id: courtClubId(s.courtId),
         court_id: s.courtId,
         user_id: null,
         club_member_id: null,
@@ -5952,10 +5954,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (schedulingMode === "club" && bookings.length > 0) {
 
         // Clear prior per-match bookings for this tournament so re-saves don't
-        // leave stale rows alongside the consolidated blocks.
+        // leave stale rows alongside the consolidated blocks. The external id
+        // already identifies the tournament, so venue clubs are covered too.
         await fromExt("bookings")
           .delete()
-          .eq("club_id", clubId)
           .eq("source", "club_event")
           .like("external_id", `champ:${champId}:%`);
         const { error: bookErr } = await fromExt("bookings")
@@ -6127,7 +6129,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         }
 
         rows = Array.from(blocks.values()).map((s) => ({
-          club_id: clubId,
+          club_id: courtClubId(s.courtId),
           court_id: s.courtId,
           user_id: null,
           club_member_id: null,
@@ -6172,7 +6174,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         }
 
         rows = Array.from(slotMap.values()).map((s) => ({
-            club_id: clubId,
+            club_id: courtClubId(s.courtId),
             court_id: s.courtId,
             user_id: null,
             club_member_id: null,
@@ -6189,7 +6191,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
       await fromExt("bookings")
         .delete()
-        .eq("club_id", clubId)
         .eq("source", "club_event")
         .like("external_id", `champ:${champId}:%`);
       const { data: inserted, error: bErr } = await fromExt("bookings")

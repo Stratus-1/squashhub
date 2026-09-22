@@ -258,7 +258,12 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
       }
     } catch (e) {
       setOptimistic(null);
-      toast.error(e instanceof Error ? e.message : `Could not switch ${device.name}`);
+      const msg = e instanceof Error ? e.message : `Could not switch ${device.name}`;
+      if (action === "pulse" && device.category === "access") {
+        await bleRescue(msg);
+        return;
+      }
+      toast.error(msg);
     }
   };
 

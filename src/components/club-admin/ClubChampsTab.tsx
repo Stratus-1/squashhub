@@ -7399,7 +7399,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     const inheritedM: Record<string, "singles" | "doubles"> = {};
     for (let i = 1; i <= (champ.num_groups || 0); i++) {
       inheritedG[String(i)] = (lg?.[String(i)] as GenderCategory) ?? champ.gender;
-      inheritedM[String(i)] = (lmt?.[String(i)] as "singles" | "doubles") ?? (champ.match_type || "singles");
+      // Only adopt a per-division value that was actually saved. Filling the
+      // blanks with the tournament-level type would turn a saved singles stage
+      // into doubles the moment any other division is doubles.
+      const saved = lmt?.[String(i)] as "singles" | "doubles" | undefined;
+      if (saved) inheritedM[String(i)] = saved;
     }
     setLeagueGenders(inheritedG);
     setLeagueMatchTypes(inheritedM);

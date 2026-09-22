@@ -4474,9 +4474,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             nowAbs: number,
             cid: number,
             enforceBreak: boolean,
+            tRel?: number,
+            sessionEndMin?: number,
           ): number[] | null => {
             if (!bindOk(gn, m, cid)) return null;
             const cap = capFor(gn, m.poolNum ?? null);
+            // This pool's own game must still fit inside the session.
+            if (tRel != null && sessionEndMin != null && tRel + cap > sessionEndMin) return null;
             const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
             for (const pid of players) {
               if ((playerBusyUntil.get(pid) ?? 0) > nowAbs) return null;

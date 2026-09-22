@@ -12348,11 +12348,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                     {(roundFormat === "cross_league"
                       ? [1]
+                      // A stage that runs AFTER another one (Diamond League:
+                      // doubles follows singles) is scheduled up front too — its
+                      // slots are reserved with "to be decided" fixtures — so it
+                      // still needs its slot/bell timing here.
                       : Array.from({ length: numGroups }, (_, i) => i + 1)
-                          // A stage that runs AFTER another one (Diamond League:
-                          // doubles follows singles) is not built now, so don't
-                          // ask for its timing here.
-                          .filter((gn) => !followsDivision(divisionFollows, gn))
                     ).map((gn) => {
 
                       const slot = Number(groupDurations[String(gn)]) || matchDuration;

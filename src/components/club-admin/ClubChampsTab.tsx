@@ -768,7 +768,7 @@ function SegRow({
             size="sm"
             variant="outline"
             className={cn(
-              "h-8 px-3 text-xs flex-1 min-w-[84px] transition-colors",
+              "h-auto min-h-8 py-1.5 px-3 text-xs flex-1 min-w-[84px] transition-colors whitespace-normal text-center leading-snug",
               value === o.v ? c.active : c.outline
             )}
             onClick={() => onChange(o.v)}

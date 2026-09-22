@@ -4666,13 +4666,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 // 1) Try owner league first (strict), 2) fall back to any league
                 //    so a court never sits idle when the owner has nothing to play.
                 const pickForLeague = (gn: number, enforceBreak: boolean) => {
-                  const cap = capFor(gn);
+                  const cap = capMinFor(gn);
                   if (t + cap > s.endMin) return null;
                   const pool = remainingByLeague.get(gn);
                   if (!pool || !pool.length) return null;
                   let bestIdx = -1; let bestScore: number[] | null = null;
                   for (let i = 0; i < pool.length; i++) {
-                    const score = scoreMatch(pool[i], gn, nowAbs, cid, enforceBreak);
+                    const score = scoreMatch(pool[i], gn, nowAbs, cid, enforceBreak, t, s.endMin);
                     if (!score) continue;
                     if (!bestScore || cmpScore(score, bestScore) < 0) { bestIdx = i; bestScore = score; }
                   }

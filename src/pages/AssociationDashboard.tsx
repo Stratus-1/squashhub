@@ -30,7 +30,7 @@ import { AssociationFeesTab } from "@/components/association-admin/AssociationFe
 import { AssociationSetupTab } from "@/components/association-admin/AssociationSetupTab";
 import { UsersTab } from "@/components/club-admin/UsersTab";
 import { AssociationLeaguesTab } from "@/components/association-admin/AssociationLeaguesTab";
-import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
+import { TournamentPlanner } from "@/components/tournaments/TournamentPlanner";
 import { PermissionsTab } from "@/components/club-admin/PermissionsTab";
 import { CommunicationsTab } from "@/components/club-admin/CommunicationsTab";
 import { MessageLogTab } from "@/components/club-admin/MessageLogTab";
@@ -208,7 +208,7 @@ export default function AssociationDashboard() {
       case "setup": return <AssociationSetupTab clubId={association.id} />;
       case "affiliated": return <AffiliatedClubsTab clubId={association.id} />;
       case "leagues": return <AssociationLeaguesTab clubId={association.id} />;
-      case "champs": return <ClubChampsTab clubId={association.id} />;
+      case "champs": return <TournamentPlanner mode="club" clubId={association.id} />;
       case "rankings": return <AssociationRankingsTab clubId={association.id} />;
       case "members": return <AssociationMembersTab clubId={association.id} />;
       case "users": return <UsersTab clubId={association.id} />;

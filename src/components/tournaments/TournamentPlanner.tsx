@@ -9,6 +9,8 @@ import { Flag, Building2, ChevronDown, ChevronRight } from "lucide-react";
 import { useHostClubs, useOwnerOrganisations } from "@/hooks/use-tournaments";
 import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
+import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
+import { orgDescendants } from "@/lib/tournaments/eligibility";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
 import { cn } from "@/lib/utils";
 

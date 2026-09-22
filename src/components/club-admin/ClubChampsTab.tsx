@@ -1868,9 +1868,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const directoryGroups = useMemo(() => groupByClub(directoryPlayers), [directoryPlayers]);
 
   /**
-   * Same privacy-safe directory, but driven by the Players step search box.
-   * Without this an organiser could find a cross-club player on the Invites
-   * step and then fail to find the very same person when picking players.
+   * Same privacy-safe directory, on the Players step. This is browsable, not
+   * only searchable: for a regional/federation tournament every player of the
+   * invited clubs must be pickable here, exactly as on the Invites step. The
+   * search box just narrows the same list server-side.
    */
   const { data: playerStepDirectory = [], isFetching: playerStepDirectoryLoading } = useQuery({
     queryKey: [
@@ -1879,6 +1880,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       clubId,
       eligibilityScope,
       playerSearch.trim().toLowerCase(),
+      audienceClubIds.join(","),
     ],
     queryFn: () =>
       fetchInviteDirectory({
@@ -1886,9 +1888,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         clubId,
         scope: eligibilityScope,
         search: playerSearch,
-        limit: 300,
+        limit: 1000,
+        clubIds: audienceClubIds,
       }),
-    enabled: !!clubId && showWizard && playerSearch.trim().length >= 2,
+    enabled: !!clubId && showWizard,
     staleTime: 30_000,
     retry: false,
   });

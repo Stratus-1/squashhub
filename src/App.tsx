@@ -516,6 +516,7 @@ function AppRoutes() {
         <Route path="/admin" element={<AdminRoute><SuperAdminLayout /></AdminRoute>}>
           <Route index element={<SuperAdminDashboard />} />
           <Route path="clubs" element={<SuperAdminClubs />} />
+          <Route path="adoption" element={<SuperAdminAdoption />} />
           <Route path="federation" element={<SuperAdminFederation />} />
           <Route path="tournaments" element={<SuperAdminTournaments />} />
           <Route path="users" element={<SuperAdminUsers />} />

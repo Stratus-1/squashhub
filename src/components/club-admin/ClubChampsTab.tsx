@@ -231,6 +231,11 @@ interface ClubChampsTabProps {
    * organisation is used). Set for association / federation tournament planning.
    */
   ownerOrgId?: string | null;
+  /**
+   * Body used only to work out who may enter — set when the organiser is an
+   * association tenant, whose events stay filed under its own tenant row.
+   */
+  eligibilityOrgId?: string | null;
   /** Who is running the event. Drives the entrant pool and which governance fields matter. */
   scope?: "club" | "association" | "federation";
   /** Extra clubs (besides clubId) whose members and courts may be used. */
@@ -806,7 +811,7 @@ async function edgeErrorMessage(error: any, data: any, fallback: string): Promis
   return error?.message || fallback;
 }
 
-export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
+export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = null, scope = "club", participatingClubIds }: ClubChampsTabProps) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   // Pull the latest club-ladder positions (and entrant list) on demand — the
@@ -837,14 +842,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
   // Who may enter — governance field, kept here because the eligible player
   // pool is derived from it (club / owning association / whole federation).
   const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "association");
-  const eligibility = useTournamentEligibility({ scope: eligibilityScope, clubId, ownerOrgId });
+  // An association tenant files its events under its own row, so the body that
+  // defines the entrant pool is passed separately.
+  const scopeOrgId = ownerOrgId ?? eligibilityOrgId;
+  const eligibility = useTournamentEligibility({ scope: eligibilityScope, clubId, ownerOrgId: scopeOrgId });
 
   // Name of the owning association, used to label the eligibility option.
   const { data: orgHierarchy } = useOrgHierarchyLite();
   const associationName = useMemo(() => {
     if (!orgHierarchy) return null;
-    return owningAssociation(ownerOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.name ?? null;
-  }, [orgHierarchy, ownerOrgId]);
+    return owningAssociation(scopeOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.name ?? null;
+  }, [orgHierarchy, scopeOrgId]);
 
   const eventTypeOptions = useMemo(() => eventTypesFor(scope), [scope]);
   const eligibilityOptions = useMemo(

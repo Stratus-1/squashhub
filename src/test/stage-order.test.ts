@@ -38,7 +38,8 @@ describe("finishingOrder", () => {
     );
     expect(unpaired).toEqual([]);
     expect(pairs).toHaveLength(3);
-    // Last pair is the two who finished at the bottom of the order.
-    expect(pairs[pairs.length - 1]).toEqual({ a: order[4].memberId, b: order[5].memberId });
+    // Adjacent pairing starts at the bottom: the last two finishers play together.
+    expect(pairs[0]).toEqual({ a: order[4].memberId, b: order[5].memberId });
+    expect(pairs[pairs.length - 1]).toEqual({ a: order[0].memberId, b: order[1].memberId });
   });
 });

@@ -999,6 +999,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     }
   };
 
+  /** Which club owns a court — the venue a fixture is actually played at. */
+  const courtClubId = (courtId: number) =>
+    courts.find((c) => c.id === courtId)?.club_id || clubId;
+
 
 
   const { data: existingChamps = [], isLoading: champsLoading } = useQuery({

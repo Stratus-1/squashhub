@@ -4168,8 +4168,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // Singles draws are constrained to each division's eligible population
       // ("Players from"). Doubles pairs are built by hand and are left as-is.
       const perLeagueIds: string[][] = isDoubles
-        ? (groups as DoublePair[][]).map((g) => g.map((p) => p.id))
-        : (groups as ClubMember[][]).map((g, gi) => eligibleIdsForDivision(gi + 1, g.map((p) => p.id)));
+        ? (scheduleGroups as DoublePair[][]).map((g) => g.map((p) => p.id))
+        : (scheduleGroups as ClubMember[][]).map((g, gi) => eligibleIdsForDivision(gi + 1, g.map((p) => p.id)));
 
 
       // Leagues on "cross league" WITHOUT their own pools play against the other
@@ -4596,8 +4596,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       // pool matches don't grab them. `allSlots` is built in date/time/court
       // order, so the tail of the array is the latest end of the tournament.
       const entriesPerLeague: number[] = isDoubles
-        ? (groups as DoublePair[][]).map((g) => g.length)
-        : (groups as ClubMember[][]).map((g) => g.length);
+        ? (scheduleGroups as DoublePair[][]).map((g) => g.length)
+        : (scheduleGroups as ClubMember[][]).map((g) => g.length);
 
       // Pool mode: any league split into 2+ pools (Swiss, round robin or cross
       // league) contributes its pool split; others stay as a single pool.
@@ -4957,7 +4957,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [groups, isDoubles, rotatePartners, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
+  }, [scheduleGroups, isDoubles, rotatePartners, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the

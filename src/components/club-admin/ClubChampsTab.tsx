@@ -109,6 +109,7 @@ import {
   wouldCycle,
   type PairingMethod,
 } from "@/lib/tournaments/stage-sequence";
+import { TOURNAMENT_PRESETS, presetToMaps, type TournamentPreset } from "@/lib/tournaments/presets";
 import { distributeIntoPools, flattenPools, moveVisual, normalisePoolAllocation, poolBlocks, poolCounts, poolLetter, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { generateRotatingDoublesSchedule, parseRotationEntity, rotationEntityId } from "@/lib/tournaments/rotating-doubles";
 import {
@@ -174,7 +175,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
-import { Users as UsersIcon, ShieldCheck, RefreshCw, Shuffle, Smartphone } from "lucide-react";
+import { Users as UsersIcon, ShieldCheck, RefreshCw, Shuffle, Smartphone, Sparkles } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { getTournamentFormat } from "@/lib/tournament-formats";
@@ -1318,6 +1319,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (fmt === "cross_league") setRoundFormat("cross_league");
     else if (fmt === "knockout") { if (!roundFormat) setRoundFormat("single_round_robin"); }
     else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
+  };
+
+  /**
+   * Apply a ready-made structure (e.g. Durbanville's Diamond League) in one
+   * click. It only fills in the division settings — every value stays
+   * editable afterwards, and nothing already entered on other steps is lost.
+   */
+  const applyPreset = (preset: TournamentPreset) => {
+    const maps = presetToMaps(preset);
+    setNumGroups(maps.numGroups);
+    setUsePerLeagueFormats(true);
+    setGroupLabels((m) => ({ ...m, ...maps.labels }));
+    setLeagueFormats((m) => ({ ...m, ...maps.formats }) as any);
+    setLeagueMatchTypes((m) => ({ ...m, ...maps.matchTypes }));
+    setLeagueScoringModes((m) => ({ ...m, ...maps.scoringModes }));
+    setGroupDurations((m) => ({ ...m, ...maps.durations }));
+    setSwissPools((m) => ({ ...m, ...maps.pools }));
+    setDivisionFollows((m) => ({ ...m, ...maps.follows }));
+    setDivisionPairing((m) => ({ ...m, ...maps.pairing }));
+    setLeagueGenders((m) => {
+      const next = { ...m };
+      preset.divisions.forEach((d) => { next[String(d.gn)] = next[String(d.gn)] ?? gender; });
+      return next;
+    });
+    if (!roundFormat || roundFormat === "cross_league") setRoundFormat("single_round_robin");
+    setScoringMode("time_capped_points");
+    setMatchDuration(maps.matchDuration);
+    toast.success(`${preset.name} structure applied — adjust anything you like`);
   };
 
   /**
@@ -9617,6 +9646,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                       );
                     })}
                     <p className="text-[10px] text-muted-foreground italic pt-1">Tip: there is no limit — add a division per class (League 1-4, Ladies, Junior Boys, Junior Girls…). Use the copy icon on a division to clone its rules.</p>
+
+                    {/* Ready-made structures — one click fills in the stages,
+                        game lengths and pairing; everything stays editable. */}
+                    <div className="pt-2 border-t border-border space-y-2">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ready-made structures</div>
+                      {TOURNAMENT_PRESETS.map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => applyPreset(preset)}
+                          className="w-full text-left rounded-lg border border-border bg-card p-2.5 shadow-sm hover:border-violet-500/50 hover:shadow-md transition-all group"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 group-hover:bg-violet-500 group-hover:text-white transition-colors">
+                              <Sparkles className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="text-xs font-semibold">{preset.name}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{preset.description}</p>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

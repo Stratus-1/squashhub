@@ -5249,7 +5249,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             scheduled_time: isBye ? null : m.time,
             court_id: isBye ? null : m.courtId,
             leg: m.leg ?? null,
-            section_number: m.koSection ?? null,
+            section_number: m.koSection ?? m.poolNum ?? null,
             stage: m.koSection ? "ko" : "group",
             stage_label: m.koStageLabel ?? null,
             is_bye: isBye,
@@ -5278,7 +5278,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
           scheduled_time: isBye ? null : m.time,
           court_id: isBye ? null : m.courtId,
           leg: m.leg ?? null,
-          section_number: m.koSection ?? null,
+          section_number: m.koSection ?? m.poolNum ?? null,
           stage: m.koSection ? "ko" : "group",
           stage_label: m.koStageLabel ?? null,
           is_bye: isBye,
@@ -9368,7 +9368,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                 const waitsFor = followsDivision(divisionFollows, gn);
                                 const nameOf = (n: number) => groupLabels[String(n)] || `Division ${n}`;
                                 const pools = sectionsForLeague(gn);
-                                const timed = scoringForLeague(gn) === "time_capped_points";
                                 return (
                                   <div className="space-y-1 pt-1">
                                     <SegRow
@@ -9410,7 +9409,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                         </p>
                                       </>
                                     )}
-                                    {timed && pools > 1 && (
+                                    {pools > 1 && (
                                       <div className="space-y-1">
                                         <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                                           Minutes per pool (optional)

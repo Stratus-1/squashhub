@@ -74,6 +74,7 @@ export default function TournamentInvite() {
   const [verify, setVerify] = useState("");
   const [verifyError, setVerifyError] = useState("");
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [confirmDecline, setConfirmDecline] = useState(false);
   /** Organiser preview: /i/test/:champId. Nothing on this page may mutate. */
   const isTest = !!champId;
 

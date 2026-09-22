@@ -2485,8 +2485,25 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    * entity pipeline below behaves exactly like singles.
    */
   const rotatePartners = isDoublesCategory && partnerMode === "rotate";
+  /**
+   * Diamond-League style: every doubles division pairs automatically (adjacent
+   * or balanced) from the finishing order of the stage before it. Nobody pairs
+   * anyone up front, so setup behaves exactly like singles — the organiser just
+   * picks the field, and the pairs are built once that stage has been played.
+   */
+  const autoPairedDoubles = useMemo(() => {
+    if (!isDoublesCategory) return false;
+    let sawDoubles = false;
+    for (let i = 1; i <= (numGroups || 0); i++) {
+      if ((leagueMatchTypes[String(i)] ?? matchType) !== "doubles") continue;
+      sawDoubles = true;
+      const m = (divisionPairing as Record<string, unknown>)[String(i)];
+      if (m !== "adjacent" && m !== "balanced") return false;
+    }
+    return sawDoubles;
+  }, [isDoublesCategory, numGroups, leagueMatchTypes, matchType, divisionPairing]);
   /** Entity semantics: true only when the draw is built from FIXED pairs. */
-  const isDoubles = isDoublesCategory && !rotatePartners;
+  const isDoubles = isDoublesCategory && !rotatePartners && !autoPairedDoubles;
   const effectiveRegistrationMode = ((registrationMode || "open")) as "open" | "invite";
   const registrationUsesInviteList = effectiveRegistrationMode === "invite";
   const selfPairInviteSelection = isDoubles && partnerMode === "players" && registrationUsesInviteList;

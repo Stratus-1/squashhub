@@ -2,7 +2,7 @@
   "headers": [
     {
       "source": "/(.*)",
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }]
+      "headers": [{ "key": "X-Robots-Tag", "value": "noai, noimageai" }]
     },
     {
       "source": "/(auth|booking-response|dashboard|bookings|ladder|challenges|match-tracker|players|integrations|profile|achievements|feed|availability|analytics|seasons|notifications|reset-password|admin|support)(/.*)?",

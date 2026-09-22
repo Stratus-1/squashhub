@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueOutbox, type AccessEventPayload } from "@/lib/outbox";
 import { pulseShellyBleAuto, isBleFallbackAvailable } from "@/lib/shelly-ble-auto";
+import { resolveBleMac } from "@/lib/shelly-ble-mac";
 import { extractFunctionError } from "@/lib/shelly-errors";
 
 export type ShellyDoorOptions = {
@@ -75,7 +76,7 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
     // 2) Fallback: BLE whenever the Cloud path cannot confirm actuation (not
     // only when this phone is offline). This covers an offline Shelly Cloud
     // connection and commands acknowledged by Cloud but not executed.
-    const ble = opts.ble;
+    const ble = opts.ble ? { ...opts.ble, mac: resolveBleMac(opts.ble.mac) } : null;
     if (!ble?.enabled || !ble.mac) {
       // Queue an "attempted while offline" event so it shows in the audit trail.
       const userId = (await supabase.auth.getSession()).data.session?.user?.id;
@@ -137,4 +138,64 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
       message: "Shelly Cloud could not confirm the relay, so the door was pulsed via Bluetooth.",
     };
   }
+}
+
+/**
+ * Bluetooth fallback for a registered access device (the Access rows in Club
+ * Controls). The cloud call is made by the caller through `device-control`;
+ * this is what runs when that call reports the relay offline, so a member at
+ * the door still gets in.
+ */
+export async function pulseAccessDeviceBle(opts: {
+  clubId: string;
+  doorName: string;
+  clubMemberId?: string | null;
+  mac?: string | null;
+  shellyDeviceId?: string | null;
+  password?: string | null;
+  channel?: number | null;
+  pulseMs?: number | null;
+  cloudError: string;
+}): Promise<void> {
+  const mac = resolveBleMac(opts.mac, opts.shellyDeviceId);
+  if (!mac) throw new Error(opts.cloudError);
+  if (!isBleFallbackAvailable()) {
+    throw new Error(
+      `${opts.cloudError} Bluetooth fallback isn't available on this device — use the installed SquashHub app or Chrome/Edge on a Bluetooth-capable device.`,
+    );
+  }
+
+  let bleErr: any = null;
+  try {
+    await pulseShellyBleAuto({
+      mac,
+      password: opts.password ?? undefined,
+      channel: opts.channel ?? 0,
+      pulseMs: opts.pulseMs ?? 3000,
+      turn: "on",
+    });
+  } catch (e) {
+    bleErr = e;
+  }
+
+  const userId = (await supabase.auth.getSession()).data.session?.user?.id;
+  if (userId) {
+    enqueueOutbox({
+      id: crypto.randomUUID(),
+      kind: "access_event",
+      user_id: userId,
+      created_at: new Date().toISOString(),
+      payload: makeAccessEvent(
+        { clubId: opts.clubId, doorName: opts.doorName, clubMemberId: opts.clubMemberId },
+        bleErr ? "shelly_ble_fallback_failed" : "shelly_ble_fallback",
+        {
+          ble_mac: mac,
+          cloud_error: opts.cloudError,
+          error: bleErr ? String(bleErr?.message || bleErr) : null,
+        },
+      ),
+    });
+  }
+
+  if (bleErr) throw bleErr;
 }

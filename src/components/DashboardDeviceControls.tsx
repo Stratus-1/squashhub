@@ -11,6 +11,9 @@ import { useMyClub } from "@/hooks/use-club";
 import { useHasCapability } from "@/hooks/use-club-capabilities";
 import { useClubDevices, useDeviceControl } from "@/hooks/use-club-devices";
 import { useDoorControl, type DoorControl } from "@/hooks/use-door-control";
+import { useClubSecrets } from "@/hooks/use-club-secrets";
+import { useMemberContext } from "@/contexts/MemberContext";
+import { pulseAccessDeviceBle } from "@/lib/shelly-door";
 import { formatLatLngDM } from "@/lib/geo-format";
 import {
   DEVICE_CATEGORY_LIST,
@@ -182,7 +185,11 @@ function DoorRow({ door }: { door: DoorControl }) {
 function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
   const control = useDeviceControl(clubId);
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
+  const [bleBusy, setBleBusy] = useState(false);
   const Icon = deviceIcon(device);
+  const { data: clubSecrets } = useClubSecrets(clubId);
+  const { activeMember } = useMemberContext();
+  const d = device as any;
 
   // The switch flips immediately so it feels responsive, but any fresh reading
   // from the relay wins — otherwise a device that reported a different state
@@ -195,13 +202,50 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
   const isPulse = device.control_mode === "pulse";
   const state = optimistic ?? device.last_state ?? false;
   const behaviour = describeDeviceSchedule(device) ?? describeDeviceBehaviour(device);
-  const busy = control.isPending;
+  const busy = control.isPending || bleBusy;
+
+  /**
+   * Access relays get the same Bluetooth rescue as the main door: when the
+   * club's internet (or the relay's Wi-Fi) is down, a member standing at the
+   * door still opens it over BLE. Other categories deliberately don't — a
+   * geyser can wait for the network.
+   */
+  const bleRescue = async (cloudError: string) => {
+    const secrets: any = clubSecrets || {};
+    if (device.category !== "access" || !secrets.ble_fallback_enabled) {
+      toast.error(cloudError);
+      return;
+    }
+    setBleBusy(true);
+    try {
+      await pulseAccessDeviceBle({
+        clubId,
+        doorName: device.name,
+        clubMemberId: activeMember?.id ?? null,
+        mac: d.ble_mac,
+        shellyDeviceId: d.shelly_device_id,
+        password: secrets.shelly_ble_control_password,
+        channel: d.shelly_channel ?? 0,
+        pulseMs: d.pulse_ms ?? 3000,
+        cloudError,
+      });
+      toast.success(`${device.name} opened over Bluetooth (club internet is down)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : cloudError);
+    } finally {
+      setBleBusy(false);
+    }
+  };
 
   const run = async (action: "on" | "off" | "pulse") => {
     if (action !== "pulse") setOptimistic(action === "on");
     try {
       const res = await control.mutateAsync({ deviceId: device.id, action });
       if (action === "pulse") {
+        if (res && res.ok === false) {
+          await bleRescue(`${device.name} is offline.`);
+          return;
+        }
         toast.success(`${device.name} triggered`);
       } else {
         toast.success(
@@ -214,7 +258,12 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
       }
     } catch (e) {
       setOptimistic(null);
-      toast.error(e instanceof Error ? e.message : `Could not switch ${device.name}`);
+      const msg = e instanceof Error ? e.message : `Could not switch ${device.name}`;
+      if (action === "pulse" && device.category === "access") {
+        await bleRescue(msg);
+        return;
+      }
+      toast.error(msg);
     }
   };
 

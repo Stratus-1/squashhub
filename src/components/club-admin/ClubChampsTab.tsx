@@ -12393,6 +12393,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                 {schedulePreview.totalSlots < schedulePreview.totalMatches && (
                   <p className="text-destructive font-medium">⚠️ Not enough slots! Add more days, courts, or extend the time range.</p>
                 )}
+                {deferredStageLabels.length > 0 && (
+                  <p className="text-muted-foreground">
+                    ⏭️ {deferredStageLabels.join(", ")} {deferredStageLabels.length === 1 ? "is" : "are"} played after an earlier
+                    stage — those matches are built once that stage is finished, so they are not in this schedule.
+                  </p>
+                )}
               </div>
             )}
             </>

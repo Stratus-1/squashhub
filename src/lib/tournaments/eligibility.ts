@@ -28,6 +28,8 @@ export interface OrgRow {
   name: string;
   club_id: string | null;
   is_internal_league?: boolean | null;
+  /** Linked league-association row — the key ranking snapshots are filed under. */
+  league_association_id?: string | null;
 }
 
 export interface RelRow {

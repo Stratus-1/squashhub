@@ -13,7 +13,7 @@ export function useOrgHierarchyLite() {
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const [orgsRes, relsRes, clubsRes] = await Promise.all([
-        supabase.from("organisations").select("id, kind, name, club_id, is_internal_league"),
+        supabase.from("organisations").select("id, kind, name, club_id, is_internal_league, league_association_id"),
         supabase.from("organisation_relationships").select("parent_org_id, child_org_id, effective_to"),
         supabase.from("clubs").select("id, name"),
       ]);

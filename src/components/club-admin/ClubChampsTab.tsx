@@ -216,6 +216,7 @@ import {
 } from "@/lib/tournaments/self-scheduled-rounds";
 import { useTournamentEligibility, useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { owningAssociation } from "@/lib/tournaments/eligibility";
+import { useSeedingRankMaps } from "@/hooks/use-seeding-ranks";
 import { DoublesPairsPanel } from "@/components/club-admin/DoublesPairsPanel";
 import { z } from "zod";
 import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";
@@ -424,6 +425,15 @@ function generateRoundRobinRounds(
     byesPerRound: [...byesPerRound, ...byesPerRound],
   };
 }
+
+/** Seeding source value → player-facing label ("Seeded by …"). */
+const SEEDING_SOURCE_LABELS: Record<string, string> = {
+  ladder: "club ladder",
+  club_ranking: "club ranking",
+  regional_ranking: "regional ranking",
+  ranking: "national ranking",
+  manual: "manual order",
+};
 
 const GENDER_LABELS: Record<GenderCategory, string> = {
   men: "Men's",
@@ -1702,6 +1712,43 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [maxEntrants, setMaxEntrants] = useState<string>("");
   const [maxPerLeague, setMaxPerLeague] = useState<string>("");
   const [seedingSource, setSeedingSource] = useState<string>("ladder");
+
+  // The association whose ranking list "Regional ranking" seeds from — the
+  // owning association of this event's organiser (a club's own region too).
+  const regionalRankingAssocId = useMemo(() => {
+    if (!orgHierarchy) return null;
+    return owningAssociation(scopeOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.league_association_id ?? null;
+  }, [orgHierarchy, scopeOrgId]);
+  const needsRankMaps = seedingSource === "regional_ranking" || seedingSource === "ranking";
+  const { data: seedRankMaps } = useSeedingRankMaps(regionalRankingAssocId, showWizard && needsRankMaps);
+
+  /**
+   * Seed rank per entrant from the chosen source — lower is stronger, null
+   * means unranked. Club rating points run high-to-low, so they are negated.
+   * Anyone missing from the chosen list falls back to the club ladder rather
+   * than dropping to the bottom.
+   */
+  const seedRankOf = useCallback(
+    (p: any): number | null => {
+      const ladder =
+        typeof p?.ladder_position === "number" && p.ladder_position > 0 ? p.ladder_position : null;
+      switch (seedingSource) {
+        case "club_ranking": {
+          const pts = Number(p?.ranking_points ?? 0);
+          return pts > 0 ? -pts : ladder;
+        }
+        case "regional_ranking":
+          return (p?.person_id ? seedRankMaps?.regional.get(String(p.person_id)) : undefined) ?? ladder;
+        case "ranking":
+          return (p?.person_id ? seedRankMaps?.national.get(String(p.person_id)) : undefined) ?? ladder;
+        default:
+          return ladder;
+      }
+    },
+    [seedingSource, seedRankMaps],
+  );
+
+  const seedingSourceLabel = SEEDING_SOURCE_LABELS[seedingSource] ?? "club ladder";
 
   const [showInvitePreview, setShowInvitePreview] = useState(false);
 
@@ -3786,12 +3833,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         g[extra].push(p);
       });
     });
-    // Seed order per division: club ladder ascending, unranked last, unless
-    // the organiser deliberately reordered that division by hand.
+    // Seed order per division: the chosen seeding source (club ladder by
+    // default; club rating / regional / national ranking when selected),
+    // unranked last, unless the organiser deliberately reordered by hand.
     const sorted = g.map((list, gi) =>
       sortDivisionEntrants(list as any, {
         manual: manualSeedGroups.has(gi),
         manualOrder: playerOrder,
+        rankOf: seedRankOf,
       }) as ClubMember[],
     );
     // Staged events (Diamond League): a division played AFTER another is not
@@ -3810,7 +3859,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       );
     }
     return sorted;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor, seedRankOf]);
 
   /**
    * Staged events field the SAME players again in the next stage, so every
@@ -8401,7 +8450,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ladder">Club ladder</SelectItem>
-                      <SelectItem value="club_ranking">Club ranking</SelectItem>
+                      <SelectItem value="club_ranking">Club ranking (rating points)</SelectItem>
+                      <SelectItem value="regional_ranking">Regional ranking</SelectItem>
                       <SelectItem value="ranking">National ranking</SelectItem>
                       <SelectItem value="manual">Manual order</SelectItem>
                     </SelectContent>
@@ -11979,9 +12029,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   : "";
                                 return (
                                   <Badge variant="outline" className="text-[10px]">
-                                    {src && seedSourceFor(gi + 1) === "previous"
-                                      ? `Seeded by ${srcLabel} results`
-                                      : "Seeded by club ladder"}
+                                     {src && seedSourceFor(gi + 1) === "previous"
+                                       ? `Seeded by ${srcLabel} results`
+                                       : `Seeded by ${seedingSourceLabel}`}
                                   </Badge>
                                 );
                               })()

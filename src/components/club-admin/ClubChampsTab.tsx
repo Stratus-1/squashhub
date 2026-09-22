@@ -343,6 +343,14 @@ const STEP_LABELS: Record<WizardStep, string> = {
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/**
+ * Placeholder entrant of a stage that is played AFTER another one. The games
+ * are scheduled up front (we know how many there will be) but the names only
+ * arrive once the preceding stage has finished.
+ */
+const TBD_PREFIX = "tbd:";
+const isTbdEntity = (id?: string | null) => !!id && String(id).startsWith(TBD_PREFIX);
+
 interface DoublePair {
   id: string; // temporary id for UI
   player1Id: string;

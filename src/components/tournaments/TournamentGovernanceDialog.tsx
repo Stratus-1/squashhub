@@ -34,6 +34,7 @@ import { useClubContext } from "@/contexts/ClubContext";
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { useTournamentEligibility } from "@/hooks/use-tournament-eligibility";
+import { hostFeeCents } from "@/lib/tournaments/venues";
 
 
 interface Props {
@@ -170,7 +171,7 @@ export function TournamentGovernanceDialog({ champ, onOpenChange, scope = "feder
     federationFeePct: Number(form?.federation_fee_pct ?? 0),
     associationFeeCents: form?.association_fee_cents ?? 0,
     associationFeePct: Number(form?.association_fee_pct ?? 0),
-    hostFeeCents: venues.reduce((s, v) => s + (v.host_fee_cents || 0), 0),
+    hostFeeCents: venues.reduce((s, v) => s + hostFeeCents(v), 0),
     hostSharePct: venues.reduce((s, v) => s + Number(v.host_share_pct || 0), 0),
     otherExpensesCents: form?.other_expenses_cents ?? 0,
     platformFeePct: platformPct ?? 0,

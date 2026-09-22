@@ -113,7 +113,8 @@ export function useMemberStatSeasons(memberId?: string | null) {
   return useQuery<number[]>({
     queryKey: ["member-stat-seasons", memberId],
     enabled: !!memberId,
-    staleTime: 60 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("get_member_stat_seasons_cached", {
         _member_id: memberId!,

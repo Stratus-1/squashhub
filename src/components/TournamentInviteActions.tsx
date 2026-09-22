@@ -378,20 +378,47 @@ export function TournamentInviteActions({ notification, champId, registrationId,
                   This is a doubles tournament — you'll confirm your attendance <span className="font-medium text-foreground">and select your partner</span> (if you've agreed with someone already) in the next step.
                 </p>
               )}
-              <div className="flex flex-col sm:flex-row gap-2 mt-3">
-                <Button
-                  size="sm"
-                  className="h-8 text-xs flex-1"
-                  disabled={respond.isPending}
-                  onClick={() => (isPartnerInvite ? respond.mutate(true) : setRegisterOpen(true))}
-                >
-                  {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : paymentRequired ? <CreditCard className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
-                  {isPartnerInvite ? "Accept Partner" : doublesPickPartner ? (paymentRequired ? `Confirm & select partner · ${formatMoney(entryFeeCents)}` : "Confirm attendance & select partner") : paymentRequired ? `Register to accept · ${formatMoney(entryFeeCents)}` : "Register to accept"}
-                </Button>
-                <Button size="sm" variant="outline" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => respond.mutate(false)}>
-                  <XCircle className="w-3 h-3 mr-1" /> Decline
-                </Button>
-              </div>
+              {confirmDecline ? (
+                // Declining is never one tap — a mis-tap must not remove someone.
+                <div className="mt-3 space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
+                  <p className="text-[11px]">
+                    Are you sure you don't want to play in {champ?.name || "this tournament"}? The organiser
+                    will be told you are not entering.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => setConfirmDecline(false)}>
+                      No, go back
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-8 text-xs flex-1"
+                      disabled={respond.isPending}
+                      onClick={() => {
+                        setConfirmDecline(false);
+                        respond.mutate(false);
+                      }}
+                    >
+                      {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : "Yes, I'm not playing"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs flex-1"
+                    disabled={respond.isPending}
+                    onClick={() => (isPartnerInvite ? respond.mutate(true) : setRegisterOpen(true))}
+                  >
+                    {respond.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : paymentRequired ? <CreditCard className="w-3 h-3 mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                    {isPartnerInvite ? "Accept Partner" : doublesPickPartner ? (paymentRequired ? `Confirm & select partner · ${formatMoney(entryFeeCents)}` : "Confirm attendance & select partner") : paymentRequired ? `Register to accept · ${formatMoney(entryFeeCents)}` : "Register to accept"}
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 text-xs flex-1" disabled={respond.isPending} onClick={() => setConfirmDecline(true)}>
+                    <XCircle className="w-3 h-3 mr-1" /> Decline
+                  </Button>
+                </div>
+              )}
             </>
             );
           })()}

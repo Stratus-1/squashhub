@@ -231,6 +231,11 @@ interface ClubChampsTabProps {
    * organisation is used). Set for association / federation tournament planning.
    */
   ownerOrgId?: string | null;
+  /**
+   * Body used only to work out who may enter — set when the organiser is an
+   * association tenant, whose events stay filed under its own tenant row.
+   */
+  eligibilityOrgId?: string | null;
   /** Who is running the event. Drives the entrant pool and which governance fields matter. */
   scope?: "club" | "association" | "federation";
   /** Extra clubs (besides clubId) whose members and courts may be used. */

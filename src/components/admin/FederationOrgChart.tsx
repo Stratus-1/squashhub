@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Building2, ChevronDown, ChevronRight, Flag, Plus, Settings, Trophy } from "lucide-react";
+import { Building2, ChevronDown, ChevronLeft, ChevronRight, Flag, Plus, Settings, Trophy } from "lucide-react";
 import type { OrgNode } from "@/hooks/use-federation";
 import { OrgSettingsDialog } from "@/components/admin/OrgSettingsDialog";
 

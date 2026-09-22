@@ -175,7 +175,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { TournamentRegistrationsDialog } from "./TournamentRegistrationsDialog";
 import { TournamentBulkImportDialog } from "./TournamentBulkImportDialog";
-import { Users as UsersIcon, ShieldCheck, RefreshCw, Shuffle, Smartphone } from "lucide-react";
+import { Users as UsersIcon, ShieldCheck, RefreshCw, Shuffle, Smartphone, Sparkles } from "lucide-react";
 import { TournamentGovernanceDialog } from "@/components/tournaments/TournamentGovernanceDialog";
 import { useTournamentGovernance } from "@/hooks/use-tournaments";
 import { getTournamentFormat } from "@/lib/tournament-formats";

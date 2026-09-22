@@ -11,7 +11,9 @@ interface WizardSectionProps {
   complete?: boolean;
   /** Open on first render (ignored once the user toggles it) */
   defaultOpen?: boolean;
-  /** Collapse automatically the moment `complete` flips to true (unless the user opened it) */
+  /** Collapse automatically the moment `complete` flips to true (unless the user opened it).
+   *  Off by default — collapsing mid-edit yanks the section away while the admin
+   *  is still ticking options. */
   autoCollapse?: boolean;
   /** Optional right-hand adornment (counts, badges…) */
   aside?: ReactNode;
@@ -29,7 +31,7 @@ export function WizardSection({
   summary,
   complete,
   defaultOpen = true,
-  autoCollapse = true,
+  autoCollapse = false,
   aside,
   children,
   className,

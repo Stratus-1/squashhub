@@ -9326,6 +9326,99 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
                                   }}
                                 />
                               )}
+                              {/* Stage sequencing — does this division run alongside the
+                                  others, or only once another one has been played out?
+                                  A following doubles division inherits the finishing order
+                                  of the stage before it and pairs players from it. */}
+                              {(() => {
+                                const others = Array.from({ length: numGroups || 0 }, (_, i) => i + 1).filter(
+                                  (n) => n !== gn && !wouldCycle(divisionFollows, n, gn),
+                                );
+                                if (others.length === 0) return null;
+                                const waitsFor = followsDivision(divisionFollows, gn);
+                                const nameOf = (n: number) => groupLabels[String(n)] || `Division ${n}`;
+                                const pools = sectionsForLeague(gn);
+                                const timed = scoringForLeague(gn) === "time_capped_points";
+                                return (
+                                  <div className="space-y-1 pt-1">
+                                    <SegRow
+                                      label="When this stage runs"
+                                      value={String(waitsFor ?? 0)}
+                                      color="violet"
+                                      options={[
+                                        { v: "0", l: "Alongside the others" },
+                                        ...others.map((n) => ({ v: String(n), l: `After ${nameOf(n)}` })),
+                                      ]}
+                                      onChange={(v) => {
+                                        const n = Number(v) || 0;
+                                        setDivisionFollows((m) => {
+                                          const next = { ...m };
+                                          if (n <= 0) delete next[key];
+                                          else next[key] = n;
+                                          return next;
+                                        });
+                                      }}
+                                    />
+                                    {waitsFor != null && matchTypeForLeague(gn) === "doubles" && (
+                                      <>
+                                        <SegRow
+                                          label="How pairs are formed"
+                                          value={pairingMethodFor(divisionPairing, gn)}
+                                          color="cyan"
+                                          options={[
+                                            { v: "adjacent", l: "Adjacent (6+5, 4+3, 2+1)" },
+                                            { v: "balanced", l: "Balanced (1+6, 2+5, 3+4)" },
+                                            { v: "manual", l: "Manual" },
+                                          ]}
+                                          onChange={(v) =>
+                                            setDivisionPairing((m) => ({ ...m, [key]: v as PairingMethod }))
+                                          }
+                                        />
+                                        <p className="text-[10px] text-muted-foreground">
+                                          {PAIRING_METHOD_LABELS[pairingMethodFor(divisionPairing, gn)]} — taken from the
+                                          finishing order of {nameOf(waitsFor)}.
+                                        </p>
+                                      </>
+                                    )}
+                                    {timed && pools > 1 && (
+                                      <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                          Minutes per pool (optional)
+                                        </Label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                          {Array.from({ length: pools }, (_, i) => i + 1).map((pool) => {
+                                            const pk = poolDurationKey(gn, pool);
+                                            return (
+                                              <Input
+                                                key={pk}
+                                                type="number"
+                                                min={1}
+                                                value={poolDurations[pk] ?? ""}
+                                                placeholder={String(
+                                                  Number(groupDurations[key]) || matchDuration || 20,
+                                                )}
+                                                onChange={(e) => {
+                                                  const n = Math.max(0, Number(e.target.value) || 0);
+                                                  setPoolDurations((m) => {
+                                                    const next = { ...m };
+                                                    if (n <= 0) delete next[pk];
+                                                    else next[pk] = n;
+                                                    return next;
+                                                  });
+                                                }}
+                                                className="h-8 text-xs"
+                                              />
+                                            );
+                                          })}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                          Leave blank to use this division's time. Pool order matches the pools above.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               {/* Forfeit / no-show rule — options come from THIS league's
                                   scoring format, so a standard best-of league can only take a
                                   walkover or a no-result, never an arbitrary points award. */}

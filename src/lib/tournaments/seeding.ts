@@ -46,8 +46,8 @@ const ladderRankOf: SeedRankOf = (e) => (isUnranked(e) ? null : (e.ladder_positi
 export function compareBySeed(a: SeedableEntrant, b: SeedableEntrant, rankOf: SeedRankOf = ladderRankOf): number {
   const ra = rankOf(a);
   const rb = rankOf(b);
-  const ar = typeof ra === "number" && ra > 0 ? ra : Number.POSITIVE_INFINITY;
-  const br = typeof rb === "number" && rb > 0 ? rb : Number.POSITIVE_INFINITY;
+  const ar = typeof ra === "number" && Number.isFinite(ra) ? ra : Number.POSITIVE_INFINITY;
+  const br = typeof rb === "number" && Number.isFinite(rb) ? rb : Number.POSITIVE_INFINITY;
   if (ar !== br) return ar - br;
   return entrantName(a).localeCompare(entrantName(b));
 }

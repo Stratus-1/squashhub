@@ -138,6 +138,7 @@ function AssociationCard({
         >
           <Settings className="w-3 h-3" /> Settings & admins
         </button>
+        </div>
 
         {open && (
           <div className="mt-2 flex flex-col gap-1">

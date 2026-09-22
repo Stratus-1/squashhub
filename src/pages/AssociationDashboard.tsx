@@ -208,7 +208,7 @@ export default function AssociationDashboard() {
       case "setup": return <AssociationSetupTab clubId={association.id} />;
       case "affiliated": return <AffiliatedClubsTab clubId={association.id} />;
       case "leagues": return <AssociationLeaguesTab clubId={association.id} />;
-      case "champs": return <ClubChampsTab clubId={association.id} />;
+      case "champs": return <TournamentPlanner mode="club" clubId={association.id} />;
       case "rankings": return <AssociationRankingsTab clubId={association.id} />;
       case "members": return <AssociationMembersTab clubId={association.id} />;
       case "users": return <UsersTab clubId={association.id} />;

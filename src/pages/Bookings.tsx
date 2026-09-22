@@ -84,7 +84,7 @@ import { Geolocation } from "@capacitor/geolocation";
 import { champMatchToBookingLabel } from "@/lib/tournaments/booking-label";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { visitorBookingDecision } from "@/lib/visitor-pass";
-import { useMyVisitorPass } from "@/hooks/use-visitor-pass";
+import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
 
 
 function timeToMinutes(t: string) {

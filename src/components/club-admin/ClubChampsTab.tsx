@@ -842,14 +842,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Who may enter — governance field, kept here because the eligible player
   // pool is derived from it (club / owning association / whole federation).
   const [eligibilityScope, setEligibilityScope] = useState<string>(scope === "club" ? "club" : "association");
-  const eligibility = useTournamentEligibility({ scope: eligibilityScope, clubId, ownerOrgId });
+  // An association tenant files its events under its own row, so the body that
+  // defines the entrant pool is passed separately.
+  const scopeOrgId = ownerOrgId ?? eligibilityOrgId;
+  const eligibility = useTournamentEligibility({ scope: eligibilityScope, clubId, ownerOrgId: scopeOrgId });
 
   // Name of the owning association, used to label the eligibility option.
   const { data: orgHierarchy } = useOrgHierarchyLite();
   const associationName = useMemo(() => {
     if (!orgHierarchy) return null;
-    return owningAssociation(ownerOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.name ?? null;
-  }, [orgHierarchy, ownerOrgId]);
+    return owningAssociation(scopeOrgId, orgHierarchy.orgs, orgHierarchy.rels)?.name ?? null;
+  }, [orgHierarchy, scopeOrgId]);
 
   const eventTypeOptions = useMemo(() => eventTypesFor(scope), [scope]);
   const eligibilityOptions = useMemo(

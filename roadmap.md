@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Group association tournament players by expandable club with individual and club selection
+
 - [x] Show active Bells tournament games as one chronological schedule without round headings
 - [x] Remove Karel Budler's attendance (decline RSVP) for Thu 17 Sep 2026 Thursday Social (CSIR club)
 - [x] Add 36-hour option to event reminder settings (CreateClubEvent form + reminder selection)

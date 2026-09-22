@@ -1060,6 +1060,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // tournament-level switch any more.
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [playerSearch, setPlayerSearch] = useState("");
+  const [expandedPlayerClubs, setExpandedPlayerClubs] = useState<Set<string>>(new Set());
   const [numGroups, setNumGroups] = useState(0);
   const [champName, setChampName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -11674,16 +11675,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             ) : (
               <>
                 <Input
-                  placeholder="Search by name…"
+                  placeholder={scope === "club" ? "Search by name…" : "Search by player or club…"}
                   value={playerSearch}
                   onChange={(e) => setPlayerSearch(e.target.value)}
                   className="mb-3 h-9"
                 />
                 {(() => {
                   const q = playerSearch.trim().toLowerCase();
+                  const clubForPlayer = (m: any) => {
+                    const id = m._isVisitor ? (m.home_club_id || m.club_id || null) : (m.club_id || m.home_club_id || null);
+                    const name = (m._isVisitor ? m._homeClub || m.home_club_name : null) || m.club?.name || (id
+                      ? orgHierarchy?.orgs.find((o) => o.kind === "club" && o.club_id === id)?.name
+                      : null) || m.home_club_name || (id === clubId ? ownerOrgName : null) || "Other club";
+                    return { key: m._isVisitor && m._homeClub ? `name:${name.toLowerCase()}` : id || `name:${name.toLowerCase()}`, name };
+                  };
                   const filtered = q
                     ? availablePlayers.filter((m: any) =>
-                        ((m.name || m.profiles?.name || "") as string).toLowerCase().includes(q)
+                        ((m.name || m.profiles?.name || "") as string).toLowerCase().includes(q) ||
+                        (scope !== "club" && clubForPlayer(m).name.toLowerCase().includes(q))
                       )
                     : availablePlayers;
                   if (filtered.length === 0) {
@@ -11695,9 +11704,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                       </p>
                     );
                   }
-                  return (
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                      {filtered.map((m: any) => {
+                  const renderPlayer = (m: any) => {
                         const i = availablePlayers.findIndex((p: any) => p.id === m.id);
                         return (
                           <label key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
@@ -11715,6 +11722,55 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
                             {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
                           </label>
+                        );
+                  };
+                  if (scope === "club") {
+                    return <div className="space-y-2 max-h-[400px] overflow-y-auto">{filtered.map(renderPlayer)}</div>;
+                  }
+                  const groups = new Map<string, { name: string; players: any[] }>();
+                  filtered.forEach((m: any) => {
+                    const { key, name } = clubForPlayer(m);
+                    const group = groups.get(key) || { name, players: [] };
+                    group.players.push(m);
+                    groups.set(key, group);
+                  });
+                  return (
+                    <div className="max-h-[400px] overflow-y-auto space-y-1">
+                      {[...groups.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([key, group]) => {
+                        const open = !!q || expandedPlayerClubs.has(key);
+                        const selected = group.players.filter((m) => selectedPlayerIds.has(m.id)).length;
+                        return (
+                          <div key={key} className="border border-border rounded-md">
+                            <div className="flex items-center gap-2 px-2 py-1.5 bg-muted/40">
+                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0"
+                                aria-label={`${open ? "Collapse" : "Expand"} ${group.name}`}
+                                aria-expanded={open}
+                                onClick={() => setExpandedPlayerClubs((prev) => {
+                                  const next = new Set(prev);
+                                  next.has(key) ? next.delete(key) : next.add(key);
+                                  return next;
+                                })}>
+                                <ChevronRight className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} />
+                              </Button>
+                              <Checkbox aria-label={`Select players from ${group.name}`}
+                                checked={selected === 0 ? false : selected === group.players.length ? true : "indeterminate"}
+                                onCheckedChange={(checked) => setSelectedPlayerIds((prev) => {
+                                  const next = new Set(prev);
+                                  group.players.forEach((m) => checked === true ? next.add(m.id) : next.delete(m.id));
+                                  return next;
+                                })} />
+                              <Button type="button" variant="ghost" className="h-7 min-w-0 flex-1 justify-start px-1 font-semibold"
+                                onClick={() => setExpandedPlayerClubs((prev) => {
+                                  const next = new Set(prev);
+                                  next.has(key) ? next.delete(key) : next.add(key);
+                                  return next;
+                                })}>
+                                <span className="truncate">{group.name}</span>
+                              </Button>
+                              <span className="shrink-0 text-xs text-muted-foreground">{selected}/{group.players.length} selected</span>
+                            </div>
+                            {open && <div className="pl-4">{group.players.map(renderPlayer)}</div>}
+                          </div>
                         );
                       })}
                     </div>

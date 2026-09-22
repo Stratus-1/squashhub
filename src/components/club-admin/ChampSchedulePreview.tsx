@@ -15,6 +15,7 @@ import { assignPools, entityIdForEntry, type Entry as SwissEntry } from "@/lib/s
 import { getBucketColor, buildBucketColorMap } from "@/lib/tournament-colors";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
 import { cn } from "@/lib/utils";
+import { fetchTournamentEntrants } from "@/lib/tournaments/invite-directory";
 
 interface Props {
   champId: string;
@@ -62,6 +63,14 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
       if (error) throw error;
       return data || [];
     },
+  });
+
+  // Cross-club members are hidden by club_members RLS, so the embedded joins
+  // above can be null even when the fixture has valid player IDs. The
+  // tournament-scoped directory exposes names only to its organiser.
+  const { data: entrantNames = new Map<string, string>() } = useQuery({
+    queryKey: ["champ-preview-entrant-names", champId],
+    queryFn: async () => new Map((await fetchTournamentEntrants(champId)).map((p) => [p.member_id, p.display_name])),
   });
 
   const isDoubles = (champ as any)?.match_type === "doubles";
@@ -249,18 +258,19 @@ export function ChampSchedulePreview({ champId, onBack, onFinalize, onMakeBookin
       (dateFilter === "all" || m.scheduled_date === dateFilter),
   );
 
-  const getName = (p: any) => p?.name || p?.profiles?.name || "Unknown";
-  const getTeam = (a: any, b: any) => (b ? `${getName(a)} & ${getName(b)}` : getName(a));
+  const getName = (p: any, id: string | null) => p?.name || (id && entrantNames.get(id)) || "Unknown";
+  const getTeam = (a: any, aId: string | null, b: any, bId: string | null) =>
+    bId ? `${getName(a, aId)} & ${getName(b, bId)}` : getName(a, aId);
 
   const renderRow = (m: any) => {
     // Placeholder-aware side label — reserved playoff/finals slots have no
     // player yet but carry a human-readable placeholder ("Winner Pool A").
-    const sideLabel = (player: any, partner: any, placeholder: string | null, isBye: boolean) => {
-      if (!player) return placeholder || (isBye ? "Bye" : "TBC");
-      return isDoubles ? getTeam(player, partner) : getName(player);
+    const sideLabel = (player: any, playerId: string | null, partner: any, partnerId: string | null, placeholder: string | null, isBye: boolean) => {
+      if (!playerId) return placeholder || (isBye ? "Bye" : "TBC");
+      return isDoubles ? getTeam(player, playerId, partner, partnerId) : getName(player, playerId);
     };
-    const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, !!m.is_bye);
-    const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, !!m.is_bye);
+    const teamA = sideLabel(m.player_a, m.player_a_member_id, m.partner_a, m.partner_a_member_id, m.placeholder_a, !!m.is_bye);
+    const teamB = sideLabel(m.player_b, m.player_b_member_id, m.partner_b, m.partner_b_member_id, m.placeholder_b, !!m.is_bye);
 
     const matchDate = m.scheduled_date ? new Date(m.scheduled_date) : null;
     const bKey = bucketKeyOf(m);

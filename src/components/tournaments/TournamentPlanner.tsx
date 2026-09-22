@@ -60,12 +60,43 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
       : ownerOrgId ?? bodies.find((b) => b.kind === "national")?.id ?? null;
   const owner = mode === "club" ? clubOrg : bodies.find((b) => b.id === activeOwner) || null;
 
-  // Venue candidates: the association's affiliated clubs, or every club when a
-  // platform admin is planning nationwide.
-  const venueChoices = useMemo(
-    () => (assoc.isAssociation ? assoc.clubs : clubs.map((c) => ({ id: c.id, name: c.name }))),
-    [assoc.isAssociation, assoc.clubs, clubs],
-  );
+  // Clubs beneath the owning body in the Super Admin organisation tree — the
+  // same hierarchy eligibility uses, so venues and entrants agree.
+  const treeClubs = useMemo(() => {
+    if (!hierarchy || !activeOwner) return [] as { id: string; name: string }[];
+    const within = orgDescendants(activeOwner, hierarchy.rels);
+    const out: { id: string; name: string }[] = [];
+    hierarchy.orgs.forEach((o) => {
+      if (o.kind === "club" && o.club_id && within.has(o.id)) {
+        out.push({ id: o.club_id, name: hierarchy.clubNames.get(o.club_id) || o.name });
+      }
+    });
+    return out;
+  }, [hierarchy, activeOwner]);
+
+  // Venue candidates: the owner's clubs from the tree, merged with the
+  // association's affiliated clubs (the two lists can still disagree while the
+  // tree is being completed), or every club for a platform admin.
+  const venueChoices = useMemo(() => {
+    if (!assoc.isAssociation && mode === "platform" && treeClubs.length === 0) {
+      return clubs.map((c) => ({ id: c.id, name: c.name }));
+    }
+    const merged = new Map<string, string>();
+    treeClubs.forEach((c) => merged.set(c.id, c.name));
+    if (assoc.isAssociation) assoc.clubs.forEach((c) => merged.set(c.id, c.name));
+    if (merged.size === 0) clubs.forEach((c) => merged.set(c.id, c.name));
+    return Array.from(merged.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [assoc.isAssociation, assoc.clubs, clubs, treeClubs, mode]);
+
+  // Affiliated clubs that are not yet in the organisation tree — worth fixing
+  // in Super Admin rather than silently keeping two lists.
+  const missingFromTree = useMemo(() => {
+    if (!assoc.isAssociation || treeClubs.length === 0) return [] as string[];
+    const inTree = new Set(treeClubs.map((c) => c.id));
+    return assoc.clubs.filter((c) => !inTree.has(c.id)).map((c) => c.name);
+  }, [assoc.isAssociation, assoc.clubs, treeClubs]);
 
   const filteredClubs = useMemo(() => {
     const q = search.trim().toLowerCase();

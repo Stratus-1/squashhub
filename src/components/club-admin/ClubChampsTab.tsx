@@ -426,6 +426,15 @@ function generateRoundRobinRounds(
   };
 }
 
+/** Seeding source value → player-facing label ("Seeded by …"). */
+const SEEDING_SOURCE_LABELS: Record<string, string> = {
+  ladder: "club ladder",
+  club_ranking: "club ranking",
+  regional_ranking: "regional ranking",
+  ranking: "national ranking",
+  manual: "manual order",
+};
+
 const GENDER_LABELS: Record<GenderCategory, string> = {
   men: "Men's",
   ladies: "Ladies'",
@@ -8439,7 +8448,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     <SelectTrigger className="mt-1 bg-white dark:bg-slate-950 border-2 border-input shadow-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ladder">Club ladder</SelectItem>
-                      <SelectItem value="club_ranking">Club ranking</SelectItem>
+                      <SelectItem value="club_ranking">Club ranking (rating points)</SelectItem>
+                      <SelectItem value="regional_ranking">Regional ranking</SelectItem>
                       <SelectItem value="ranking">National ranking</SelectItem>
                       <SelectItem value="manual">Manual order</SelectItem>
                     </SelectContent>

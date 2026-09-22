@@ -7958,8 +7958,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   };
 
   const getMemberName = (id: string) => {
-    const m = members.find((x) => x.id === id);
-    return m?.name || m?.profiles?.name || "Unknown";
+    // Regional entrants may be outside the current club's RLS-visible roster.
+    // Reuse the tournament-scoped, name-only directory already loaded on edit.
+    const m = allSelectablePlayers.find((x) => x.id === id);
+    return m?.name || m?.profiles?.name || directoryPicked.get(id)?.display_name || "Unknown";
   };
 
   const getCourtName = (id: number) => courts.find((c) => c.id === id)?.name || `Court ${id}`;

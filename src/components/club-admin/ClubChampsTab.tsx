@@ -4109,14 +4109,30 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
     if (isBellsMode) {
       // Bells: per-league time caps; auto-distribute courts across leagues, then
       // walk each league's matches through the available sessions, rotating courts.
-      const capFor = (gn: number, pool?: number | null) =>
-        poolMinutes({
-          poolDurations,
-          groupDurations,
-          groupNumber: gn,
-          pool: pool ?? null,
-          fallbackMinutes: matchDuration,
-        }) || matchDuration;
+      // Playing time for one match: the pool override wins, then the division,
+      // then the event default. Asked WITHOUT a pool (capacity planning), it
+      // returns the longest time any pool of that division plays, so a session
+      // is never packed too tightly.
+      const capFor = (gn: number, pool?: number | null) => {
+        if (pool == null) {
+          const base =
+            poolMinutes({ groupDurations, groupNumber: gn, fallbackMinutes: matchDuration }) ||
+            matchDuration;
+          const overrides = Object.entries(poolDurations)
+            .filter(([k]) => k.startsWith(`${gn}:`))
+            .map(([, v]) => Number(v) || 0);
+          return Math.max(base, ...overrides, 0) || matchDuration;
+        }
+        return (
+          poolMinutes({
+            poolDurations,
+            groupDurations,
+            groupNumber: gn,
+            pool,
+            fallbackMinutes: matchDuration,
+          }) || matchDuration
+        );
+      };
 
       const byLeague = new Map<number, MatchDef[]>();
       for (const m of allMatches) {
@@ -4207,7 +4223,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
             cid: number,
             enforceBreak: boolean,
           ): number[] | null => {
-            const cap = capFor(gn);
+            const cap = capFor(gn, m.poolNum ?? null);
             const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
             for (const pid of players) {
               if ((playerBusyUntil.get(pid) ?? 0) > nowAbs) return null;

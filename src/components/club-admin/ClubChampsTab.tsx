@@ -8812,7 +8812,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 defaultOpen={true}
               >
                 <div>
-                  <Label className="text-sm">Courts used by the tournament</Label>
+                  <Label className="text-sm">
+                    {multiClub ? "Venues and the courts each one provides" : "Courts used by the tournament"}
+                  </Label>
                   {(() => {
                     const homeCourts = courts.filter((c) => !c.is_external);
                     const externalCourts = courts.filter((c) => c.is_external);
@@ -8821,6 +8823,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                       (acc[key] ||= []).push(c);
                       return acc;
                     }, {});
+                    const shortName = (c: any) =>
+                      multiClub && c.club?.name ? String(c.name).replace(`${c.club.name} — `, "") : c.name;
                     const renderCheckbox = (c: typeof courts[number]) => (
                       <label key={c.id} className="flex items-center gap-1.5 cursor-pointer">
                         <Checkbox
@@ -8831,14 +8835,53 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             setSelectedCourtIds(next);
                           }}
                         />
-                        <span className="text-sm">{c.name}</span>
+                        <span className="text-sm">{shortName(c)}</span>
                       </label>
                     );
+                    // One block per host club: a venue only ever offers its own courts.
+                    const homeByClub = homeCourts.reduce<Record<string, typeof homeCourts>>((acc, c) => {
+                      const key = (c as any).club_id || clubId;
+                      (acc[key] ||= []).push(c);
+                      return acc;
+                    }, {});
                     return (
                       <div className="space-y-2 mt-1">
-                        {homeCourts.length > 0 && (
+                        {!multiClub && homeCourts.length > 0 && (
                           <div className="flex flex-wrap gap-2">{homeCourts.map(renderCheckbox)}</div>
                         )}
+                        {multiClub &&
+                          Object.entries(homeByClub).map(([cid, list]) => {
+                            const venueName = (list[0] as any)?.club?.name || "Host club";
+                            const chosen = list.filter((c) => selectedCourtIds.has(c.id)).length;
+                            const allOn = chosen === list.length;
+                            return (
+                              <div key={cid} className="rounded-md border p-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="text-[11px] font-semibold">
+                                    🏟 {venueName}
+                                    {cid === clubId && <span className="text-muted-foreground"> · primary</span>}
+                                    <span className="text-muted-foreground">
+                                      {" "}· {chosen} of {list.length} court{list.length === 1 ? "" : "s"}
+                                    </span>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-[11px]"
+                                    onClick={() => {
+                                      const next = new Set(selectedCourtIds);
+                                      list.forEach((c) => (allOn ? next.delete(c.id) : next.add(c.id)));
+                                      setSelectedCourtIds(next);
+                                    }}
+                                  >
+                                    {allOn ? "Clear" : "Select all"}
+                                  </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">{list.map(renderCheckbox)}</div>
+                              </div>
+                            );
+                          })}
                         {Object.entries(externalByVenue).map(([venue, list]) => (
                           <div key={venue} className="rounded-md border border-dashed p-2">
                             <div className="text-[11px] font-semibold text-muted-foreground mb-1">📍 {venue}</div>

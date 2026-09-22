@@ -2378,6 +2378,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
    * truth — mismatches are surfaced as warnings elsewhere, not by dropping.
    */
   const eligibleIdsForDivision = (gn: number, ids: string[]): string[] => {
+    // "To be decided" slots of a later stage are not real people — never filter
+    // them against a division's eligible population.
+    if (ids.some((id) => isTbdEntity(id))) return ids;
     const src = divisionSource(leagueSources, gn);
     if (src.mode === "all" || src.leagueIds.length === 0) return ids;
     return constrainIds(ids, divisionEligibleIds(gn, eligibilityCtx), [

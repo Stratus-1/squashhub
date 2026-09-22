@@ -4337,6 +4337,22 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, scope = "club", parti
       }
       const leagues = Array.from(byLeague.keys()).sort((a, b) => a - b);
 
+      // Pools inside one division can have different bell times. When they do,
+      // keep each of those pools on its own court — otherwise a 20-minute pool
+      // and a 30-minute pool share a court and stagger each other, and the
+      // games read as "all of Pool A, then all of Pool B".
+      const poolUnitsToBind: string[] = [];
+      for (const gn of leagues) {
+        const poolNums = Array.from(new Set(byLeague.get(gn)!.map((m) => m.poolNum ?? 1)));
+        const poolCaps = poolNums.map((p) => capFor(gn, p));
+        if (poolNums.length > 1 && new Set(poolCaps).size > 1) {
+          poolNums.forEach((p) => poolUnitsToBind.push(`${gn}:${p}`));
+        }
+      }
+      // Only bind when there is a court for every such pool, otherwise some
+      // pool could never be placed at all.
+      const bindPools = poolUnitsToBind.length > 0 && poolUnitsToBind.length <= courtIds.length;
+
       if (leagues.length > 0 && courtIds.length > 0) {
         const rotateMin = Number(courtRotationMinutes) > 0 ? Number(courtRotationMinutes) : 0;
 

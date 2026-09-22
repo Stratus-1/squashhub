@@ -16197,6 +16197,31 @@ export type Database = {
       }
       person_age: { Args: { _person_id: string }; Returns: number }
       person_age_group: { Args: { _person_id: string }; Returns: string }
+      platform_club_adoption: {
+        Args: never
+        Returns: {
+          admins: number
+          club_id: string
+          club_name: string
+          created_at: string
+          first_member_email: string
+          first_member_id: string
+          first_member_name: string
+          first_signup: string
+          has_subscription: boolean
+          last_signup: string
+          members: number
+          signed_up: number
+          signups_30d: number
+          signups_7d: number
+          subdomain: string
+          tenant_type: string
+        }[]
+      }
+      platform_grant_club_admin: {
+        Args: { p_club_member_id: string }
+        Returns: boolean
+      }
       post_gateway_fee: {
         Args: {
           _amount: number

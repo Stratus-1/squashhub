@@ -202,13 +202,50 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
   const isPulse = device.control_mode === "pulse";
   const state = optimistic ?? device.last_state ?? false;
   const behaviour = describeDeviceSchedule(device) ?? describeDeviceBehaviour(device);
-  const busy = control.isPending;
+  const busy = control.isPending || bleBusy;
+
+  /**
+   * Access relays get the same Bluetooth rescue as the main door: when the
+   * club's internet (or the relay's Wi-Fi) is down, a member standing at the
+   * door still opens it over BLE. Other categories deliberately don't — a
+   * geyser can wait for the network.
+   */
+  const bleRescue = async (cloudError: string) => {
+    const secrets: any = clubSecrets || {};
+    if (device.category !== "access" || !secrets.ble_fallback_enabled) {
+      toast.error(cloudError);
+      return;
+    }
+    setBleBusy(true);
+    try {
+      await pulseAccessDeviceBle({
+        clubId,
+        doorName: device.name,
+        clubMemberId: activeMember?.id ?? null,
+        mac: d.ble_mac,
+        shellyDeviceId: d.shelly_device_id,
+        password: secrets.shelly_ble_control_password,
+        channel: d.shelly_channel ?? 0,
+        pulseMs: d.pulse_ms ?? 3000,
+        cloudError,
+      });
+      toast.success(`${device.name} opened over Bluetooth (club internet is down)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : cloudError);
+    } finally {
+      setBleBusy(false);
+    }
+  };
 
   const run = async (action: "on" | "off" | "pulse") => {
     if (action !== "pulse") setOptimistic(action === "on");
     try {
       const res = await control.mutateAsync({ deviceId: device.id, action });
       if (action === "pulse") {
+        if (res && res.ok === false) {
+          await bleRescue(`${device.name} is offline.`);
+          return;
+        }
         toast.success(`${device.name} triggered`);
       } else {
         toast.success(

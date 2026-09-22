@@ -57,6 +57,12 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
     if (mode === "club" && clubId) setHostClubId(clubId);
   }, [mode, clubId]);
 
+  // An association owns no courts, so the venue picker must be visible up front —
+  // without it the Courts step has nothing to offer.
+  useEffect(() => {
+    if (assoc.isAssociation) setShowVenues(true);
+  }, [assoc.isAssociation]);
+
   const activeOwner =
     mode === "club"
       ? clubOrg?.id ?? assoc.orgId ?? null

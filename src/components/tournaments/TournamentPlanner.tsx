@@ -34,6 +34,7 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
   // An association tenant (a regional league) has no courts of its own — its
   // venues and its entrant pool are the clubs affiliated to it.
   const assoc = useAssociationTenant(mode === "club" ? clubId : undefined);
+  const { data: hierarchy } = useOrgHierarchyLite();
 
   const bodies = useMemo(
     () => orgs.filter((o) => o.kind === "national" || o.kind === "association"),
@@ -231,6 +232,14 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
                       ? "Every court registered at the clubs you tick becomes available when you build the schedule."
                       : "Courts and members of these clubs become available in the wizard alongside the host club."}
                   </p>
+                  {missingFromTree.length > 0 && (
+                    <p className={cn("text-[11px]", dark ? "text-amber-300" : "text-amber-600")}>
+                      {missingFromTree.length} affiliated club{missingFromTree.length === 1 ? " is" : "s are"} not yet
+                      placed under this association in the organisation tree ({missingFromTree.slice(0, 4).join(", ")}
+                      {missingFromTree.length > 4 ? "…" : ""}). They can still host, but add them to the tree so
+                      eligibility matches.
+                    </p>
+                  )}
                 </div>
               )}
             </div>

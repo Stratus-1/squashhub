@@ -13371,7 +13371,9 @@ export type Database = {
           club_id: string
           court_ids: number[]
           created_at: string
+          host_fee_basis: string
           host_fee_cents: number
+          host_fee_qty: number
           host_share_pct: number
           id: string
           is_primary: boolean
@@ -13383,7 +13385,9 @@ export type Database = {
           club_id: string
           court_ids?: number[]
           created_at?: string
+          host_fee_basis?: string
           host_fee_cents?: number
+          host_fee_qty?: number
           host_share_pct?: number
           id?: string
           is_primary?: boolean
@@ -13395,7 +13399,9 @@ export type Database = {
           club_id?: string
           court_ids?: number[]
           created_at?: string
+          host_fee_basis?: string
           host_fee_cents?: number
+          host_fee_qty?: number
           host_share_pct?: number
           id?: string
           is_primary?: boolean

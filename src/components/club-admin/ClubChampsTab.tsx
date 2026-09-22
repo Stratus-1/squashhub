@@ -5384,6 +5384,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         const { data: champ, error: champErr } = await fromExt("club_champs")
           .insert(sanitizeDraftPayload({
             club_id: clubId,
+            // The body that owns the event (club, association or federation).
+            owner_org_id: resolvedOwnerOrgId ?? undefined,
             name: champName || defaultName,
             gender,
             match_type: effectiveMatchType,
@@ -5483,9 +5485,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               fromLegacyDeadlines(serializeRoundDeadlines(roundDeadlines) || []),
             ),
             milestone_play_by: milestonePlayBy,
+            participating_club_ids: venueClubIds.filter((id) => id !== clubId),
           } as any)
           .eq("id", champId);
         if (centralErr) console.warn("[champs] central round save failed", centralErr.message);
+        await persistVenues(champId);
       }
 
       if (awaitingPlayerPairs) {

@@ -52,4 +52,3 @@
 - [x] Keep later cross-pool rounds on the finals draw path after section 0 already exists
 - [x] Pass the central Final deadline into the progress-card draw confirmation
 
-- [ ] Verify the PCC Social Doubles Bells (interclub, CSIR invited) is classified as a REGIONAL tournament so it lands in members' regional stats.

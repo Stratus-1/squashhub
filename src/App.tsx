@@ -86,6 +86,7 @@ const SuperAdminLayout = lazy(() =>
 );
 const SuperAdminDashboard = lazy(() => import("./pages/admin/SuperAdminDashboard"));
 const SuperAdminClubs = lazy(() => import("./pages/admin/SuperAdminClubs"));
+const SuperAdminAdoption = lazy(() => import("./pages/admin/SuperAdminAdoption"));
 const SuperAdminFederation = lazy(() => import("./pages/admin/SuperAdminFederation"));
 const SuperAdminTournaments = lazy(() => import("./pages/admin/SuperAdminTournaments"));
 const SuperAdminRankings = lazy(() => import("./pages/admin/SuperAdminRankings"));

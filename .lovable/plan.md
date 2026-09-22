@@ -1,47 +1,54 @@
-# Durbanville "Diamond League" — timed singles then paired doubles
+# Durbanville "Diamond League" — a two-stage tournament
 
-## What Trevor described
+Trevor's event is a tournament, not a league, so everything below is built into the existing tournament setup (divisions, timed scoring, pools, winner scope) — nothing changes for leagues.
 
-- Teams of 6 players, ranked 1 to 6.
-- Round 1: all six play a singles game, 20 minutes each (clock, not best-of-games).
-- Round 2: the same six play doubles as fixed pairs taken from the order — 6+5, 4+3, 2+1.
-- Doubles games are timed too, and the time differs by strength: weaker pairs 20 minutes, stronger pairs 30 minutes.
+## What Durbanville run
 
-## Can SquashHub run it today?
+- Six players in a group, ordered 1 to 6.
+- Stage 1: everyone plays singles, 20 minutes on the clock.
+- Stage 2, after the singles are done: doubles, paired 6+5, 4+3, 2+1, 30 minutes (shorter for the weaker groups).
+- Winner per group today; possibly a cross-group decider later.
 
-Almost. Three pieces exist already:
+## What already works
 
-- Team leagues that mix singles and doubles rubbers in one fixture (hybrid).
-- Timed, "play until the bell" scoring with standings ranked on points scored (used by the Bells format).
-- Fixtures, scorecards, live marking, standings and history.
+- Two divisions in one tournament, one set to singles and one to doubles.
+- Timed "play to the bell" scoring with points-scored standings, with the minutes set per division and a break allowance.
+- Pools, seeded ordering, and the choice between one winner per pool and one winner per division.
 
-Three pieces are missing, and this plan adds them.
+## The three things missing
 
-## What gets built
+### 1. Does stage 2 wait for stage 1?
 
-### 1. A timed league option
+New setting on each division: **runs alongside the others** (today's behaviour) or **runs after** a chosen division. When it runs after, the doubles division stays closed — no fixtures, no scores — until the singles division is complete, and it then opens automatically with the finishing order carried across.
 
-A league can be set to timed scoring instead of best-of-games. Each rubber is played to a clock and the score recorded is points scored by each side. Standings then rank on points, exactly like Bells.
+### 2. How the doubles pairs are formed
 
-### 2. Per-rubber clock times
+New setting on a doubles division that follows another one: **how to pair the finishing order**.
 
-New settings on the league: minutes for singles rubbers and minutes for doubles rubbers, plus an optional override per position (so Doubles 1 can be 30 minutes while Doubles 3 is 20). Shown on the scorecard and used by the marker's countdown.
+- **Adjacent** — neighbours in the order: 6+5, 4+3, 2+1. This is Durbanville's way, and it's the default.
+- **Balanced** — strongest with weakest: 1+6, 2+5, 3+4.
+- **Manual** — the organiser drags the pairs together.
 
-### 3. Pairs taken from the team order
+("Snake" is the name we already use for spreading players across pools, so it isn't reused here.)
 
-A new pairing option, "Paired from the team order", which automatically builds doubles from the ranked six: 6+5, 4+3, 2+1. The captain still sees the pairs and can adjust before the fixture if a substitute comes in.
+Pairs are shown for approval before the doubles fixtures are created, so a late substitution can be corrected.
 
-### 4. Setup preset
+### 3. Minutes per pair, not just per division
 
-In league setup, a "Diamond League" preset that fills all of it in one tap: team of 6, six singles rubbers at 20 minutes, three doubles rubbers paired from the order at 30 minutes, timed scoring.
+The clock is already set per division. Add an optional per-pool override inside a division, so the top group's doubles can run 30 minutes while a weaker group runs 20.
+
+## Setup preset
+
+A **Diamond League** button in tournament setup fills it all in: Stage 1 singles round-robin, 20 minutes, timed scoring; Stage 2 doubles round-robin that follows Stage 1, adjacent pairing, 30 minutes; winner per pool.
 
 ## Technical notes
 
-- `league_rules` gains: `scoring_clock` (`games` | `timed`), `singles_minutes`, `doubles_minutes`, `rubber_minutes` (JSON per position override); `pairing_policy` gains a `ladder_pairs` value.
-- `resolveFormat` / `rubberSlots` in `src/lib/leagues/format.ts` carry the clock minutes per slot; a new `ladderPairs()` helper derives 6+5 / 4+3 / 2+1 from team positions.
-- Timed rubbers reuse the existing Bells marker and its time-cap resolution; league standings read points-scored aggregation when `scoring_clock = 'timed'`.
-- Tests: pairing derivation, per-position minutes resolution, and timed standings aggregation.
+- `tournaments` gains `division_follows` (JSON: group_number -> group_number it waits for), `division_pairing_method` (JSON: group_number -> `adjacent` | `balanced` | `manual`), and `pool_durations` (JSON: `"group:pool"` -> minutes) alongside the existing `group_durations`.
+- New `src/lib/tournaments/stage-sequence.ts`: division ordering, "is this division unlocked yet", and `pairFromOrder(order, method)` producing the pair list; unit-tested for 6, 8 and odd counts.
+- Doubles fixtures are generated from the preceding division's final standings order (existing standings aggregation), written as `champ_doubles_pairs` plus `club_champs_matches`, so live marking, results and standings work unchanged.
+- The Bells time-cap resolver gains the per-pool lookup before falling back to per-division and tournament defaults.
+- Draw generation for a locked division is blocked with a clear reason ("Stage 1 must finish first") rather than hidden, so organisers understand the gate.
 
-## Out of scope
+## Not included
 
-No change to existing singles leagues, NSA fixtures or any club's current scoring — every new setting defaults to today's behaviour.
+Cross-group deciders stay as they are today — the existing "one winner per division" setting already meets that if Durbanville later want the group winners to meet.

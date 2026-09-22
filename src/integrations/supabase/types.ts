@@ -15856,6 +15856,7 @@ export type Database = {
         Args: { _club_member_id: string; _event_id: string }
         Returns: string
       }
+      join_club_request: { Args: { p_club_id: string }; Returns: string }
       ladder_move_apply_now: {
         Args: {
           _club_id: string
@@ -16197,6 +16198,10 @@ export type Database = {
       }
       person_age: { Args: { _person_id: string }; Returns: number }
       person_age_group: { Args: { _person_id: string }; Returns: string }
+      platform_attach_user_to_club: {
+        Args: { p_club_id: string; p_user_id: string }
+        Returns: string
+      }
       platform_club_adoption: {
         Args: never
         Returns: {
@@ -16221,6 +16226,16 @@ export type Database = {
       platform_grant_club_admin: {
         Args: { p_club_member_id: string }
         Returns: boolean
+      }
+      platform_unaffiliated_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          name: string
+          phone: string
+          user_id: string
+        }[]
       }
       post_gateway_fee: {
         Args: {

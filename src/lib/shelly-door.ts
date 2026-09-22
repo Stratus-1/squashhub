@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { enqueueOutbox, type AccessEventPayload } from "@/lib/outbox";
 import { pulseShellyBleAuto, isBleFallbackAvailable } from "@/lib/shelly-ble-auto";
+import { resolveBleMac } from "@/lib/shelly-ble-mac";
 import { extractFunctionError } from "@/lib/shelly-errors";
 
 export type ShellyDoorOptions = {
@@ -75,7 +76,7 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
     // 2) Fallback: BLE whenever the Cloud path cannot confirm actuation (not
     // only when this phone is offline). This covers an offline Shelly Cloud
     // connection and commands acknowledged by Cloud but not executed.
-    const ble = opts.ble;
+    const ble = opts.ble ? { ...opts.ble, mac: resolveBleMac(opts.ble.mac) } : null;
     if (!ble?.enabled || !ble.mac) {
       // Queue an "attempted while offline" event so it shows in the audit trail.
       const userId = (await supabase.auth.getSession()).data.session?.user?.id;

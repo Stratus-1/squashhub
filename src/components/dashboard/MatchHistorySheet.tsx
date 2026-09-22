@@ -36,6 +36,9 @@ function MatchRow({
   onOpponent?: (id: string, name: string) => void;
 }) {
   const clickable = !!m.opponent_member_id && !!onOpponent;
+  // Doubles: name everyone on court, otherwise two different games against the
+  // same lead opponent read as duplicates.
+  const opponents = [m.opponent_name, m.opponent2_name].filter(Boolean).join(" & ");
   return (
     <div className="flex items-center gap-3 py-2 border-b border-border last:border-0">
       <span

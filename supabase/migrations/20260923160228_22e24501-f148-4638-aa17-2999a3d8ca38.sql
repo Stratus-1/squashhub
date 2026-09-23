@@ -1,0 +1,1 @@
+ALTER TABLE public.member_credit_transactions ALTER COLUMN user_id DROP NOT NULL;

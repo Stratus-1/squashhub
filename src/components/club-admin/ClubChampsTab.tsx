@@ -3019,6 +3019,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // the Structure / draw source. A member who plays no league is still
       // invited when the audience is "All club members".
       const inviteSeedIds = new Set(selectedPlayerIds);
+      // A cancelled registration is an explicit withdrawal, not an invitation
+      // to materialise this player again from the saved audience or draft.
+      const { data: cancelledRegs, error: cancelledErr } = await fromExt("club_champs_registrations")
+        .select("club_member_id")
+        .eq("champ_id", champIdToUse)
+        .eq("status", "cancelled");
+      if (cancelledErr) throw cancelledErr;
+      const cancelledIds = new Set((cancelledRegs || []).map((r: any) => String(r.club_member_id)));
+      cancelledIds.forEach((id) => inviteSeedIds.delete(id));
       let audienceIds = resolvedAudience.memberIds;
       if (inviteAudience === "leagues" && audienceLeagueIds.size > 0) {
         // Re-read at save time so the roster is canonical even if the cached
@@ -3058,7 +3067,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const seedsFromAudience =
         audienceIds.length > 0 &&
         (registrationUsesInviteList || opts?.materializeAudience || inviteAudience !== "all_club");
-      if (seedsFromAudience) audienceIds.forEach((id) => inviteSeedIds.add(id));
+      if (seedsFromAudience) audienceIds.forEach((id) => {
+        if (!cancelledIds.has(id)) inviteSeedIds.add(id);
+      });
       if (registrationUsesInviteList || seedsFromAudience) {
 
 
@@ -3129,7 +3140,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       } else {
         if (selectedPlayerIds.size === 0) return;
         const rows = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
-          groupPlayers.map((p, orderIndex) => ({
+          groupPlayers.filter((p) => !cancelledIds.has(resolveId(p.id))).map((p, orderIndex) => ({
             champ_id: champIdToUse,
             club_member_id: resolveId(p.id),
             group_number: gi + 1,
@@ -3266,27 +3277,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const resolvedIds = rawIds.length > 0 ? await promoteVisitorIds(rawIds) : [];
       if (cid && resolvedIds.length > 0) {
         for (const resolvedId of resolvedIds) {
-          await fromExt("club_champs_entries")
+          const { error: entryErr } = await fromExt("club_champs_entries")
             .delete()
             .eq("champ_id", cid)
             .or(`club_member_id.eq.${resolvedId},partner_member_id.eq.${resolvedId}`);
+          if (entryErr) throw entryErr;
         }
-        await fromExt("club_champs_registrations")
+        const { error: regErr } = await fromExt("club_champs_registrations")
           .update({
             status: "cancelled",
+            declined_at: new Date().toISOString(),
             confirmed_at: null,
-            confirmation_source: null,
+            confirmation_source: "withdrawn",
             partner_member_id: null,
             partner_confirmed: false,
           })
           .eq("champ_id", cid)
           .in("club_member_id", resolvedIds);
+        if (regErr) throw regErr;
         // Also strip them from the saved seeding order / confirmed draw board,
         // otherwise they reappear in these lists on the next open.
         for (const resolvedId of resolvedIds) await purgeFromSetup(cid, resolvedId);
         setManualDraws((prev) => removeFromManualDraws(prev, resolvedIds) ?? prev);
         qc.invalidateQueries({ queryKey: ["champ-invitees", cid] });
         qc.invalidateQueries({ queryKey: ["champ-registrations", cid] });
+        qc.invalidateQueries({ queryKey: ["champ-entries", cid] });
         qc.invalidateQueries({ queryKey: ["club-champs"] });
       }
 
@@ -7856,6 +7871,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     const { data: allRegistrations } = await fromExt("club_champs_registrations")
       .select("club_member_id, partner_member_id, status, confirmed_at, paid_at, fee_paid_cents, division_choices")
       .eq("champ_id", champ.id);
+    const cancelledAtLoad = new Set((allRegistrations || [])
+      .filter((r: any) => r.status === "cancelled")
+      .map((r: any) => String(r.club_member_id)));
     const champPaymentRequired =
       !!(champ as any).payment_required && Number((champ as any).entry_fee_cents || 0) > 0;
     const registrations = filterParticipatingEntrants(allRegistrations as any[], {
@@ -7897,7 +7915,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (chosen.length > 0) choicesByMember.set(r.club_member_id, chosen as number[]);
     });
 
-    const hasEntries = entries && entries.length > 0;
+    // Older draws can retain entries after a withdrawal. Never hydrate them
+    // back into the Players picker or a newly generated schedule.
+    const activeEntries = (entries || []).filter((e: any) =>
+      !cancelledAtLoad.has(String(e.club_member_id)) &&
+      (!e.partner_member_id || !cancelledAtLoad.has(String(e.partner_member_id))));
+    const hasEntries = activeEntries.length > 0;
 
     if (hasEntries) {
       // Rotating-partner doubles is entered as individual players (each entry
@@ -7918,7 +7941,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         });
         setPairGroupAssignments(assignments);
       } else {
-        const ids: string[] = Array.from(new Set<string>(entries.map((e: any) => String(e.club_member_id))));
+        const ids: string[] = Array.from(new Set<string>(activeEntries.map((e: any) => String(e.club_member_id))));
         // Registered-but-not-yet-entered acceptances must still show up.
         choicesByMember.forEach((_v, id) => {
           if (!ids.includes(id)) ids.push(id);
@@ -7927,7 +7950,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         setPlayerOrder(ids);
         const assignments = new Map<string, number>();
         const extras = new Map<string, Set<number>>();
-        entries.forEach((e: any) => {
+        activeEntries.forEach((e: any) => {
           const gi = e.group_number - 1;
           if (!assignments.has(e.club_member_id)) assignments.set(e.club_member_id, gi);
           else {
@@ -7953,7 +7976,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         [],
         (ex.draft_player_ids as string[] | null | undefined),
         registrations.map((r: any) => r.club_member_id),
-      );
+      ).filter((id) => !cancelledAtLoad.has(id));
       setSelectedPlayerIds(new Set(restoredIds));
 
       if (registrations.length === 0) {
@@ -12005,9 +12028,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                   }
                   const renderPlayer = (m: any) => {
                         const i = availablePlayers.findIndex((p: any) => p.id === m.id);
+                        const entered = (inviteeRows as any[]).some((r: any) =>
+                          r.club_member_id === m.id && classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }) === "registered");
                         return (
-                          <label key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
+                          <div key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent">
                             <Checkbox
+                              aria-label={`Select ${m.name || m.profiles?.name || "player"}`}
                               checked={selectedPlayerIds.has(m.id)}
                               onCheckedChange={(checked) => {
                                 const next = new Set(selectedPlayerIds);
@@ -12020,7 +12046,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             {m._isVisitor && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor · {m._homeClub}</Badge>}
                             {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
                             {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
-                          </label>
+                            {editingChampId && entered && (
+                              <Button type="button" variant="ghost" size="sm" className="ml-auto shrink-0 text-destructive"
+                                onClick={() => {
+                                  if (confirm(`Withdraw ${m.name || m.profiles?.name || "this player"} from the tournament? This also removes them from the draw.`)) {
+                                    void withdraw(m.id);
+                                  }
+                                }}>
+                                Withdraw
+                              </Button>
+                            )}
+                          </div>
                         );
                   };
                   if (scope === "club") {

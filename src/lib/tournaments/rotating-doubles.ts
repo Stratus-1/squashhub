@@ -129,11 +129,18 @@ function fromWhist(players: string[], table: number[][][]): RotationSchedule {
 }
 
 /**
- * Generic fallback for player counts without a known design (5, 6, 7, 9…).
- * Greedily builds each round from the players who have rested longest and
- * picks the quadruple/split that repeats the fewest partnerships.
+ * Generic fallback for player counts without a known design (5, 6, 7, 9…),
+ * and the builder used whenever an individual match cap applies.
+ *
+ * Greedily builds each round from the players who have played least (and
+ * rested longest) and picks the quadruple/split that repeats the fewest
+ * partnerships and opponent meetings.
+ *
+ * When `perPlayerCap` is set, a player is simply no longer eligible once they
+ * have played that many games; the schedule ends as soon as fewer than four
+ * eligible players remain.
  */
-function greedyRotation(players: string[]): RotationSchedule {
+function greedyRotation(players: string[], perPlayerCap?: number): RotationSchedule {
   const n = players.length;
   const courts = Math.floor(n / 4);
   const targetPartnerships = (n * (n - 1)) / 2;
@@ -144,23 +151,35 @@ function greedyRotation(players: string[]): RotationSchedule {
 
   const games: RotationGame[] = [];
   const sittingOut: string[][] = [];
+  const capped = !!perPlayerCap && perPlayerCap > 0;
+  const eligible = (p: string) => !capped || (playedCount.get(p) || 0) < perPlayerCap!;
   // Enough rounds for everyone to partner everyone; hard-capped so a pathological
-  // count can never spin.
-  const maxRounds = Math.min(60, Math.ceil((targetPartnerships / (2 * Math.max(1, courts))) * 2) + n);
+  // count can never spin. With an individual cap the total games are bounded by
+  // players × cap / 4, so allow enough rounds to reach it.
+  const maxRounds = capped
+    ? Math.min(200, Math.ceil((n * perPlayerCap!) / 4) + n)
+    : Math.min(60, Math.ceil((targetPartnerships / (2 * Math.max(1, courts))) * 2) + n);
 
-  for (let round = 1; round <= maxRounds && partnered.size < targetPartnerships; round++) {
-    const pool = [...players].sort(
+  for (let round = 1; round <= maxRounds; round++) {
+    if (!capped && partnered.size >= targetPartnerships) break;
+
+    const available = players.filter(eligible);
+    if (available.length < 4) break;
+    const roundCourts = capped ? Math.min(courts || 1, Math.floor(available.length / 4)) : courts;
+    if (roundCourts < 1) break;
+
+    const pool = [...available].sort(
       (a, b) =>
         (playedCount.get(a)! - playedCount.get(b)!) ||
         (restedSince.get(b)! - restedSince.get(a)!) ||
         a.localeCompare(b),
     );
-    const playing = pool.slice(0, courts * 4);
-    const resting = pool.slice(courts * 4);
+    const playing = pool.slice(0, roundCourts * 4);
+    const resting = players.filter((p) => !playing.includes(p));
     sittingOut.push(resting);
     for (const p of resting) restedSince.set(p, (restedSince.get(p) || 0) + 1);
 
-    for (let c = 0; c < courts; c++) {
+    for (let c = 0; c < roundCourts; c++) {
       const quad = playing.slice(c * 4, c * 4 + 4);
       const splits: Array<[number, number, number, number]> = [
         [0, 1, 2, 3],
@@ -201,6 +220,7 @@ function greedyRotation(players: string[]): RotationSchedule {
 
   return { games, sittingOut, rounds: sittingOut.length };
 }
+
 
 /** Games produced by a full rotation — used for capacity/time estimates. */
 export function rotatingDoublesGameCount(playerCount: number): number {

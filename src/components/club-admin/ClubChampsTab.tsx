@@ -4985,13 +4985,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     courtPool.set(cid, u);
                   }
                 }
-                // Hold the court for the game plus this division's changeover.
-                courtBusyUntil.set(cid, nowAbs + playCap + breakFor(picked.league));
+                // The slot already contains the changeover, so the court is held
+                // for the slot itself; the game itself ends at slot − break.
+                const playMinutes = Math.max(1, playCap - breakFor(picked.league));
+                courtBusyUntil.set(cid, nowAbs + playCap);
                 assignedInBlock.set(picked.league, (assignedInBlock.get(picked.league) || 0) + 1);
                 const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
                 players.forEach((pid) => {
-                  playerBusyUntil.set(pid, nowAbs + playCap);
-                  lastPlayedEnd.set(pid, nowAbs + playCap);
+                  playerBusyUntil.set(pid, nowAbs + playMinutes);
+                  lastPlayedEnd.set(pid, nowAbs + playMinutes);
                   playCount.set(pid, (playCount.get(pid) || 0) + 1);
                   lastCourtByPlayer.set(pid, cid);
                 });

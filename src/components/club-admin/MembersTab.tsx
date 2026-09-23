@@ -2051,10 +2051,9 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
               <option value="inactive">Membership: Not active</option>
               <option value="unknown">Membership: Not confirmed</option>
             </select>
-            {ssaRow?.ssa_source && (
+            {ssaRow?.ssa_checked_at && (
               <p className="text-[10px] text-muted-foreground">
-                Last set by {ssaRow.ssa_source === "manual" ? "hand" : ssaRow.ssa_source.replace(/_/g, " ")}
-                {ssaRow.ssa_checked_at ? ` · ${new Date(ssaRow.ssa_checked_at).toLocaleDateString()}` : ""}
+                Last checked {new Date(ssaRow.ssa_checked_at).toLocaleDateString()}
               </p>
             )}
           </div>

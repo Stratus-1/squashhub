@@ -246,7 +246,7 @@ export function WithdrawPlayerButton({ champs }: Props) {
                   <SelectValue placeholder={regsLoading ? "Loading players…" : "Pick a player"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {activeRegs.map((r: any) => (
+                  {sortedRegs.map((r: any) => (
                     <SelectItem key={r.club_member_id} value={r.club_member_id}>
                       {nameOf(r)}
                     </SelectItem>

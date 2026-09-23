@@ -1777,6 +1777,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [rotationMaxMatches, setRotationMaxMatches] = useState<number>(0);
   /** Rotating doubles: player pairs that must never be drawn as partners. */
   const [rotationAvoidPairs, setRotationAvoidPairs] = useState<string[][]>([]);
+  const [avoidPickA, setAvoidPickA] = useState<string>("");
+  const [avoidPickB, setAvoidPickB] = useState<string>("");
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
@@ -10359,7 +10361,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                                        key={`${pair[0]}-${pair[1]}-${i}`}
                                                        className="inline-flex items-center gap-1 rounded border bg-muted/50 px-2 py-0.5 text-[10px]"
                                                      >
-                                                       {nameOf(pair[0])} &amp; {nameOf(pair[1])}
+                                                       {rotationPlayerName(pair[0])} &amp; {rotationPlayerName(pair[1])}
                                                        <button
                                                          type="button"
                                                          className="text-muted-foreground hover:text-destructive"
@@ -10385,7 +10387,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                                    >
                                                      <option value="">Player…</option>
                                                      {selectedPlayers.map((p: any) => (
-                                                       <option key={p.id} value={p.id}>{nameOf(p.id)}</option>
+                                                       <option key={p.id} value={p.id}>{rotationPlayerName(p.id)}</option>
                                                      ))}
                                                    </select>
                                                    <select
@@ -10395,7 +10397,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                                    >
                                                      <option value="">Player…</option>
                                                      {selectedPlayers.map((p: any) => (
-                                                       <option key={p.id} value={p.id}>{nameOf(p.id)}</option>
+                                                       <option key={p.id} value={p.id}>{rotationPlayerName(p.id)}</option>
                                                      ))}
                                                    </select>
                                                    <Button

@@ -1899,6 +1899,49 @@ export default function ClubAuth() {
         })()}
         <PoweredBySquashHub />
       </motion.div>
+
+      <AlertDialog open={!!dupHits} onOpenChange={(o) => { if (!o) answerDuplicate(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you already a member here?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  {club?.name || "This club"} already has a record that looks like you:
+                </p>
+                <ul className="space-y-1">
+                  {(dupHits || []).map((h, i) => (
+                    <li key={i} className="rounded border p-2">
+                      <span className="font-medium">{h.masked_name}</span>
+                      {h.masked_email ? <> — signed up with <span className="font-medium">{h.masked_email}</span></> : null}
+                      <span className="block text-xs text-muted-foreground">
+                        {h.match_kind === "email"
+                          ? "Same email address"
+                          : h.match_kind === "phone"
+                            ? "Same phone number"
+                            : "Same first and last name"}
+                        {h.is_claimed ? " • already has a login" : " • no login yet"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  If that is you, please sign in with that email instead (or use “Forgot password”) so your
+                  history, member number and fees stay on one account.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { answerDuplicate(false); setActiveTab("login"); }}>
+              That's me — take me to sign in
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => answerDuplicate(true)}>
+              No, I'm a different person — continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -24,6 +24,17 @@ import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner"
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { VisitorPassCard } from "@/components/VisitorPassCard";
 import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+type DuplicateHint = {
+  masked_name: string;
+  masked_email: string | null;
+  match_kind: string;
+  is_claimed: boolean;
+};
 
 
 export default function ClubAuth() {

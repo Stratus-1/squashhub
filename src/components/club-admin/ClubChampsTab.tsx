@@ -12300,6 +12300,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
                             {scope !== "club" && <Badge variant="outline" className="text-[10px]">{clubForPlayer(m).name}</Badge>}
                             {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
+                            {(requireLeagueActive || requireSsaActive) && !m._isVisitor && (
+                              <CompetitionStatusBadges memberId={m.id} showUnknown />
+                            )}
                             {editingChampId && selectedPlayerIds.has(m.id) && !selfPairInviteSelection && (
                               <Button type="button" variant="ghost" size="sm" className="ml-auto shrink-0 text-destructive"
                                 onClick={() => {

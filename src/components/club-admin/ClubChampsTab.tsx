@@ -5222,6 +5222,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           leagueLabels: entriesPerLeague.map((_, i) => groupLabels[String(i + 1)] || `League ${i + 1}`),
           poolsByLeague: anySwiss ? poolsByLeague : undefined,
           entriesByLeaguePool: anySwiss ? poEntriesByLeaguePool : undefined,
+          playoffModeByLeague: playoffModesByNum(),
+          qualifiersPerPoolByLeague: playoffQualifiersByNum(),
         });
         placeholderRows.sort((a, b) => a.round_number - b.round_number);
         placeholderRows.forEach((row, i) => {

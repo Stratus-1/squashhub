@@ -442,9 +442,10 @@ const placeholderRow = (
  * Mirrors buildPlayoffPlaceholders exactly — use it to size court reservations.
  */
 export function countPlayoffPlaceholders(input: Omit<PlaceholderInput, "champId">): number {
-  const { numLeagues, entriesPerLeague, poolsByLeague, entriesByLeaguePool } = input;
+  const { numLeagues, entriesPerLeague, poolsByLeague, entriesByLeaguePool,
+    playoffModeByLeague, qualifiersPerPoolByLeague } = input;
 
-  // Swiss pool mode: sum intra-league brackets across pools.
+  // Pool mode: sum intra-league brackets across pools.
   if (hasPoolMode(poolsByLeague) && entriesByLeaguePool) {
     let total = 0;
     for (let lg = 1; lg <= numLeagues; lg++) {
@@ -460,11 +461,22 @@ export function countPlayoffPlaceholders(input: Omit<PlaceholderInput, "champId"
       if (sizes.length < 2) continue;
       const minSize = Math.min(...sizes);
       if (!Number.isFinite(minSize) || minSize < 1) continue;
+      const mode: PlayoffMode = isPlayoffMode(playoffModeByLeague?.[lg])
+        ? (playoffModeByLeague![lg] as PlayoffMode)
+        : DEFAULT_PLAYOFF_MODE;
+      if (mode === "knockout") {
+        const q = Math.min(minSize, Math.max(1, Math.floor(Number(qualifiersPerPoolByLeague?.[lg] || 1))));
+        const entrants = knockoutQualifierCount(poolCount, q);
+        if (entrants < 2) continue;
+        total += playoffMatchesForBracket(bracketSizeFor(entrants));
+        continue;
+      }
       const size = bracketSizeFor(poolCount);
       total += minSize * playoffMatchesForBracket(size);
     }
     return total;
   }
+
 
   if (numLeagues <= 1) {
     const K = entriesPerLeague[0] ?? 0;

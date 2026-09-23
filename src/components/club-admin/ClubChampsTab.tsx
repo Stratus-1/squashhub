@@ -1775,6 +1775,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [partnerMode, setPartnerMode] = useState<"" | "admin" | "players" | "rotate">("");
   // Rotating-partner doubles: individual cap on matches per player. 0 = full rotation.
   const [rotationMaxMatches, setRotationMaxMatches] = useState<number>(0);
+  /** Rotating doubles: player pairs that must never be drawn as partners. */
+  const [rotationAvoidPairs, setRotationAvoidPairs] = useState<string[][]>([]);
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");

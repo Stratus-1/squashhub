@@ -80,6 +80,21 @@ export default function ClubAuth() {
   const [newConfirm, setNewConfirm] = useState("");
   const [newAcceptTerms, setNewAcceptTerms] = useState(false);
 
+  // "Are you not already a member?" prompt shown when the club roster already
+  // holds someone with the same email, phone, or first+last name.
+  const [dupHits, setDupHits] = useState<DuplicateHint[] | null>(null);
+  const dupResolver = useRef<((proceed: boolean) => void) | null>(null);
+  const askDuplicate = (hits: DuplicateHint[]) =>
+    new Promise<boolean>((resolve) => {
+      dupResolver.current = resolve;
+      setDupHits(hits);
+    });
+  const answerDuplicate = (proceed: boolean) => {
+    setDupHits(null);
+    dupResolver.current?.(proceed);
+    dupResolver.current = null;
+  };
+
   // Visitor form
   const [visitorFirstName, setVisitorFirstName] = useState("");
   const [visitorLastName, setVisitorLastName] = useState("");

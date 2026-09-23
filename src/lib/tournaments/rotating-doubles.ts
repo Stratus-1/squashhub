@@ -88,7 +88,18 @@ const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
  */
 export function generateRotatingDoublesSchedule(
   playerIds: string[],
-  opts: { maxRounds?: number; maxMatchesPerPlayer?: number } = {},
+  opts: {
+    maxRounds?: number;
+    maxMatchesPerPlayer?: number;
+    /** Player pairs that must never be drawn as partners (e.g. family members). */
+    avoidPartners?: Array<[string, string] | string[]>;
+    /**
+     * When the per-player cap means not every partner combination can be
+     * played, drop the weakest combinations first. `playerIds` is assumed to
+     * be in seeded order (strongest first).
+     */
+    preferStrongPartnerships?: boolean;
+  } = {},
 ): RotationSchedule {
   const players = playerIds.filter(Boolean);
   if (players.length < 4) return { games: [], sittingOut: [], rounds: 0 };
@@ -98,10 +109,17 @@ export function generateRotatingDoublesSchedule(
       ? Math.floor(opts.maxMatchesPerPlayer)
       : 0;
 
-  const table = perPlayerCap ? null : WHIST[players.length];
+  const avoid = new Set<string>();
+  for (const pair of opts.avoidPartners || []) {
+    if (pair && pair[0] && pair[1]) avoid.add(pairKey(pair[0], pair[1]));
+  }
+  // Strength bias only matters once combinations have to be left out.
+  const strengthBias = opts.preferStrongPartnerships ?? perPlayerCap > 0;
+
+  const table = perPlayerCap || avoid.size || strengthBias ? null : WHIST[players.length];
   const built = table
     ? fromWhist(players, table)
-    : greedyRotation(players, perPlayerCap || undefined);
+    : greedyRotation(players, perPlayerCap || undefined, { avoid, strengthBias });
 
   const cap = opts.maxRounds && opts.maxRounds > 0 ? opts.maxRounds : built.rounds;
   if (cap >= built.rounds) return built;

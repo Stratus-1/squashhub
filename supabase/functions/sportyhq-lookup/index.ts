@@ -648,7 +648,8 @@ Deno.serve(async (req) => {
         .filter((l) => !filter || filter.test(l.href) || filter.test(l.text));
       const title = html.match(/<title>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? null;
       const text = body.text ? html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, Number(body.text)) : undefined;
-      return json({ len: html.length, title, links: links.slice(0, 300), text });
+      const raw = body.raw_from ? (() => { const i = html.indexOf(String(body.raw_from)); return i < 0 ? null : html.slice(i, i + Number(body.raw_len ?? 6000)); })() : undefined;
+      return json({ len: html.length, title, links: links.slice(0, 300), text, raw });
     }
 
     if (action === "debug_group_page") {

@@ -1349,6 +1349,9 @@ export default function ClubChampsView() {
         playoffModeByLeague: ((champ as any)?.league_playoff_modes as Record<number, any>) || undefined,
         qualifiersPerPoolByLeague:
           ((champ as any)?.league_playoff_qualifiers as Record<number, number>) || undefined,
+        // Swiss: organiser-chosen knockout size after the Swiss rounds.
+        topQualifiersByLeague:
+          ((champ as any)?.swiss_knockout_qualifiers as Record<number, number>) || undefined,
 
         leagueLabels: (groupNumbers as number[]).map((gn) => (champ as any)?.group_labels?.[String(gn)] || `League ${gn}`),
       });

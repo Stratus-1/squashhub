@@ -1905,3 +1905,9 @@ NSA's tournament venue picker merged legacy `association_affiliated_clubs` with 
   `rotation_max_matches` (all nullable → legacy behaviour unchanged).
 - Fixed an unrelated broken test: `dashboard-device-controls` needed the club-secrets
   hook mocked after the Bluetooth fallback work.
+
+## 2026-09-23 — Format-specific tournament structure (Round Robin vs Swiss)
+- Round Robin: no manual rounds field; pool schedule derived from pool size. Multi-pool divisions offer "Enable playoffs after pool stage" with Position or Knockout (qualifiers per pool, cross-pool seeding).
+- Swiss: admin-entered "Number of Swiss rounds", first-round pairing (seeded top-half v bottom-half, or random) via `firstRoundSwissPairs` in `src/lib/swiss-pairing.ts`, optional knockout with a chosen qualifier count honoured by `knockoutSizeFor` in `src/lib/tournament-playoffs.ts`.
+- New nullable settings on `tournaments` (+ `club_champs` view): `league_playoff_modes`, `league_playoff_qualifiers`, `rotation_max_matches`, `swiss_pairing_modes`, `swiss_knockout_qualifiers`.
+- Nelspruit Family Doubles `e85d7bd1-3a70-43ee-aa75-e984bb1518f9`: `league_formats.1` changed `swiss` → `single_round_robin` and the stale `swiss_rounds.1` cleared. Nothing else touched — 36 fixtures, pools `[6,6]`, playoffs flag, registrations, pairs and payments unchanged (0 matches were completed).

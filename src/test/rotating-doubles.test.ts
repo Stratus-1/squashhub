@@ -137,3 +137,27 @@ describe("excluded partners and strength bias", () => {
     expect(strongWeak).toBeGreaterThan(weakWeak);
   });
 });
+
+describe("balanced strength mode", () => {
+  const ids = Array.from({ length: 12 }, (_, i) => `p${i + 1}`);
+
+  it("pairs similar standards together", () => {
+    const gap = (mode: "balanced" | "mixed") => {
+      const { games } = generateRotatingDoublesSchedule(ids, {
+        maxMatchesPerPlayer: 8,
+        strengthMode: mode,
+      });
+      const idx = (p: string) => ids.indexOf(p);
+      let total = 0;
+      let n = 0;
+      for (const g of games) {
+        for (const side of [g.sideA, g.sideB]) {
+          total += Math.abs(idx(side[0]) - idx(side[1]));
+          n++;
+        }
+      }
+      return total / Math.max(1, n);
+    };
+    expect(gap("balanced")).toBeLessThan(gap("mixed"));
+  });
+});

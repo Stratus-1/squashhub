@@ -182,7 +182,10 @@ import { useTournamentGovernance, syncTournamentVenues } from "@/hooks/use-tourn
 import { deriveVenueRows } from "@/lib/tournaments/venues";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
-import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
+import {
+  playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders,
+  DEFAULT_PLAYOFF_MODE, isPlayoffMode, type PlayoffMode,
+} from "@/lib/tournament-playoffs";
 import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck";
 import {
   type RoundDeadline,

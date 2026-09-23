@@ -1773,6 +1773,23 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     }).eq("id", member.id);
     if (error) { toast.error(error.message); return; }
 
+    // Squash South Africa number/membership — saved through the same RPC as the
+    // Status button so anything set here is marked as entered by hand and the
+    // automatic sync never overwrites it.
+    if (ssaLoaded) {
+      const numberChanged = ssaNumber.trim() !== (ssaRow?.ssa_number || "");
+      const statusChanged = ssaStatus !== (ssaRow?.ssa_status || "unknown").toLowerCase();
+      if (numberChanged || statusChanged) {
+        const { error: ssaErr } = await (supabase as any).rpc("admin_set_competition_status", {
+          _club_member_id: member.id,
+          _ssa_number: ssaNumber.trim() || null,
+          _ssa_status: ssaStatus,
+        });
+        if (ssaErr) { toast.error(ssaErr.message || "Could not save the Squash South Africa status"); return; }
+        qcEdit.invalidateQueries({ queryKey: ["competition-status", member.id] });
+      }
+    }
+
     // Persist permanent affiliations: one row per association whose tick state changed.
     // Numbers are NEVER deleted — we only flip `active`. New rows for external-regional
     // associations are created here; tenant ones are created by the edge function above.

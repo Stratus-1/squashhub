@@ -256,6 +256,10 @@ function greedyRotation(
         let cost = 0;
         if (partnered.has(pairKey(a1, a2))) cost += 10;
         if (partnered.has(pairKey(b1, b2))) cost += 10;
+        // Never partner an excluded couple — they play as opponents instead.
+        if (avoid.has(pairKey(a1, a2))) cost += 1000;
+        if (avoid.has(pairKey(b1, b2))) cost += 1000;
+        cost += partnerQuality(a1, a2) + partnerQuality(b1, b2);
         for (const x of [a1, a2]) {
           for (const y of [b1, b2]) cost += opposed.get(pairKey(x, y)) || 0;
         }

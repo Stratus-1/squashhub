@@ -120,6 +120,7 @@ export function WithdrawPlayerButton({ champs }: Props) {
       (r.status !== "cancelled" && r.status !== "invited") || enteredIds.has(r.club_member_id),
   );
   const nameOf = (r: any) => r?.member?.name || r?.member?.profiles?.name || "Unknown";
+  const sortedRegs = [...activeRegs].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
   const reg = activeRegs.find((r: any) => r.club_member_id === memberId) || null;
   const leagues = memberId ? memberLeagues(memberId) : [];
 

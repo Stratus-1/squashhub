@@ -31,7 +31,10 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
         supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "active").neq("role", "visitor"),
         supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "suspended").neq("role", "visitor"),
         supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "resigned").neq("role", "visitor"),
-        supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).eq("plays_league", true).neq("role", "visitor"),
+        Promise.all([
+          supabase.from("club_members").select("id").eq("club_id", clubId).eq("plays_league", true).neq("role", "visitor"),
+          (supabase as any).from("member_league_registrations").select("club_member_id, club_members!inner(club_id, role), leagues!inner(archived_at)").eq("club_members.club_id", clubId).neq("club_members.role", "visitor").is("leagues.archived_at", null),
+        ]),
         supabase.from("club_visitors").select("first_name, last_name").eq("club_id", clubId),
         supabase.from("club_members").select("name").eq("club_id", clubId).eq("role", "visitor"),
       ]);
@@ -53,7 +56,10 @@ export function ClubStatsCard({ clubId }: ClubStatsCardProps) {
         active: activeRes.count ?? 0,
         suspended: suspendedRes.count ?? 0,
         resigned: resignedRes.count ?? 0,
-        league: leagueRes.count ?? 0,
+        league: new Set<string>([
+          ...((leagueRes[0].data || []) as any[]).map((r) => r.id),
+          ...((leagueRes[1].data || []) as any[]).map((r) => r.club_member_id),
+        ]).size,
         visitors: visitorNames.size,
       };
 

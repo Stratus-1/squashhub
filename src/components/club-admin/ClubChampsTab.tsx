@@ -1047,6 +1047,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [editingChampId, setEditingChampId] = useState<string | null>(null);
   const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
 
+  // Ladder positions drive tournament seeding. The member list is cached, so a
+  // ladder change made elsewhere in the app would otherwise still show the old
+  // rank here. Pull fresh member rows whenever the wizard is opened, and expose
+  // a manual refresh on the Players step.
+  const refreshLadderRanks = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["club-members"] }),
+      qc.invalidateQueries({ queryKey: ["tournament-member-pool"] }),
+      qc.invalidateQueries({ queryKey: ["champ-invitee-directory"] }),
+      qc.invalidateQueries({ queryKey: ["champ-team-roster-directory"] }),
+    ]);
+  }, [qc]);
+
+  useEffect(() => {
+    if (!showWizard) return;
+    void refreshLadderRanks();
+  }, [showWizard, editingChampId, refreshLadderRanks]);
+
   // Governance record for the tournament being edited — read-only in the wizard
   // (fee shares and refunds are owned by the Governance dialog).
   const { data: wizardGovernance } = useTournamentGovernance(editingChampId);

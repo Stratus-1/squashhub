@@ -7499,6 +7499,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueDrawStyles({});
     setPoolSizeOverrides({});
     setSwissRounds({});
+    setSwissPairingModes({});
+    setSwissKnockoutQualifiers({});
     setExpectedPlayers({});
     setLeagueFormats({});
     setLeagueSections({});

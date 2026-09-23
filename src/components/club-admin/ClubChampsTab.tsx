@@ -1823,6 +1823,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     if (wizardGovernance?.eligibility_scope) setEligibilityScope(wizardGovernance.eligibility_scope);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingChampId, wizardGovernance?.eligibility_scope]);
+  // Warn-only competition checks: flag entrants whose league registration or
+  // Squash South Africa membership is not confirmed active.
+  const [requireLeagueActive, setRequireLeagueActive] = useState(false);
+  const [requireSsaActive, setRequireSsaActive] = useState(false);
+  useEffect(() => {
+    setRequireLeagueActive(!!(wizardGovernance as any)?.require_league_active);
+    setRequireSsaActive(!!(wizardGovernance as any)?.require_ssa_active);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingChampId, (wizardGovernance as any)?.require_league_active, (wizardGovernance as any)?.require_ssa_active]);
   const [maxEntrants, setMaxEntrants] = useState<string>("");
   const [maxPerLeague, setMaxPerLeague] = useState<string>("");
   const [seedingSource, setSeedingSource] = useState<string>("ladder");

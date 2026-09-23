@@ -1101,6 +1101,13 @@ export function MembersTab({ clubId }: { clubId: string }) {
           onClose={() => setAffiliateMember(null)}
         />
       )}
+      {statusMember && (
+        <CompetitionStatusDialog
+          memberId={statusMember.id}
+          memberName={statusMember.name || statusMember.profiles?.name || "Member"}
+          onClose={() => setStatusMember(null)}
+        />
+      )}
 
     </div>
   );

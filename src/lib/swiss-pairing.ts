@@ -145,6 +145,33 @@ export function poolStandings(
 export type PairProposal = { entityA: string; entityB: string; bye?: boolean };
 
 /**
+ * Swiss round 1.
+ *   "seeded" → top half v bottom half, in order: with 10 seeds that is
+ *              1v6, 2v7, 3v8, 4v9, 5v10 (NOT 1v10).
+ *   "random" → a shuffled draw.
+ * An odd field leaves the last entity without an opponent (`bye`).
+ */
+export function firstRoundSwissPairs(
+  orderedEntityIds: string[],
+  mode: "seeded" | "random" = "seeded",
+  rng: () => number = Math.random,
+): { pairs: [string, string][]; bye: string | null } {
+  const ids = orderedEntityIds.filter(Boolean);
+  if (mode === "random") {
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+  }
+  const bye = ids.length % 2 === 1 ? ids[ids.length - 1] : null;
+  const field = bye ? ids.slice(0, -1) : ids;
+  const half = field.length / 2;
+  const pairs: [string, string][] = [];
+  for (let i = 0; i < half; i++) pairs.push([field[i], field[i + half]]);
+  return { pairs, bye };
+}
+
+/**
  * Greedy Swiss pairing:
  *   1. Sort by score (points desc, gameDiff, wins).
  *   2. Walk score groups top→bottom; pair with earliest partner not already faced.

@@ -3363,17 +3363,35 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const rawIds = pair ? [pair.player1Id, pair.player2Id] : [id];
       const resolvedIds = rawIds.length > 0 ? await promoteVisitorIds(rawIds) : [];
       if (cid && resolvedIds.length > 0) {
-        // The Games pull-out action handles walkovers and booked courts. Do
-        // not remove a scheduled player's entries behind that workflow's back.
-        const { count: fixtureCount, error: fixtureErr } = await fromExt("club_champs_matches")
-          .select("id", { count: "exact", head: true })
+        // Two different actions:
+        //  A) Withdraw from tournament (here): before this player has played,
+        //     they leave the entrant list entirely. Their unplayed generated
+        //     fixtures are removed so the next Rebuild uses only active entrants.
+        //  B) Pull out / retire (Tournament Games): once they HAVE played, the
+        //     results stay and remaining games are forfeited per the rules.
+        const { data: theirMatches, error: fixtureErr } = await fromExt("club_champs_matches")
+          .select("id, status, winner_member_id, score, booking_id, is_bye")
           .eq("champ_id", cid)
           .or(resolvedIds.flatMap((memberId) => [
             `player_a_member_id.eq.${memberId}`, `player_b_member_id.eq.${memberId}`,
             `partner_a_member_id.eq.${memberId}`, `partner_b_member_id.eq.${memberId}`,
           ]).join(","));
         if (fixtureErr) throw fixtureErr;
-        if (fixtureCount) throw new Error("Games already exist for this player. Use 'Pull a player out' on Tournament Games so their fixtures and court bookings are handled safely.");
+        const rows = (theirMatches || []) as any[];
+        const played = rows.filter((m) => !m.is_bye && (m.winner_member_id || m.score || ["completed", "forfeited", "walkover", "in_progress"].includes(String(m.status || ""))));
+        if (played.length > 0) {
+          throw new Error(`This player has already played ${played.length} game${played.length === 1 ? "" : "s"}, so their results must be kept. Use 'Pull a player out' on Tournament Games — their played results stay and their remaining games are recorded as forfeits.`);
+        }
+        const booked = rows.filter((m) => m.booking_id);
+        if (booked.length > 0) {
+          throw new Error("This player has a court booked for a game. Use 'Pull a player out' on Tournament Games so the booking is released safely.");
+        }
+        const unplayedIds = rows.map((m) => m.id);
+        if (unplayedIds.length > 0) {
+          const { error: delErr } = await fromExt("club_champs_matches").delete().in("id", unplayedIds);
+          if (delErr) throw delErr;
+          toast.info(`Removed ${unplayedIds.length} unplayed game${unplayedIds.length === 1 ? "" : "s"}. Click Rebuild Schedule to redraw for the remaining players.`);
+        }
         for (const resolvedId of resolvedIds) {
           const { error: entryErr } = await fromExt("club_champs_entries")
             .delete()
@@ -3414,6 +3432,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         qc.invalidateQueries({ queryKey: ["champ-invitees", cid] });
         qc.invalidateQueries({ queryKey: ["champ-registrations", cid] });
         qc.invalidateQueries({ queryKey: ["champ-entries", cid] });
+        qc.invalidateQueries({ queryKey: ["champ-rebuild-impact", cid] });
+        qc.invalidateQueries({ queryKey: ["champ-played-rotation", cid] });
         qc.invalidateQueries({ queryKey: ["club-champs"] });
       }
 
@@ -5447,7 +5467,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [scheduleGroups, isDoubles, rotatePartners, leagueMatchTypes, divisionFollows, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, poolDurations, groupBreakMinutes, defaultBreakMinutes, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
+  }, [scheduleGroups, isDoubles, rotatePartners, leagueMatchTypes, divisionFollows, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, poolDurations, groupBreakMinutes, defaultBreakMinutes, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws, rotationMaxMatches, rotationAvoidPairs, rotationStrengthMode, playedRotationRows]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the

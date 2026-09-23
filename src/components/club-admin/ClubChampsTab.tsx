@@ -2953,6 +2953,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_playoff_qualifiers:
         Object.keys(leaguePlayoffQualifiers).length > 0 ? leaguePlayoffQualifiers : null,
       rotation_max_matches: rotationMaxMatches > 0 ? rotationMaxMatches : null,
+      rotation_avoid_pairs: rotationAvoidPairs.length > 0 ? rotationAvoidPairs : null,
       swiss_pairing_modes: Object.keys(swissPairingModes).length > 0 ? swissPairingModes : null,
       swiss_knockout_qualifiers:
         Object.keys(swissKnockoutQualifiers).length > 0 ? swissKnockoutQualifiers : null,
@@ -4311,6 +4312,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (rotateThisLeague) {
         const rotation = generateRotatingDoublesSchedule(ids, {
           maxMatchesPerPlayer: rotationMaxMatches > 0 ? rotationMaxMatches : undefined,
+          avoidPartners: rotationAvoidPairs,
         });
         for (const g of rotation.games) {
           allMatches.push({
@@ -7575,6 +7577,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePlayoffModes({});
     setLeaguePlayoffQualifiers({});
     setRotationMaxMatches(0);
+    setRotationAvoidPairs([]);
     setNumGroups(0);
     setChampName("");
     setStartDate("");
@@ -7929,6 +7932,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       setLeaguePlayoffModes(modes);
       setLeaguePlayoffQualifiers(quals);
       setRotationMaxMatches(Math.max(0, Math.floor(Number((champ as any).rotation_max_matches) || 0)));
+      const avoidRaw = (champ as any).rotation_avoid_pairs;
+      setRotationAvoidPairs(
+        Array.isArray(avoidRaw)
+          ? avoidRaw
+              .map((pair: any) => (Array.isArray(pair) ? [String(pair[0] || ""), String(pair[1] || "")] : []))
+              .filter((pair: string[]) => pair.length === 2 && pair[0] && pair[1])
+          : [],
+      );
     }
     setLeagueByeHandling(inheritedBH);
     setLeagueForfeitRules(inheritedFR);

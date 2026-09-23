@@ -10165,7 +10165,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   />
                                   {fmt === "knockout"
                                     ? "Continue through knockout stages"
-                                    : "Playoffs / finals for this league"}
+                                    : poolsForLeague(gn) > 1
+                                      ? "Enable playoffs after pool stage"
+                                      : "Playoffs / finals for this league"}
                                 </label>
                                 {fmt === "knockout" && (
                                   <p className="text-[10px] text-muted-foreground pl-6 pt-0.5 leading-relaxed">
@@ -10173,7 +10175,59 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     through to the section/division final.
                                   </p>
                                 )}
+                                {fmt !== "knockout" && poolsForLeague(gn) > 1 && playoffsForLeague(gn) && (
+                                  <div className="pl-6 pt-1.5 space-y-1.5">
+                                    <div className="flex flex-wrap gap-3">
+                                      {([
+                                        { v: "position" as PlayoffMode, l: "Position playoffs" },
+                                        { v: "knockout" as PlayoffMode, l: "Knockout playoffs" },
+                                      ]).map((o) => (
+                                        <label key={o.v} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                                          <input
+                                            type="radio"
+                                            className="h-3 w-3 accent-fuchsia-500"
+                                            name={`playoff-mode-${key}`}
+                                            checked={playoffModeForLeague(gn) === o.v}
+                                            onChange={() =>
+                                              setLeaguePlayoffModes((m) => ({ ...m, [key]: o.v }))
+                                            }
+                                          />
+                                          {o.l}
+                                        </label>
+                                      ))}
+                                    </div>
+                                    {playoffModeForLeague(gn) === "position" ? (
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                        Matching finishing positions meet: A1 v B1, A2 v B2, A3 v B3 … so every
+                                        overall position in this division is decided.
+                                      </p>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        <label className="flex items-center gap-2 text-[11px]">
+                                          <span>Qualify from each pool</span>
+                                          <input
+                                            type="number"
+                                            min={1}
+                                            className="h-7 w-16 rounded border bg-background px-2 text-[11px]"
+                                            value={playoffQualifiersForLeague(gn)}
+                                            onChange={(e) =>
+                                              setLeaguePlayoffQualifiers((m) => ({
+                                                ...m,
+                                                [key]: Math.max(1, Math.floor(Number(e.target.value) || 1)),
+                                              }))
+                                            }
+                                          />
+                                        </label>
+                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                          {playoffQualifiersForLeague(gn) * poolsForLeague(gn)} qualifiers go into one
+                                          cross-pool knockout draw, seeded so pool rivals meet as late as possible.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
+
                               <div className="pt-1 flex justify-end">
                                 <Button
                                   type="button"

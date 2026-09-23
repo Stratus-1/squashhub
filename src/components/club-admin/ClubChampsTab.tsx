@@ -4659,11 +4659,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           // The timeline must tick finely enough to land on EVERY pool's own
           // slot (playing time + changeover). With 20/19/18/14-minute pools a
           // 20-minute tick would force everything onto the 20-minute grid.
+          // The configured slot ALREADY includes the changeover break — the
+          // bell rings at (slot − break). Never add the break on top again.
           const slotLengths: number[] = [];
           for (const gn of leagues) {
-            const brk = breakFor(gn);
             const poolNums = Array.from(new Set(byLeague.get(gn)!.map((m) => m.poolNum ?? 1)));
-            for (const p of poolNums) slotLengths.push(Math.max(1, capFor(gn, p) + brk));
+            for (const p of poolNums) slotLengths.push(Math.max(1, capFor(gn, p)));
           }
           const step = Math.max(
             1,
@@ -4984,13 +4985,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     courtPool.set(cid, u);
                   }
                 }
-                // Hold the court for the game plus this division's changeover.
-                courtBusyUntil.set(cid, nowAbs + playCap + breakFor(picked.league));
+                // The slot already contains the changeover, so the court is held
+                // for the slot itself; the game itself ends at slot − break.
+                const playMinutes = Math.max(1, playCap - breakFor(picked.league));
+                courtBusyUntil.set(cid, nowAbs + playCap);
                 assignedInBlock.set(picked.league, (assignedInBlock.get(picked.league) || 0) + 1);
                 const players = [...getPlayersForEntity(m.entityA), ...getPlayersForEntity(m.entityB)];
                 players.forEach((pid) => {
-                  playerBusyUntil.set(pid, nowAbs + playCap);
-                  lastPlayedEnd.set(pid, nowAbs + playCap);
+                  playerBusyUntil.set(pid, nowAbs + playMinutes);
+                  lastPlayedEnd.set(pid, nowAbs + playMinutes);
                   playCount.set(pid, (playCount.get(pid) || 0) + 1);
                   lastCourtByPlayer.set(pid, cid);
                 });

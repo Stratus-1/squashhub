@@ -30,7 +30,7 @@ export function ResultNotifySettingsCard(p: Props) {
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Card className="mt-4">
+      <Card className="mt-4 border-emerald-500/40">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-2 cursor-pointer select-none flex-row items-start justify-between gap-2 space-y-0">
             <div className="min-w-0">

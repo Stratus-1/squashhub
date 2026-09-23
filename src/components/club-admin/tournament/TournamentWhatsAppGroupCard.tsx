@@ -136,11 +136,11 @@ export function TournamentWhatsAppGroupCard({
       { onSuccess: () => toast.success(next === "active" ? "Group reopened" : `Group ${next}`) },
     );
 
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Card>
+      <Card className="border-emerald-500/40">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-3 cursor-pointer select-none">
             <CardTitle className="text-sm flex items-center gap-2">

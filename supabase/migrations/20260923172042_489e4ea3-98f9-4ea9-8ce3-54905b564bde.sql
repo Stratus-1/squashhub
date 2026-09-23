@@ -1,0 +1,1 @@
+ALTER TABLE public.external_league_divisions ADD COLUMN IF NOT EXISTS fixtures jsonb NOT NULL DEFAULT '[]'::jsonb;

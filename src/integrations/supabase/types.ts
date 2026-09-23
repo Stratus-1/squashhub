@@ -13740,6 +13740,8 @@ export type Database = {
           start_date: string | null
           start_time: string
           status: string
+          swiss_knockout_qualifiers: Json | null
+          swiss_pairing_modes: Json | null
           swiss_pools: Json | null
           swiss_rounds: Json | null
           updated_at: string
@@ -13839,6 +13841,8 @@ export type Database = {
           start_date?: string | null
           start_time?: string
           status?: string
+          swiss_knockout_qualifiers?: Json | null
+          swiss_pairing_modes?: Json | null
           swiss_pools?: Json | null
           swiss_rounds?: Json | null
           updated_at?: string
@@ -13938,6 +13942,8 @@ export type Database = {
           start_date?: string | null
           start_time?: string
           status?: string
+          swiss_knockout_qualifiers?: Json | null
+          swiss_pairing_modes?: Json | null
           swiss_pools?: Json | null
           swiss_rounds?: Json | null
           updated_at?: string
@@ -14490,6 +14496,8 @@ export type Database = {
           ladder_affects: boolean | null
           league_draw_styles: Json | null
           league_formats: Json | null
+          league_playoff_modes: Json | null
+          league_playoff_qualifiers: Json | null
           league_sections: Json | null
           league_win_conditions: Json | null
           match_duration_minutes: number | null
@@ -14520,6 +14528,7 @@ export type Database = {
           registration_mode: string | null
           registration_opens_at: string | null
           registration_required: boolean | null
+          rotation_max_matches: number | null
           round_definitions: Json | null
           round_format: string | null
           round_play_by: Json | null
@@ -14538,6 +14547,8 @@ export type Database = {
           start_date: string | null
           start_time: string | null
           status: string | null
+          swiss_knockout_qualifiers: Json | null
+          swiss_pairing_modes: Json | null
           swiss_pools: Json | null
           swiss_rounds: Json | null
           updated_at: string | null

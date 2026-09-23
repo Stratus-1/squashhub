@@ -544,8 +544,52 @@ export function buildPlayoffPlaceholders(input: PlaceholderInput): PlayoffMatchR
       if (validPoolSizes.length < 2) continue;
       const minSize = Math.min(...validPoolSizes);
       if (!Number.isFinite(minSize) || minSize < 1) continue;
-      const size = bracketSizeFor(poolCount);
       const poolName = (p: number) => `${lgName} Pool ${poolLetter(p)}`;
+
+      // Knockout playoffs: reserve one cross-pool bracket for the qualifiers.
+      const mode: PlayoffMode = isPlayoffMode(playoffModeByLeague?.[lg])
+        ? (playoffModeByLeague![lg] as PlayoffMode)
+        : DEFAULT_PLAYOFF_MODE;
+      if (mode === "knockout") {
+        const q = Math.min(minSize, Math.max(1, Math.floor(Number(qualifiersPerPoolByLeague?.[lg] || 1))));
+        const entrants = knockoutQualifierCount(poolCount, q);
+        if (entrants < 2) continue;
+        const koSize = bracketSizeFor(entrants);
+        const bp = poolBracketPos(lg, 1);
+        // Seed slot → "Pool X #n" using the same snake order as the builder.
+        const slotLabel = (seed: number) => {
+          const idx = seed - 1;
+          const pos = Math.floor(idx / poolCount) + 1;
+          const pool = (idx % poolCount) + 1;
+          return `${poolName(pool)} #${pos}`;
+        };
+        if (koSize === 2) {
+          rows.push(placeholderRow(champId, 1, "playoff_final", `${lgName} · Final`, bp,
+            slotLabel(1), slotLabel(2)));
+          continue;
+        }
+        const firstStage = koSize === 8 ? "playoff_qf" : "playoff_sf";
+        const firstName = koSize === 8 ? "Quarter-final" : "Semi-final";
+        seededPairs(koSize).forEach(([a, b], i) => {
+          rows.push(placeholderRow(champId, 1, firstStage, `${lgName} · ${firstName} ${i + 1}`, bp,
+            slotLabel(a), slotLabel(b)));
+        });
+        if (koSize === 8) {
+          rows.push(placeholderRow(champId, 2, "playoff_sf", `${lgName} · Semi-final 1`, bp,
+            `Winner ${lgName} QF1`, `Winner ${lgName} QF2`));
+          rows.push(placeholderRow(champId, 2, "playoff_sf", `${lgName} · Semi-final 2`, bp,
+            `Winner ${lgName} QF3`, `Winner ${lgName} QF4`));
+        }
+        const finalRound = koSize === 8 ? 3 : 2;
+        rows.push(placeholderRow(champId, finalRound, "playoff_final", `${lgName} · Final`, bp,
+          `Winner ${lgName} SF1`, `Winner ${lgName} SF2`));
+        rows.push(placeholderRow(champId, finalRound, "playoff_3rd", `${lgName} · 3rd Place`, bp,
+          `Loser ${lgName} SF1`, `Loser ${lgName} SF2`));
+        continue;
+      }
+
+      const size = bracketSizeFor(poolCount);
+
 
       for (let pos = 1; pos <= minSize; pos++) {
         const posPrefix = `${lgName} · Pos ${pos}`;

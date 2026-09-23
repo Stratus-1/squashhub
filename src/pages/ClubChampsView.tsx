@@ -1346,6 +1346,10 @@ export default function ClubChampsView() {
         numLeagues,
         poolsByLeague: swissPoolMode ? poolsByLeague : undefined,
         standingsByLeaguePool: swissPoolMode ? standingsByLeaguePool : undefined,
+        playoffModeByLeague: ((champ as any)?.league_playoff_modes as Record<number, any>) || undefined,
+        qualifiersPerPoolByLeague:
+          ((champ as any)?.league_playoff_qualifiers as Record<number, number>) || undefined,
+
         leagueLabels: (groupNumbers as number[]).map((gn) => (champ as any)?.group_labels?.[String(gn)] || `League ${gn}`),
       });
 

@@ -1064,7 +1064,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // tournament-level switch any more.
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [playerSearch, setPlayerSearch] = useState("");
-  const [expandedPlayerClubs, setExpandedPlayerClubs] = useState<Set<string>>(new Set());
   const [numGroups, setNumGroups] = useState(0);
   const [champName, setChampName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -2955,13 +2954,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // (stale tab, draw confirmed elsewhere). Merge per division instead of
       // replacing the whole object, and never write null over stored draws.
       const nextExtras: Record<string, any> = { ...extras };
+      const { data: withdrawnRows, error: withdrawnError } = await fromExt("club_champs_registrations")
+        .select("club_member_id").eq("champ_id", id).eq("status", "cancelled");
+      if (withdrawnError) throw withdrawnError;
+      const withdrawnIds = new Set<string>((withdrawnRows || []).map((row: any) => String(row.club_member_id)));
+      nextExtras.draft_player_ids = (extras.draft_player_ids as string[]).filter((memberId) => !withdrawnIds.has(memberId));
+      nextExtras.seed_order = Array.isArray(extras.seed_order)
+        ? extras.seed_order.filter((memberId: string) => !withdrawnIds.has(memberId)) : extras.seed_order;
       const { data: current } = await fromExt("tournaments")
         .select("manual_draws, manual_seed_divisions")
         .eq("id", id)
         .maybeSingle();
       const storedDraws = ((current as any)?.manual_draws as Record<string, any> | null) || {};
       const mergedDraws = { ...storedDraws, ...manualDraws };
-      nextExtras.manual_draws = Object.keys(mergedDraws).length > 0 ? mergedDraws : null;
+      const cleanedDraws = removeFromManualDraws(mergedDraws, Array.from(withdrawnIds)) ?? mergedDraws;
+      nextExtras.manual_draws = Object.keys(cleanedDraws).length > 0 ? cleanedDraws : null;
       if (manualSeedGroups.size === 0) {
         const storedSeedDivs = ((current as any)?.manual_seed_divisions as number[] | null) || [];
         if (storedSeedDivs.length > 0) nextExtras.manual_seed_divisions = storedSeedDivs;
@@ -3019,6 +3026,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // the Structure / draw source. A member who plays no league is still
       // invited when the audience is "All club members".
       const inviteSeedIds = new Set(selectedPlayerIds);
+      // A cancelled registration is an explicit withdrawal, not an invitation
+      // to materialise this player again from the saved audience or draft.
+      const { data: cancelledRegs, error: cancelledErr } = await fromExt("club_champs_registrations")
+        .select("club_member_id")
+        .eq("champ_id", champIdToUse)
+        .eq("status", "cancelled");
+      if (cancelledErr) throw cancelledErr;
+      const cancelledIds = new Set<string>((cancelledRegs || []).map((r: any) => String(r.club_member_id)));
+      cancelledIds.forEach((id) => inviteSeedIds.delete(id));
       let audienceIds = resolvedAudience.memberIds;
       if (inviteAudience === "leagues" && audienceLeagueIds.size > 0) {
         // Re-read at save time so the roster is canonical even if the cached
@@ -3058,7 +3074,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const seedsFromAudience =
         audienceIds.length > 0 &&
         (registrationUsesInviteList || opts?.materializeAudience || inviteAudience !== "all_club");
-      if (seedsFromAudience) audienceIds.forEach((id) => inviteSeedIds.add(id));
+      if (seedsFromAudience) audienceIds.forEach((id) => {
+        if (!cancelledIds.has(id)) inviteSeedIds.add(id);
+      });
       if (registrationUsesInviteList || seedsFromAudience) {
 
 
@@ -3129,7 +3147,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       } else {
         if (selectedPlayerIds.size === 0) return;
         const rows = (groups as ClubMember[][]).flatMap((groupPlayers, gi) =>
-          groupPlayers.map((p, orderIndex) => ({
+          groupPlayers.filter((p) => !cancelledIds.has(resolveId(p.id))).map((p, orderIndex) => ({
             champ_id: champIdToUse,
             club_member_id: resolveId(p.id),
             group_number: gi + 1,
@@ -3161,7 +3179,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // allocation save — free tournaments included. Doing so made their invite
       // link think they had already accepted. Only rows the organiser creates
       // directly here (no outstanding invite) are marked as entered.
-      const uniqueIds = Array.from(new Set(allocatedMemberIds));
+      const uniqueIds = Array.from(new Set(allocatedMemberIds)).filter((id) => !cancelledIds.has(id));
       if (uniqueIds.length > 0) {
         const { data: existingRows } = await fromExt("club_champs_registrations")
           .select("club_member_id, status, confirmed_at")
@@ -3265,28 +3283,57 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const rawIds = pair ? [pair.player1Id, pair.player2Id] : [id];
       const resolvedIds = rawIds.length > 0 ? await promoteVisitorIds(rawIds) : [];
       if (cid && resolvedIds.length > 0) {
+        // The Games pull-out action handles walkovers and booked courts. Do
+        // not remove a scheduled player's entries behind that workflow's back.
+        const { count: fixtureCount, error: fixtureErr } = await fromExt("club_champs_matches")
+          .select("id", { count: "exact", head: true })
+          .eq("champ_id", cid)
+          .or(resolvedIds.flatMap((memberId) => [
+            `player_a_member_id.eq.${memberId}`, `player_b_member_id.eq.${memberId}`,
+            `partner_a_member_id.eq.${memberId}`, `partner_b_member_id.eq.${memberId}`,
+          ]).join(","));
+        if (fixtureErr) throw fixtureErr;
+        if (fixtureCount) throw new Error("Games already exist for this player. Use 'Pull a player out' on Tournament Games so their fixtures and court bookings are handled safely.");
         for (const resolvedId of resolvedIds) {
-          await fromExt("club_champs_entries")
+          const { error: entryErr } = await fromExt("club_champs_entries")
             .delete()
             .eq("champ_id", cid)
             .or(`club_member_id.eq.${resolvedId},partner_member_id.eq.${resolvedId}`);
+          if (entryErr) throw entryErr;
         }
-        await fromExt("club_champs_registrations")
+        const { data: existingRegs, error: lookupErr } = await fromExt("club_champs_registrations")
+          .select("club_member_id")
+          .eq("champ_id", cid)
+          .in("club_member_id", resolvedIds);
+        if (lookupErr) throw lookupErr;
+        const existingIds = new Set((existingRegs || []).map((r: any) => r.club_member_id));
+        const missingIds = resolvedIds.filter((memberId) => !existingIds.has(memberId));
+        if (missingIds.length > 0) {
+          const { error: insertErr } = await fromExt("club_champs_registrations").insert(missingIds.map((memberId) => ({
+            champ_id: cid, club_member_id: memberId, status: "cancelled",
+            declined_at: new Date().toISOString(), confirmation_source: "withdrawn",
+          })));
+          if (insertErr) throw insertErr;
+        }
+        const { error: regErr } = await fromExt("club_champs_registrations")
           .update({
             status: "cancelled",
+            declined_at: new Date().toISOString(),
             confirmed_at: null,
-            confirmation_source: null,
+            confirmation_source: "withdrawn",
             partner_member_id: null,
             partner_confirmed: false,
           })
           .eq("champ_id", cid)
           .in("club_member_id", resolvedIds);
+        if (regErr) throw regErr;
         // Also strip them from the saved seeding order / confirmed draw board,
         // otherwise they reappear in these lists on the next open.
         for (const resolvedId of resolvedIds) await purgeFromSetup(cid, resolvedId);
         setManualDraws((prev) => removeFromManualDraws(prev, resolvedIds) ?? prev);
         qc.invalidateQueries({ queryKey: ["champ-invitees", cid] });
         qc.invalidateQueries({ queryKey: ["champ-registrations", cid] });
+        qc.invalidateQueries({ queryKey: ["champ-entries", cid] });
         qc.invalidateQueries({ queryKey: ["club-champs"] });
       }
 
@@ -7856,6 +7903,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     const { data: allRegistrations } = await fromExt("club_champs_registrations")
       .select("club_member_id, partner_member_id, status, confirmed_at, paid_at, fee_paid_cents, division_choices")
       .eq("champ_id", champ.id);
+    const cancelledAtLoad = new Set((allRegistrations || [])
+      .filter((r: any) => r.status === "cancelled")
+      .map((r: any) => String(r.club_member_id)));
     const champPaymentRequired =
       !!(champ as any).payment_required && Number((champ as any).entry_fee_cents || 0) > 0;
     const registrations = filterParticipatingEntrants(allRegistrations as any[], {
@@ -7897,14 +7947,19 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (chosen.length > 0) choicesByMember.set(r.club_member_id, chosen as number[]);
     });
 
-    const hasEntries = entries && entries.length > 0;
+    // Older draws can retain entries after a withdrawal. Never hydrate them
+    // back into the Players picker or a newly generated schedule.
+    const activeEntries = (entries || []).filter((e: any) =>
+      !cancelledAtLoad.has(String(e.club_member_id)) &&
+      (!e.partner_member_id || !cancelledAtLoad.has(String(e.partner_member_id))));
+    const hasEntries = activeEntries.length > 0;
 
     if (hasEntries) {
       // Rotating-partner doubles is entered as individual players (each entry
       // row is one player with no fixed partner), so it hydrates the player
       // picker exactly like singles — not the pairs board.
       if (champ.match_type === "doubles" && champ.partner_mode !== "rotate") {
-        const pairs: DoublePair[] = entries.map((e: any) => ({
+        const pairs: DoublePair[] = activeEntries.map((e: any) => ({
           id: crypto.randomUUID(),
           player1Id: e.club_member_id,
           player2Id: e.partner_member_id,
@@ -7913,12 +7968,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         setPairOrder(pairs.map((p) => p.id));
         const assignments = new Map<string, number>();
         pairs.forEach((p, i) => {
-          const entry = entries[i];
+          const entry = activeEntries[i];
           assignments.set(p.id, (entry as any).group_number - 1);
         });
         setPairGroupAssignments(assignments);
       } else {
-        const ids: string[] = Array.from(new Set<string>(entries.map((e: any) => String(e.club_member_id))));
+        const ids: string[] = Array.from(new Set<string>(activeEntries.map((e: any) => String(e.club_member_id))));
         // Registered-but-not-yet-entered acceptances must still show up.
         choicesByMember.forEach((_v, id) => {
           if (!ids.includes(id)) ids.push(id);
@@ -7927,7 +7982,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         setPlayerOrder(ids);
         const assignments = new Map<string, number>();
         const extras = new Map<string, Set<number>>();
-        entries.forEach((e: any) => {
+        activeEntries.forEach((e: any) => {
           const gi = e.group_number - 1;
           if (!assignments.has(e.club_member_id)) assignments.set(e.club_member_id, gi);
           else {
@@ -7953,7 +8008,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         [],
         (ex.draft_player_ids as string[] | null | undefined),
         registrations.map((r: any) => r.club_member_id),
-      );
+      ).filter((id) => !cancelledAtLoad.has(id));
       setSelectedPlayerIds(new Set(restoredIds));
 
       if (registrations.length === 0) {
@@ -11933,8 +11988,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               <Button
                 variant="outline" size="sm"
                 onClick={() => {
+                  const activeIds = (inviteeRows as any[])
+                    .filter((r: any) => classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }) === "registered")
+                    .map((r: any) => r.club_member_id);
                   if (selectedPlayerIds.size === availablePlayers.length) {
-                    setSelectedPlayerIds(new Set());
+                    setSelectedPlayerIds(new Set(activeIds));
                   } else {
                     setSelectedPlayerIds(new Set(availablePlayers.map((m: any) => m.id)));
                   }
@@ -11994,6 +12052,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         (scope !== "club" && clubForPlayer(m).name.toLowerCase().includes(q))
                       )
                     : availablePlayers;
+                  const byName = (a: any, b: any) =>
+                    String(a.name || a.profiles?.name || "").localeCompare(String(b.name || b.profiles?.name || ""));
+                  const participants = filtered.filter((m: any) => selectedPlayerIds.has(m.id)).sort(byName);
+                  const otherMembers = filtered.filter((m: any) => !selectedPlayerIds.has(m.id)).sort(byName);
                   if (filtered.length === 0) {
                     return (
                       <p className="text-sm text-muted-foreground py-4 text-center">
@@ -12004,74 +12066,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     );
                   }
                   const renderPlayer = (m: any) => {
-                        const i = availablePlayers.findIndex((p: any) => p.id === m.id);
+                        const entered = (inviteeRows as any[]).some((r: any) =>
+                          r.club_member_id === m.id && classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }) === "registered");
                         return (
-                          <label key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer">
+                          <div key={m.id} className="flex items-center gap-3 p-2 rounded hover:bg-accent">
                             <Checkbox
+                              aria-label={`Select ${m.name || m.profiles?.name || "player"}`}
                               checked={selectedPlayerIds.has(m.id)}
+                              disabled={entered}
                               onCheckedChange={(checked) => {
                                 const next = new Set(selectedPlayerIds);
                                 checked ? next.add(m.id) : next.delete(m.id);
                                 setSelectedPlayerIds(next);
                               }}
                             />
-                            <span className="w-6 text-right text-muted-foreground text-sm">{i + 1}.</span>
                             <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
                             {m._isVisitor && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor · {m._homeClub}</Badge>}
                             {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
+                            {scope !== "club" && <Badge variant="outline" className="text-[10px]">{clubForPlayer(m).name}</Badge>}
                             {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
-                          </label>
-                        );
-                  };
-                  if (scope === "club") {
-                    return <div className="space-y-2 max-h-[400px] overflow-y-auto">{filtered.map(renderPlayer)}</div>;
-                  }
-                  const groups = new Map<string, { name: string; players: any[] }>();
-                  filtered.forEach((m: any) => {
-                    const { key, name } = clubForPlayer(m);
-                    const group = groups.get(key) || { name, players: [] };
-                    group.players.push(m);
-                    groups.set(key, group);
-                  });
-                  return (
-                    <div className="max-h-[400px] overflow-y-auto space-y-1">
-                      {[...groups.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([key, group]) => {
-                        const open = !!q || expandedPlayerClubs.has(key);
-                        const selected = group.players.filter((m) => selectedPlayerIds.has(m.id)).length;
-                        return (
-                          <div key={key} className="border border-border rounded-md">
-                            <div className="flex items-center gap-2 px-2 py-1.5 bg-muted/40">
-                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0"
-                                aria-label={`${open ? "Collapse" : "Expand"} ${group.name}`}
-                                aria-expanded={open}
-                                onClick={() => setExpandedPlayerClubs((prev) => {
-                                  const next = new Set(prev);
-                                  next.has(key) ? next.delete(key) : next.add(key);
-                                  return next;
-                                })}>
-                                <ChevronRight className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} />
+                            {editingChampId && entered && (
+                              <Button type="button" variant="ghost" size="sm" className="ml-auto shrink-0 text-destructive"
+                                onClick={() => {
+                                  if (confirm(`Withdraw ${m.name || m.profiles?.name || "this player"} from the tournament? This also removes them from the draw.`)) {
+                                    void withdraw(m.id);
+                                  }
+                                }}>
+                                Withdraw
                               </Button>
-                              <Checkbox aria-label={`Select players from ${group.name}`}
-                                checked={selected === 0 ? false : selected === group.players.length ? true : "indeterminate"}
-                                onCheckedChange={(checked) => setSelectedPlayerIds((prev) => {
-                                  const next = new Set(prev);
-                                  group.players.forEach((m) => checked === true ? next.add(m.id) : next.delete(m.id));
-                                  return next;
-                                })} />
-                              <Button type="button" variant="ghost" className="h-7 min-w-0 flex-1 justify-start px-1 font-semibold"
-                                onClick={() => setExpandedPlayerClubs((prev) => {
-                                  const next = new Set(prev);
-                                  next.has(key) ? next.delete(key) : next.add(key);
-                                  return next;
-                                })}>
-                                <span className="truncate">{group.name}</span>
-                              </Button>
-                              <span className="shrink-0 text-xs text-muted-foreground">{selected}/{group.players.length} selected</span>
-                            </div>
-                            {open && <div className="pl-4">{group.players.map(renderPlayer)}</div>}
+                            )}
                           </div>
                         );
-                      })}
+                  };
+                  return (
+                    <div className="max-h-[400px] overflow-y-auto space-y-1">
+                      {participants.length > 0 && <p className="sticky top-0 bg-background px-2 py-1 text-xs font-semibold">Tournament players ({participants.length})</p>}
+                      {participants.map(renderPlayer)}
+                      {otherMembers.length > 0 && <p className="sticky top-0 bg-background px-2 py-1 text-xs font-semibold">Other members ({otherMembers.length})</p>}
+                      {otherMembers.map(renderPlayer)}
                     </div>
                   );
                 })()}

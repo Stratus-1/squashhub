@@ -4759,11 +4759,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             // Backlog ratio: leagues further from done get scheduled first
             // so both leagues finish together. Multiply by 1000 for ranking.
             const backlogRatio = Math.round((pool.length / initial) * 1000);
+            // Rotating doubles: each generated round is a set of games with NO
+            // shared players, so a round exactly fills every court. If we mix
+            // games from different rounds in the same time slot, the leftover
+            // players usually have no game in common and a court sits empty.
+            // Prefer the earliest round still outstanding so rounds drain whole.
+            let roundPriority = 1;
+            if (isRotationEntity(m.entityA)) {
+              let minRound = Number.MAX_SAFE_INTEGER;
+              for (const rm of pool) if (rm.roundNum < minRound) minRound = rm.roundNum;
+              roundPriority = m.roundNum <= minRound ? 1 : 0;
+            }
             // How many courts this league has already taken in the current
             // rotation block (lower = should get next court within block).
             const inBlock = assignedInBlock.get(gn) || 0;
             // Higher is better across the tuple.
             return [
+              roundPriority,    // 0. rotation: finish the current round first
               backlogRatio,     // 1. keep leagues balanced by % done
               -inBlock,         // 2. spread leagues across courts within block
               minRest,          // 3. most-rested players first

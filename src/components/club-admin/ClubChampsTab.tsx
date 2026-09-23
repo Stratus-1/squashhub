@@ -1734,6 +1734,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Registration & payment
   const [registrationMode, setRegistrationMode] = useState<"" | "open" | "invite">("");
   const [partnerMode, setPartnerMode] = useState<"" | "admin" | "players" | "rotate">("");
+  // Rotating-partner doubles: individual cap on matches per player. 0 = full rotation.
+  const [rotationMaxMatches, setRotationMaxMatches] = useState<number>(0);
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");

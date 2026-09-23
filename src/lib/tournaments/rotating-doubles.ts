@@ -158,7 +158,11 @@ function fromWhist(players: string[], table: number[][][]): RotationSchedule {
  * have played that many games; the schedule ends as soon as fewer than four
  * eligible players remain.
  */
-function greedyRotation(players: string[], perPlayerCap?: number): RotationSchedule {
+function greedyRotation(
+  players: string[],
+  perPlayerCap?: number,
+  bias: { avoid?: Set<string>; strengthBias?: boolean } = {},
+): RotationSchedule {
   const n = players.length;
   const courts = Math.floor(n / 4);
   const targetPartnerships = (n * (n - 1)) / 2;
@@ -166,6 +170,18 @@ function greedyRotation(players: string[], perPlayerCap?: number): RotationSched
   const opposed = new Map<string, number>();
   const playedCount = new Map<string, number>(players.map((p) => [p, 0]));
   const restedSince = new Map<string, number>(players.map((p) => [p, 0]));
+  const avoid = bias.avoid ?? new Set<string>();
+  // Seeded order: index 0 is the strongest. 0 = strongest, 1 = weakest.
+  const weakness = new Map<string, number>(
+    players.map((p, i) => [p, n > 1 ? i / (n - 1) : 0]),
+  );
+  // Squared so a weak+weak partnership costs far more than a strong+weak one:
+  // when combinations must be left out, the weakest ones are dropped first.
+  const partnerQuality = (a: string, b: string) => {
+    if (!bias.strengthBias) return 0;
+    const w = (weakness.get(a) || 0) + (weakness.get(b) || 0);
+    return w * w * 3;
+  };
 
   const games: RotationGame[] = [];
   const sittingOut: string[][] = [];

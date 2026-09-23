@@ -170,14 +170,21 @@ const poolLetter = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
  * needed — the caller instead patches those specific rows with winner IDs.
  */
 export function buildPlayoffMatches(input: BuildInput): PlayoffMatchRow[] {
-  const { champId, isDoubles, standingsByLeague, numLeagues, poolsByLeague, standingsByLeaguePool, leagueLabels } = input;
+  const {
+    champId, isDoubles, standingsByLeague, numLeagues, poolsByLeague, standingsByLeaguePool,
+    leagueLabels, playoffModeByLeague, qualifiersPerPoolByLeague,
+  } = input;
   const rows: PlayoffMatchRow[] = [];
 
-  // ── Swiss pool mode → intra-league per-position bracket across pools ──
+  // ── Pool mode → intra-league bracket across pools (position or knockout) ──
   if (hasPoolMode(poolsByLeague) && standingsByLeaguePool) {
     const labelForLeague = (lg: number) => leagueLabels?.[lg - 1] || `League ${lg}`;
     for (let lg = 1; lg <= numLeagues; lg++) {
       const poolCount = Math.max(1, Number(poolsByLeague?.[lg] || 1));
+      const mode: PlayoffMode = isPlayoffMode(playoffModeByLeague?.[lg])
+        ? (playoffModeByLeague![lg] as PlayoffMode)
+        : DEFAULT_PLAYOFF_MODE;
+
       if (poolCount <= 1) {
         // League has one pool — no intra-league bracket; fall back to
         // in-league knockout of top finishers for this league.

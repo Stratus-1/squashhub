@@ -1775,6 +1775,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [partnerMode, setPartnerMode] = useState<"" | "admin" | "players" | "rotate">("");
   // Rotating-partner doubles: individual cap on matches per player. 0 = full rotation.
   const [rotationMaxMatches, setRotationMaxMatches] = useState<number>(0);
+  /** Rotating doubles: player pairs that must never be drawn as partners. */
+  const [rotationAvoidPairs, setRotationAvoidPairs] = useState<string[][]>([]);
+  const [rotationStrengthMode, setRotationStrengthMode] = useState<"any" | "mixed" | "balanced">("mixed");
+  const [avoidPickA, setAvoidPickA] = useState<string>("");
+  const [avoidPickB, setAvoidPickB] = useState<string>("");
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
@@ -2951,6 +2956,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_playoff_qualifiers:
         Object.keys(leaguePlayoffQualifiers).length > 0 ? leaguePlayoffQualifiers : null,
       rotation_max_matches: rotationMaxMatches > 0 ? rotationMaxMatches : null,
+      rotation_avoid_pairs: rotationAvoidPairs.length > 0 ? rotationAvoidPairs : null,
+      rotation_strength_mode: rotationStrengthMode,
       swiss_pairing_modes: Object.keys(swissPairingModes).length > 0 ? swissPairingModes : null,
       swiss_knockout_qualifiers:
         Object.keys(swissKnockoutQualifiers).length > 0 ? swissKnockoutQualifiers : null,
@@ -4309,6 +4316,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (rotateThisLeague) {
         const rotation = generateRotatingDoublesSchedule(ids, {
           maxMatchesPerPlayer: rotationMaxMatches > 0 ? rotationMaxMatches : undefined,
+          avoidPartners: rotationAvoidPairs,
+          strengthMode: rotationStrengthMode,
         });
         for (const g of rotation.games) {
           allMatches.push({
@@ -7170,6 +7179,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return m;
   }, [members]);
 
+  /** Display name for a rotating-doubles player (members, visitors, invitees). */
+  const rotationPlayerName = (id: string) =>
+    memberNameById.get(id) ||
+    (allSelectablePlayers as any[]).find((p) => p.id === id)?.name ||
+    "Player";
+
   // Members who can actually receive an invite: a linked login (in-app), an
   // email address (email) OR a phone number (WhatsApp / SMS). A phone-only
   // member must never be dropped — this mirrors the server-side directory,
@@ -7573,6 +7588,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePlayoffModes({});
     setLeaguePlayoffQualifiers({});
     setRotationMaxMatches(0);
+    setRotationAvoidPairs([]);
+    setRotationStrengthMode("mixed");
+    setRotationAvoidPairs([]);
     setNumGroups(0);
     setChampName("");
     setStartDate("");
@@ -7927,6 +7945,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       setLeaguePlayoffModes(modes);
       setLeaguePlayoffQualifiers(quals);
       setRotationMaxMatches(Math.max(0, Math.floor(Number((champ as any).rotation_max_matches) || 0)));
+      const sm = String((champ as any).rotation_strength_mode || "");
+      setRotationStrengthMode(sm === "any" || sm === "balanced" || sm === "mixed" ? sm : "mixed");
+      const avoidRaw = (champ as any).rotation_avoid_pairs;
+      setRotationAvoidPairs(
+        Array.isArray(avoidRaw)
+          ? avoidRaw
+              .map((pair: any) => (Array.isArray(pair) ? [String(pair[0] || ""), String(pair[1] || "")] : []))
+              .filter((pair: string[]) => pair.length === 2 && pair[0] && pair[1])
+          : [],
+      );
     }
     setLeagueByeHandling(inheritedBH);
     setLeagueForfeitRules(inheritedFR);
@@ -10321,6 +10349,106 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                                    ? `Each player plays at most ${rotationMaxMatches} matches. The draw spreads partners and opponents as widely as possible within that limit — not every partner combination is played.`
                                                    : "Leave blank for a full rotation: everyone partners everyone."}
                                                </p>
+                                               <div className="space-y-1 pt-2">
+                                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                   Partner strength
+                                                 </Label>
+                                                 <select
+                                                   className="h-7 w-full rounded border bg-background px-1 text-[11px]"
+                                                   value={rotationStrengthMode}
+                                                   onChange={(e) =>
+                                                     setRotationStrengthMode(e.target.value as "any" | "mixed" | "balanced")
+                                                   }
+                                                 >
+                                                   <option value="mixed">Stronger player with a weaker player</option>
+                                                   <option value="balanced">Similar standard together</option>
+                                                   <option value="any">No preference</option>
+                                                 </select>
+                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                   {rotationStrengthMode === "mixed"
+                                                     ? "Pairs mix a stronger player with a weaker one, so the combinations left out are the weakest ones."
+                                                     : rotationStrengthMode === "balanced"
+                                                       ? "Players of a similar standard partner each other, so games stay evenly matched."
+                                                       : "Partners are drawn purely on variety, regardless of standard."}
+                                                 </p>
+                                               </div>
+                                               <div className="space-y-1 pt-2">
+                                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                   Never partner each other
+                                                 </Label>
+                                                 <div className="flex flex-wrap gap-1">
+                                                   {rotationAvoidPairs.map((pair, i) => (
+                                                     <span
+                                                       key={`${pair[0]}-${pair[1]}-${i}`}
+                                                       className="inline-flex items-center gap-1 rounded border bg-muted/50 px-2 py-0.5 text-[10px]"
+                                                     >
+                                                       {rotationPlayerName(pair[0])} &amp; {rotationPlayerName(pair[1])}
+                                                       <button
+                                                         type="button"
+                                                         className="text-muted-foreground hover:text-destructive"
+                                                         onClick={() =>
+                                                           setRotationAvoidPairs((list) => list.filter((_, j) => j !== i))
+                                                         }
+                                                       >
+                                                         ×
+                                                       </button>
+                                                     </span>
+                                                   ))}
+                                                   {rotationAvoidPairs.length === 0 && (
+                                                     <span className="text-[10px] text-muted-foreground">
+                                                       No exclusions yet.
+                                                     </span>
+                                                   )}
+                                                 </div>
+                                                 <div className="flex items-center gap-2 pt-1">
+                                                   <select
+                                                     className="h-7 flex-1 rounded border bg-background px-1 text-[11px]"
+                                                     value={avoidPickA}
+                                                     onChange={(e) => setAvoidPickA(e.target.value)}
+                                                   >
+                                                     <option value="">Player…</option>
+                                                     {selectedPlayers.map((p: any) => (
+                                                       <option key={p.id} value={p.id}>{rotationPlayerName(p.id)}</option>
+                                                     ))}
+                                                   </select>
+                                                   <select
+                                                     className="h-7 flex-1 rounded border bg-background px-1 text-[11px]"
+                                                     value={avoidPickB}
+                                                     onChange={(e) => setAvoidPickB(e.target.value)}
+                                                   >
+                                                     <option value="">Player…</option>
+                                                     {selectedPlayers.map((p: any) => (
+                                                       <option key={p.id} value={p.id}>{rotationPlayerName(p.id)}</option>
+                                                     ))}
+                                                   </select>
+                                                   <Button
+                                                     type="button"
+                                                     size="sm"
+                                                     variant="outline"
+                                                     className="h-7 text-[10px]"
+                                                     disabled={!avoidPickA || !avoidPickB || avoidPickA === avoidPickB}
+                                                     onClick={() => {
+                                                       setRotationAvoidPairs((list) =>
+                                                         list.some(
+                                                           (p) =>
+                                                             (p[0] === avoidPickA && p[1] === avoidPickB) ||
+                                                             (p[0] === avoidPickB && p[1] === avoidPickA),
+                                                         )
+                                                           ? list
+                                                           : [...list, [avoidPickA, avoidPickB]],
+                                                       );
+                                                       setAvoidPickA("");
+                                                       setAvoidPickB("");
+                                                     }}
+                                                   >
+                                                     Add
+                                                   </Button>
+                                                 </div>
+                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                   Family members or couples you would rather not have as partners. They
+                                                   can still meet as opponents.
+                                                 </p>
+                                               </div>
                                              </div>
                                            )}
                                          </>

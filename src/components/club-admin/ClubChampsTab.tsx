@@ -186,6 +186,7 @@ import {
   playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders,
   DEFAULT_PLAYOFF_MODE, isPlayoffMode, type PlayoffMode,
 } from "@/lib/tournament-playoffs";
+import { firstRoundSwissPairs } from "@/lib/swiss-pairing";
 import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck";
 import {
   type RoundDeadline,

@@ -4317,8 +4317,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         const poolIds = poolGroups[p] || [];
         if (poolIds.length < 2) continue;
         const { rounds: rrRounds, byesPerRound } = generateRoundRobinRounds(poolIds, "single");
+        // Round 1 follows the organiser's Swiss draw (seeded top half v bottom
+        // half, or random). Later rounds are re-paired on results in the live
+        // tournament; these rows only reserve the right number of slots.
+        const firstRound = firstRoundSwissPairs(
+          poolIds,
+          swissPairingModes[String(gi + 1)] === "random" ? "random" : "seeded",
+        );
         for (let r = 0; r < rounds; r++) {
-          const src = rrRounds[r % rrRounds.length] || [];
+          const src =
+            r === 0
+              ? firstRound.pairs.map(([a, b]) => [a, b, null] as [string, string, number | null])
+              : rrRounds[r % rrRounds.length] || [];
           src.forEach(([a, b, leg]) => {
             allMatches.push({ groupNum: gi + 1, roundNum: r + 1, entityA: a, entityB: b, leg, poolNum: p + 1 });
           });

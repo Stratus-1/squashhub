@@ -7176,6 +7176,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     return m;
   }, [members]);
 
+  /** Display name for a rotating-doubles player (members, visitors, invitees). */
+  const rotationPlayerName = (id: string) =>
+    memberNameById.get(id) ||
+    (allSelectablePlayers as any[]).find((p) => p.id === id)?.name ||
+    "Player";
+
   // Members who can actually receive an invite: a linked login (in-app), an
   // email address (email) OR a phone number (WhatsApp / SMS). A phone-only
   // member must never be dropped — this mirrors the server-side directory,

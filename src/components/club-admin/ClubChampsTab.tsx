@@ -10357,12 +10357,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                                    ? `Each player plays at most ${rotationMaxMatches} matches. The draw spreads partners and opponents as widely as possible within that limit — not every partner combination is played.`
                                                    : "Leave blank for a full rotation: everyone partners everyone."}
                                                </p>
-                                               {rotationMaxMatches > 0 && (
-                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                                   The combinations that are left out are the weakest ones — stronger
-                                                   players keep their pairings.
-                                                 </p>
-                                               )}
                                                <div className="space-y-1 pt-2">
                                                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                                                    Partner strength

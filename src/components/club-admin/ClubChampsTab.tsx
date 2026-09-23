@@ -8748,6 +8748,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                   )}
                 </div>
               </div>
+              <div className="rounded border p-2 space-y-1.5">
+                <Label className="text-xs font-semibold">Membership checks</Label>
+                <label className="flex items-start gap-2 text-[11px]">
+                  <Checkbox checked={requireLeagueActive} onCheckedChange={(v) => setRequireLeagueActive(!!v)} />
+                  <span>Flag players whose league registration is not active</span>
+                </label>
+                <label className="flex items-start gap-2 text-[11px]">
+                  <Checkbox checked={requireSsaActive} onCheckedChange={(v) => setRequireSsaActive(!!v)} />
+                  <span>Flag players whose Squash South Africa membership is not active</span>
+                </label>
+                <p className="text-[10px] text-muted-foreground">
+                  A warning triangle shows next to those players on the Players step. It never stops anyone entering.
+                </p>
+              </div>
               <p className="text-[11px] text-muted-foreground">
                 Eligibility is not an invitation list — it only decides who <em>may</em> take part. Age limits and licence
                 requirements live in <strong>Governance → Eligibility</strong>; ranking status lives on the scoring settings

@@ -354,6 +354,18 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
             + Affiliate
           </Button>
         )}
+        <CompetitionStatusBadges memberId={m.id} />
+        {onCompetitionStatus && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 px-1.5 text-[9px] text-muted-foreground hover:text-primary"
+            onClick={(e) => { e.stopPropagation(); onCompetitionStatus(); }}
+            title="Set league and Squash South Africa status by hand"
+          >
+            Status
+          </Button>
+        )}
       </div>
 
 

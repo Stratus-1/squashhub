@@ -41,7 +41,7 @@ import {
   directoryScopeLabel,
   type DirectoryPlayer,
 } from "@/lib/tournaments/invite-directory";
-import { restoreDraftPlayerIds, sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
+import { restoreDraftPlayerIds, sanitizeDraftPayload, sanitizeExtrasPayload, sortTournamentPlayers } from "@/lib/tournaments/draft-payload";
 import {
   classifyEntrant,
   countEntrantsByCategory,
@@ -12052,10 +12052,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         (scope !== "club" && clubForPlayer(m).name.toLowerCase().includes(q))
                       )
                     : availablePlayers;
-                  const byName = (a: any, b: any) =>
-                    String(a.name || a.profiles?.name || "").localeCompare(String(b.name || b.profiles?.name || ""));
-                  const participants = filtered.filter((m: any) => selectedPlayerIds.has(m.id)).sort(byName);
-                  const otherMembers = filtered.filter((m: any) => !selectedPlayerIds.has(m.id)).sort(byName);
+                  const { participants, otherMembers } = sortTournamentPlayers(filtered, selectedPlayerIds);
                   if (filtered.length === 0) {
                     return (
                       <p className="text-sm text-muted-foreground py-4 text-center">

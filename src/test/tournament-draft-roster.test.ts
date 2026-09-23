@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { restoreDraftPlayerIds } from "@/lib/tournaments/draft-payload";
+import { restoreDraftPlayerIds, sortTournamentPlayers } from "@/lib/tournaments/draft-payload";
 
 describe("tournament draft player roster", () => {
   it("restores checked players before divisions are allocated", () => {
@@ -24,5 +24,15 @@ describe("tournament draft player roster", () => {
 
   it("falls back to participating registrations for older tournaments", () => {
     expect(restoreDraftPlayerIds([], null, ["registered", "registered"])).toEqual(["registered"]);
+  });
+
+  it("lists selected participants first, then unselected members alphabetically", () => {
+    const players = [
+      { id: "zoe", name: "Zoe" }, { id: "dave", name: "Dave" },
+      { id: "ana", name: "Ana" }, { id: "ben", name: "Ben" },
+    ];
+    const { participants, otherMembers } = sortTournamentPlayers(players, new Set(["zoe", "ana"]));
+    expect(participants.map((p) => p.id)).toEqual(["ana", "zoe"]);
+    expect(otherMembers.map((p) => p.id)).toEqual(["ben", "dave"]);
   });
 });

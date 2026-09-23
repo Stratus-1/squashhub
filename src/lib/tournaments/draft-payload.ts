@@ -83,3 +83,15 @@ export function restoreDraftPlayerIds(
   }
   return Array.from(new Set(registeredPlayerIds));
 }
+
+/** Keep the current field easy to review before the unselected member directory. */
+export function sortTournamentPlayers<T extends { id: string; name?: string | null; profiles?: { name?: string | null } | null }>(
+  players: T[], selectedIds: ReadonlySet<string>,
+): { participants: T[]; otherMembers: T[] } {
+  const byName = (a: T, b: T) => String(a.name || a.profiles?.name || "")
+    .localeCompare(String(b.name || b.profiles?.name || ""));
+  return {
+    participants: players.filter((player) => selectedIds.has(player.id)).sort(byName),
+    otherMembers: players.filter((player) => !selectedIds.has(player.id)).sort(byName),
+  };
+}

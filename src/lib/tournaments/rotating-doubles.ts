@@ -179,8 +179,32 @@ function greedyRotation(players: string[], perPlayerCap?: number): RotationSched
     sittingOut.push(resting);
     for (const p of resting) restedSince.set(p, (restedSince.get(p) || 0) + 1);
 
+    // Build each court's foursome from the players who have played least,
+    // choosing companions that repeat the fewest partnerships/meetings. Simply
+    // slicing the sorted pool into consecutive fours would lock the same four
+    // people together round after round (so the same pairs keep recurring).
+    const unassigned = [...playing];
+    const meetCost = (a: string, b: string) =>
+      (partnered.has(pairKey(a, b)) ? 6 : 0) + (opposed.get(pairKey(a, b)) || 0);
+
     for (let c = 0; c < roundCourts; c++) {
-      const quad = playing.slice(c * 4, c * 4 + 4);
+      if (unassigned.length < 4) break;
+      const anchor = unassigned.shift()!;
+      const quad = [anchor];
+      while (quad.length < 4) {
+        let bestIdx = 0;
+        let bestCost = Number.MAX_SAFE_INTEGER;
+        unassigned.forEach((cand, i) => {
+          let cost = quad.reduce((sum, q) => sum + meetCost(q, cand), 0);
+          // keep games-played balanced within the round
+          cost += (playedCount.get(cand) || 0) * 0.01;
+          if (cost < bestCost) {
+            bestCost = cost;
+            bestIdx = i;
+          }
+        });
+        quad.push(unassigned.splice(bestIdx, 1)[0]);
+      }
       const splits: Array<[number, number, number, number]> = [
         [0, 1, 2, 3],
         [0, 2, 1, 3],
@@ -216,6 +240,7 @@ function greedyRotation(players: string[], perPlayerCap?: number): RotationSched
       }
       games.push({ round, sideA: [a1, a2], sideB: [b1, b2] });
     }
+
   }
 
   return { games, sittingOut, rounds: sittingOut.length };

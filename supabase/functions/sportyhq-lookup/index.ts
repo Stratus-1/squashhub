@@ -631,14 +631,35 @@ Deno.serve(async (req) => {
               weekly.push({ date: c[0], points: pts });
             }
           }
+          // Rubber-by-rubber fixtures involving our club's teams. Completed
+          // fixtures are immutable, so only new ones are fetched (budgeted).
+          const prev: any[] = Array.isArray(existing.get(divId)?.fixtures) ? existing.get(divId).fixtures : [];
+          const byId = new Map(prev.map((f: any) => [String(f.fixture_id), f]));
+          const links = new Map<string, string>();
+          for (const m of html.matchAll(/href="(\/league\/view\/result\/(\d+)\/(\d+)[^"]*)"/g)) {
+            if (!ourTeamIds.has(m[2]) || links.has(m[3])) continue;
+            links.set(m[3], m[1].replace(/&amp;/g, "&"));
+          }
+          let added = 0;
+          for (const [fid, path] of links) {
+            if (byId.get(fid)?.rubbers?.length) continue;
+            if (fixtureBudget.left <= 0) break;
+            fixtureBudget.left--;
+            try {
+              const f = parseFixture(await fetchHtml(`${BASE}${path}`), clean, cellsOf);
+              if (f) { byId.set(fid, { fixture_id: fid, ...f }); added++; }
+            } catch { /* retried next run */ }
+            await new Promise((r) => setTimeout(r, 200));
+          }
+          const fixtures = [...byId.values()].sort((a: any, b: any) => String(a.played_at ?? "").localeCompare(String(b.played_at ?? "")));
           const { error: upErr } = await sb.from("external_league_divisions").upsert({
             association_id: t.association_id, source: "sportyhq", external_division_id: divId,
             division_name: divisionName || `Division ${divId}`, external_league_name: leagueName ?? null,
-            season_year: t.season_year ?? null, standings, weekly, fetched_at: new Date().toISOString(),
+            season_year: t.season_year ?? null, standings, weekly, fixtures, fetched_at: new Date().toISOString(),
           }, { onConflict: "source,external_division_id" });
           if (upErr) throw new Error(upErr.message);
           divCache.set(divId, true);
-          results.push({ team: teamId, division: divId, teams: standings.length, weeks: weekly.length });
+          results.push({ team: teamId, division: divId, teams: standings.length, weeks: weekly.length, fixtures: fixtures.length, new_fixtures: added, pending: links.size - fixtures.filter((f: any) => links.has(String(f.fixture_id))).length });
         } catch (e) {
           results.push({ team: teamId, error: (e as Error).message });
         }

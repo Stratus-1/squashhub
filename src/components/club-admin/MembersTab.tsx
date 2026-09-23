@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
 import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
+import { useCompetitionStatus } from "@/hooks/use-competition-status";
 import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
 

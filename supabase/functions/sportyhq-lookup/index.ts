@@ -561,13 +561,27 @@ Deno.serve(async (req) => {
     if (action === "import_league_standings") {
       // Mirrors SportyHQ division standings + weekly points for every league team
       // of an association (leagues.code = 'SHQ<teamId>'). Idempotent upserts.
+      // Scheduled mode (body.scheduled): refreshes every SportyHQ-sourced league
+      // body, only public data, throttled to once per 3h per division.
       const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      const { data: u } = await sb.auth.getUser((req.headers.get("Authorization") ?? "").replace("Bearer ", ""));
-      if (!u?.user?.id) return json({ error: "Not signed in" }, 401);
-      const { data: adm } = await sb.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
-      if (!adm) return json({ error: "Platform admin only" }, 403);
-      const associationIds: string[] = Array.isArray(body.association_ids) ? body.association_ids.map(String) : [];
-      if (!associationIds.length) return json({ error: "association_ids required" }, 400);
+      const scheduled = body.scheduled === true;
+      let associationIds: string[] = [];
+      if (scheduled) {
+        const { data: a } = await sb.from("league_associations").select("id").eq("external_source", "sportyhq");
+        associationIds = (a ?? []).map((r: any) => r.id);
+        if (!associationIds.length) return json({ imported: 0 });
+      } else {
+        const { data: u } = await sb.auth.getUser((req.headers.get("Authorization") ?? "").replace("Bearer ", ""));
+        if (!u?.user?.id) return json({ error: "Not signed in" }, 401);
+        const { data: adm } = await sb.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
+        if (!adm) return json({ error: "Platform admin only" }, 403);
+        associationIds = Array.isArray(body.association_ids) ? body.association_ids.map(String) : [];
+        if (!associationIds.length) return json({ error: "association_ids required" }, 400);
+      }
+      const fixtureBudget = { left: Math.min(Number(body.max_fixtures ?? 60), 150) };
+      const { data: existingDivs } = await sb.from("external_league_divisions")
+        .select("external_division_id, fixtures, fetched_at").eq("source", "sportyhq");
+      const existing = new Map((existingDivs ?? []).map((d: any) => [String(d.external_division_id), d]));
       const { data: teams, error: tErr } = await sb
         .from("leagues")
         .select("id, code, association_id, season_year")

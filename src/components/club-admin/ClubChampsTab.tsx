@@ -12029,6 +12029,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               >
                 {selectedPlayerIds.size === availablePlayers.length ? "Deselect All" : "Select All"}
               </Button>
+              </div>
             </div>
             <p className="text-sm text-muted-foreground">
               {selectedPlayerIds.size} of {availablePlayers.length} selected

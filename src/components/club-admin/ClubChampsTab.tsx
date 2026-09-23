@@ -2906,6 +2906,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_win_conditions: Object.keys(leagueWinConditions).length > 0 ? leagueWinConditions : null,
       league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
       league_playoffs: Object.keys(leaguePlayoffs).length > 0 ? leaguePlayoffs : null,
+      league_playoff_modes: Object.keys(leaguePlayoffModes).length > 0 ? leaguePlayoffModes : null,
+      league_playoff_qualifiers:
+        Object.keys(leaguePlayoffQualifiers).length > 0 ? leaguePlayoffQualifiers : null,
+      rotation_max_matches: rotationMaxMatches > 0 ? rotationMaxMatches : null,
       league_bye_handling: Object.keys(leagueByeHandling).length > 0 ? leagueByeHandling : null,
       league_forfeit_rules: Object.keys(leagueForfeitRules).length > 0 ? leagueForfeitRules : null,
       league_forfeit_points: Object.keys(leagueForfeitPoints).length > 0 ? leagueForfeitPoints : null,

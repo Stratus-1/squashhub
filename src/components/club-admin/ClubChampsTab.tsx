@@ -1052,18 +1052,35 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // rank here. Pull fresh member rows whenever the wizard is opened, and expose
   // a manual refresh on the Players step.
   const refreshLadderRanks = useCallback(async () => {
+    // `invalidateQueries` only marks data stale — a list that is already
+    // rendered can keep showing the old ladder number until something else
+    // triggers a fetch. Force the read so reopening the editor always shows
+    // the ladder as it stands right now.
     await Promise.all([
-      qc.invalidateQueries({ queryKey: ["club-members"] }),
-      qc.invalidateQueries({ queryKey: ["tournament-member-pool"] }),
-      qc.invalidateQueries({ queryKey: ["champ-invitee-directory"] }),
-      qc.invalidateQueries({ queryKey: ["champ-team-roster-directory"] }),
+      qc.refetchQueries({ queryKey: ["club-members"], type: "all" }),
+      qc.refetchQueries({ queryKey: ["tournament-member-pool"], type: "all" }),
+      qc.refetchQueries({ queryKey: ["champ-invitee-directory"], type: "all" }),
+      qc.refetchQueries({ queryKey: ["champ-team-roster-directory"], type: "all" }),
+      qc.refetchQueries({ queryKey: ["champ-registrations"], type: "all" }),
+      qc.refetchQueries({ queryKey: ["club-champs-entries"], type: "all" }),
     ]);
   }, [qc]);
 
+  // Re-read on every open AND whenever a different tournament is opened for
+  // edit, so switching from one event to another never carries stale ranks.
   useEffect(() => {
     if (!showWizard) return;
     void refreshLadderRanks();
   }, [showWizard, editingChampId, refreshLadderRanks]);
+
+  // Coming back to the tab after editing the club ladder in another tab or
+  // window should also pick the new positions up.
+  useEffect(() => {
+    if (!showWizard) return;
+    const onFocus = () => void refreshLadderRanks();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [showWizard, refreshLadderRanks]);
 
   // Governance record for the tournament being edited — read-only in the wizard
   // (fee shares and refunds are owned by the Governance dialog).

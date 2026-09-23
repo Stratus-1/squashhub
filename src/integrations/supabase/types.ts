@@ -9119,6 +9119,69 @@ export type Database = {
           },
         ]
       }
+      member_import_staging: {
+        Row: {
+          address: string | null
+          batch: string
+          club_id: string
+          created_at: string
+          credit_amount: number | null
+          date_of_birth: string | null
+          email: string | null
+          fee_amount: number | null
+          fee_code: string | null
+          first_name: string | null
+          gender: string | null
+          id: string
+          last_name: string | null
+          matched_member_id: string | null
+          occupation: string | null
+          phone: string | null
+          renewal_date: string | null
+          src_member_no: string | null
+        }
+        Insert: {
+          address?: string | null
+          batch: string
+          club_id: string
+          created_at?: string
+          credit_amount?: number | null
+          date_of_birth?: string | null
+          email?: string | null
+          fee_amount?: number | null
+          fee_code?: string | null
+          first_name?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          matched_member_id?: string | null
+          occupation?: string | null
+          phone?: string | null
+          renewal_date?: string | null
+          src_member_no?: string | null
+        }
+        Update: {
+          address?: string | null
+          batch?: string
+          club_id?: string
+          created_at?: string
+          credit_amount?: number | null
+          date_of_birth?: string | null
+          email?: string | null
+          fee_amount?: number | null
+          fee_code?: string | null
+          first_name?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          matched_member_id?: string | null
+          occupation?: string | null
+          phone?: string | null
+          renewal_date?: string | null
+          src_member_no?: string | null
+        }
+        Relationships: []
+      }
       member_league_registrations: {
         Row: {
           club_member_id: string

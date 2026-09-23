@@ -13701,6 +13701,8 @@ export type Database = {
           league_genders: Json | null
           league_match_types: Json | null
           league_play_all_games: Json | null
+          league_playoff_modes: Json | null
+          league_playoff_qualifiers: Json | null
           league_playoffs: Json | null
           league_points_per_game: Json | null
           league_scoring_modes: Json | null
@@ -13726,6 +13728,7 @@ export type Database = {
           pool_allocation: string
           pool_durations: Json
           pool_sizes: Json
+          rotation_max_matches: number | null
           round_definitions: Json
           round_play_by: Json
           schedule_mode: string
@@ -13797,6 +13800,8 @@ export type Database = {
           league_genders?: Json | null
           league_match_types?: Json | null
           league_play_all_games?: Json | null
+          league_playoff_modes?: Json | null
+          league_playoff_qualifiers?: Json | null
           league_playoffs?: Json | null
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
@@ -13822,6 +13827,7 @@ export type Database = {
           pool_allocation?: string
           pool_durations?: Json
           pool_sizes?: Json
+          rotation_max_matches?: number | null
           round_definitions?: Json
           round_play_by?: Json
           schedule_mode?: string
@@ -13893,6 +13899,8 @@ export type Database = {
           league_genders?: Json | null
           league_match_types?: Json | null
           league_play_all_games?: Json | null
+          league_playoff_modes?: Json | null
+          league_playoff_qualifiers?: Json | null
           league_playoffs?: Json | null
           league_points_per_game?: Json | null
           league_scoring_modes?: Json | null
@@ -13918,6 +13926,7 @@ export type Database = {
           pool_allocation?: string
           pool_durations?: Json
           pool_sizes?: Json
+          rotation_max_matches?: number | null
           round_definitions?: Json
           round_play_by?: Json
           schedule_mode?: string

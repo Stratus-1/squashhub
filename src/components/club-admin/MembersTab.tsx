@@ -193,7 +193,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, isSuperAdmin }: {
+function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, onCompetitionStatus, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];

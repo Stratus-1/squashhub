@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart3, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InternalStandingsTab } from "./InternalStandingsTab";
+import { ExternalStandingsTab } from "./ExternalStandingsTab";
 import { rankTint } from "@/lib/rank-tint";
 
 type ClubLeague = {
@@ -196,6 +197,9 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
   // Only NSA-fed associations read live NSA standings. Other regional bodies
   // (e.g. Western Province, sourced from SportyHQ) use the club's own data.
   const isNonNsaSource = !!externalSource && externalSource !== "nsa";
+  if (externalSource === "sportyhq" && associationId) {
+    return <ExternalStandingsTab associationId={associationId} clubLeagues={clubLeagues} myLeagueCode={myLeagueCode} />;
+  }
   if (associationScope === "internal" || isNonNsaSource) {
     if (!clubId || !associationId) {
       return (

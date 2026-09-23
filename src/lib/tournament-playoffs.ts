@@ -141,6 +141,12 @@ export type BuildInput = {
    */
   playoffModeByLeague?: Record<number, PlayoffMode>;
   qualifiersPerPoolByLeague?: Record<number, number>;
+  /**
+   * Swiss: how many finishers the organiser chose to send into the optional
+   * knockout after the Swiss rounds (2 / 4 / 8). Applies to single-draw
+   * leagues; absent or 0 keeps the automatic size from the field.
+   */
+  topQualifiersByLeague?: Record<number, number>;
 };
 
 /** Post-pool playoff style. */
@@ -150,6 +156,15 @@ export const DEFAULT_PLAYOFF_MODE: PlayoffMode = "position";
 
 export const isPlayoffMode = (v: unknown): v is PlayoffMode =>
   v === "position" || v === "knockout";
+
+/** Bracket size for a single draw: the admin's choice when it fits, else auto. */
+export function knockoutSizeFor(fieldSize: number, requested?: number): number {
+  const auto = fieldSize >= 8 ? 8 : fieldSize >= 4 ? 4 : 2;
+  const want = Math.floor(Number(requested) || 0);
+  if (!want) return auto;
+  const allowed = [2, 4, 8].filter((n) => n <= fieldSize);
+  return allowed.includes(want) ? want : allowed[allowed.length - 1] || 2;
+}
 
 
 // Encode league scope onto bracket_position so downstream feed logic
@@ -172,7 +187,7 @@ const poolLetter = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
 export function buildPlayoffMatches(input: BuildInput): PlayoffMatchRow[] {
   const {
     champId, isDoubles, standingsByLeague, numLeagues, poolsByLeague, standingsByLeaguePool,
-    leagueLabels, playoffModeByLeague, qualifiersPerPoolByLeague,
+    leagueLabels, playoffModeByLeague, qualifiersPerPoolByLeague, topQualifiersByLeague,
   } = input;
   const rows: PlayoffMatchRow[] = [];
 
@@ -191,7 +206,7 @@ export function buildPlayoffMatches(input: BuildInput): PlayoffMatchRow[] {
         const league = standingsByLeaguePool.get(lg) ?? new Map();
         const flat = league.get(1) ?? standingsByLeague.get(lg) ?? [];
         if (flat.length < 2) continue;
-        const K = flat.length >= 8 ? 8 : flat.length >= 4 ? 4 : 2;
+        const K = knockoutSizeFor(flat.length, topQualifiersByLeague?.[lg]);
         const seeded = flat.slice(0, K);
         const pairs = firstRoundPairs(seeded);
         const firstRoundStage = K === 8 ? "playoff_qf" : K === 4 ? "playoff_sf" : "playoff_final";
@@ -297,7 +312,7 @@ export function buildPlayoffMatches(input: BuildInput): PlayoffMatchRow[] {
   if (numLeagues <= 1) {
     const league = standingsByLeague.get(1) ?? [];
     if (league.length < 2) return rows;
-    const K = league.length >= 8 ? 8 : league.length >= 4 ? 4 : 2;
+    const K = knockoutSizeFor(league.length, topQualifiersByLeague?.[1]);
     const seeded = league.slice(0, K);
     const pairs = firstRoundPairs(seeded);
 

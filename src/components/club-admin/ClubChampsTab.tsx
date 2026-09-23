@@ -9789,7 +9789,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                      <SegRow
                                        label="First-round pairing"
                                        value={pairing}
-                                       color="teal"
+                                       color="cyan"
                                        options={[
                                          { v: "seeded", l: "Seeded" },
                                          { v: "random", l: "Random" },
@@ -9828,7 +9828,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                          <SegRow
                                            label="Number qualifying for knockout"
                                            value={String(qualifiers)}
-                                           color="teal"
+                                           color="cyan"
                                            options={validQualifiers.map((n) => ({ v: String(n), l: `Top ${n}` }))}
                                            onChange={(v) =>
                                              setSwissKnockoutQualifiers((m) => ({ ...m, [key]: Number(v) || 2 }))

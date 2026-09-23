@@ -3172,7 +3172,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // allocation save — free tournaments included. Doing so made their invite
       // link think they had already accepted. Only rows the organiser creates
       // directly here (no outstanding invite) are marked as entered.
-      const uniqueIds = Array.from(new Set(allocatedMemberIds));
+        const uniqueIds = Array.from(new Set(allocatedMemberIds)).filter((id) => !cancelledIds.has(id));
       if (uniqueIds.length > 0) {
         const { data: existingRows } = await fromExt("club_champs_registrations")
           .select("club_member_id, status, confirmed_at")
@@ -3282,6 +3282,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             .eq("champ_id", cid)
             .or(`club_member_id.eq.${resolvedId},partner_member_id.eq.${resolvedId}`);
           if (entryErr) throw entryErr;
+        }
+        const { data: existingRegs, error: lookupErr } = await fromExt("club_champs_registrations")
+          .select("club_member_id")
+          .eq("champ_id", cid)
+          .in("club_member_id", resolvedIds);
+        if (lookupErr) throw lookupErr;
+        const existingIds = new Set((existingRegs || []).map((r: any) => r.club_member_id));
+        const missingIds = resolvedIds.filter((memberId) => !existingIds.has(memberId));
+        if (missingIds.length > 0) {
+          const { error: insertErr } = await fromExt("club_champs_registrations").insert(missingIds.map((memberId) => ({
+            champ_id: cid, club_member_id: memberId, status: "cancelled",
+            declined_at: new Date().toISOString(), confirmation_source: "withdrawn",
+          })));
+          if (insertErr) throw insertErr;
         }
         const { error: regErr } = await fromExt("club_champs_registrations")
           .update({
@@ -7927,7 +7941,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // row is one player with no fixed partner), so it hydrates the player
       // picker exactly like singles — not the pairs board.
       if (champ.match_type === "doubles" && champ.partner_mode !== "rotate") {
-        const pairs: DoublePair[] = entries.map((e: any) => ({
+        const pairs: DoublePair[] = activeEntries.map((e: any) => ({
           id: crypto.randomUUID(),
           player1Id: e.club_member_id,
           player2Id: e.partner_member_id,
@@ -7936,7 +7950,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         setPairOrder(pairs.map((p) => p.id));
         const assignments = new Map<string, number>();
         pairs.forEach((p, i) => {
-          const entry = entries[i];
+          const entry = activeEntries[i];
           assignments.set(p.id, (entry as any).group_number - 1);
         });
         setPairGroupAssignments(assignments);
@@ -12017,6 +12031,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         (scope !== "club" && clubForPlayer(m).name.toLowerCase().includes(q))
                       )
                     : availablePlayers;
+                  const byName = (a: any, b: any) =>
+                    String(a.name || a.profiles?.name || "").localeCompare(String(b.name || b.profiles?.name || ""));
+                  const participants = filtered.filter((m: any) => selectedPlayerIds.has(m.id)).sort(byName);
+                  const otherMembers = filtered.filter((m: any) => !selectedPlayerIds.has(m.id)).sort(byName);
                   if (filtered.length === 0) {
                     return (
                       <p className="text-sm text-muted-foreground py-4 text-center">
@@ -12045,6 +12063,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
                             {m._isVisitor && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor · {m._homeClub}</Badge>}
                             {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
+                            {scope !== "club" && <Badge variant="outline" className="text-[10px]">{clubForPlayer(m).name}</Badge>}
                             {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
                             {editingChampId && entered && (
                               <Button type="button" variant="ghost" size="sm" className="ml-auto shrink-0 text-destructive"
@@ -12059,55 +12078,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                           </div>
                         );
                   };
-                  if (scope === "club") {
-                    return <div className="space-y-2 max-h-[400px] overflow-y-auto">{filtered.map(renderPlayer)}</div>;
-                  }
-                  const groups = new Map<string, { name: string; players: any[] }>();
-                  filtered.forEach((m: any) => {
-                    const { key, name } = clubForPlayer(m);
-                    const group = groups.get(key) || { name, players: [] };
-                    group.players.push(m);
-                    groups.set(key, group);
-                  });
                   return (
                     <div className="max-h-[400px] overflow-y-auto space-y-1">
-                      {[...groups.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([key, group]) => {
-                        const open = !!q || expandedPlayerClubs.has(key);
-                        const selected = group.players.filter((m) => selectedPlayerIds.has(m.id)).length;
-                        return (
-                          <div key={key} className="border border-border rounded-md">
-                            <div className="flex items-center gap-2 px-2 py-1.5 bg-muted/40">
-                              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0"
-                                aria-label={`${open ? "Collapse" : "Expand"} ${group.name}`}
-                                aria-expanded={open}
-                                onClick={() => setExpandedPlayerClubs((prev) => {
-                                  const next = new Set(prev);
-                                  next.has(key) ? next.delete(key) : next.add(key);
-                                  return next;
-                                })}>
-                                <ChevronRight className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} />
-                              </Button>
-                              <Checkbox aria-label={`Select players from ${group.name}`}
-                                checked={selected === 0 ? false : selected === group.players.length ? true : "indeterminate"}
-                                onCheckedChange={(checked) => setSelectedPlayerIds((prev) => {
-                                  const next = new Set(prev);
-                                  group.players.forEach((m) => checked === true ? next.add(m.id) : next.delete(m.id));
-                                  return next;
-                                })} />
-                              <Button type="button" variant="ghost" className="h-7 min-w-0 flex-1 justify-start px-1 font-semibold"
-                                onClick={() => setExpandedPlayerClubs((prev) => {
-                                  const next = new Set(prev);
-                                  next.has(key) ? next.delete(key) : next.add(key);
-                                  return next;
-                                })}>
-                                <span className="truncate">{group.name}</span>
-                              </Button>
-                              <span className="shrink-0 text-xs text-muted-foreground">{selected}/{group.players.length} selected</span>
-                            </div>
-                            {open && <div className="pl-4">{group.players.map(renderPlayer)}</div>}
-                          </div>
-                        );
-                      })}
+                      {participants.length > 0 && <p className="sticky top-0 bg-background px-2 py-1 text-xs font-semibold">Tournament players ({participants.length})</p>}
+                      {participants.map(renderPlayer)}
+                      {otherMembers.length > 0 && <p className="sticky top-0 bg-background px-2 py-1 text-xs font-semibold">Other members ({otherMembers.length})</p>}
+                      {otherMembers.map(renderPlayer)}
                     </div>
                   );
                 })()}

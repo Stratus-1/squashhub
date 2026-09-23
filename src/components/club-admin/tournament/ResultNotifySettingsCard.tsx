@@ -85,7 +85,9 @@ export function ResultNotifySettingsCard(p: Props) {
             WhatsApp and SMS follow the club's messaging settings and are charged as usual.
           </p>
         </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

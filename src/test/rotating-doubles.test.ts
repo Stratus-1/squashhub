@@ -92,4 +92,16 @@ describe("maximum matches per player", () => {
     const { games } = generateRotatingDoublesSchedule(players(9), { maxMatchesPerPlayer: 4 });
     for (const g of games) expect(new Set([...g.sideA, ...g.sideB]).size).toBe(4);
   });
+
+  it("does not lock the same partners together when a cap applies", () => {
+    const { games } = generateRotatingDoublesSchedule(players(12), { maxMatchesPerPlayer: 9 });
+    const counts = new Map<string, number>();
+    for (const g of games) {
+      for (const side of [g.sideA, g.sideB]) {
+        const k = [...side].sort().join("|");
+        counts.set(k, (counts.get(k) || 0) + 1);
+      }
+    }
+    expect(Math.max(...counts.values())).toBeLessThanOrEqual(2);
+  });
 });

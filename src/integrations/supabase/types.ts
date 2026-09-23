@@ -15204,6 +15204,7 @@ export type Database = {
         }
         Returns: {
           is_claimed: boolean
+          masked_email: string
           masked_name: string
           match_kind: string
         }[]
@@ -16990,6 +16991,7 @@ export type Database = {
         Args: { p_cutoff_days: number; p_start_date: string }
         Returns: string
       }
+      unaccent_safe: { Args: { _t: string }; Returns: string }
       unarchive_club_season: {
         Args: {
           _association_id?: string

@@ -24,6 +24,17 @@ import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner"
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { VisitorPassCard } from "@/components/VisitorPassCard";
 import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+type DuplicateHint = {
+  masked_name: string;
+  masked_email: string | null;
+  match_kind: string;
+  is_claimed: boolean;
+};
 
 
 export default function ClubAuth() {
@@ -79,6 +90,21 @@ export default function ClubAuth() {
   const [newPassword, setNewPassword] = useState("");
   const [newConfirm, setNewConfirm] = useState("");
   const [newAcceptTerms, setNewAcceptTerms] = useState(false);
+
+  // "Are you not already a member?" prompt shown when the club roster already
+  // holds someone with the same email, phone, or first+last name.
+  const [dupHits, setDupHits] = useState<DuplicateHint[] | null>(null);
+  const dupResolver = useRef<((proceed: boolean) => void) | null>(null);
+  const askDuplicate = (hits: DuplicateHint[]) =>
+    new Promise<boolean>((resolve) => {
+      dupResolver.current = resolve;
+      setDupHits(hits);
+    });
+  const answerDuplicate = (proceed: boolean) => {
+    setDupHits(null);
+    dupResolver.current?.(proceed);
+    dupResolver.current = null;
+  };
 
   // Visitor form
   const [visitorFirstName, setVisitorFirstName] = useState("");
@@ -673,8 +699,9 @@ export default function ClubAuth() {
       return;
     }
     // Duplicate-player guard. The club roster already holds imported players
-    // (federation/SportyHQ data), so match on the strongest identifiers first
-    // and steer the person onto their existing record instead of a new one.
+    // (federation/SportyHQ data) and people forget which email they signed up
+    // with, so match on email, phone and first+last name, then ask the person
+    // to confirm they are not already on the roster.
     if (club?.id) {
       try {
         const { data: matches } = await (supabase as any).rpc("check_member_duplicate_hint", {
@@ -683,25 +710,10 @@ export default function ClubAuth() {
           _email: email,
           _phone: phone || "",
         });
-        const hits = (matches || []) as Array<{
-          masked_name: string; match_kind: string; is_claimed: boolean;
-        }>;
-        const unclaimed = hits.find((h) => !h.is_claimed);
-        if (unclaimed) {
-          const ok = window.confirm(
-            `${club.name} already has a player record for ${unclaimed.masked_name}, ` +
-            `which nobody has signed in with yet.\n\n` +
-            `Click OK to create your login and link it to that existing record — your history and member number stay intact. ` +
-            `Click Cancel to stop.`,
-          );
-          if (!ok) return;
-        } else if (hits.length > 0) {
-          const ok = window.confirm(
-            `${club.name} already has ${hits.length} member${hits.length === 1 ? "" : "s"} matching your details ` +
-            `(${hits.map((h) => h.masked_name).slice(0, 3).join(", ")}). If that's you, please sign in instead.\n\n` +
-            `Continue creating a brand new account anyway?`,
-          );
-          if (!ok) return;
+        const hits = (matches || []) as DuplicateHint[];
+        if (hits.length > 0) {
+          const proceed = await askDuplicate(hits);
+          if (!proceed) return;
         }
       } catch (e) {
         console.warn("dup check failed", e);
@@ -1887,6 +1899,49 @@ export default function ClubAuth() {
         })()}
         <PoweredBySquashHub />
       </motion.div>
+
+      <AlertDialog open={!!dupHits} onOpenChange={(o) => { if (!o) answerDuplicate(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you already a member here?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  {club?.name || "This club"} already has a record that looks like you:
+                </p>
+                <ul className="space-y-1">
+                  {(dupHits || []).map((h, i) => (
+                    <li key={i} className="rounded border p-2">
+                      <span className="font-medium">{h.masked_name}</span>
+                      {h.masked_email ? <> — signed up with <span className="font-medium">{h.masked_email}</span></> : null}
+                      <span className="block text-xs text-muted-foreground">
+                        {h.match_kind === "email"
+                          ? "Same email address"
+                          : h.match_kind === "phone"
+                            ? "Same phone number"
+                            : "Same first and last name"}
+                        {h.is_claimed ? " • already has a login" : " • no login yet"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  If that is you, please sign in with that email instead (or use “Forgot password”) so your
+                  history, member number and fees stay on one account.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { answerDuplicate(false); setActiveTab("login"); }}>
+              That's me — take me to sign in
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => answerDuplicate(true)}>
+              No, I'm a different person — continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

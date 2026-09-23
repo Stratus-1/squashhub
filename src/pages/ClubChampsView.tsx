@@ -2858,14 +2858,16 @@ export default function ClubChampsView() {
         entries.filter((e: any) => e.group_number === gn)
           .flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
       );
-      const groupMatches = matches.filter((m: any) =>
+      // Fixtures always read in the order they are played, not in the order the
+      // generator happened to create them.
+      const groupMatches = sortMatchesChrono(matches.filter((m: any) =>
         (m.stage || "group") === "group" && (
           isCrossLeague
             ? (groupMemberIds.has(m.player_a_member_id) || groupMemberIds.has(m.player_b_member_id) ||
                (isDoubles && (groupMemberIds.has(m.partner_a_member_id) || groupMemberIds.has(m.partner_b_member_id))))
             : m.group_number === gn
         )
-      );
+      ));
       const leagueTotal = leagueTotals?.get(gn);
       const isLeading = !!leagueTotal && leagueTotal.pf > 0 && leagueTotal.pf === maxLeaguePf;
 
@@ -2987,7 +2989,7 @@ export default function ClubChampsView() {
     const combinedFixtures = isCrossLeague ? (
       <CollapsibleCard key="cross-fixtures" defaultOpen={false} title="Fixtures & Results" titleClassName="text-lg">
         <div className="space-y-1.5">
-          {matches.map((m: any) => renderMatchRow(m))}
+          {sortMatchesChrono(matches).map((m: any) => renderMatchRow(m))}
         </div>
       </CollapsibleCard>
     ) : null;

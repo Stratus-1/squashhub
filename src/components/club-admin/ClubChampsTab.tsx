@@ -13320,7 +13320,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             {!awaitingPlayerPairs && schedulePreview && (
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 {Array.from({ length: numGroups }, (_, gi) => {
-                  const groupMatches = schedulePreview.allMatches.filter((m) => m.groupNum === gi + 1);
+                  // Always show the preview in the order the slots are actually
+                  // played — generation order can jump between courts/rounds.
+                  const groupMatches = schedulePreview.allMatches
+                    .filter((m) => m.groupNum === gi + 1)
+                    .slice()
+                    .sort((a, b) => {
+                      const ka = `${a.date || "9999-12-31"} ${a.time || "23:59"}`;
+                      const kb = `${b.date || "9999-12-31"} ${b.time || "23:59"}`;
+                      if (ka !== kb) return ka < kb ? -1 : 1;
+                      return String(getCourtName(a.courtId) || "").localeCompare(
+                        String(getCourtName(b.courtId) || ""),
+                        undefined,
+                        { numeric: true, sensitivity: "base" },
+                      );
+                    });
                   return (
                     <div key={gi}>
                       <h4 className="font-medium mb-2">{getGroupLabel({ group_labels: groupLabels }, gi + 1)}</h4>

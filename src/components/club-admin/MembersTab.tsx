@@ -417,6 +417,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const [bulkTypesOpen, setBulkTypesOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
   const [affiliateMember, setAffiliateMember] = useState<ClubMember | null>(null);
+  const [statusMember, setStatusMember] = useState<ClubMember | null>(null);
 
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);

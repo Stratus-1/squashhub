@@ -558,6 +558,25 @@ Deno.serve(async (req) => {
 
     }
 
+    if (action === "probe_page") {
+      // Platform-admin discovery helper: list links on a public SportyHQ page.
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: u } = await sb.auth.getUser((req.headers.get("Authorization") ?? "").replace("Bearer ", ""));
+      if (!u?.user?.id) return json({ error: "Not signed in" }, 401);
+      const { data: adm } = await sb.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
+      if (!adm) return json({ error: "Platform admin only" }, 403);
+      const path = String(body.path ?? "");
+      if (!path.startsWith("/")) return json({ error: "path must start with /" }, 400);
+      const html = await fetchHtml(`${BASE}${path}`);
+      const filter = body.filter ? new RegExp(String(body.filter), "i") : null;
+      const links = [...html.matchAll(/<a[^>]*href="([^"#]+)"[^>]*>([\s\S]*?)<\/a>/gi)]
+        .map((m) => ({ href: m[1], text: m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) }))
+        .filter((l) => !filter || filter.test(l.href) || filter.test(l.text));
+      const title = html.match(/<title>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? null;
+      const text = body.text ? html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, Number(body.text)) : undefined;
+      return json({ len: html.length, title, links: links.slice(0, 300), text });
+    }
+
     if (action === "debug_group_page") {
       const gid = Number(body.group_id);
       const html = await fetchHtml(`${BASE}/ranking/group/${gid}`);

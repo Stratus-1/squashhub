@@ -1455,7 +1455,7 @@ function parseFixture(
   for (const t of tables) {
     for (const r of t.matchAll(/<tr[\s\S]*?<\/tr>/gi)) {
       const c = cellsOf(r[0]);
-      if (c.length >= 3 && /^(Matches Won|Games Won|Game Points Won|Penalty Points|Bonus Points|Total)$/i.test(c[0])) totals[c[0]] = [c[1], c[2]];
+      if (c.length >= 3 && /^(Matches Won|Games Won|Game Points Won|Penalty Points|Bonus Points|Total)$/i.test(c[0])) totals[c[0]] = [c[1], c[c.length - 1]];
     }
   }
   return {

@@ -584,10 +584,11 @@ Deno.serve(async (req) => {
       const existing = new Map((existingDivs ?? []).map((d: any) => [String(d.external_division_id), d]));
       const { data: teams, error: tErr } = await sb
         .from("leagues")
-        .select("id, code, association_id, season_year")
+        .select("id, code, association_id, season_year, external_division_id")
         .in("association_id", associationIds)
         .like("code", "SHQ%");
       if (tErr) return json({ error: tErr.message }, 500);
+      const ourTeamIds = new Set((teams ?? []).map((t: any) => String(t.code).replace(/^SHQ/, "")));
       const clean = (s: string) =>
         s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#039;/g, "'").replace(/\s+/g, " ").trim();
       const cellsOf = (row: string) => [...row.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((m) => clean(m[1]));
@@ -596,11 +597,19 @@ Deno.serve(async (req) => {
       for (const t of teams ?? []) {
         const teamId = String(t.code).replace(/^SHQ/, "");
         try {
-          const teamHtml = await fetchHtml(`${BASE}/league/view/team/${teamId}`);
-          const divId = teamHtml.match(/href="\/league\/view\/division\/(\d+)"/)?.[1];
-          if (!divId) { results.push({ team: teamId, error: "no division" }); continue; }
-          await sb.from("leagues").update({ external_team_id: teamId, external_division_id: divId }).eq("id", t.id);
+          let divId: string | undefined = t.external_division_id ? String(t.external_division_id) : undefined;
+          if (!divId) {
+            const teamHtml = await fetchHtml(`${BASE}/league/view/team/${teamId}`);
+            divId = teamHtml.match(/href="\/league\/view\/division\/(\d+)"/)?.[1];
+            if (!divId) { results.push({ team: teamId, error: "no division" }); continue; }
+            await sb.from("leagues").update({ external_team_id: teamId, external_division_id: divId }).eq("id", t.id);
+          }
           if (divCache.has(divId)) { results.push({ team: teamId, division: divId }); continue; }
+          const last = existing.get(divId)?.fetched_at;
+          const pendingFixtures = false;
+          if (scheduled && last && Date.now() - new Date(last).getTime() < 3 * 3600_000 && !pendingFixtures) {
+            divCache.set(divId, true); results.push({ team: teamId, division: divId, skipped: "recent" }); continue;
+          }
           const html = await fetchHtml(`${BASE}/league/view/division/${divId}`);
           const title = html.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "";
           const [divisionName, leagueName] = title.split("|").map((s) => clean(s));

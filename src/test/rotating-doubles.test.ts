@@ -105,3 +105,35 @@ describe("maximum matches per player", () => {
     expect(Math.max(...counts.values())).toBeLessThanOrEqual(2);
   });
 });
+
+describe("excluded partners and strength bias", () => {
+  const ids = Array.from({ length: 12 }, (_, i) => `p${i + 1}`); // seeded strongest first
+
+  it("never partners an excluded couple", () => {
+    const { games } = generateRotatingDoublesSchedule(ids, {
+      maxMatchesPerPlayer: 8,
+      avoidPartners: [["p3", "p9"]],
+    });
+    expect(games.length).toBeGreaterThan(0);
+    for (const g of games) {
+      for (const side of [g.sideA, g.sideB]) {
+        expect(side.includes("p3") && side.includes("p9")).toBe(false);
+      }
+    }
+  });
+
+  it("drops the weakest combinations when the cap leaves games unplayed", () => {
+    const { games } = generateRotatingDoublesSchedule(ids, { maxMatchesPerPlayer: 8 });
+    const strong = new Set(["p1", "p2", "p3", "p4", "p5", "p6"]);
+    let weakWeak = 0;
+    let strongWeak = 0;
+    for (const g of games) {
+      for (const side of [g.sideA, g.sideB]) {
+        const s = side.filter((p) => strong.has(p)).length;
+        if (s === 0) weakWeak++;
+        if (s === 1) strongWeak++;
+      }
+    }
+    expect(strongWeak).toBeGreaterThan(weakWeak);
+  });
+});

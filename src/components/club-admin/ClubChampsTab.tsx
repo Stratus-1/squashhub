@@ -4263,6 +4263,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       /** Knockout draws only — section + round label carried through to the DB. */
       koSection?: number;
       koStageLabel?: string;
+      /** Already played (live rebuild) — keeps its real slot, never rescheduled. */
+      pinned?: boolean;
     };
 
     // Build the universal slot list from sessions (used by non-Bells scheduling).
@@ -4352,15 +4354,37 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         matchTypeForLeague(gi + 1) === "doubles" &&
         !followsDivision(divisionFollows, gi + 1);
       if (rotateThisLeague) {
+        // Live rebuild: already-played games are kept verbatim (pinned to their
+        // real slot) and count toward the target. Withdrawn players' played
+        // games stay as history but never shape the new draw.
+        const played = (playedRotationRows as any[]).filter((m) => (m.group_number ?? 1) === gi + 1);
+        const lastPlayedRound = played.reduce((mx, m) => Math.max(mx, Number(m.round_number) || 0), 0);
+        for (const m of played) {
+          allMatches.push({
+            groupNum: gi + 1,
+            roundNum: Number(m.round_number) || 1,
+            entityA: rotationEntityId(m.player_a_member_id, m.partner_a_member_id),
+            entityB: rotationEntityId(m.player_b_member_id, m.partner_b_member_id),
+            leg: null,
+            pinned: true,
+            date: m.scheduled_date ?? undefined,
+            time: m.scheduled_time ? String(m.scheduled_time).slice(0, 5) : undefined,
+            courtId: m.court_id ?? undefined,
+          });
+        }
         const rotation = generateRotatingDoublesSchedule(ids, {
           maxMatchesPerPlayer: rotationMaxMatches > 0 ? rotationMaxMatches : undefined,
           avoidPartners: rotationAvoidPairs,
           strengthMode: rotationStrengthMode,
+          history: played.map((m) => ({
+            sideA: [m.player_a_member_id, m.partner_a_member_id],
+            sideB: [m.player_b_member_id, m.partner_b_member_id],
+          })),
         });
         for (const g of rotation.games) {
           allMatches.push({
             groupNum: gi + 1,
-            roundNum: g.round,
+            roundNum: lastPlayedRound + g.round,
             entityA: rotationEntityId(g.sideA[0], g.sideA[1]),
             entityB: rotationEntityId(g.sideB[0], g.sideB[1]),
             leg: null,
@@ -4646,9 +4670,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const breakFor = (gn: number) =>
         Math.max(0, Number(groupBreakMinutes[String(gn)]) || Number(defaultBreakMinutes) || 0);
 
+      // Played games keep their slot; new games start after the last of them.
+      let startAfterAbs = -Infinity;
+      for (const m of allMatches) {
+        if (!m.pinned || !m.date || !m.time) continue;
+        const [hh, mi] = m.time.split(":").map(Number);
+        const end = new Date(m.date + "T00:00:00Z").getTime() / 60000 + hh * 60 + mi + (capFor(m.groupNum, m.poolNum ?? null) || matchDuration);
+        if (end > startAfterAbs) startAfterAbs = end;
+      }
       const byLeague = new Map<number, MatchDef[]>();
       for (const m of allMatches) {
-        if (m.isBye) continue;
+        if (m.isBye || m.pinned) continue;
         if (!byLeague.has(m.groupNum)) byLeague.set(m.groupNum, []);
         byLeague.get(m.groupNum)!.push(m);
       }
@@ -4943,6 +4975,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             let blockOwnership = new Map<number, number>();
             for (let t = s.startMin; t < s.endMin && totalRemaining() > 0; t += step) {
               const nowAbs = absMin(s.date, t);
+              if (nowAbs < startAfterAbs) continue;
               // When rotation is ON, blocks are fixed windows and ownership
               // shifts each block. When it's OFF, we still recompute ownership
               // every tick from remaining workload — so freed courts flip to
@@ -5186,7 +5219,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // Sort each league's non-bye matches by roundNum, then round-robin pop
       // one match per league at a time. Byes stay attached to their league
       // group but keep their order.
-      const nonByes = allMatches.filter((m) => !m.isBye);
+      const nonByes = allMatches.filter((m) => !m.isBye && !m.pinned);
       const byLeague = new Map<number, typeof nonByes>();
       for (const m of nonByes) {
         const arr = byLeague.get(m.groupNum) ?? [];

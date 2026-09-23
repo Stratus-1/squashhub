@@ -68,3 +68,8 @@
 - [ ] Durbanville: check WP (Western Province) league numbers for players
 - [ ] Populate people.ssa_membership_number for all members (SportyHQ "Membership ID" scrape) and show it in member/federation views
 - [ ] WP league: import per-fixture rubber scores (draw_results pages) and schedule a periodic standings refresh
+
+## Tournament withdraw / rebuild (Sep 23)
+- [ ] Rebuild uses only current active entrants + saved settings (rotating doubles: played games count toward cap)
+- [ ] Players-tab "Withdraw from tournament" pre-start: auto-clear unplayed fixtures, no manual pull-out
+- [ ] Post-start: controlled pull-out/forfeit, preserve results; clear wording

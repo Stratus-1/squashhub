@@ -24,13 +24,13 @@ type Props = {
 /** Post-match result messages — separate from invites, reminders and announcements. */
 export function ResultNotifySettingsCard(p: Props) {
   const off = p.scope === "never";
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const toggle = (c: ResultNotifyChannel, on: boolean) =>
     p.onChannels(on ? Array.from(new Set([...p.channels, c])) : p.channels.filter((x) => x !== c));
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Card className="mt-4">
+      <Card className="mt-4 border-emerald-500/40">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-2 cursor-pointer select-none flex-row items-start justify-between gap-2 space-y-0">
             <div className="min-w-0">

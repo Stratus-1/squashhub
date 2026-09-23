@@ -491,7 +491,9 @@ export function countPlayoffPlaceholders(input: Omit<PlaceholderInput, "champId"
 }
 
 export function buildPlayoffPlaceholders(input: PlaceholderInput): PlayoffMatchRow[] {
-  const { champId, numLeagues, entriesPerLeague, leagueLabels, poolsByLeague, entriesByLeaguePool } = input;
+  const { champId, numLeagues, entriesPerLeague, leagueLabels, poolsByLeague, entriesByLeaguePool,
+    playoffModeByLeague, qualifiersPerPoolByLeague } = input;
+
   const rows: PlayoffMatchRow[] = [];
   const labelFor = (lg: number) => leagueLabels?.[lg - 1] || `League ${lg}`;
 

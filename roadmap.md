@@ -58,3 +58,7 @@
 - [x] Keep later cross-pool rounds on the finals draw path after section 0 already exists
 - [x] Pass the central Final deadline into the progress-card draw confirmation
 
+
+## 23 Sep 2026
+- [~] Add John & Simone Cussons as paid pair (John pays R300) in Nelspruit Family Doubles
+- [ ] Players tab visible at all times in tournament wizard (even before pairs exist)

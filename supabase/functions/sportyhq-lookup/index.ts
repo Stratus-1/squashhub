@@ -561,19 +561,34 @@ Deno.serve(async (req) => {
     if (action === "import_league_standings") {
       // Mirrors SportyHQ division standings + weekly points for every league team
       // of an association (leagues.code = 'SHQ<teamId>'). Idempotent upserts.
+      // Scheduled mode (body.scheduled): refreshes every SportyHQ-sourced league
+      // body, only public data, throttled to once per 3h per division.
       const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      const { data: u } = await sb.auth.getUser((req.headers.get("Authorization") ?? "").replace("Bearer ", ""));
-      if (!u?.user?.id) return json({ error: "Not signed in" }, 401);
-      const { data: adm } = await sb.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
-      if (!adm) return json({ error: "Platform admin only" }, 403);
-      const associationIds: string[] = Array.isArray(body.association_ids) ? body.association_ids.map(String) : [];
-      if (!associationIds.length) return json({ error: "association_ids required" }, 400);
+      const scheduled = body.scheduled === true;
+      let associationIds: string[] = [];
+      if (scheduled) {
+        const { data: a } = await sb.from("league_associations").select("id").eq("external_source", "sportyhq");
+        associationIds = (a ?? []).map((r: any) => r.id);
+        if (!associationIds.length) return json({ imported: 0 });
+      } else {
+        const { data: u } = await sb.auth.getUser((req.headers.get("Authorization") ?? "").replace("Bearer ", ""));
+        if (!u?.user?.id) return json({ error: "Not signed in" }, 401);
+        const { data: adm } = await sb.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
+        if (!adm) return json({ error: "Platform admin only" }, 403);
+        associationIds = Array.isArray(body.association_ids) ? body.association_ids.map(String) : [];
+        if (!associationIds.length) return json({ error: "association_ids required" }, 400);
+      }
+      const fixtureBudget = { left: Math.min(Number(body.max_fixtures ?? 60), 150) };
+      const { data: existingDivs } = await sb.from("external_league_divisions")
+        .select("external_division_id, fixtures, fetched_at").eq("source", "sportyhq");
+      const existing = new Map((existingDivs ?? []).map((d: any) => [String(d.external_division_id), d]));
       const { data: teams, error: tErr } = await sb
         .from("leagues")
-        .select("id, code, association_id, season_year")
+        .select("id, code, association_id, season_year, external_division_id")
         .in("association_id", associationIds)
         .like("code", "SHQ%");
       if (tErr) return json({ error: tErr.message }, 500);
+      const ourTeamIds = new Set((teams ?? []).map((t: any) => String(t.code).replace(/^SHQ/, "")));
       const clean = (s: string) =>
         s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#039;/g, "'").replace(/\s+/g, " ").trim();
       const cellsOf = (row: string) => [...row.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((m) => clean(m[1]));
@@ -582,11 +597,18 @@ Deno.serve(async (req) => {
       for (const t of teams ?? []) {
         const teamId = String(t.code).replace(/^SHQ/, "");
         try {
-          const teamHtml = await fetchHtml(`${BASE}/league/view/team/${teamId}`);
-          const divId = teamHtml.match(/href="\/league\/view\/division\/(\d+)"/)?.[1];
-          if (!divId) { results.push({ team: teamId, error: "no division" }); continue; }
-          await sb.from("leagues").update({ external_team_id: teamId, external_division_id: divId }).eq("id", t.id);
+          let divId: string | undefined = t.external_division_id ? String(t.external_division_id) : undefined;
+          if (!divId) {
+            const teamHtml = await fetchHtml(`${BASE}/league/view/team/${teamId}`);
+            divId = teamHtml.match(/href="\/league\/view\/division\/(\d+)"/)?.[1];
+            if (!divId) { results.push({ team: teamId, error: "no division" }); continue; }
+            await sb.from("leagues").update({ external_team_id: teamId, external_division_id: divId }).eq("id", t.id);
+          }
           if (divCache.has(divId)) { results.push({ team: teamId, division: divId }); continue; }
+          const last = existing.get(divId)?.fetched_at;
+          if (scheduled && last && Date.now() - new Date(last).getTime() < 3 * 3600_000) {
+            divCache.set(divId, true); results.push({ team: teamId, division: divId, skipped: "recent" }); continue;
+          }
           const html = await fetchHtml(`${BASE}/league/view/division/${divId}`);
           const title = html.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "";
           const [divisionName, leagueName] = title.split("|").map((s) => clean(s));
@@ -617,14 +639,35 @@ Deno.serve(async (req) => {
               weekly.push({ date: c[0], points: pts });
             }
           }
+          // Rubber-by-rubber fixtures involving our club's teams. Completed
+          // fixtures are immutable, so only new ones are fetched (budgeted).
+          const prev: any[] = Array.isArray(existing.get(divId)?.fixtures) ? existing.get(divId).fixtures : [];
+          const byId = new Map(prev.map((f: any) => [String(f.fixture_id), f]));
+          const links = new Map<string, string>();
+          for (const m of html.matchAll(/href="(\/league\/view\/result\/(\d+)\/(\d+)[^"]*)"/g)) {
+            if (!ourTeamIds.has(m[2]) || links.has(m[3])) continue;
+            links.set(m[3], m[1].replace(/&amp;/g, "&"));
+          }
+          let added = 0;
+          for (const [fid, path] of links) {
+            if (byId.get(fid)?.rubbers?.length) continue;
+            if (fixtureBudget.left <= 0) break;
+            fixtureBudget.left--;
+            try {
+              const f = parseFixture(await fetchHtml(`${BASE}${path}`), clean, cellsOf);
+              if (f) { byId.set(fid, { fixture_id: fid, ...f }); added++; }
+            } catch { /* retried next run */ }
+            await new Promise((r) => setTimeout(r, 200));
+          }
+          const fixtures = [...byId.values()].sort((a: any, b: any) => String(a.played_on ?? "").localeCompare(String(b.played_on ?? "")));
           const { error: upErr } = await sb.from("external_league_divisions").upsert({
             association_id: t.association_id, source: "sportyhq", external_division_id: divId,
             division_name: divisionName || `Division ${divId}`, external_league_name: leagueName ?? null,
-            season_year: t.season_year ?? null, standings, weekly, fetched_at: new Date().toISOString(),
+            season_year: t.season_year ?? null, standings, weekly, fixtures, fetched_at: new Date().toISOString(),
           }, { onConflict: "source,external_division_id" });
           if (upErr) throw new Error(upErr.message);
           divCache.set(divId, true);
-          results.push({ team: teamId, division: divId, teams: standings.length, weeks: weekly.length });
+          results.push({ team: teamId, division: divId, teams: standings.length, weeks: weekly.length, fixtures: fixtures.length, new_fixtures: added, pending: links.size - fixtures.filter((f: any) => links.has(String(f.fixture_id))).length });
         } catch (e) {
           results.push({ team: teamId, error: (e as Error).message });
         }
@@ -648,7 +691,8 @@ Deno.serve(async (req) => {
         .filter((l) => !filter || filter.test(l.href) || filter.test(l.text));
       const title = html.match(/<title>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? null;
       const text = body.text ? html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, Number(body.text)) : undefined;
-      return json({ len: html.length, title, links: links.slice(0, 300), text });
+      const raw = body.raw_from ? (() => { const i = html.indexOf(String(body.raw_from)); return i < 0 ? null : html.slice(i, i + Number(body.raw_len ?? 6000)); })() : undefined;
+      return json({ len: html.length, title, links: links.slice(0, 300), text, raw });
     }
 
     if (action === "debug_group_page") {
@@ -1377,4 +1421,50 @@ function matchMember(
   });
   if (probable.length === 1) return { id: probable[0].id, confidence: "probable" };
   return null;
+}
+
+/** Parses a SportyHQ league fixture result page into rubbers + totals. */
+function parseFixture(
+  html: string,
+  clean: (s: string) => string,
+  cellsOf: (row: string) => string[],
+) {
+  const venue = html.match(/Played at:<\/strong>\s*<a[^>]*>([\s\S]*?)<\/a>/i)?.[1];
+  const when = html.match(/Played at:[\s\S]*?<li[^>]*>\s*([^<]+?)\s*<\/li>/i)?.[1];
+  const tables = [...html.matchAll(/<table[\s\S]*?<\/table>/gi)].map((m) => m[0]);
+  const main = tables.find((t) => /\/league\/view\/team\/\d+/.test(t) && /ranking\/user\//.test(t));
+  if (!main) return null;
+  const heads = [...(main.match(/<thead[\s\S]*?<\/thead>/i)?.[0] ?? "").matchAll(/\/league\/view\/team\/(\d+)"[^>]*>([\s\S]*?)<\/a>/g)]
+    .map((m) => ({ id: m[1], name: clean(m[2]) }));
+  const names = (cell: string) =>
+    [...new Set([...cell.matchAll(/<strong[^>]*>\s*<a href="[^"]*ranking\/user\/[^"]*">([\s\S]*?)<\/a>/g)].map((m) => clean(m[1])))];
+  const rubbers: any[] = [];
+  for (const r of [...(main.match(/<tbody[\s\S]*?<\/tbody>/i)?.[0] ?? "").matchAll(/<tr[\s\S]*?<\/tr>/gi)]) {
+    const tds = [...r[0].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) => m[1]);
+    if (tds.length < 4) continue;
+    const res = tds[2].match(/<span class="lead">\s*([\d]+)\s*-\s*([\d]+)\s*<\/span>/);
+    const scores = clean(tds[2].replace(/<span class="lead">[\s\S]*?<\/span>/, "").replace(/<a[\s\S]*?<\/a>/g, ""));
+    rubbers.push({
+      order: Number(clean(tds[0])) || rubbers.length + 1,
+      home: names(tds[1]), away: names(tds[3]),
+      home_games: res ? Number(res[1]) : null, away_games: res ? Number(res[2]) : null,
+      scores: scores || null,
+    });
+  }
+  const totals: Record<string, [string, string]> = {};
+  for (const t of tables) {
+    for (const r of t.matchAll(/<tr[\s\S]*?<\/tr>/gi)) {
+      const c = cellsOf(r[0]);
+      if (c.length >= 3 && /^(Matches Won|Games Won|Game Points Won|Penalty Points|Bonus Points|Total)$/i.test(c[0])) totals[c[0]] = [c[1], c[c.length - 1]];
+    }
+  }
+  return {
+    played_at: when ? clean(when) : null,
+    played_on: (() => {
+      const d = when ? new Date(clean(when).replace(/(\d+)(st|nd|rd|th)/, "$1").replace(/\s+at\s+.*/, "") + " UTC") : null;
+      return d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null;
+    })(),
+    venue: venue ? clean(venue) : null,
+    home: heads[0] ?? null, away: heads[1] ?? null, rubbers, totals,
+  };
 }

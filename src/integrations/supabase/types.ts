@@ -6468,6 +6468,7 @@ export type Database = {
           external_division_id: string
           external_league_name: string | null
           fetched_at: string
+          fixtures: Json
           id: string
           season_year: number | null
           source: string
@@ -6482,6 +6483,7 @@ export type Database = {
           external_division_id: string
           external_league_name?: string | null
           fetched_at?: string
+          fixtures?: Json
           id?: string
           season_year?: number | null
           source: string
@@ -6496,6 +6498,7 @@ export type Database = {
           external_division_id?: string
           external_league_name?: string | null
           fetched_at?: string
+          fixtures?: Json
           id?: string
           season_year?: number | null
           source?: string

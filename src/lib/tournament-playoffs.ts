@@ -211,7 +211,45 @@ export function buildPlayoffMatches(input: BuildInput): PlayoffMatchRow[] {
         continue;
       }
 
+      // ── Knockout playoffs: top N of every pool enter one cross-pool draw ──
+      if (mode === "knockout") {
+        const poolStandings = standingsByLeaguePool.get(lg) ?? new Map<number, StandingEntity[]>();
+        const qualifiers = Math.max(1, Math.floor(Number(qualifiersPerPoolByLeague?.[lg] || 1)));
+        // Snake the qualifiers: all pool winners, then all runners-up, …
+        // With the 1-v-last bracket seeding below this guarantees a first
+        // round that never repeats a pool meeting while pools are even.
+        const seeded: StandingEntity[] = [];
+        for (let pos = 1; pos <= qualifiers; pos++) {
+          for (let p = 1; p <= poolCount; p++) {
+            const finisher = (poolStandings.get(p) ?? [])[pos - 1];
+            if (finisher) seeded.push({ ...finisher, label: `Pool ${poolLetter(p)} #${pos}` });
+          }
+        }
+        if (seeded.length < 2) continue;
+        const size = bracketSizeFor(seeded.length);
+        const bp = poolBracketPos(lg, 1);
+        const prefix = labelForLeague(lg);
+        const firstStage = size === 8 ? "playoff_qf" : size === 4 ? "playoff_sf" : "playoff_final";
+        const firstLabel = `${prefix} · ` + (size === 8 ? "Quarter-final" : size === 4 ? "Semi-final" : "Final");
+        firstRoundPairs(seeded.slice(0, size)).forEach(([a, b]) => {
+          const r = emptyRow(champId, lg, 1, firstStage, firstLabel, bp);
+          setSide(r, "a", a, isDoubles);
+          setSide(r, "b", b, isDoubles);
+          rows.push(r);
+        });
+        if (size === 8) {
+          for (let i = 0; i < 2; i++) rows.push(emptyRow(champId, lg, 2, "playoff_sf", `${prefix} · Semi-final`, bp));
+        }
+        if (size >= 4) {
+          const finalRound = size === 8 ? 3 : 2;
+          rows.push(emptyRow(champId, lg, finalRound, "playoff_final", `${prefix} · Final`, bp));
+          rows.push(emptyRow(champId, lg, finalRound, "playoff_3rd", `${prefix} · 3rd Place`, bp));
+        }
+        continue;
+      }
+
       // Per-position intra-league bracket across the league's pools.
+
       const poolStandings = standingsByLeaguePool.get(lg) ?? new Map<number, StandingEntity[]>();
       const poolSizes: number[] = [];
       for (let p = 1; p <= poolCount; p++) poolSizes.push((poolStandings.get(p) ?? []).length);

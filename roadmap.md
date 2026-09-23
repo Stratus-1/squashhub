@@ -67,3 +67,4 @@
 
 - [ ] Durbanville: check WP (Western Province) league numbers for players
 - [ ] Populate people.ssa_membership_number for all members (SportyHQ "Membership ID" scrape) and show it in member/federation views
+- [ ] WP league: import per-fixture rubber scores (draw_results pages) and schedule a periodic standings refresh

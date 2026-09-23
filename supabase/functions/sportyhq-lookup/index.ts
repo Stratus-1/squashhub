@@ -558,6 +558,80 @@ Deno.serve(async (req) => {
 
     }
 
+    if (action === "import_league_standings") {
+      // Mirrors SportyHQ division standings + weekly points for every league team
+      // of an association (leagues.code = 'SHQ<teamId>'). Idempotent upserts.
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: u } = await sb.auth.getUser((req.headers.get("Authorization") ?? "").replace("Bearer ", ""));
+      if (!u?.user?.id) return json({ error: "Not signed in" }, 401);
+      const { data: adm } = await sb.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
+      if (!adm) return json({ error: "Platform admin only" }, 403);
+      const associationIds: string[] = Array.isArray(body.association_ids) ? body.association_ids.map(String) : [];
+      if (!associationIds.length) return json({ error: "association_ids required" }, 400);
+      const { data: teams, error: tErr } = await sb
+        .from("leagues")
+        .select("id, code, association_id, season_year")
+        .in("association_id", associationIds)
+        .like("code", "SHQ%");
+      if (tErr) return json({ error: tErr.message }, 500);
+      const clean = (s: string) =>
+        s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#039;/g, "'").replace(/\s+/g, " ").trim();
+      const cellsOf = (row: string) => [...row.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((m) => clean(m[1]));
+      const divCache = new Map<string, boolean>();
+      const results: any[] = [];
+      for (const t of teams ?? []) {
+        const teamId = String(t.code).replace(/^SHQ/, "");
+        try {
+          const teamHtml = await fetchHtml(`${BASE}/league/view/team/${teamId}`);
+          const divId = teamHtml.match(/href="\/league\/view\/division\/(\d+)"/)?.[1];
+          if (!divId) { results.push({ team: teamId, error: "no division" }); continue; }
+          await sb.from("leagues").update({ external_team_id: teamId, external_division_id: divId }).eq("id", t.id);
+          if (divCache.has(divId)) { results.push({ team: teamId, division: divId }); continue; }
+          const html = await fetchHtml(`${BASE}/league/view/division/${divId}`);
+          const title = html.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "";
+          const [divisionName, leagueName] = title.split("|").map((s) => clean(s));
+          const tables = [...html.matchAll(/<table[\s\S]*?<\/table>/gi)].map((m) => m[0]);
+          const standings: any[] = [];
+          const weekly: any[] = [];
+          const st = tables.find((x) => /Total Points/i.test(x));
+          if (st) {
+            for (const r of [...st.matchAll(/<tr[\s\S]*?<\/tr>/gi)].slice(1)) {
+              const c = cellsOf(r[0]);
+              const tid = r[0].match(/\/league\/view\/team\/(\d+)/)?.[1] ?? null;
+              if (c.length < 7 || !c[1]) continue;
+              standings.push({
+                position: Number(c[0]) || null, team: c[1], team_id: tid,
+                points: Number(c[2]) || 0, played: Number(c[3]) || 0,
+                won: Number(c[4]) || 0, lost: Number(c[5]) || 0, drawn: Number(c[6]) || 0,
+              });
+            }
+          }
+          const wk = tables.find((x) => /Total:/i.test(x) && /<th[^>]*>\s*Date/i.test(x));
+          if (wk) {
+            const rows = [...wk.matchAll(/<tr[\s\S]*?<\/tr>/gi)].map((m) => cellsOf(m[0]));
+            const header = rows[0]?.slice(1).filter(Boolean) ?? [];
+            for (const c of rows.slice(1)) {
+              if (!c[0] || /^Total/i.test(c[0])) continue;
+              const pts: Record<string, string> = {};
+              header.forEach((h, i) => { pts[h] = c[i + 1] ?? ""; });
+              weekly.push({ date: c[0], points: pts });
+            }
+          }
+          const { error: upErr } = await sb.from("external_league_divisions").upsert({
+            association_id: t.association_id, source: "sportyhq", external_division_id: divId,
+            division_name: divisionName || `Division ${divId}`, external_league_name: leagueName ?? null,
+            season_year: t.season_year ?? null, standings, weekly, fetched_at: new Date().toISOString(),
+          }, { onConflict: "source,external_division_id" });
+          if (upErr) throw new Error(upErr.message);
+          divCache.set(divId, true);
+          results.push({ team: teamId, division: divId, teams: standings.length, weeks: weekly.length });
+        } catch (e) {
+          results.push({ team: teamId, error: (e as Error).message });
+        }
+      }
+      return json({ imported: results.length, results });
+    }
+
     if (action === "probe_page") {
       // Platform-admin discovery helper: list links on a public SportyHQ page.
       const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

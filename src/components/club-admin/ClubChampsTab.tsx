@@ -12055,7 +12055,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     );
                   }
                   const renderPlayer = (m: any) => {
-                        const i = availablePlayers.findIndex((p: any) => p.id === m.id);
                         const entered = (inviteeRows as any[]).some((r: any) =>
                           r.club_member_id === m.id && classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }) === "registered");
                         return (
@@ -12070,7 +12069,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 setSelectedPlayerIds(next);
                               }}
                             />
-                            <span className="w-6 text-right text-muted-foreground text-sm">{filtered.findIndex((p: any) => p.id === m.id) + 1}.</span>
                             <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
                             {m._isVisitor && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor · {m._homeClub}</Badge>}
                             {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}

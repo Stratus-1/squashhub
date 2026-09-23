@@ -64,3 +64,5 @@
 - [x] Players tab visible at all times in tournament wizard (even before pairs exist)
 - [x] Make CSIR rotating-doubles player removal a persistent withdrawal, with a dedicated action on the Players tab
 - [x] Show tournament participants first on Players, then remaining members alphabetically
+
+- [ ] Durbanville: check WP (Western Province) league numbers for players

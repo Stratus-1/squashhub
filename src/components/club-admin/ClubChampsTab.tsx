@@ -7444,6 +7444,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setGender("men");
     setMatchType("singles");
     setLeaguePlayoffs({});
+    setLeaguePlayoffModes({});
+    setLeaguePlayoffQualifiers({});
+    setRotationMaxMatches(0);
     setNumGroups(0);
     setChampName("");
     setStartDate("");

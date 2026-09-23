@@ -24,6 +24,8 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
 import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
+import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
+import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */
@@ -193,7 +195,7 @@ interface AffiliationBadgeInfo {
   internal: boolean;
 }
 
-function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, isSuperAdmin }: {
+function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTitle, affiliations, onEdit, onDelete, onToggleAdmin, onAssignNumber, numberLabel, onChangeStatus, onAffiliate, onCompetitionStatus, isSuperAdmin }: {
   member: ClubMember;
   fees: ExpectedFee[];
   payableFees: ExpectedFee[];
@@ -208,6 +210,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
   numberLabel?: string;
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
   onAffiliate?: () => void;
+  onCompetitionStatus?: () => void;
   isSuperAdmin?: boolean;
 }) {
 
@@ -353,6 +356,18 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
             + Affiliate
           </Button>
         )}
+        <CompetitionStatusBadges memberId={m.id} />
+        {onCompetitionStatus && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 px-1.5 text-[9px] text-muted-foreground hover:text-primary"
+            onClick={(e) => { e.stopPropagation(); onCompetitionStatus(); }}
+            title="Set league and Squash South Africa status by hand"
+          >
+            Status
+          </Button>
+        )}
       </div>
 
 
@@ -402,6 +417,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const [bulkTypesOpen, setBulkTypesOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
   const [affiliateMember, setAffiliateMember] = useState<ClubMember | null>(null);
+  const [statusMember, setStatusMember] = useState<ClubMember | null>(null);
 
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -1059,6 +1075,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
                     onChangeStatus={handleChangeStatus}
                     onAffiliate={() => setAffiliateMember(m)}
+                    onCompetitionStatus={() => setStatusMember(m)}
                     isSuperAdmin={isSuperAdmin}
                   />
 
@@ -1082,6 +1099,13 @@ export function MembersTab({ clubId }: { clubId: string }) {
           memberId={affiliateMember.id}
           memberName={affiliateMember.name || affiliateMember.profiles?.name || "Member"}
           onClose={() => setAffiliateMember(null)}
+        />
+      )}
+      {statusMember && (
+        <CompetitionStatusDialog
+          memberId={statusMember.id}
+          memberName={statusMember.name || statusMember.profiles?.name || "Member"}
+          onClose={() => setStatusMember(null)}
         />
       )}
 

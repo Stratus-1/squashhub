@@ -156,6 +156,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -1823,6 +1824,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     if (wizardGovernance?.eligibility_scope) setEligibilityScope(wizardGovernance.eligibility_scope);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingChampId, wizardGovernance?.eligibility_scope]);
+  // Warn-only competition checks: flag entrants whose league registration or
+  // Squash South Africa membership is not confirmed active.
+  const [requireLeagueActive, setRequireLeagueActive] = useState(false);
+  const [requireSsaActive, setRequireSsaActive] = useState(false);
+  useEffect(() => {
+    setRequireLeagueActive(!!(wizardGovernance as any)?.require_league_active);
+    setRequireSsaActive(!!(wizardGovernance as any)?.require_ssa_active);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingChampId, (wizardGovernance as any)?.require_league_active, (wizardGovernance as any)?.require_ssa_active]);
   const [maxEntrants, setMaxEntrants] = useState<string>("");
   const [maxPerLeague, setMaxPerLeague] = useState<string>("");
   const [seedingSource, setSeedingSource] = useState<string>("ladder");
@@ -3019,7 +3029,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (error) console.warn("Tournament extras save failed:", error.message);
       // "Who may enter" is a governance field — keep the single copy in sync.
       const { error: govErr } = await fromExt("tournament_governance")
-        .upsert(sanitizeDraftPayload({ tournament_id: id, eligibility_scope: eligibilityScope }), { onConflict: "tournament_id" } as any);
+        .upsert(sanitizeDraftPayload({
+          tournament_id: id,
+          eligibility_scope: eligibilityScope,
+          require_league_active: requireLeagueActive,
+          require_ssa_active: requireSsaActive,
+        }), { onConflict: "tournament_id" } as any);
       if (govErr) console.warn("Eligibility save failed:", govErr.message);
       await persistVenues(id);
     };
@@ -8734,6 +8749,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                   )}
                 </div>
               </div>
+              <div className="rounded border p-2 space-y-1.5">
+                <Label className="text-xs font-semibold">Membership checks</Label>
+                <label className="flex items-start gap-2 text-[11px]">
+                  <Checkbox checked={requireLeagueActive} onCheckedChange={(v) => setRequireLeagueActive(!!v)} />
+                  <span>Flag players whose league registration is not active</span>
+                </label>
+                <label className="flex items-start gap-2 text-[11px]">
+                  <Checkbox checked={requireSsaActive} onCheckedChange={(v) => setRequireSsaActive(!!v)} />
+                  <span>Flag players whose Squash South Africa membership is not active</span>
+                </label>
+                <p className="text-[10px] text-muted-foreground">
+                  A warning triangle shows next to those players on the Players step. It never stops anyone entering.
+                </p>
+              </div>
               <p className="text-[11px] text-muted-foreground">
                 Eligibility is not an invitation list — it only decides who <em>may</em> take part. Age limits and licence
                 requirements live in <strong>Governance → Eligibility</strong>; ranking status lives on the scoring settings
@@ -12272,6 +12301,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}
                             {scope !== "club" && <Badge variant="outline" className="text-[10px]">{clubForPlayer(m).name}</Badge>}
                             {m.ladder_position && <Badge variant="secondary" className="text-xs">#{m.ladder_position}</Badge>}
+                            {(requireLeagueActive || requireSsaActive) && !m._isVisitor && (
+                              <CompetitionStatusBadges memberId={m.id} showUnknown />
+                            )}
                             {editingChampId && selectedPlayerIds.has(m.id) && !selfPairInviteSelection && (
                               <Button type="button" variant="ghost" size="sm" className="ml-auto shrink-0 text-destructive"
                                 onClick={() => {

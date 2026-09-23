@@ -836,10 +836,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setRefreshingRanking(true);
     try {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ["club-members"] }),
-        qc.invalidateQueries({ queryKey: ["tournament-member-pool"] }),
-        qc.invalidateQueries({ queryKey: ["champ-registrations"] }),
-        qc.invalidateQueries({ queryKey: ["club-champs-entries"] }),
+        qc.refetchQueries({ queryKey: ["club-members"], type: "all" }),
+        qc.refetchQueries({ queryKey: ["tournament-member-pool"], type: "all" }),
+        qc.refetchQueries({ queryKey: ["champ-registrations"], type: "all" }),
+        qc.refetchQueries({ queryKey: ["club-champs-entries"], type: "all" }),
       ]);
       toast.success("Ranking refreshed", { description: "Seed order now reflects the current club ladder." });
     } finally {

@@ -10,14 +10,16 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Copy, Loader2, MessageCircle, Send } from "lucide-react";
+import { ChevronDown, Copy, Loader2, MessageCircle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   defaultGroupName,
   groupDescriptionText,
@@ -134,20 +136,32 @@ export function TournamentWhatsAppGroupCard({
       { onSuccess: () => toast.success(next === "active" ? "Group reopened" : `Group ${next}`) },
     );
 
+  const [open, setOpen] = useState(true);
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <MessageCircle className="w-4 h-4" /> Tournament WhatsApp group
-          {status !== "active" && <Badge variant="secondary">{status}</Badge>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 text-sm">
-        <p className="text-xs text-muted-foreground">
-          Create the group in WhatsApp on your phone — set the photo and, under group settings, allow
-          only admins to send messages (you can still let everyone add people). Then paste the group's
-          invite link here. Being in the group never counts as entering the tournament.
-        </p>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer select-none">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <MessageCircle className="w-4 h-4" /> Tournament WhatsApp group
+              {status !== "active" && <Badge variant="secondary">{status}</Badge>}
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 shrink-0 ml-auto text-muted-foreground transition-transform",
+                  open && "rotate-180",
+                )}
+              />
+            </CardTitle>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4 text-sm">
+            <p className="text-xs text-muted-foreground">
+              Create the group in WhatsApp on your phone — set the photo and, under group settings, allow
+              only admins to send messages (you can still let everyone add people). Then paste the group's
+              invite link here. Being in the group never counts as entering the tournament.
+            </p>
 
         <div className="space-y-1.5">
           <Label htmlFor="wa-group-name" className="text-xs">Group name</Label>
@@ -224,7 +238,9 @@ export function TournamentWhatsAppGroupCard({
           {tournamentStatus === "completed" &&
             " This tournament is finished — SquashHub has stopped posting to the group. Deleting the group stays your decision, inside WhatsApp."}
         </p>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

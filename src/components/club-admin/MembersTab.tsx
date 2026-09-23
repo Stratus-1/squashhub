@@ -2035,6 +2035,29 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value.replace(/\D/g, "").slice(0, 13) }))} placeholder="First 6 digits of ID or full ID" maxLength={13} />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
           </div>
+          <div className="space-y-1 border-t border-border pt-3 mt-1">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Squash South Africa</Label>
+            <Input
+              value={ssaNumber}
+              onChange={e => setSsaNumber(e.target.value.replace(/\D/g, "").slice(0, 12))}
+              placeholder="SSA membership number (e.g. 108189)"
+            />
+            <select
+              className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={ssaStatus}
+              onChange={e => setSsaStatus(e.target.value)}
+            >
+              <option value="active">Membership: Active</option>
+              <option value="inactive">Membership: Not active</option>
+              <option value="unknown">Membership: Not confirmed</option>
+            </select>
+            {ssaRow?.ssa_source && (
+              <p className="text-[10px] text-muted-foreground">
+                Last set by {ssaRow.ssa_source === "manual" ? "hand" : ssaRow.ssa_source.replace(/_/g, " ")}
+                {ssaRow.ssa_checked_at ? ` · ${new Date(ssaRow.ssa_checked_at).toLocaleDateString()}` : ""}
+              </p>
+            )}
+          </div>
           <div className="space-y-1">
             <Label>Mobile Number</Label>
             <Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: formatPhoneNumber(e.target.value) }))} placeholder="+27 82 123 4567" />

@@ -3,6 +3,7 @@ import { GripVertical, Ban, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { dragId } from "./types";
+import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
 type Props = {
   memberId: string;
@@ -94,6 +95,7 @@ export function DraggablePlayer({
             : "text-muted-foreground")}>R{rank}</span>
         )}
       </span>
+      <CompetitionStatusBadges memberId={memberId} />
       {badge && (
         <Badge variant={badge.variant ?? "outline"} className="text-[9px] px-1 py-0 shrink-0">
           {badge.label}

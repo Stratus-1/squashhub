@@ -297,6 +297,21 @@ Deno.serve(async (req) => {
       else affDeactivated = count ?? toDeactivate.length;
     }
 
+    // Registration status: on a current-season NSA team sheet = active.
+    // Manually-set statuses are never overwritten by the sync.
+    const nowIso = new Date().toISOString();
+    const onSheet = affList.filter((a) => rosterCodes.has(String(a.league_association_number || "").trim().toUpperCase())).map((a) => a.id);
+    const offSheet = affList.filter((a) => !onSheet.includes(a.id) && a.league_association_number).map((a) => a.id);
+    for (const [ids, status] of [[onSheet, "active"], [offSheet, "inactive"]] as const) {
+      for (let i = 0; i < ids.length; i += 500) {
+        const { error } = await supabase.from("member_association_affiliations")
+          .update({ registration_status: status, registration_source: "nsa_team_sheet", registration_checked_at: nowIso })
+          .in("id", ids.slice(i, i + 500))
+          .or("registration_source.is.null,registration_source.neq.manual");
+        if (error) errors.push({ stage: "registration_status", error: error.message });
+      }
+    }
+
     // Auto-allocate matched members to local league teams (by nsa_team_id)
     if (matchedMembers.size > 0) {
       const allClubIds = [...new Set([...matchedMembers.values()].map((m) => m.club_id))];

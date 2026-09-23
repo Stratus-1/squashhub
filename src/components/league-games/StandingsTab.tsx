@@ -193,7 +193,10 @@ export function StandingsTab({ clubLeagues, myLeagueCode, associationScope = "re
     staleTime: 60 * 1000,
   });
 
-  if (associationScope === "internal") {
+  // Only NSA-fed associations read live NSA standings. Other regional bodies
+  // (e.g. Western Province, sourced from SportyHQ) use the club's own data.
+  const isNonNsaSource = !!externalSource && externalSource !== "nsa";
+  if (associationScope === "internal" || isNonNsaSource) {
     if (!clubId || !associationId) {
       return (
         <Card className="p-8 text-center">

@@ -1064,7 +1064,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // tournament-level switch any more.
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [playerSearch, setPlayerSearch] = useState("");
-  const [expandedPlayerClubs, setExpandedPlayerClubs] = useState<Set<string>>(new Set());
   const [numGroups, setNumGroups] = useState(0);
   const [champName, setChampName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -2955,13 +2954,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // (stale tab, draw confirmed elsewhere). Merge per division instead of
       // replacing the whole object, and never write null over stored draws.
       const nextExtras: Record<string, any> = { ...extras };
+      const { data: withdrawnRows, error: withdrawnError } = await fromExt("club_champs_registrations")
+        .select("club_member_id").eq("champ_id", id).eq("status", "cancelled");
+      if (withdrawnError) throw withdrawnError;
+      const withdrawnIds = new Set<string>((withdrawnRows || []).map((row: any) => String(row.club_member_id)));
+      nextExtras.draft_player_ids = (extras.draft_player_ids as string[]).filter((memberId) => !withdrawnIds.has(memberId));
+      nextExtras.seed_order = Array.isArray(extras.seed_order)
+        ? extras.seed_order.filter((memberId: string) => !withdrawnIds.has(memberId)) : extras.seed_order;
       const { data: current } = await fromExt("tournaments")
         .select("manual_draws, manual_seed_divisions")
         .eq("id", id)
         .maybeSingle();
       const storedDraws = ((current as any)?.manual_draws as Record<string, any> | null) || {};
       const mergedDraws = { ...storedDraws, ...manualDraws };
-      nextExtras.manual_draws = Object.keys(mergedDraws).length > 0 ? mergedDraws : null;
+      const cleanedDraws = removeFromManualDraws(mergedDraws, Array.from(withdrawnIds)) ?? mergedDraws;
+      nextExtras.manual_draws = Object.keys(cleanedDraws).length > 0 ? cleanedDraws : null;
       if (manualSeedGroups.size === 0) {
         const storedSeedDivs = ((current as any)?.manual_seed_divisions as number[] | null) || [];
         if (storedSeedDivs.length > 0) nextExtras.manual_seed_divisions = storedSeedDivs;
@@ -3172,7 +3179,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // allocation save — free tournaments included. Doing so made their invite
       // link think they had already accepted. Only rows the organiser creates
       // directly here (no outstanding invite) are marked as entered.
-        const uniqueIds = Array.from(new Set(allocatedMemberIds)).filter((id) => !cancelledIds.has(id));
+      const uniqueIds = Array.from(new Set(allocatedMemberIds)).filter((id) => !cancelledIds.has(id));
       if (uniqueIds.length > 0) {
         const { data: existingRows } = await fromExt("club_champs_registrations")
           .select("club_member_id, status, confirmed_at")
@@ -11970,8 +11977,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               <Button
                 variant="outline" size="sm"
                 onClick={() => {
+                  const activeIds = (inviteeRows as any[])
+                    .filter((r: any) => classifyEntrant(r, { paymentRequired: paymentRequired && entryFeeAmount > 0 }) === "registered")
+                    .map((r: any) => r.club_member_id);
                   if (selectedPlayerIds.size === availablePlayers.length) {
-                    setSelectedPlayerIds(new Set());
+                    setSelectedPlayerIds(new Set(activeIds));
                   } else {
                     setSelectedPlayerIds(new Set(availablePlayers.map((m: any) => m.id)));
                   }
@@ -12053,13 +12063,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             <Checkbox
                               aria-label={`Select ${m.name || m.profiles?.name || "player"}`}
                               checked={selectedPlayerIds.has(m.id)}
+                              disabled={entered}
                               onCheckedChange={(checked) => {
                                 const next = new Set(selectedPlayerIds);
                                 checked ? next.add(m.id) : next.delete(m.id);
                                 setSelectedPlayerIds(next);
                               }}
                             />
-                            <span className="w-6 text-right text-muted-foreground text-sm">{i + 1}.</span>
+                            <span className="w-6 text-right text-muted-foreground text-sm">{filtered.findIndex((p: any) => p.id === m.id) + 1}.</span>
                             <span className="font-medium">{m.name || m.profiles?.name || "—"}</span>
                             {m._isVisitor && <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Visitor · {m._homeClub}</Badge>}
                             {!m._isVisitor && m.gender && <Badge variant="outline" className="text-[10px]">{m.gender}</Badge>}

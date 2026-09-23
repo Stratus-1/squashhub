@@ -2989,7 +2989,7 @@ export default function ClubChampsView() {
     const combinedFixtures = isCrossLeague ? (
       <CollapsibleCard key="cross-fixtures" defaultOpen={false} title="Fixtures & Results" titleClassName="text-lg">
         <div className="space-y-1.5">
-          {matches.map((m: any) => renderMatchRow(m))}
+          {sortMatchesChrono(matches).map((m: any) => renderMatchRow(m))}
         </div>
       </CollapsibleCard>
     ) : null;

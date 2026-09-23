@@ -10202,7 +10202,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   />
                                   {fmt === "knockout"
                                     ? "Continue through knockout stages"
-                                    : poolsForLeague(gn) > 1
+                                    : poolsForDivision(gn) > 1
                                       ? "Enable playoffs after pool stage"
                                       : "Playoffs / finals for this league"}
                                 </label>
@@ -10212,7 +10212,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     through to the section/division final.
                                   </p>
                                 )}
-                                {fmt !== "knockout" && poolsForLeague(gn) > 1 && playoffsForLeague(gn) && (
+                                {fmt !== "knockout" && poolsForDivision(gn) > 1 && playoffsForLeague(gn) && (
                                   <div className="pl-6 pt-1.5 space-y-1.5">
                                     <div className="flex flex-wrap gap-3">
                                       {([
@@ -10256,7 +10256,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           />
                                         </label>
                                         <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                          {playoffQualifiersForLeague(gn) * poolsForLeague(gn)} qualifiers go into one
+                                          {playoffQualifiersForLeague(gn) * poolsForDivision(gn)} qualifiers go into one
                                           cross-pool knockout draw, seeded so pool rivals meet as late as possible.
                                         </p>
                                       </div>

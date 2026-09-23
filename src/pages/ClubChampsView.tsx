@@ -1307,7 +1307,7 @@ export default function ClubChampsView() {
       // Build seed standings per league (and per-pool for Swiss with pools>1).
       const numLeagues = groupNumbers.length;
       const standingsByLeague = new Map<number, StandingEntity[]>();
-      const swissPoolMode = isSwiss && (groupNumbers as number[]).some((gn) => poolCountFor(gn as number) > 1);
+      const swissPoolMode = (groupNumbers as number[]).some((gn) => poolCountFor(gn as number) > 1);
       const poolsByLeague: Record<number, number> = {};
       const standingsByLeaguePool = new Map<number, Map<number, StandingEntity[]>>();
       for (const gn of groupNumbers as number[]) {

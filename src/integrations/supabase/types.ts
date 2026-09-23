@@ -13225,6 +13225,8 @@ export type Database = {
           registration_mode: string
           registration_opens_at: string | null
           registration_required: boolean
+          require_league_active: boolean
+          require_ssa_active: boolean
           sanction_notes: string | null
           sanction_reference: string | null
           sanction_status: string
@@ -13262,6 +13264,8 @@ export type Database = {
           registration_mode?: string
           registration_opens_at?: string | null
           registration_required?: boolean
+          require_league_active?: boolean
+          require_ssa_active?: boolean
           sanction_notes?: string | null
           sanction_reference?: string | null
           sanction_status?: string
@@ -13299,6 +13303,8 @@ export type Database = {
           registration_mode?: string
           registration_opens_at?: string | null
           registration_required?: boolean
+          require_league_active?: boolean
+          require_ssa_active?: boolean
           sanction_notes?: string | null
           sanction_reference?: string | null
           sanction_status?: string
@@ -14927,6 +14933,16 @@ export type Database = {
       admin_reverse_journal_group: {
         Args: { _journal_ref: string; _note?: string }
         Returns: Json
+      }
+      admin_set_competition_status: {
+        Args: {
+          _association_id?: string
+          _club_member_id: string
+          _league_status?: string
+          _ssa_number?: string
+          _ssa_status?: string
+        }
+        Returns: undefined
       }
       admin_set_cross_gender_ladder: {
         Args: { p_club_id: string; p_member_ids: string[] }

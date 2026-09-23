@@ -3283,6 +3283,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const rawIds = pair ? [pair.player1Id, pair.player2Id] : [id];
       const resolvedIds = rawIds.length > 0 ? await promoteVisitorIds(rawIds) : [];
       if (cid && resolvedIds.length > 0) {
+        // The Games pull-out action handles walkovers and booked courts. Do
+        // not remove a scheduled player's entries behind that workflow's back.
+        const { count: fixtureCount, error: fixtureErr } = await fromExt("club_champs_matches")
+          .select("id", { count: "exact", head: true })
+          .eq("champ_id", cid)
+          .or(resolvedIds.flatMap((memberId) => [
+            `player_a_member_id.eq.${memberId}`, `player_b_member_id.eq.${memberId}`,
+            `partner_a_member_id.eq.${memberId}`, `partner_b_member_id.eq.${memberId}`,
+          ]).join(","));
+        if (fixtureErr) throw fixtureErr;
+        if (fixtureCount) throw new Error("Games already exist for this player. Use 'Pull a player out' on Tournament Games so their fixtures and court bookings are handled safely.");
         for (const resolvedId of resolvedIds) {
           const { error: entryErr } = await fromExt("club_champs_entries")
             .delete()

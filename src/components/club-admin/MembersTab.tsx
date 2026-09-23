@@ -24,6 +24,8 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
 import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
+import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
+import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
 
 /** Extract date of birth from SA ID number (YYMMDD...) and calculate age */

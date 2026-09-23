@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
 import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
+import { useCompetitionStatus } from "@/hooks/use-competition-status";
 import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
 
@@ -1471,6 +1472,19 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
   const [registeredLeagueIds, setRegisteredLeagueIds] = useState<string[]>([]);
   const qcEdit = useQueryClient();
 
+  // Squash South Africa number + membership, shown and editable on the member record.
+  const compStatus = useCompetitionStatus(member.id);
+  const ssaRow = compStatus?.rows?.[0];
+  const [ssaNumber, setSsaNumber] = useState("");
+  const [ssaStatus, setSsaStatus] = useState("unknown");
+  const [ssaLoaded, setSsaLoaded] = useState(false);
+  useEffect(() => {
+    if (!ssaRow || ssaLoaded) return;
+    setSsaNumber(ssaRow.ssa_number || "");
+    setSsaStatus((ssaRow.ssa_status || "unknown").toLowerCase());
+    setSsaLoaded(true);
+  }, [ssaRow, ssaLoaded]);
+
   // Association teams this club runs, newest season first, for the team picker.
   const { data: assocTeams = [] } = useQuery({
     queryKey: ["club-association-teams", clubId],
@@ -1759,6 +1773,23 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
     }).eq("id", member.id);
     if (error) { toast.error(error.message); return; }
 
+    // Squash South Africa number/membership — saved through the same RPC as the
+    // Status button so anything set here is marked as entered by hand and the
+    // automatic sync never overwrites it.
+    if (ssaLoaded) {
+      const numberChanged = ssaNumber.trim() !== (ssaRow?.ssa_number || "");
+      const statusChanged = ssaStatus !== (ssaRow?.ssa_status || "unknown").toLowerCase();
+      if (numberChanged || statusChanged) {
+        const { error: ssaErr } = await (supabase as any).rpc("admin_set_competition_status", {
+          _club_member_id: member.id,
+          _ssa_number: ssaNumber.trim() || null,
+          _ssa_status: ssaStatus,
+        });
+        if (ssaErr) { toast.error(ssaErr.message || "Could not save the Squash South Africa status"); return; }
+        qcEdit.invalidateQueries({ queryKey: ["competition-status", member.id] });
+      }
+    }
+
     // Persist permanent affiliations: one row per association whose tick state changed.
     // Numbers are NEVER deleted — we only flip `active`. New rows for external-regional
     // associations are created here; tenant ones are created by the edge function above.
@@ -2003,6 +2034,28 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
             <Label>ID Number</Label>
             <Input value={form.id_number} onChange={e => setForm(p => ({ ...p, id_number: e.target.value.replace(/\D/g, "").slice(0, 13) }))} placeholder="First 6 digits of ID or full ID" maxLength={13} />
             {age !== null && <p className="text-xs text-muted-foreground">Age: {age} years old</p>}
+          </div>
+          <div className="space-y-1 border-t border-border pt-3 mt-1">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Squash South Africa</Label>
+            <Input
+              value={ssaNumber}
+              onChange={e => setSsaNumber(e.target.value.replace(/\D/g, "").slice(0, 12))}
+              placeholder="SSA membership number (e.g. 108189)"
+            />
+            <select
+              className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              value={ssaStatus}
+              onChange={e => setSsaStatus(e.target.value)}
+            >
+              <option value="active">Membership: Active</option>
+              <option value="inactive">Membership: Not active</option>
+              <option value="unknown">Membership: Not confirmed</option>
+            </select>
+            {ssaRow?.ssa_checked_at && (
+              <p className="text-[10px] text-muted-foreground">
+                Last checked {new Date(ssaRow.ssa_checked_at).toLocaleDateString()}
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <Label>Mobile Number</Label>

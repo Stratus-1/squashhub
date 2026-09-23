@@ -131,7 +131,26 @@ export type BuildInput = {
   poolsByLeague?: Record<number, number>;
   standingsByLeaguePool?: Map<number, Map<number, StandingEntity[]>>;
   leagueLabels?: string[]; // 1-indexed labels for leagues in pool-mode output
+  /**
+   * Post-pool playoff style per league (round-robin pools).
+   *   "position" (default, legacy) → A1 v B1, A2 v B2 … establishing every
+   *                                  finishing position across the division.
+   *   "knockout"                   → the top `qualifiersPerPoolByLeague[lg]`
+   *                                  from each pool enter one cross-pool
+   *                                  knockout bracket.
+   */
+  playoffModeByLeague?: Record<number, PlayoffMode>;
+  qualifiersPerPoolByLeague?: Record<number, number>;
 };
+
+/** Post-pool playoff style. */
+export type PlayoffMode = "position" | "knockout";
+
+export const DEFAULT_PLAYOFF_MODE: PlayoffMode = "position";
+
+export const isPlayoffMode = (v: unknown): v is PlayoffMode =>
+  v === "position" || v === "knockout";
+
 
 // Encode league scope onto bracket_position so downstream feed logic
 // (winnerOf/loserOf) can match SFs → Finals per league × position.

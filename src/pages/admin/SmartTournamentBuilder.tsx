@@ -172,7 +172,7 @@ function Workspace({ draftId }: { draftId: string }) {
     const withReply = [...nextChat, { role: "assistant" as const, content: reply }];
     setChat(withReply);
     if (!parsed.ok) {
-      setChat([...withReply, { role: "assistant", content: `I couldn't turn that into a valid structure (${parsed.error}). Could you say it another way?` }]);
+      setChat([...withReply, { role: "assistant", content: `I couldn't turn that into a valid structure (${"error" in parsed ? parsed.error : ""}). Could you say it another way?` }]);
       return;
     }
     const proposed = parsed.value;

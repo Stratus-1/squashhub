@@ -1,0 +1,138 @@
+import { describe, expect, it } from "vitest";
+import { DefinitionSchema, knockoutRoundNames, type TournamentDefinition } from "@/lib/smart-builder/definition";
+import { newProblems, validateDefinition } from "@/lib/smart-builder/validate";
+import { mapToExistingTournament } from "@/lib/smart-builder/to-existing";
+import { canUseSmartBuilder } from "@/lib/smart-builder/access";
+
+const def = (raw: unknown): TournamentDefinition => DefinitionSchema.parse(raw);
+
+function sectionFlow(sectionId: string, pools: number) {
+  return {
+    id: sectionId,
+    name: sectionId === "s1" ? "Section 1" : "Section 2",
+    stages: [
+      { id: `${sectionId}_rr`, name: "Singles pools", kind: "round_robin", discipline: "singles", groups: pools, groupSize: 6, input: {}, advance: { role: "seed" } },
+      { id: `${sectionId}_pair`, name: "Doubles pairs", kind: "pair_from_positions", discipline: "doubles", groups: 3, input: { fromStageId: `${sectionId}_rr` }, pairing: [[1, 2], [3, 4], [5, 6]] },
+      { id: `${sectionId}_lvl`, name: "Doubles levels", kind: "round_robin", discipline: "doubles", groups: 3, groupSize: 4, input: { fromStageId: `${sectionId}_pair`, arrangement: "by_level_across_groups" }, advance: { role: "seed" } },
+      { id: `${sectionId}_ko`, name: "Level playoffs", kind: "knockout", discipline: "doubles", groups: 3, groupSize: 4, input: { fromStageId: `${sectionId}_lvl` }, seededMatchups: null },
+    ],
+  };
+}
+
+const test1 = () => def({
+  name: "Singles to doubles",
+  divisions: [{ id: "d1", name: "Open", sections: [sectionFlow("s1", 4), sectionFlow("s2", 4)] }],
+});
+
+describe("smart builder access", () => {
+  it("is super-admin only for the beta", () => {
+    expect(canUseSmartBuilder({ isSuperAdmin: true })).toBe(true);
+    expect(canUseSmartBuilder({ isSuperAdmin: false })).toBe(false);
+  });
+});
+
+describe("acceptance 1 — singles pools → derived doubles levels", () => {
+  it("derives the maths and flags seeding-only playoffs", () => {
+    const r = validateDefinition(test1());
+    const rr = r.flows["s1_rr"];
+    expect(rr.supply).toBe(24);
+    expect(rr.matchesPerEntrant).toBe(5);
+    expect(rr.matches).toBe(60); // 4 pools × 15
+    expect(r.flows["s1_pair"].outTotal).toBe(12); // 3 levels × 4 pairs
+    expect(r.flows["s1_lvl"].supply).toBe(12);
+    expect(r.issues.filter((i) => i.level === "error")).toEqual([]);
+    const seeding = r.issues.find((i) => i.code === "seeding_only");
+    expect(seeding?.fix).toContain("1st vs 4th and 2nd vs 3rd");
+    const total = r.flows["s1_rr"].supply! + r.flows["s2_rr"].supply!;
+    expect(total).toBe(48);
+  });
+
+  it("blocks build while '1st and 2nd' is still ambiguous", () => {
+    const d = test1();
+    d.questions.push({ id: "q", term: "1st and 2nd", question: "Does 1st and 2nd mean they form a doubles pair?", kind: "structural", resolved: false });
+    const r = validateDefinition(d);
+    expect(r.structureComplete).toBe(false);
+    expect(r.canCreate).toBe(false);
+  });
+});
+
+describe("acceptance 2 — doubles knockout with strength bands", () => {
+  const build = (entrants: number | null) => def({
+    name: "Thursday doubles",
+    divisions: ["Men", "Ladies", "Open"].map((name, i) => ({
+      id: `d${i}`, name, eligibility: name === "Open" ? "open_any_pair" : name === "Men" ? "men" : "ladies", entry: "pairs",
+      sections: [{ id: `s${i}`, name: "Main", stages: [{
+        id: `ko${i}`, name: `${name} Knockout`, kind: "knockout", discipline: "doubles", groups: 1,
+        groupSize: entrants, dynamic: entrants == null, input: { entrants }, seedingBands: ["Strong", "Middle", "Developing"],
+        loserBehaviour: "eliminated",
+        schedule: { mode: "fixed", weekday: 4, venueNames: ["A", "B", "C"], rotateVenues: true, courtsPerVenue: 2, sessionMinutes: 180, matchMinutes: 45, roundDates: ["2026-10-01"] },
+      }] }],
+    })),
+  });
+
+  it("keeps draw size dynamic until registration closes", () => {
+    const r = validateDefinition(build(null));
+    expect(r.canCreate).toBe(true);
+    expect(r.issues.filter((i) => i.code === "dynamic")).toHaveLength(3);
+  });
+
+  it("checks Thursday capacity across all divisions", () => {
+    // 16 pairs each → 8 first-round matches × 3 divisions = 24 > 3×2×4 = 24? equal fits
+    expect(validateDefinition(build(16)).issues.some((i) => i.code === "capacity_shared")).toBe(false);
+    // 32 pairs each → 48 matches, doesn't fit
+    expect(validateDefinition(build(32)).issues.some((i) => i.code === "capacity_shared")).toBe(true);
+  });
+});
+
+describe("acceptance 3 — simple 16-player knockout", () => {
+  const simple = def({
+    name: "Club Knockout",
+    divisions: [{ id: "d", name: "Open", sections: [{ id: "s", name: "Main", stages: [
+      { id: "ko", name: "Knockout", kind: "knockout", groups: 1, groupSize: 16, input: { entrants: 16 } },
+    ] }] }],
+  });
+  it("validates with no questions and maps onto the existing engine", () => {
+    const r = validateDefinition(simple);
+    expect(r.canCreate).toBe(true);
+    const m = mapToExistingTournament(simple);
+    expect(m.unsupported).toEqual([]);
+    expect(m.champ.league_formats).toEqual({ "1": "knockout" });
+    expect(m.champ.expected_players).toEqual({ "1": 16 });
+  });
+  it("names rounds by stage, not pool", () => {
+    expect(knockoutRoundNames(8, "League 2")).toEqual(["League 2 Quarter Final", "League 2 Semi Final", "League 2 Final"]);
+  });
+});
+
+describe("acceptance 4 — edit after build", () => {
+  it("changing Section 2 to 5 pools surfaces downstream mismatches", () => {
+    const before = test1();
+    const after = test1();
+    after.divisions[0].sections[1].stages[0].groups = 5;
+    const problems = newProblems(validateDefinition(before), validateDefinition(after));
+    expect(problems.some((p) => p.code === "count_mismatch" && p.message.includes("receives 5"))).toBe(true);
+    expect(validateDefinition(after).canCreate).toBe(false);
+  });
+});
+
+describe("general validation", () => {
+  it("explains empty playoff positions", () => {
+    const d = def({ divisions: [{ id: "d", name: "Open", sections: [{ id: "s", name: "Main", stages: [
+      { id: "rr", name: "Pools", kind: "round_robin", groups: 2, groupSize: 4, input: {}, advance: { role: "qualify", perGroup: 2 } },
+      { id: "ko", name: "Quarter-final", kind: "knockout", groups: 1, groupSize: 8, input: { fromStageId: "rr" } },
+    ] }] }] });
+    const e = validateDefinition(d).issues.find((i) => i.code === "empty_positions");
+    expect(e?.message).toContain("Pool A sends 2 and Pool B sends 2");
+    expect(e?.message).toContain("4 positions are empty");
+  });
+  it("flags date order", () => {
+    const d = def({ divisions: [{ id: "d", name: "Open", sections: [{ id: "s", name: "Main", stages: [
+      { id: "rr", name: "Pool 3", kind: "round_robin", groups: 1, groupSize: 4, input: {}, advance: { role: "qualify", perGroup: 4 }, schedule: { mode: "play_by", endDate: "2026-05-15" } },
+      { id: "ko", name: "Quarter-finals", kind: "knockout", groups: 1, groupSize: 4, input: { fromStageId: "rr" }, schedule: { mode: "play_by", endDate: "2026-05-12" } },
+    ] }] }] });
+    expect(validateDefinition(d).issues.some((i) => i.code === "date_order" && i.message.includes("12 May".replace("12 May", "2026-05-12")))).toBe(true);
+  });
+  it("blocks lossy mapping of derived doubles", () => {
+    expect(mapToExistingTournament(test1()).unsupported.length).toBeGreaterThan(0);
+  });
+});

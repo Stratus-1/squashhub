@@ -12153,6 +12153,69 @@ export type Database = {
         }
         Relationships: []
       }
+      smart_tournament_drafts: {
+        Row: {
+          conversation: Json
+          created_at: string
+          created_by: string
+          created_tournament_id: string | null
+          definition: Json
+          id: string
+          mode: string
+          owner_id: string | null
+          owner_kind: string
+          status: string
+          title: string
+          updated_at: string
+          validation: Json
+        }
+        Insert: {
+          conversation?: Json
+          created_at?: string
+          created_by?: string
+          created_tournament_id?: string | null
+          definition?: Json
+          id?: string
+          mode?: string
+          owner_id?: string | null
+          owner_kind?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          validation?: Json
+        }
+        Update: {
+          conversation?: Json
+          created_at?: string
+          created_by?: string
+          created_tournament_id?: string | null
+          definition?: Json
+          id?: string
+          mode?: string
+          owner_id?: string | null
+          owner_kind?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          validation?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_tournament_drafts_created_tournament_id_fkey"
+            columns: ["created_tournament_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_tournament_drafts_created_tournament_id_fkey"
+            columns: ["created_tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sms_send_log: {
         Row: {
           billable: boolean

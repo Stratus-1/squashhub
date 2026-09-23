@@ -1328,6 +1328,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [leaguePlayAll, setLeaguePlayAll] = useState<Record<string, boolean>>({});
   // Per-league playoffs: which leagues run their own knockout / finals stage.
   const [leaguePlayoffs, setLeaguePlayoffs] = useState<Record<string, boolean>>({});
+  // Post-pool playoff style per division (round-robin pools):
+  //   "position" (default / legacy) → A1 v B1, A2 v B2 …
+  //   "knockout"                    → top N of each pool in one cross-pool draw.
+  const [leaguePlayoffModes, setLeaguePlayoffModes] = useState<Record<string, PlayoffMode>>({});
+  const [leaguePlayoffQualifiers, setLeaguePlayoffQualifiers] = useState<Record<string, number>>({});
+  const playoffModeForLeague = (gn: number): PlayoffMode =>
+    isPlayoffMode(leaguePlayoffModes[String(gn)]) ? leaguePlayoffModes[String(gn)] : DEFAULT_PLAYOFF_MODE;
+  const playoffQualifiersForLeague = (gn: number): number =>
+    Math.max(1, Math.floor(Number(leaguePlayoffQualifiers[String(gn)]) || 2));
+  /** Numeric maps for the playoff builders (keyed by league number). */
+  const playoffModesByNum = (): Record<number, PlayoffMode> => {
+    const out: Record<number, PlayoffMode> = {};
+    for (let gn = 1; gn <= numGroups; gn++) out[gn] = playoffModeForLeague(gn);
+    return out;
+  };
+  const playoffQualifiersByNum = (): Record<number, number> => {
+    const out: Record<number, number> = {};
+    for (let gn = 1; gn <= numGroups; gn++) out[gn] = playoffQualifiersForLeague(gn);
+    return out;
+  };
+
   /**
    * Tournament-level playoff flag — DERIVED, never edited directly.
    * Kept only so the legacy `enable_playoffs` column and downstream

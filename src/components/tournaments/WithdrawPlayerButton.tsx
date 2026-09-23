@@ -110,7 +110,11 @@ export function WithdrawPlayerButton({ champs }: Props) {
   const leagueLabel = (gn: number) =>
     String((champ as any)?.group_labels?.[String(gn)] || "").trim() || `League ${gn}`;
 
-  const activeRegs = registrations.filter((r: any) => r.status !== "cancelled");
+  // Only players who actually entered — invitation rows ("invited") cover the
+  // whole invite list and cancelled rows are out already.
+  const activeRegs = registrations.filter(
+    (r: any) => r.status !== "cancelled" && r.status !== "invited",
+  );
   const nameOf = (r: any) => r?.member?.name || r?.member?.profiles?.name || "Unknown";
   const reg = activeRegs.find((r: any) => r.club_member_id === memberId) || null;
   const leagues = memberId ? memberLeagues(memberId) : [];

@@ -31,8 +31,8 @@ export function MyStatsCard({ memberId }: Props) {
     return Array.from(years).sort((a, b) => b - a);
   }, [seasons]);
 
-  // Default to the newest season with data, until the member chooses.
-  const activeSeason = season === undefined ? (seasonOptions[0] ?? null) : season;
+  // Default to All Time; members can switch to a specific year.
+  const activeSeason = season === undefined ? null : season;
 
   const { data: summary } = useMemberStatsSummary(memberId, activeSeason);
   const stats = summary?.byCategory;

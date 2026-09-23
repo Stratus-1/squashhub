@@ -134,7 +134,17 @@ export function ExternalStandingsTab({ associationId, clubLeagues, myLeagueCode 
                   {div.weekly.map((w) => (
                     <TableRow key={w.date}>
                       <TableCell className="whitespace-nowrap">{w.date}</TableCell>
-                      {header.map((h) => <TableCell key={h} className="text-right">{w.points[h] || "—"}</TableCell>)}
+                      {header.map((h) => {
+                        const raw = String(w.points[h] ?? "").trim();
+                        const m = raw.match(/^(-?\d+(?:\.\d+)?)\s+(.+)$/);
+                        if (!m) return <TableCell key={h} className="text-right">{raw || "—"}</TableCell>;
+                        return (
+                          <TableCell key={h} className="text-right" title={`Played on ${m[2]}`}>
+                            <div>{m[1]}</div>
+                            <div className="text-[10px] leading-tight text-muted-foreground">played {m[2]}</div>
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   ))}
                 </TableBody>

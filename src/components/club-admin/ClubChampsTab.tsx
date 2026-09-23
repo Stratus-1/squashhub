@@ -1047,6 +1047,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [editingChampId, setEditingChampId] = useState<string | null>(null);
   const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
 
+  // Ladder positions drive tournament seeding. The member list is cached, so a
+  // ladder change made elsewhere in the app would otherwise still show the old
+  // rank here. Pull fresh member rows whenever the wizard is opened, and expose
+  // a manual refresh on the Players step.
+  const refreshLadderRanks = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["club-members"] }),
+      qc.invalidateQueries({ queryKey: ["tournament-member-pool"] }),
+      qc.invalidateQueries({ queryKey: ["champ-invitee-directory"] }),
+      qc.invalidateQueries({ queryKey: ["champ-team-roster-directory"] }),
+    ]);
+  }, [qc]);
+
+  useEffect(() => {
+    if (!showWizard) return;
+    void refreshLadderRanks();
+  }, [showWizard, editingChampId, refreshLadderRanks]);
+
   // Governance record for the tournament being edited — read-only in the wizard
   // (fee shares and refunds are owned by the Governance dialog).
   const { data: wizardGovernance } = useTournamentGovernance(editingChampId);
@@ -11985,6 +12003,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{selfPairInviteSelection ? "Invite Members" : "Select Players"} — {GENDER_LABELS[gender]}</CardTitle>
+              <div className="flex items-center gap-2">
+              <Button
+                variant="outline" size="sm"
+                onClick={async () => {
+                  await refreshLadderRanks();
+                  toast.success("Ladder rankings refreshed");
+                }}
+                title="Re-read the club ladder so seeding uses the latest positions"
+              >
+                <RefreshCw className="w-4 h-4 mr-1" /> Refresh rankings
+              </Button>
               <Button
                 variant="outline" size="sm"
                 onClick={() => {
@@ -12000,6 +12029,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               >
                 {selectedPlayerIds.size === availablePlayers.length ? "Deselect All" : "Select All"}
               </Button>
+              </div>
             </div>
             <p className="text-sm text-muted-foreground">
               {selectedPlayerIds.size} of {availablePlayers.length} selected

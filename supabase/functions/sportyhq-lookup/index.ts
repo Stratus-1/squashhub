@@ -606,8 +606,7 @@ Deno.serve(async (req) => {
           }
           if (divCache.has(divId)) { results.push({ team: teamId, division: divId }); continue; }
           const last = existing.get(divId)?.fetched_at;
-          const pendingFixtures = false;
-          if (scheduled && last && Date.now() - new Date(last).getTime() < 3 * 3600_000 && !pendingFixtures) {
+          if (scheduled && last && Date.now() - new Date(last).getTime() < 3 * 3600_000) {
             divCache.set(divId, true); results.push({ team: teamId, division: divId, skipped: "recent" }); continue;
           }
           const html = await fetchHtml(`${BASE}/league/view/division/${divId}`);
@@ -1422,4 +1421,45 @@ function matchMember(
   });
   if (probable.length === 1) return { id: probable[0].id, confidence: "probable" };
   return null;
+}
+
+/** Parses a SportyHQ league fixture result page into rubbers + totals. */
+function parseFixture(
+  html: string,
+  clean: (s: string) => string,
+  cellsOf: (row: string) => string[],
+) {
+  const venue = html.match(/Played at:<\/strong>\s*<a[^>]*>([\s\S]*?)<\/a>/i)?.[1];
+  const when = html.match(/Played at:[\s\S]*?<li[^>]*>\s*([^<]+?)\s*<\/li>/i)?.[1];
+  const tables = [...html.matchAll(/<table[\s\S]*?<\/table>/gi)].map((m) => m[0]);
+  const main = tables.find((t) => /\/league\/view\/team\/\d+/.test(t) && /ranking\/user\//.test(t));
+  if (!main) return null;
+  const heads = [...(main.match(/<thead[\s\S]*?<\/thead>/i)?.[0] ?? "").matchAll(/\/league\/view\/team\/(\d+)"[^>]*>([\s\S]*?)<\/a>/g)]
+    .map((m) => ({ id: m[1], name: clean(m[2]) }));
+  const names = (cell: string) =>
+    [...new Set([...cell.matchAll(/<strong[^>]*>\s*<a href="[^"]*ranking\/user\/[^"]*">([\s\S]*?)<\/a>/g)].map((m) => clean(m[1])))];
+  const rubbers: any[] = [];
+  for (const r of [...(main.match(/<tbody[\s\S]*?<\/tbody>/i)?.[0] ?? "").matchAll(/<tr[\s\S]*?<\/tr>/gi)]) {
+    const tds = [...r[0].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) => m[1]);
+    if (tds.length < 4) continue;
+    const res = tds[2].match(/<span class="lead">\s*([\d]+)\s*-\s*([\d]+)\s*<\/span>/);
+    const scores = clean(tds[2].replace(/<span class="lead">[\s\S]*?<\/span>/, "").replace(/<a[\s\S]*?<\/a>/g, ""));
+    rubbers.push({
+      order: Number(clean(tds[0])) || rubbers.length + 1,
+      home: names(tds[1]), away: names(tds[3]),
+      home_games: res ? Number(res[1]) : null, away_games: res ? Number(res[2]) : null,
+      scores: scores || null,
+    });
+  }
+  const totals: Record<string, [string, string]> = {};
+  for (const t of tables) {
+    for (const r of t.matchAll(/<tr[\s\S]*?<\/tr>/gi)) {
+      const c = cellsOf(r[0]);
+      if (c.length >= 3 && /^(Matches Won|Games Won|Game Points Won|Penalty Points|Bonus Points|Total)$/i.test(c[0])) totals[c[0]] = [c[1], c[2]];
+    }
+  }
+  return {
+    played_at: when ? clean(when) : null, venue: venue ? clean(venue) : null,
+    home: heads[0] ?? null, away: heads[1] ?? null, rubbers, totals,
+  };
 }

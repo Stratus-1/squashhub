@@ -24,7 +24,7 @@ type Props = {
 /** Post-match result messages — separate from invites, reminders and announcements. */
 export function ResultNotifySettingsCard(p: Props) {
   const off = p.scope === "never";
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const toggle = (c: ResultNotifyChannel, on: boolean) =>
     p.onChannels(on ? Array.from(new Set([...p.channels, c])) : p.channels.filter((x) => x !== c));
 

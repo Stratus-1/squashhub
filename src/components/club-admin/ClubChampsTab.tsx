@@ -203,6 +203,8 @@ import {
 } from "@/lib/tournaments/round-deadlines";
 import { CentralRoundSchedule } from "@/components/club-admin/tournament/CentralRoundSchedule";
 import { TournamentWhatsAppGroupCard } from "@/components/club-admin/tournament/TournamentWhatsAppGroupCard";
+import { ResultNotifySettingsCard } from "@/components/club-admin/tournament/ResultNotifySettingsCard";
+import { parseResultNotifyChannels, parseResultNotifyScope, type ResultNotifyChannel, type ResultNotifyScope } from "@/lib/tournaments/result-notify";
 
 import {
   fromLegacyDeadlines,
@@ -1804,6 +1806,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   /** Rotating doubles: player pairs that must never be drawn as partners. */
   const [rotationAvoidPairs, setRotationAvoidPairs] = useState<string[][]>([]);
   const [rotationStrengthMode, setRotationStrengthMode] = useState<"any" | "mixed" | "balanced">("mixed");
+  const [resultNotifyScope, setResultNotifyScope] = useState<ResultNotifyScope>("all");
+  const [resultNotifyChannels, setResultNotifyChannels] = useState<ResultNotifyChannel[]>(["email"]);
+  const [resultNotifyForfeits, setResultNotifyForfeits] = useState(false);
   const [avoidPickA, setAvoidPickA] = useState<string>("");
   const [avoidPickB, setAvoidPickB] = useState<string>("");
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
@@ -2993,6 +2998,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       rotation_max_matches: rotationMaxMatches > 0 ? rotationMaxMatches : null,
       rotation_avoid_pairs: rotationAvoidPairs.length > 0 ? rotationAvoidPairs : null,
       rotation_strength_mode: rotationStrengthMode,
+      result_notify_scope: resultNotifyScope,
+      result_notify_channels: resultNotifyChannels,
+      result_notify_include_forfeits: resultNotifyForfeits,
       swiss_pairing_modes: Object.keys(swissPairingModes).length > 0 ? swissPairingModes : null,
       swiss_knockout_qualifiers:
         Object.keys(swissKnockoutQualifiers).length > 0 ? swissKnockoutQualifiers : null,
@@ -7686,6 +7694,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setRotationMaxMatches(0);
     setRotationAvoidPairs([]);
     setRotationStrengthMode("mixed");
+    setResultNotifyScope("all");
+    setResultNotifyChannels(["email"]);
+    setResultNotifyForfeits(false);
     setRotationAvoidPairs([]);
     setNumGroups(0);
     setChampName("");
@@ -8043,6 +8054,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       setRotationMaxMatches(Math.max(0, Math.floor(Number((champ as any).rotation_max_matches) || 0)));
       const sm = String((champ as any).rotation_strength_mode || "");
       setRotationStrengthMode(sm === "any" || sm === "balanced" || sm === "mixed" ? sm : "mixed");
+      setResultNotifyScope(parseResultNotifyScope((champ as any).result_notify_scope));
+      setResultNotifyChannels(parseResultNotifyChannels((champ as any).result_notify_channels));
+      setResultNotifyForfeits(!!(champ as any).result_notify_include_forfeits);
       const avoidRaw = (champ as any).rotation_avoid_pairs;
       setRotationAvoidPairs(
         Array.isArray(avoidRaw)
@@ -12234,6 +12248,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
             </div>
             </WizardSection>
+
+            <ResultNotifySettingsCard
+              scope={resultNotifyScope}
+              channels={resultNotifyChannels}
+              includeForfeits={resultNotifyForfeits}
+              onScope={setResultNotifyScope}
+              onChannels={setResultNotifyChannels}
+              onIncludeForfeits={setResultNotifyForfeits}
+            />
 
             {/* WhatsApp group for this tournament. Lives on the Invites &
                 messaging step — the group invite is part of the messaging

@@ -1697,6 +1697,66 @@ export type Database = {
           },
         ]
       }
+      champ_result_notifications: {
+        Row: {
+          attempts: number
+          body: string | null
+          champ_id: string
+          channel: string
+          club_id: string
+          club_member_id: string
+          created_at: string
+          error: string | null
+          id: string
+          match_id: string | null
+          processed_at: string | null
+          result_key: string
+          result_stage: string | null
+          status: string
+          subject: string | null
+          updated_at: string
+          won: boolean | null
+        }
+        Insert: {
+          attempts?: number
+          body?: string | null
+          champ_id: string
+          channel: string
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          match_id?: string | null
+          processed_at?: string | null
+          result_key: string
+          result_stage?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          won?: boolean | null
+        }
+        Update: {
+          attempts?: number
+          body?: string | null
+          champ_id?: string
+          channel?: string
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          match_id?: string | null
+          processed_at?: string | null
+          result_key?: string
+          result_stage?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          won?: boolean | null
+        }
+        Relationships: []
+      }
       champ_round_date_audit: {
         Row: {
           champ_id: string
@@ -13890,6 +13950,9 @@ export type Database = {
           pool_allocation: string
           pool_durations: Json
           pool_sizes: Json
+          result_notify_channels: string[]
+          result_notify_include_forfeits: boolean
+          result_notify_scope: string
           rotation_avoid_pairs: Json | null
           rotation_max_matches: number | null
           rotation_strength_mode: string | null
@@ -13993,6 +14056,9 @@ export type Database = {
           pool_allocation?: string
           pool_durations?: Json
           pool_sizes?: Json
+          result_notify_channels?: string[]
+          result_notify_include_forfeits?: boolean
+          result_notify_scope?: string
           rotation_avoid_pairs?: Json | null
           rotation_max_matches?: number | null
           rotation_strength_mode?: string | null
@@ -14096,6 +14162,9 @@ export type Database = {
           pool_allocation?: string
           pool_durations?: Json
           pool_sizes?: Json
+          result_notify_channels?: string[]
+          result_notify_include_forfeits?: boolean
+          result_notify_scope?: string
           rotation_avoid_pairs?: Json | null
           rotation_max_matches?: number | null
           rotation_strength_mode?: string | null
@@ -14696,6 +14765,9 @@ export type Database = {
           registration_mode: string | null
           registration_opens_at: string | null
           registration_required: boolean | null
+          result_notify_channels: string[] | null
+          result_notify_include_forfeits: boolean | null
+          result_notify_scope: string | null
           rotation_avoid_pairs: Json | null
           rotation_max_matches: number | null
           rotation_strength_mode: string | null

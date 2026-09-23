@@ -1994,18 +1994,34 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     reject: ((e: Error) => void) | null;
   }>({ open: false, missing: [], sizes: {}, resolve: null, reject: null });
 
-  // For partnerMode === "players": auto-load confirmed pairs from registrations
+  // For partnerMode === "players": auto-load confirmed pairs. Two places record
+  // a partnership: champ_doubles_pairs (the pairing board, written when players
+  // pair up themselves) and the partner columns on the registration row. Only
+  // reading registrations left the wizard believing there were zero pairs — so
+  // the Groups/Schedule steps disappeared and no draw could be built even
+  // though every pair was confirmed. Read both and merge.
   const { data: confirmedPairRegs = [] } = useQuery({
     queryKey: ["champ-confirmed-pairs", editingChampId],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_champs_registrations")
-        .select("club_member_id, partner_member_id")
-        .eq("champ_id", editingChampId as string)
-        .eq("partner_confirmed", true)
-        .neq("status", "cancelled")
-        .not("partner_member_id", "is", null);
-      if (error) throw error;
-      return (data || []) as any[];
+      const [regRes, pairRes] = await Promise.all([
+        fromExt("club_champs_registrations")
+          .select("club_member_id, partner_member_id")
+          .eq("champ_id", editingChampId as string)
+          .eq("partner_confirmed", true)
+          .neq("status", "cancelled")
+          .not("partner_member_id", "is", null),
+        fromExt("champ_doubles_pairs")
+          .select("member_a, member_b, status")
+          .eq("champ_id", editingChampId as string)
+          .eq("status", "confirmed"),
+      ]);
+      if (regRes.error) throw regRes.error;
+      if (pairRes.error) throw pairRes.error;
+      const fromPairs = (pairRes.data || []).map((p: any) => ({
+        club_member_id: p.member_a,
+        partner_member_id: p.member_b,
+      }));
+      return [...(regRes.data || []), ...fromPairs] as any[];
     },
     enabled: !!editingChampId && matchType === "doubles" && showWizard,
   });

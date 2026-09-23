@@ -219,7 +219,12 @@ function greedyRotation(
     // people together round after round (so the same pairs keep recurring).
     const unassigned = [...playing];
     const meetCost = (a: string, b: string) =>
-      (partnered.has(pairKey(a, b)) ? 6 : 0) + (opposed.get(pairKey(a, b)) || 0);
+      (partnered.has(pairKey(a, b)) ? 6 : 0) +
+      (opposed.get(pairKey(a, b)) || 0) +
+      // Keep an excluded couple apart where possible; if they do land on the
+      // same court the split below always puts them on opposite sides.
+      (avoid.has(pairKey(a, b)) ? 4 : 0) +
+      partnerQuality(a, b) * 0.5;
 
     for (let c = 0; c < roundCourts; c++) {
       if (unassigned.length < 4) break;

@@ -467,7 +467,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
   const memberIdList = useMemo(() => (members as { id: string }[]).map((m) => m.id), [members]);
   const { data: sportyHqRatings } = useSportyHqRatings(memberIdList);
   const { data: associationNumbers } = useAssociationNumbers(memberIdList);
-  const { data: strengthSets, isFetching: strengthLoading } = useLeagueStrength(clubId, associationNumbers);
+  const { data: strengthSets, isFetching: strengthLoading } = useLeagueStrength(clubId, associationNumbers, members as any);
   const leagueStrength = strengthSets?.all;
   const { data: crossGenderOn = false } = useCrossGenderLeagueSetting(clubId);
   const { data: crossGenderPlayers } = useCrossGenderPlayers(clubId, associationNumbers, crossGenderOn);

@@ -74,21 +74,34 @@ const WHIST: Record<number, number[][][]> = {
 const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 /**
- * Build the rotation. `maxRounds` caps the schedule when the session is
- * shorter than a full rotation (the early rounds still spread partners as
- * widely as possible).
+ * Build the rotation.
+ *
+ * `maxRounds` caps the schedule when the session is shorter than a full
+ * rotation (the early rounds still spread partners as widely as possible).
+ *
+ * `maxMatchesPerPlayer` is an INDIVIDUAL participation cap: no player is
+ * scheduled for more than that many games. It is not a round count — with
+ * an odd number of players some people sit out a round, so rounds and
+ * matches-per-player diverge. When set, the schedule is built by the fair
+ * capped builder which balances games played, partner variety and opponent
+ * variety, and stops as soon as no further legal game can be formed.
  */
 export function generateRotatingDoublesSchedule(
   playerIds: string[],
-  opts: { maxRounds?: number } = {},
+  opts: { maxRounds?: number; maxMatchesPerPlayer?: number } = {},
 ): RotationSchedule {
   const players = playerIds.filter(Boolean);
   if (players.length < 4) return { games: [], sittingOut: [], rounds: 0 };
 
-  const table = WHIST[players.length];
+  const perPlayerCap =
+    opts.maxMatchesPerPlayer && opts.maxMatchesPerPlayer > 0
+      ? Math.floor(opts.maxMatchesPerPlayer)
+      : 0;
+
+  const table = perPlayerCap ? null : WHIST[players.length];
   const built = table
     ? fromWhist(players, table)
-    : greedyRotation(players);
+    : greedyRotation(players, perPlayerCap || undefined);
 
   const cap = opts.maxRounds && opts.maxRounds > 0 ? opts.maxRounds : built.rounds;
   if (cap >= built.rounds) return built;
@@ -98,6 +111,8 @@ export function generateRotatingDoublesSchedule(
     rounds: cap,
   };
 }
+
+
 
 function fromWhist(players: string[], table: number[][][]): RotationSchedule {
   const games: RotationGame[] = [];

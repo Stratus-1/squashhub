@@ -208,6 +208,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
   numberLabel?: string;
   onChangeStatus: (member: ClubMember, status: "active" | "suspended" | "resigned") => void;
   onAffiliate?: () => void;
+  onCompetitionStatus?: () => void;
   isSuperAdmin?: boolean;
 }) {
 

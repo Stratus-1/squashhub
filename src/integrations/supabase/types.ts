@@ -8827,6 +8827,10 @@ export type Database = {
           id: string
           joined_at: string
           league_association_number: string | null
+          registration_checked_at: string | null
+          registration_source: string | null
+          registration_status: string
+          registration_valid_until: string | null
           updated_at: string
         }
         Insert: {
@@ -8838,6 +8842,10 @@ export type Database = {
           id?: string
           joined_at?: string
           league_association_number?: string | null
+          registration_checked_at?: string | null
+          registration_source?: string | null
+          registration_status?: string
+          registration_valid_until?: string | null
           updated_at?: string
         }
         Update: {
@@ -8849,6 +8857,10 @@ export type Database = {
           id?: string
           joined_at?: string
           league_association_number?: string | null
+          registration_checked_at?: string | null
+          registration_source?: string | null
+          registration_status?: string
+          registration_valid_until?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -16168,6 +16180,21 @@ export type Database = {
       make_org_slug: {
         Args: { _abbrev?: string; _name: string }
         Returns: string
+      }
+      member_competition_status: {
+        Args: { _club_member_ids: string[] }
+        Returns: {
+          association_id: string
+          association_name: string
+          club_member_id: string
+          league_checked_at: string
+          league_number: string
+          league_source: string
+          league_status: string
+          ssa_checked_at: string
+          ssa_number: string
+          ssa_status: string
+        }[]
       }
       member_has_permission: {
         Args: { _member_id: string; _permission: string }

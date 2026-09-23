@@ -673,8 +673,9 @@ export default function ClubAuth() {
       return;
     }
     // Duplicate-player guard. The club roster already holds imported players
-    // (federation/SportyHQ data), so match on the strongest identifiers first
-    // and steer the person onto their existing record instead of a new one.
+    // (federation/SportyHQ data) and people forget which email they signed up
+    // with, so match on email, phone and first+last name, then ask the person
+    // to confirm they are not already on the roster.
     if (club?.id) {
       try {
         const { data: matches } = await (supabase as any).rpc("check_member_duplicate_hint", {
@@ -683,25 +684,10 @@ export default function ClubAuth() {
           _email: email,
           _phone: phone || "",
         });
-        const hits = (matches || []) as Array<{
-          masked_name: string; match_kind: string; is_claimed: boolean;
-        }>;
-        const unclaimed = hits.find((h) => !h.is_claimed);
-        if (unclaimed) {
-          const ok = window.confirm(
-            `${club.name} already has a player record for ${unclaimed.masked_name}, ` +
-            `which nobody has signed in with yet.\n\n` +
-            `Click OK to create your login and link it to that existing record — your history and member number stay intact. ` +
-            `Click Cancel to stop.`,
-          );
-          if (!ok) return;
-        } else if (hits.length > 0) {
-          const ok = window.confirm(
-            `${club.name} already has ${hits.length} member${hits.length === 1 ? "" : "s"} matching your details ` +
-            `(${hits.map((h) => h.masked_name).slice(0, 3).join(", ")}). If that's you, please sign in instead.\n\n` +
-            `Continue creating a brand new account anyway?`,
-          );
-          if (!ok) return;
+        const hits = (matches || []) as DuplicateHint[];
+        if (hits.length > 0) {
+          const proceed = await askDuplicate(hits);
+          if (!proceed) return;
         }
       } catch (e) {
         console.warn("dup check failed", e);

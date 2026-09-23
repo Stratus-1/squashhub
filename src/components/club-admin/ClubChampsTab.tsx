@@ -10050,7 +10050,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                                      ? "The organiser builds every pair by hand."
                                                      : "Pick how partners come about for this division."}
                                            </p>
+                                           {current === "rotate" && (
+                                             <div className="space-y-1 pt-1">
+                                               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                 Maximum matches per player
+                                               </Label>
+                                               <div className="flex items-center gap-2">
+                                                 <input
+                                                   type="number"
+                                                   min={0}
+                                                   placeholder="No limit"
+                                                   className="h-7 w-24 rounded border bg-background px-2 text-[11px]"
+                                                   value={rotationMaxMatches > 0 ? rotationMaxMatches : ""}
+                                                   onChange={(e) => {
+                                                     const n = Math.floor(Number(e.target.value) || 0);
+                                                     setRotationMaxMatches(n > 0 ? n : 0);
+                                                   }}
+                                                 />
+                                                 {rotationMaxMatches > 0 && (
+                                                   <Button
+                                                     type="button"
+                                                     size="sm"
+                                                     variant="ghost"
+                                                     className="h-7 text-[10px]"
+                                                     onClick={() => setRotationMaxMatches(0)}
+                                                   >
+                                                     Full rotation
+                                                   </Button>
+                                                 )}
+                                               </div>
+                                               <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                 {rotationMaxMatches > 0
+                                                   ? `Each player plays at most ${rotationMaxMatches} matches. The draw spreads partners and opponents as widely as possible within that limit — not every partner combination is played.`
+                                                   : "Leave blank for a full rotation: everyone partners everyone."}
+                                               </p>
+                                             </div>
+                                           )}
                                          </>
+
                                        );
                                      })()}
                                       {pools > 1 && (

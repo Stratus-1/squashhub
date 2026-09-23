@@ -112,8 +112,12 @@ export function WithdrawPlayerButton({ champs }: Props) {
 
   // Only players who actually entered — invitation rows ("invited") cover the
   // whole invite list and cancelled rows are out already.
+  const enteredIds = new Set(
+    entries.flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean)),
+  );
   const activeRegs = registrations.filter(
-    (r: any) => r.status !== "cancelled" && r.status !== "invited",
+    (r: any) =>
+      (r.status !== "cancelled" && r.status !== "invited") || enteredIds.has(r.club_member_id),
   );
   const nameOf = (r: any) => r?.member?.name || r?.member?.profiles?.name || "Unknown";
   const reg = activeRegs.find((r: any) => r.club_member_id === memberId) || null;

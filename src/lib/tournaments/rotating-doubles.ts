@@ -94,10 +94,16 @@ export function generateRotatingDoublesSchedule(
     /** Player pairs that must never be drawn as partners (e.g. family members). */
     avoidPartners?: Array<[string, string] | string[]>;
     /**
-     * When the per-player cap means not every partner combination can be
-     * played, drop the weakest combinations first. `playerIds` is assumed to
-     * be in seeded order (strongest first).
+     * How strength is used when the per-player cap means not every partner
+     * combination can be played. `playerIds` is assumed to be in seeded order
+     * (strongest first).
+     *   "mixed"    — a stronger player partners a weaker one; weak+weak
+     *                combinations are the ones left out (default when capped).
+     *   "balanced" — partners of a similar standard play together.
+     *   "any"      — ignore strength entirely.
      */
+    strengthMode?: "any" | "mixed" | "balanced";
+    /** Deprecated alias for strengthMode: true = "mixed", false = "any". */
     preferStrongPartnerships?: boolean;
   } = {},
 ): RotationSchedule {
@@ -113,13 +119,19 @@ export function generateRotatingDoublesSchedule(
   for (const pair of opts.avoidPartners || []) {
     if (pair && pair[0] && pair[1]) avoid.add(pairKey(pair[0], pair[1]));
   }
-  // Strength bias only matters once combinations have to be left out.
-  const strengthBias = opts.preferStrongPartnerships ?? perPlayerCap > 0;
+  // Strength only matters once combinations have to be left out.
+  const strengthMode: "any" | "mixed" | "balanced" =
+    opts.strengthMode ??
+    (opts.preferStrongPartnerships === false
+      ? "any"
+      : opts.preferStrongPartnerships || perPlayerCap > 0
+        ? "mixed"
+        : "any");
 
-  const table = perPlayerCap || avoid.size || strengthBias ? null : WHIST[players.length];
+  const table = perPlayerCap || avoid.size || strengthMode !== "any" ? null : WHIST[players.length];
   const built = table
     ? fromWhist(players, table)
-    : greedyRotation(players, perPlayerCap || undefined, { avoid, strengthBias });
+    : greedyRotation(players, perPlayerCap || undefined, { avoid, strengthMode });
 
   const cap = opts.maxRounds && opts.maxRounds > 0 ? opts.maxRounds : built.rounds;
   if (cap >= built.rounds) return built;
@@ -161,7 +173,7 @@ function fromWhist(players: string[], table: number[][][]): RotationSchedule {
 function greedyRotation(
   players: string[],
   perPlayerCap?: number,
-  bias: { avoid?: Set<string>; strengthBias?: boolean } = {},
+  bias: { avoid?: Set<string>; strengthMode?: "any" | "mixed" | "balanced" } = {},
 ): RotationSchedule {
   const n = players.length;
   const courts = Math.floor(n / 4);
@@ -175,11 +187,16 @@ function greedyRotation(
   const weakness = new Map<string, number>(
     players.map((p, i) => [p, n > 1 ? i / (n - 1) : 0]),
   );
-  // Squared so a weak+weak partnership costs far more than a strong+weak one:
-  // when combinations must be left out, the weakest ones are dropped first.
+  // "mixed": squared so a weak+weak partnership costs far more than a
+  // strong+weak one — when combinations must be left out, the weakest ones go
+  // first. "balanced": penalise the gap so similar standards play together.
   const partnerQuality = (a: string, b: string) => {
-    if (!bias.strengthBias) return 0;
-    const w = (weakness.get(a) || 0) + (weakness.get(b) || 0);
+    const mode = bias.strengthMode || "any";
+    if (mode === "any") return 0;
+    const wa = weakness.get(a) || 0;
+    const wb = weakness.get(b) || 0;
+    if (mode === "balanced") return Math.abs(wa - wb) * Math.abs(wa - wb) * 6;
+    const w = wa + wb;
     return w * w * 3;
   };
 

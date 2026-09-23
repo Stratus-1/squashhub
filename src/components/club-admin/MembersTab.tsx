@@ -1075,6 +1075,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
                     numberLabel={(club as any)?.tenant_type === "association" ? "league #" : "#"}
                     onChangeStatus={handleChangeStatus}
                     onAffiliate={() => setAffiliateMember(m)}
+                    onCompetitionStatus={() => setStatusMember(m)}
                     isSuperAdmin={isSuperAdmin}
                   />
 

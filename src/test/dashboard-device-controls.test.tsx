@@ -34,6 +34,12 @@ vi.mock("@/hooks/use-door-control", () => ({
   }),
 }));
 
+// The Bluetooth fallback reads the club's stored relay address.
+vi.mock("@/hooks/use-club-secrets", () => ({
+  useClubSecrets: () => ({ data: null, isLoading: false }),
+}));
+
+
 // Imported after the mocks so the component picks them up.
 const { DashboardDeviceControls } = await import("@/components/DashboardDeviceControls");
 

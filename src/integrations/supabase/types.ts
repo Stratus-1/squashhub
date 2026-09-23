@@ -10546,6 +10546,10 @@ export type Database = {
           national_player_number: string | null
           nationality: string | null
           phone: string | null
+          ssa_membership_checked_at: string | null
+          ssa_membership_number: string | null
+          ssa_membership_source: string | null
+          ssa_membership_status: string | null
           status: string
           updated_at: string
         }
@@ -10562,6 +10566,10 @@ export type Database = {
           national_player_number?: string | null
           nationality?: string | null
           phone?: string | null
+          ssa_membership_checked_at?: string | null
+          ssa_membership_number?: string | null
+          ssa_membership_source?: string | null
+          ssa_membership_status?: string | null
           status?: string
           updated_at?: string
         }
@@ -10578,6 +10586,10 @@ export type Database = {
           national_player_number?: string | null
           nationality?: string | null
           phone?: string | null
+          ssa_membership_checked_at?: string | null
+          ssa_membership_number?: string | null
+          ssa_membership_source?: string | null
+          ssa_membership_status?: string | null
           status?: string
           updated_at?: string
         }

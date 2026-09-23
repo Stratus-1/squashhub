@@ -1307,6 +1307,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     enabled: !!editingChampId,
   });
   const rebuildImpact = useMemo(() => describeRebuildImpact(rebuildRows), [rebuildRows]);
+  /**
+   * Rotating doubles on a live rebuild: games already PLAYED stay exactly as
+   * they are (results, slot, court) and count toward each active player's
+   * match target. Only the remaining games are generated, for the CURRENT
+   * active entrants only.
+   */
+  const { data: playedRotationRows = [] } = useQuery({
+    queryKey: ["champ-played-rotation", editingChampId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("group_number, round_number, player_a_member_id, partner_a_member_id, player_b_member_id, partner_b_member_id, scheduled_date, scheduled_time, court_id, status, winner_member_id, is_bye")
+        .eq("champ_id", editingChampId as string);
+      if (error) throw error;
+      return ((data || []) as any[]).filter(
+        (m) =>
+          !m.is_bye &&
+          m.partner_a_member_id && m.partner_b_member_id &&
+          (m.winner_member_id || ["completed", "forfeited", "walkover"].includes(String(m.status || ""))),
+      );
+    },
+    enabled: !!editingChampId,
+    refetchOnMount: "always",
+  });
 
   const knockoutProgress = useMemo(() => computeRoundProgress(roundMatchRows), [roundMatchRows]);
   const knockoutCurrentRound = currentRoundNumber(knockoutProgress);

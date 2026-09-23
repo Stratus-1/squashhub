@@ -1777,6 +1777,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [rotationMaxMatches, setRotationMaxMatches] = useState<number>(0);
   /** Rotating doubles: player pairs that must never be drawn as partners. */
   const [rotationAvoidPairs, setRotationAvoidPairs] = useState<string[][]>([]);
+  const [rotationStrengthMode, setRotationStrengthMode] = useState<"any" | "mixed" | "balanced">("mixed");
   const [avoidPickA, setAvoidPickA] = useState<string>("");
   const [avoidPickB, setAvoidPickB] = useState<string>("");
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
@@ -2956,6 +2957,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         Object.keys(leaguePlayoffQualifiers).length > 0 ? leaguePlayoffQualifiers : null,
       rotation_max_matches: rotationMaxMatches > 0 ? rotationMaxMatches : null,
       rotation_avoid_pairs: rotationAvoidPairs.length > 0 ? rotationAvoidPairs : null,
+      rotation_strength_mode: rotationStrengthMode,
       swiss_pairing_modes: Object.keys(swissPairingModes).length > 0 ? swissPairingModes : null,
       swiss_knockout_qualifiers:
         Object.keys(swissKnockoutQualifiers).length > 0 ? swissKnockoutQualifiers : null,
@@ -4315,6 +4317,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         const rotation = generateRotatingDoublesSchedule(ids, {
           maxMatchesPerPlayer: rotationMaxMatches > 0 ? rotationMaxMatches : undefined,
           avoidPartners: rotationAvoidPairs,
+          strengthMode: rotationStrengthMode,
         });
         for (const g of rotation.games) {
           allMatches.push({
@@ -7586,6 +7589,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePlayoffQualifiers({});
     setRotationMaxMatches(0);
     setRotationAvoidPairs([]);
+    setRotationStrengthMode("mixed");
     setRotationAvoidPairs([]);
     setNumGroups(0);
     setChampName("");
@@ -7941,6 +7945,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       setLeaguePlayoffModes(modes);
       setLeaguePlayoffQualifiers(quals);
       setRotationMaxMatches(Math.max(0, Math.floor(Number((champ as any).rotation_max_matches) || 0)));
+      const sm = String((champ as any).rotation_strength_mode || "");
+      setRotationStrengthMode(sm === "any" || sm === "balanced" || sm === "mixed" ? sm : "mixed");
       const avoidRaw = (champ as any).rotation_avoid_pairs;
       setRotationAvoidPairs(
         Array.isArray(avoidRaw)
@@ -10357,6 +10363,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                                    players keep their pairings.
                                                  </p>
                                                )}
+                                               <div className="space-y-1 pt-2">
+                                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                   Partner strength
+                                                 </Label>
+                                                 <select
+                                                   className="h-7 w-full rounded border bg-background px-1 text-[11px]"
+                                                   value={rotationStrengthMode}
+                                                   onChange={(e) =>
+                                                     setRotationStrengthMode(e.target.value as "any" | "mixed" | "balanced")
+                                                   }
+                                                 >
+                                                   <option value="mixed">Stronger player with a weaker player</option>
+                                                   <option value="balanced">Similar standard together</option>
+                                                   <option value="any">No preference</option>
+                                                 </select>
+                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                   {rotationStrengthMode === "mixed"
+                                                     ? "Pairs mix a stronger player with a weaker one, so the combinations left out are the weakest ones."
+                                                     : rotationStrengthMode === "balanced"
+                                                       ? "Players of a similar standard partner each other, so games stay evenly matched."
+                                                       : "Partners are drawn purely on variety, regardless of standard."}
+                                                 </p>
+                                               </div>
                                                <div className="space-y-1 pt-2">
                                                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                                                    Never partner each other

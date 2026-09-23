@@ -2711,12 +2711,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // "you must select players first" with nowhere to do it.
   const awaitingPlayerPairs =
     isDoubles && doublesPairs.length === 0 && partnerMode === "players";
+  // The Players step is always available — even when no pairs have registered
+  // yet it shows the (empty) Registered Pairs card, so the organiser always has
+  // somewhere to review and manage pairings.
   const activeSteps = useMemo<WizardStep[]>(() => {
     if (!awaitingPlayerPairs) return STEPS;
-    return selfPairInviteSelection
-      ? ["category", "structure", "registration", "courts", "invites", "players", "review"]
-      : ["category", "structure", "registration", "courts", "invites", "review"];
-  }, [awaitingPlayerPairs, selfPairInviteSelection]);
+    return ["category", "structure", "registration", "courts", "invites", "players", "review"];
+  }, [awaitingPlayerPairs]);
   const stepIdx = activeSteps.indexOf(step);
 
   useEffect(() => {

@@ -386,7 +386,14 @@ export type PlaceholderInput = {
   // Optional Swiss pool mode.
   poolsByLeague?: Record<number, number>;                     // league# → pool count
   entriesByLeaguePool?: Record<number, number[]>;             // league# → [pool1Size, pool2Size, …]
+  playoffModeByLeague?: Record<number, PlayoffMode>;          // "position" (default) | "knockout"
+  qualifiersPerPoolByLeague?: Record<number, number>;         // knockout mode: qualifiers per pool
 };
+
+/** Bracket entrants for a knockout post-pool playoff. */
+export const knockoutQualifierCount = (poolCount: number, qualifiersPerPool: number): number =>
+  Math.max(0, Math.floor(poolCount)) * Math.max(0, Math.floor(qualifiersPerPool));
+
 
 const bracketSizeFor = (K: number): 2 | 4 | 8 =>
   (K <= 2 ? 2 : K <= 4 ? 4 : 8);

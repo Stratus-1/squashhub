@@ -1317,13 +1317,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     queryKey: ["champ-played-rotation", editingChampId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_matches")
-        .select("group_number, round_number, player_a_member_id, partner_a_member_id, player_b_member_id, partner_b_member_id, scheduled_date, scheduled_time, court_id, status, winner_member_id, is_bye")
+        .select("score, group_number, round_number, player_a_member_id, partner_a_member_id, player_b_member_id, partner_b_member_id, scheduled_date, scheduled_time, court_id, status, winner_member_id, is_bye")
         .eq("champ_id", editingChampId as string);
       if (error) throw error;
       return ((data || []) as any[]).filter(
         (m) =>
           !m.is_bye &&
           m.partner_a_member_id && m.partner_b_member_id &&
+          // A walkover/forfeit is not a played game — it never counts as history.
+          !/w\/o|walkover/i.test(String(m.score || "")) &&
           (m.winner_member_id || ["completed", "forfeited", "walkover"].includes(String(m.status || ""))),
       );
     },
@@ -3378,7 +3380,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           ]).join(","));
         if (fixtureErr) throw fixtureErr;
         const rows = (theirMatches || []) as any[];
-        const played = rows.filter((m) => !m.is_bye && (m.winner_member_id || m.score || ["completed", "forfeited", "walkover", "in_progress"].includes(String(m.status || ""))));
+        const played = rows.filter((m) => !m.is_bye && !/w\/o|walkover/i.test(String(m.score || "")) && (m.winner_member_id || m.score || ["completed", "forfeited", "walkover", "in_progress"].includes(String(m.status || ""))));
         if (played.length > 0) {
           throw new Error(`This player has already played ${played.length} game${played.length === 1 ? "" : "s"}, so their results must be kept. Use 'Pull a player out' on Tournament Games — their played results stay and their remaining games are recorded as forfeits.`);
         }

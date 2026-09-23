@@ -110,8 +110,17 @@ export function WithdrawPlayerButton({ champs }: Props) {
   const leagueLabel = (gn: number) =>
     String((champ as any)?.group_labels?.[String(gn)] || "").trim() || `League ${gn}`;
 
-  const activeRegs = registrations.filter((r: any) => r.status !== "cancelled");
+  // Only players who actually entered — invitation rows ("invited") cover the
+  // whole invite list and cancelled rows are out already.
+  const enteredIds = new Set(
+    entries.flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean)),
+  );
+  const activeRegs = registrations.filter(
+    (r: any) =>
+      (r.status !== "cancelled" && r.status !== "invited") || enteredIds.has(r.club_member_id),
+  );
   const nameOf = (r: any) => r?.member?.name || r?.member?.profiles?.name || "Unknown";
+  const sortedRegs = [...activeRegs].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
   const reg = activeRegs.find((r: any) => r.club_member_id === memberId) || null;
   const leagues = memberId ? memberLeagues(memberId) : [];
 
@@ -237,7 +246,7 @@ export function WithdrawPlayerButton({ champs }: Props) {
                   <SelectValue placeholder={regsLoading ? "Loading players…" : "Pick a player"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {activeRegs.map((r: any) => (
+                  {sortedRegs.map((r: any) => (
                     <SelectItem key={r.club_member_id} value={r.club_member_id}>
                       {nameOf(r)}
                     </SelectItem>

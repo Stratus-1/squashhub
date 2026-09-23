@@ -659,7 +659,7 @@ Deno.serve(async (req) => {
             } catch { /* retried next run */ }
             await new Promise((r) => setTimeout(r, 200));
           }
-          const fixtures = [...byId.values()].sort((a: any, b: any) => String(a.played_at ?? "").localeCompare(String(b.played_at ?? "")));
+          const fixtures = [...byId.values()].sort((a: any, b: any) => String(a.played_on ?? "").localeCompare(String(b.played_on ?? "")));
           const { error: upErr } = await sb.from("external_league_divisions").upsert({
             association_id: t.association_id, source: "sportyhq", external_division_id: divId,
             division_name: divisionName || `Division ${divId}`, external_league_name: leagueName ?? null,
@@ -1459,7 +1459,12 @@ function parseFixture(
     }
   }
   return {
-    played_at: when ? clean(when) : null, venue: venue ? clean(venue) : null,
+    played_at: when ? clean(when) : null,
+    played_on: (() => {
+      const d = when ? new Date(clean(when).replace(/(\d+)(st|nd|rd|th)/, "$1").replace(/\s+at\s+.*/, "") + " UTC") : null;
+      return d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null;
+    })(),
+    venue: venue ? clean(venue) : null,
     home: heads[0] ?? null, away: heads[1] ?? null, rubbers, totals,
   };
 }

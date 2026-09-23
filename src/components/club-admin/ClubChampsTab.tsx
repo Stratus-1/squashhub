@@ -1307,6 +1307,29 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     enabled: !!editingChampId,
   });
   const rebuildImpact = useMemo(() => describeRebuildImpact(rebuildRows), [rebuildRows]);
+  /**
+   * Rotating doubles on a live rebuild: games already PLAYED stay exactly as
+   * they are (results, slot, court) and count toward each active player's
+   * match target. Only the remaining games are generated, for the CURRENT
+   * active entrants only.
+   */
+  const { data: playedRotationRows = [] } = useQuery({
+    queryKey: ["champ-played-rotation", editingChampId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("group_number, round_number, player_a_member_id, partner_a_member_id, player_b_member_id, partner_b_member_id, scheduled_date, scheduled_time, court_id, status, winner_member_id, is_bye")
+        .eq("champ_id", editingChampId as string);
+      if (error) throw error;
+      return ((data || []) as any[]).filter(
+        (m) =>
+          !m.is_bye &&
+          m.partner_a_member_id && m.partner_b_member_id &&
+          (m.winner_member_id || ["completed", "forfeited", "walkover"].includes(String(m.status || ""))),
+      );
+    },
+    enabled: !!editingChampId,
+    refetchOnMount: "always",
+  });
 
   const knockoutProgress = useMemo(() => computeRoundProgress(roundMatchRows), [roundMatchRows]);
   const knockoutCurrentRound = currentRoundNumber(knockoutProgress);
@@ -3340,17 +3363,35 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const rawIds = pair ? [pair.player1Id, pair.player2Id] : [id];
       const resolvedIds = rawIds.length > 0 ? await promoteVisitorIds(rawIds) : [];
       if (cid && resolvedIds.length > 0) {
-        // The Games pull-out action handles walkovers and booked courts. Do
-        // not remove a scheduled player's entries behind that workflow's back.
-        const { count: fixtureCount, error: fixtureErr } = await fromExt("club_champs_matches")
-          .select("id", { count: "exact", head: true })
+        // Two different actions:
+        //  A) Withdraw from tournament (here): before this player has played,
+        //     they leave the entrant list entirely. Their unplayed generated
+        //     fixtures are removed so the next Rebuild uses only active entrants.
+        //  B) Pull out / retire (Tournament Games): once they HAVE played, the
+        //     results stay and remaining games are forfeited per the rules.
+        const { data: theirMatches, error: fixtureErr } = await fromExt("club_champs_matches")
+          .select("id, status, winner_member_id, score, booking_id, is_bye")
           .eq("champ_id", cid)
           .or(resolvedIds.flatMap((memberId) => [
             `player_a_member_id.eq.${memberId}`, `player_b_member_id.eq.${memberId}`,
             `partner_a_member_id.eq.${memberId}`, `partner_b_member_id.eq.${memberId}`,
           ]).join(","));
         if (fixtureErr) throw fixtureErr;
-        if (fixtureCount) throw new Error("Games already exist for this player. Use 'Pull a player out' on Tournament Games so their fixtures and court bookings are handled safely.");
+        const rows = (theirMatches || []) as any[];
+        const played = rows.filter((m) => !m.is_bye && (m.winner_member_id || m.score || ["completed", "forfeited", "walkover", "in_progress"].includes(String(m.status || ""))));
+        if (played.length > 0) {
+          throw new Error(`This player has already played ${played.length} game${played.length === 1 ? "" : "s"}, so their results must be kept. Use 'Pull a player out' on Tournament Games — their played results stay and their remaining games are recorded as forfeits.`);
+        }
+        const booked = rows.filter((m) => m.booking_id);
+        if (booked.length > 0) {
+          throw new Error("This player has a court booked for a game. Use 'Pull a player out' on Tournament Games so the booking is released safely.");
+        }
+        const unplayedIds = rows.map((m) => m.id);
+        if (unplayedIds.length > 0) {
+          const { error: delErr } = await fromExt("club_champs_matches").delete().in("id", unplayedIds);
+          if (delErr) throw delErr;
+          toast.info(`Removed ${unplayedIds.length} unplayed game${unplayedIds.length === 1 ? "" : "s"}. Click Rebuild Schedule to redraw for the remaining players.`);
+        }
         for (const resolvedId of resolvedIds) {
           const { error: entryErr } = await fromExt("club_champs_entries")
             .delete()
@@ -3391,6 +3432,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         qc.invalidateQueries({ queryKey: ["champ-invitees", cid] });
         qc.invalidateQueries({ queryKey: ["champ-registrations", cid] });
         qc.invalidateQueries({ queryKey: ["champ-entries", cid] });
+        qc.invalidateQueries({ queryKey: ["champ-rebuild-impact", cid] });
+        qc.invalidateQueries({ queryKey: ["champ-played-rotation", cid] });
         qc.invalidateQueries({ queryKey: ["club-champs"] });
       }
 
@@ -4240,6 +4283,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       /** Knockout draws only — section + round label carried through to the DB. */
       koSection?: number;
       koStageLabel?: string;
+      /** Already played (live rebuild) — keeps its real slot, never rescheduled. */
+      pinned?: boolean;
     };
 
     // Build the universal slot list from sessions (used by non-Bells scheduling).
@@ -4329,15 +4374,37 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         matchTypeForLeague(gi + 1) === "doubles" &&
         !followsDivision(divisionFollows, gi + 1);
       if (rotateThisLeague) {
+        // Live rebuild: already-played games are kept verbatim (pinned to their
+        // real slot) and count toward the target. Withdrawn players' played
+        // games stay as history but never shape the new draw.
+        const played = (playedRotationRows as any[]).filter((m) => (m.group_number ?? 1) === gi + 1);
+        const lastPlayedRound = played.reduce((mx, m) => Math.max(mx, Number(m.round_number) || 0), 0);
+        for (const m of played) {
+          allMatches.push({
+            groupNum: gi + 1,
+            roundNum: Number(m.round_number) || 1,
+            entityA: rotationEntityId(m.player_a_member_id, m.partner_a_member_id),
+            entityB: rotationEntityId(m.player_b_member_id, m.partner_b_member_id),
+            leg: null,
+            pinned: true,
+            date: m.scheduled_date ?? undefined,
+            time: m.scheduled_time ? String(m.scheduled_time).slice(0, 5) : undefined,
+            courtId: m.court_id ?? undefined,
+          });
+        }
         const rotation = generateRotatingDoublesSchedule(ids, {
           maxMatchesPerPlayer: rotationMaxMatches > 0 ? rotationMaxMatches : undefined,
           avoidPartners: rotationAvoidPairs,
           strengthMode: rotationStrengthMode,
+          history: played.map((m) => ({
+            sideA: [m.player_a_member_id, m.partner_a_member_id],
+            sideB: [m.player_b_member_id, m.partner_b_member_id],
+          })),
         });
         for (const g of rotation.games) {
           allMatches.push({
             groupNum: gi + 1,
-            roundNum: g.round,
+            roundNum: lastPlayedRound + g.round,
             entityA: rotationEntityId(g.sideA[0], g.sideA[1]),
             entityB: rotationEntityId(g.sideB[0], g.sideB[1]),
             leg: null,
@@ -4623,9 +4690,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const breakFor = (gn: number) =>
         Math.max(0, Number(groupBreakMinutes[String(gn)]) || Number(defaultBreakMinutes) || 0);
 
+      // Played games keep their slot; new games start after the last of them.
+      let startAfterAbs = -Infinity;
+      for (const m of allMatches) {
+        if (!m.pinned || !m.date || !m.time) continue;
+        const [hh, mi] = m.time.split(":").map(Number);
+        const end = new Date(m.date + "T00:00:00Z").getTime() / 60000 + hh * 60 + mi + (capFor(m.groupNum, m.poolNum ?? null) || matchDuration);
+        if (end > startAfterAbs) startAfterAbs = end;
+      }
       const byLeague = new Map<number, MatchDef[]>();
       for (const m of allMatches) {
-        if (m.isBye) continue;
+        if (m.isBye || m.pinned) continue;
         if (!byLeague.has(m.groupNum)) byLeague.set(m.groupNum, []);
         byLeague.get(m.groupNum)!.push(m);
       }
@@ -4920,6 +4995,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             let blockOwnership = new Map<number, number>();
             for (let t = s.startMin; t < s.endMin && totalRemaining() > 0; t += step) {
               const nowAbs = absMin(s.date, t);
+              if (nowAbs < startAfterAbs) continue;
               // When rotation is ON, blocks are fixed windows and ownership
               // shifts each block. When it's OFF, we still recompute ownership
               // every tick from remaining workload — so freed courts flip to
@@ -5163,7 +5239,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       // Sort each league's non-bye matches by roundNum, then round-robin pop
       // one match per league at a time. Byes stay attached to their league
       // group but keep their order.
-      const nonByes = allMatches.filter((m) => !m.isBye);
+      const nonByes = allMatches.filter((m) => !m.isBye && !m.pinned);
       const byLeague = new Map<number, typeof nonByes>();
       for (const m of nonByes) {
         const arr = byLeague.get(m.groupNum) ?? [];
@@ -5391,7 +5467,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       timeSlots,
       playoffPlaceholders: (allMatches as any).__playoffPlaceholders || [],
     };
-  }, [scheduleGroups, isDoubles, rotatePartners, leagueMatchTypes, divisionFollows, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, poolDurations, groupBreakMinutes, defaultBreakMinutes, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws]);
+  }, [scheduleGroups, isDoubles, rotatePartners, leagueMatchTypes, divisionFollows, doublesPairs, startDate, endDate, playDays, selectedCourtIds, startTime, endTime, matchDuration, roundFormat, leagueFormats, usePerLeagueFormats, byeHandling, leagueByeHandling, scoringMode, groupDurations, poolDurations, groupBreakMinutes, defaultBreakMinutes, courtRotationMinutes, avoidBackToBack, customizeDailySchedule, daySchedules, swissPools, leagueSections, swissRounds, enablePlayoffs, leaguePlayoffs, groupLabels, scheduleMode, playoffBreakMinutes, playoffDate, leagueSources, registrationsByLeague, eligibilityOverrides, schedulingMode, championScope, poolAllocation, manualDraws, rotationMaxMatches, rotationAvoidPairs, rotationStrengthMode, playedRotationRows]);
 
   /**
    * Structure side of the capacity check: one entry per league, carrying the
@@ -12293,11 +12369,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             {editingChampId && selectedPlayerIds.has(m.id) && !selfPairInviteSelection && (
                               <Button type="button" variant="ghost" size="sm" className="ml-auto shrink-0 text-destructive"
                                 onClick={() => {
-                                  if (confirm(`Withdraw ${m.name || m.profiles?.name || "this player"} from the tournament? This also removes them from the draw.`)) {
+                                  if (confirm(`Withdraw ${m.name || m.profiles?.name || "this player"} from the tournament?\n\nBefore they have played: they leave the entrant list and their unplayed games are removed — then click Rebuild Schedule.\nIf they have already played: use 'Pull a player out' on Tournament Games instead (results kept, remaining games forfeited).`)) {
                                     void withdraw(m.id);
                                   }
                                 }}>
-                                Withdraw
+                                Withdraw from tournament
                               </Button>
                             )}
                           </div>

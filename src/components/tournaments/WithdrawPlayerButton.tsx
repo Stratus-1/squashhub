@@ -208,8 +208,12 @@ export function WithdrawPlayerButton({ champs }: Props) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Pull a player out</DialogTitle>
+            <DialogTitle>Pull a player out (after play has started)</DialogTitle>
           </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Use this once the player has played. Their played results are kept and their remaining games are recorded as forfeits.
+            Before any play, use <strong>Withdraw from tournament</strong> on the Players tab instead.
+          </p>
           <div className="space-y-3">
             {champs.length > 1 && (
               <div className="space-y-1">

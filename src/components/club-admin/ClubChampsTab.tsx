@@ -4217,7 +4217,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         matchTypeForLeague(gi + 1) === "doubles" &&
         !followsDivision(divisionFollows, gi + 1);
       if (rotateThisLeague) {
-        const rotation = generateRotatingDoublesSchedule(ids);
+        const rotation = generateRotatingDoublesSchedule(ids, {
+          maxMatchesPerPlayer: rotationMaxMatches > 0 ? rotationMaxMatches : undefined,
+        });
         for (const g of rotation.games) {
           allMatches.push({
             groupNum: gi + 1,

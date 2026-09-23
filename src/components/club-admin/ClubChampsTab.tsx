@@ -3028,7 +3028,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (error) console.warn("Tournament extras save failed:", error.message);
       // "Who may enter" is a governance field — keep the single copy in sync.
       const { error: govErr } = await fromExt("tournament_governance")
-        .upsert(sanitizeDraftPayload({ tournament_id: id, eligibility_scope: eligibilityScope }), { onConflict: "tournament_id" } as any);
+        .upsert(sanitizeDraftPayload({
+          tournament_id: id,
+          eligibility_scope: eligibilityScope,
+          require_league_active: requireLeagueActive,
+          require_ssa_active: requireSsaActive,
+        }), { onConflict: "tournament_id" } as any);
       if (govErr) console.warn("Eligibility save failed:", govErr.message);
       await persistVenues(id);
     };

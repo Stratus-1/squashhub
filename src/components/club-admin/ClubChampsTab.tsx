@@ -3026,7 +3026,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         .eq("champ_id", champIdToUse)
         .eq("status", "cancelled");
       if (cancelledErr) throw cancelledErr;
-      const cancelledIds = new Set((cancelledRegs || []).map((r: any) => String(r.club_member_id)));
+      const cancelledIds = new Set<string>((cancelledRegs || []).map((r: any) => String(r.club_member_id)));
       cancelledIds.forEach((id) => inviteSeedIds.delete(id));
       let audienceIds = resolvedAudience.memberIds;
       if (inviteAudience === "leagues" && audienceLeagueIds.size > 0) {

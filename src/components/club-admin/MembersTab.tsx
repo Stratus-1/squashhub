@@ -1472,6 +1472,19 @@ function EditMemberDialog({ member, feeCategories, clubId, onClose }: { member: 
   const [registeredLeagueIds, setRegisteredLeagueIds] = useState<string[]>([]);
   const qcEdit = useQueryClient();
 
+  // Squash South Africa number + membership, shown and editable on the member record.
+  const compStatus = useCompetitionStatus(member.id);
+  const ssaRow = compStatus?.rows?.[0];
+  const [ssaNumber, setSsaNumber] = useState("");
+  const [ssaStatus, setSsaStatus] = useState("unknown");
+  const [ssaLoaded, setSsaLoaded] = useState(false);
+  useEffect(() => {
+    if (!ssaRow || ssaLoaded) return;
+    setSsaNumber(ssaRow.ssa_number || "");
+    setSsaStatus((ssaRow.ssa_status || "unknown").toLowerCase());
+    setSsaLoaded(true);
+  }, [ssaRow, ssaLoaded]);
+
   // Association teams this club runs, newest season first, for the team picker.
   const { data: assocTeams = [] } = useQuery({
     queryKey: ["club-association-teams", clubId],

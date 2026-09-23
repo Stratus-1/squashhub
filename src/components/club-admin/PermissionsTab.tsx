@@ -291,7 +291,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
 
   const assignableMembers = useMemo(() => {
     const pool = members.filter((m) => m.role !== "admin" && !isGrantedFullAdmin(m.id));
-    const key = pool.map((m) => m.id).sort().join(",");
+    const key = pool.map((m) => m.id).sort().join(",") + (memberPerms.length ? "|p" : "|-");
     if (orderRef.current.key !== key) {
       const pm = permMapRef.current;
       orderRef.current = {
@@ -300,8 +300,8 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
           .sort((a, b) => {
             const pa = pm.get(a.id);
             const pb = pm.get(b.id);
-            const aHas = !!(pa?.permission_role_id || pa?.custom_permissions?.length);
-            const bHas = !!(pb?.permission_role_id || pb?.custom_permissions?.length);
+            const aHas = !!(pa?.permission_role_id || pa?.custom_permissions?.length || delegateLabel(a.id));
+            const bHas = !!(pb?.permission_role_id || pb?.custom_permissions?.length || delegateLabel(b.id));
             if (aHas !== bHas) return aHas ? -1 : 1;
             return (a.name || "").localeCompare(b.name || "");
           })
@@ -321,6 +321,12 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
       if (document.body.style.overflow === "hidden") document.body.style.overflow = "";
     };
   }, []);
+
+  const [search, setSearch] = useState("");
+  const q = search.trim().toLowerCase();
+  const matches = (m: any) => !q || (m.name || "").toLowerCase().includes(q);
+  const visibleAdmins = adminMembers.filter(matches);
+  const visibleAssignable = assignableMembers.filter(matches);
 
   const handleAssignRole = async (memberId: string, roleId: string | null) => {
     try {
@@ -372,7 +378,14 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
         <p className="text-xs text-muted-foreground">Officers (Chairman, Secretary, Club Captain) are auto-assigned a matching role with full access — change or clear the role below to override.</p>
       </div>
 
-      {adminMembers.length > 0 && (
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search members by name…"
+        className="max-w-sm"
+      />
+
+      {visibleAdmins.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Full Admin Access (automatic)</h4>
           <Table>
@@ -386,7 +399,7 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {adminMembers.map((m) => {
+              {visibleAdmins.map((m) => {
                 const granted = isGrantedFullAdmin(m.id);
                 const source = m.role === "admin" ? "Admin role" : granted ? "Granted by admin" : "—";
                 return (
@@ -462,14 +475,14 @@ function MemberPermissionsSection({ clubId }: { clubId: string }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {assignableMembers.length === 0 && (
+          {visibleAssignable.length === 0 && (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                All members are admins — no additional permissions needed.
+                {q ? "No members match your search." : "All members are admins — no additional permissions needed."}
               </TableCell>
             </TableRow>
           )}
-          {assignableMembers.map(m => {
+          {visibleAssignable.map(m => {
             const perm = permMap.get(m.id);
             return (
               <TableRow key={m.id}>

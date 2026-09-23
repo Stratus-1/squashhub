@@ -10343,6 +10343,89 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                                    ? `Each player plays at most ${rotationMaxMatches} matches. The draw spreads partners and opponents as widely as possible within that limit — not every partner combination is played.`
                                                    : "Leave blank for a full rotation: everyone partners everyone."}
                                                </p>
+                                               {rotationMaxMatches > 0 && (
+                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                   The combinations that are left out are the weakest ones — stronger
+                                                   players keep their pairings.
+                                                 </p>
+                                               )}
+                                               <div className="space-y-1 pt-2">
+                                                 <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                   Never partner each other
+                                                 </Label>
+                                                 <div className="flex flex-wrap gap-1">
+                                                   {rotationAvoidPairs.map((pair, i) => (
+                                                     <span
+                                                       key={`${pair[0]}-${pair[1]}-${i}`}
+                                                       className="inline-flex items-center gap-1 rounded border bg-muted/50 px-2 py-0.5 text-[10px]"
+                                                     >
+                                                       {nameOf(pair[0])} &amp; {nameOf(pair[1])}
+                                                       <button
+                                                         type="button"
+                                                         className="text-muted-foreground hover:text-destructive"
+                                                         onClick={() =>
+                                                           setRotationAvoidPairs((list) => list.filter((_, j) => j !== i))
+                                                         }
+                                                       >
+                                                         ×
+                                                       </button>
+                                                     </span>
+                                                   ))}
+                                                   {rotationAvoidPairs.length === 0 && (
+                                                     <span className="text-[10px] text-muted-foreground">
+                                                       No exclusions yet.
+                                                     </span>
+                                                   )}
+                                                 </div>
+                                                 <div className="flex items-center gap-2 pt-1">
+                                                   <select
+                                                     className="h-7 flex-1 rounded border bg-background px-1 text-[11px]"
+                                                     value={avoidPickA}
+                                                     onChange={(e) => setAvoidPickA(e.target.value)}
+                                                   >
+                                                     <option value="">Player…</option>
+                                                     {selectedPlayers.map((p: any) => (
+                                                       <option key={p.id} value={p.id}>{nameOf(p.id)}</option>
+                                                     ))}
+                                                   </select>
+                                                   <select
+                                                     className="h-7 flex-1 rounded border bg-background px-1 text-[11px]"
+                                                     value={avoidPickB}
+                                                     onChange={(e) => setAvoidPickB(e.target.value)}
+                                                   >
+                                                     <option value="">Player…</option>
+                                                     {selectedPlayers.map((p: any) => (
+                                                       <option key={p.id} value={p.id}>{nameOf(p.id)}</option>
+                                                     ))}
+                                                   </select>
+                                                   <Button
+                                                     type="button"
+                                                     size="sm"
+                                                     variant="outline"
+                                                     className="h-7 text-[10px]"
+                                                     disabled={!avoidPickA || !avoidPickB || avoidPickA === avoidPickB}
+                                                     onClick={() => {
+                                                       setRotationAvoidPairs((list) =>
+                                                         list.some(
+                                                           (p) =>
+                                                             (p[0] === avoidPickA && p[1] === avoidPickB) ||
+                                                             (p[0] === avoidPickB && p[1] === avoidPickA),
+                                                         )
+                                                           ? list
+                                                           : [...list, [avoidPickA, avoidPickB]],
+                                                       );
+                                                       setAvoidPickA("");
+                                                       setAvoidPickB("");
+                                                     }}
+                                                   >
+                                                     Add
+                                                   </Button>
+                                                 </div>
+                                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                   Family members or couples you would rather not have as partners. They
+                                                   can still meet as opponents.
+                                                 </p>
+                                               </div>
                                              </div>
                                            )}
                                          </>

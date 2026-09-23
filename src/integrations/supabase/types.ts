@@ -13728,6 +13728,7 @@ export type Database = {
           pool_allocation: string
           pool_durations: Json
           pool_sizes: Json
+          rotation_avoid_pairs: Json | null
           rotation_max_matches: number | null
           round_definitions: Json
           round_play_by: Json
@@ -13829,6 +13830,7 @@ export type Database = {
           pool_allocation?: string
           pool_durations?: Json
           pool_sizes?: Json
+          rotation_avoid_pairs?: Json | null
           rotation_max_matches?: number | null
           round_definitions?: Json
           round_play_by?: Json
@@ -13930,6 +13932,7 @@ export type Database = {
           pool_allocation?: string
           pool_durations?: Json
           pool_sizes?: Json
+          rotation_avoid_pairs?: Json | null
           rotation_max_matches?: number | null
           round_definitions?: Json
           round_play_by?: Json
@@ -14528,6 +14531,7 @@ export type Database = {
           registration_mode: string | null
           registration_opens_at: string | null
           registration_required: boolean | null
+          rotation_avoid_pairs: Json | null
           rotation_max_matches: number | null
           round_definitions: Json | null
           round_format: string | null

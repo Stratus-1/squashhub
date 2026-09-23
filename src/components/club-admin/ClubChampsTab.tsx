@@ -12003,6 +12003,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>{selfPairInviteSelection ? "Invite Members" : "Select Players"} — {GENDER_LABELS[gender]}</CardTitle>
+              <div className="flex items-center gap-2">
+              <Button
+                variant="outline" size="sm"
+                onClick={async () => {
+                  await refreshLadderRanks();
+                  toast.success("Ladder rankings refreshed");
+                }}
+                title="Re-read the club ladder so seeding uses the latest positions"
+              >
+                <RefreshCw className="w-4 h-4 mr-1" /> Refresh rankings
+              </Button>
               <Button
                 variant="outline" size="sm"
                 onClick={() => {

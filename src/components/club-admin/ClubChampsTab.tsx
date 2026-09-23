@@ -4659,11 +4659,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           // The timeline must tick finely enough to land on EVERY pool's own
           // slot (playing time + changeover). With 20/19/18/14-minute pools a
           // 20-minute tick would force everything onto the 20-minute grid.
+          // The configured slot ALREADY includes the changeover break — the
+          // bell rings at (slot − break). Never add the break on top again.
           const slotLengths: number[] = [];
           for (const gn of leagues) {
-            const brk = breakFor(gn);
             const poolNums = Array.from(new Set(byLeague.get(gn)!.map((m) => m.poolNum ?? 1)));
-            for (const p of poolNums) slotLengths.push(Math.max(1, capFor(gn, p) + brk));
+            for (const p of poolNums) slotLengths.push(Math.max(1, capFor(gn, p)));
           }
           const step = Math.max(
             1,

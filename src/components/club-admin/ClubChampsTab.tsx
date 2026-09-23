@@ -7955,14 +7955,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               .filter((pair: string[]) => pair.length === 2 && pair[0] && pair[1])
           : [],
       );
-      const avoidRaw = (champ as any).rotation_avoid_pairs;
-      setRotationAvoidPairs(
-        Array.isArray(avoidRaw)
-          ? avoidRaw
-              .map((pair: any) => (Array.isArray(pair) ? [String(pair[0] || ""), String(pair[1] || "")] : []))
-              .filter((pair: string[]) => pair.length === 2 && pair[0] && pair[1])
-          : [],
-      );
     }
     setLeagueByeHandling(inheritedBH);
     setLeagueForfeitRules(inheritedFR);

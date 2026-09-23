@@ -182,7 +182,10 @@ import { useTournamentGovernance, syncTournamentVenues } from "@/hooks/use-tourn
 import { deriveVenueRows } from "@/lib/tournaments/venues";
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
-import { playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders } from "@/lib/tournament-playoffs";
+import {
+  playoffMatchesForBracket, buildPlayoffPlaceholders, countPlayoffPlaceholders,
+  DEFAULT_PLAYOFF_MODE, isPlayoffMode, type PlayoffMode,
+} from "@/lib/tournament-playoffs";
 import { CapacityCheck } from "@/components/club-admin/tournament/CapacityCheck";
 import {
   type RoundDeadline,
@@ -1328,6 +1331,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [leaguePlayAll, setLeaguePlayAll] = useState<Record<string, boolean>>({});
   // Per-league playoffs: which leagues run their own knockout / finals stage.
   const [leaguePlayoffs, setLeaguePlayoffs] = useState<Record<string, boolean>>({});
+  // Post-pool playoff style per division (round-robin pools):
+  //   "position" (default / legacy) → A1 v B1, A2 v B2 …
+  //   "knockout"                    → top N of each pool in one cross-pool draw.
+  const [leaguePlayoffModes, setLeaguePlayoffModes] = useState<Record<string, PlayoffMode>>({});
+  const [leaguePlayoffQualifiers, setLeaguePlayoffQualifiers] = useState<Record<string, number>>({});
+  const playoffModeForLeague = (gn: number): PlayoffMode =>
+    isPlayoffMode(leaguePlayoffModes[String(gn)]) ? leaguePlayoffModes[String(gn)] : DEFAULT_PLAYOFF_MODE;
+  const playoffQualifiersForLeague = (gn: number): number =>
+    Math.max(1, Math.floor(Number(leaguePlayoffQualifiers[String(gn)]) || 2));
+  /** Numeric maps for the playoff builders (keyed by league number). */
+  const playoffModesByNum = (): Record<number, PlayoffMode> => {
+    const out: Record<number, PlayoffMode> = {};
+    for (let gn = 1; gn <= numGroups; gn++) out[gn] = playoffModeForLeague(gn);
+    return out;
+  };
+  const playoffQualifiersByNum = (): Record<number, number> => {
+    const out: Record<number, number> = {};
+    for (let gn = 1; gn <= numGroups; gn++) out[gn] = playoffQualifiersForLeague(gn);
+    return out;
+  };
+
   /**
    * Tournament-level playoff flag — DERIVED, never edited directly.
    * Kept only so the legacy `enable_playoffs` column and downstream
@@ -1710,6 +1734,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // Registration & payment
   const [registrationMode, setRegistrationMode] = useState<"" | "open" | "invite">("");
   const [partnerMode, setPartnerMode] = useState<"" | "admin" | "players" | "rotate">("");
+  // Rotating-partner doubles: individual cap on matches per player. 0 = full rotation.
+  const [rotationMaxMatches, setRotationMaxMatches] = useState<number>(0);
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string>("");
   const [registrationClosesAt, setRegistrationClosesAt] = useState<string>("");
   const [entryFeeRand, setEntryFeeRand] = useState<string>("0");
@@ -2882,6 +2908,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_win_conditions: Object.keys(leagueWinConditions).length > 0 ? leagueWinConditions : null,
       league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
       league_playoffs: Object.keys(leaguePlayoffs).length > 0 ? leaguePlayoffs : null,
+      league_playoff_modes: Object.keys(leaguePlayoffModes).length > 0 ? leaguePlayoffModes : null,
+      league_playoff_qualifiers:
+        Object.keys(leaguePlayoffQualifiers).length > 0 ? leaguePlayoffQualifiers : null,
+      rotation_max_matches: rotationMaxMatches > 0 ? rotationMaxMatches : null,
       league_bye_handling: Object.keys(leagueByeHandling).length > 0 ? leagueByeHandling : null,
       league_forfeit_rules: Object.keys(leagueForfeitRules).length > 0 ? leagueForfeitRules : null,
       league_forfeit_points: Object.keys(leagueForfeitPoints).length > 0 ? leagueForfeitPoints : null,
@@ -4187,7 +4217,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         matchTypeForLeague(gi + 1) === "doubles" &&
         !followsDivision(divisionFollows, gi + 1);
       if (rotateThisLeague) {
-        const rotation = generateRotatingDoublesSchedule(ids);
+        const rotation = generateRotatingDoublesSchedule(ids, {
+          maxMatchesPerPlayer: rotationMaxMatches > 0 ? rotationMaxMatches : undefined,
+        });
         for (const g of rotation.games) {
           allMatches.push({
             groupNum: gi + 1,
@@ -4900,6 +4932,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             entriesPerLeague: poEntriesPerLeague,
             poolsByLeague: anySwiss ? poolsByLeague : undefined,
             entriesByLeaguePool: anySwiss ? poEntriesByLeaguePool : undefined,
+            playoffModeByLeague: playoffModesByNum(),
+            qualifiersPerPoolByLeague: playoffQualifiersByNum(),
           })
         : 0;
 
@@ -5190,6 +5224,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           leagueLabels: entriesPerLeague.map((_, i) => groupLabels[String(i + 1)] || `League ${i + 1}`),
           poolsByLeague: anySwiss ? poolsByLeague : undefined,
           entriesByLeaguePool: anySwiss ? poEntriesByLeaguePool : undefined,
+          playoffModeByLeague: playoffModesByNum(),
+          qualifiersPerPoolByLeague: playoffQualifiersByNum(),
         });
         placeholderRows.sort((a, b) => a.round_number - b.round_number);
         placeholderRows.forEach((row, i) => {
@@ -7416,6 +7452,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setGender("men");
     setMatchType("singles");
     setLeaguePlayoffs({});
+    setLeaguePlayoffModes({});
+    setLeaguePlayoffQualifiers({});
+    setRotationMaxMatches(0);
     setNumGroups(0);
     setChampName("");
     setStartDate("");
@@ -7748,6 +7787,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueWinConditions(inheritedW);
     setLeaguePlayAll(inheritedPA);
     setLeaguePlayoffs(inheritedPO);
+    // Post-pool playoff style + qualifiers (absent on older tournaments → position).
+    {
+      const lpm = ((ex as any).league_playoff_modes as Record<string, string> | null) || null;
+      const lpq = ((ex as any).league_playoff_qualifiers as Record<string, number> | null) || null;
+      const modes: Record<string, PlayoffMode> = {};
+      const quals: Record<string, number> = {};
+      for (let i = 1; i <= (champ.num_groups || 0); i++) {
+        const k = String(i);
+        modes[k] = isPlayoffMode(lpm?.[k]) ? (lpm![k] as PlayoffMode) : DEFAULT_PLAYOFF_MODE;
+        quals[k] = Math.max(1, Math.floor(Number(lpq?.[k]) || 2));
+      }
+      setLeaguePlayoffModes(modes);
+      setLeaguePlayoffQualifiers(quals);
+      setRotationMaxMatches(Math.max(0, Math.floor(Number((champ as any).rotation_max_matches) || 0)));
+    }
     setLeagueByeHandling(inheritedBH);
     setLeagueForfeitRules(inheritedFR);
     setLeagueForfeitPoints(inheritedFP);
@@ -9996,7 +10050,44 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                                      ? "The organiser builds every pair by hand."
                                                      : "Pick how partners come about for this division."}
                                            </p>
+                                           {current === "rotate" && (
+                                             <div className="space-y-1 pt-1">
+                                               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                 Maximum matches per player
+                                               </Label>
+                                               <div className="flex items-center gap-2">
+                                                 <input
+                                                   type="number"
+                                                   min={0}
+                                                   placeholder="No limit"
+                                                   className="h-7 w-24 rounded border bg-background px-2 text-[11px]"
+                                                   value={rotationMaxMatches > 0 ? rotationMaxMatches : ""}
+                                                   onChange={(e) => {
+                                                     const n = Math.floor(Number(e.target.value) || 0);
+                                                     setRotationMaxMatches(n > 0 ? n : 0);
+                                                   }}
+                                                 />
+                                                 {rotationMaxMatches > 0 && (
+                                                   <Button
+                                                     type="button"
+                                                     size="sm"
+                                                     variant="ghost"
+                                                     className="h-7 text-[10px]"
+                                                     onClick={() => setRotationMaxMatches(0)}
+                                                   >
+                                                     Full rotation
+                                                   </Button>
+                                                 )}
+                                               </div>
+                                               <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                                 {rotationMaxMatches > 0
+                                                   ? `Each player plays at most ${rotationMaxMatches} matches. The draw spreads partners and opponents as widely as possible within that limit — not every partner combination is played.`
+                                                   : "Leave blank for a full rotation: everyone partners everyone."}
+                                               </p>
+                                             </div>
+                                           )}
                                          </>
+
                                        );
                                      })()}
                                       {pools > 1 && (
@@ -10111,7 +10202,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   />
                                   {fmt === "knockout"
                                     ? "Continue through knockout stages"
-                                    : "Playoffs / finals for this league"}
+                                    : poolsForDivision(gn) > 1
+                                      ? "Enable playoffs after pool stage"
+                                      : "Playoffs / finals for this league"}
                                 </label>
                                 {fmt === "knockout" && (
                                   <p className="text-[10px] text-muted-foreground pl-6 pt-0.5 leading-relaxed">
@@ -10119,7 +10212,59 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     through to the section/division final.
                                   </p>
                                 )}
+                                {fmt !== "knockout" && poolsForDivision(gn) > 1 && playoffsForLeague(gn) && (
+                                  <div className="pl-6 pt-1.5 space-y-1.5">
+                                    <div className="flex flex-wrap gap-3">
+                                      {([
+                                        { v: "position" as PlayoffMode, l: "Position playoffs" },
+                                        { v: "knockout" as PlayoffMode, l: "Knockout playoffs" },
+                                      ]).map((o) => (
+                                        <label key={o.v} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
+                                          <input
+                                            type="radio"
+                                            className="h-3 w-3 accent-fuchsia-500"
+                                            name={`playoff-mode-${key}`}
+                                            checked={playoffModeForLeague(gn) === o.v}
+                                            onChange={() =>
+                                              setLeaguePlayoffModes((m) => ({ ...m, [key]: o.v }))
+                                            }
+                                          />
+                                          {o.l}
+                                        </label>
+                                      ))}
+                                    </div>
+                                    {playoffModeForLeague(gn) === "position" ? (
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                        Matching finishing positions meet: A1 v B1, A2 v B2, A3 v B3 … so every
+                                        overall position in this division is decided.
+                                      </p>
+                                    ) : (
+                                      <div className="space-y-1">
+                                        <label className="flex items-center gap-2 text-[11px]">
+                                          <span>Qualify from each pool</span>
+                                          <input
+                                            type="number"
+                                            min={1}
+                                            className="h-7 w-16 rounded border bg-background px-2 text-[11px]"
+                                            value={playoffQualifiersForLeague(gn)}
+                                            onChange={(e) =>
+                                              setLeaguePlayoffQualifiers((m) => ({
+                                                ...m,
+                                                [key]: Math.max(1, Math.floor(Number(e.target.value) || 1)),
+                                              }))
+                                            }
+                                          />
+                                        </label>
+                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                          {playoffQualifiersForLeague(gn) * poolsForDivision(gn)} qualifiers go into one
+                                          cross-pool knockout draw, seeded so pool rivals meet as late as possible.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
+
                               <div className="pt-1 flex justify-end">
                                 <Button
                                   type="button"

@@ -66,3 +66,30 @@ describe("generateRotatingDoublesSchedule", () => {
     expect(games.every((g) => g.round <= 3)).toBe(true);
   });
 });
+
+describe("maximum matches per player", () => {
+  it("never schedules a player beyond the cap", () => {
+    const ids = players(10);
+    const { games } = generateRotatingDoublesSchedule(ids, { maxMatchesPerPlayer: 7 });
+    const counts = new Map<string, number>(ids.map((p) => [p, 0]));
+    for (const g of games) {
+      for (const p of [...g.sideA, ...g.sideB]) counts.set(p, (counts.get(p) || 0) + 1);
+    }
+    for (const p of ids) expect(counts.get(p)!).toBeLessThanOrEqual(7);
+    // Balanced: nobody is left far behind the others.
+    const vals = [...counts.values()];
+    expect(Math.max(...vals) - Math.min(...vals)).toBeLessThanOrEqual(1);
+  });
+
+  it("keeps the full rotation when no cap is given", () => {
+    const capped = generateRotatingDoublesSchedule(players(8), { maxMatchesPerPlayer: 3 });
+    const full = generateRotatingDoublesSchedule(players(8));
+    expect(capped.games.length).toBeLessThan(full.games.length);
+    expect(full.games).toHaveLength(rotatingDoublesGameCount(8));
+  });
+
+  it("still puts four distinct players in every capped game", () => {
+    const { games } = generateRotatingDoublesSchedule(players(9), { maxMatchesPerPlayer: 4 });
+    for (const g of games) expect(new Set([...g.sideA, ...g.sideB]).size).toBe(4);
+  });
+});

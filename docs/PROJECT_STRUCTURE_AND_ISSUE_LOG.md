@@ -1887,3 +1887,21 @@ The review schedule looked up fixture names only in the roster visible to the ho
 ## 2026-09-22 — Regional tournament clubs did not match Federation tree
 
 NSA's tournament venue picker merged legacy `association_affiliated_clubs` with Federation descendants, showing Durbanville despite no NSA relationship in the Federation tree. The association's club choices now come from active tree descendants only; a warning calls out legacy affiliations needing review. The regional player eligibility resolver now uses the same tree rather than expanding through league participation and affiliation rows. Platform host choices are scoped to the selected owner, and changing owners discards out-of-scope selections. Existing tournament entries and fixtures are untouched; unrelated legacy affiliations remain for review.
+
+## 2026-09-23 — Post-pool playoffs + rotating-doubles match cap
+
+- Round robin divisions split into 2+ pools now offer "Enable playoffs after pool stage"
+  with two styles: **Position playoffs** (A1 v B1, A2 v B2 …, the previous behaviour and
+  the default for existing tournaments) and **Knockout playoffs** (admin picks qualifiers
+  per pool; a cross-pool bracket is snake-seeded so pool rivals meet as late as possible).
+  `src/lib/tournament-playoffs.ts` gained `PlayoffMode`, `playoffModeByLeague`,
+  `qualifiersPerPoolByLeague`, `knockoutQualifierCount`; both the match builder and the
+  placeholder/slot-reservation path handle knockout so reserved slots match built rows.
+  `ClubChampsView.poolCountFor` is no longer Swiss-only — round robin pools count too.
+- Rotating-partner doubles gained **Maximum matches per player** (individual cap, not a
+  round count). `generateRotatingDoublesSchedule(ids, { maxMatchesPerPlayer })` uses the
+  greedy builder with an eligibility cap, balancing matches, partners and opponents.
+- New columns: `tournaments.league_playoff_modes`, `league_playoff_qualifiers`,
+  `rotation_max_matches` (all nullable → legacy behaviour unchanged).
+- Fixed an unrelated broken test: `dashboard-device-controls` needed the club-secrets
+  hook mocked after the Bluetooth fallback work.

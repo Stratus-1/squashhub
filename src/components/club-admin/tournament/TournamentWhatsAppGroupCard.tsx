@@ -238,7 +238,9 @@ export function TournamentWhatsAppGroupCard({
           {tournamentStatus === "completed" &&
             " This tournament is finished — SquashHub has stopped posting to the group. Deleting the group stays your decision, inside WhatsApp."}
         </p>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

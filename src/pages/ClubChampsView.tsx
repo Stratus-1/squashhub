@@ -433,8 +433,17 @@ export default function ClubChampsView() {
     return isSwissMode;
   };
   const swissPoolsCfg: Record<string, number> = ((champ as any)?.swiss_pools as Record<string, number>) || {};
+  /** Round robin divisions can also be split into pools (post-pool playoffs). */
+  const isRoundRobinForLeague = (gn: number) => {
+    const perLeague = leagueFormatsCfg?.[String(gn)];
+    if (perLeague) return perLeague === "round_robin";
+    return !isSwissMode && (champ as any)?.round_format !== "knockout";
+  };
   const poolCountFor = (gn: number) =>
-    isSwissForLeague(gn) ? Math.max(1, Number(swissPoolsCfg[String(gn)]) || 1) : 1;
+    isSwissForLeague(gn) || isRoundRobinForLeague(gn)
+      ? Math.max(1, Number(swissPoolsCfg[String(gn)]) || 1)
+      : 1;
+
   const poolLabel = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
 
   // Resolve a match's pool number. Prefers persisted pool_number, else derives

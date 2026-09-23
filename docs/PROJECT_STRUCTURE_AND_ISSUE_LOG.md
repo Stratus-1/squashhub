@@ -1915,3 +1915,10 @@ NSA's tournament venue picker merged legacy `association_affiliated_clubs` with 
 ## 2026-09-23 — Tournament Players withdrawal and ordering
 - In CSIR rotating doubles, unticking an entrant in the editor did not withdraw the registration; saving/reopening could restore that entrant from the paid registration or saved roster. Entered players now have a dedicated **Withdraw** action on the Players tab. It deletes their entries, marks the registration cancelled/withdrawn, and removes their saved roster, seeds, allocations, and manual-draw references; players with existing matches must instead use the Tournament Games withdrawal flow.
 - Saving and reopening filters cancelled registrations from audience materialisation and saved draft IDs. The Players list now puts selected tournament participants first, then other available members in alphabetical order. Existing CSIR entries were not changed.
+
+## 2026-09-23 — Smart Tournament Builder BETA (Super Admin only)
+- Parallel builder at `/admin/tournaments/smart`; existing planner untouched.
+- Draft storage: `smart_tournament_drafts` (RLS `is_platform_admin`). Gate: `src/lib/smart-builder/access.ts`.
+- Definition model `src/lib/smart-builder/definition.ts`; deterministic validator `validate.ts`; mapping to existing engine `to-existing.ts` (blocks multi-stage/derived-doubles structures instead of lossy saves).
+- AI interpretation: edge function `smart-tournament-interpret` (proposes definitions only; never writes).
+- Tests: `src/test/smart-builder.test.ts` (acceptance 1–4).

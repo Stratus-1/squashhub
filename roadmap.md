@@ -66,3 +66,4 @@
 - [x] Show tournament participants first on Players, then remaining members alphabetically
 
 - [ ] Durbanville: check WP (Western Province) league numbers for players
+- [ ] Populate people.ssa_membership_number for all members (SportyHQ "Membership ID" scrape) and show it in member/federation views

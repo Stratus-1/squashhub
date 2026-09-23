@@ -7779,6 +7779,21 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeagueWinConditions(inheritedW);
     setLeaguePlayAll(inheritedPA);
     setLeaguePlayoffs(inheritedPO);
+    // Post-pool playoff style + qualifiers (absent on older tournaments → position).
+    {
+      const lpm = ((ex as any).league_playoff_modes as Record<string, string> | null) || null;
+      const lpq = ((ex as any).league_playoff_qualifiers as Record<string, number> | null) || null;
+      const modes: Record<string, PlayoffMode> = {};
+      const quals: Record<string, number> = {};
+      for (let i = 1; i <= (champ.num_groups || 0); i++) {
+        const k = String(i);
+        modes[k] = isPlayoffMode(lpm?.[k]) ? (lpm![k] as PlayoffMode) : DEFAULT_PLAYOFF_MODE;
+        quals[k] = Math.max(1, Math.floor(Number(lpq?.[k]) || 2));
+      }
+      setLeaguePlayoffModes(modes);
+      setLeaguePlayoffQualifiers(quals);
+      setRotationMaxMatches(Math.max(0, Math.floor(Number((champ as any).rotation_max_matches) || 0)));
+    }
     setLeagueByeHandling(inheritedBH);
     setLeagueForfeitRules(inheritedFR);
     setLeagueForfeitPoints(inheritedFP);

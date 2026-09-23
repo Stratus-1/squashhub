@@ -4930,6 +4930,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             entriesPerLeague: poEntriesPerLeague,
             poolsByLeague: anySwiss ? poolsByLeague : undefined,
             entriesByLeaguePool: anySwiss ? poEntriesByLeaguePool : undefined,
+            playoffModeByLeague: playoffModesByNum(),
+            qualifiersPerPoolByLeague: playoffQualifiersByNum(),
           })
         : 0;
 

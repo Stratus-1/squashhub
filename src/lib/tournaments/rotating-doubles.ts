@@ -105,6 +105,12 @@ export function generateRotatingDoublesSchedule(
     strengthMode?: "any" | "mixed" | "balanced";
     /** Deprecated alias for strengthMode: true = "mixed", false = "any". */
     preferStrongPartnerships?: boolean;
+    /**
+     * Games already PLAYED (a live rebuild). They count toward each active
+     * player's match target and repeat-avoidance; only the remaining games are
+     * returned. Players in history who are no longer active are ignored.
+     */
+    history?: Array<{ sideA: string[]; sideB: string[] }>;
   } = {},
 ): RotationSchedule {
   const players = playerIds.filter(Boolean);
@@ -128,10 +134,11 @@ export function generateRotatingDoublesSchedule(
         ? "mixed"
         : "any");
 
-  const table = perPlayerCap || avoid.size || strengthMode !== "any" ? null : WHIST[players.length];
+  const history = (opts.history || []).filter((g) => g && g.sideA && g.sideB);
+  const table = perPlayerCap || avoid.size || strengthMode !== "any" || history.length ? null : WHIST[players.length];
   const built = table
     ? fromWhist(players, table)
-    : greedyRotation(players, perPlayerCap || undefined, { avoid, strengthMode });
+    : greedyRotation(players, perPlayerCap || undefined, { avoid, strengthMode, history });
 
   const cap = opts.maxRounds && opts.maxRounds > 0 ? opts.maxRounds : built.rounds;
   if (cap >= built.rounds) return built;
@@ -173,7 +180,11 @@ function fromWhist(players: string[], table: number[][][]): RotationSchedule {
 function greedyRotation(
   players: string[],
   perPlayerCap?: number,
-  bias: { avoid?: Set<string>; strengthMode?: "any" | "mixed" | "balanced" } = {},
+  bias: {
+    avoid?: Set<string>;
+    strengthMode?: "any" | "mixed" | "balanced";
+    history?: Array<{ sideA: string[]; sideB: string[] }>;
+  } = {},
 ): RotationSchedule {
   const n = players.length;
   const courts = Math.floor(n / 4);
@@ -183,6 +194,19 @@ function greedyRotation(
   const playedCount = new Map<string, number>(players.map((p) => [p, 0]));
   const restedSince = new Map<string, number>(players.map((p) => [p, 0]));
   const avoid = bias.avoid ?? new Set<string>();
+  // Prime counters with games already played (live rebuild). Only ACTIVE
+  // players are counted — a withdrawn player's history never shapes the draw.
+  const active = new Set(players);
+  for (const g of bias.history || []) {
+    const [a1, a2] = g.sideA;
+    const [b1, b2] = g.sideB;
+    if (a1 && a2 && active.has(a1) && active.has(a2)) partnered.add(pairKey(a1, a2));
+    if (b1 && b2 && active.has(b1) && active.has(b2)) partnered.add(pairKey(b1, b2));
+    for (const x of [a1, a2]) for (const y of [b1, b2]) {
+      if (x && y && active.has(x) && active.has(y)) opposed.set(pairKey(x, y), (opposed.get(pairKey(x, y)) || 0) + 1);
+    }
+    for (const p of [a1, a2, b1, b2]) if (p && active.has(p)) playedCount.set(p, (playedCount.get(p) || 0) + 1);
+  }
   // Seeded order: index 0 is the strongest. 0 = strongest, 1 = weakest.
   const weakness = new Map<string, number>(
     players.map((p, i) => [p, n > 1 ? i / (n - 1) : 0]),
@@ -301,6 +325,46 @@ function greedyRotation(
       games.push({ round, sideA: [a1, a2], sideB: [b1, b2] });
     }
 
+  }
+
+  // The saved number is each player's TARGET. When players × target is not a
+  // multiple of four, the rounds above leave a few players one short; add
+  // top-up games (short players first, filled by the least-played others, who
+  // go at most one over) so every active player reaches the target.
+  if (capped && n >= 4) {
+    for (let guard = 0; guard < n; guard++) {
+      const short = players
+        .filter((p) => (playedCount.get(p) || 0) < perPlayerCap!)
+        .sort((a, b) => playedCount.get(a)! - playedCount.get(b)!);
+      if (short.length === 0) break;
+      const quad = short.slice(0, 4);
+      const fillers = players
+        .filter((p) => !quad.includes(p) && (playedCount.get(p) || 0) <= perPlayerCap!)
+        .sort((a, b) =>
+          (playedCount.get(a)! - playedCount.get(b)!) ||
+          quad.reduce((s2, q) => s2 + (partnered.has(pairKey(q, a)) ? 1 : 0), 0) -
+            quad.reduce((s2, q) => s2 + (partnered.has(pairKey(q, b)) ? 1 : 0), 0),
+        );
+      while (quad.length < 4 && fillers.length) quad.push(fillers.shift()!);
+      if (quad.length < 4) break;
+      const splits: Array<[number, number, number, number]> = [[0, 1, 2, 3], [0, 2, 1, 3], [0, 3, 1, 2]];
+      let best = splits[0];
+      let bestCost = Number.MAX_SAFE_INTEGER;
+      for (const sp of splits) {
+        const [a1, a2, b1, b2] = sp.map((i) => quad[i]);
+        let cost = (partnered.has(pairKey(a1, a2)) ? 10 : 0) + (partnered.has(pairKey(b1, b2)) ? 10 : 0);
+        if (avoid.has(pairKey(a1, a2))) cost += 1000;
+        if (avoid.has(pairKey(b1, b2))) cost += 1000;
+        if (cost < bestCost) { bestCost = cost; best = sp; }
+      }
+      const [a1, a2, b1, b2] = best.map((i) => quad[i]);
+      partnered.add(pairKey(a1, a2));
+      partnered.add(pairKey(b1, b2));
+      for (const p of [a1, a2, b1, b2]) playedCount.set(p, (playedCount.get(p) || 0) + 1);
+      const round = sittingOut.length + 1;
+      sittingOut.push(players.filter((p) => ![a1, a2, b1, b2].includes(p)));
+      games.push({ round, sideA: [a1, a2], sideB: [b1, b2] });
+    }
   }
 
   return { games, sittingOut, rounds: sittingOut.length };

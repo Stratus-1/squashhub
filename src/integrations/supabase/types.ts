@@ -6460,6 +6460,66 @@ export type Database = {
         }
         Relationships: []
       }
+      external_league_divisions: {
+        Row: {
+          association_id: string
+          created_at: string
+          division_name: string
+          external_division_id: string
+          external_league_name: string | null
+          fetched_at: string
+          id: string
+          season_year: number | null
+          source: string
+          standings: Json
+          updated_at: string
+          weekly: Json
+        }
+        Insert: {
+          association_id: string
+          created_at?: string
+          division_name: string
+          external_division_id: string
+          external_league_name?: string | null
+          fetched_at?: string
+          id?: string
+          season_year?: number | null
+          source: string
+          standings?: Json
+          updated_at?: string
+          weekly?: Json
+        }
+        Update: {
+          association_id?: string
+          created_at?: string
+          division_name?: string
+          external_division_id?: string
+          external_league_name?: string | null
+          fetched_at?: string
+          id?: string
+          season_year?: number | null
+          source?: string
+          standings?: Json
+          updated_at?: string
+          weekly?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_league_divisions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "association_member_affiliations_v"
+            referencedColumns: ["league_association_id"]
+          },
+          {
+            foreignKeyName: "external_league_divisions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "league_associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_payments: {
         Row: {
           amount: number
@@ -8184,6 +8244,8 @@ export type Database = {
           created_at: string
           created_by_association_id: string | null
           division: string | null
+          external_division_id: string | null
+          external_team_id: string | null
           id: string
           is_reserve: boolean | null
           level: number | null
@@ -8214,6 +8276,8 @@ export type Database = {
           created_at?: string
           created_by_association_id?: string | null
           division?: string | null
+          external_division_id?: string | null
+          external_team_id?: string | null
           id?: string
           is_reserve?: boolean | null
           level?: number | null
@@ -8244,6 +8308,8 @@ export type Database = {
           created_at?: string
           created_by_association_id?: string | null
           division?: string | null
+          external_division_id?: string | null
+          external_team_id?: string | null
           id?: string
           is_reserve?: boolean | null
           level?: number | null

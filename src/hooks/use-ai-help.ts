@@ -24,6 +24,7 @@ export type AiHelpReply = {
   executed?: boolean;
   failed?: boolean;
   error?: string;
+  retryable?: boolean;
 };
 
 /** Is the AI Help Assistant beta on for this user's club (or Super Admin)? Fails closed. */
@@ -59,12 +60,31 @@ export function pageIds(pathname: string, search: string): Record<string, string
   return ids;
 }
 
+/** Same payload for typed and spoken requests; the request id makes retries idempotent. */
+export function buildAskPayload(a: {
+  question: string; voice: boolean; requestId: string; context: unknown;
+  history: { role: "user" | "assistant"; content: string }[];
+  atts: { path: string; name: string; mime: string; size: number }[];
+}) {
+  return {
+    mode: "ask", question: a.question, history: a.history, transcriptUsed: a.voice, context: a.context, clientRequestId: a.requestId,
+    attachments: a.atts.map(({ path, name, mime, size }) => ({ path, name, mime, size })),
+  };
+}
+
+export const AI_HELP_NETWORK_ERROR = "Couldn't reach the assistant. Your message is saved — tap Retry.";
+
 export async function callAiHelp(body: Record<string, unknown>): Promise<AiHelpReply> {
   const { data, error } = await supabase.functions.invoke("ai-help", { body });
   if (error) {
+    // Network-level failure (no HTTP reply reached the device).
+    if ((error as any)?.name === "FunctionsFetchError" || /Failed to send a request/i.test(error.message || "")) {
+      return { error: AI_HELP_NETWORK_ERROR, retryable: true };
+    }
     let msg = error.message;
     try { const j = await (error as any).context?.json?.(); if (j?.error) msg = j.error; } catch { /* ignore */ }
-    return { error: msg };
+    const status = (error as any)?.context?.status;
+    return { error: msg, retryable: status === 429 || (status >= 500 && status < 600) };
   }
   return (data ?? {}) as AiHelpReply;
 }

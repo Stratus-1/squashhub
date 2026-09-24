@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ImagePlus, Loader2, LifeBuoy, Send, X, CheckCircle2, ShieldAlert } from "lucide-react";
+import { ImagePlus, Loader2, LifeBuoy, Send, X, CheckCircle2, ShieldAlert, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
-import { callAiHelp, pageIds, uploadAiScreenshot, type AiHelpPreview } from "@/hooks/use-ai-help";
+import { buildAskPayload, callAiHelp, pageIds, uploadAiScreenshot, type AiHelpPreview } from "@/hooks/use-ai-help";
 
 type Att = { path: string; name: string; mime: string; size: number; preview: string };
 type Turn = {
@@ -18,6 +18,8 @@ type Turn = {
   state?: "pending" | "done" | "cancelled" | "busy";
   ticketId?: string;
   error?: boolean;
+  /** Failed send that can be retried with the same request id. */
+  retry?: { question: string; atts: Att[]; voice: boolean; requestId: string; history: { role: "user" | "assistant"; content: string }[] };
 };
 
 /**
@@ -62,21 +64,30 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
     }
   };
 
+  const runAsk = async (retry: NonNullable<Turn["retry"]>) => {
+    setBusy(true);
+    const r = await callAiHelp(buildAskPayload({ ...retry, context }));
+    setBusy(false);
+    if (r.error) return push({ role: "assistant", content: r.error, error: true, retry: r.retryable ? retry : undefined });
+    push({ role: "assistant", content: r.answer ?? "", preview: r.preview, interactionId: r.interactionId, state: r.preview ? "pending" : undefined, ticketId: r.ticketId });
+  };
+
   const send = async () => {
     const q = input.trim();
     if (!q || busy) return;
     const sentAtts = atts;
     push({ role: "user", content: q, attachments: sentAtts });
-    setInput(""); setAtts([]); setBusy(true); setVoiceMsg(null);
-    const history = turns.slice(-8).map((t) => ({ role: t.role, content: t.content.slice(0, 2000) }));
-    const r = await callAiHelp({
-      mode: "ask", question: q, history, transcriptUsed: usedVoice, context,
-      attachments: sentAtts.map(({ path, name, mime, size }) => ({ path, name, mime, size })),
-    });
+    setInput(""); setAtts([]); setVoiceMsg(null);
+    const history = turns.filter((t) => !t.error).slice(-8).map((t) => ({ role: t.role, content: t.content.slice(0, 2000) }));
+    const voice = usedVoice;
     setUsedVoice(false);
-    setBusy(false);
-    if (r.error) return push({ role: "assistant", content: r.error, error: true });
-    push({ role: "assistant", content: r.answer ?? "", preview: r.preview, interactionId: r.interactionId, state: r.preview ? "pending" : undefined, ticketId: r.ticketId });
+    await runAsk({ question: q, atts: sentAtts, voice, requestId: crypto.randomUUID(), history });
+  };
+
+  const retryTurn = async (i: number, t: Turn) => {
+    if (!t.retry || busy) return;
+    setTurns((v) => v.filter((_, j) => j !== i));
+    await runAsk(t.retry);
   };
 
   const decide = async (i: number, t: Turn, confirm: boolean) => {
@@ -107,6 +118,11 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
         {turns.map((t, i) => (
           <div key={i} className={t.role === "user" ? "self-end max-w-[85%] rounded-2xl bg-primary text-primary-foreground px-3 py-2" : "max-w-full"}>
             <p className={t.error ? "text-destructive" : "whitespace-pre-wrap"}>{t.content}</p>
+            {t.retry && (
+              <Button size="sm" variant="outline" className="mt-1" disabled={busy} onClick={() => retryTurn(i, t)}>
+                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Retry
+              </Button>
+            )}
             {t.attachments?.length ? (
               <div className="flex gap-1 mt-1">{t.attachments.map((a) => <img key={a.path} src={a.preview} alt={a.name} className="h-12 w-12 rounded object-cover" />)}</div>
             ) : null}

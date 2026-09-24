@@ -1514,21 +1514,17 @@ export default function ClubChampsView() {
     },
   });
 
-  // ── Live play-off seeding ────────────────────────────────────────────
-  // Seeds are recalculated after EVERY completed match — provisionally
-  // while pool games are still running, then locked in once the last pool
-  // game is played. Downstream rounds (SF → Final / 3rd) resolve the same
-  // way as their feeders complete. Runs once per distinct set of completed
-  // matches so it never loops.
+  // ── Stage transition: pools → play-offs ─────────────────────────────
+  // Completion of every pool game is the stage boundary. Only then are the
+  // (already reserved, timed) play-off slots filled from the final pool
+  // standings, which count stage=group rows only and are therefore frozen.
+  // Before the boundary slots stay TBD; after it, filled/started slots are
+  // never re-seeded automatically. Editing slot times never triggers this.
   const autoPlayoffKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!canManage || !enablePlayoffs) return;
     if (generatePlayoffs.isPending) return;
-    if (groupResultsCount === 0) return;
-    // Once the pools are closed and any play-off game has been played or
-    // started, the play-off line-up is locked — never re-seed automatically.
-    const playoffStarted = playoffMatches.some((m: any) => isPlayoffRowLocked(m));
-    if (groupComplete && playoffStarted) return;
+    if (!shouldAutoFillPlayoffs({ groupComplete, playoffRows: playoffMatches as any[] })) return;
 
     const completed = (matches as any[]).filter((m: any) => m.status === "completed");
     const key = completed.map((m: any) => m.id).sort().join(",");
@@ -1671,7 +1667,13 @@ export default function ClubChampsView() {
               <Button
                 variant={groupComplete ? "default" : "outline"}
                 size="sm"
-                onClick={() => generatePlayoffs.mutate({})}
+                onClick={() => {
+                  const filled = playoffMatches.some((m: any) => m.player_a_member_id || m.player_b_member_id);
+                  if (filled && !window.confirm(
+                    "Play-offs are already filled from the pool standings. Rebuild them? Started or scored play-off games will not be changed.",
+                  )) return;
+                  generatePlayoffs.mutate({});
+                }}
                 disabled={groupResultsCount === 0 || generatePlayoffs.isPending}
                 title={
                   groupResultsCount === 0

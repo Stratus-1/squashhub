@@ -53,3 +53,18 @@ describe("fixed-pair doubles pool → placement playoff continuity", () => {
     }
   });
 });
+
+import { shouldAutoFillPlayoffs } from "./tournament-playoffs";
+describe("pool → playoff stage boundary", () => {
+  const tbd = [{ player_a_member_id: null, player_b_member_id: null }];
+  const full = [{ player_a_member_id: "c1", player_b_member_id: "c2" }];
+  it("never fills playoffs before every pool game is done", () => {
+    expect(shouldAutoFillPlayoffs({ groupComplete: false, playoffRows: tbd })).toBe(false);
+  });
+  it("fills reserved slots automatically at the boundary — no button needed", () => {
+    expect(shouldAutoFillPlayoffs({ groupComplete: true, playoffRows: tbd })).toBe(true);
+  });
+  it("never re-seeds once slots are filled", () => {
+    expect(shouldAutoFillPlayoffs({ groupComplete: true, playoffRows: full })).toBe(false);
+  });
+});

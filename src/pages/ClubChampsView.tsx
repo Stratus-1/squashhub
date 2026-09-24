@@ -1715,7 +1715,7 @@ export default function ClubChampsView() {
                 Reschedule {unassignedCount} TBD match{unassignedCount === 1 ? "" : "es"}
               </Button>
             )}
-            {canManage && enablePlayoffs && (
+            {canManage && enablePlayoffs && !playoffsComplete && String((champ as any)?.status || "").toLowerCase() !== "completed" && (
               <Button
                 variant={groupComplete ? "default" : "outline"}
                 size="sm"

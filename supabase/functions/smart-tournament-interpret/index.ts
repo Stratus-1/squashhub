@@ -14,6 +14,7 @@ const Body = z.object({
   message: z.string().min(1).max(4000),
   mode: z.enum(["guide", "describe"]),
   definition: z.record(z.any()),
+  clubId: z.string().uuid().optional(),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(6000) })).max(30).default([]),
 });
 
@@ -93,10 +94,16 @@ Deno.serve(async (req) => {
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userData.user.id);
     const isSuper = (roles ?? []).some((r: { role: string }) => r.role === "admin" || r.role === "moderator");
-    if (!isSuper) return json({ error: "Smart Tournament Builder is Super Admin only during the beta." }, 403);
-
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) return json({ error: "Invalid request", details: parsed.error.flatten().fieldErrors }, 400);
+    if (!isSuper) {
+      // Beta clubs: server-side check (club flagged + caller is club admin / has Tournaments permission).
+      const clubId = parsed.data.clubId;
+      const { data: allowed } = clubId
+        ? await admin.rpc("can_use_tournament_beta", { _user_id: userData.user.id, _club_id: clubId })
+        : { data: false };
+      if (allowed !== true) return json({ error: "Tournament Beta isn't switched on for your club, or you don't have tournament permission." }, 403);
+    }
     const { message, mode, definition, history } = parsed.data;
 
     const key = Deno.env.get("LOVABLE_API_KEY");

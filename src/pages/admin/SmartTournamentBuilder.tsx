@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -36,49 +36,78 @@ type Draft = {
 
 const panel = "rounded-xl border border-white/10 bg-white/[0.04]";
 
+/**
+ * Where the builder is running. One implementation, two contexts:
+ * - platform: Super Admin panel (federation/association drafts, any host club)
+ * - club: a beta club's admin area, locked to that club's ownership and courts
+ */
+export type BuilderScope = { kind: "platform" } | { kind: "club"; clubId: string; clubName?: string };
+
+export interface BuilderNav {
+  openDraft: (id: string) => void;
+  backToList: () => void;
+  /** Back from the draft list (null = no back button) */
+  exit: (() => void) | null;
+  afterCreate: (tournamentId: string) => void;
+}
+
 export default function SmartTournamentBuilder() {
   const { isLoading } = useSuperAdminStatus();
   const isSuperAdmin = useIsSuperAdmin();
   const { draftId } = useParams();
+  const navigate = useNavigate();
   if (isLoading) return <div className="p-6 text-white/60 text-sm">Loading…</div>;
   if (!canUseSmartBuilder({ isSuperAdmin })) return <Navigate to="/admin/tournaments" replace />;
-  return draftId ? <Workspace draftId={draftId} /> : <DraftList />;
+  const nav: BuilderNav = {
+    openDraft: (id) => navigate(`/admin/tournaments/smart/${id}`),
+    backToList: () => navigate("/admin/tournaments/smart"),
+    exit: () => navigate("/admin/tournaments"),
+    afterCreate: (id) => navigate("/admin/tournaments", { state: { openChampId: id } }),
+  };
+  return <SmartTournamentBuilderCore scope={{ kind: "platform" }} draftId={draftId ?? null} nav={nav} />;
 }
 
-function BetaHeader({ back }: { back: string }) {
+export function SmartTournamentBuilderCore({ scope, draftId, nav }: { scope: BuilderScope; draftId: string | null; nav: BuilderNav }) {
+  return draftId ? <Workspace draftId={draftId} scope={scope} nav={nav} /> : <DraftList scope={scope} nav={nav} />;
+}
+
+function BetaHeader({ onBack, scope }: { onBack: (() => void) | null; scope: BuilderScope }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button asChild size="sm" variant="ghost" className="text-white/70"><Link to={back}><ArrowLeft className="w-4 h-4 mr-1" />Back</Link></Button>
-      <h2 className="text-lg font-semibold text-white flex items-center gap-2"><Wand2 className="w-5 h-5 text-amber-300" /> {SMART_BUILDER_LABEL}</h2>
-      <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] text-amber-200 flex items-center gap-1"><FlaskConical className="w-3 h-3" />{SMART_BUILDER_SUBLABEL}</span>
+      {onBack && <Button size="sm" variant="ghost" className="text-white/70" onClick={onBack}><ArrowLeft className="w-4 h-4 mr-1" />Back</Button>}
+      <h2 className="text-lg font-semibold text-white flex items-center gap-2"><Wand2 className="w-5 h-5 text-amber-300" /> {scope.kind === "club" ? "Tournament Beta" : SMART_BUILDER_LABEL}</h2>
+      <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[11px] text-amber-200 flex items-center gap-1"><FlaskConical className="w-3 h-3" />{scope.kind === "club" ? `Beta testing · ${scope.clubName ?? "this club"}` : SMART_BUILDER_SUBLABEL}</span>
     </div>
   );
 }
 
-function DraftList() {
-  const nav = useNavigate();
+function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
   const qc = useQueryClient();
+  const scopeKey = scope.kind === "club" ? scope.clubId : "platform";
   const { data: drafts = [] } = useQuery({
-    queryKey: ["smart-drafts"],
+    queryKey: ["smart-drafts", scopeKey],
     queryFn: async () => {
-      const { data, error } = await fromExt("smart_tournament_drafts").select("id,title,mode,status,updated_at,created_tournament_id").order("updated_at", { ascending: false });
+      let q = fromExt("smart_tournament_drafts").select("id,title,mode,status,updated_at,created_tournament_id");
+      q = scope.kind === "club" ? q.eq("owner_kind", "club").eq("owner_id", scope.clubId) : q.neq("owner_kind", "club");
+      const { data, error } = await q.order("updated_at", { ascending: false });
       if (error) throw error;
       return data as Draft[];
     },
   });
   const create = useMutation({
     mutationFn: async (mode: "guide" | "describe") => {
+      const owner = scope.kind === "club" ? { owner_kind: "club", owner_id: scope.clubId } : {};
       const { data, error } = await fromExt("smart_tournament_drafts")
-        .insert({ mode, title: "Untitled tournament", definition: emptyDefinition(), conversation: [] }).select("id").single();
+        .insert({ mode, title: "Untitled tournament", definition: emptyDefinition(), conversation: [], ...owner }).select("id").single();
       if (error) throw error;
       return data.id as string;
     },
-    onSuccess: (id) => { qc.invalidateQueries({ queryKey: ["smart-drafts"] }); nav(`/admin/tournaments/smart/${id}`); },
+    onSuccess: (id) => { qc.invalidateQueries({ queryKey: ["smart-drafts"] }); nav.openDraft(id); },
     onError: (e: any) => toast.error(e.message),
   });
   return (
     <div className="space-y-5 max-w-5xl py-4">
-      <BetaHeader back="/admin/tournaments" />
+      <BetaHeader onBack={nav.exit} scope={scope} />
       <p className="text-xs text-white/60">Describe a tournament, answer only what's unclear, then edit it visually. Nothing becomes a real tournament until you press Create Tournament. The existing setup is unchanged.</p>
       <div className="grid md:grid-cols-2 gap-3">
         <button onClick={() => create.mutate("guide")} className={cn(panel, "p-4 text-left hover:bg-white/[0.08]")}>
@@ -93,10 +122,10 @@ function DraftList() {
       <div className={cn(panel, "divide-y divide-white/10")}>
         {drafts.length === 0 && <div className="p-4 text-xs text-white/50">No drafts yet.</div>}
         {drafts.map((d) => (
-          <Link key={d.id} to={`/admin/tournaments/smart/${d.id}`} className="flex items-center justify-between p-3 text-sm text-white/85 hover:bg-white/[0.05]">
+          <button key={d.id} onClick={() => nav.openDraft(d.id)} className="flex w-full items-center justify-between p-3 text-left text-sm text-white/85 hover:bg-white/[0.05]">
             <span>{d.title}</span>
             <span className="text-[11px] text-white/50">{d.status === "created" ? "Created" : "Draft"} · {new Date(d.updated_at).toLocaleString()}</span>
-          </Link>
+          </button>
         ))}
       </div>
     </div>
@@ -110,9 +139,8 @@ async function invokeError(error: unknown) {
   return (error as Error)?.message || "Request failed";
 }
 
-function Workspace({ draftId }: { draftId: string }) {
+function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderScope; nav: BuilderNav }) {
   const qc = useQueryClient();
-  const nav = useNavigate();
   const { data: draft, isLoading } = useQuery({
     queryKey: ["smart-draft", draftId],
     queryFn: async () => {
@@ -159,7 +187,7 @@ function Workspace({ draftId }: { draftId: string }) {
     const nextChat = [...chat, { role: "user" as const, content: text }];
     setChat(nextChat); setInput(""); setThinking(true); setProposal(null);
     const { data, error } = await supabase.functions.invoke("smart-tournament-interpret", {
-      body: { message: text, mode: draft?.mode ?? "describe", definition: def, history: chat.slice(-20) },
+      body: { message: text, mode: draft?.mode ?? "describe", definition: def, history: chat.slice(-20), clubId: scope.kind === "club" ? scope.clubId : undefined },
     });
     setThinking(false);
     if (error) {
@@ -208,7 +236,7 @@ function Workspace({ draftId }: { draftId: string }) {
 
   return (
     <div className="space-y-4 py-4">
-      <BetaHeader back="/admin/tournaments/smart" />
+      <BetaHeader onBack={nav.backToList} scope={scope} />
       {draft.status === "created" && (
         <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 p-2 text-xs text-emerald-200">This draft has already been created as a tournament. Further edits stay in the draft only.</div>
       )}
@@ -305,8 +333,8 @@ function Workspace({ draftId }: { draftId: string }) {
               </div>
             </TabsContent>
             <TabsContent value="review" className="mt-3">
-              <ReviewTab def={def} validation={validation} draftId={draftId} created={draft.status === "created"}
-                onCreated={(id) => { qc.invalidateQueries({ queryKey: ["smart-draft", draftId] }); toast.success("Tournament created as a draft in the existing setup."); nav("/admin/tournaments", { state: { openChampId: id } }); }} />
+              <ReviewTab scope={scope} def={def} validation={validation} draftId={draftId} created={draft.status === "created"}
+                onCreated={(id) => { qc.invalidateQueries({ queryKey: ["smart-draft", draftId] }); toast.success("Tournament created as a draft in the existing setup."); nav.afterCreate(id); }} />
             </TabsContent>
           </Tabs>
         </div>
@@ -380,12 +408,14 @@ function ScheduleTab({ def, onChange }: { def: TournamentDefinition; onChange: (
   );
 }
 
-function ReviewTab({ def, validation, draftId, created, onCreated }: {
-  def: TournamentDefinition; validation: ReturnType<typeof validateDefinition>; draftId: string; created: boolean; onCreated: (id: string) => void;
+function ReviewTab({ scope, def, validation, draftId, created, onCreated }: {
+  scope: BuilderScope; def: TournamentDefinition; validation: ReturnType<typeof validateDefinition>; draftId: string; created: boolean; onCreated: (id: string) => void;
 }) {
   const { data: clubs = [] } = useHostClubs();
   const { data: orgs = [] } = useOwnerOrganisations();
-  const [hostClubId, setHostClubId] = useState("");
+  const [pickedHostClubId, setHostClubId] = useState("");
+  // Club beta: the tournament always belongs to (and is hosted by) this club.
+  const hostClubId = scope.kind === "club" ? scope.clubId : pickedHostClubId;
   const [ownerOrgId, setOwnerOrgId] = useState("");
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -428,7 +458,9 @@ function ReviewTab({ def, validation, draftId, created, onCreated }: {
       <div className="rounded-lg border border-white/10 p-3 space-y-2">
         <div className="font-semibold text-white">Create Tournament</div>
         <p className="text-white/60">Creates a planning-stage tournament in the existing setup. Invitations, players, fees and fixtures are then managed there as usual.</p>
-        <div className="grid md:grid-cols-2 gap-2">
+        {scope.kind === "club" ? (
+          <p className="text-white/60">Host and owner: <span className="text-white">{scope.clubName ?? "this club"}</span></p>
+        ) : <div className="grid md:grid-cols-2 gap-2">
           <select className="h-8 rounded-md bg-white/5 border border-white/15 text-white px-2" value={ownerOrgId} onChange={(e) => setOwnerOrgId(e.target.value)}>
             <option value="">Organised by…</option>
             {orgs.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.kind})</option>)}
@@ -437,7 +469,7 @@ function ReviewTab({ def, validation, draftId, created, onCreated }: {
             <option value="">Host club…</option>
             {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-        </div>
+        </div>}
         <Button size="sm" disabled={created || blockers > 0 || !hostClubId || busy} onClick={() => setConfirm(true)}>
           {created ? "Already created" : "Create Tournament"}
         </Button>

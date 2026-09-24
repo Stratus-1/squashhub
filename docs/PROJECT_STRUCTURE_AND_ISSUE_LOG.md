@@ -1927,3 +1927,6 @@ NSA's tournament venue picker merged legacy `association_affiliated_clubs` with 
 - Definition model `src/lib/smart-builder/definition.ts`; deterministic validator `validate.ts`; mapping to existing engine `to-existing.ts` (blocks multi-stage/derived-doubles structures instead of lossy saves).
 - AI interpretation: edge function `smart-tournament-interpret` (proposes definitions only; never writes).
 - Tests: `src/test/smart-builder.test.ts` (acceptance 1–4).
+
+### 2026-09-24 — Tournament Beta for selected clubs
+- New `club_beta_features` (feature `tournament_beta`, Super Admin managed). Riverside enabled. `can_use_tournament_beta()` gates club-owned smart drafts (RLS) and `smart-tournament-interpret`. Club Admin shows a separate "Tournament Beta" tile next to the unchanged Tournaments tile, rendering the same `SmartTournamentBuilderCore` in club scope.

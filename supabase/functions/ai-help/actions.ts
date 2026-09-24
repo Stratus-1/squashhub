@@ -141,21 +141,44 @@ export const ACTIONS: Record<string, ActionDef> = {
     async preview(c, args) {
       let champId = s(args.tournament_id);
       if (!champId && s(args.tournament_name)) {
-        const { data } = await c.admin.from("tournaments").select("id,name").eq("club_id", c.clubId).ilike("name", `%${s(args.tournament_name)}%`).limit(3);
-        if ((data ?? []).length !== 1) return { ok: false, reason: "I couldn't pin down which tournament you mean — open it first, or give its exact name.", escalate: false };
-        champId = data![0].id;
+        // Super Admin may act in any club; others only in the club they are in.
+        let q = c.admin.from("tournaments").select("id,name,club_id").ilike("name", `%${s(args.tournament_name)}%`).neq("status", "completed").limit(5);
+        if (!c.isSuper) q = q.eq("club_id", c.clubId);
+        const { data } = await q;
+        const rows = (data ?? []) as any[];
+        const exact = rows.filter((t) => t.name.toLowerCase() === s(args.tournament_name).toLowerCase());
+        const pick = exact.length === 1 ? exact : rows.length > 1 ? rows.filter((t) => t.club_id === c.clubId) : rows;
+        if (pick.length !== 1) return { ok: false, reason: rows.length ? `Several tournaments match "${s(args.tournament_name)}": ${rows.map((t) => t.name).join(", ")}. Which one?` : `I couldn't find an active tournament called "${s(args.tournament_name)}".`, escalate: false };
+        champId = pick[0].id;
       }
-      if (!champId) return { ok: false, reason: "Which tournament? Open it first, or give its name.", escalate: false };
-      const olds = await findMember(c, s(args.old_player));
-      const news = await findMember(c, s(args.new_player));
-      if (olds.length !== 1 || news.length !== 1) {
-        return { ok: false, reason: `I found ${olds.length} match(es) for "${s(args.old_player)}" and ${news.length} for "${s(args.new_player)}" in your club. Please use full names.`, escalate: false };
+      if (!champId) return { ok: false, reason: "Which tournament? Give its name.", escalate: false };
+      const { data: t } = await c.admin.from("tournaments").select("id,name,club_id,participating_club_ids").eq("id", champId).maybeSingle();
+      if (!t) return { ok: false, reason: "That tournament wasn't found.", escalate: false };
+      // Old player: search the tournament's own entrants first (works for regional events).
+      const { data: ent } = await c.admin.from("club_champs_entries").select("club_member_id,partner_member_id").eq("champ_id", champId);
+      const entIds = [...new Set((ent ?? []).flatMap((e: any) => [e.club_member_id, e.partner_member_id]).filter(Boolean))];
+      const { data: entM } = entIds.length ? await c.admin.from("club_members").select("id,name").in("id", entIds) : { data: [] };
+      const matchName = (rows: { id: string; name: string }[], q: string) => {
+        const n = q.toLowerCase();
+        const ex = rows.filter((r) => r.name.toLowerCase() === n);
+        if (ex.length) return ex;
+        const parts = n.split(/\s+/).filter(Boolean);
+        return rows.filter((r) => parts.every((p) => r.name.toLowerCase().includes(p)));
+      };
+      const olds = matchName((entM ?? []) as any[], s(args.old_player));
+      const clubs = [t.club_id, ...((t as any).participating_club_ids ?? [])];
+      const { data: pool } = await c.admin.from("club_members").select("id,name").in("club_id", clubs).ilike("name", `%${s(args.new_player).split(/\s+/)[0]}%`).limit(50);
+      const news = matchName((pool ?? []) as any[], s(args.new_player));
+      if (olds.length !== 1) {
+        return { ok: false, reason: olds.length ? `More than one entrant matches "${s(args.old_player)}": ${olds.map((o) => o.name).join(", ")}. Which one?` : `"${s(args.old_player)}" isn't an entrant in ${t.name}.`, escalate: false };
+      }
+      if (news.length !== 1) {
+        return { ok: false, reason: news.length ? `More than one member matches "${s(args.new_player)}": ${news.slice(0, 6).map((o) => o.name).join(", ")}. Which one?` : `I couldn't find a member called "${s(args.new_player)}" in the host or participating clubs.`, escalate: false };
       }
       const { data, error } = await c.user.rpc("ai_replace_tournament_player", { p_champ_id: champId, p_old_member: olds[0].id, p_new_member: news[0].id, p_preview: true });
       if (error) return { ok: false, reason: error.message, escalate: /permission/i.test(error.message) };
       const p = data as any;
-      if (p.club_id !== c.clubId && !c.isSuper) return { ok: false, reason: "That tournament belongs to another club.", escalate: true };
-      if (p.new_already_entered) return { ok: false, reason: `${p.new_name} is already entered in ${p.tournament}. Swapping two entrants needs an admin to review.`, escalate: true };
+      if (p.new_already_entered) return { ok: false, reason: `${p.new_name} is already entered in ${p.tournament}, so this is a SWAP of two entrants. Swapping two entrants is not yet an enabled assistant action (this is not a permission problem).`, escalate: true };
       if (!p.entries && !(p.unplayed_matches ?? []).length) return { ok: false, reason: `${p.old_name} isn't entered in ${p.tournament}.`, escalate: false };
       const n = (p.unplayed_matches ?? []).length;
       return {

@@ -1331,12 +1331,15 @@ export default function ClubChampsView() {
     (m) => (m.stage || "group") !== "group" && (m.stage || "") !== "ko",
   );
   const playoffsExist = playoffMatches.length > 0;
+  // Lifecycle from persisted rows: every play-off row played → stage closed.
+  const playoffsComplete = playoffsExist && playoffMatches.every((m: any) => m.status === "completed");
 
   const generatePlayoffs = useMutation({
     mutationFn: async (opts?: { silent?: boolean }) => {
       if (!champ) throw new Error("Tournament not loaded");
       if (!enablePlayoffs) throw new Error("Play-offs are not enabled for this tournament");
       if (groupResultsCount === 0) throw new Error("At least one group-stage result is needed to seed play-offs");
+      if (playoffsComplete) throw new Error("Play-offs are already played — nothing to generate.");
 
 
       // Winner resolver for already-completed playoff rounds (SF → Final, etc.)

@@ -4,8 +4,8 @@
  * readiness Review. Every control reads/writes `def` — the same object the AI
  * proposes changes to — so chat, forms and review can never drift apart.
  */
-import { persistStructure, specFromDefinition } from "@/lib/tournaments/structured-persist";
-import { supabaseDb } from "@/lib/tournaments/structured-db";
+import { atomically, persistStructure, specFromDefinition } from "@/lib/tournaments/structured-persist";
+import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";
@@ -113,7 +113,56 @@ export function PlayersTab({ def, validation, edit }: { def: TournamentDefinitio
       </div>
       <div data-field="eligibility">
         <div className="font-semibold text-white mb-1">Divisions</div>
-        <ul className="space-y-0.5">{def.divisions.map((d) => <li key={d.id}>{d.name}: {d.eligibility.replace(/_/g, " ")}, {d.entry === "pairs" ? "enter as pairs" : "enter individually"}</li>)}</ul>
+        <div className="space-y-2">
+          {def.divisions.map((d, di) => {
+            const poolCount = Math.max(0, ...d.sections.flatMap((sec) => sec.stages.filter((st) => st.kind === "round_robin" && st.groups > 1).map((st) => st.groups)));
+            const setDiv = (mut: (x: typeof d) => void) => edit((dd) => { mut(dd.divisions[di]); });
+            return (
+              <div key={d.id} className="rounded border border-white/10 p-2 space-y-2" data-field={`division-${d.id}`}>
+                <div className="grid sm:grid-cols-3 gap-2">
+                  <Field label="Division name" tag={d.name ? "Required" : "Missing"}>
+                    <Input className={f} value={d.name} onChange={(e) => setDiv((x) => { x.name = e.target.value; })} />
+                  </Field>
+                  <Field label="How league membership / teams are used" tag="Optional">
+                    <select className={cn(sel, "w-full")} value={d.leagueUse ?? ""} onChange={(e) => setDiv((x) => { x.leagueUse = (e.target.value || null) as any; })}>
+                      <option value="">Not decided</option>
+                      <option value="division_allocation">Decides who is in this division</option>
+                      <option value="pool_seeding">Only used to seed pools</option>
+                      <option value="team_allocation">League teams play as teams</option>
+                      <option value="manual">Organiser decides</option>
+                      <option value="ignore">Not used</option>
+                    </select>
+                  </Field>
+                  <div className="text-[11px] text-white/60 pt-4">{d.eligibility.replace(/_/g, " ")}, {d.entry === "pairs" ? "enter as pairs" : d.entry === "teams" ? "enter as teams" : "enter individually"}</div>
+                </div>
+                {poolCount > 0 && (
+                  <Field label="Pool names" tag="Optional">
+                    <div className="flex flex-wrap gap-1">
+                      {Array.from({ length: poolCount }, (_, i) => (
+                        <Input key={i} className={cn(f, "w-28")} placeholder={`Pool ${String.fromCharCode(65 + i)}`} value={d.poolLabels?.[i] ?? ""}
+                          onChange={(e) => setDiv((x) => { const l = [...(x.poolLabels ?? [])]; l[i] = e.target.value; x.poolLabels = l; })} />
+                      ))}
+                    </div>
+                  </Field>
+                )}
+                {def.divisions.length > 1 && (
+                  <Button type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => {
+                    if (!confirm(`Copy ${d.name}'s format, stages, schedule rules and pool names to the other divisions? Division names and who can enter stay as they are.`)) return;
+                    edit((dd) => {
+                      const src = dd.divisions[di];
+                      dd.divisions.forEach((x, k) => {
+                        if (k === di) return;
+                        x.entry = src.entry; x.leagueUse = src.leagueUse; x.poolLabels = src.poolLabels ? [...src.poolLabels] : undefined;
+                        x.sections = JSON.parse(JSON.stringify(src.sections).replace(/"id":"([^"]+)"/g, (_m, id) => `"id":"${id}-${x.id}"`).replace(/"fromStageId":"([^"]+)"/g, (_m, id) => `"fromStageId":"${id}-${x.id}"`));
+                      });
+                    });
+                    toast.success("Applied to other divisions");
+                  }}>Apply structure to other divisions</Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
       {rows.length > 0 && (
         <div className="overflow-x-auto">
@@ -441,7 +490,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
         ...(structuredSpec ? { builder_architecture: "structured", builder_spec: structuredSpec, builder_spec_version: 1 } : {}),
       }).eq("id", data.id);
       if (exErr) console.warn("extras", exErr.message);
-      if (structuredSpec && !exErr) await persistStructure(supabaseDb, data.id, structuredSpec);
+      if (structuredSpec && !exErr) await atomically(supabaseDb, data.id, commitStructured, (db) => persistStructure(db, data.id, structuredSpec));
       if (mapping.whatsappGroupUrl) {
         // Link only — the existing group card handles sharing. Nothing is sent here.
         const { error: wgErr } = await fromExt("tournament_whatsapp_groups").insert({ champ_id: data.id, club_id: hostClubId, provider: "manual", invite_url: mapping.whatsappGroupUrl, group_name: def.name, status: "active" });

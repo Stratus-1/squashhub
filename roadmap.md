@@ -89,16 +89,16 @@
 - [x] Tournament Beta opening steps (model, readiness order, AI order; live coverage lookup still open): owner/scope -> audience (explicit league-only vs all members) -> ranking coverage -> expected entries, before format.
 
 ## Tournament Beta — structural phase (2026-09-24)
-- [ ] Structural tables: divisions/stages/pools(optional)/rounds + fixture refs (additive), architecture discriminator
-- [ ] Beta Create persists structure first, then fixtures via engine-service with integrity checks
-- [ ] Rebuild/withdrawal/advancement/playoff preview+confirm on structural model
-- [ ] Structured Tournament Editor reloads persisted spec; change-impact preview
-- [ ] Builder UI: division names, league use, pool names, apply-to-other-divisions
+- [x] Structural tables: divisions/stages/pools(optional)/rounds + fixture refs (additive), architecture discriminator
+- [x] Beta Create persists structure first, then fixtures via engine-service with integrity checks
+- [x] Rebuild/withdrawal/advancement/playoff preview+confirm on structural model
+- [x] Structured Tournament Editor reloads persisted spec; change-impact preview
+- [x] Builder UI: division names, league use, pool names, apply-to-other-divisions
 - [ ] Connect real eligible counts / ranking coverage
 - [x] Rotating doubles respects max games
 - [x] Beta Create persists structured spec + divisions/stages/pools before games
 - [x] Tournament page routes structured tournaments to structured engine (legacy generate/auto-fill disabled)
-- [ ] Structured rebuild/withdrawal wired into page (legacy rebuild inserts are DB-blocked for structured)
-- [ ] Transactional server-side generate (currently client multi-step, DB triggers enforce identity)
-- [ ] Structured Tournament Editor reload UI; builder questions (division/pool names, league use, apply-to-all)
-- [ ] Disposable full simulation
+- [x] Structured rebuild/withdrawal wired into page (legacy rebuild inserts are DB-blocked for structured)
+- [x] Transactional server-side generate (currently client multi-step, DB triggers enforce identity)
+- [x] Structured Tournament Editor reload UI; builder questions (division/pool names, league use, apply-to-all)
+- [x] Disposable full simulation

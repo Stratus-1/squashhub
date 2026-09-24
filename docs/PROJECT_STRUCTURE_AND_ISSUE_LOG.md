@@ -1991,3 +1991,11 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 ## 2026-09-24 — Stale "Generate knockout/play-offs" on finished tournaments
 - Cause: `round-control.ts` only treated stage `ko` as a post-pool stage, so placement play-offs (`playoff_*`) were invisible → "Pool stage complete, Generate knockout round"; header "Regenerate play-offs" was shown whenever `enable_playoffs` was on, and tournament `status` stayed `planning`.
 - Fix: `isPostPoolStage` (ko + playoff_*); `tournamentNextAction` derives Play-offs in progress / Tournament complete from persisted play-off rows; header generate button + auto-fill hidden and generator refuses once every play-off row is completed or status is completed. DB: unique index `club_champs_matches_one_placement_row` (one final/3rd row per champ/group/slot) and trigger `guard_completed_playoff_rows` (completed play-off rows cannot be deleted/re-paired/moved except by service role). Play-off card headings name placement ("1st/2nd place play-off") with Completed badge. Backfilled Family Doubles status → completed (all rows played). Tests in `tournament-next-action.test.ts`.
+
+## 2026-09-25 — Structured (Beta) tournaments: atomic commit, rebuild/withdraw, editor
+- `structured_commit(p_tid, p_ops)` RPC: structure + rounds + games saved in ONE transaction (security invoker, can_manage_tournament, structured-only, refuses deleting played/started games).
+- Client `bufferedDb`/`atomically` collect engine writes, then commit once; any integrity failure sends nothing.
+- `rebuildStructured` (unplayed divisions regenerate from current entries; played divisions keep results, drop only withdrawn players' unplayed games) and `withdrawStructured` wired into StructuredEnginePanel.
+- StructuredEditorDialog reloads builder_spec; label/date edits only, structural edits blocked/previewed.
+- Builder Players tab: division names, league use, pool names, apply-structure-to-other-divisions.
+- Disposable full simulation test in `src/test/structured-generation.test.ts`.

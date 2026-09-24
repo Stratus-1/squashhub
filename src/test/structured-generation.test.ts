@@ -3,6 +3,7 @@ import {
   confirmStructuredPlayoffs, generateStructuredTournament, nextKnockoutRound, persistStructure,
   previewStructuredPlayoffs, specFromDefinition, type Db,
 } from "@/lib/tournaments/structured-persist";
+import { atomically, rebuildStructured, withdrawStructured, type CommitOp } from "@/lib/tournaments/structured-persist";
 import { applyEdit, classifyEdit, serializeSpec, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { DefinitionSchema } from "@/lib/smart-builder/definition";
 import { generateRotatingDoublesSchedule } from "@/lib/tournaments/rotating-doubles";
@@ -32,6 +33,13 @@ function fakeDb() {
     },
     async select(table, f) { return (t[table] ?? []).filter((r) => match(r, f)); },
     async update(table, f, patch) { (t[table] ?? []).filter((r) => match(r, f)).forEach((r) => Object.assign(r, patch)); },
+    async remove(table, ids) {
+      for (const id of ids) {
+        const r = (t[table] ?? []).find((x) => x.id === id);
+        if (table === "club_champs_matches" && r?.winner_member_id) throw new Error("played game cannot be removed");
+      }
+      t[table] = (t[table] ?? []).filter((x) => !ids.includes(x.id));
+    },
   };
   return { db, t };
 }
@@ -54,8 +62,8 @@ beforeEach(async () => {
   const spec = specFromDefinition(def);
   env.t.tournaments = [{ id: TID, builder_architecture: "structured", builder_spec: serializeSpec(spec) }, { id: "legacy", builder_architecture: "legacy" }];
   env.t.club_champs_entries = [
-    ...Array.from({ length: 8 }, (_, i) => ({ champ_id: TID, club_member_id: `m${i + 1}`, group_number: 1, order_index: i })),
-    ...Array.from({ length: 8 }, (_, i) => ({ champ_id: TID, club_member_id: `l${i + 1}`, group_number: 2, order_index: i })),
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `em${i + 1}`, champ_id: TID, club_member_id: `m${i + 1}`, group_number: 1, order_index: i })),
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `el${i + 1}`, champ_id: TID, club_member_id: `l${i + 1}`, group_number: 2, order_index: i })),
   ];
 });
 
@@ -196,5 +204,86 @@ describe("rotating doubles cap", () => {
       for (const g of games) for (const p of [...g.sideA, ...g.sideB]) c.set(p, (c.get(p) ?? 0) + 1);
       expect(Math.max(...c.values())).toBeLessThanOrEqual(cap);
     }
+  });
+});
+
+/** Replays a commit onto the fake DB in one go (stands in for the server transaction). */
+const sendTo = (db: Db, log: CommitOp[][]) => async (_tid: string, ops: CommitOp[]) => {
+  log.push(ops);
+  for (const o of ops) {
+    if (o.op === "insert") await db.insert(o.table, o.rows);
+    else if (o.op === "delete_unplayed_matches") await db.remove!("club_champs_matches", o.ids);
+    else await db.remove!("club_champs_entries", o.ids);
+  }
+};
+const finish = (rows: any[], pick: (m: any) => string) => rows.forEach((m) => { m.winner_member_id = pick(m); m.status = "completed"; });
+
+describe("all-or-nothing commit", () => {
+  it("a failing generation sends nothing", async () => {
+    const log: CommitOp[][] = [];
+    env.t.club_champs_entries = [];
+    await expect(atomically(env.db, TID, sendTo(env.db, log), (db) => generateStructuredTournament(db, TID))).rejects.toThrow();
+    expect(log).toHaveLength(0);
+    expect(env.t.tournament_divisions ?? []).toHaveLength(0);
+  });
+  it("a successful generation is one commit with structure + rounds + games", async () => {
+    const log: CommitOp[][] = [];
+    await atomically(env.db, TID, sendTo(env.db, log), (db) => generateStructuredTournament(db, TID));
+    expect(log).toHaveLength(1);
+    const tables = log[0].map((o) => (o.op === "insert" ? o.table : o.op));
+    expect(tables).toContain("tournament_divisions");
+    expect(tables).toContain("club_champs_matches");
+    expect(env.t.club_champs_matches).toHaveLength(24);
+  });
+});
+
+describe("rebuild + withdrawal", () => {
+  it("rebuild before play regenerates from current entries", async () => {
+    const send = sendTo(env.db, []);
+    await atomically(env.db, TID, send, (db) => generateStructuredTournament(db, TID));
+    env.t.club_champs_entries = env.t.club_champs_entries.filter((e) => e.club_member_id !== "m8");
+    const r = await atomically(env.db, TID, send, (db) => rebuildStructured(db, TID));
+    expect(r.regenerated).toContain("1st League");
+    const men = env.t.club_champs_matches.filter((m) => m.group_number === 1);
+    expect(men.some((m) => [m.player_a_member_id, m.player_b_member_id].includes("m8"))).toBe(false);
+    expect(men.every((m) => m.division_id && m.stage_id && m.round_id && m.pool_id)).toBe(true);
+  });
+  it("withdrawal after play keeps results and removes only that player's unplayed games", async () => {
+    const send = sendTo(env.db, []);
+    await atomically(env.db, TID, send, (db) => generateStructuredTournament(db, TID));
+    const m1Games = env.t.club_champs_matches.filter((m) => [m.player_a_member_id, m.player_b_member_id].includes("m1"));
+    finish([m1Games[0]], (m) => m.player_a_member_id);
+    const before = env.t.club_champs_matches.length;
+    await atomically(env.db, TID, send, (db) => withdrawStructured(db, TID, "m1"));
+    const left = env.t.club_champs_matches.filter((m) => [m.player_a_member_id, m.player_b_member_id].includes("m1"));
+    expect(left).toHaveLength(1);
+    expect(left[0].winner_member_id).toBeTruthy();
+    expect(env.t.club_champs_matches.length).toBe(before - (m1Games.length - 1));
+    expect(env.t.club_champs_matches.filter((m) => m.group_number === 2)).toHaveLength(12); // ladies untouched
+  });
+});
+
+describe("disposable full simulation", () => {
+  it("create → pools → results → preview → confirm → SF → final → rebuild keeps history", async () => {
+    const send = sendTo(env.db, []);
+    await atomically(env.db, TID, send, (db) => generateStructuredTournament(db, TID));
+    const rank = (id: string) => Number(id.slice(1));
+    const seedWin = (m: any) => (rank(m.player_a_member_id) < rank(m.player_b_member_id) ? m.player_a_member_id : m.player_b_member_id);
+    finish(env.t.club_champs_matches.filter((m) => m.group_number === 1), seedWin);
+    const p = await previewStructuredPlayoffs(env.db, TID, "men", "ko");
+    expect(p.ok).toBe(true);
+    await atomically(env.db, TID, send, (db) => confirmStructuredPlayoffs(db, TID, "men", "ko", true));
+    const sf = env.t.club_champs_matches.filter((m) => m.stage_key === "ko");
+    expect(sf).toHaveLength(2);
+    expect(sf.every((m) => m.pool_id == null && m.stage === "ko")).toBe(true);
+    finish(sf, seedWin);
+    const rows = sf.map((m) => ({ id: m.id, divisionId: "men", stageId: "ko", stageKind: "knockout" as const, round: m.round_number, a: m.player_a_member_id, b: m.player_b_member_id, winner: m.winner_member_id, slot: m.bracket_position }));
+    const fin = nextKnockoutRound(TID, "men", "ko", rows);
+    expect(fin).toHaveLength(1);
+    expect(fin[0].poolId).toBeNull();
+    const played = env.t.club_champs_matches.filter((m) => m.winner_member_id).length;
+    await atomically(env.db, TID, send, (db) => rebuildStructured(db, TID));
+    expect(env.t.club_champs_matches.filter((m) => m.winner_member_id).length).toBe(played);
+    expect(() => nextKnockoutRound(TID, "men", "ko", [...rows, { ...fin[0], winner: fin[0].a }])).toThrow(/final/);
   });
 });

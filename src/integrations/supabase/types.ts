@@ -15081,6 +15081,10 @@ export type Database = {
       }
     }
     Functions: {
+      _champ_row_unlocked: {
+        Args: { m: Database["public"]["Tables"]["club_champs_matches"]["Row"] }
+        Returns: boolean
+      }
       _match_rollups_for_member: {
         Args: { target_member_id: string }
         Returns: {
@@ -15231,6 +15235,10 @@ export type Database = {
         Returns: undefined
       }
       age_group_for_age: { Args: { _age: number }; Returns: string }
+      ai_apply_champ_repair: {
+        Args: { p_champ: string; p_changes: Json }
+        Returns: Json
+      }
       ai_correct_champ_result: {
         Args: {
           p_games: Json
@@ -15248,6 +15256,10 @@ export type Database = {
           p_only_match_ids?: string[]
           p_preview?: boolean
         }
+        Returns: Json
+      }
+      ai_rollback_champ_repair: {
+        Args: { p_champ: string; p_snapshot: Json }
         Returns: Json
       }
       allocate_next_member_number: {

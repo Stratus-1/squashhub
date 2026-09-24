@@ -236,7 +236,8 @@ export default function Tournaments() {
       if (c !== 0) return c;
       // Undated play-off games share one key — order them by bracket position
       // (Pos 1 final first) instead of leaving them in random database order.
-      const bp = (a.bracket_position ?? 0) - (b.bracket_position ?? 0);
+      // Strongest (Pos 1) listed last, matching the order it will be played.
+      const bp = (b.bracket_position ?? 0) - (a.bracket_position ?? 0);
       if (bp !== 0) return bp;
       return String(a.id || "").localeCompare(String(b.id || ""));
     });

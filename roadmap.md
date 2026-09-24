@@ -82,4 +82,6 @@
 - [x] Post-start: controlled pull-out/forfeit, preserve results; clear wording
 
 ## AI Assistant live tournament repair (24 Sep 2026)
-- [ ] Plan: proven system bugs auto-repaired without approval (club admin reports included); Super Admin only for started/scored games — awaiting plan approval
+- [x] Live tournament self-heal: integrity engine, automatic deterministic repair (no approval), verify/rollback, audit, admin alerts, Afrikaans/voice tested
+- [ ] "Working…" background reply + polling for requests over ~20s (not built; current replies ~11s)
+- [ ] Approve/Decline card for judgement items (currently reported in chat + escalated)

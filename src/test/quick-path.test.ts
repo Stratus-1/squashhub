@@ -40,7 +40,7 @@ describe("fast path: format, grouping and progression are separate layers", () =
     setPlayoffs(def, true, 2);
     expect(def.divisions[0].sections[0].stages[1].qualifierMapping).toBe("cross_pool");
     const fx = generateFromSpec(specWith(def, 24), "t");
-    expect(fx.filter((f) => f.stageKind === "round_robin")).toHaveLength(60);
+    expect(fx.filter((f) => f.stageKind === "pools")).toHaveLength(60);
     const b = tournamentMapBlocks(def)[0].lines.join("\n");
     expect(b).toContain("Stage 1 — Round robin"); expect(b).toContain("4 pools × 6");
     expect(b).toContain("Top 2 from each pool"); expect(b).toContain("Quarter-final → Semi-final → Final");

@@ -88,6 +88,8 @@ const StageSchema = z.object({
   loserBehaviour: z.enum(["eliminated", "plate", "placement"]).optional(),
   notes: z.string().optional(),
   schedule: ScheduleSchema.default({ mode: "unset" }),
+  /** Per-stage scoring overrides; unset fields inherit the tournament scoring. */
+  scoring: z.lazy(() => ScoringSchema).optional(),
 });
 export type Stage = z.infer<typeof StageSchema>;
 
@@ -115,6 +117,66 @@ const QuestionSchema = z.object({
 });
 export type OpenQuestion = z.infer<typeof QuestionSchema>;
 
+/** Match scoring. Every field optional; a stage without a value inherits the tournament default. */
+const ScoringSchema = z.object({
+  pointsPerGame: z.union([z.literal(11), z.literal(15)]).nullable().optional(),
+  bestOf: z.union([z.literal(3), z.literal(5)]).nullable().optional(),
+  playAllGames: z.boolean().nullable().optional(),
+  winCondition: z.enum(["win_by_2", "sudden_death"]).nullable().optional(),
+});
+export type Scoring = z.infer<typeof ScoringSchema>;
+
+/** Who plays and how they get in. null = not decided yet. */
+const PlayersSchema = z.object({
+  entryMethod: z.enum(["self_entry", "selected", "both"]).nullable().optional(),
+  audience: z.enum(["all_club", "leagues", "clubs", "individuals"]).nullable().optional(),
+  /** Selected players only confirm availability (no open entry form). */
+  confirmAvailabilityOnly: z.boolean().nullable().optional(),
+  allocation: z.enum(["by_eligibility", "admin_allocates", "by_ranking"]).nullable().optional(),
+  seedingSource: z.enum(["ranking", "ladder", "manual", "none"]).nullable().optional(),
+  minEntries: z.number().int().min(0).nullable().optional(),
+  maxEntries: z.number().int().min(0).nullable().optional(),
+  notes: z.string().nullable().optional(),
+}).default({});
+export type PlayersSettings = z.infer<typeof PlayersSchema>;
+
+export const COMMS_CHANNELS = ["in_app", "email", "whatsapp", "sms"] as const;
+export type CommsChannel = (typeof COMMS_CHANNELS)[number];
+
+/** Invitations & communications. Sending is ALWAYS manual unless explicitly set. */
+const CommsSchema = z.object({
+  inviteSending: z.enum(["manual", "automatic"]).nullable().optional(),
+  inviteChannels: z.array(z.enum(COMMS_CHANNELS)).nullable().optional(),
+  registrationOpensAt: z.string().nullable().optional(),
+  registrationClosesAt: z.string().nullable().optional(),
+  inviteMessage: z.string().nullable().optional(),
+  reminders: z.enum(["none", "before_close", "before_matches", "both"]).nullable().optional(),
+  /** null = fee not decided; 0 = free. */
+  entryFeeRands: z.number().min(0).nullable().optional(),
+  paymentRequired: z.boolean().nullable().optional(),
+  paymentMethods: z.array(z.enum(["card", "eft", "cash", "account"])).nullable().optional(),
+  whatsappGroup: z.enum(["yes", "no"]).nullable().optional(),
+  whatsappGroupUrl: z.string().nullable().optional(),
+  resultNotify: z.enum(["all", "playoffs", "none"]).nullable().optional(),
+  resultChannels: z.array(z.enum(COMMS_CHANNELS)).nullable().optional(),
+}).default({});
+export type CommsSettings = z.infer<typeof CommsSchema>;
+
+/** Tournament-wide scheduling defaults; each stage inherits unless it overrides. */
+const ScheduleDefaultsSchema = z.object({
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  weekday: z.number().int().min(0).max(6).nullable().optional(),
+  startTime: z.string().nullable().optional(),
+  venueNames: z.array(z.string()).optional(),
+  rotateVenues: z.boolean().optional(),
+  courtsPerVenue: z.number().int().min(0).nullable().optional(),
+  sessionMinutes: z.number().int().min(0).nullable().optional(),
+  matchMinutes: z.number().int().min(0).nullable().optional(),
+  provisionalBookings: z.boolean().nullable().optional(),
+}).default({});
+export type ScheduleDefaults = z.infer<typeof ScheduleDefaultsSchema>;
+
 export const DefinitionSchema = z.object({
   version: z.literal(1).default(1),
   name: z.string().default("Untitled tournament"),
@@ -124,11 +186,33 @@ export const DefinitionSchema = z.object({
   rankingEvent: z.boolean().default(false),
   registrationClosesAt: z.string().nullable().optional(),
   divisions: z.array(DivisionSchema).default([]),
+  scoring: ScoringSchema.default({}),
+  players: PlayersSchema,
+  comms: CommsSchema,
+  scheduleDefaults: ScheduleDefaultsSchema,
   understood: z.array(z.string()).default([]),
   questions: z.array(QuestionSchema).default([]),
   notUnderstood: z.array(z.string()).default([]),
 });
 export type TournamentDefinition = z.infer<typeof DefinitionSchema>;
+
+/** Effective schedule for a stage: its own values, falling back to tournament defaults. */
+export function effectiveSchedule(def: TournamentDefinition, stage: Stage) {
+  const s = stage.schedule, d = def.scheduleDefaults ?? {};
+  const pick = <K extends keyof StageSchedule & keyof ScheduleDefaults>(k: K) => {
+    const own = s[k] as unknown;
+    const hasOwn = own !== undefined && own !== null && !(Array.isArray(own) && own.length === 0);
+    return { value: (hasOwn ? own : d[k]) as StageSchedule[K], inherited: !hasOwn && d[k] != null && !(Array.isArray(d[k]) && (d[k] as unknown[]).length === 0) };
+  };
+  return {
+    mode: s.mode,
+    startDate: pick("startDate"), endDate: pick("endDate"), weekday: pick("weekday"),
+    venueNames: pick("venueNames"), courtsPerVenue: pick("courtsPerVenue"),
+    sessionMinutes: pick("sessionMinutes"), matchMinutes: pick("matchMinutes"),
+    startTime: { value: d.startTime ?? null, inherited: !!d.startTime },
+  };
+}
+
 
 export function emptyDefinition(name = "Untitled tournament"): TournamentDefinition {
   return DefinitionSchema.parse({ name });

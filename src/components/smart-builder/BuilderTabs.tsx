@@ -1,0 +1,520 @@
+/**
+ * Smart Builder workspace tabs that edit the ONE structured draft:
+ * Players settings, Schedule (summary-first), Invitations & messages, and the
+ * readiness Review. Every control reads/writes `def` — the same object the AI
+ * proposes changes to — so chat, forms and review can never drift apart.
+ */
+import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";
+import { fromExt } from "@/lib/supabase-ext";
+import { useHostClubs, useOwnerOrganisations } from "@/hooks/use-tournaments";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { allStages, effectiveSchedule, STAGE_LABELS, type Stage, type TournamentDefinition, type CommsChannel } from "@/lib/smart-builder/definition";
+import type { ValidationResult } from "@/lib/smart-builder/validate";
+import type { ExistingMapping } from "@/lib/smart-builder/to-existing";
+import { RESULT_NONE_NOTE, scheduleNeeds, type Readiness, type ItemState, type ReadinessItem } from "@/lib/smart-builder/readiness";
+import { normaliseGroupInviteUrl, isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
+import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
+import type { BuilderScope } from "@/pages/admin/SmartTournamentBuilder";
+import { cn } from "@/lib/utils";
+
+type Edit = (mut: (d: TournamentDefinition) => void) => void;
+const f = "h-8 bg-white/5 border-white/15 text-white text-xs";
+const sel = "h-8 rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs";
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const CHANNELS: { key: CommsChannel; label: string }[] = [
+  { key: "in_app", label: "In-app" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }, { key: "sms", label: "SMS" },
+];
+
+export function StateBadge({ state }: { state: ItemState }) {
+  const m = { complete: ["Complete", "text-emerald-300 border-emerald-400/40"], missing: ["Missing", "text-red-300 border-red-400/50"], warning: ["Optional", "text-amber-200 border-amber-300/40"] }[state];
+  return <span className={cn("rounded-full border px-1.5 py-0 text-[10px] uppercase tracking-wide", m[1])}>{m[0]}</span>;
+}
+
+/** Label with a clear requirement tag. */
+function Field({ label, tag, field, children, className }: { label: string; tag: "Required" | "Optional" | "Inherited" | "Not needed" | "Missing"; field?: string; children: ReactNode; className?: string }) {
+  const tone = tag === "Missing" ? "text-red-300" : tag === "Required" ? "text-white/70" : "text-white/40";
+  return (
+    <label data-field={field} className={cn("block space-y-0.5 rounded", className)}>
+      <span className="flex items-center justify-between gap-2 text-[11px] text-white/60">{label}<span className={cn("text-[10px]", tone)}>{tag}</span></span>
+      {children}
+    </label>
+  );
+}
+
+function ChannelPicker({ value, onChange, disabled = [] }: { value: CommsChannel[]; onChange: (v: CommsChannel[]) => void; disabled?: CommsChannel[] }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {CHANNELS.map((c) => {
+        const on = value.includes(c.key), off = disabled.includes(c.key);
+        return (
+          <button key={c.key} type="button" disabled={off} title={off ? "Not supported for this message yet" : undefined}
+            onClick={() => onChange(on ? value.filter((x) => x !== c.key) : [...value, c.key])}
+            className={cn("rounded-full border px-2 py-0.5 text-[11px]", on ? "bg-primary text-primary-foreground border-primary" : "border-white/20 text-white/75 hover:bg-white/10", off && "opacity-40 cursor-not-allowed")}>
+            {c.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─────────────────────────── Players ─────────────────────────── */
+export function PlayersTab({ def, validation, edit }: { def: TournamentDefinition; validation: ValidationResult; edit: Edit }) {
+  const p = def.players ?? {};
+  const set = (patch: Partial<typeof p>) => edit((d) => { d.players = { ...d.players, ...patch }; });
+  const rows = allStages(def);
+  return (
+    <div className="space-y-4 text-xs text-white/80">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <Field label="How players enter" tag={p.entryMethod ? "Required" : "Missing"} field="entryMethod">
+          <select className={cn(sel, "w-full")} value={p.entryMethod ?? ""} onChange={(e) => set({ entryMethod: (e.target.value || null) as any })}>
+            <option value="">Not decided</option><option value="self_entry">Players enter themselves</option>
+            <option value="selected">Selected / invited players only</option><option value="both">Invited + open entry</option>
+          </select>
+        </Field>
+        <Field label="Who is invited" tag={p.entryMethod && p.entryMethod !== "self_entry" ? (p.audience ? "Required" : "Missing") : "Optional"} field="audience">
+          <select className={cn(sel, "w-full")} value={p.audience ?? ""} onChange={(e) => set({ audience: (e.target.value || null) as any })}>
+            <option value="">Not decided</option><option value="all_club">Whole club</option><option value="leagues">League players</option>
+            <option value="clubs">Other clubs</option><option value="individuals">Specific people</option>
+          </select>
+        </Field>
+        <Field label="Seeding" tag={p.seedingSource ? "Required" : "Optional"} field="seedingSource">
+          <select className={cn(sel, "w-full")} value={p.seedingSource ?? ""} onChange={(e) => set({ seedingSource: (e.target.value || null) as any })}>
+            <option value="">Not decided</option><option value="ranking">Ranking</option><option value="ladder">Club ladder</option>
+            <option value="manual">Organiser seeds manually</option><option value="none">No seeding</option>
+          </select>
+        </Field>
+        <Field label="Division allocation" tag="Optional" field="allocation">
+          <select className={cn(sel, "w-full")} value={p.allocation ?? ""} onChange={(e) => set({ allocation: (e.target.value || null) as any })}>
+            <option value="">Not decided</option><option value="by_eligibility">By eligibility (men/ladies/open)</option>
+            <option value="by_ranking">By ranking / strength</option><option value="admin_allocates">Admin allocates</option>
+          </select>
+        </Field>
+        <Field label="Min / max entries" tag="Optional">
+          <div className="flex gap-1">
+            <Input className={f} inputMode="numeric" placeholder="Min" value={p.minEntries ?? ""} onChange={(e) => set({ minEntries: e.target.value ? Number(e.target.value) : null })} />
+            <Input className={f} inputMode="numeric" placeholder="Max" value={p.maxEntries ?? ""} onChange={(e) => set({ maxEntries: e.target.value ? Number(e.target.value) : null })} />
+          </div>
+        </Field>
+        <label className="flex items-center gap-2 pt-4 text-[11px]" data-field="confirmAvailabilityOnly">
+          <input type="checkbox" checked={!!p.confirmAvailabilityOnly} onChange={(e) => set({ confirmAvailabilityOnly: e.target.checked })} />
+          Selected players only confirm availability
+        </label>
+      </div>
+      <div data-field="eligibility">
+        <div className="font-semibold text-white mb-1">Divisions</div>
+        <ul className="space-y-0.5">{def.divisions.map((d) => <li key={d.id}>{d.name}: {d.eligibility.replace(/_/g, " ")}, {d.entry === "pairs" ? "enter as pairs" : "enter individually"}</li>)}</ul>
+      </div>
+      {rows.length > 0 && (
+        <div className="overflow-x-auto">
+          <div className="font-semibold text-white mb-1">Player flow</div>
+          <table className="w-full min-w-[520px]">
+            <thead className="text-white/50"><tr className="text-left"><th className="py-1">Stage</th><th>Comes from</th><th>In</th><th>Designed for</th><th>Matches</th><th>Each plays</th><th>Out</th></tr></thead>
+            <tbody>
+              {rows.map(({ division, stage }) => {
+                const fl = validation.flows[stage.id];
+                const src = stage.input.fromStageId ? rows.find((r) => r.stage.id === stage.input.fromStageId)?.stage.name : "Registrations";
+                return (
+                  <tr key={stage.id} className="border-t border-white/10">
+                    <td className="py-1">{def.divisions.length > 1 ? `${division.name} · ` : ""}{stage.name}</td>
+                    <td>{src}</td><td>{fl?.supply ?? "TBD"} {fl?.unit}</td><td>{fl?.capacity ?? "—"}</td>
+                    <td>{fl?.matches ?? "—"}</td><td>{fl?.matchesPerEntrant ?? "—"}</td><td>{fl?.outTotal ?? "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────── Schedule ─────────────────────────── */
+const MODE_LABEL: Record<string, string> = { unset: "Not set", fixed: "Fixed dates", play_by: "Play by", self_booking: "Players arrange", admin: "Admin schedules" };
+
+/** Short stage label: never the full format description. */
+export function shortStageName(stage: Stage) {
+  const n = stage.name.split(/[—:(]/)[0].trim();
+  return n.length > 38 ? `${n.slice(0, 36)}…` : n || STAGE_LABELS[stage.kind];
+}
+const fmtDate = (s?: string | null) => (s ? new Date(`${s}T00:00:00`).toLocaleDateString("en-ZA", { day: "numeric", month: "short" }) : null);
+
+export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Edit }) {
+  const d = def.scheduleDefaults ?? {};
+  const setD = (patch: Partial<typeof d>) => edit((x) => { x.scheduleDefaults = { ...x.scheduleDefaults, ...patch }; });
+  const setS = (id: string, patch: Record<string, unknown>) => edit((x) => {
+    allStages(x).forEach((r) => { if (r.stage.id === id) r.stage.schedule = { ...r.stage.schedule, ...patch }; });
+  });
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const [closedDivs, setClosedDivs] = useState<Set<string>>(new Set());
+  const toggle = (s: Set<string>, k: string) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; };
+  const groups = def.divisions.map((div) => ({ div, rows: allStages(def).filter((r) => r.division.id === div.id && r.stage.kind !== "pair_from_positions" && r.stage.kind !== "split") })).filter((g) => g.rows.length);
+  const allIds = groups.flatMap((g) => g.rows.map((r) => r.stage.id));
+  if (!groups.length) return <p className="text-xs text-white/50">No stages to schedule yet. Build the design first.</p>;
+
+  return (
+    <div className="space-y-3 text-xs text-white/80">
+      {/* Tournament defaults */}
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2 space-y-2">
+        <div className="font-semibold text-white">Tournament defaults <span className="font-normal text-white/45">— every stage uses these unless it sets its own</span></div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+          <Field label="Start date" tag={d.startDate ? "Required" : "Missing"} field="defaults.startDate"><Input type="date" className={f} value={d.startDate ?? ""} onChange={(e) => setD({ startDate: e.target.value || null })} /></Field>
+          <Field label="End date" tag={d.endDate ? "Required" : "Missing"} field="defaults.endDate"><Input type="date" className={f} value={d.endDate ?? ""} onChange={(e) => setD({ endDate: e.target.value || null })} /></Field>
+          <Field label="Day" tag="Optional"><select className={cn(sel, "w-full")} value={d.weekday ?? ""} onChange={(e) => setD({ weekday: e.target.value === "" ? null : Number(e.target.value) })}><option value="">Any</option>{DAYS.map((x, i) => <option key={x} value={i}>{x}</option>)}</select></Field>
+          <Field label="Start time" tag="Optional"><Input type="time" className={f} value={d.startTime ?? ""} onChange={(e) => setD({ startTime: e.target.value || null })} /></Field>
+          <Field label="Venues" tag="Optional" className="col-span-2"><Input className={f} placeholder="Club names, comma separated" defaultValue={(d.venueNames ?? []).join(", ")} key={(d.venueNames ?? []).join("|")} onBlur={(e) => setD({ venueNames: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) })} /></Field>
+          <Field label="Courts / venue" tag="Optional"><Input className={f} inputMode="numeric" value={d.courtsPerVenue ?? ""} onChange={(e) => setD({ courtsPerVenue: e.target.value ? Number(e.target.value) : null })} /></Field>
+          <Field label="Match minutes" tag="Optional"><Input className={f} inputMode="numeric" value={d.matchMinutes ?? ""} onChange={(e) => setD({ matchMinutes: e.target.value ? Number(e.target.value) : null })} /></Field>
+        </div>
+        <div className="flex flex-wrap gap-4 text-[11px]">
+          <label className="flex items-center gap-1"><input type="checkbox" checked={!!d.rotateVenues} onChange={(e) => setD({ rotateVenues: e.target.checked })} />Rotate venues</label>
+          <label className="flex items-center gap-1"><input type="checkbox" checked={!!d.provisionalBookings} onChange={(e) => setD({ provisionalBookings: e.target.checked })} />Hold courts provisionally once created</label>
+          <label className="flex items-center gap-1">Session minutes <span className="text-white/40">(optional, for capacity)</span>
+            <Input className={cn(f, "w-16 h-6")} inputMode="numeric" value={d.sessionMinutes ?? ""} onChange={(e) => setD({ sessionMinutes: e.target.value ? Number(e.target.value) : null })} /></label>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <button className="underline text-white/60" onClick={() => { setOpen(new Set(allIds)); setClosedDivs(new Set()); }}>Expand all</button>
+        <button className="underline text-white/60" onClick={() => setOpen(new Set())}>Collapse all</button>
+      </div>
+
+      {groups.map(({ div, rows }) => {
+        const divClosed = closedDivs.has(div.id);
+        return (
+          <div key={div.id} className="rounded-lg border border-white/10">
+            <button className="w-full flex items-center gap-2 px-2 py-1.5 text-left font-semibold text-white" onClick={() => setClosedDivs((s) => toggle(s, div.id))}>
+              {divClosed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}{div.name}
+              <span className="font-normal text-white/45">{rows.length} stage{rows.length === 1 ? "" : "s"}</span>
+            </button>
+            {!divClosed && (
+              <div className="divide-y divide-white/10">
+                <div className="hidden md:grid grid-cols-[minmax(0,2fr)_1fr_1.2fr_0.8fr_1fr_0.6fr_0.7fr] gap-2 px-2 py-1 text-[10px] uppercase text-white/40">
+                  <span>Stage</span><span>How</span><span>Dates</span><span>Day/time</span><span>Venue</span><span>Courts</span><span>Match</span>
+                </div>
+                {rows.map(({ stage, section }) => {
+                  const e = effectiveSchedule(def, stage), need = scheduleNeeds(stage.schedule.mode);
+                  const isOpen = open.has(stage.id);
+                  const cell = (v: ReactNode, inherited: boolean, required: boolean) =>
+                    v ? <span className={inherited ? "text-white/45" : ""}>{v}{inherited && <span className="text-[9px] ml-1">inh.</span>}</span>
+                      : required ? <span className="rounded bg-red-500/20 px-1 text-red-300">Missing</span> : <span className="text-white/30">—</span>;
+                  const dates = e.startDate.value || e.endDate.value ? `${fmtDate(e.startDate.value) ?? "…"}${e.endDate.value ? ` – ${fmtDate(e.endDate.value)}` : ""}` : stage.schedule.roundDates?.length ? `${stage.schedule.roundDates.length} round dates` : null;
+                  const dayTime = [e.weekday.value != null ? DAYS[e.weekday.value] : null, e.startTime.value].filter(Boolean).join(" ") || null;
+                  const venue = e.venueNames.value?.length ? `${e.venueNames.value.length > 1 ? `${e.venueNames.value.length} venues` : e.venueNames.value[0]}` : null;
+                  return (
+                    <div key={stage.id} data-field={`stage.${stage.id}`}>
+                      <button className="w-full grid grid-cols-2 md:grid-cols-[minmax(0,2fr)_1fr_1.2fr_0.8fr_1fr_0.6fr_0.7fr] gap-x-2 gap-y-0.5 px-2 py-1.5 text-left hover:bg-white/[0.04]" onClick={() => setOpen((s) => toggle(s, stage.id))}>
+                        <span className="col-span-2 md:col-span-1 flex items-center gap-1 font-medium text-white truncate">
+                          {isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
+                          <span className="truncate">{div.sections.length > 1 ? `${section.name} · ` : ""}{shortStageName(stage)}</span>
+                        </span>
+                        <span>{stage.schedule.mode === "unset" ? <span className="rounded bg-red-500/20 px-1 text-red-300">Not set</span> : MODE_LABEL[stage.schedule.mode]}</span>
+                        <span>{cell(dates, e.startDate.inherited || e.endDate.inherited, need.dates)}</span>
+                        <span>{cell(dayTime, e.weekday.inherited, false)}</span>
+                        <span className="truncate">{cell(venue, e.venueNames.inherited, need.venue)}</span>
+                        <span>{cell(e.courtsPerVenue.value, e.courtsPerVenue.inherited, need.courts)}</span>
+                        <span>{cell(e.matchMinutes.value ? `${e.matchMinutes.value}m` : null, e.matchMinutes.inherited, need.matchMinutes)}</span>
+                      </button>
+                      {isOpen && <StageScheduleEditor stage={stage} def={def} setS={setS} />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: TournamentDefinition; setS: (id: string, p: Record<string, unknown>) => void }) {
+  const s = stage.schedule, e = effectiveSchedule(def, stage), need = scheduleNeeds(s.mode);
+  const tag = (needed: boolean, own: unknown, inherited: boolean): "Required" | "Optional" | "Inherited" | "Not needed" | "Missing" =>
+    !needed ? "Not needed" : own != null && own !== "" && !(Array.isArray(own) && !own.length) ? "Required" : inherited ? "Inherited" : "Missing";
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 bg-white/[0.02] px-3 py-2">
+      <Field label="How it's scheduled" tag={s.mode === "unset" ? "Missing" : "Required"}>
+        <select className={cn(sel, "w-full")} value={s.mode} onChange={(ev) => setS(stage.id, { mode: ev.target.value })}>
+          {Object.entries(MODE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+      </Field>
+      <Field label={s.mode === "fixed" ? "Date" : "Start"} tag={tag(need.dates, s.startDate, e.startDate.inherited)}>
+        <Input type="date" className={f} value={s.startDate ?? ""} placeholder={e.startDate.value ?? ""} onChange={(ev) => setS(stage.id, { startDate: ev.target.value || null })} />
+      </Field>
+      <Field label={s.mode === "play_by" ? "Play by" : "End"} tag={tag(need.endDate, s.endDate, e.endDate.inherited) === "Not needed" ? "Optional" : tag(need.endDate, s.endDate, e.endDate.inherited)}>
+        <Input type="date" className={f} value={s.endDate ?? ""} onChange={(ev) => setS(stage.id, { endDate: ev.target.value || null })} />
+      </Field>
+      <Field label="Day" tag={e.weekday.inherited && s.weekday == null ? "Inherited" : "Optional"}>
+        <select className={cn(sel, "w-full")} value={s.weekday ?? ""} onChange={(ev) => setS(stage.id, { weekday: ev.target.value === "" ? null : Number(ev.target.value) })}>
+          <option value="">{e.weekday.inherited ? `Default (${DAYS[e.weekday.value as number]})` : "Any day"}</option>{DAYS.map((x, i) => <option key={x} value={i}>Every {x}</option>)}
+        </select>
+      </Field>
+      <Field label="Venues" tag={tag(need.venue, s.venueNames, e.venueNames.inherited)} className="col-span-2">
+        <Input className={f} placeholder={e.venueNames.inherited ? `Default: ${(e.venueNames.value ?? []).join(", ")}` : "Club names, comma separated"} defaultValue={(s.venueNames ?? []).join(", ")}
+          onBlur={(ev) => setS(stage.id, { venueNames: ev.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
+      </Field>
+      <Field label="Courts / venue" tag={tag(need.courts, s.courtsPerVenue, e.courtsPerVenue.inherited)}>
+        <Input className={f} inputMode="numeric" placeholder={e.courtsPerVenue.inherited ? `Default ${e.courtsPerVenue.value}` : ""} value={s.courtsPerVenue ?? ""} onChange={(ev) => setS(stage.id, { courtsPerVenue: ev.target.value ? Number(ev.target.value) : null })} />
+      </Field>
+      <Field label="Match minutes" tag={tag(need.matchMinutes, s.matchMinutes, e.matchMinutes.inherited)}>
+        <Input className={f} inputMode="numeric" placeholder={e.matchMinutes.inherited ? `Default ${e.matchMinutes.value}` : ""} value={s.matchMinutes ?? ""} onChange={(ev) => setS(stage.id, { matchMinutes: ev.target.value ? Number(ev.target.value) : null })} />
+      </Field>
+      <Field label="Session minutes" tag={need.venue ? (e.sessionMinutes.inherited && s.sessionMinutes == null ? "Inherited" : "Optional") : "Not needed"}>
+        <Input className={f} inputMode="numeric" placeholder={e.sessionMinutes.inherited ? `Default ${e.sessionMinutes.value}` : ""} value={s.sessionMinutes ?? ""} onChange={(ev) => setS(stage.id, { sessionMinutes: ev.target.value ? Number(ev.target.value) : null })} />
+      </Field>
+      <label className="flex items-center gap-1 pt-4 text-[11px]"><input type="checkbox" checked={!!s.rotateVenues} onChange={(ev) => setS(stage.id, { rotateVenues: ev.target.checked })} />Rotate venues</label>
+    </div>
+  );
+}
+
+/* ─────────────────────── Invitations & messages ─────────────────────── */
+export function InvitationsTab({ def, edit }: { def: TournamentDefinition; edit: Edit }) {
+  const c = def.comms ?? {}, p = def.players ?? {};
+  const set = (patch: Partial<typeof c>) => edit((d) => { d.comms = { ...d.comms, ...patch }; });
+  const [link, setLink] = useState(c.whatsappGroupUrl ?? "");
+  const linkBad = !!link && !isGroupInviteUrl(link);
+  const regCloseRequired = p.entryMethod !== "selected";
+  return (
+    <div className="space-y-4 text-xs text-white/80">
+      <div className="flex items-start gap-2 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-2 text-emerald-100">
+        <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+        <span>Nothing is sent from the builder, and creating the tournament sends nothing. Invitations go out only when an admin presses Send on the tournament afterwards.</span>
+      </div>
+
+      <section className="space-y-2">
+        <div className="font-semibold text-white">Invitations</div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <Field label="Sending" tag={c.inviteSending ? "Required" : "Missing"} field="inviteSending">
+            <select className={cn(sel, "w-full")} value={c.inviteSending ?? ""} onChange={(e) => set({ inviteSending: (e.target.value || null) as any })}>
+              <option value="">Not decided (stays manual)</option><option value="manual">Manual — admin presses Send</option><option value="automatic">Automatic</option>
+            </select>
+          </Field>
+          <Field label="Channels" tag={c.inviteChannels?.length ? "Required" : "Missing"} field="inviteChannels" className="lg:col-span-2">
+            <ChannelPicker value={c.inviteChannels ?? []} onChange={(v) => set({ inviteChannels: v })} disabled={["sms"]} />
+          </Field>
+          <Field label="Registration opens" tag="Optional" field="registrationOpensAt">
+            <Input type="date" className={f} value={c.registrationOpensAt ?? ""} onChange={(e) => set({ registrationOpensAt: e.target.value || null })} />
+          </Field>
+          <Field label="Registration closes" tag={regCloseRequired ? (c.registrationClosesAt || def.registrationClosesAt ? "Required" : "Missing") : "Optional"} field="registrationClosesAt">
+            <Input type="date" className={f} value={c.registrationClosesAt ?? def.registrationClosesAt ?? ""} onChange={(e) => set({ registrationClosesAt: e.target.value || null })} />
+          </Field>
+          <Field label="Reminders" tag="Optional" field="reminders">
+            <select className={cn(sel, "w-full")} value={c.reminders ?? ""} onChange={(e) => set({ reminders: (e.target.value || null) as any })}>
+              <option value="">Not set</option><option value="none">No reminders</option><option value="before_close">Before registration closes</option>
+              <option value="before_matches">Before matches</option><option value="both">Both</option>
+            </select>
+          </Field>
+        </div>
+        {c.inviteSending === "automatic" && <p className="text-amber-200">Automatic sending isn't switched on by the builder. After creation, invitations still need an admin to press Send until automatic sending is confirmed there.</p>}
+        <Field label="Invitation wording" tag="Optional" field="inviteMessage">
+          <Textarea className="min-h-[56px] bg-white/5 border-white/15 text-white text-xs" value={c.inviteMessage ?? ""} placeholder="Short message shown with the invitation" onChange={(e) => set({ inviteMessage: e.target.value || null })} />
+        </Field>
+        <p className="text-white/50">Audience: {p.audience ? p.audience.replace(/_/g, " ") : "not decided"}{p.confirmAvailabilityOnly ? " · selected players only confirm availability" : ""} — change this on Players.</p>
+      </section>
+
+      <section className="space-y-2">
+        <div className="font-semibold text-white">Fees</div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <Field label="Entry fee (R)" tag={c.entryFeeRands != null ? "Required" : "Missing"} field="entryFeeRands">
+            <Input className={f} inputMode="decimal" placeholder="0 for free" value={c.entryFeeRands ?? ""} onChange={(e) => set({ entryFeeRands: e.target.value === "" ? null : Math.max(0, Number(e.target.value) || 0) })} />
+          </Field>
+          <Field label="Payment methods" tag={c.entryFeeRands ? "Optional" : "Not needed"} className="sm:col-span-2">
+            <div className="flex flex-wrap gap-1">
+              {(["card", "eft", "cash", "account"] as const).map((m) => {
+                const on = (c.paymentMethods ?? []).includes(m);
+                return <button key={m} type="button" disabled={!c.entryFeeRands} onClick={() => set({ paymentMethods: on ? (c.paymentMethods ?? []).filter((x) => x !== m) : [...(c.paymentMethods ?? []), m], paymentRequired: true })}
+                  className={cn("rounded-full border px-2 py-0.5 text-[11px]", on ? "bg-primary text-primary-foreground border-primary" : "border-white/20 text-white/75", !c.entryFeeRands && "opacity-40")}>{m === "account" ? "Add to account" : m.toUpperCase()}</button>;
+              })}
+            </div>
+          </Field>
+        </div>
+      </section>
+
+      <section className="space-y-2" data-field="whatsappGroup">
+        <div className="font-semibold text-white">WhatsApp group</div>
+        <p>Do you want to add a WhatsApp group for this tournament?</p>
+        <div className="flex gap-1">
+          {(["yes", "no"] as const).map((v) => (
+            <button key={v} type="button" onClick={() => set({ whatsappGroup: v })}
+              className={cn("rounded-full border px-3 py-0.5 text-[11px]", c.whatsappGroup === v ? "bg-primary text-primary-foreground border-primary" : "border-white/20 text-white/75")}>{v === "yes" ? "Yes" : "No"}</button>
+          ))}
+          {!c.whatsappGroup && <span className="text-red-300 text-[11px] self-center ml-2">Not decided</span>}
+        </div>
+        {c.whatsappGroup === "yes" && (
+          <Field label="Group invite link" tag={link ? (linkBad ? "Missing" : "Optional") : "Optional"}>
+            <Input className={f} placeholder="https://chat.whatsapp.com/…" value={link} onChange={(e) => setLink(e.target.value)}
+              onBlur={() => { const n = normaliseGroupInviteUrl(link); if (n) setLink(n); set({ whatsappGroupUrl: n ?? (link.trim() || null) }); }} />
+            {linkBad && <span className="text-red-300 text-[11px]">That isn't a WhatsApp group invite link (it should start with https://chat.whatsapp.com/).</span>}
+            <span className="text-white/45 text-[11px]">Create the group on your phone (admin-only posting), then paste its invite link. You can also add it later on the tournament.</span>
+          </Field>
+        )}
+      </section>
+
+      <section className="space-y-2" data-field="resultNotify">
+        <div className="font-semibold text-white">After each match</div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <Field label="Result / congratulations messages" tag={c.resultNotify ? "Required" : "Missing"}>
+            <select className={cn(sel, "w-full")} value={c.resultNotify ?? ""} onChange={(e) => set({ resultNotify: (e.target.value || null) as any })}>
+              <option value="">Not decided</option><option value="none">None</option><option value="all">Every match</option><option value="playoffs">Play-offs only</option>
+            </select>
+          </Field>
+          <Field label="Channels" tag={c.resultNotify && c.resultNotify !== "none" ? "Optional" : "Not needed"} className="sm:col-span-2">
+            {c.resultNotify && c.resultNotify !== "none"
+              ? <ChannelPicker value={c.resultChannels ?? ["email"]} onChange={(v) => set({ resultChannels: v })} />
+              : <span className="text-white/40">No messages will be sent after matches.</span>}
+          </Field>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Review ─────────────────────────── */
+export function ReviewTab({ scope, def, readiness, mapping, validation, draftId, created, onCreated, onJump }: {
+  scope: BuilderScope; def: TournamentDefinition; readiness: Readiness; mapping: ExistingMapping; validation: ValidationResult;
+  draftId: string; created: boolean; onCreated: (id: string) => void; onJump: (item: ReadinessItem) => void;
+}) {
+  const { data: clubs = [] } = useHostClubs();
+  const { data: orgs = [] } = useOwnerOrganisations();
+  const [pickedHostClubId, setHostClubId] = useState("");
+  const hostClubId = scope.kind === "club" ? scope.clubId : pickedHostClubId;
+  const [ownerOrgId, setOwnerOrgId] = useState("");
+  const [confirm, setConfirm] = useState(false);
+  const [ackPartial, setAckPartial] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const c = def.comms ?? {};
+  const requiredMissing = readiness.missing.filter((m) => m.id !== "exec");
+  const exec = readiness.executability;
+  const canPress = !created && exec !== "blocked" && requiredMissing.length === 0 && !!hostClubId && !busy && (exec === "ready" || ackPartial);
+
+  const summary = useMemo(() => {
+    const sd = def.scheduleDefaults ?? {}, p = def.players ?? {};
+    return [
+      ["Format", def.divisions.map((d) => `${d.name}: ${d.sections.flatMap((s) => s.stages.map((st) => shortStageName(st))).join(" → ")}`).join(" | ") || "—"],
+      ["Entry", p.entryMethod ? p.entryMethod.replace(/_/g, " ") + (p.confirmAvailabilityOnly ? " (confirm availability only)" : "") : "—"],
+      ["Dates", sd.startDate ? `${sd.startDate} → ${sd.endDate ?? "?"}${sd.weekday != null ? `, ${DAYS[sd.weekday]}s` : ""}${sd.startTime ? ` from ${sd.startTime}` : ""}` : "—"],
+      ["Venues", sd.venueNames?.length ? `${sd.venueNames.join(", ")}${sd.rotateVenues ? " (rotating)" : ""}` : "—"],
+      ["Invitations", `${c.inviteSending === "automatic" ? "Automatic" : "Manual"} via ${(c.inviteChannels ?? []).map((x) => CHANNELS.find((k) => k.key === x)?.label).join(", ") || "—"}`],
+      ["Fee", c.entryFeeRands == null ? "—" : c.entryFeeRands === 0 ? "Free" : `R${c.entryFeeRands.toFixed(2)}`],
+      ["WhatsApp group", c.whatsappGroup === "yes" ? (c.whatsappGroupUrl ? "Yes, link saved" : "Yes, link to add") : c.whatsappGroup === "no" ? "No" : "—"],
+      ["After matches", c.resultNotify === "none" ? "No messages" : c.resultNotify ? `${c.resultNotify === "all" ? "Every match" : "Play-offs"} via ${(c.resultChannels ?? ["email"]).join(", ")}` : "—"],
+    ];
+  }, [def, c]);
+
+  const create = async () => {
+    setBusy(true);
+    try {
+      const { data, error } = await fromExt("club_champs")
+        .insert(sanitizeDraftPayload({ club_id: hostClubId, owner_org_id: ownerOrgId || undefined, status: "planning", ...mapping.champ }))
+        .select("id").single();
+      if (error) throw error;
+      const { error: exErr } = await fromExt("tournaments").update(sanitizeExtrasPayload(mapping.extras)).eq("id", data.id);
+      if (exErr) console.warn("extras", exErr.message);
+      if (mapping.whatsappGroupUrl) {
+        // Link only — the existing group card handles sharing. Nothing is sent here.
+        const { error: wgErr } = await fromExt("tournament_whatsapp_groups").insert({ champ_id: data.id, club_id: hostClubId, provider: "manual", invite_url: mapping.whatsappGroupUrl, group_name: def.name, status: "active" });
+        if (wgErr) toast.warning(`Tournament created, but the WhatsApp link wasn't saved: ${wgErr.message}`);
+      }
+      await fromExt("smart_tournament_drafts").update({ status: "created", created_tournament_id: data.id }).eq("id", draftId);
+      onCreated(data.id);
+    } catch (e: any) {
+      toast.error(`Create failed: ${e.message}`);
+    } finally { setBusy(false); setConfirm(false); }
+  };
+
+  const icon = (s: ItemState) => s === "complete" ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : s === "missing" ? <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 text-amber-300 shrink-0" />;
+
+  return (
+    <div className="space-y-4 text-xs text-white/85">
+      <div className="grid md:grid-cols-2 gap-2">
+        {readiness.sections.map((s) => (
+          <div key={s.key} className="rounded-lg border border-white/10 p-2 space-y-1">
+            <div className="flex items-center justify-between"><span className="font-semibold text-white">{s.title}</span><StateBadge state={s.state} /></div>
+            {s.items.map((i) => (
+              <button key={i.id} onClick={() => onJump(i)} className="w-full flex items-start gap-1.5 text-left rounded px-1 py-0.5 hover:bg-white/[0.05]">
+                {icon(i.state)}<span><span className="text-white/90">{i.label}:</span> <span className="text-white/60">{i.detail}</span></span>
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border border-white/10 p-2">
+        <div className="font-semibold text-white mb-1">Saved settings</div>
+        <dl className="grid sm:grid-cols-[120px_1fr] gap-x-2 gap-y-0.5">
+          {summary.map(([k, v]) => <Fragment key={k}><dt className="text-white/50">{k}</dt><dd>{v}</dd></Fragment>)}
+        </dl>
+      </div>
+
+      {validation.facts.length > 0 && (
+        <details className="rounded-lg border border-white/10 p-2"><summary className="cursor-pointer font-semibold text-white">The maths</summary>
+          <ul className="list-disc pl-4 mt-1 space-y-0.5">{validation.facts.map((x, i) => <li key={i}>{x}</li>)}</ul></details>
+      )}
+
+      <div className="rounded-lg border border-white/10 p-3 space-y-2">
+        <div className="font-semibold text-white">Create Tournament</div>
+        {exec === "ready" && <p className="flex gap-1.5 text-emerald-200"><CheckCircle2 className="w-4 h-4 shrink-0" />Every stage can run on today's tournament engine.</p>}
+        {exec === "partial" && (
+          <div className="rounded border border-amber-300/40 bg-amber-500/10 p-2 space-y-1 text-amber-100">
+            <div className="font-semibold">Can be created as a planning-stage tournament — some later stages can't run yet</div>
+            <p>The opening stages are created. These stages need the new multi-stage engine and are <b>not</b> created; they stay saved in this draft:</p>
+            <ul className="list-disc pl-4">{mapping.deferredStages.map((d, i) => <li key={i}>{d.division}: {d.stage} — {d.reason}</li>)}</ul>
+            <label className="flex items-center gap-1.5 pt-1"><input type="checkbox" checked={ackPartial} onChange={(e) => setAckPartial(e.target.checked)} />I understand these stages won't be created now</label>
+          </div>
+        )}
+        {exec === "blocked" && (
+          <div className="rounded border border-red-400/40 bg-red-500/10 p-2 space-y-1 text-red-100">
+            <div className="font-semibold">Can't be created yet</div>
+            {mapping.unsupported.map((u, i) => <div key={i}>{u}</div>)}
+            <p className="text-white/60">The design stays saved in this draft for preview.</p>
+          </div>
+        )}
+        {requiredMissing.length > 0 && (
+          <div className="space-y-0.5">
+            <div className="text-red-200">Still missing ({requiredMissing.length}):</div>
+            {requiredMissing.map((m) => <button key={m.id} onClick={() => onJump(m)} className="flex items-center gap-1 underline text-white/75"><CircleDot className="w-3 h-3" />{m.label}</button>)}
+          </div>
+        )}
+        <p className="font-semibold text-white">{RESULT_NONE_NOTE}</p>
+        <p className="text-white/55">Invitations are sent only later, when an admin presses Send on the tournament. No emails, WhatsApp messages, SMS or bookings are sent by creating it.</p>
+        {scope.kind === "club" ? (
+          <p className="text-white/60">Host and owner: <span className="text-white">{scope.clubName ?? "this club"}</span></p>
+        ) : <div className="grid md:grid-cols-2 gap-2">
+          <select className={sel} value={ownerOrgId} onChange={(e) => setOwnerOrgId(e.target.value)}>
+            <option value="">Organised by…</option>{orgs.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.kind})</option>)}
+          </select>
+          <select className={sel} value={hostClubId} onChange={(e) => setHostClubId(e.target.value)}>
+            <option value="">Host club…</option>{clubs.map((cl) => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
+          </select>
+        </div>}
+        <Button size="sm" disabled={!canPress} onClick={() => setConfirm(true)}>{created ? "Already created" : "Create Tournament"}</Button>
+      </div>
+
+      <AlertDialog open={confirm} onOpenChange={setConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create "{def.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This creates a real planning-stage tournament in the existing setup. {RESULT_NONE_NOTE}
+              {exec === "partial" && ` ${mapping.deferredStages.length} later stage(s) are not created and stay in the draft.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={create} disabled={busy}>Create Tournament</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

@@ -219,6 +219,8 @@ export type EventScopeSettings = z.infer<typeof EventScopeSchema>;
 export const DefinitionSchema = z.object({
   event: EventScopeSchema,
   version: z.literal(1).default(1),
+  /** Fast "I know what I want" setup path. Only controls which questions are shown — never the engine. */
+  quickPath: z.enum(["round_robin", "swiss", "knockout", "pools_playoffs", "custom"]).nullable().optional(),
   name: z.string().default("Untitled tournament"),
   ownerKind: z.enum(["club", "association", "federation"]).default("federation"),
   category: z.enum(["championship", "closed", "open", "invitational"]).default("open"),

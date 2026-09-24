@@ -1,7 +1,7 @@
 # AI Assistant: Live Tournament Diagnose → Repair (Super Admin Beta)
 
 ## Goal
-When someone reports a live tournament problem (e.g. "Rachel & Shania appear twice, Maria & Giselle are missing"), the Assistant checks the real tournament and explains the cause. It then offers a safe fix, repairs it only with approval, re-checks the tournament, and escalates only when it can't fix the problem safely. Players and club admins can still report problems. Only Super Admin can see the diagnosis and repair tools for now.
+When someone reports a live tournament problem (e.g. "Rachel & Shania appear twice, Maria & Giselle are missing"), the Assistant checks the real tournament and explains the cause. When it has proven a system bug, it fixes the problem immediately with no approval needed. It then re-checks the tournament and escalates only fixes that would change started or scored games.
 
 ## How it fits what exists today
 - `ai-help` edge function (index/tools/actions/flow) already provides: server-resolved identity/role, read tools, `propose_action` → one-time preview → Confirm, `ai_assist_interactions` audit, AI Activity view, rollback, ticket escalation, idempotent retry, 40s budget.
@@ -48,10 +48,17 @@ Each finding includes: code, a plain-language message, the rows affected, a susp
 - After success, the edge function re-runs `tournament_integrity_check` and stores the result on the same record ("Verified consistent" or the list of remaining findings).
 - Rollback: the stored before-image is restored by an inverse RPC, only if the affected rows are still unstarted and unscored. Otherwise rollback is refused and the reason is shown.
 
-## 3. Permission model
-- New beta key `ai_tournament_repair` in the existing `club_beta_features` / `can_use_ai_actions` gating. The repair tools are registered only when the user is a Super Admin, resolved on the server (never from what they type). Viewing a club never reduces Super Admin authority.
-- Club admins and players: the assistant runs the read-only integrity check internally to write a better reply and ticket. It shows a short, non-technical summary ("We found a duplicate team in the playoffs and have alerted support") and no repair controls.
-- The RPC checks Super Admin again on its own.
+## 3. Permission model (who approves what)
+A clear system bug does not need anyone's approval. If the tournament breaks its own saved settings (duplicate team, missing qualifier, split pair), that is a fault in SquashHub, not a decision anyone has to make.
+- **Auto-repair (no approval, anyone can trigger by reporting):** the assistant fixes the problem straight away, whether the report comes from a club admin, a player or Super Admin, when all of these are true:
+  - an integrity check proves the inconsistency;
+  - the fix comes directly from the tournament's saved settings and finished pool results;
+  - only unstarted, unscored games change.
+  It then re-checks, tells the reporter "Fixed: Maria & Giselle are now in the 7th/8th playoff", and logs the change in AI Activity so Super Admin can see it and undo it.
+- **Club admin approval:** decisions that are a matter of choice rather than a proven bug stay with the club, e.g. replacing a player or moving a game time. The tournament's own club admin confirms them in chat.
+- **Super Admin approval (only exception):** anything that would change a game that has started or already has a score, or delete data. These are shown as a preview, and the reporter is told support is handling it.
+- **Code defects:** the assistant can repair the data, but it cannot change the app's code. When the same fault keeps coming back, it records it as a system defect with all diagnostics so it can be fixed in the code here. The live tournament stays repaired in the meantime.
+- Safety stays on the server: identity and role are never taken from what someone types, the tournament must belong to the reporter's club (Super Admin: any club), and the repair RPC re-checks all of these conditions itself. Beta flag `ai_tournament_repair` limits this to Super Admin, Riverside and Nelspruit.
 
 ## 4. Timeout and live priority
 - There is a 40s overall budget, and the integrity check is deterministic, so it should take about 1 second and needs no model call.
@@ -61,11 +68,11 @@ Each finding includes: code, a plain-language message, the rows affected, a susp
 
 ## 5. Escalation rules
 A ticket is created only when:
-- the repair is high risk or touches a locked game;
-- the user is not Super Admin;
-- a check detects a system fault (for example, the generator would reproduce the same inconsistency);
+- the fix would touch a started or scored game (Super Admin approval needed);
+- the same fault comes back after a repair (code defect);
 - the plan is out of date twice in a row; or
 - the repair runs but verification still fails.
+A club admin or player reporting a proven bug is not a reason to escalate. Their problem gets fixed.
 
 The ticket body includes: tournament/club IDs, the findings, the suspected cause, the preview change list, steps attempted, and a link to the related Assistant record. It continues to use the existing retry protection against duplicate tickets.
 
@@ -99,15 +106,15 @@ Unit tests for the engine and planner, using fixtures built from the Family Doub
 Edge-function / flow tests:
 10. Super Admin, Afrikaans text marked as spoken → diagnosis + preview, no data change before Confirm.
 11. Confirm → RPC applied, verification passes, audit record has before/after, rollback works while games are unstarted.
-12. Club admin sends the same report → urgent ticket with diagnostics, no repair tools offered.
+12. Club admin (Rachel) sends the same report → automatic repair, verification, "Fixed" reply, AI Activity entry; no ticket.
 13. Slow path longer than 20s → `working` returned; polling delivers the result; retry creates no duplicate ticket.
 14. Repair verification fails → ticket raised automatically with the attempted steps.
 
 Live acceptance (safe copy): run scenario 1 on a cloned test tournament at Riverside as Super Admin, from voice input through repair, verification, AI Activity and rollback.
 
 ## Acceptance criteria
-- The Rachel scenario is diagnosed with its cause, and the repair is previewed, confirmed, applied and re-verified within one conversation. The phone never shows an edge-function error.
-- No scored or completed game is changed without separate manual approval; locked rows are always skipped and reported.
-- Only Super Admin sees the repair controls; others get a diagnosis-backed urgent ticket.
+- When Rachel (club admin) sends her exact report, the assistant finds the cause, fixes it automatically without approval, re-checks, and replies "Fixed". The phone never shows an edge-function error.
+- No started or scored game is changed without Super Admin approval; those games are always skipped and reported.
+- Every automatic fix is visible to Super Admin in AI Activity and can be undone.
 - Every repair appears in AI Activity with before/after, verification and rollback status.
 - All tests above pass. Nothing is published without a request.

@@ -121,6 +121,8 @@ export default function MatchMarker() {
   // game). Unless this marker explicitly handed over, we stay put, warn them,
   // and let them decide: keep marking (reclaim) or switch to the live view.
   const handedOverRef = useRef(false);
+  // Once this marker submits the result it navigates away itself.
+  const savingRef = useRef(false);
   const [stolenBy, setStolenBy] = useState<string | null>(null);
   // Close the scoreboard on every device once the result is submitted
   // (by this marker, another marker, or an admin).
@@ -553,6 +555,7 @@ export default function MatchMarker() {
   const pendingMatchIdRef = useRef<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  useEffect(() => { if (saving) savingRef.current = true; }, [saving]);
 
   const handleMatchComplete = async (result: MatchResult) => {
     if (!config) return;

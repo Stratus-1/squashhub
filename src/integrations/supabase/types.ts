@@ -116,6 +116,124 @@ export type Database = {
           },
         ]
       }
+      ai_assist_interactions: {
+        Row: {
+          action_args: Json | null
+          action_name: string | null
+          after_data: Json | null
+          attachments: Json
+          before_data: Json | null
+          club_id: string | null
+          confirmed_at: string | null
+          context: Json
+          created_at: string
+          error: string | null
+          escalation_reason: string | null
+          executed_at: string | null
+          expires_at: string | null
+          id: string
+          interpretation: string | null
+          kind: string
+          member_id: string | null
+          preview: Json | null
+          request_text: string | null
+          result: Json | null
+          reversible: boolean
+          role: string | null
+          rollback_of: string | null
+          rolled_back_by: string | null
+          status: string
+          ticket_id: string | null
+          transcript_used: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_args?: Json | null
+          action_name?: string | null
+          after_data?: Json | null
+          attachments?: Json
+          before_data?: Json | null
+          club_id?: string | null
+          confirmed_at?: string | null
+          context?: Json
+          created_at?: string
+          error?: string | null
+          escalation_reason?: string | null
+          executed_at?: string | null
+          expires_at?: string | null
+          id?: string
+          interpretation?: string | null
+          kind?: string
+          member_id?: string | null
+          preview?: Json | null
+          request_text?: string | null
+          result?: Json | null
+          reversible?: boolean
+          role?: string | null
+          rollback_of?: string | null
+          rolled_back_by?: string | null
+          status?: string
+          ticket_id?: string | null
+          transcript_used?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_args?: Json | null
+          action_name?: string | null
+          after_data?: Json | null
+          attachments?: Json
+          before_data?: Json | null
+          club_id?: string | null
+          confirmed_at?: string | null
+          context?: Json
+          created_at?: string
+          error?: string | null
+          escalation_reason?: string | null
+          executed_at?: string | null
+          expires_at?: string | null
+          id?: string
+          interpretation?: string | null
+          kind?: string
+          member_id?: string | null
+          preview?: Json | null
+          request_text?: string | null
+          result?: Json | null
+          reversible?: boolean
+          role?: string | null
+          rollback_of?: string | null
+          rolled_back_by?: string | null
+          status?: string
+          ticket_id?: string | null
+          transcript_used?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_assist_interactions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_assist_interactions_rollback_of_fkey"
+            columns: ["rollback_of"]
+            isOneToOne: false
+            referencedRelation: "ai_assist_interactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_assist_interactions_rolled_back_by_fkey"
+            columns: ["rolled_back_by"]
+            isOneToOne: false
+            referencedRelation: "ai_assist_interactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_conversations: {
         Row: {
           club_id: string | null
@@ -15113,6 +15231,16 @@ export type Database = {
         Returns: undefined
       }
       age_group_for_age: { Args: { _age: number }; Returns: string }
+      ai_replace_tournament_player: {
+        Args: {
+          p_champ_id: string
+          p_new_member: string
+          p_old_member: string
+          p_only_match_ids?: string[]
+          p_preview?: boolean
+        }
+        Returns: Json
+      }
       allocate_next_member_number: {
         Args: { _club_id: string }
         Returns: string
@@ -15413,6 +15541,10 @@ export type Database = {
       }
       can_self_claim_club_admin: {
         Args: { _club_id: string }
+        Returns: boolean
+      }
+      can_use_ai_actions: {
+        Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
       can_use_tournament_beta: {

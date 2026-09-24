@@ -1931,3 +1931,9 @@ NSA's tournament venue picker merged legacy `association_affiliated_clubs` with 
 ### 2026-09-24 — Tournament Beta for selected clubs
 - New `club_beta_features` (feature `tournament_beta`, Super Admin managed). Riverside enabled. `can_use_tournament_beta()` gates club-owned smart drafts (RLS) and `smart-tournament-interpret`. Club Admin shows a separate "Tournament Beta" tile next to the unchanged Tournaments tile, rendering the same `SmartTournamentBuilderCore` in club scope.
 - 2026-09-24 Tournament Beta voice input: mic button in builder chat box -> `smart-tournament-transcribe` (Lovable AI google/gemini-3.5-transcribe, 16kHz WAV in memory, same beta access check). Transcript only fills the text box; Send uses the existing interpret flow.
+
+## 2026-09-24 — AI Help Assistant beta
+- Help bubble shows `AiHelpBetaPanel` for clubs with `club_beta_features.feature='ai_actions'` (Riverside) and Super Admin; others unchanged.
+- Edge function `ai-help` (ask/confirm/cancel/escalate/rollback): context and permissions resolved server-side; actions = create_booking, cancel_my_booking, replace_tournament_player (admins, unplayed games only), update_my_contact. Preview stored server-side, 15-min one-time confirm; failures/out-of-scope requests open support tickets.
+- Log: `ai_assist_interactions`; Super Admin view at `/admin/support` → "AI Activity (beta)" with beta club switch and inverse-operation rollback.
+- Voice reuses `VoiceInputButton` + `smart-tournament-transcribe` (`purpose=ai_help` checks `can_use_ai_actions`). Screenshots in `support-attachments/ai-help/<uid>/`.

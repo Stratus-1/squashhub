@@ -16,6 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
 import { DesignCanvas } from "@/components/smart-builder/DesignCanvas";
 import { canUseSmartBuilder, SMART_BUILDER_LABEL, SMART_BUILDER_SUBLABEL } from "@/lib/smart-builder/access";
 import { allStages, emptyDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
@@ -156,6 +157,10 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   const [thinking, setThinking] = useState(false);
   const [dirty, setDirty] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [voiceErr, setVoiceErr] = useState<string | null>(null);
+  const [voiceNote, setVoiceNote] = useState<string | null>(null);
+  // Text already in the box when a voice transcript starts — the transcript is appended to it.
+  const voiceBase = useRef<string | null>(null);
 
   useEffect(() => {
     if (!draft) return;
@@ -304,8 +309,9 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
               <VoiceInputButton clubId={scope.kind === "club" ? scope.clubId : undefined} disabled={thinking}
                 onError={setVoiceErr}
                 onTranscript={(t, final) => {
+                  if (voiceBase.current === null) voiceBase.current = input.trim() ? `${input.trim()} ` : "";
                   setInput(voiceBase.current + t);
-                  if (final) { setVoiceNote("Check the transcript, fix anything, then press Send."); inputRef.current?.focus(); }
+                  if (final) { voiceBase.current = null; setVoiceNote("Check the transcript, fix anything, then press Send."); inputRef.current?.focus(); }
                 }} />
               <Button size="icon" className="h-9 w-9 shrink-0" disabled={thinking || !input.trim()} onClick={() => { setVoiceNote(null); send(); }}><Send className="w-4 h-4" /></Button>
             </div>

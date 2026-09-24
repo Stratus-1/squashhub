@@ -1449,18 +1449,49 @@ export default function ClubChampsView() {
           rowsToInsert.push(row);
         }
       }
-      // Delete any leftover incomplete playoff rows that we didn't reuse.
+      // Reserved slots whose key didn't match (e.g. format changed after the
+      // schedule was generated) must keep their date/time/court. Re-use them
+      // for unmatched rows instead of deleting the timed slot and inserting an
+      // untimed row — that is how the Family Doubles playoff times vanished.
+      const spareSlots = incompletePlayoffs
+        .filter((m: any) => !isPlayoffRowLocked(m) && !usedExistingIds.has(m.id))
+        .sort((a: any, b: any) =>
+          String(a.scheduled_date ?? "").localeCompare(String(b.scheduled_date ?? "")) ||
+          String(a.scheduled_time ?? "").localeCompare(String(b.scheduled_time ?? "")) ||
+          (a.court_id ?? 0) - (b.court_id ?? 0));
+      const stillToInsert: any[] = [];
+      for (const row of rowsToInsert) {
+        const target = spareSlots.shift();
+        if (!target) { stillToInsert.push(row); continue; }
+        usedExistingIds.add(target.id);
+        const { error: uErr } = await fromExt("club_champs_matches")
+          .update({
+            stage: row.stage,
+            round_number: row.round_number,
+            bracket_position: row.bracket_position,
+            player_a_member_id: row.player_a_member_id,
+            partner_a_member_id: row.partner_a_member_id,
+            player_b_member_id: row.player_b_member_id,
+            partner_b_member_id: row.partner_b_member_id,
+            stage_label: row.stage_label,
+            placeholder_a: row.placeholder_a ?? null,
+            placeholder_b: row.placeholder_b ?? null,
+          })
+          .eq("id", target.id);
+        if (uErr) throw uErr;
+      }
+      // Delete only true surplus rows that carry no reserved time slot.
       const leftoverIds = incompletePlayoffs
-        .filter((m: any) => !isPlayoffRowLocked(m))
-        .map((m: any) => m.id)
-        .filter((id: string) => !usedExistingIds.has(id));
+        .filter((m: any) => !isPlayoffRowLocked(m) && !usedExistingIds.has(m.id))
+        .filter((m: any) => !m.scheduled_time && !m.court_id)
+        .map((m: any) => m.id);
       if (leftoverIds.length > 0) {
         const { error: delErr } = await fromExt("club_champs_matches").delete().in("id", leftoverIds);
         if (delErr) throw delErr;
       }
 
-      if (rowsToInsert.length > 0) {
-        const { error: insErr } = await fromExt("club_champs_matches").insert(rowsToInsert as any);
+      if (stillToInsert.length > 0) {
+        const { error: insErr } = await fromExt("club_champs_matches").insert(stillToInsert as any);
         if (insErr) throw insErr;
       }
       return newRows.length;
@@ -1483,21 +1514,17 @@ export default function ClubChampsView() {
     },
   });
 
-  // ── Live play-off seeding ────────────────────────────────────────────
-  // Seeds are recalculated after EVERY completed match — provisionally
-  // while pool games are still running, then locked in once the last pool
-  // game is played. Downstream rounds (SF → Final / 3rd) resolve the same
-  // way as their feeders complete. Runs once per distinct set of completed
-  // matches so it never loops.
+  // ── Stage transition: pools → play-offs ─────────────────────────────
+  // Completion of every pool game is the stage boundary. Only then are the
+  // (already reserved, timed) play-off slots filled from the final pool
+  // standings, which count stage=group rows only and are therefore frozen.
+  // Before the boundary slots stay TBD; after it, filled/started slots are
+  // never re-seeded automatically. Editing slot times never triggers this.
   const autoPlayoffKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!canManage || !enablePlayoffs) return;
     if (generatePlayoffs.isPending) return;
-    if (groupResultsCount === 0) return;
-    // Once the pools are closed and any play-off game has been played or
-    // started, the play-off line-up is locked — never re-seed automatically.
-    const playoffStarted = playoffMatches.some((m: any) => isPlayoffRowLocked(m));
-    if (groupComplete && playoffStarted) return;
+    if (!shouldAutoFillPlayoffs({ groupComplete, playoffRows: playoffMatches as any[] })) return;
 
     const completed = (matches as any[]).filter((m: any) => m.status === "completed");
     const key = completed.map((m: any) => m.id).sort().join(",");
@@ -1640,7 +1667,13 @@ export default function ClubChampsView() {
               <Button
                 variant={groupComplete ? "default" : "outline"}
                 size="sm"
-                onClick={() => generatePlayoffs.mutate({})}
+                onClick={() => {
+                  const filled = playoffMatches.some((m: any) => m.player_a_member_id || m.player_b_member_id);
+                  if (filled && !window.confirm(
+                    "Play-offs are already filled from the pool standings. Rebuild them? Started or scored play-off games will not be changed.",
+                  )) return;
+                  generatePlayoffs.mutate({});
+                }}
                 disabled={groupResultsCount === 0 || generatePlayoffs.isPending}
                 title={
                   groupResultsCount === 0

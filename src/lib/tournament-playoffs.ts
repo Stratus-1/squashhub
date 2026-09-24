@@ -822,3 +822,16 @@ export function enforceRegisteredPairs<T extends {
   }
   return rows;
 }
+
+/**
+ * Stage boundary rule: auto-fill reserved play-off slots only once every
+ * pool game is complete, and only while some slot is still unfilled.
+ */
+export function shouldAutoFillPlayoffs(input: {
+  groupComplete: boolean;
+  playoffRows: Array<{ player_a_member_id?: string | null; player_b_member_id?: string | null }>;
+}): boolean {
+  if (!input.groupComplete) return false;
+  if (input.playoffRows.length === 0) return true;
+  return input.playoffRows.some((r) => !r.player_a_member_id || !r.player_b_member_id);
+}

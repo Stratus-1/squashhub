@@ -209,7 +209,11 @@ const toFixtureRow = (divisionKey: string, m: Record<string, any>, kind: StageKi
   id: m.id, divisionId: divisionKey, stageId: m.stage_key, stageKind: kind, round: m.round_number,
   a: m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id,
   b: m.partner_b_member_id ? `${m.player_b_member_id}+${m.partner_b_member_id}` : m.player_b_member_id,
-  status: m.status, winner: m.winner_member_id, score: m.score,
+  status: m.status, score: m.score,
+  winner: !m.winner_member_id ? null
+    : [m.player_a_member_id, m.partner_a_member_id].includes(m.winner_member_id)
+      ? (m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id)
+      : (m.partner_b_member_id ? `${m.player_b_member_id}+${m.partner_b_member_id}` : m.player_b_member_id),
 });
 
 export async function previewStructuredPlayoffs(db: Db, tid: string, divisionKey: string, stageKey: string): Promise<PlayoffPreview> {
@@ -240,4 +244,23 @@ export async function confirmStructuredPlayoffs(db: Db, tid: string, divisionKey
   const rows = confirmPlayoffs(tid, d, preview, { ownerConfirmed, existing });
   const ids = await persistStructure(db, tid, spec);
   return insertFixtures(db, tid, spec, ids, rows, existing);
+}
+
+/** Next knockout round (QF → SF → Final) inside the SAME knockout stage; pool stays NULL. */
+export function nextKnockoutRound(tid: string, divisionKey: string, stageKey: string, rows: FixtureRow[]): EngineFixture[] {
+  const ko = rows.filter((f) => f.divisionId === divisionKey && f.stageId === stageKey);
+  if (!ko.length) throw new IntegrityError("no_stage_rows", "Knockout stage has no games yet.");
+  if (ko.some((f) => f.stageKind !== "knockout")) throw new IntegrityError("stage_kind", "Only knockout stages advance by rounds.");
+  const last = Math.max(...ko.map((f) => f.round ?? 1));
+  const cur = ko.filter((f) => (f.round ?? 1) === last).sort((a, b) => ((a as any).slot ?? 0) - ((b as any).slot ?? 0));
+  if (cur.length < 2) throw new IntegrityError("final_done", "The final has already been generated.");
+  if (!cur.every((f) => f.winner || !f.a || !f.b)) throw new IntegrityError("prereq", "Current round is not finished.");
+  const win = (f: FixtureRow) => f.winner ?? f.a ?? f.b;
+  const next: EngineFixture[] = [];
+  for (let i = 0; i < cur.length; i += 2) next.push({
+    tournamentId: tid, divisionId: divisionKey, stageId: stageKey, stageKind: "knockout",
+    roundId: `${stageKey}:r${last + 1}`, round: last + 1, poolId: null, slot: i / 2 + 1, a: win(cur[i]), b: win(cur[i + 1]),
+  });
+  assertNoReentry([...ko, ...next]);
+  return next;
 }

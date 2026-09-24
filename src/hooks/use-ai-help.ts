@@ -60,6 +60,18 @@ export function pageIds(pathname: string, search: string): Record<string, string
   return ids;
 }
 
+/** Same payload for typed and spoken requests; the request id makes retries idempotent. */
+export function buildAskPayload(a: {
+  question: string; voice: boolean; requestId: string; context: unknown;
+  history: { role: "user" | "assistant"; content: string }[];
+  atts: { path: string; name: string; mime: string; size: number }[];
+}) {
+  return {
+    mode: "ask", question: a.question, history: a.history, transcriptUsed: a.voice, context: a.context, clientRequestId: a.requestId,
+    attachments: a.atts.map(({ path, name, mime, size }) => ({ path, name, mime, size })),
+  };
+}
+
 export const AI_HELP_NETWORK_ERROR = "Couldn't reach the assistant. Your message is saved — tap Retry.";
 
 export async function callAiHelp(body: Record<string, unknown>): Promise<AiHelpReply> {

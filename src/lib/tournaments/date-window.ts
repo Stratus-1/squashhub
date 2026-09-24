@@ -74,6 +74,10 @@ export function specDateIssues(spec: TournamentSpec, tw: DateWindow): DateIssue[
  * Fill inheriting stage schedules from the canonical window, for generation only.
  * Explicit overrides are kept as they are. Nothing here is persisted back.
  */
+const RAW = new WeakMap<object, PlannedStage["schedule"]>();
+/** The stage's schedule exactly as the owner set it (inheritance intact) — what gets persisted. */
+export function rawSchedule(st: PlannedStage): PlannedStage["schedule"] { return RAW.get(st) ?? st.schedule; }
+
 export function resolveSpecDates(spec: TournamentSpec, tw: DateWindow): TournamentSpec {
   return {
     ...spec,
@@ -82,7 +86,7 @@ export function resolveSpecDates(spec: TournamentSpec, tw: DateWindow): Tourname
       stages: d.stages.map((st) => {
         const s = st.schedule ?? ({ rule: null } as PlannedStage["schedule"]);
         const sw = stageWindow(st, tw);
-        return {
+        const out = {
           ...st,
           schedule: {
             ...s,
@@ -91,6 +95,8 @@ export function resolveSpecDates(spec: TournamentSpec, tw: DateWindow): Tourname
             deadline: s.rule === "play_by" ? s.deadline ?? sw.end : s.deadline,
           },
         };
+        RAW.set(out, s);
+        return out;
       }),
     })),
   };

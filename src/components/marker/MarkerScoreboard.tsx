@@ -901,6 +901,14 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
           <p className="text-xs text-center text-muted-foreground mt-1">
             {completedGames.map((g) => `${g.a}-${g.b}`).join(", ")} in {formatDuration(elapsed)}
           </p>
+          {/* Reopened finished match: the live "last point" submit never fired
+              on this device, so offer an explicit submit. */}
+          <Button
+            className="w-full mt-3"
+            onClick={() => onMatchComplete({ games: completedGames, winnerId: matchWinner, durationSeconds: elapsed })}
+          >
+            <Flag className="w-4 h-4" /> Submit result
+          </Button>
         </Card>
       )}
     </div>

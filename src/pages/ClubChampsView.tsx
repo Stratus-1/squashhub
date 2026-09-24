@@ -941,6 +941,7 @@ export default function ClubChampsView() {
           return (
             <CollapsibleSection
               key={poolNumber}
+              defaultOpen={!finals}
               className="space-y-2"
               header={
                 <>

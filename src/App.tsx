@@ -105,7 +105,7 @@ const HonestyBar = lazy(() => import("./pages/HonestyBar"));
 const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { useMyRoles } from "@/hooks/use-data";
-import { useMyClub, useMyClubMember, useIsSuperAdmin } from "@/hooks/use-club";
+import { useMyClub, useMyClubMember, useIsSuperAdmin, useSuperAdminStatus } from "@/hooks/use-club";
 import { useIsAssociationAdmin } from "@/hooks/use-association-admin";
 import { NoClubAccess } from "@/components/NoClubAccess";
 import { fromExt } from "@/lib/supabase-ext";
@@ -348,11 +348,13 @@ function SubdomainMembershipGate({ children }: { children: React.ReactNode }) {
 function RootClubGate({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { subdomain } = useClubContext();
-  const isSuperAdmin = useIsSuperAdmin();
+  const { isSuperAdmin, isLoading: superLoading } = useSuperAdminStatus();
   const [needsClub, setNeedsClub] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    // Wait until platform-admin status is known — never redirect admins early.
+    if (superLoading) { setNeedsClub(null); return; }
     if (!user?.id || subdomain || isSuperAdmin) {
       setNeedsClub(false);
       return;
@@ -362,12 +364,20 @@ function RootClubGate({ children }: { children: React.ReactNode }) {
       .eq("user_id", user.id)
       .limit(1)
       .maybeSingle()
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (cancelled) return;
-        setNeedsClub(error ? false : !data);
+        if (error || data) { setNeedsClub(false); return; }
+        // Unclaimed member row matching the login email still counts as a club.
+        const email = user.email?.trim();
+        if (email) {
+          const { data: byEmail } = await fromExt("club_members").select("id").ilike("email", email).limit(1).maybeSingle();
+          if (cancelled) return;
+          if (byEmail) { setNeedsClub(false); return; }
+        }
+        setNeedsClub(true);
       });
     return () => { cancelled = true; };
-  }, [user?.id, subdomain, isSuperAdmin]);
+  }, [user?.id, user?.email, subdomain, isSuperAdmin, superLoading]);
 
   if (needsClub === null) {
     return (

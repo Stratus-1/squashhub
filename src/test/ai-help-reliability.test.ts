@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { nextStepDecision, replayStored, STEP_BUDGET_MS, ESCALATED_ANSWER } from "../../supabase/functions/ai-help/flow";
 
-vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke: vi.fn() } } }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke: vi.fn() }, rpc: vi.fn(), from: vi.fn(), storage: { from: vi.fn() } } }));
 import { supabase } from "@/integrations/supabase/client";
 import { buildAskPayload, callAiHelp, AI_HELP_NETWORK_ERROR } from "@/hooks/use-ai-help";
 

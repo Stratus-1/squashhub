@@ -14080,6 +14080,9 @@ export type Database = {
       tournaments: {
         Row: {
           avoid_back_to_back: boolean
+          builder_architecture: string
+          builder_spec: Json | null
+          builder_spec_version: number
           champion_scope: string
           club_id: string
           competition_level: string | null
@@ -14186,6 +14189,9 @@ export type Database = {
         }
         Insert: {
           avoid_back_to_back?: boolean
+          builder_architecture?: string
+          builder_spec?: Json | null
+          builder_spec_version?: number
           champion_scope?: string
           club_id: string
           competition_level?: string | null
@@ -14292,6 +14298,9 @@ export type Database = {
         }
         Update: {
           avoid_back_to_back?: boolean
+          builder_architecture?: string
+          builder_spec?: Json | null
+          builder_spec_version?: number
           champion_scope?: string
           club_id?: string
           competition_level?: string | null

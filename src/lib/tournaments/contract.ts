@@ -112,7 +112,7 @@ export function contractIssues(c: DivisionContract): ContractIssue[] {
     if (p.mode === "all_continue" && !p.standings) e("standings_rule", `${s.name}: choose whether points carry forward or reset.`, s.id);
     if (p.mode === "qualifiers") {
       if (!s.qualify || !s.qualify.perPool) e("playoff_qualify", `${s.name}: who qualifies is not defined.`, s.id);
-      else if (s.kind === "knockout" && !s.qualify.mapping) e("playoff_mapping", `${s.name}: how qualifiers are mapped/seeded is not defined.`, s.id);
+      else if (s.kind === "knockout" && !s.qualify.mapping && !s.qualify.transition) e("playoff_mapping", `${s.name}: how qualifiers are mapped/seeded is not defined.`, s.id);
       if (s.kind !== "knockout" && s.kind !== "placement") e("qualifier_target", `${s.name}: qualifiers currently feed a knockout only.`, s.id);
       if (s.qualify?.perPool && prev.pools) {
         const q = s.qualify.perPool * prev.pools;

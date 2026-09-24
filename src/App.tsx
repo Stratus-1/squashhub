@@ -105,7 +105,7 @@ const HonestyBar = lazy(() => import("./pages/HonestyBar"));
 const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { useMyRoles } from "@/hooks/use-data";
-import { useMyClub, useMyClubMember, useIsSuperAdmin } from "@/hooks/use-club";
+import { useMyClub, useMyClubMember, useIsSuperAdmin, useSuperAdminStatus } from "@/hooks/use-club";
 import { useIsAssociationAdmin } from "@/hooks/use-association-admin";
 import { NoClubAccess } from "@/components/NoClubAccess";
 import { fromExt } from "@/lib/supabase-ext";

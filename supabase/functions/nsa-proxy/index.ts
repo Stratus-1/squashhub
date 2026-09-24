@@ -24,6 +24,31 @@ const SEASON_MAP_TTL_MS = 24 * 60 * 60 * 1000;
 
 type CacheEntry = { at: number; data: unknown };
 const cache = new Map<string, CacheEntry>();
+const STALE_MAX_MS = 24 * 60 * 60 * 1000;
+
+/** On upstream failure, serve the last good copy (up to 24h old) instead of a 502. */
+function staleOr502(key: string, error: string, extra: Record<string, unknown> = {}) {
+  const c = cache.get(key);
+  if (c && Date.now() - c.at < STALE_MAX_MS) {
+    console.warn(`nsa-proxy serving stale ${key}: ${error}`);
+    return new Response(JSON.stringify({ data: c.data, cached: true, stale: true, age_ms: Date.now() - c.at, warning: error }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  return new Response(JSON.stringify({ error, ...extra }),
+    { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+async function fetchWithRetry(url: string, init: RequestInit, tries = 2): Promise<Response> {
+  let last: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, init);
+      if (r.ok || (r.status < 500 && r.status !== 429) || i === tries - 1) return r;
+    } catch (e) { last = e; if (i === tries - 1) throw e; }
+    await new Promise((res) => setTimeout(res, 400 * (i + 1)));
+  }
+  throw last;
+}
 
 // Season map: { seasons: [{id, label}], divisions: { [season_id]: [{id, name}] } }
 type SeasonMap = {
@@ -469,8 +494,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ data: result, cached: false }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (err) {
-      return new Response(JSON.stringify({ error: `Fixture penalties fetch failed: ${(err as Error).message}` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return staleOr502(key, `Fixture penalties fetch failed: ${(err as Error).message}`);
     }
   }
 
@@ -494,13 +518,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ data: result, cached: false }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (err) {
-      return new Response(JSON.stringify({ error: `Fixture results fetch failed: ${(err as Error).message}` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return staleOr502(key, `Fixture results fetch failed: ${(err as Error).message}`);
     }
   }
 
   // ---------- standings ----------
   if (endpoint === "standings") {
+    let standingsKey = "";
     try {
       const map = await fetchSeasonMap();
 
@@ -549,6 +573,7 @@ Deno.serve(async (req) => {
       }
 
       const key = cacheKey("standings", { season_id: seasonId, division_id: divisionId });
+      standingsKey = key;
       const cached = cache.get(key);
       if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
         return new Response(
@@ -565,10 +590,7 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } catch (err) {
-      return new Response(
-        JSON.stringify({ error: `Standings fetch failed: ${(err as Error).message}` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return staleOr502(standingsKey, `Standings fetch failed: ${(err as Error).message}`);
     }
   }
 
@@ -585,16 +607,13 @@ Deno.serve(async (req) => {
   const upstreamUrl = buildUrl(endpoint, params);
 
   try {
-    const upstream = await fetch(upstreamUrl, {
+    const upstream = await fetchWithRetry(upstreamUrl, {
       method: "GET",
       headers: { Accept: "application/json", "User-Agent": "SquashHub-Proxy/1.0" },
     });
 
     if (!upstream.ok) {
-      return new Response(
-        JSON.stringify({ error: `NSA returned HTTP ${upstream.status}`, url: upstreamUrl }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return staleOr502(key, `NSA returned HTTP ${upstream.status}`, { url: upstreamUrl });
     }
 
     const text = await upstream.text();
@@ -602,10 +621,7 @@ Deno.serve(async (req) => {
     try {
       data = JSON.parse(text);
     } catch {
-      return new Response(
-        JSON.stringify({ error: "NSA returned non-JSON", preview: text.slice(0, 200) }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return staleOr502(key, "NSA returned non-JSON", { preview: text.slice(0, 200) });
     }
 
     cache.set(key, { at: Date.now(), data });
@@ -615,9 +631,6 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: `Fetch failed: ${(err as Error).message}` }),
-      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return staleOr502(key, `Fetch failed: ${(err as Error).message}`);
   }
 });

@@ -80,6 +80,7 @@ function BetaHeader({ onBack, scope }: { onBack: (() => void) | null; scope: Bui
 
 function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
   const qc = useQueryClient();
+  const [pendingDelete, setPendingDelete] = useState<Draft | null>(null);
   const scopeKey = scope.kind === "club" ? scope.clubId : "platform";
   const { data: drafts = [] } = useQuery({
     queryKey: ["smart-drafts", scopeKey],

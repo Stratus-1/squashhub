@@ -4,6 +4,8 @@
  * readiness Review. Every control reads/writes `def` — the same object the AI
  * proposes changes to — so chat, forms and review can never drift apart.
  */
+import { persistStructure, specFromDefinition } from "@/lib/tournaments/structured-persist";
+import { supabaseDb } from "@/lib/tournaments/structured-db";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";

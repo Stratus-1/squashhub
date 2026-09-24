@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Show Nelspruit Family Doubles standings as separate Pool A and Pool B tables for saved single-round-robin divisions
+
 - [x] Restore NSA venue club choices by resolving the Federation owner across all association league rows
 - [x] Align regional tournament venue and entrant clubs with the Federation tree; exclude stale affiliations such as Durbanville from NSA
 - [x] Resolve cross-club entrant names on the regional tournament review and post-rebuild schedule without changing fixtures

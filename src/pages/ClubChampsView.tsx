@@ -436,7 +436,7 @@ export default function ClubChampsView() {
   /** Round robin divisions can also be split into pools (post-pool playoffs). */
   const isRoundRobinForLeague = (gn: number) => {
     const perLeague = leagueFormatsCfg?.[String(gn)];
-    if (perLeague) return perLeague === "round_robin";
+    if (perLeague) return ["round_robin", "single_round_robin", "double_round_robin"].includes(perLeague);
     return !isSwissMode && (champ as any)?.round_format !== "knockout";
   };
   const poolCountFor = (gn: number) =>

@@ -1962,3 +1962,8 @@ NSA's tournament venue picker merged legacy `association_affiliated_clubs` with 
 
 ### 2026-09-24 — Play-off games counted as pool games
 Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharing group_number, giving a phantom 7th game and making auto re-seeding reshuffle play-offs after every play-off result. Fix: standings count only stage=group; auto re-seed stops once pools are complete and any play-off has started. Repaired Nelspruit Family Doubles 11th/12th row.
+
+### 2026-09-24 — Family Doubles (Nelspruit) fixed-pair playoff lock
+- Cause: `generatePlayoffs` (auto + "Regenerate") rewrote player/partner IDs on any non-completed playoff row, including in-progress rows and "scheduled" rows already carrying game scores; partners came from provisional standings rows rather than registered entries. Rotation-doubles code is not involved.
+- Fix: `isPlayoffRowLocked` freezes started/scored rows (never re-seeded or deleted); `enforceRegisteredPairs` forces every doubles side to its registered partner and refuses to invent one. Tests: `src/lib/tournament-playoffs.fixed-pairs.test.ts`.
+- Live data verified: all 30 pool + 6 placement rows use the 12 registered pairs; slots 1001–1006 = Pool 1 #N vs Pool 2 #N. No data changed.

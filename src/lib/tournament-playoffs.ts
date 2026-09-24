@@ -756,3 +756,69 @@ export function buildPlayoffPlaceholders(input: PlaceholderInput): PlayoffMatchR
 
   return rows;
 }
+
+// ── Fixed-pair doubles integrity ─────────────────────────────────────────
+// A registered doubles pair is ONE immutable team from registration through
+// pools, standings and every play-off round. Play-off generation must carry
+// the exact registered pair forward and never re-pair individuals.
+
+/** A play-off row that has been started or scored must never be re-seeded. */
+export function isPlayoffRowLocked(m: {
+  status?: string | null;
+  score?: string | null;
+  game_scores?: string | null;
+  side_a_points?: number | null;
+  side_b_points?: number | null;
+}): boolean {
+  if (!m) return false;
+  if (m.status && m.status !== "scheduled") return true;
+  if (m.score && String(m.score).trim()) return true;
+  if (m.side_a_points != null || m.side_b_points != null) return true;
+  if (m.game_scores) {
+    try {
+      const g = typeof m.game_scores === "string" ? JSON.parse(m.game_scores) : m.game_scores;
+      if ((g?.sets?.length ?? 0) > 0) return true;
+      if (g?.current && ((g.current.a ?? 0) > 0 || (g.current.b ?? 0) > 0)) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Build captain↔partner lookup from registered entries (both directions). */
+export function buildRegisteredPairMap(
+  entries: Array<{ club_member_id: string; partner_member_id?: string | null }>,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const e of entries) {
+    if (!e.club_member_id || !e.partner_member_id) continue;
+    map.set(e.club_member_id, e.partner_member_id);
+    map.set(e.partner_member_id, e.club_member_id);
+  }
+  return map;
+}
+
+/**
+ * Force every side of every play-off row to its registered pair. The side's
+ * primary player keeps their seat; the partner is always the registered
+ * partner. Throws if a side cannot be tied to a registered pair — better to
+ * stop than to invent a team.
+ */
+export function enforceRegisteredPairs<T extends {
+  player_a_member_id?: string | null; partner_a_member_id?: string | null;
+  player_b_member_id?: string | null; partner_b_member_id?: string | null;
+}>(rows: T[], pairMap: Map<string, string>): T[] {
+  for (const r of rows) {
+    for (const side of ["a", "b"] as const) {
+      const pk = `player_${side}_member_id` as const;
+      const qk = `partner_${side}_member_id` as const;
+      const p = r[pk];
+      if (!p) { (r as any)[qk] = null; continue; }
+      const partner = pairMap.get(p);
+      if (!partner) throw new Error("Play-off side is not a registered doubles pair — refusing to invent a partner.");
+      (r as any)[qk] = partner;
+    }
+  }
+  return rows;
+}

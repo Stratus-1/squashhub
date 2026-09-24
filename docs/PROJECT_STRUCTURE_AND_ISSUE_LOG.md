@@ -1959,3 +1959,6 @@ NSA's tournament venue picker merged legacy `association_affiliated_clubs` with 
 - Executes only when winner unchanged, standard scoring, not bye/forfeit, and no playoffs already drawn from the pool. Same-winner updates do not re-fire ranking/ladder/result-notification triggers.
 - `ai-help/actions.ts` `correct_match_result`: preview → confirm (stale-preview check on updated_at) → verify → audit; Super Admin inverse restores original games.
 - Tested: Bells Beta test Willem Pretorius vs Albert Ndlovu 3–1 → 3–2 executed; double-confirm rejected; winner-changing request escalated with ticket.
+
+### 2026-09-24 — Play-off games counted as pool games
+Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharing group_number, giving a phantom 7th game and making auto re-seeding reshuffle play-offs after every play-off result. Fix: standings count only stage=group; auto re-seed stops once pools are complete and any play-off has started. Repaired Nelspruit Family Doubles 11th/12th row.

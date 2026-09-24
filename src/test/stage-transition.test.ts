@@ -135,7 +135,7 @@ describe("engine preview", () => {
   it("renaming pools does not change the stored mapping", () => {
     const t = tr({ poolPairs: [[0, 3], [1, 2]] });
     const plain = previewPlayoffs(division(t), "ko", fullStandings(), []);
-    const renamed = previewPlayoffs(division(serializeSpec({ divisions: [] } as any) ? t : t, ["Red", "Green", "Blue", "Gold"]), "ko", fullStandings(), []);
+    const renamed = previewPlayoffs(division(t, ["Red", "Green", "Blue", "Gold"]), "ko", fullStandings(), []);
     expect(renamed.qualifiers.map((q) => [q.a, q.b])).toEqual(plain.qualifiers.map((q) => [q.a, q.b]));
     expect(slotLabel(renamed.qualifiers[0].aSlot, renamed.poolLabels)).toBe("Red #1");
     expect(renamed.transition?.poolPairs).toEqual([[0, 3], [1, 2]]);

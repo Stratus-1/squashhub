@@ -7,9 +7,13 @@
  */
 import {
   IntegrityError, assertKnockoutShape, assertStageKinds, bracketOrder, canGenerateStage, contractIssues,
-  isDecided, mapQualifiers, progressionOf, disciplineOf, nextPow2, roundRobin, snakePools, swissRound,
+  isDecided, progressionOf, disciplineOf, nextPow2, roundRobin, snakePools, swissRound,
   type DivisionContract, type FixtureRow, type PlannedStage, type PoolStanding, type SwissTieBreak,
 } from "./contract";
+import {
+  effectiveTransition, planTransition, resolveTransition,
+  type QualifierSlot, type SlotPairing, type StageTransition,
+} from "./transition";
 
 export interface SpecDivision extends DivisionContract {
   label: string;
@@ -123,17 +127,46 @@ function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seed
   return rows;
 }
 
-export interface PlayoffPreview { ok: boolean; reason?: string; qualifiers: Array<{ slot: number; a: string | null; b: string | null }>; stage: PlannedStage }
+export interface PreviewPair { slot: number; a: string | null; b: string | null; aSlot: QualifierSlot | null; bSlot: QualifierSlot | null }
+export interface PlayoffPreview {
+  ok: boolean; reason?: string; stage: PlannedStage;
+  /** Resolved pairings (null participants until the source stage is complete). */
+  qualifiers: PreviewPair[];
+  /** Structure-only mapping, available before any result exists. */
+  slots: SlotPairing[];
+  transition: StageTransition | null;
+  poolLabels?: string[];
+  /** true once every slot has resolved to an actual participant. */
+  resolved: boolean;
+}
+
+/** The source stage a qualifier stage draws from. */
+export const sourceStageOf = (d: SpecDivision, stage: PlannedStage) => d.stages.find((s) => s.order === stage.order - 1) ?? null;
+
+/** Structure-only mapping preview: qualifier slots, no results needed. Never writes. */
+export function previewTransition(d: SpecDivision, stageId: string): { stage: PlannedStage; source: PlannedStage; transition: StageTransition; slots: SlotPairing[]; poolCount: number } {
+  const stage = d.stages.find((s) => s.id === stageId);
+  if (!stage) throw new IntegrityError("no_stage", `Stage ${stageId} is not in ${d.label}.`);
+  const source = sourceStageOf(d, stage);
+  if (!source) throw new IntegrityError("no_source", `${stage.name} has no earlier stage to take qualifiers from.`);
+  const transition = effectiveTransition(stage, source);
+  const poolCount = source.kind === "pools" ? source.pools ?? 1 : 1;
+  return { stage, source, transition, poolCount, slots: planTransition(transition, poolCount) };
+}
 
 /** Pure preview of who would qualify and meet whom. Never writes. */
 export function previewPlayoffs(d: SpecDivision, stageId: string, standings: PoolStanding[], existing: FixtureRow[]): PlayoffPreview {
-  const stage = d.stages.find((s) => s.id === stageId);
-  if (!stage) throw new IntegrityError("no_stage", `Stage ${stageId} is not in ${d.label}.`);
+  const { stage, transition, slots, poolCount } = previewTransition(d, stageId);
+  void poolCount;
+  const base = { stage, slots, transition, poolLabels: d.poolLabels, resolved: false };
   const prereq = existing.filter((f) => f.divisionId === d.divisionId && d.stages.find((s) => s.id === f.stageId)!.order < stage.order);
   const gate = canGenerateStage({ stage, prerequisite: prereq, existing: existing.filter((f) => f.divisionId === d.divisionId), ownerConfirmed: true });
-  if (!gate.ok) return { ok: false, reason: (gate as { reason: string }).reason, qualifiers: [], stage };
-  const qualifiers = mapQualifiers(standings, { divisionId: d.divisionId, perPool: stage.qualify!.perPool, mapping: stage.qualify!.mapping! });
-  return { ok: true, qualifiers, stage };
+  const qualifiers = resolveTransition(slots, standings, d.divisionId)
+    .map((p) => ({ slot: p.slot, a: p.aId, b: p.bId, aSlot: p.a, bSlot: p.b }));
+  const resolved = qualifiers.every((q) => (!q.aSlot || q.a) && (!q.bSlot || q.b));
+  if (!gate.ok) return { ...base, ok: false, reason: (gate as { reason: string }).reason, qualifiers, resolved };
+  if (!resolved) return { ...base, ok: false, reason: "Not every qualifying place is filled yet.", qualifiers, resolved };
+  return { ...base, ok: true, qualifiers, resolved: true };
 }
 
 /** Owner confirmed (or automatic mode): create the knockout stage exactly as previewed. */

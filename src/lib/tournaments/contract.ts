@@ -53,8 +53,8 @@ export interface PlannedStage {
   /** knockout draw size */
   drawSize?: number;
   schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null };
-  /** playoff stages only */
-  qualify?: { perPool: number; mapping: QualifierMapping | null } | null;
+  /** playoff stages only. `transition` is the explicit, stable-id progression rule; `mapping` stays in step for older readers. */
+  qualify?: { perPool: number; mapping: QualifierMapping | null; transition?: import("./transition").StageTransition | null } | null;
   generation?: GenerationMode;
 }
 
@@ -112,7 +112,7 @@ export function contractIssues(c: DivisionContract): ContractIssue[] {
     if (p.mode === "all_continue" && !p.standings) e("standings_rule", `${s.name}: choose whether points carry forward or reset.`, s.id);
     if (p.mode === "qualifiers") {
       if (!s.qualify || !s.qualify.perPool) e("playoff_qualify", `${s.name}: who qualifies is not defined.`, s.id);
-      else if (s.kind === "knockout" && !s.qualify.mapping) e("playoff_mapping", `${s.name}: how qualifiers are mapped/seeded is not defined.`, s.id);
+      else if (s.kind === "knockout" && !s.qualify.mapping && !s.qualify.transition) e("playoff_mapping", `${s.name}: how qualifiers are mapped/seeded is not defined.`, s.id);
       if (s.kind !== "knockout" && s.kind !== "placement") e("qualifier_target", `${s.name}: qualifiers currently feed a knockout only.`, s.id);
       if (s.qualify?.perPool && prev.pools) {
         const q = s.qualify.perPool * prev.pools;
@@ -322,7 +322,7 @@ export function canGenerateStage(opts: {
 }): { ok: true } | { ok: false; code: string; reason: string } {
   const { stage } = opts;
   if (opts.existing.some((f) => f.stageId === stage.id)) return { ok: false, code: "exists", reason: `${stage.name} already exists.` };
-  if ((stage.kind === "knockout" || stage.kind === "placement") && !stage.qualify?.mapping)
+  if ((stage.kind === "knockout" || stage.kind === "placement") && !stage.qualify?.mapping && !stage.qualify?.transition)
     return { ok: false, code: "no_mapping", reason: "No qualification/mapping rule." };
   const pending = opts.prerequisite.filter((f) => f.a && f.b && !isDecided(f)).length;
   if (pending > 0 && !opts.allowPlaceholders) return { ok: false, code: "prereq", reason: `${pending} prerequisite result(s) outstanding.` };

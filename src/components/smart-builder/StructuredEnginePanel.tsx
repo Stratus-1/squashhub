@@ -11,6 +11,7 @@ import {
   atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
 import { progressionOf } from "@/lib/tournaments/contract";
+import { pairingLabel, slotLabel } from "@/lib/tournaments/transition";
 import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
 /** Operate panel for structured (Beta) tournaments. All actions go through the structured engine. */
@@ -19,7 +20,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
 }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ div: string; stage: string; p: PlayoffPreview } | null>(null);
+  const [preview, setPreview] = useState<{ div: string; stage: string; p: PlayoffPreview; labels?: string[] } | null>(null);
   const { data: stages = [] } = useQuery({
     queryKey: ["structured-stages", champId, matches.length],
     queryFn: () => supabaseDb.select("tournament_stages", { tournament_id: champId }),
@@ -98,8 +99,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
             {!exists && matches.length > 0 && progressionOf(s).mode === "qualifiers" && (
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`pv${s.id}`, async () => {
                 const p = await previewStructuredPlayoffs(supabaseDb, champId, d.divisionId, s.id);
-                if (!p.ok) throw new Error(p.reason || "Not ready");
-                setPreview({ div: d.divisionId, stage: s.id, p });
+                setPreview({ div: d.divisionId, stage: s.id, p, labels: d.poolLabels });
               }, "Preview ready")}><Trophy className="w-4 h-4 mr-1" />Preview play-offs</Button>
             )}
             {exists && s.kind === "knockout" && (
@@ -151,14 +151,28 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
       </Dialog>
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Confirm play-offs</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{preview?.p.resolved ? "Confirm play-offs" : "Play-off mapping"}</DialogTitle></DialogHeader>
+          {preview && (
+            <p className="text-xs text-muted-foreground">
+              {preview.p.transition?.method === "cross_pool"
+                ? `Cross-pool: ${pairingLabel(preview.p.transition.poolPairs ?? [], preview.labels)}, ${preview.p.transition.pairing === "same_position" ? "same position vs same position" : "winner vs runner-up"}.`
+                : preview.p.transition?.method === "manual" ? "Mapping set by you, place by place."
+                  : "All qualifiers reseeded into one field."}
+            </p>
+          )}
           <ul className="text-sm space-y-1">
-            {preview?.p.qualifiers.map((q) => <li key={q.slot}>Match {q.slot}: {unitName(q.a)} vs {unitName(q.b)}</li>)}
+            {preview?.p.qualifiers.map((q) => (
+              <li key={q.slot}>
+                Match {q.slot}: {slotLabel(q.aSlot, preview.labels)} vs {slotLabel(q.bSlot, preview.labels)}
+                {(q.a || q.b) && <span className="text-muted-foreground"> — {unitName(q.a)} vs {unitName(q.b)}</span>}
+              </li>
+            ))}
           </ul>
+          {preview && !preview.p.ok && <p className="text-xs text-destructive">{preview.p.reason}</p>}
           <p className="text-xs text-muted-foreground">These games are created in the knockout stage, not in any pool. Nothing is sent to players.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
-            <Button disabled={!!busy} onClick={() => preview && run("cf", async () => {
+            <Button disabled={!!busy || !preview?.p.ok} onClick={() => preview && run("cf", async () => {
               await atomically(supabaseDb, champId, commitStructured, (db) => confirmStructuredPlayoffs(db, champId, preview.div, preview.stage, true)); setPreview(null);
             }, "Play-offs created")}>Confirm</Button>
           </DialogFooter>

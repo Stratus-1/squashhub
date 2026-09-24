@@ -61,3 +61,31 @@ TOURNAMENT → DIVISION → STAGE → POOL (only in pool stages) → ROUND → F
 - Engine: `nextStageFixtures` / `startNextStructuredStage` reuse `generateStage`; pair units are `a+b` ids persisted via partner columns in the same atomic commit. `finalStandings` credits pair wins to both partners.
 - `classifyEdit`: stages that already have games can't be moved/removed/reconfigured; edits to later, not-yet-created stages don't regenerate anything.
 - `poolStandings` treats a one-field round robin/Swiss as one pool (previously returned nothing — play-offs after a one-field RR/Swiss would have been empty).
+
+## Stage transitions (pool stage → next stage)
+
+The progression between a pool/group stage and the next stage is stored explicitly as a
+`StageTransition` (`src/lib/tournaments/transition.ts`) on the destination stage's
+`qualify.transition`, and mirrored into `tournament_stages.config.transition` with the
+resolved `source_stage_id`. Three independent concepts:
+
+1. **Qualification** — which finishing positions advance (`positions`), from which source
+   pools (`sourcePoolIndexes`).
+2. **Mapping method** — `cross_pool` (owner picks which pools are crossed), `reseed` (one
+   qualifier field, canonical bracket order) or `manual` (explicit slot → slot map).
+3. **Pairing rule** — cross-pool only: `winner_runner_up` or `same_position`.
+
+Rules enforced by the engine:
+
+- Stored against stable ids: source stage spec id and 0-based pool indexes. Pool display
+  names are labels only and can never change a mapping.
+- A qualifier slot resolves only from its configured pool and position.
+- A participant may never occupy two destination places.
+- No play-off generation until the source stage's results are complete; before then the
+  preview shows slot labels ("Pool A #1 vs Pool D #2").
+- Cross-pool pairings must cover every source pool exactly once.
+- Destination knockout fixtures carry the destination stage/round ids and `pool_id` NULL.
+- Divisions are isolated: standings from another division are refused.
+- Once the destination stage has games, its mapping is locked (editor and engine both refuse).
+
+Tests: `src/test/stage-transition.test.ts`.

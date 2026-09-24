@@ -4,9 +4,10 @@
  * against those ids → identity validation → insert. Legacy tournaments never come here.
  * The DB trigger `guard_structured_match_identity` enforces the same identity rules.
  */
-import { IntegrityError, assertNoReentry, contractIssues, isDecided, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
+import { IntegrityError, assertNoReentry, contractIssues, isDecided, progressionOf, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
-import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
+import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
+import { effectiveTransition, transitionIssues } from "./transition";
 import type { TournamentDefinition } from "../smart-builder/definition";
 
 /* ───── spec from the Beta definition ───── */
@@ -40,7 +41,13 @@ export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
             date: (s as any).roundDates?.[0] ?? (s as any).startDate ?? null,
             deadline: (s as any).endDate ?? null, start: (s as any).startDate ?? null, end: (s as any).endDate ?? null,
           },
-          qualify: prev ? { perPool: (def.divisions.flatMap((x) => x.sections.flatMap((y) => y.stages)).find((x) => x.id === prev.id)?.advance?.perGroup) ?? 0, mapping: st.qualifierMapping ?? null } : null,
+          qualify: prev ? {
+            perPool: (def.divisions.flatMap((x) => x.sections.flatMap((y) => y.stages)).find((x) => x.id === prev.id)?.advance?.perGroup) ?? 0,
+            mapping: st.qualifierMapping ?? null,
+            transition: st.qualifierTransition
+              ? { ...st.qualifierTransition, positions: [...st.qualifierTransition.positions], sourceStageId: prev.id, destinationStageId: st.id } as any
+              : null,
+          } : null,
           generation: st.generation ?? (prev ? "owner_approval" : undefined),
         });
       }));
@@ -132,7 +139,16 @@ export async function persistStructure(db: Db, tid: string, spec: TournamentSpec
     ids.division[d.divisionId] = div.id;
     for (const st of d.stages) {
       let [row] = await db.select("tournament_stages", { division_id: div.id, spec_key: st.id });
-      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, qualify: st.qualify, schedule: st.schedule } }]))[0];
+      const prev = d.stages.find((s) => s.order === st.order - 1);
+      // Explicit, persisted progression rule: stable stage ids + pool indexes, never display names.
+      const tr = prev && st.qualify && progressionOf(st).mode === "qualifiers" ? (() => {
+        const t = effectiveTransition(st, prev);
+        const poolCount = prev.kind === "pools" ? prev.pools ?? 1 : 1;
+        const errs = transitionIssues(t, poolCount).filter((i) => i.level === "error");
+        if (errs.length) throw new IntegrityError("transition", `${d.label} · ${st.name}: ${errs.map((e) => e.message).join("; ")}`);
+        return { ...t, source_stage_id: ids.stage[`${d.divisionId}/${prev.id}`] ?? null, destination_stage_key: st.id };
+      })() : null;
+      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, qualify: st.qualify, transition: tr, schedule: st.schedule } }]))[0];
       const sk = `${d.divisionId}/${st.id}`;
       ids.stage[sk] = row.id; ids.stageKind[sk] = st.kind;
       if (st.kind === "pools") for (let i = 0; i < (st.pools ?? 1); i++) {
@@ -288,10 +304,16 @@ export async function previewStructuredPlayoffs(db: Db, tid: string, divisionKey
   const matches = (await db.select("club_champs_matches", { champ_id: tid })).filter((m) => m.group_number === gi);
   const kindOf = (k: string) => d.stages.find((s) => s.id === k)?.kind ?? "round_robin";
   const existing = matches.map((m) => toFixtureRow(divisionKey, m, kindOf(m.stage_key)));
+  const { transition, slots } = previewTransition(d, stageKey);
+  const notReady = (reason: string): PlayoffPreview => ({
+    ok: false, reason, stage, slots, transition, poolLabels: d.poolLabels, resolved: false,
+    qualifiers: slots.map((p) => ({ slot: p.slot, a: null, b: null, aSlot: p.a, bSlot: p.b })),
+  });
   const srcDone = existing.filter((f) => f.stageId === src.id);
-  if (!srcDone.length || !srcDone.every(isDecided)) return { ok: false, reason: `${src.name} is not finished.`, qualifiers: [], stage };
-  if (src.kind === "swiss" && Math.max(...srcDone.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) return { ok: false, reason: `${src.name}: not all Swiss rounds are played yet.`, qualifiers: [], stage };
-  const standings = poolStandings(divisionKey, src.id, matches, stage.qualify?.perPool ?? 0);
+  if (!srcDone.length || !srcDone.every(isDecided)) return notReady(`${src.name} is not finished.`);
+  if (src.kind === "swiss" && Math.max(...srcDone.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) return notReady(`${src.name}: not all Swiss rounds are played yet.`);
+  const cut = Math.max(0, ...transition.positions);
+  const standings = poolStandings(divisionKey, src.id, matches, cut);
   return previewPlayoffs(d, stageKey, standings, existing);
 }
 

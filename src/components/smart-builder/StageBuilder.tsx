@@ -73,7 +73,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
 
       <div className="grid lg:grid-cols-[1fr_1.3fr] gap-3">
         <div className="space-y-2">
-          <div className="grid grid-cols-[1fr_140px_110px] gap-2">
+          <div className="grid sm:grid-cols-3 gap-2">
             <Q label="Division name"><Input className={f} value={d.name} onChange={(e) => editDiv((x) => { x.name = e.target.value; })} /></Q>
             <Q label="Entries">
               <select className={sel} value={d.entry} onChange={(e) => editDiv((x) => { x.entry = e.target.value as any; })}>

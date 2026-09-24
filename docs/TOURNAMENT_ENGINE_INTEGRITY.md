@@ -31,3 +31,12 @@ Per division: unit (players/pairs) and expected count; seeding source and method
 ## Tournament Map
 
 `tournamentMap()` gives the pre-generation summary (e.g. 48 players → 8×6 pools → 120 pool matches → top 2 → R16/QF/SF/Final → 15 playoff matches → 135 total).
+
+## Builder opening order (Smart Builder BETA)
+
+OWNER/SCOPE → AUDIENCE → SEEDING DATA → EXPECTED ENTRIES → FORMAT → ROUNDS → SCHEDULING → PLAYOFFS → VALIDATION/MAP → GENERATE.
+
+- `definition.event` stores scope (club / regional / national), owner, audience, discovered eligible count and ranking coverage, chosen seeding source and expected entries. Owner and audience are separate.
+- `src/lib/smart-builder/scope.ts`: valid audience options per scope ("all members" and "league players only" are distinct choices), scope-based seeding priority (club → ladder; regional → regional ranking/league strength; national → national ranking) as defaults only, and `recommendSeeding` which skips sources under 50% coverage and never invents values.
+- Readiness asks these items first (`scope`, `event_audience`, `event_seeding`, `expected_entries`) before design questions. The AI is told the same order and must never set eligible counts or coverage itself.
+- Organisation subtree resolution reuses the existing invite-scope/organisation helpers; it is not duplicated here.

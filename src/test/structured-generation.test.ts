@@ -28,6 +28,10 @@ function fakeDb() {
     async insert(table, rows) {
       const out = rows.map((r) => ({ id: `${table}-${++n}`, ...r }));
       if (table === "club_champs_matches") out.forEach(guard);
+      if (table === "club_champs_rounds") out.forEach((r) => {
+        if (!["knockout", "semi_final", "final", "third_place", "round_robin", "swiss"].includes(r.round_type)) throw new Error("round_type check");
+        if (!["pending", "active", "complete"].includes(r.status)) throw new Error("round status check");
+      });
       (t[table] ??= []).push(...out);
       return out;
     },

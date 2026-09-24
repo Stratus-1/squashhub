@@ -177,7 +177,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     const [r] = await db.insert("club_champs_rounds", [{
       champ_id: tid, group_number: spec.divisions.findIndex((d) => d.divisionId === f.divisionId) + 1, round_number: f.round ?? 1,
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk], stage_key: f.stageId,
-      round_type: legacyStage(f.stageKind) === "ko" ? "knockout" : f.stageKind === "swiss" ? "swiss" : "round_robin", label: `Round ${f.round ?? 1}`, status: "generated",
+      round_type: legacyStage(f.stageKind) === "ko" ? "knockout" : f.stageKind === "swiss" ? "swiss" : "round_robin", label: `Round ${f.round ?? 1}`, status: "active",
     }]);
     roundIds[key] = r.id;
   }

@@ -102,3 +102,4 @@
 - [x] Transactional server-side generate (currently client multi-step, DB triggers enforce identity)
 - [x] Structured Tournament Editor reload UI; builder questions (division/pool names, league use, apply-to-all)
 - [x] Disposable full simulation
+- [x] Fast "I know what I want" path: RR / Swiss / Knockout / Pools→Play-offs / Custom, progressive questions, same spec + engine, tournament map

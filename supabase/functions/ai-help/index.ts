@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
               // Tournament managers may hold rights for a specific tournament only.
               const tid = String(aArgs.tournament_id ?? context.ids.champId ?? "");
               if (!tid) return false;
-              const { data } = await user.rpc("can_manage_tournament", { p_champ_id: tid }).then((x) => x, () => ({ data: false }));
+              const { data } = await user.rpc("can_manage_tournament", { _tournament_id: tid }).then((x) => x, () => ({ data: false }));
               return data === true;
             })())) {
               out = { status: "permission_denied", message: "The signed-in user does not have tournament admin rights here. Refuse the change and call escalate with category permission_denied." };

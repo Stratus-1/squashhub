@@ -13,7 +13,7 @@
  * Communication settings map to existing fields only. Nothing here sends
  * anything: invitations are always triggered later from the existing screens.
  */
-import type { Division, Section, Stage, TournamentDefinition } from "./definition";
+import { isBellsDefinition, type Division, type Section, type Stage, type TournamentDefinition } from "./definition";
 
 export type Executability = "ready" | "partial" | "blocked";
 
@@ -126,10 +126,17 @@ export function mapToExistingTournament(def: TournamentDefinition): ExistingMapp
   if (c.paymentMethods?.length) champ.payment_methods = c.paymentMethods;
   if (sd.startDate) champ.start_date = sd.startDate;
   if (sd.endDate) champ.end_date = sd.endDate;
-  if (sc.pointsPerGame) champ.points_per_game = sc.pointsPerGame;
-  if (sc.bestOf) champ.best_of = sc.bestOf;
-  if (sc.playAllGames != null) champ.play_all_games = sc.playAllGames;
-  if (sc.winCondition) champ.win_condition = sc.winCondition;
+  if (isBellsDefinition(def)) {
+    champ.scoring_mode = "time_capped_points";
+    const first = def.divisions.flatMap((div) => div.sections.flatMap((sec) => sec.stages)).find((s) => s.kind !== "split" && s.kind !== "pair_from_positions");
+    const duration = first?.schedule.matchMinutes ?? sd.matchMinutes;
+    if (duration) champ.match_duration_minutes = duration;
+  } else {
+    if (sc.pointsPerGame) champ.points_per_game = sc.pointsPerGame;
+    if (sc.bestOf) champ.best_of = sc.bestOf;
+    if (sc.playAllGames != null) champ.play_all_games = sc.playAllGames;
+    if (sc.winCondition) champ.win_condition = sc.winCondition;
+  }
 
   const extras: Record<string, any> = {
     league_genders: genders,

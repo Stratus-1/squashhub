@@ -3,7 +3,7 @@
  * structured draft. The AI, the tabs and the Review page all read this; the
  * AI is told the next missing item so it asks for it itself.
  */
-import { allStages, effectiveSchedule, type TournamentDefinition } from "./definition";
+import { allStages, effectiveSchedule, isBellsDefinition, type TournamentDefinition } from "./definition";
 import type { ValidationResult } from "./validate";
 import type { ExistingMapping } from "./to-existing";
 import { isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
@@ -77,12 +77,14 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     state: openStructural.length ? "missing" : "complete",
     detail: openStructural.length ? openStructural[0].question : "None", ask: openStructural[0]?.question });
   const sc = def.scoring ?? {};
+  const bells = isBellsDefinition(def);
+  const bellsDuration = schedulableStages(def).every(({ stage }) => !!effectiveSchedule(def, stage).matchMinutes.value);
   design.push({ id: "scoring", label: "Scoring", tab: "design", field: "scoring",
-    state: sc.pointsPerGame && sc.bestOf ? "complete" : "warning",
-    detail: sc.pointsPerGame && sc.bestOf
+    state: bells ? (bellsDuration ? "complete" : "missing") : sc.pointsPerGame && sc.bestOf ? "complete" : "warning",
+    detail: bells ? (bellsDuration ? "Bells — timed points; match duration is set on Schedule" : "Bells — set match minutes on Schedule") : sc.pointsPerGame && sc.bestOf
       ? `PAR ${sc.pointsPerGame}, best of ${sc.bestOf}${sc.playAllGames ? ", play all games" : ""}${sc.winCondition === "sudden_death" ? ", sudden death" : ""}`
       : "Not set — the existing default (PAR 11, best of 5) will be used",
-    ask: "What scoring should matches use — PAR 11 or 15, best of 3 or 5?" });
+    ask: bells ? "How many minutes should each Bells match last?" : "What scoring should matches use — PAR 11 or 15, best of 3 or 5?" });
 
   // ── Players ──
   const players: ReadinessItem[] = [];

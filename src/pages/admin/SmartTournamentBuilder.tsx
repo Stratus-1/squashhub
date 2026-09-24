@@ -14,7 +14,7 @@ import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
 import { DesignCanvas } from "@/components/smart-builder/DesignCanvas";
 import { InvitationsTab, PlayersTab, ReviewTab, ScheduleTab } from "@/components/smart-builder/BuilderTabs";
 import { canUseSmartBuilder, SMART_BUILDER_LABEL, SMART_BUILDER_SUBLABEL } from "@/lib/smart-builder/access";
-import { emptyDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
+import { emptyDefinition, isBellsDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
 import { newProblems, validateDefinition, type Issue } from "@/lib/smart-builder/validate";
 import { mapToExistingTournament } from "@/lib/smart-builder/to-existing";
 import { assessReadiness, type ReadinessItem, type ReadinessTab } from "@/lib/smart-builder/readiness";
@@ -388,11 +388,16 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
 
 function ScoringRow({ def, edit }: { def: TournamentDefinition; edit: (m: (d: TournamentDefinition) => void) => void }) {
   const s = def.scoring ?? {};
+  const bells = isBellsDefinition(def);
   const set = (p: Partial<typeof s>) => edit((d) => { d.scoring = { ...d.scoring, ...p }; });
   const sel = "smart-builder-select h-7 rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs";
   return (
     <div data-field="scoring" className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 p-2 text-xs text-white/75">
       <span className="font-semibold text-white">Scoring</span>
+      <select aria-label="Scoring format" className={sel} value={bells ? "time_capped_points" : "standard"} onChange={(e) => set({ mode: e.target.value as "standard" | "time_capped_points" })}>
+        <option value="standard">Standard games</option><option value="time_capped_points">Bells — timed points</option>
+      </select>
+      {bells ? <span className="text-white/70">Timed points · match length on Schedule</span> : <>
       <select className={sel} value={s.pointsPerGame ?? ""} onChange={(e) => set({ pointsPerGame: e.target.value ? (Number(e.target.value) as 11 | 15) : null })}>
         <option value="">PAR — default 11</option><option value="11">PAR 11</option><option value="15">PAR 15</option>
       </select>
@@ -403,6 +408,7 @@ function ScoringRow({ def, edit }: { def: TournamentDefinition; edit: (m: (d: To
         <option value="">Win by 2 (default)</option><option value="win_by_2">Win by 2</option><option value="sudden_death">Sudden death</option>
       </select>
       <label className="flex items-center gap-1"><input type="checkbox" checked={!!s.playAllGames} onChange={(e) => set({ playAllGames: e.target.checked })} />Play all games</label>
+      </>}
     </div>
   );
 }

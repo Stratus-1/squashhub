@@ -13,8 +13,10 @@ type State = "idle" | "recording" | "transcribing";
  * text box (onTranscript); nothing is sent to the builder until the admin
  * presses Send, so voice and typing share exactly one interpretation path.
  */
-export function VoiceInputButton({ clubId, disabled, onTranscript, onError }: {
+export function VoiceInputButton({ clubId, disabled, onTranscript, onError, purpose, className }: {
   clubId?: string;
+  purpose?: "ai_help";
+  className?: string;
   disabled?: boolean;
   onTranscript: (text: string, final: boolean) => void;
   onError: (msg: string | null) => void;
@@ -60,6 +62,7 @@ export function VoiceInputButton({ clubId, disabled, onTranscript, onError }: {
       const form = new FormData();
       form.append("file", file, file.name);
       if (clubId) form.append("clubId", clubId);
+      if (purpose) form.append("purpose", purpose);
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-tournament-transcribe`, {
         method: "POST",
         headers: { Authorization: `Bearer ${s.session?.access_token ?? ""}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
@@ -102,7 +105,7 @@ export function VoiceInputButton({ clubId, disabled, onTranscript, onError }: {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-70" style={{ transform: `scale(${1 + Math.min(1, level * 3)})` }} />
           <span className="relative inline-flex h-3 w-3 rounded-full bg-destructive" />
         </span>
-        <span className="text-xs text-white/85 tabular-nums">Listening… {mm}</span>
+        <span className="text-xs tabular-nums">Listening… {mm}</span>
         <Button size="sm" variant="destructive" className="h-8" onClick={stop}><Square className="w-3.5 h-3.5 mr-1" />Done</Button>
         <Button size="icon" variant="ghost" className="h-8 w-8 text-white/70" aria-label="Cancel recording" onClick={cancel}><X className="w-4 h-4" /></Button>
       </div>
@@ -112,7 +115,7 @@ export function VoiceInputButton({ clubId, disabled, onTranscript, onError }: {
   return (
     <Button type="button" size="icon" variant="outline" disabled={disabled || state === "transcribing"}
       aria-label={state === "transcribing" ? "Transcribing" : "Speak your description"} title="Speak instead of typing"
-      className={cn("h-9 w-9 shrink-0 bg-transparent border-white/20 text-white/85")} onClick={start}>
+      className={cn("h-9 w-9 shrink-0", className ?? "bg-transparent border-white/20 text-white/85")} onClick={start}>
       {state === "transcribing" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
     </Button>
   );

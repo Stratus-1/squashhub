@@ -37,9 +37,12 @@ Deno.serve(async (req) => {
     const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userData.user.id);
     const isSuper = (roles ?? []).some((r: { role: string }) => r.role === "admin" || r.role === "moderator");
     if (!isSuper) {
+      const purpose = String(form.get("purpose") ?? "");
+      const rpcName = purpose === "ai_help" ? "can_use_ai_actions" : "can_use_tournament_beta";
       const { data: allowed } = clubId
-        ? await admin.rpc("can_use_tournament_beta", { _user_id: userData.user.id, _club_id: clubId })
+        ? await admin.rpc(rpcName, { _user_id: userData.user.id, _club_id: clubId })
         : { data: false };
+      if (allowed !== true && purpose === "ai_help") return json({ error: "Voice input for the assistant isn't switched on for your club yet." }, 403);
       if (allowed !== true) return json({ error: "Tournament Beta isn't switched on for your club, or you don't have tournament permission." }, 403);
     }
 

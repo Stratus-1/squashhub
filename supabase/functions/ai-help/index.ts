@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     const { data: mem } = await admin.from("club_members").select("id, name, role").eq("club_id", clubId).eq("user_id", userId).limit(1);
     const member = (mem ?? [])[0] as { id: string; name: string; role: string } | undefined;
     if (!member && !isSuper) return json({ error: "You're not a member of this club." }, 403);
-    const { data: permRes } = await admin.rpc("is_club_admin_or_permitted", { _user_id: userId, _club_id: clubId, _slug: "champs" });
+    const { data: permRes } = await admin.rpc("is_club_admin_or_permitted", { _user_id: userId, _club_id: clubId, _permission: "champs" });
     const isAdmin = isSuper || member?.role === "admin" || permRes === true;
     const { data: actRes } = await admin.rpc("can_use_ai_actions", { _user_id: userId, _club_id: clubId });
     const actionsOn = actRes === true;

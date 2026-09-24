@@ -11,7 +11,62 @@ import { progressionOf } from "@/lib/tournaments/contract";
 import { TransitionEditor } from "./TransitionEditor";
 import { d10, specDateIssues, stageWindow, windowChangeImpact, type DateWindow } from "@/lib/tournaments/date-window";
 import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
-import { SCOPE_LABEL } from "@/lib/smart-builder/venues";
+import { SCOPE_LABEL, courtRemovalImpact, tournamentCourts } from "@/lib/smart-builder/venues";
+import { useHostClubs, useHostCourts, useTournamentVenues } from "@/hooks/use-tournaments";
+import { useQueryClient } from "@tanstack/react-query";
+
+/** Host clubs + selected courts, from the authoritative tournament_venues rows. Removal is impact-checked; history is never rewritten. */
+function VenueCourtsEditor({ champId, matches }: { champId: string; matches: any[] }) {
+  const qc = useQueryClient();
+  const { data: venues = [] } = useTournamentVenues(champId);
+  const { data: clubs = [] } = useHostClubs();
+  const { data: courts = [] } = useHostCourts(venues.map((v: any) => v.club_id));
+  const [picked, setPicked] = useState<Record<string, number[]>>({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setPicked(Object.fromEntries(venues.map((v: any) => [v.club_id, v.court_ids ?? []]))); }, [venues]);
+  if (!venues.length) return <div className="rounded border p-2 text-xs text-muted-foreground">No host venues were recorded for this tournament.</div>;
+  const removed = venues.flatMap((v: any) => (v.court_ids ?? []).filter((c: number) => !(picked[v.club_id] ?? []).includes(c)));
+  const impact = courtRemovalImpact(removed, matches);
+  const changed = venues.some((v: any) => JSON.stringify([...(v.court_ids ?? [])].sort()) !== JSON.stringify([...(picked[v.club_id] ?? [])].sort()));
+  const name = (id: number) => courts.find((c) => c.court_id === id)?.name ?? `Court #${id}`;
+  const save = async () => {
+    setBusy(true);
+    try {
+      for (const v of venues as any[]) {
+        const next = [...(picked[v.club_id] ?? [])].sort((a, b) => a - b);
+        const { error } = await fromExt("tournament_venues").update({ court_ids: next }).eq("id", v.id);
+        if (error) throw error;
+      }
+      await fromExt("tournaments").update({ court_ids: Object.values(picked).flat() }).eq("id", champId);
+      toast.success("Courts saved");
+      qc.invalidateQueries({ queryKey: ["tournament-venues", champId] });
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="rounded border p-2 text-xs space-y-2">
+      <div className="font-semibold">Host venues &amp; courts</div>
+      {venues.map((v: any) => {
+        const list = tournamentCourts(courts, v.club_id);
+        const extra = (v.court_ids ?? []).filter((id: number) => !list.some((c) => c.court_id === id)); // e.g. since deactivated — kept, never dropped silently
+        return (
+          <fieldset key={v.id} className="flex flex-wrap items-center gap-2">
+            <legend className="text-muted-foreground">{clubs.find((c) => c.id === v.club_id)?.name ?? v.club_id}</legend>
+            {[...list.map((c) => c.court_id), ...extra].map((id: number) => (
+              <label key={id} className="flex items-center gap-1">
+                <input type="checkbox" checked={(picked[v.club_id] ?? []).includes(id)}
+                  onChange={() => setPicked((p) => ({ ...p, [v.club_id]: (p[v.club_id] ?? []).includes(id) ? p[v.club_id].filter((x) => x !== id) : [...(p[v.club_id] ?? []), id] }))} />
+                {name(id)}{extra.includes(id) ? " (inactive)" : ""}
+              </label>
+            ))}
+          </fieldset>
+        );
+      })}
+      {impact.history.length > 0 && <p className="text-destructive">Played games used {impact.history.map(name).join(", ")} — they stay attached to those games and can't be removed.</p>}
+      {impact.future.length > 0 && <p className="text-destructive">Unplayed games are on {impact.future.map(name).join(", ")}. Move those games to another court first.</p>}
+      <Button size="sm" variant="outline" disabled={!changed || impact.blocked || busy} onClick={save}>Save courts</Button>
+    </div>
+  );
+}
 
 /** Owner / audience / venues saved with the tournament, so they aren't lost after creation. */
 function EventSummary({ scope }: { scope?: { scope?: EventScope | null; ownerName?: string | null; audience?: string | null; noVenue?: boolean; venues?: { names?: string[] } } | null }) {
@@ -110,6 +165,7 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
           <DialogHeader><DialogTitle>Edit tournament</DialogTitle></DialogHeader>
           <div className="space-y-3 text-sm">
             <EventSummary scope={spec.scope as any} />
+            <VenueCourtsEditor champId={champId} matches={matches} />
             <div className="rounded border p-2 space-y-1">
               <div className="text-xs font-medium">Tournament dates</div>
               <div className="grid grid-cols-2 gap-2 max-w-md">

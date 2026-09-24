@@ -150,12 +150,12 @@ export function shortStageName(stage: Stage) {
 const datePart = (s?: string | null) => (s ? s.slice(0, 10) : "");
 const timePart = (s?: string | null) => (s && s.length > 10 ? s.slice(11, 16) : "");
 /** Keep any saved time when the date input changes. */
-const withDate = (v: string, prev?: string | null) => (v ? (timePart(prev) ? `${v}T${prev!.slice(11)}` : v) : null);
+const withDate = (v: string, prev?: string | null) => (v ? (timePart(prev) ? `${v}T${prev?.slice(11) ?? ""}` : v) : null);
 const fmtDate = (s?: string | null) => {
   const d = datePart(s);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
   const out = new Date(`${d}T00:00:00`);
-  return isNaN(out.getTime()) ? null : out.toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
+  return isNaN(out.getTime()) ? (s ?? null) : out.toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
 };
 
 export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Edit }) {
@@ -220,7 +220,8 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
                   const sameDay = datePart(e.startDate.value) && datePart(e.startDate.value) === datePart(e.endDate.value);
                   const dates = e.startDate.value || e.endDate.value ? `${fmtDate(e.startDate.value) ?? "…"}${e.endDate.value && !sameDay ? ` – ${fmtDate(e.endDate.value) ?? "…"}` : ""}` : stage.schedule.roundDates?.length ? `${stage.schedule.roundDates.length} round dates` : null;
                   const stageTime = timePart(e.startDate.value) ? `${timePart(e.startDate.value)}${timePart(e.endDate.value) ? `–${timePart(e.endDate.value)}` : ""}` : null;
-                  const dayName = e.weekday.value != null ? DAYS[e.weekday.value] : datePart(e.startDate.value) ? DAYS[new Date(`${datePart(e.startDate.value)}T00:00:00`).getDay()] : null;
+                   const dayIndex = new Date(`${datePart(e.startDate.value)}T00:00:00`).getDay();
+                   const dayName = e.weekday.value != null ? DAYS[e.weekday.value] : Number.isNaN(dayIndex) ? null : DAYS[dayIndex];
                   const dayTime = [dayName, stageTime ?? e.startTime.value].filter(Boolean).join(" ") || null;
                   const venue = e.venueNames.value?.length ? `${e.venueNames.value.length > 1 ? `${e.venueNames.value.length} venues` : e.venueNames.value[0]}` : null;
                   return (

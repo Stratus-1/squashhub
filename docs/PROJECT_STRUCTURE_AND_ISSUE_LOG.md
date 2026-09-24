@@ -2000,3 +2000,7 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Builder Players tab: division names, league use, pool names, apply-structure-to-other-divisions.
 - Disposable full simulation test in `src/test/structured-generation.test.ts`.
 - 2026-09-25: Structured engine adds double RR (`legs: 2`), Swiss first-round + `nextSwissRound` with tie-breaks (buchholz, sonneborn_berger, seed), knockout `thirdPlace` match (stage_label "3rd place", excluded from re-entry). Fixed real-DB blockers: rounds used round_type 'round_robin'/status 'generated' which the CHECK constraints rejected — constraint widened (round_robin, swiss), status now 'active'.
+
+### 2026-09-24 — Beta builder: Custom / mixed stage builder + one-field play-off fix
+- Custom / mixed now opens an ordered stage builder (Diamond League template: singles RR → pairs formed → doubles RR, cumulative). Tests: `src/test/stage-builder.test.ts`.
+- Fixed: structured play-offs after a one-field round robin or Swiss found no qualifiers (`poolStandings` ignored rows without a pool number). Swiss play-off preview now waits for every Swiss round.

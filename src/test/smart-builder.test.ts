@@ -132,7 +132,10 @@ describe("general validation", () => {
     ] }] }] });
     expect(validateDefinition(d).issues.some((i) => i.code === "date_order" && i.message.includes("12 May".replace("12 May", "2026-05-12")))).toBe(true);
   });
-  it("blocks lossy mapping of derived doubles", () => {
-    expect(mapToExistingTournament(test1()).unsupported.length).toBeGreaterThan(0);
+  it("never creates derived doubles stages lossily — they are deferred, pools are creatable", () => {
+    const m = mapToExistingTournament(test1());
+    expect(m.executability).toBe("partial");
+    expect(m.deferredStages.map((d) => d.stage)).toContain("Doubles pairs");
+    expect(m.champ.league_formats["1"]).toBe("single_round_robin");
   });
 });

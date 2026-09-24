@@ -288,10 +288,16 @@ export async function previewStructuredPlayoffs(db: Db, tid: string, divisionKey
   const matches = (await db.select("club_champs_matches", { champ_id: tid })).filter((m) => m.group_number === gi);
   const kindOf = (k: string) => d.stages.find((s) => s.id === k)?.kind ?? "round_robin";
   const existing = matches.map((m) => toFixtureRow(divisionKey, m, kindOf(m.stage_key)));
+  const { transition, slots } = previewTransition(d, stageKey);
+  const notReady = (reason: string): PlayoffPreview => ({
+    ok: false, reason, stage, slots, transition, poolLabels: d.poolLabels, resolved: false,
+    qualifiers: slots.map((p) => ({ slot: p.slot, a: null, b: null, aSlot: p.a, bSlot: p.b })),
+  });
   const srcDone = existing.filter((f) => f.stageId === src.id);
-  if (!srcDone.length || !srcDone.every(isDecided)) return { ok: false, reason: `${src.name} is not finished.`, qualifiers: [], stage };
-  if (src.kind === "swiss" && Math.max(...srcDone.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) return { ok: false, reason: `${src.name}: not all Swiss rounds are played yet.`, qualifiers: [], stage };
-  const standings = poolStandings(divisionKey, src.id, matches, stage.qualify?.perPool ?? 0);
+  if (!srcDone.length || !srcDone.every(isDecided)) return notReady(`${src.name} is not finished.`);
+  if (src.kind === "swiss" && Math.max(...srcDone.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) return notReady(`${src.name}: not all Swiss rounds are played yet.`);
+  const cut = Math.max(0, ...transition.positions);
+  const standings = poolStandings(divisionKey, src.id, matches, cut);
   return previewPlayoffs(d, stageKey, standings, existing);
 }
 

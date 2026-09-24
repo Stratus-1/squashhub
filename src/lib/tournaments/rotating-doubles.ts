@@ -327,10 +327,9 @@ function greedyRotation(
 
   }
 
-  // The saved number is each player's TARGET. When players × target is not a
-  // multiple of four, the rounds above leave a few players one short; add
-  // top-up games (short players first, filled by the least-played others, who
-  // go at most one over) so every active player reaches the target.
+  // The saved number is a HARD MAXIMUM per player. When players × max is not a
+  // multiple of four, top up short players only with others who are also below
+  // the max, so nobody ever exceeds it (a few may finish one game short).
   if (capped && n >= 4) {
     for (let guard = 0; guard < n; guard++) {
       const short = players
@@ -339,7 +338,7 @@ function greedyRotation(
       if (short.length === 0) break;
       const quad = short.slice(0, 4);
       const fillers = players
-        .filter((p) => !quad.includes(p) && (playedCount.get(p) || 0) <= perPlayerCap!)
+        .filter((p) => !quad.includes(p) && (playedCount.get(p) || 0) < perPlayerCap!)
         .sort((a, b) =>
           (playedCount.get(a)! - playedCount.get(b)!) ||
           quad.reduce((s2, q) => s2 + (partnered.has(pairKey(q, a)) ? 1 : 0), 0) -

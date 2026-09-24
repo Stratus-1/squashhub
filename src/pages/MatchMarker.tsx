@@ -122,6 +122,27 @@ export default function MatchMarker() {
   // and let them decide: keep marking (reclaim) or switch to the live view.
   const handedOverRef = useRef(false);
   const [stolenBy, setStolenBy] = useState<string | null>(null);
+  // Close the scoreboard on every device once the result is submitted
+  // (by this marker, another marker, or an admin).
+  useEffect(() => {
+    if (!tournamentMatchId) return;
+    const close = () => {
+      toast.info("This match is finished", { description: "The final score has been submitted. Scoring is closed." });
+      navigate(`/tournament-live/${tournamentMatchId}`, { replace: true });
+    };
+    const ch = supabase
+      .channel(`marker-status:${tournamentMatchId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "club_champs_matches", filter: `id=eq.${tournamentMatchId}` },
+        (payload) => { if ((payload.new as any)?.status === "completed" && !savingRef.current) close(); })
+      .subscribe();
+    const poll = setInterval(async () => {
+      if (savingRef.current) return;
+      const { data } = await fromExt("club_champs_matches").select("status").eq("id", tournamentMatchId).maybeSingle();
+      if ((data as any)?.status === "completed") close();
+    }, 15000);
+    return () => { supabase.removeChannel(ch); clearInterval(poll); };
+  }, [tournamentMatchId, navigate]);
+
   useEffect(() => {
     if (!tournamentMatchId || !champLock || !user) return;
     if (champLockFresh && champLock.user_id !== user.id) {
@@ -209,6 +230,13 @@ export default function MatchMarker() {
       }
 
       const row = data as any;
+      // A finished match is locked: never reopen the scoreboard for it, or
+      // markers think they can keep scoring after the result is in standings.
+      if (row.status === "completed") {
+        toast.info("This match is finished", { description: "The final score is in the standings. Scoring is closed." });
+        navigate(`/tournament-live/${matchId}`, { replace: true });
+        return;
+      }
       // Read the parent and its scoring rules directly. The compatibility
       // `club_champs` view is security-invoker and a rules/governance policy
       // change can hide the joined row even when this match itself is visible.

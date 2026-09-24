@@ -80,3 +80,6 @@
 - [x] Rebuild uses only current active entrants + saved settings (rotating doubles: played games count toward cap)
 - [x] Players-tab "Withdraw from tournament" pre-start: auto-clear unplayed fixtures, no manual pull-out
 - [x] Post-start: controlled pull-out/forfeit, preserve results; clear wording
+
+## AI Assistant live tournament repair (24 Sep 2026)
+- [ ] Plan: proven system bugs auto-repaired without approval (club admin reports included); Super Admin only for started/scored games — awaiting plan approval

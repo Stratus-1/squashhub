@@ -12361,9 +12361,11 @@ export type Database = {
           created_tournament_id: string | null
           definition: Json
           id: string
+          last_tab: string | null
           mode: string
           owner_id: string | null
           owner_kind: string
+          revision: number
           status: string
           title: string
           updated_at: string
@@ -12376,9 +12378,11 @@ export type Database = {
           created_tournament_id?: string | null
           definition?: Json
           id?: string
+          last_tab?: string | null
           mode?: string
           owner_id?: string | null
           owner_kind?: string
+          revision?: number
           status?: string
           title?: string
           updated_at?: string
@@ -12391,9 +12395,11 @@ export type Database = {
           created_tournament_id?: string | null
           definition?: Json
           id?: string
+          last_tab?: string | null
           mode?: string
           owner_id?: string | null
           owner_kind?: string
+          revision?: number
           status?: string
           title?: string
           updated_at?: string

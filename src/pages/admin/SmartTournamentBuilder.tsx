@@ -20,6 +20,7 @@ import { StageBuilder } from "@/components/smart-builder/StageBuilder";
 import { QUICK_PATHS, presetDefinition, type QuickPath } from "@/lib/smart-builder/quick-path";
 import { InvitationsTab, PlayersTab, ReviewTab, ScheduleTab } from "@/components/smart-builder/BuilderTabs";
 import { canUseSmartBuilder, SMART_BUILDER_LABEL, SMART_BUILDER_SUBLABEL } from "@/lib/smart-builder/access";
+import { DraftAutosaver, type SaveState } from "@/lib/smart-builder/draft-autosave";
 import { emptyDefinition, isBellsDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
 import { newProblems, validateDefinition, type Issue } from "@/lib/smart-builder/validate";
 import { mapToExistingTournament } from "@/lib/smart-builder/to-existing";
@@ -31,9 +32,11 @@ type Proposal = {
   reply: string; understood: string[]; questions: { term: string | null; question: string; options: string[]; kind: string }[];
   notUnderstood: string[]; consequences: string[]; definition: TournamentDefinition; newIssues: Issue[];
 };
+type DraftPayload = { def: TournamentDefinition; chat: ChatMsg[]; tab: string };
 type Draft = {
   id: string; title: string; mode: "guide" | "describe"; definition: unknown; conversation: ChatMsg[];
   status: string; created_tournament_id: string | null; updated_at: string;
+  revision?: number; last_tab?: string | null; owner_name?: string | null;
 };
 
 const panel = "rounded-xl border border-white/10 bg-white/[0.04]";
@@ -91,7 +94,7 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
   const { data: drafts = [] } = useQuery({
     queryKey: ["smart-drafts", scopeKey],
     queryFn: async () => {
-      let q = fromExt("smart_tournament_drafts").select("id,title,mode,status,updated_at,created_tournament_id");
+      let q = fromExt("smart_tournament_drafts").select("id,title,mode,status,updated_at,created_tournament_id,owner_name:definition->event->>ownerName");
       q = scope.kind === "club" ? q.eq("owner_kind", "club").eq("owner_id", scope.clubId) : q.neq("owner_kind", "club");
       const { data, error } = await q.order("updated_at", { ascending: false });
       if (error) throw error;
@@ -147,8 +150,14 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
         {drafts.map((d) => (
           <div key={d.id} className="flex w-full items-center hover:bg-white/[0.05]">
             <button onClick={() => nav.openDraft(d.id)} className="flex flex-1 items-center justify-between p-3 text-left text-sm text-white/85">
-              <span>{d.title}</span>
-              <span className="text-[11px] text-white/50">{d.status === "created" ? "Created" : "Draft"} · {new Date(d.updated_at).toLocaleString()}</span>
+              <span className="min-w-0">
+                <span className="block">{d.title || "Untitled tournament"}</span>
+                <span className="block text-[11px] text-white/50">{d.owner_name ?? "Owner not chosen"}</span>
+              </span>
+              <span className="text-right text-[11px] text-white/50">
+                {d.status === "created" ? "Created" : "Draft"} · updated {new Date(d.updated_at).toLocaleString()}
+                {d.status !== "created" && <span className="block text-amber-200">Continue setup →</span>}
+              </span>
             </button>
             {d.status !== "created" && (
               <button
@@ -186,6 +195,24 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
   );
 }
 
+function SaveIndicator({ state, onRetry, onReload }: { state: SaveState; onRetry: () => void; onReload: () => void }) {
+  const [, tick] = useState(0);
+  useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 15000); return () => clearInterval(t); }, []);
+  const ago = state.savedAt ? Math.round((Date.now() - state.savedAt) / 1000) : null;
+  const text = state.status === "saving" || state.status === "pending" ? "Saving…"
+    : state.status === "saved" ? (ago != null && ago < 20 ? "Saved just now" : `Saved ${ago != null && ago < 3600 ? `${Math.round(ago / 60) || 1} min ago` : ""}`)
+    : state.status === "error" ? "Save failed" : state.status === "conflict" ? "Changed elsewhere" : "All changes saved";
+  return (
+    <div role="status" aria-live="polite" className={cn("text-[11px] flex items-center gap-2",
+      state.status === "error" || state.status === "conflict" ? "text-red-300" : "text-white/60")}>
+      {(state.status === "saving" || state.status === "pending") && <Loader2 className="w-3 h-3 animate-spin" />}
+      <span title={state.error ?? undefined}>{text}</span>
+      {state.status === "error" && <button type="button" className="underline" onClick={onRetry}>Retry</button>}
+      {state.status === "conflict" && <button type="button" className="underline" onClick={onReload}>Reload latest</button>}
+    </div>
+  );
+}
+
 async function invokeError(error: unknown) {
   if (error instanceof FunctionsHttpError) {
     try { const b = await error.context.json(); return b?.error || "Request failed"; } catch { return "Request failed"; }
@@ -195,8 +222,10 @@ async function invokeError(error: unknown) {
 
 function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderScope; nav: BuilderNav }) {
   const qc = useQueryClient();
-  const { data: draft, isLoading } = useQuery({
+  // Always read the draft fresh from the server; a cached copy must never seed the editor.
+  const { data: draft, isLoading: loadingDraft, isFetching } = useQuery({
     queryKey: ["smart-draft", draftId],
+    gcTime: 0, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await fromExt("smart_tournament_drafts").select("*").eq("id", draftId).maybeSingle();
       if (error) throw error;
@@ -215,12 +244,60 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   // Text already in the box when a voice transcript starts — the transcript is appended to it.
   const voiceBase = useRef<string | null>(null);
 
+  const loadedRef = useRef(false);
+  const isLoading = loadingDraft || (isFetching && !loadedRef.current);
+  const saverRef = useRef<DraftAutosaver<DraftPayload> | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>({ status: "idle", savedAt: null, error: null });
   useEffect(() => {
-    if (!draft) return;
+    if (!draft || isFetching || loadedRef.current) return;
+    loadedRef.current = true;
     const p = parseDefinition(draft.definition);
     setDef(p.ok ? p.value : emptyDefinition(draft.title));
     setChat(Array.isArray(draft.conversation) ? draft.conversation : []);
-  }, [draft?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (draft.last_tab) setTab(draft.last_tab as ReadinessTab);
+    const saver = new DraftAutosaver<DraftPayload>(async (pl, rev) => {
+      const { data, error } = await fromExt("smart_tournament_drafts").update({
+        definition: pl.def, conversation: pl.chat, title: pl.def.name || "Untitled tournament",
+        validation: validateDefinition(pl.def).issues, last_tab: pl.tab, revision: rev + 1,
+      }).eq("id", draftId).eq("revision", rev).select("revision");
+      if (error) throw new Error(error.message);
+      return data?.length ? (data[0] as any).revision as number : null;
+    }, draft.revision ?? 0);
+    saverRef.current = saver;
+    saver.subscribe(setSaveState);
+  }, [draft, isFetching]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Leaving the builder, hiding the tab or closing the page flushes any pending save. Leaving never discards.
+  const tokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => { tokenRef.current = data.session?.access_token ?? null; });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, sess) => { tokenRef.current = sess?.access_token ?? null; });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  useEffect(() => {
+    // Page closing/reloading: a normal request would be cancelled, so send the pending draft with keepalive.
+    const beacon = () => {
+      const t = saverRef.current?.takePendingForBeacon();
+      if (!t || !tokenRef.current) return;
+      const { def: d, chat: c, tab: tb } = t.payload;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/smart_tournament_drafts?id=eq.${draftId}&revision=eq.${t.revision}`;
+      fetch(url, { method: "PATCH", keepalive: true, headers: {
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${tokenRef.current}`, "Content-Type": "application/json", Prefer: "return=minimal",
+      }, body: JSON.stringify({ definition: d, conversation: c, title: d.name || "Untitled tournament", last_tab: tb, revision: t.revision + 1 }) }).catch(() => {});
+    };
+    const flush = () => { void saverRef.current?.flush(); };
+    const onHide = () => { if (document.visibilityState === "hidden") flush(); };
+    const onUnload = (e: BeforeUnloadEvent) => { if (saverRef.current?.hasUnsaved) { beacon(); if (saverRef.current?.hasUnsaved) { e.preventDefault(); e.returnValue = ""; } } };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", beacon);
+    window.addEventListener("beforeunload", onUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", beacon);
+      window.removeEventListener("beforeunload", onUnload);
+      const sv = saverRef.current;
+      if (sv) void sv.flush().finally(() => { sv.dispose(); qc.invalidateQueries({ queryKey: ["smart-drafts"] }); });
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validation = useMemo(() => validateDefinition(def), [def]);
   const mapping = useMemo(() => mapToExistingTournament(def), [def]);
@@ -244,20 +321,13 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
     }, 80);
   };
 
-  const save = async (nextDef = def, nextChat = chat) => {
-    const { error } = await fromExt("smart_tournament_drafts").update({
-      definition: nextDef, conversation: nextChat, title: nextDef.name || "Untitled tournament",
-      validation: validateDefinition(nextDef).issues,
-    }).eq("id", draftId);
-    if (error) toast.error(`Draft not saved: ${error.message}`); else setDirty(false);
+  /** Queue the WHOLE draft (definition + conversation + tab) for server autosave. */
+  const save = (nextDef = def, nextChat = chat, nextTab = tab) => {
+    saverRef.current?.schedule({ def: nextDef, chat: nextChat, tab: nextTab });
+    setDirty(false);
   };
-
-  // Autosave manual edits.
-  useEffect(() => {
-    if (!dirty) return;
-    const t = setTimeout(() => save(), 1200);
-    return () => clearTimeout(t);
-  }, [def, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (dirty) save(); }, [def, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (loadedRef.current) save(def, chat, tab); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = async () => {
     const text = input.trim();
@@ -319,7 +389,10 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
 
   return (
     <div className="space-y-4 py-4">
-      <BetaHeader onBack={nav.backToList} scope={scope} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <BetaHeader onBack={nav.backToList} scope={scope} />
+        <SaveIndicator state={saveState} onRetry={() => void saverRef.current?.retry()} onReload={() => window.location.reload()} />
+      </div>
       {draft.status === "created" && (
         <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 p-2 text-xs text-emerald-200">This draft has already been created as a tournament. Further edits stay in the draft only.</div>
       )}

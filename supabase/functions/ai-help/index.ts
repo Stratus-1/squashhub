@@ -8,8 +8,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { ACTIONS, catalogueFor, type Ctx } from "./actions.ts";
+import { READ_TOOLS, type AssistCtx } from "./tools.ts";
 
-const MODEL = "google/gemini-3.7-flash";
+const MODEL = "openai/gpt-6-astra";
+const MAX_STEPS = 8;
 const PREVIEW_TTL_MS = 15 * 60 * 1000;
 
 const json = (b: unknown, status = 200) =>
@@ -80,19 +82,31 @@ Deno.serve(async (req) => {
     }
 
     // ---------- Context: resolved server-side, never trusted from client ----------
+    // The client only says which club is on screen; identity, role and
+    // permissions are resolved here from auth + RBAC. Super Admin authority is
+    // kept separately from the club being viewed, so viewing a club where they
+    // are not a member never downgrades them.
     const clubId = b.context?.clubId ?? null;
     if (!clubId) return json({ error: "Open the assistant from inside your club." }, 400);
-    const { data: mem } = await admin.from("club_members").select("id, name, role").eq("club_id", clubId).eq("user_id", userId).limit(1);
-    const member = (mem ?? [])[0] as { id: string; name: string; role: string } | undefined;
+    const { data: clubRow } = await admin.from("clubs").select("id,name").eq("id", clubId).maybeSingle();
+    if (!clubRow) return json({ error: "Club not found." }, 404);
+    const { data: allMem } = await admin.from("club_members").select("id, name, role, club_id").eq("user_id", userId);
+    const myMems = (allMem ?? []) as { id: string; name: string; role: string; club_id: string }[];
+    const member = myMems.find((m) => m.club_id === clubId);
     if (!member && !isSuper) return json({ error: "You're not a member of this club." }, 403);
     const { data: permRes } = await admin.rpc("is_club_admin_or_permitted", { _user_id: userId, _club_id: clubId, _permission: "champs" });
     const isAdmin = isSuper || member?.role === "admin" || permRes === true;
     const { data: actRes } = await admin.rpc("can_use_ai_actions", { _user_id: userId, _club_id: clubId });
     const actionsOn = actRes === true;
-    const role = isSuper ? "super_admin" : member?.role ?? "member";
+    const role = isSuper ? (member ? `super_admin (club role: ${member.role})` : "super_admin") : member?.role ?? "member";
     const c: Ctx = { user, admin, userId, clubId, memberId: member?.id ?? null, isAdmin, isSuper };
     const attachments = (b.attachments ?? []).filter((a) => a.path.startsWith(`ai-help/${userId}/`) && a.mime.startsWith("image/"));
-    const context = { route: b.context?.route ?? null, ids: b.context?.ids ?? {}, role };
+    const context = { route: b.context?.route ?? null, ids: b.context?.ids ?? {}, role, club: clubRow.name };
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+    const ac: AssistCtx = {
+      ...c, clubName: clubRow.name, role, myMemberIds: myMems.map((m) => m.id), myClubIds: [...new Set(myMems.map((m) => m.club_id))],
+      actionsOn, route: context.route, ids: context.ids, today,
+    };
 
     const escalate = async (reason: string, extra: { interpretation?: string; proposed?: unknown; diagnostics?: unknown; request?: string; interactionId?: string }) => {
       const reqText = extra.request ?? b.question ?? "";

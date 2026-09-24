@@ -42,8 +42,8 @@ export function StateBadge({ state }: { state: ItemState }) {
 function Field({ label, tag, field, children, className }: { label: string; tag: "Required" | "Optional" | "Inherited" | "Not needed" | "Missing"; field?: string; children: ReactNode; className?: string }) {
   const tone = tag === "Missing" ? "text-red-300" : tag === "Required" ? "text-white/70" : "text-white/40";
   return (
-    <label data-field={field} className={cn("block space-y-0.5 rounded", className)}>
-      <span className="flex items-center justify-between gap-2 text-[11px] text-white/60">{label}<span className={cn("text-[10px]", tone)}>{tag}</span></span>
+    <label data-field={field} className={cn("block min-w-0 space-y-0.5 rounded", className)}>
+      <span className="flex flex-wrap items-center justify-between gap-x-2 text-[11px] text-white/60">{label}<span className={cn("text-[10px]", tone)}>{tag}</span></span>
       {children}
     </label>
   );
@@ -176,7 +176,7 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
       {/* Tournament defaults */}
       <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2 space-y-2">
         <div className="font-semibold text-white">Tournament defaults <span className="font-normal text-white/45">— every stage uses these unless it sets its own</span></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Start date" tag={d.startDate ? "Required" : "Missing"} field="defaults.startDate"><Input type="date" className={f} value={datePart(d.startDate)} onChange={(e) => setD({ startDate: withDate(e.target.value, d.startDate) })} /></Field>
           <Field label="End date" tag={d.endDate ? "Required" : "Missing"} field="defaults.endDate"><Input type="date" className={f} value={datePart(d.endDate)} onChange={(e) => setD({ endDate: withDate(e.target.value, d.endDate) })} /></Field>
           <Field label="Day" tag="Optional"><select className={cn(sel, "w-full")} value={d.weekday ?? ""} onChange={(e) => setD({ weekday: e.target.value === "" ? null : Number(e.target.value) })}><option value="">Any</option>{DAYS.map((x, i) => <option key={x} value={i}>{x}</option>)}</select></Field>
@@ -208,9 +208,6 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
             </button>
             {!divClosed && (
               <div className="divide-y divide-white/10">
-                <div className="hidden xl:grid grid-cols-[minmax(130px,2fr)_minmax(90px,1fr)_minmax(105px,1.2fr)_minmax(90px,1fr)_minmax(110px,1.2fr)_55px_50px] gap-2 px-2 py-1 text-[10px] uppercase text-white/40">
-                  <span>Stage</span><span>How</span><span>Dates</span><span>Day/time</span><span>Venue</span><span>Courts</span><span>Match</span>
-                </div>
                 {rows.map(({ stage, section }) => {
                   const e = effectiveSchedule(def, stage), need = scheduleNeeds(stage.schedule.mode);
                   const isOpen = open.has(stage.id);
@@ -226,17 +223,17 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
                   const venue = e.venueNames.value?.length ? `${e.venueNames.value.length > 1 ? `${e.venueNames.value.length} venues` : e.venueNames.value[0]}` : null;
                   return (
                     <div key={stage.id} data-field={`stage.${stage.id}`}>
-                      <button className="w-full grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-[minmax(130px,2fr)_minmax(90px,1fr)_minmax(105px,1.2fr)_minmax(90px,1fr)_minmax(110px,1.2fr)_55px_50px] gap-x-3 gap-y-1 px-2 py-2 text-left hover:bg-white/[0.04]" onClick={() => setOpen((s) => toggle(s, stage.id))}>
-                        <span className="col-span-2 sm:col-span-3 xl:col-span-1 flex min-w-0 items-center gap-1 font-medium text-white">
+                      <button className="w-full grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1 px-2 py-2 text-left hover:bg-white/[0.04]" onClick={() => setOpen((s) => toggle(s, stage.id))}>
+                        <span className="col-span-2 sm:col-span-3 flex min-w-0 items-center gap-1 font-medium text-white">
                           {isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
                           <span className="truncate">{div.sections.length > 1 ? `${section.name} · ` : ""}{shortStageName(stage)}</span>
                         </span>
-                        <span className="min-w-0"><span className="xl:hidden text-white/45">How: </span>{stage.schedule.mode === "unset" ? <span className="rounded bg-red-500/20 px-1 text-red-300">Not set</span> : MODE_LABEL[stage.schedule.mode]}</span>
-                        <span className="min-w-0"><span className="xl:hidden text-white/45">Dates: </span>{cell(dates, e.startDate.inherited || e.endDate.inherited, need.dates)}</span>
-                        <span className="min-w-0"><span className="xl:hidden text-white/45">Time: </span>{cell(dayTime, e.weekday.inherited, false)}</span>
-                        <span className="min-w-0 break-words"><span className="xl:hidden text-white/45">Venue: </span>{cell(venue, e.venueNames.inherited, need.venue)}</span>
-                        <span className="min-w-0"><span className="xl:hidden text-white/45">Courts: </span>{cell(e.courtsPerVenue.value, e.courtsPerVenue.inherited, need.courts)}</span>
-                        <span className="min-w-0"><span className="xl:hidden text-white/45">Match: </span>{cell(e.matchMinutes.value ? `${e.matchMinutes.value}m` : null, e.matchMinutes.inherited, need.matchMinutes)}</span>
+                        <span className="min-w-0"><span className="text-white/45">How: </span>{stage.schedule.mode === "unset" ? <span className="rounded bg-red-500/20 px-1 text-red-300">Not set</span> : MODE_LABEL[stage.schedule.mode]}</span>
+                        <span className="min-w-0"><span className="text-white/45">Dates: </span>{cell(dates, e.startDate.inherited || e.endDate.inherited, need.dates)}</span>
+                        <span className="min-w-0"><span className="text-white/45">Time: </span>{cell(dayTime, e.weekday.inherited, false)}</span>
+                        <span className="min-w-0 break-words"><span className="text-white/45">Venue: </span>{cell(venue, e.venueNames.inherited, need.venue)}</span>
+                        <span className="min-w-0"><span className="text-white/45">Courts: </span>{cell(e.courtsPerVenue.value, e.courtsPerVenue.inherited, need.courts)}</span>
+                        <span className="min-w-0"><span className="text-white/45">Match: </span>{cell(e.matchMinutes.value ? `${e.matchMinutes.value}m` : null, e.matchMinutes.inherited, need.matchMinutes)}</span>
                       </button>
                       {isOpen && <StageScheduleEditor stage={stage} def={def} setS={setS} />}
                     </div>

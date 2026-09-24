@@ -52,7 +52,8 @@ export interface PlannedStage {
   progression?: Progression | null;
   /** knockout draw size */
   drawSize?: number;
-  schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null };
+  /** start/end = explicit stage window (NULL = inherit tournament window); date/deadline/roundDates = round schedule. */
+  schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null; roundDates?: string[] };
   /** playoff stages only. `transition` is the explicit, stable-id progression rule; `mapping` stays in step for older readers. */
   qualify?: { perPool: number; mapping: QualifierMapping | null; transition?: import("./transition").StageTransition | null } | null;
   generation?: GenerationMode;

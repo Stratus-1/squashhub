@@ -1,3 +1,4 @@
+import { StageWindowControl } from "./DateControls";
 import { useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -157,8 +158,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               </Q>
               {(sel0.schedule.mode === "fixed" || sel0.schedule.mode === "play_by") && (
                 <>
-                  <Q label={sel0.schedule.mode === "play_by" ? "Opens" : "Start date"}><Input type="date" className={f} value={sel0.schedule.startDate?.slice(0, 10) ?? ""} onChange={(e) => editStage((s) => { s.schedule = { ...s.schedule, startDate: e.target.value || null }; })} /></Q>
-                  <Q label={sel0.schedule.mode === "play_by" ? "Play by" : "End date"}><Input type="date" className={f} value={sel0.schedule.endDate?.slice(0, 10) ?? ""} onChange={(e) => editStage((s) => { s.schedule = { ...s.schedule, endDate: e.target.value || null }; })} /></Q>
+                  <StageWindowControl def={def} stage={sel0} onChange={(patch) => editStage((s) => { s.schedule = { ...s.schedule, ...patch }; })} />
                   <Q label="Courts available"><Input className={f} inputMode="numeric" value={sel0.schedule.courtsPerVenue ?? ""} onChange={(e) => editStage((s) => { s.schedule = { ...s.schedule, courtsPerVenue: e.target.value ? Number(e.target.value) : null }; })} /></Q>
                 </>
               )}

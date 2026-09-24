@@ -10,13 +10,15 @@ import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, 
 import { effectiveTransition, transitionIssues } from "./transition";
 import type { TournamentDefinition } from "../smart-builder/definition";
 import { venuesOutsideSet } from "../smart-builder/venues";
+import { rawSchedule, resolveSpecDates, specDateIssues } from "./date-window";
 
 /* ───── spec from the Beta definition ───── */
 
 export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
+  const tw = { start: def.scheduleDefaults?.startDate ?? null, end: def.scheduleDefaults?.endDate ?? null };
   const stray = venuesOutsideSet(def);
   if (stray.length) throw new IntegrityError("venue_outside", `${stray[0].where}: ${stray[0].venue} is not one of the tournament's venues.`);
-  return {
+  const spec: TournamentSpec = {
     version: 1, architecture: "structured", name: def.name,
     scope: (def as any).event ?? null,
     divisions: def.divisions.map((d) => {
@@ -41,8 +43,11 @@ export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
           drawSize: kind === "knockout" ? st.groupSize ?? undefined : undefined,
           schedule: {
             rule: s.mode === "fixed" ? "fixed" : s.mode === "play_by" ? "play_by" : (s.mode as string) === "window" ? "window" : null,
-            date: (s as any).roundDates?.[0] ?? (s as any).startDate ?? null,
-            deadline: (s as any).endDate ?? null, start: (s as any).startDate ?? null, end: (s as any).endDate ?? null,
+            // Stage start/end are ONLY the explicit stage-window override; NULL = inherit the tournament window.
+            date: (s as any).roundDates?.[0] ?? null,
+            deadline: s.mode === "play_by" ? (s as any).endDate ?? null : null,
+            start: (s as any).startDate ?? null, end: (s as any).endDate ?? null,
+            roundDates: (s as any).roundDates?.length ? [...(s as any).roundDates] : undefined,
           },
           qualify: prev ? {
             perPool: (def.divisions.flatMap((x) => x.sections.flatMap((y) => y.stages)).find((x) => x.id === prev.id)?.advance?.perGroup) ?? 0,
@@ -63,6 +68,9 @@ export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
       } satisfies SpecDivision;
     }),
   };
+  const dateErr = specDateIssues(spec, tw)[0];
+  if (dateErr) throw new IntegrityError(dateErr.code, dateErr.message);
+  return spec;
 }
 
 /* ───── db access (injected so tests can use an in-memory fake) ───── */
@@ -151,7 +159,7 @@ export async function persistStructure(db: Db, tid: string, spec: TournamentSpec
         if (errs.length) throw new IntegrityError("transition", `${d.label} · ${st.name}: ${errs.map((e) => e.message).join("; ")}`);
         return { ...t, source_stage_id: ids.stage[`${d.divisionId}/${prev.id}`] ?? null, destination_stage_key: st.id };
       })() : null;
-      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, qualify: st.qualify, transition: tr, schedule: st.schedule } }]))[0];
+      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, qualify: st.qualify, transition: tr, schedule: rawSchedule(st) } }]))[0];
       const sk = `${d.divisionId}/${st.id}`;
       ids.stage[sk] = row.id; ids.stageKind[sk] = st.kind;
       if (st.kind === "pools") for (let i = 0; i < (st.pools ?? 1); i++) {
@@ -224,7 +232,13 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
 }
 
 /** Load entrants for each division from club_champs_entries (group_number = division order + 1). */
-export async function loadEntrants(db: Db, tid: string, spec: TournamentSpec): Promise<TournamentSpec> {
+export async function loadEntrants(db: Db, tid: string, rawSpec: TournamentSpec): Promise<TournamentSpec> {
+  // Dates come from ONE place: the tournament row. Inheriting stages are resolved here, never stored.
+  const [tour] = await db.select("tournaments", { id: tid });
+  const tw = { start: tour?.start_date ?? null, end: tour?.end_date ?? null };
+  const dateErr = specDateIssues(rawSpec, tw)[0];
+  if (dateErr) throw new IntegrityError(dateErr.code, dateErr.message);
+  const spec = resolveSpecDates(rawSpec, tw);
   const rows = await db.select("club_champs_entries", { champ_id: tid });
   return {
     ...spec,

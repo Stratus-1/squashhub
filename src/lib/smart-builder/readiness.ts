@@ -7,6 +7,7 @@ import { allStages, effectiveSchedule, isBellsDefinition, type TournamentDefinit
 import type { ValidationResult } from "./validate";
 import type { ExistingMapping } from "./to-existing";
 import { AUDIENCE_OPTIONS, SEEDING_LABELS, coverageSentence, isAudienceValid, recommendSeeding, type EventScope } from "./scope";
+import { definitionDateIssues } from "./dates";
 import { SCOPE_LABEL, eventVenues, venuesOutsideSet, venuesValid } from "./venues";
 import { isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
 
@@ -148,9 +149,13 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
   const schedule: ReadinessItem[] = [];
   const planned = schedulableStages(def).map(({ stage }) => effectiveSchedule(def, stage));
   const hasStageDates = planned.length > 0 && planned.every((s) => !!s.startDate.value && !!s.endDate.value);
-  schedule.push({ id: "dates", label: "Tournament dates", tab: "schedule", field: "defaults.startDate",
-    state: (sd.startDate && sd.endDate) || hasStageDates ? "complete" : "missing",
-    detail: sd.startDate ? `${sd.startDate} → ${sd.endDate ?? "?"}` : hasStageDates ? "Set on individual stages" : "Not set", ask: "What are the tournament's start and end dates?" });
+  void hasStageDates;
+  schedule.push({ id: "dates", label: "Tournament dates", tab: "design", field: "defaults.startDate",
+    state: sd.startDate && sd.endDate ? "complete" : "missing",
+    detail: sd.startDate ? `${sd.startDate.slice(0, 10)} → ${sd.endDate?.slice(0, 10) ?? "?"}` : "Not set", ask: "What are the tournament's first and last days?" });
+  const dateErrs = definitionDateIssues(def);
+  if (dateErrs.length) schedule.push({ id: "date_hierarchy", label: "Dates fit inside each other", tab: dateErrs[0].stageId ? "schedule" : "design", field: dateErrs[0].stageId ? undefined : "defaults.startDate",
+    state: "missing", detail: dateErrs[0].message, ask: dateErrs[0].message });
   schedulableStages(def).forEach(({ stage, division }) => {
     const e = effectiveSchedule(def, stage), need = scheduleNeeds(stage.schedule.mode);
     const gaps: string[] = [];

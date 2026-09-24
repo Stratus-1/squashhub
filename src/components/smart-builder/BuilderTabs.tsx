@@ -23,6 +23,7 @@ import type { ValidationResult } from "@/lib/smart-builder/validate";
 import type { ExistingMapping } from "@/lib/smart-builder/to-existing";
 import { RESULT_NONE_NOTE, scheduleNeeds, type Readiness, type ItemState, type ReadinessItem } from "@/lib/smart-builder/readiness";
 import { normaliseGroupInviteUrl, isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
+import { StageWindowControl, TournamentDatesDisplay } from "./DateControls";
 import { eventVenues, SCOPE_LABEL } from "@/lib/smart-builder/venues";
 import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
@@ -228,10 +229,9 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
     <div className="space-y-3 text-xs text-white/80">
       {/* Tournament defaults */}
       <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2 space-y-2">
-        <div className="font-semibold text-white">Tournament defaults <span className="font-normal text-white/45">— every stage uses these unless it sets its own</span></div>
+        <div className="font-semibold text-white">Shared settings <span className="font-normal text-white/45">— every stage uses these unless it sets its own</span></div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Start date" tag={d.startDate ? "Required" : "Missing"} field="defaults.startDate"><Input type="date" className={f} value={datePart(d.startDate)} onChange={(e) => setD({ startDate: withDate(e.target.value, d.startDate) })} /></Field>
-          <Field label="End date" tag={d.endDate ? "Required" : "Missing"} field="defaults.endDate"><Input type="date" className={f} value={datePart(d.endDate)} onChange={(e) => setD({ endDate: withDate(e.target.value, d.endDate) })} /></Field>
+          <div className="sm:col-span-2"><TournamentDatesDisplay def={def} /></div>
           <Field label="Day" tag="Optional"><select className={cn(sel, "w-full")} value={d.weekday ?? ""} onChange={(e) => setD({ weekday: e.target.value === "" ? null : Number(e.target.value) })}><option value="">Any</option>{DAYS.map((x, i) => <option key={x} value={i}>{x}</option>)}</select></Field>
           <Field label="Start time" tag="Optional"><Input type="time" className={f} value={d.startTime ?? ""} onChange={(e) => setD({ startTime: e.target.value || null })} /></Field>
           <VenuePicker def={def} field="defaults.venues" ids={(d as any).venueClubIds} names={d.venueNames} tag="Optional"
@@ -348,12 +348,16 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
           {Object.entries(MODE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </Field>
-      <Field label={s.mode === "fixed" ? "Date" : "Start"} tag={tag(need.dates, s.startDate, e.startDate.inherited)}>
-        <Input type="date" className={f} value={datePart(s.startDate)} onChange={(ev) => setS(stage.id, { startDate: withDate(ev.target.value, s.startDate) })} />
-      </Field>
-      <Field label={s.mode === "play_by" ? "Play by" : "End"} tag={tag(need.endDate, s.endDate, e.endDate.inherited) === "Not needed" ? "Optional" : tag(need.endDate, s.endDate, e.endDate.inherited)}>
-        <Input type="date" className={f} value={datePart(s.endDate)} onChange={(ev) => setS(stage.id, { endDate: withDate(ev.target.value, s.endDate) })} />
-      </Field>
+      <div className="sm:col-span-2 lg:col-span-2 space-y-0.5">
+        <span className="text-[11px] text-white/60">Stage window</span>
+        <StageWindowControl def={def} stage={stage} onChange={(patch) => setS(stage.id, patch)} />
+      </div>
+      {s.mode === "fixed" && (
+        <Field label="Round 1 date (fixed)" tag="Optional">
+          <Input type="date" className={f} value={datePart(s.roundDates?.[0])}
+            onChange={(ev) => setS(stage.id, { roundDates: ev.target.value ? [ev.target.value, ...(s.roundDates ?? []).slice(1)] : (s.roundDates ?? []).slice(1) })} />
+        </Field>
+      )}
       <Field label="Day" tag={e.weekday.inherited && s.weekday == null ? "Inherited" : "Optional"}>
         <select className={cn(sel, "w-full")} value={s.weekday ?? ""} onChange={(ev) => setS(stage.id, { weekday: ev.target.value === "" ? null : Number(ev.target.value) })}>
           <option value="">{e.weekday.inherited ? `Default (${DAYS[e.weekday.value as number]})` : "Any day"}</option>{DAYS.map((x, i) => <option key={x} value={i}>Every {x}</option>)}

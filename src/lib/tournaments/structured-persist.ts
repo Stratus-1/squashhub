@@ -31,7 +31,7 @@ export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
           swissRounds: st.swissRounds ?? undefined,
           drawSize: kind === "knockout" ? st.groupSize ?? undefined : undefined,
           schedule: {
-            rule: s.mode === "fixed" ? "fixed" : s.mode === "play_by" ? "play_by" : s.mode === "window" ? "window" : null,
+            rule: s.mode === "fixed" ? "fixed" : s.mode === "play_by" ? "play_by" : (s.mode as string) === "window" ? "window" : null,
             date: (s as any).roundDates?.[0] ?? (s as any).startDate ?? null,
             deadline: (s as any).endDate ?? null, start: (s as any).startDate ?? null, end: (s as any).endDate ?? null,
           },

@@ -81,7 +81,7 @@ export function previewPlayoffs(d: SpecDivision, stageId: string, standings: Poo
   if (!stage) throw new IntegrityError("no_stage", `Stage ${stageId} is not in ${d.label}.`);
   const prereq = existing.filter((f) => f.divisionId === d.divisionId && d.stages.find((s) => s.id === f.stageId)!.order < stage.order);
   const gate = canGenerateStage({ stage, prerequisite: prereq, existing: existing.filter((f) => f.divisionId === d.divisionId), ownerConfirmed: true });
-  if (!gate.ok) return { ok: false, reason: gate.reason, qualifiers: [], stage };
+  if (!gate.ok) return { ok: false, reason: (gate as { reason: string }).reason, qualifiers: [], stage };
   const qualifiers = mapQualifiers(standings, { divisionId: d.divisionId, perPool: stage.qualify!.perPool, mapping: stage.qualify!.mapping! });
   return { ok: true, qualifiers, stage };
 }
@@ -114,7 +114,7 @@ export interface EditImpact {
 
 const structuralKey = (d: SpecDivision) => JSON.stringify({
   unit: d.unit, seeding: d.seeding, entrants: d.entrants.map((e) => e.id),
-  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, rounds: s.rounds, qualify: s.qualify })),
+  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, swissRounds: s.swissRounds, qualify: s.qualify })),
 });
 const scheduleKey = (d: SpecDivision) => JSON.stringify(d.stages.map((s) => [s.id, s.schedule]));
 

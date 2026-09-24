@@ -17485,6 +17485,7 @@ export type Database = {
         Args: { _club_member_id: string; _code: string }
         Returns: Json
       }
+      structured_commit: { Args: { p_ops: Json; p_tid: string }; Returns: Json }
       submit_platform_invoice_eft_proof: {
         Args: { _invoice_id: string; _path: string }
         Returns: undefined

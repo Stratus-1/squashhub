@@ -10,7 +10,7 @@ import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
-import { useHostClubs, useOwnerOrganisations } from "@/hooks/use-tournaments";
+import { syncTournamentVenues, useHostClubs, useOwnerOrganisations } from "@/hooks/use-tournaments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

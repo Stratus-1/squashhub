@@ -24,7 +24,7 @@ import type { ExistingMapping } from "@/lib/smart-builder/to-existing";
 import { RESULT_NONE_NOTE, scheduleNeeds, type Readiness, type ItemState, type ReadinessItem } from "@/lib/smart-builder/readiness";
 import { normaliseGroupInviteUrl, isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
 import { StageWindowControl, TournamentDatesDisplay } from "./DateControls";
-import { eventVenues, rotationVenueIds, SCOPE_LABEL, selectedCourtPool } from "@/lib/smart-builder/venues";
+import { eventVenues, rotationVenueIds, SCOPE_LABEL, selectedCourtPool, venueRowsFromDefinition } from "@/lib/smart-builder/venues";
 import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import type { BuilderScope } from "@/pages/admin/SmartTournamentBuilder";
@@ -515,7 +515,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
     return [
       ["Owner", ev.scope ? `${SCOPE_LABEL[ev.scope as EventScope]} — ${ev.ownerName ?? "owner not chosen"}` : "—"],
       ["Who may enter", ev.scope && ev.audience ? AUDIENCE_OPTIONS[ev.scope as EventScope].find((o) => o.value === ev.audience)?.label ?? "—" : "—"],
-      ["Event venues", ev.noVenue ? "No physical venue" : eventVenues(def).names.join(", ") || "—"],
+      ["Event venues", ev.noVenue ? "No physical venue" : eventVenues(def).names.length ? `${eventVenues(def).names.join(", ")} · ${selectedCourtPool(def).length} court(s)` : "—"],
       ["Format", def.divisions.map((d) => `${d.name}: ${d.sections.flatMap((s) => s.stages.map((st) => shortStageName(st))).join(" → ")}`).join(" | ") || "—"],
       ["Entry", p.entryMethod ? p.entryMethod.replace(/_/g, " ") + (p.confirmAvailabilityOnly ? " (confirm availability only)" : "") : "—"],
       ["Dates", sd.startDate ? `${sd.startDate} → ${sd.endDate ?? "?"}${sd.weekday != null ? `, ${DAYS[sd.weekday]}s` : ""}${sd.startTime ? ` from ${sd.startTime}` : ""}` : "—"],
@@ -545,6 +545,14 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
       }).eq("id", data.id);
       if (exErr) console.warn("extras", exErr.message);
       if (structuredSpec && !exErr) await atomically(supabaseDb, data.id, commitStructured, (db) => persistStructure(db, data.id, structuredSpec));
+      // Host venues + selected court IDs go into the existing authoritative venue table.
+      const venueRows = venueRowsFromDefinition(def, hostClubId);
+      if (venueRows.length) {
+        try {
+          await syncTournamentVenues({ tournamentId: data.id, rows: venueRows });
+          await fromExt("tournaments").update({ participating_club_ids: venueRows.map((r) => r.club_id), court_ids: venueRows.flatMap((r) => r.court_ids) }).eq("id", data.id);
+        } catch (vErr: any) { toast.warning(`Tournament created, but its venues weren't saved: ${vErr.message}`); }
+      }
       if (mapping.whatsappGroupUrl) {
         // Link only — the existing group card handles sharing. Nothing is sent here.
         const { error: wgErr } = await fromExt("tournament_whatsapp_groups").insert({ champ_id: data.id, club_id: hostClubId, provider: "manual", invite_url: mapping.whatsappGroupUrl, group_name: def.name, status: "active" });

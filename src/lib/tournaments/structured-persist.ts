@@ -55,6 +55,57 @@ export interface Db {
   insert(table: string, rows: Record<string, unknown>[]): Promise<Array<Record<string, any>>>;
   select(table: string, filter: Record<string, unknown>): Promise<Array<Record<string, any>>>;
   update(table: string, filter: Record<string, unknown>, patch: Record<string, unknown>): Promise<void>;
+  /** Remove rows by id. Only unplayed games and entries may be removed. */
+  remove?(table: string, ids: string[]): Promise<void>;
+}
+
+/* ───── all-or-nothing: buffer every write, then commit in ONE server transaction ───── */
+
+export type CommitOp =
+  | { op: "insert"; table: string; rows: Record<string, unknown>[] }
+  | { op: "delete_unplayed_matches"; ids: string[] }
+  | { op: "delete_entries"; ids: string[] };
+
+const uuid = () => (globalThis.crypto?.randomUUID?.() ?? "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, () => ((Math.random() * 16) | 0).toString(16)));
+
+/**
+ * Reads go to the real database (plus pending writes); writes are only collected.
+ * `commit` sends everything to the server in one transaction — if any row fails, nothing is saved.
+ */
+export function bufferedDb(base: Db) {
+  const ops: CommitOp[] = [];
+  const pending: Record<string, Array<Record<string, any>>> = {};
+  const removed = new Set<string>();
+  const match = (r: Record<string, any>, f: Record<string, unknown>) => Object.entries(f).every(([k, v]) => r[k] === v);
+  const db: Db = {
+    async insert(table, rows) {
+      const out = rows.map((r) => ({ id: uuid(), ...r }));
+      ops.push({ op: "insert", table, rows: out });
+      (pending[table] ??= []).push(...out);
+      return out;
+    },
+    async select(table, filter) {
+      const real = (await base.select(table, filter)).filter((r) => !removed.has(r.id));
+      return [...real, ...(pending[table] ?? []).filter((r) => match(r, filter))];
+    },
+    async update() { throw new IntegrityError("unsupported", "Updates are not part of structured commits."); },
+    async remove(table, ids) {
+      if (!ids.length) return;
+      if (table === "club_champs_matches") ops.push({ op: "delete_unplayed_matches", ids });
+      else if (table === "club_champs_entries") ops.push({ op: "delete_entries", ids });
+      else throw new IntegrityError("unsupported", `Cannot remove from ${table}.`);
+      ids.forEach((id) => removed.add(id));
+    },
+  };
+  return { db, ops, commit: (tid: string, send: (tid: string, ops: CommitOp[]) => Promise<unknown>) => (ops.length ? send(tid, ops) : Promise.resolve(null)) };
+}
+
+/** Run an engine action against a buffer and commit it atomically. */
+export async function atomically<T>(base: Db, tid: string, send: (tid: string, ops: CommitOp[]) => Promise<unknown>, fn: (db: Db) => Promise<T>): Promise<T> {
+  const b = bufferedDb(base);
+  const result = await fn(b.db); // any IntegrityError here means nothing was sent
+  await b.commit(tid, send);
+  return result;
 }
 
 export interface StructureIds {
@@ -263,4 +314,58 @@ export function nextKnockoutRound(tid: string, divisionKey: string, stageKey: st
   });
   assertNoReentry([...ko, ...next]);
   return next;
+}
+
+/* ───── rebuild + withdrawal on the structured model ───── */
+
+export interface RebuildReport { regenerated: string[]; removedFuture: number; created: number; keptPlayed: number }
+
+/**
+ * Rebuild from CURRENT entrants and saved spec.
+ * - Division with no played games: its unplayed games are replaced by a fresh generation.
+ * - Division with played games: results are kept; only unplayed games involving entrants
+ *   who are no longer in the event are removed (withdrawal). Nothing is re-paired.
+ */
+export async function rebuildStructured(db: Db, tid: string): Promise<RebuildReport> {
+  if (!db.remove) throw new IntegrityError("unsupported", "This database cannot remove rows.");
+  const [t] = await db.select("tournaments", { id: tid });
+  if (t?.builder_architecture !== "structured" || !t.builder_spec) throw new IntegrityError("not_structured", "Tournament has no structured specification.");
+  const spec = await loadEntrants(db, tid, t.builder_spec as TournamentSpec);
+  const ids = await persistStructure(db, tid, spec);
+  const all = await db.select("club_champs_matches", { champ_id: tid });
+  const report: RebuildReport = { regenerated: [], removedFuture: 0, created: 0, keptPlayed: 0 };
+  for (const [i, d] of spec.divisions.entries()) {
+    const rows = all.filter((m) => m.group_number === i + 1);
+    const fx = rows.map((m) => toFixtureRow(d.divisionId, m, d.stages.find((s) => s.id === m.stage_key)?.kind ?? "round_robin"));
+    const played = fx.filter((f) => isDecided(f) || ["in_progress", "live"].includes(String(f.status ?? "").toLowerCase()));
+    report.keptPlayed += played.length;
+    if (!played.length) {
+      const errs = contractIssues(d).filter((x) => x.level === "error");
+      if (errs.length) throw new IntegrityError("contract", `${d.label}: ${errs.map((e) => e.message).join("; ")}`);
+      await db.remove("club_champs_matches", rows.map((r) => r.id));
+      report.removedFuture += rows.length;
+      if (d.entrants.length >= 2) {
+        const created = generateFromSpec({ ...spec, divisions: [d] }, tid);
+        await insertFixtures(db, tid, spec, ids, created);
+        report.created += created.length;
+      }
+      report.regenerated.push(d.label);
+    } else {
+      const members = new Set(d.entrants.flatMap((e) => e.id.split("+")));
+      const gone = (u: string | null) => !!u && u.split("+").some((p) => !members.has(p));
+      const drop = fx.filter((f) => !played.includes(f) && (gone(f.a) || gone(f.b))).map((f) => f.id!);
+      await db.remove("club_champs_matches", drop);
+      report.removedFuture += drop.length;
+    }
+  }
+  return report;
+}
+
+/** Withdraw one player (and their pair) then rebuild. Played results stay; only their future games go. */
+export async function withdrawStructured(db: Db, tid: string, memberId: string): Promise<RebuildReport> {
+  if (!db.remove) throw new IntegrityError("unsupported", "This database cannot remove rows.");
+  const entries = (await db.select("club_champs_entries", { champ_id: tid })).filter((e) => e.club_member_id === memberId || e.partner_member_id === memberId);
+  if (!entries.length) throw new IntegrityError("not_entered", "That player is not entered.");
+  await db.remove("club_champs_entries", entries.map((e) => e.id));
+  return rebuildStructured(db, tid);
 }

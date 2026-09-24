@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Db } from "./structured-persist";
+import type { CommitOp, Db } from "./structured-persist";
 
 const from = (t: string) => (supabase as any).from(t);
 
@@ -24,3 +24,10 @@ export const supabaseDb: Db = {
     if (error) throw new Error(`${table}: ${error.message}`);
   },
 };
+
+/** One server transaction: all structure, rounds and games are saved together or not at all. */
+export async function commitStructured(tid: string, ops: CommitOp[]) {
+  const { data, error } = await (supabase as any).rpc("structured_commit", { p_tid: tid, p_ops: ops });
+  if (error) throw new Error(error.message);
+  return data;
+}

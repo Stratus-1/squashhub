@@ -9,10 +9,13 @@ import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hie
 import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
 import { effectiveTransition, transitionIssues } from "./transition";
 import type { TournamentDefinition } from "../smart-builder/definition";
+import { venuesOutsideSet } from "../smart-builder/venues";
 
 /* ───── spec from the Beta definition ───── */
 
 export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
+  const stray = venuesOutsideSet(def);
+  if (stray.length) throw new IntegrityError("venue_outside", `${stray[0].where}: ${stray[0].venue} is not one of the tournament's venues.`);
   return {
     version: 1, architecture: "structured", name: def.name,
     scope: (def as any).event ?? null,

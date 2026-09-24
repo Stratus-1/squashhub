@@ -7,6 +7,7 @@ import { allStages, effectiveSchedule, isBellsDefinition, type TournamentDefinit
 import type { ValidationResult } from "./validate";
 import type { ExistingMapping } from "./to-existing";
 import { AUDIENCE_OPTIONS, SEEDING_LABELS, coverageSentence, isAudienceValid, recommendSeeding, type EventScope } from "./scope";
+import { SCOPE_LABEL, eventVenues, venuesOutsideSet, venuesValid } from "./venues";
 import { isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
 
 export type ReadinessTab = "design" | "players" | "schedule" | "invitations" | "review";
@@ -63,27 +64,41 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
   // ── Event (asked first: owner/scope → audience → seeding data → expected entries) ──
   const ev = def.event ?? {};
   const event: ReadinessItem[] = [];
-  event.push({ id: "scope", label: "Event scope", tab: "players", field: "event.scope",
+  event.push({ id: "scope", label: "Event level", tab: "design", field: "event.scope",
     state: ev.scope ? "complete" : "missing",
-    detail: ev.scope ? `${ev.scope[0].toUpperCase()}${ev.scope.slice(1)} event${ev.ownerName ? ` — owner ${ev.ownerName}` : ""}` : "Not decided",
+    detail: ev.scope ? SCOPE_LABEL[ev.scope as EventScope] : "Not decided",
     ask: "Is this a club event, a regional association event, or a national federation event?" });
-  if (ev.scope) event.push({ id: "event_audience", label: "Eligible audience", tab: "players", field: "event.audience",
+  if (ev.scope) event.push({ id: "owner", label: "Owning organisation", tab: "design", field: "event.owner",
+    state: ev.ownerId ? "complete" : "missing",
+    detail: ev.ownerName ?? (ev.ownerId ? "Chosen" : "Not chosen"),
+    ask: `Which organisation owns this ${SCOPE_LABEL[ev.scope as EventScope].toLowerCase()}?` });
+  if (ev.scope) event.push({ id: "event_audience", label: "Eligible audience", tab: "design", field: "event.audience",
     state: isAudienceValid(ev.scope, ev.audience) ? "complete" : "missing",
     detail: isAudienceValid(ev.scope, ev.audience) ? AUDIENCE_OPTIONS[ev.scope].find((o) => o.value === ev.audience)!.label : "Not decided",
     ask: `Who may enter? ${AUDIENCE_OPTIONS[ev.scope].map((o) => o.label).join(" / ")}. (All members and league players only are different choices.)` });
   if (ev.scope && ev.audience) {
     const cov = { eligible: ev.eligibleCount ?? null, bySource: (ev.coverage ?? {}) as Record<string, number> };
     const rec = recommendSeeding(ev.scope as EventScope, cov);
-    event.push({ id: "event_seeding", label: "Seeding data", tab: "players", field: "event.seedingSource",
+    event.push({ id: "event_seeding", label: "Seeding data", tab: "design", field: "event.seedingSource",
       state: ev.seedingSource ? "complete" : "warning",
       detail: ev.seedingSource
         ? `${SEEDING_LABELS[ev.seedingSource]}${rec && ev.eligibleCount ? ` — ${cov.bySource[ev.seedingSource] ?? 0}/${ev.eligibleCount} covered; the rest are placed manually` : ""}`
         : rec ? `Recommended: ${SEEDING_LABELS[rec.source]} (${rec.covered} covered, ${rec.missing} without data)` : "Coverage not checked yet" });
-    event.push({ id: "expected_entries", label: "Expected entries", tab: "players", field: "event.expectedEntries",
+    event.push({ id: "expected_entries", label: "Expected entries", tab: "design", field: "event.expectedEntries",
       state: ev.expectedEntries ? "complete" : "missing",
       detail: ev.expectedEntries ? `About ${ev.expectedEntries}` : "Not estimated",
       ask: coverageSentence(ev.scope as EventScope, cov) });
   }
+
+  const ven = eventVenues(def);
+  event.push({ id: "venues", label: "Venue(s)", tab: "design", field: "event.venues",
+    state: venuesValid(def) ? "complete" : "missing",
+    detail: def.event?.noVenue ? "No physical venue needed" : ven.names.length ? ven.names.join(", ") : "Not chosen",
+    ask: "Where may this tournament be played — one venue or several?" });
+  const outside = venuesOutsideSet(def);
+  if (outside.length) event.push({ id: "venue_outside", label: "Schedule venues", tab: "schedule", field: "defaults.venues",
+    state: "missing", detail: `${outside[0].where}: ${outside[0].venue} is not one of the tournament's venues`,
+    ask: "A scheduled venue is outside the tournament's venue list. Pick from the venues chosen on Design." });
 
   // ── Design ──
   const design: ReadinessItem[] = [];

@@ -9,6 +9,22 @@ import { supabaseDb } from "@/lib/tournaments/structured-db";
 import { classifyEdit, serializeSpec, sourceStageOf, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { progressionOf } from "@/lib/tournaments/contract";
 import { TransitionEditor } from "./TransitionEditor";
+import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
+import { SCOPE_LABEL } from "@/lib/smart-builder/venues";
+
+/** Owner / audience / venues saved with the tournament, so they aren't lost after creation. */
+function EventSummary({ scope }: { scope?: { scope?: EventScope | null; ownerName?: string | null; audience?: string | null; noVenue?: boolean; venues?: { names?: string[] } } | null }) {
+  if (!scope?.scope) return <div className="rounded border p-2 text-xs text-muted-foreground">Owner, audience and venues weren't recorded for this tournament.</div>;
+  const aud = AUDIENCE_OPTIONS[scope.scope].find((o) => o.value === scope.audience)?.label;
+  return (
+    <div className="rounded border p-2 text-xs grid sm:grid-cols-3 gap-2">
+      <div><div className="text-muted-foreground">Event level &amp; owner</div>{SCOPE_LABEL[scope.scope]} — {scope.ownerName ?? "not chosen"}</div>
+      <div><div className="text-muted-foreground">Who may enter</div>{aud ?? "not decided"}</div>
+      <div><div className="text-muted-foreground">Venue(s)</div>{scope.noVenue ? "No physical venue" : scope.venues?.names?.join(", ") || "not chosen"}</div>
+      <p className="sm:col-span-3 text-muted-foreground">Fixed after creation, because entries and games depend on them.</p>
+    </div>
+  );
+}
 
 /**
  * Structured Tournament Editor: reopens the saved spec exactly as persisted.
@@ -77,6 +93,7 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit tournament</DialogTitle></DialogHeader>
           <div className="space-y-3 text-sm">
+            <EventSummary scope={spec.scope as any} />
             {draft.divisions.map((d, di) => (
               <div key={d.divisionId} className="rounded border p-2 space-y-2">
                 <label className="block text-xs text-muted-foreground">Division name

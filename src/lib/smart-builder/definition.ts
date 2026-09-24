@@ -217,6 +217,7 @@ const ScheduleDefaultsSchema = z.object({
   endDate: z.string().nullable().optional(),
   weekday: z.number().int().min(0).max(6).nullable().optional(),
   startTime: z.string().nullable().optional(),
+  venueClubIds: z.array(z.string()).optional(),
   venueNames: z.array(z.string()).optional(),
   rotateVenues: z.boolean().optional(),
   courtsPerVenue: z.number().int().min(0).nullable().optional(),
@@ -238,6 +239,15 @@ const EventScopeSchema = z.object({
   coverage: z.record(z.number().int().min(0)).optional(),
   seedingSource: z.enum(["national", "regional", "league_strength", "club_ladder", "match_history", "manual"]).nullable().optional(),
   expectedEntries: z.number().int().min(0).nullable().optional(),
+  /** EVENT VENUE(S): where this tournament may be played. Round/fixture court allocation (Schedule) must stay inside this set. */
+  venues: z.object({
+    mode: z.enum(["single", "multiple"]).nullable().optional(),
+    clubIds: z.array(z.string()).default([]),
+    /** Display names, same order as clubIds. Labels only. */
+    names: z.array(z.string()).default([]),
+  }).optional(),
+  /** Owner explicitly says no physical venue is needed (e.g. results-only). */
+  noVenue: z.boolean().optional(),
 }).default({});
 export type EventScopeSettings = z.infer<typeof EventScopeSchema>;
 

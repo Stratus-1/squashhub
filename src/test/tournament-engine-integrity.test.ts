@@ -15,7 +15,8 @@ describe("tournament engine integrity", () => {
   it("1. 10-player RR after 2 withdrawals rebuilds from current roster, keeps played results", () => {
     const all = ids(10);
     const existing = rrRows("d", "rr", all);
-    existing[0] = { ...existing[0], status: "completed", winner: existing[0].a, score: "3-0" };
+    const pi = existing.findIndex((f) => !["p9", "p10"].includes(f.a!) && !["p9", "p10"].includes(f.b!));
+    existing[pi] = { ...existing[pi], status: "completed", winner: existing[pi].a, score: "3-0" };
     const withdrawn = new Set(["p9", "p10"]);
     const active = all.filter((x) => !withdrawn.has(x));
     const plan = planRebuild({ divisionId: "d", configuredRounds: null, activeEntrantIds: active, existing, generate: (i) => rrRows("d", "rr", i) });

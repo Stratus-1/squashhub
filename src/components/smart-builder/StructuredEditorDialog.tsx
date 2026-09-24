@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { supabaseDb } from "@/lib/tournaments/structured-db";
 import { classifyEdit, serializeSpec, sourceStageOf, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { progressionOf } from "@/lib/tournaments/contract";
 import { TransitionEditor } from "./TransitionEditor";
+import { d10, specDateIssues, stageWindow, windowChangeImpact, type DateWindow } from "@/lib/tournaments/date-window";
 import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
 import { SCOPE_LABEL } from "@/lib/smart-builder/venues";
 
@@ -39,6 +40,20 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<TournamentSpec>(() => serializeSpec(spec));
   const [saving, setSaving] = useState(false);
+  // Tournament dates: the ONE copy lives on the tournament row, never in the spec.
+  const [savedWindow, setSavedWindow] = useState<DateWindow>({ start: null, end: null });
+  const [win, setWin] = useState<DateWindow>({ start: null, end: null });
+  useEffect(() => {
+    if (!open) return;
+    fromExt("tournaments").select("start_date, end_date").eq("id", champId).maybeSingle().then(({ data }: any) => {
+      const w = { start: d10(data?.start_date), end: d10(data?.end_date) };
+      setSavedWindow(w); setWin(w);
+    });
+  }, [open, champId]);
+  const windowChanged = win.start !== savedWindow.start || win.end !== savedWindow.end;
+  const dateFixtures = matches.map((m) => ({ divisionId: spec.divisions[(m.group_number ?? 1) - 1]?.divisionId ?? "", stageId: m.stage_key, date: m.scheduled_date ?? null }));
+  const dateProblems = windowChangeImpact(draft, win, dateFixtures);
+  void specDateIssues;
   const fixtures = useMemo(() => matches.map((m) => ({
     divisionId: spec.divisions[(m.group_number ?? 1) - 1]?.divisionId ?? "", stageId: m.stage_key, stageKind: "pools" as const,
     a: m.player_a_member_id, b: m.player_b_member_id, status: m.status, winner: m.winner_member_id,
@@ -60,14 +75,15 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
     .map((st) => ({ divisionId: d.divisionId, label: d.label, stage: st })));
   const blockedTransitions = changedTransitions.filter((c) => hasGames(c.divisionId, c.stage.id));
   const set = (mut: (s: TournamentSpec) => void) => setDraft((d) => { const n = serializeSpec(d); mut(n); return n; });
-  const canSave = !saving && impact.kind !== "structural" && !blockedTransitions.length && (impact.kind !== "none" || changedTransitions.length > 0);
+  const canSave = !saving && impact.kind !== "structural" && !blockedTransitions.length && !dateProblems.length && (impact.kind !== "none" || changedTransitions.length > 0 || windowChanged);
 
   const save = async () => {
     if (impact.kind === "structural") { toast.error("Structure changes aren't saved here. Use Rebuild for entry changes."); return; }
     if (blockedTransitions.length) { toast.error("Those play-off games already exist and can't be remapped."); return; }
     setSaving(true);
     try {
-      const { error } = await fromExt("tournaments").update({ builder_spec: draft, builder_spec_version: (spec.version ?? 1) }).eq("id", champId);
+      if (dateProblems.length) throw new Error(dateProblems[0]);
+      const { error } = await fromExt("tournaments").update({ builder_spec: draft, builder_spec_version: (spec.version ?? 1), start_date: win.start, end_date: win.end }).eq("id", champId);
       if (error) throw error;
       const divs = await supabaseDb.select("tournament_divisions", { tournament_id: champId });
       for (const d of draft.divisions) {
@@ -94,6 +110,14 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
           <DialogHeader><DialogTitle>Edit tournament</DialogTitle></DialogHeader>
           <div className="space-y-3 text-sm">
             <EventSummary scope={spec.scope as any} />
+            <div className="rounded border p-2 space-y-1">
+              <div className="text-xs font-medium">Tournament dates</div>
+              <div className="grid grid-cols-2 gap-2 max-w-md">
+                <label className="text-xs text-muted-foreground">First day<Input type="date" value={win.start ?? ""} onChange={(e) => setWin((w) => ({ ...w, start: e.target.value || null }))} /></label>
+                <label className="text-xs text-muted-foreground">Last day<Input type="date" value={win.end ?? ""} onChange={(e) => setWin((w) => ({ ...w, end: e.target.value || null }))} /></label>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Stages set to use the tournament dates follow these automatically.</p>
+            </div>
             {draft.divisions.map((d, di) => (
               <div key={d.divisionId} className="rounded border p-2 space-y-2">
                 <label className="block text-xs text-muted-foreground">Division name
@@ -104,10 +128,20 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
                     <label className="text-xs text-muted-foreground">Stage ({st.kind})
                       <Input value={st.name} onChange={(e) => set((s) => { s.divisions[di].stages[si].name = e.target.value; })} />
                     </label>
-                    <label className="text-xs text-muted-foreground">{st.schedule.rule === "play_by" ? "Play by" : "Date"}
-                      <Input type="date" value={(st.schedule.rule === "play_by" ? st.schedule.deadline : st.schedule.date)?.slice(0, 10) ?? ""}
-                        onChange={(e) => set((s) => { const sc = s.divisions[di].stages[si].schedule; if (sc.rule === "play_by") sc.deadline = e.target.value; else sc.date = e.target.value; })} />
-                    </label>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <label className="flex items-center gap-1"><input type="checkbox" checked={stageWindow(st, win).inherits}
+                        onChange={(e) => set((s) => { const sc = s.divisions[di].stages[si].schedule; if (e.target.checked) { sc.start = null; sc.end = null; } else { sc.start = win.start; sc.end = win.end; } })} />Use tournament dates</label>
+                      {!stageWindow(st, win).inherits && (
+                        <div className="grid grid-cols-2 gap-1">
+                          <label>Stage window from<Input type="date" value={d10(st.schedule.start) ?? ""} onChange={(e) => set((s) => { s.divisions[di].stages[si].schedule.start = e.target.value || null; })} /></label>
+                          <label>to<Input type="date" value={d10(st.schedule.end) ?? ""} onChange={(e) => set((s) => { s.divisions[di].stages[si].schedule.end = e.target.value || null; })} /></label>
+                        </div>
+                      )}
+                      <label>{st.schedule.rule === "play_by" ? "Round play-by date" : "Round 1 date (fixed)"}
+                        <Input type="date" value={d10(st.schedule.rule === "play_by" ? st.schedule.deadline : st.schedule.date) ?? ""}
+                          onChange={(e) => set((s) => { const sc = s.divisions[di].stages[si].schedule; if (sc.rule === "play_by") sc.deadline = e.target.value || null; else sc.date = e.target.value || null; })} />
+                      </label>
+                    </div>
                     {st.kind === "pools" && (
                       <div className="flex flex-wrap gap-1">
                         {Array.from({ length: st.pools ?? 1 }, (_, i) => (
@@ -131,7 +165,9 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
               </div>
             ))}
             <div className="rounded bg-muted p-2 text-xs">
-              {impact.kind === "none" && !changedTransitions.length && "No changes yet."}
+              {impact.kind === "none" && !changedTransitions.length && !windowChanged && "No changes yet."}
+              {windowChanged && !dateProblems.length && <div>Tournament dates changed. Every stage and game still fits.</div>}
+              {dateProblems.map((m) => <div key={m} className="text-destructive">• {m}</div>)}
               {impact.kind === "safe" && "Safe change: names/dates only. No games are regenerated."}
               {impact.kind === "structural" && "Structure change — not allowed here."}
               {!!changedTransitions.length && !blockedTransitions.length && <div>Play-off mapping changed for {changedTransitions.map((c) => `${c.label} · ${c.stage.name}`).join(", ")}. No games exist there yet.</div>}

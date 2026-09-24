@@ -98,8 +98,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
             {!exists && matches.length > 0 && progressionOf(s).mode === "qualifiers" && (
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`pv${s.id}`, async () => {
                 const p = await previewStructuredPlayoffs(supabaseDb, champId, d.divisionId, s.id);
-                if (!p.ok) throw new Error(p.reason || "Not ready");
-                setPreview({ div: d.divisionId, stage: s.id, p });
+                setPreview({ div: d.divisionId, stage: s.id, p, labels: d.poolLabels });
               }, "Preview ready")}><Trophy className="w-4 h-4 mr-1" />Preview play-offs</Button>
             )}
             {exists && s.kind === "knockout" && (

@@ -221,6 +221,7 @@ export async function generateStructuredTournament(db: Db, tid: string) {
   for (const d of spec.divisions) {
     const errs = contractIssues(d).filter((i) => i.level === "error");
     if (errs.length) throw new IntegrityError("contract", `${d.label}: ${errs.map((e) => e.message).join("; ")}`);
+    if (d.entrants.length < 2) throw new IntegrityError("entrants", `${d.label}: needs at least 2 entries before games can be generated.`);
   }
   const ids = await persistStructure(db, tid, spec);
   const fixtures = generateFromSpec(spec, tid);

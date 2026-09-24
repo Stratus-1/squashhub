@@ -62,8 +62,8 @@ beforeEach(async () => {
   const spec = specFromDefinition(def);
   env.t.tournaments = [{ id: TID, builder_architecture: "structured", builder_spec: serializeSpec(spec) }, { id: "legacy", builder_architecture: "legacy" }];
   env.t.club_champs_entries = [
-    ...Array.from({ length: 8 }, (_, i) => ({ champ_id: TID, club_member_id: `m${i + 1}`, group_number: 1, order_index: i })),
-    ...Array.from({ length: 8 }, (_, i) => ({ champ_id: TID, club_member_id: `l${i + 1}`, group_number: 2, order_index: i })),
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `em${i + 1}`, champ_id: TID, club_member_id: `m${i + 1}`, group_number: 1, order_index: i })),
+    ...Array.from({ length: 8 }, (_, i) => ({ id: `el${i + 1}`, champ_id: TID, club_member_id: `l${i + 1}`, group_number: 2, order_index: i })),
   ];
 });
 

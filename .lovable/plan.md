@@ -106,7 +106,7 @@ Unit tests for the engine and planner, using fixtures built from the Family Doub
 Edge-function / flow tests:
 10. Super Admin, Afrikaans text marked as spoken → diagnosis + preview, no data change before Confirm.
 11. Confirm → RPC applied, verification passes, audit record has before/after, rollback works while games are unstarted.
-12. Club admin sends the same report → urgent ticket with diagnostics, no repair tools offered.
+12. Club admin (Rachel) sends the same report → automatic repair, verification, "Fixed" reply, AI Activity entry; no ticket.
 13. Slow path longer than 20s → `working` returned; polling delivers the result; retry creates no duplicate ticket.
 14. Repair verification fails → ticket raised automatically with the attempted steps.
 

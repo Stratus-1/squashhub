@@ -87,3 +87,12 @@
 - [ ] Approve/Decline card for judgement items (currently reported in chat + escalated)
 
 - [x] Tournament Beta opening steps (model, readiness order, AI order; live coverage lookup still open): owner/scope -> audience (explicit league-only vs all members) -> ranking coverage -> expected entries, before format.
+
+## Tournament Beta — structural phase (2026-09-24)
+- [ ] Structural tables: divisions/stages/pools(optional)/rounds + fixture refs (additive), architecture discriminator
+- [ ] Beta Create persists structure first, then fixtures via engine-service with integrity checks
+- [ ] Rebuild/withdrawal/advancement/playoff preview+confirm on structural model
+- [ ] Structured Tournament Editor reloads persisted spec; change-impact preview
+- [ ] Builder UI: division names, league use, pool names, apply-to-other-divisions
+- [ ] Connect real eligible counts / ranking coverage
+- [x] Rotating doubles respects max games

@@ -1,7 +1,13 @@
 # AI Assistant: Live Tournament Diagnose → Self-Heal (Beta)
 
 ## Goal
-When someone reports a live tournament problem (e.g. "Rachel & Shania appear twice, Maria & Giselle are missing"), the Assistant checks the real tournament and explains the cause. When it has proven a system bug, it fixes the problem immediately with no approval needed. It then re-checks the tournament and escalates only fixes that would change started or scored games.
+When someone reports a live tournament problem (e.g. "Rachel & Shania appear twice, Maria & Giselle are missing"), the Assistant checks the real tournament, finds the cause, and fixes it straight away when only one correct state is possible. No Super Admin or club admin approval is needed. It then re-checks the tournament, logs the change and notifies admins. It asks a person only when a judgement call is needed or a human-entered result would change. Verified code fixes are deployed without waiting for a manual publish (section 8).
+
+**What changed in this revision**
+- Approval is no longer tied to Super Admin. Proven system bugs (A1–A8) repair automatically for any report from the tournament's club.
+- Only judgement items (J1–J4) need approval, and any club admin of that tournament can give it. Willem is never a bottleneck.
+- A failed verification rolls back the whole repair. Admins are notified after every automatic repair.
+- New section 8: tournament rules move to the server so fixes go live without a publish; verified fixes that do need an app update are published automatically after passing checks; ambiguous or unverified fixes are never published automatically.
 
 ## How it fits what exists today
 - `ai-help` edge function (index/tools/actions/flow) already provides: server-resolved identity/role, read tools, `propose_action` → one-time preview → Confirm, `ai_assist_interactions` audit, AI Activity view, rollback, ticket escalation, idempotent retry, 40s budget.
@@ -104,7 +110,17 @@ The ticket body includes: tournament/club IDs, the findings, the suspected cause
 - Replies stay in the user's language; checks and actions don't depend on the language. Voice input still goes through transcript → review → send.
 
 ## 7. Audit
-Each record in `ai_assist_interactions` stores: requester, effective role, club, tournament ID, original message (Afrikaans preserved), findings, plan and hash, approval time, before/after rows, verification result, rollback link, and ticket ID. An `audit_events` entry is written with the same details.
+Each record in `ai_assist_interactions` stores: requester, effective role, club, tournament ID, original message (Afrikaans preserved), findings, plan and hash, approval time, before/after rows, verification result, rollback link, ticket ID and any deployment made. An `audit_events` entry is written with the same details.
+
+## 8. Getting code fixes live without waiting for a manual publish
+There are two kinds of fix, and they reach users in different ways:
+- **Data repairs (A1–A8):** live the moment the transaction commits. Nothing needs publishing, so the tournament is fixed within seconds.
+- **Code fixes (when the bug is in SquashHub itself):** the in-app assistant cannot write or publish code. It can only detect the defect and raise a ticket with full diagnostics, and I then fix the code here. To keep live tournaments from waiting on a publish:
+  1. **Move the tournament rules to the server.** The pool freeze, playoff filling, fixed-pair enforcement and integrity checks will run in the database (RPCs/triggers) and edge functions, not only in the phone app. Server changes go live the moment they are deployed, with no publish and no phone refresh.
+  2. **Standing permission to publish verified fixes.** When a verified, non-ambiguous bug fix also needs an app update, I publish it automatically with no separate request. Before publishing, it must pass: build, typecheck, the tournament and assistant test suites, a security scan with no critical findings, and a re-run of the integrity check on the affected tournament. A fix that is ambiguous or unverified, or that fails any check, is never published automatically; I report it instead.
+  3. Every automatic deployment is recorded in the audit trail (what changed, why, checks passed, time). Club admins and Super Admin are notified in the app.
+- Players' phones pick up an app update through the existing 60-second update check, so no reinstall is needed.
+
 
 ## Technical details
 - Files: `src/lib/tournaments/integrity.ts` (+ tests), `supabase/functions/_shared/tournament-integrity/*` (mirror), `ai-help/tools.ts` (3 read tools), `ai-help/actions.ts` (repair action), `ai-help/index.ts` (fast path, `waitUntil` working status, gating), `ai-help/flow.ts` (risk classify, escalation decision), `use-ai-help.ts` + `AiHelpBetaPanel.tsx` (polling, cards), AI Activity filter.

@@ -209,7 +209,7 @@ const toFixtureRow = (divisionKey: string, m: Record<string, any>, kind: StageKi
   id: m.id, divisionId: divisionKey, stageId: m.stage_key, stageKind: kind, round: m.round_number,
   a: m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id,
   b: m.partner_b_member_id ? `${m.player_b_member_id}+${m.partner_b_member_id}` : m.player_b_member_id,
-  status: m.status, score: m.score,
+  status: m.status, score: m.score, ...({ slot: m.bracket_position } as object),
   winner: !m.winner_member_id ? null
     : [m.player_a_member_id, m.partner_a_member_id].includes(m.winner_member_id)
       ? (m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id)

@@ -91,6 +91,8 @@ export function generateRotatingDoublesSchedule(
   opts: {
     maxRounds?: number;
     maxMatchesPerPlayer?: number;
+    /** Opt-in: treat the number as a TARGET so short players may be topped up (+1 overshoot for fillers). Default = strict maximum. */
+    topUpToTarget?: boolean;
     /** Player pairs that must never be drawn as partners (e.g. family members). */
     avoidPartners?: Array<[string, string] | string[]>;
     /**
@@ -138,7 +140,7 @@ export function generateRotatingDoublesSchedule(
   const table = perPlayerCap || avoid.size || strengthMode !== "any" || history.length ? null : WHIST[players.length];
   const built = table
     ? fromWhist(players, table)
-    : greedyRotation(players, perPlayerCap || undefined, { avoid, strengthMode, history });
+    : greedyRotation(players, perPlayerCap || undefined, { avoid, strengthMode, history, topUp: !!opts.topUpToTarget });
 
   const cap = opts.maxRounds && opts.maxRounds > 0 ? opts.maxRounds : built.rounds;
   if (cap >= built.rounds) return built;
@@ -338,7 +340,7 @@ function greedyRotation(
       if (short.length === 0) break;
       const quad = short.slice(0, 4);
       const fillers = players
-        .filter((p) => !quad.includes(p) && (playedCount.get(p) || 0) < perPlayerCap!)
+        .filter((p) => !quad.includes(p) && (playedCount.get(p) || 0) < perPlayerCap! + (o.topUp ? 1 : 0))
         .sort((a, b) =>
           (playedCount.get(a)! - playedCount.get(b)!) ||
           quad.reduce((s2, q) => s2 + (partnered.has(pairKey(q, a)) ? 1 : 0), 0) -

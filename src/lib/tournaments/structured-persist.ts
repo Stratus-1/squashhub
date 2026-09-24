@@ -6,7 +6,7 @@
  */
 import { IntegrityError, assertNoReentry, contractIssues, isDecided, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
-import { confirmPlayoffs, generateFromSpec, previewPlayoffs, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
+import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
 import type { TournamentDefinition } from "../smart-builder/definition";
 
 /* ───── spec from the Beta definition ───── */

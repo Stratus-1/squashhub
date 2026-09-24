@@ -18,6 +18,7 @@ import { useAdminSupportThreads, useSupportMessages, useSendSupportMessage, useU
 import { openExternalUrl } from "@/lib/google-calendar";
 import { useQuery } from "@tanstack/react-query";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { AiActivityPanel } from "@/components/ai/AiActivityPanel";
 
 const fromAny = (table: string) => (supabase as any).from(table);
 
@@ -76,6 +77,7 @@ function statusBadge(status: string) {
 }
 
 export default function AdminSupport() {
+  const [view, setView] = useState<"inbox" | "ai">("inbox");
   const { user } = useAuth();
   const { data: threads, isLoading } = useAdminSupportThreads(true);
   const send = useSendSupportMessage();
@@ -235,6 +237,27 @@ export default function AdminSupport() {
     }
   };
 
+  const viewToggle = (
+    <div className="px-4 pb-2 flex gap-2">
+      <Button size="sm" variant={view === "inbox" ? "default" : "outline"} onClick={() => setView("inbox")}>Tickets</Button>
+      <Button size="sm" variant={view === "ai" ? "default" : "outline"} onClick={() => setView("ai")}>AI Activity (beta)</Button>
+    </div>
+  );
+
+  if (view === "ai") {
+    return (
+      <div className="bottom-nav-safe">
+        <SEO title="AI Activity" description="AI assistant activity." path="/admin/support" noIndex />
+        <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2 flex items-center justify-between gap-3">
+          <h1 className="text-xl font-bold font-heading tracking-tight flex items-center gap-2"><LifeBuoy className="w-5 h-5 text-primary" /> AI assistant activity</h1>
+          <Button asChild variant="ghost" size="sm"><Link to="/admin">← Back</Link></Button>
+        </div>
+        {viewToggle}
+        <div className="px-4"><AiActivityPanel /></div>
+      </div>
+    );
+  }
+
   return (
     <div className="bottom-nav-safe">
       <SEO title="Admin Support" description="Support inbox." path="/admin/support" noIndex />
@@ -259,6 +282,7 @@ export default function AdminSupport() {
           </Button>
         </div>
       </div>
+      {viewToggle}
 
       <div className="px-4 sm:px-6 lg:px-[5%] mt-1">
         <div className="flex flex-wrap gap-2">

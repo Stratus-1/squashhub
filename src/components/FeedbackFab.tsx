@@ -8,23 +8,27 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HelpAssistantPanel } from "@/components/help/HelpAssistantPanel";
 import { AiAssistantPanel } from "@/components/ai/AiAssistantPanel";
+import { AiHelpBetaPanel } from "@/components/ai/AiHelpBetaPanel";
 import { useAiAssistant } from "@/hooks/use-ai-assistant";
+import { useAiHelpBeta } from "@/hooks/use-ai-help";
 
 /**
  * Floating help entry point.
  *
- * When the club has the AI assistant switched on (and this member is in its
- * audience), it leads with the AI assistant — voice or text — and keeps the
- * searchable help + support form behind a second tab.
+ * Beta clubs (club_beta_features 'ai_actions') get the AI Help Assistant beta:
+ * voice, screenshots and confirmed, audited actions. Otherwise the existing
+ * club AI assistant (if released) or the searchable help panel shows.
  */
 export function FeedbackFab() {
   const { user } = useAuth();
   const ai = useAiAssistant();
+  const beta = useAiHelpBeta();
   const [open, setOpen] = useState(false);
 
   if (!user?.id) return null;
 
-  const aiOn = ai.allowed;
+  const betaOn = beta.enabled && !!beta.clubId;
+  const aiOn = betaOn || ai.allowed;
 
   return (
     <>
@@ -49,7 +53,7 @@ export function FeedbackFab() {
         >
           <SheetHeader className="text-left">
             <SheetTitle className="font-heading text-base">
-              {aiOn ? "SquashHub assistant" : "Help assistant"}
+              {aiOn ? (betaOn ? "SquashHub assistant (beta)" : "SquashHub assistant") : "Help assistant"}
             </SheetTitle>
             <SheetDescription className="text-[12px]">
               {aiOn
@@ -62,15 +66,11 @@ export function FeedbackFab() {
             {aiOn ? (
               <Tabs defaultValue="assistant">
                 <TabsList className="grid grid-cols-2 h-8">
-                  <TabsTrigger value="assistant" className="text-[12px]">
-                    Assistant
-                  </TabsTrigger>
-                  <TabsTrigger value="help" className="text-[12px]">
-                    Help & support
-                  </TabsTrigger>
+                  <TabsTrigger value="assistant" className="text-[12px]">Assistant</TabsTrigger>
+                  <TabsTrigger value="help" className="text-[12px]">Help & support</TabsTrigger>
                 </TabsList>
                 <TabsContent value="assistant" className="mt-3">
-                  <AiAssistantPanel onClose={() => setOpen(false)} />
+                  {betaOn ? <AiHelpBetaPanel clubId={beta.clubId!} /> : <AiAssistantPanel onClose={() => setOpen(false)} />}
                 </TabsContent>
                 <TabsContent value="help" className="mt-3">
                   <HelpAssistantPanel onClose={() => setOpen(false)} />

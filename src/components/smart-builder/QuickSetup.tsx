@@ -180,12 +180,7 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
             <option value="">Not decided</option><option value="fixed">Fixed dates & times</option><option value="play_by">Play by a deadline</option>
           </select>
         </Q>
-        <Q label={first.schedule.mode === "play_by" ? "Opens" : "Start date"}>
-          <Input type="date" className={f} value={first.schedule.startDate?.slice(0, 10) ?? ""} onChange={(e) => editStruct((d) => { const s = d.divisions[0].sections[0].stages[0]; s.schedule = { ...s.schedule, startDate: e.target.value || null }; })} />
-        </Q>
-        <Q label={first.schedule.mode === "play_by" ? "Play by" : "End date"}>
-          <Input type="date" className={f} value={(po ?? first).schedule.endDate?.slice(0, 10) ?? ""} onChange={(e) => editStruct((d) => { const ss = d.divisions[0].sections[0].stages; const s = ss[ss.length - 1]; s.schedule = { ...s.schedule, endDate: e.target.value || null }; })} />
-        </Q>
+        <div className="text-[11px] text-white/55 self-end">Dates: the tournament dates at the top of Design. A stage can get its own narrower dates on Schedule.</div>
         <Q label="Courts available">
           <Input className={f} inputMode="numeric" value={first.schedule.courtsPerVenue ?? ""} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages.forEach((s) => { s.schedule = { ...s.schedule, courtsPerVenue: e.target.value ? Number(e.target.value) : null }; }); })} />
         </Q>

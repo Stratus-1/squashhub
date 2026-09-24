@@ -146,7 +146,17 @@ export function shortStageName(stage: Stage) {
   const n = stage.name.split(/[—:(]/)[0].trim();
   return n.length > 38 ? `${n.slice(0, 36)}…` : n || STAGE_LABELS[stage.kind];
 }
-const fmtDate = (s?: string | null) => (s ? new Date(`${s}T00:00:00`).toLocaleDateString("en-ZA", { day: "numeric", month: "short" }) : null);
+/** Dates may be saved as "YYYY-MM-DD" or with a time ("YYYY-MM-DDTHH:MM:SS"). */
+const datePart = (s?: string | null) => (s ? s.slice(0, 10) : "");
+const timePart = (s?: string | null) => (s && s.length > 10 ? s.slice(11, 16) : "");
+/** Keep any saved time when the date input changes. */
+const withDate = (v: string, prev?: string | null) => (v ? (timePart(prev) ? `${v}T${prev!.slice(11)}` : v) : null);
+const fmtDate = (s?: string | null) => {
+  const d = datePart(s);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const out = new Date(`${d}T00:00:00`);
+  return isNaN(out.getTime()) ? null : out.toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
+};
 
 export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Edit }) {
   const d = def.scheduleDefaults ?? {};
@@ -167,8 +177,8 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
       <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2 space-y-2">
         <div className="font-semibold text-white">Tournament defaults <span className="font-normal text-white/45">— every stage uses these unless it sets its own</span></div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-          <Field label="Start date" tag={d.startDate ? "Required" : "Missing"} field="defaults.startDate"><Input type="date" className={f} value={d.startDate ?? ""} onChange={(e) => setD({ startDate: e.target.value || null })} /></Field>
-          <Field label="End date" tag={d.endDate ? "Required" : "Missing"} field="defaults.endDate"><Input type="date" className={f} value={d.endDate ?? ""} onChange={(e) => setD({ endDate: e.target.value || null })} /></Field>
+          <Field label="Start date" tag={d.startDate ? "Required" : "Missing"} field="defaults.startDate"><Input type="date" className={f} value={datePart(d.startDate)} onChange={(e) => setD({ startDate: withDate(e.target.value, d.startDate) })} /></Field>
+          <Field label="End date" tag={d.endDate ? "Required" : "Missing"} field="defaults.endDate"><Input type="date" className={f} value={datePart(d.endDate)} onChange={(e) => setD({ endDate: withDate(e.target.value, d.endDate) })} /></Field>
           <Field label="Day" tag="Optional"><select className={cn(sel, "w-full")} value={d.weekday ?? ""} onChange={(e) => setD({ weekday: e.target.value === "" ? null : Number(e.target.value) })}><option value="">Any</option>{DAYS.map((x, i) => <option key={x} value={i}>{x}</option>)}</select></Field>
           <Field label="Start time" tag="Optional"><Input type="time" className={f} value={d.startTime ?? ""} onChange={(e) => setD({ startTime: e.target.value || null })} /></Field>
           <Field label="Venues" tag="Optional" className="col-span-2"><Input className={f} placeholder="Club names, comma separated" defaultValue={(d.venueNames ?? []).join(", ")} key={(d.venueNames ?? []).join("|")} onBlur={(e) => setD({ venueNames: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) })} /></Field>
@@ -207,8 +217,11 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
                   const cell = (v: ReactNode, inherited: boolean, required: boolean) =>
                     v ? <span className={inherited ? "text-white/45" : ""}>{v}{inherited && <span className="text-[9px] ml-1">inh.</span>}</span>
                       : required ? <span className="rounded bg-red-500/20 px-1 text-red-300">Missing</span> : <span className="text-white/30">—</span>;
-                  const dates = e.startDate.value || e.endDate.value ? `${fmtDate(e.startDate.value) ?? "…"}${e.endDate.value ? ` – ${fmtDate(e.endDate.value)}` : ""}` : stage.schedule.roundDates?.length ? `${stage.schedule.roundDates.length} round dates` : null;
-                  const dayTime = [e.weekday.value != null ? DAYS[e.weekday.value] : null, e.startTime.value].filter(Boolean).join(" ") || null;
+                  const sameDay = datePart(e.startDate.value) && datePart(e.startDate.value) === datePart(e.endDate.value);
+                  const dates = e.startDate.value || e.endDate.value ? `${fmtDate(e.startDate.value) ?? "…"}${e.endDate.value && !sameDay ? ` – ${fmtDate(e.endDate.value)}` : ""}` : stage.schedule.roundDates?.length ? `${stage.schedule.roundDates.length} round dates` : null;
+                  const stageTime = timePart(e.startDate.value) ? `${timePart(e.startDate.value)}${timePart(e.endDate.value) ? `–${timePart(e.endDate.value)}` : ""}` : null;
+                  const dayName = e.weekday.value != null ? DAYS[e.weekday.value] : datePart(e.startDate.value) ? DAYS[new Date(`${datePart(e.startDate.value)}T00:00:00`).getDay()] : null;
+                  const dayTime = [dayName, stageTime ?? e.startTime.value].filter(Boolean).join(" ") || null;
                   const venue = e.venueNames.value?.length ? `${e.venueNames.value.length > 1 ? `${e.venueNames.value.length} venues` : e.venueNames.value[0]}` : null;
                   return (
                     <div key={stage.id} data-field={`stage.${stage.id}`}>
@@ -249,10 +262,10 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
         </select>
       </Field>
       <Field label={s.mode === "fixed" ? "Date" : "Start"} tag={tag(need.dates, s.startDate, e.startDate.inherited)}>
-        <Input type="date" className={f} value={s.startDate ?? ""} placeholder={e.startDate.value ?? ""} onChange={(ev) => setS(stage.id, { startDate: ev.target.value || null })} />
+        <Input type="date" className={f} value={datePart(s.startDate)} onChange={(ev) => setS(stage.id, { startDate: withDate(ev.target.value, s.startDate) })} />
       </Field>
       <Field label={s.mode === "play_by" ? "Play by" : "End"} tag={tag(need.endDate, s.endDate, e.endDate.inherited) === "Not needed" ? "Optional" : tag(need.endDate, s.endDate, e.endDate.inherited)}>
-        <Input type="date" className={f} value={s.endDate ?? ""} onChange={(ev) => setS(stage.id, { endDate: ev.target.value || null })} />
+        <Input type="date" className={f} value={datePart(s.endDate)} onChange={(ev) => setS(stage.id, { endDate: withDate(ev.target.value, s.endDate) })} />
       </Field>
       <Field label="Day" tag={e.weekday.inherited && s.weekday == null ? "Inherited" : "Optional"}>
         <select className={cn(sel, "w-full")} value={s.weekday ?? ""} onChange={(ev) => setS(stage.id, { weekday: ev.target.value === "" ? null : Number(ev.target.value) })}>

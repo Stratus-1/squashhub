@@ -5,9 +5,10 @@ import { Loader2, Sparkles, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabaseDb } from "@/lib/tournaments/structured-db";
+import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
+import { StructuredEditorDialog } from "./StructuredEditorDialog";
 import {
-  confirmStructuredPlayoffs, generateStructuredTournament, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
+  atomically, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
 import type { PlayoffPreview, TournamentSpec } from "@/lib/tournaments/engine-service";
 
@@ -33,10 +34,32 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
     <div className="rounded-lg border p-3 space-y-2 text-sm">
       <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /><span className="font-semibold">Structured tournament</span><Badge variant="outline">BETA engine</Badge></div>
       {matches.length === 0 && (
-        <Button size="sm" disabled={!!busy} onClick={() => run("gen", () => generateStructuredTournament(supabaseDb, champId), "Games generated")}>
+        <Button size="sm" disabled={!!busy} onClick={() => run("gen", () => atomically(supabaseDb, champId, commitStructured, (db) => generateStructuredTournament(db, champId)), "Games generated")}>
           {busy === "gen" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}Generate games
         </Button>
       )}
+      <div className="flex flex-wrap items-center gap-2">
+        <StructuredEditorDialog champId={champId} spec={spec} matches={matches} onSaved={refresh} />
+        {matches.length > 0 && (
+          <Button size="sm" variant="outline" disabled={!!busy} onClick={() => {
+            if (!confirm("Rebuild unplayed games from the current entries? Played games and results are kept.")) return;
+            run("rb", async () => {
+              const r = await atomically(supabaseDb, champId, commitStructured, (db) => rebuildStructured(db, champId));
+              toast.message(`Kept ${r.keptPlayed} played game(s); removed ${r.removedFuture} unplayed; created ${r.created}.`);
+            }, "Rebuild saved");
+          }}>Rebuild unplayed games</Button>
+        )}
+        {matches.length > 0 && (
+          <select className="h-8 rounded-md border bg-background px-2 text-xs" value="" disabled={!!busy} onChange={(e) => {
+            const id = e.target.value; if (!id) return;
+            if (!confirm(`Withdraw ${nameOf(id)}? Their played results stay; only their unplayed games are removed.`)) return;
+            run("wd", () => atomically(supabaseDb, champId, commitStructured, (db) => withdrawStructured(db, champId, id)), "Player withdrawn");
+          }}>
+            <option value="">Withdraw a player…</option>
+            {[...new Set(matches.flatMap((m) => [m.player_a_member_id, m.player_b_member_id]).filter(Boolean))].map((id: string) => <option key={id} value={id}>{nameOf(id)}</option>)}
+          </select>
+        )}
+      </div>
       {spec.divisions.map((d) => d.stages.filter((s) => s.order > 0).map((s) => {
         const exists = stages.some((x: any) => x.spec_key === s.id && matches.some((m) => m.stage_id === x.id));
         const koRows = matches.filter((m) => m.stage_key === s.id && m.group_number === spec.divisions.indexOf(d) + 1);
@@ -52,7 +75,8 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
             )}
             {exists && s.kind === "knockout" && (
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`nx${s.id}`, async () => {
-                const full = await loadEntrants(supabaseDb, champId, spec);
+                await atomically(supabaseDb, champId, commitStructured, async (db) => {
+                const full = await loadEntrants(db, champId, spec);
                 const rows = koRows.map((m) => ({ id: m.id, divisionId: d.divisionId, stageId: s.id, stageKind: "knockout" as const, round: m.round_number,
                   a: m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id,
                   b: m.partner_b_member_id ? `${m.player_b_member_id}+${m.partner_b_member_id}` : m.player_b_member_id,
@@ -61,8 +85,9 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
                     : (m.partner_b_member_id ? `${m.player_b_member_id}+${m.partner_b_member_id}` : m.player_b_member_id),
                   slot: m.bracket_position }));
                 const next = nextKnockoutRound(champId, d.divisionId, s.id, rows);
-                const ids = await persistStructure(supabaseDb, champId, full);
-                await insertFixtures(supabaseDb, champId, full, ids, next, rows);
+                const ids = await persistStructure(db, champId, full);
+                await insertFixtures(db, champId, full, ids, next, rows);
+                });
               }, "Next round created")}>Next knockout round</Button>
             )}
           </div>
@@ -78,7 +103,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
             <Button disabled={!!busy} onClick={() => preview && run("cf", async () => {
-              await confirmStructuredPlayoffs(supabaseDb, champId, preview.div, preview.stage, true); setPreview(null);
+              await atomically(supabaseDb, champId, commitStructured, (db) => confirmStructuredPlayoffs(db, champId, preview.div, preview.stage, true)); setPreview(null);
             }, "Play-offs created")}>Confirm</Button>
           </DialogFooter>
         </DialogContent>

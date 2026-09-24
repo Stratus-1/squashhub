@@ -5452,7 +5452,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           playoffModeByLeague: playoffModesByNum(),
           qualifiersPerPoolByLeague: playoffQualifiersByNum(),
         });
-        placeholderRows.sort((a, b) => a.round_number - b.round_number);
+        // Within a round, weakest position plays first and Pos 1 (strongest)
+        // takes the latest reserved slot, so the top final is played last.
+        const posOf = (r: any) => {
+          const m = /Pos (\d+)/.exec(r.stage_label || "");
+          return m ? Number(m[1]) : 0;
+        };
+        placeholderRows.sort((a, b) => a.round_number - b.round_number || posOf(b) - posOf(a));
         placeholderRows.forEach((row, i) => {
           const si = reservedSlotIdx[i];
           if (si == null) return;

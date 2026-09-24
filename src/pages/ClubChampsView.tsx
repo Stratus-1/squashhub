@@ -61,6 +61,7 @@ import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog } from "lucide
 import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
 
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
+import { computeFinalPlacements, placementSlotLabel } from "@/lib/tournaments/final-standings";
 import { buildPlayoffMatches, buildRegisteredPairMap, enforceRegisteredPairs, isPlayoffRowLocked, shouldAutoFillPlayoffs, type StandingEntity } from "@/lib/tournament-playoffs";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -886,14 +887,62 @@ export default function ClubChampsView() {
       return renderStandingsTable(getGroupStandings(gn), { poolLabels });
     }
 
+    // Lifecycle: once every placement play-off is decided, the primary view
+    // is one combined FINAL table ordered by play-off outcomes; pool tables
+    // stay below as qualification history.
+    const poolRowsAll = Array.from({ length: pc }).flatMap((_, i) => getGroupStandings(gn, i + 1));
+    const finals = computeFinalPlacements(matches as any[], gn, poolRowsAll.length);
+    const nameFor = (pid: string, partner: string | null) => {
+      const hit = poolRowsAll.find((s: any) =>
+        s.club_member_id === pid || s.partner_member_id === pid ||
+        (partner && (s.club_member_id === partner || s.partner_member_id === partner)));
+      return hit?.name ?? "—";
+    };
+
     return (
       <div className="space-y-4">
+        {finals && (
+          <div className="space-y-2">
+            <Badge className="text-xs font-semibold">Final Standings</Badge>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="pb-2 font-medium">#</th>
+                    <th className="pb-2 font-medium">{isDoubles ? "Team" : "Player"}</th>
+                    <th className="pb-2 font-medium text-center">Pool</th>
+                    <th className="pb-2 font-medium">Decided by</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {finals.map((f) => (
+                    <tr key={f.position} className="border-b border-border/30">
+                      <td className="py-2 text-muted-foreground tabular-nums">{f.position}</td>
+                      <td className="py-2 font-medium">
+                        {nameFor(f.player_member_id, f.partner_member_id)}
+                        {f.position === 1 && <Badge className="text-[9px] ml-1">🏆 Winner</Badge>}
+                      </td>
+                      <td className="py-2 text-center">
+                        <Badge variant="outline" className="text-[10px]">{poolLabels.get(f.player_member_id) || "–"}</Badge>
+                      </td>
+                      <td className="py-2 text-xs text-muted-foreground">
+                        {f.won ? "Won" : "Lost"} {placementSlotLabel(f.decidedBySlot)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-muted-foreground">Pool tables below show how teams qualified for each play-off.</p>
+          </div>
+        )}
         {Array.from({ length: pc }).map((_, i) => {
           const poolNumber = i + 1;
           const s = getGroupStandings(gn, poolNumber);
           return (
             <CollapsibleSection
               key={poolNumber}
+              defaultOpen={!finals}
               className="space-y-2"
               header={
                 <>

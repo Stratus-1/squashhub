@@ -1,0 +1,2 @@
+ALTER TABLE public.club_champs_rounds DROP CONSTRAINT club_champs_rounds_type_chk;
+ALTER TABLE public.club_champs_rounds ADD CONSTRAINT club_champs_rounds_type_chk CHECK (round_type = ANY (ARRAY['knockout','semi_final','final','third_place','round_robin','swiss']));

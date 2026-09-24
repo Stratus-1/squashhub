@@ -192,7 +192,23 @@ const ScheduleDefaultsSchema = z.object({
 }).default({});
 export type ScheduleDefaults = z.infer<typeof ScheduleDefaultsSchema>;
 
+/** Opening steps: scope → audience → seeding coverage → expected entries. */
+const EventScopeSchema = z.object({
+  scope: z.enum(["club", "regional", "national"]).nullable().optional(),
+  ownerId: z.string().nullable().optional(),
+  ownerName: z.string().nullable().optional(),
+  audience: z.enum(["all_members", "league_players", "selected_members", "open_public", "all_clubs", "selected_clubs", "selected_leagues", "selected_regions", "ranked_players", "selected_players"]).nullable().optional(),
+  selectedIds: z.array(z.string()).optional(),
+  /** Discovered, not invented: eligible count and per-source ranking coverage. */
+  eligibleCount: z.number().int().min(0).nullable().optional(),
+  coverage: z.record(z.number().int().min(0)).optional(),
+  seedingSource: z.enum(["national", "regional", "league_strength", "club_ladder", "match_history", "manual"]).nullable().optional(),
+  expectedEntries: z.number().int().min(0).nullable().optional(),
+}).default({});
+export type EventScopeSettings = z.infer<typeof EventScopeSchema>;
+
 export const DefinitionSchema = z.object({
+  event: EventScopeSchema,
   version: z.literal(1).default(1),
   name: z.string().default("Untitled tournament"),
   ownerKind: z.enum(["club", "association", "federation"]).default("federation"),

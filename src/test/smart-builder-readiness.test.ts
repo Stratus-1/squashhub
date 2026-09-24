@@ -20,13 +20,14 @@ describe("smart builder readiness", () => {
   it("old drafts load with empty settings and report what's missing", () => {
     const { r } = run(base);
     const ids = r.missing.map((x) => x.id);
-    expect(ids).toEqual(expect.arrayContaining(["entry", "dates", "sending", "channels", "fee", "whatsapp_group", "results"]));
-    expect(r.nextMissing?.ask).toBeTruthy();
+    expect(ids).toEqual(expect.arrayContaining(["scope", "entry", "dates", "sending", "channels", "fee", "whatsapp_group", "results"]));
+    expect(r.nextMissing?.id).toBe("scope");
   });
 
   it("Riverside decisions persist into structured settings and map to existing fields without sending", () => {
     const { m, r } = run({
       ...base,
+      event: { scope: "club", audience: "selected_members", expectedEntries: 16, seedingSource: "club_ladder" },
       players: { entryMethod: "selected", audience: "individuals", confirmAvailabilityOnly: true, seedingSource: "ranking" },
       comms: { inviteSending: "manual", inviteChannels: ["email", "whatsapp"], entryFeeRands: 0, whatsappGroup: "no", resultNotify: "none" },
       scheduleDefaults: { startDate: "2026-10-01", endDate: "2026-10-29", weekday: 4, venueNames: ["Riverside"], courtsPerVenue: 3, matchMinutes: 45 },
@@ -76,5 +77,22 @@ describe("smart builder readiness", () => {
   it("blocks when a division's first stage can't run on today's engine", () => {
     const { m } = run({ ...base, divisions: [{ id: "d", name: "Open", sections: [{ id: "s", name: "Main", stages: [{ id: "x", name: "Split", kind: "split", groups: 1 }] }] }] });
     expect(m.executability).toBe("blocked");
+  });
+});
+
+describe("event scope opening steps", () => {
+  it("asks scope, then audience, then expected entries — before format", () => {
+    const { r: r1 } = run({ ...base });
+    expect(r1.nextMissing?.id).toBe("scope");
+    const { r: r2 } = run({ ...base, event: { scope: "regional" } });
+    expect(r2.nextMissing?.id).toBe("event_audience");
+    expect(r2.nextMissing?.ask).toContain("Selected clubs");
+    const { r: r3 } = run({ ...base, event: { scope: "regional", audience: "all_clubs", eligibleCount: 816, coverage: { regional: 600, national: 200 } } });
+    expect(r3.nextMissing?.id).toBe("expected_entries");
+    expect(r3.nextMissing?.ask).toContain("816");
+  });
+  it("rejects an audience not valid for the scope", () => {
+    const { r } = run({ ...base, event: { scope: "club", audience: "selected_regions" } });
+    expect(r.missing.map((m) => m.id)).toContain("event_audience");
   });
 });

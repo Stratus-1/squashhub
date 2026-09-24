@@ -129,12 +129,43 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
       <div className={cn(panel, "divide-y divide-white/10")}>
         {drafts.length === 0 && <div className="p-4 text-xs text-white/50">No drafts yet.</div>}
         {drafts.map((d) => (
-          <button key={d.id} onClick={() => nav.openDraft(d.id)} className="flex w-full items-center justify-between p-3 text-left text-sm text-white/85 hover:bg-white/[0.05]">
-            <span>{d.title}</span>
-            <span className="text-[11px] text-white/50">{d.status === "created" ? "Created" : "Draft"} · {new Date(d.updated_at).toLocaleString()}</span>
-          </button>
+          <div key={d.id} className="flex w-full items-center hover:bg-white/[0.05]">
+            <button onClick={() => nav.openDraft(d.id)} className="flex flex-1 items-center justify-between p-3 text-left text-sm text-white/85">
+              <span>{d.title}</span>
+              <span className="text-[11px] text-white/50">{d.status === "created" ? "Created" : "Draft"} · {new Date(d.updated_at).toLocaleString()}</span>
+            </button>
+            {d.status !== "created" && (
+              <button
+                aria-label={`Delete ${d.title}`}
+                onClick={() => setPendingDelete(d)}
+                className="p-3 text-white/40 hover:text-red-300"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         ))}
       </div>
+      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this draft?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{pendingDelete?.title}” will be permanently removed. This only deletes the builder draft — no real tournament exists for it yet. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => pendingDelete && remove.mutate(pendingDelete)}
+              disabled={remove.isPending}
+            >
+              {remove.isPending ? "Deleting…" : "Delete draft"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

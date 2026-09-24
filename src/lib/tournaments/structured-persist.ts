@@ -244,9 +244,11 @@ export function poolStandings(divisionKey: string, stageKey: string, matches: Ar
     return q ? `${p}+${q}` : p;
   };
   const byPool = new Map<number, Map<string, number>>();
-  for (const m of matches.filter((x) => x.stage_key === stageKey && x.pool_number != null)) {
-    const pool = byPool.get(m.pool_number) ?? new Map<string, number>();
-    byPool.set(m.pool_number, pool);
+  // A one-field round robin has no pool number: treat it as a single pool.
+  for (const m of matches.filter((x) => x.stage_key === stageKey)) {
+    const pn = m.pool_number ?? 1;
+    const pool = byPool.get(pn) ?? new Map<string, number>();
+    byPool.set(pn, pool);
     const a = unitOf(m, "a"), b = unitOf(m, "b");
     for (const u of [a, b]) if (u && !pool.has(u)) pool.set(u, 0);
     if (m.winner_member_id) {

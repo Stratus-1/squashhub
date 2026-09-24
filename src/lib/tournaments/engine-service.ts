@@ -7,7 +7,7 @@
  */
 import {
   IntegrityError, assertKnockoutShape, assertStageKinds, bracketOrder, canGenerateStage, contractIssues,
-  isDecided, mapQualifiers, nextPow2, roundRobin, snakePools, swissRound,
+  isDecided, mapQualifiers, progressionOf, disciplineOf, nextPow2, roundRobin, snakePools, swissRound,
   type DivisionContract, type FixtureRow, type PlannedStage, type PoolStanding, type SwissTieBreak,
 } from "./contract";
 
@@ -47,7 +47,7 @@ export function generateFromSpec(spec: TournamentSpec, tournamentId: string): En
   return out;
 }
 
-function generateStage(tid: string, d: SpecDivision, st: PlannedStage): EngineFixture[] {
+export function generateStage(tid: string, d: SpecDivision, st: PlannedStage): EngineFixture[] {
   const mk = (f: Omit<EngineFixture, "tournamentId" | "divisionId" | "stageId" | "stageKind">): EngineFixture =>
     ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: st.kind, ...f });
   if (st.kind === "pools" || st.kind === "round_robin") {
@@ -164,7 +164,7 @@ export interface EditImpact {
 
 const structuralKey = (d: SpecDivision) => JSON.stringify({
   unit: d.unit, seeding: d.seeding, entrants: d.entrants.map((e) => e.id),
-  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, swissRounds: s.swissRounds, qualify: s.qualify, legs: s.legs, tieBreaks: s.tieBreaks, thirdPlace: s.thirdPlace })),
+  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, discipline: s.discipline, progression: s.progression, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, swissRounds: s.swissRounds, qualify: s.qualify, legs: s.legs, tieBreaks: s.tieBreaks, thirdPlace: s.thirdPlace })),
 });
 const scheduleKey = (d: SpecDivision) => JSON.stringify(d.stages.map((s) => [s.id, s.schedule]));
 
@@ -190,9 +190,21 @@ export function classifyEdit(before: TournamentSpec, after: TournamentSpec, fixt
     }
     if (structuralKey(a) !== structuralKey(b)) {
       changes.push({ divisionId: a.divisionId, kind: "structural", what: "format/pools/rounds/qualification/entrants changed" });
-      affected.add(a.divisionId);
-      const decided = fixtures.filter((f) => f.divisionId === a.divisionId && isDecided(f));
-      if (decided.length) lockedReasons.push(`${a.label}: ${decided.length} completed game(s) would be invalidated. Structure is locked.`);
+      const divFx = fixtures.filter((f) => f.divisionId === a.divisionId);
+      const started = new Set(divFx.map((f) => f.stageId));
+      const sk = (s: PlannedStage) => JSON.stringify({ ...JSON.parse(structuralKey({ ...a, stages: [s] } as SpecDivision)).stages[0], order: undefined });
+      const touched = new Set<string>();
+      for (const s of [...a.stages, ...b.stages]) {
+        const x = a.stages.find((y) => y.id === s.id), y = b.stages.find((z) => z.id === s.id);
+        if (!x || !y || x.order !== y.order || sk(x) !== sk(y)) touched.add(s.id);
+      }
+      const entrantsChanged = JSON.stringify(a.entrants.map((e) => e.id)) !== JSON.stringify(b.entrants.map((e) => e.id)) || a.unit !== b.unit || JSON.stringify(a.seeding) !== JSON.stringify(b.seeding);
+      const lockedStages = [...touched].filter((id) => started.has(id));
+      const futureOnly = !entrantsChanged && started.size > 0 && lockedStages.length === 0;
+      if (!futureOnly) affected.add(a.divisionId);
+      const decided = divFx.filter(isDecided);
+      if (lockedStages.length) lockedReasons.push(`${a.label}: stage(s) with games already created can't be moved, removed or reconfigured. Structure is locked.`);
+      else if (!futureOnly && decided.length) lockedReasons.push(`${a.label}: ${decided.length} completed game(s) would be invalidated. Structure is locked.`);
     }
   }
   for (const b of before.divisions) if (!after.divisions.some((a) => a.divisionId === b.divisionId)) {
@@ -216,3 +228,101 @@ export function applyEdit(after: TournamentSpec, impact: EditImpact, fixtures: E
 /** Round-trip helpers so the editor reopens exactly what was saved. */
 export const serializeSpec = (s: TournamentSpec) => JSON.parse(JSON.stringify(s)) as TournamentSpec;
 export const isStructured = (t: { builder_architecture?: string | null }) => t.builder_architecture === "structured";
+
+/* ───────── Multi-stage progression (same engine, no second generator) ───────── */
+
+const unitPlayers = (u: string) => u.split("+");
+
+/** Stage table: wins per unit in one stage, ties broken by the given seed order. */
+export function stageTable(stageId: string, rows: FixtureRow[], seedOrder: string[]): Array<{ id: string; wins: number }> {
+  const t = new Map<string, number>();
+  for (const f of rows.filter((x) => x.stageId === stageId)) {
+    for (const u of [f.a, f.b]) if (u && !t.has(u)) t.set(u, 0);
+    const w = f.a && !f.b ? f.a : f.winner;
+    if (w) t.set(w, (t.get(w) ?? 0) + 1);
+  }
+  const seed = (id: string) => { const i = seedOrder.indexOf(id); return i < 0 ? 1e9 : i; };
+  return [...t.entries()].map(([id, wins]) => ({ id, wins })).sort((x, y) => y.wins - x.wins || seed(x.id) - seed(y.id));
+}
+
+/** Per-player points across the given stages; a pair's win counts for both partners. */
+export function playerPoints(stageIds: string[], rows: FixtureRow[]): Map<string, number> {
+  const pts = new Map<string, number>();
+  for (const f of rows.filter((x) => stageIds.includes(x.stageId))) {
+    for (const u of [f.a, f.b]) if (u) for (const p of unitPlayers(u)) if (!pts.has(p)) pts.set(p, 0);
+    const w = f.a && !f.b ? f.a : f.winner;
+    if (w) for (const p of unitPlayers(w)) pts.set(p, (pts.get(p) ?? 0) + 1);
+  }
+  return pts;
+}
+
+/** Form doubles pairs from a ranked list of players. */
+export function formPairs(ranked: string[], method: "fold" | "positions" | "manual", manual?: string[][]): string[] {
+  if (method === "manual") {
+    if (!manual?.length) throw new IntegrityError("pairs_missing", "Set the pairs before starting this stage.");
+    const used = manual.flat();
+    if (new Set(used).size !== used.length || manual.some((p) => p.length !== 2)) throw new IntegrityError("pairs_invalid", "Each player must be in exactly one pair of two.");
+    const missing = ranked.filter((r) => !used.includes(r));
+    const extra = used.filter((u) => !ranked.includes(u));
+    if (missing.length || extra.length) throw new IntegrityError("pairs_invalid", "The pairs must use exactly the players from the previous stage.");
+    return manual.map((p) => p.join("+"));
+  }
+  if (ranked.length % 2) throw new IntegrityError("odd_pairs", `${ranked.length} players can't all be paired.`);
+  const out: string[] = [];
+  if (method === "positions") for (let i = 0; i < ranked.length; i += 2) out.push(`${ranked[i]}+${ranked[i + 1]}`);
+  else for (let i = 0; i < ranked.length / 2; i++) out.push(`${ranked[i]}+${ranked[ranked.length - 1 - i]}`);
+  return out;
+}
+
+const stageFinished = (st: PlannedStage, rows: FixtureRow[]) => {
+  const r = rows.filter((f) => f.stageId === st.id);
+  if (!r.length || !r.every((f) => isDecided(f) || !f.a || !f.b)) return false;
+  if (st.kind === "swiss") return Math.max(...r.map((f) => f.round ?? 1)) >= (st.swissRounds ?? 1);
+  return true;
+};
+
+export interface NextStagePlan { stage: PlannedStage; entrants: Array<{ id: string; rank: number }>; fixtures: EngineFixture[] }
+
+/**
+ * Next non-qualifier stage (everyone continues / form pairs). Qualifier stages use the play-off path.
+ * Seeds the new stage from the previous stage (or cumulative points when carrying forward).
+ */
+export function nextStageFixtures(tid: string, d: SpecDivision, stageId: string, rows: FixtureRow[], opts: { ownerConfirmed: boolean; pairs?: string[][] }): NextStagePlan {
+  const stage = d.stages.find((s) => s.id === stageId);
+  if (!stage || stage.order === 0) throw new IntegrityError("no_stage", "Unknown later stage.");
+  const p = progressionOf(stage);
+  if (p.mode === "qualifiers") throw new IntegrityError("use_playoffs", "This stage takes qualifiers — use the play-off preview.");
+  const errs = contractIssues(d).filter((i) => i.level === "error" && i.stageId === stage.id);
+  if (errs.length) throw new IntegrityError("contract", errs.map((e) => e.message).join("; "));
+  const div = rows.filter((f) => f.divisionId === d.divisionId);
+  if (div.some((f) => f.stageId === stage.id)) throw new IntegrityError("exists", `${stage.name} already has games.`);
+  const prev = d.stages.find((s) => s.order === stage.order - 1)!;
+  if (!stageFinished(prev, div)) throw new IntegrityError("prereq", `${prev.name} is not finished.`);
+  if (stage.generation !== "automatic" && !opts.ownerConfirmed) throw new IntegrityError("needs_confirmation", "Owner must confirm before the next stage is created.");
+  const seedOrder = d.entrants.map((e) => e.id);
+  const earlier = d.stages.filter((s) => s.order < stage.order).map((s) => s.id);
+  let ranked: string[];
+  if (p.mode === "form_pairs" || disciplineOf(d, prev) === disciplineOf(d, stage)) {
+    const prevTable = stageTable(prev.id, div, seedOrder).map((x) => x.id);
+    if (p.standings === "carry") {
+      const pts = playerPoints(earlier, div);
+      const score = (u: string) => unitPlayers(u).reduce((n, x) => n + (pts.get(x) ?? 0), 0);
+      ranked = [...prevTable].sort((x, y) => score(y) - score(x) || prevTable.indexOf(x) - prevTable.indexOf(y));
+    } else ranked = prevTable;
+  } else throw new IntegrityError("pairs_model", "No valid participant model for this stage.");
+  const units = p.mode === "form_pairs" ? formPairs(ranked, p.pairing ?? "fold", opts.pairs) : ranked;
+  const entrants = units.map((id, i) => ({ id, rank: i + 1 }));
+  const fixtures = generateStage(tid, { ...d, entrants }, stage);
+  assertStageKinds(d.stages, fixtures);
+  return { stage, entrants, fixtures };
+}
+
+/** Final standings per player: last stage only, or points added up across every stage. */
+export function finalStandings(d: SpecDivision, rows: FixtureRow[]): Array<{ id: string; points: number; position: number }> {
+  const div = rows.filter((f) => f.divisionId === d.divisionId);
+  const ordered = [...d.stages].sort((a, b) => a.order - b.order);
+  const ids = d.finalStandings === "cumulative" ? ordered.map((s) => s.id) : [ordered[ordered.length - 1].id];
+  const pts = playerPoints(ids, div);
+  const seed = d.entrants.flatMap((e) => unitPlayers(e.id));
+  return [...pts.entries()].sort((x, y) => y[1] - x[1] || seed.indexOf(x[0]) - seed.indexOf(y[0])).map(([id, points], i) => ({ id, points, position: i + 1 }));
+}

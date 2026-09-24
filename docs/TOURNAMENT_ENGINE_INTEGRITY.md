@@ -52,3 +52,12 @@ TOURNAMENT → DIVISION → STAGE → POOL (only in pool stages) → ROUND → F
 - Every fixture carries tournament/division/stage/round ids; `poolId` only in pool stages. Knockout/playoff fixtures belong to the division's knockout stage, never to a source pool, and cannot carry a pool-stage format (`assertFixtureIdentity`) — the Nelspruit guard.
 - League structure use per division (`leagueUse`): `division_allocation` (league → division, no seeding change), `pool_seeding` (strength only, one division), `team_allocation` (teams kept as units), `ignore`, `manual`. Undecided blocks allocation (`applyLeagueUse`).
 - Defaults: Men's/Ladies for categories, Pool A/B/C…; always renamable.
+
+## Custom / mixed format — ordered stage builder (2026-09-24)
+- "I know what I want → Custom / mixed" opens the stage builder (`StageBuilder.tsx`, `lib/smart-builder/stage-builder.ts`), not Guide me.
+- Each stage stores separate dimensions: `discipline`, `kind` (format), `groups/groupSize` (grouping), `swissRounds/legs/thirdPlace` (rounds), `schedule`, and `progression` from the previous stage. Stage order = array order, re-linked via `input.fromStageId`.
+- `progression.mode`: `qualifiers` (top N → knockout, existing play-off path), `all_continue` (same units, seeded by previous table), `form_pairs` (singles → doubles; `pairing` fold/positions/manual). `standings`: carry/reset. `def.finalStandings`: last_stage/cumulative.
+- `contractIssues` blocks: unresolved transition, singles→doubles without `form_pairs`, doubles→singles, odd count for pairing, anything but qualifiers after a knockout, missing generation mode.
+- Engine: `nextStageFixtures` / `startNextStructuredStage` reuse `generateStage`; pair units are `a+b` ids persisted via partner columns in the same atomic commit. `finalStandings` credits pair wins to both partners.
+- `classifyEdit`: stages that already have games can't be moved/removed/reconfigured; edits to later, not-yet-created stages don't regenerate anything.
+- `poolStandings` treats a one-field round robin/Swiss as one pool (previously returned nothing — play-offs after a one-field RR/Swiss would have been empty).

@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
 import { DesignCanvas } from "@/components/smart-builder/DesignCanvas";
 import { QuickSetup } from "@/components/smart-builder/QuickSetup";
+import { StageBuilder } from "@/components/smart-builder/StageBuilder";
 import { QUICK_PATHS, presetDefinition, type QuickPath } from "@/lib/smart-builder/quick-path";
 import { InvitationsTab, PlayersTab, ReviewTab, ScheduleTab } from "@/components/smart-builder/BuilderTabs";
 import { canUseSmartBuilder, SMART_BUILDER_LABEL, SMART_BUILDER_SUBLABEL } from "@/lib/smart-builder/access";
@@ -425,8 +426,9 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
             )}
             <TabsContent value="design" className="mt-3 space-y-3">
               {def.quickPath && def.quickPath !== "custom" && <QuickSetup def={def} edit={edit} />}
+              {def.quickPath === "custom" && <StageBuilder def={def} edit={edit} />}
               <ScoringRow def={def} edit={edit} />
-              <div data-field="canvas" className={def.quickPath && def.quickPath !== "custom" ? "hidden" : undefined}><DesignCanvas def={def} validation={validation} onChange={(d) => { setDef(d); setDirty(true); }} /></div>
+              <div data-field="canvas" className={def.quickPath ? "hidden" : undefined}><DesignCanvas def={def} validation={validation} onChange={(d) => { setDef(d); setDirty(true); }} /></div>
             </TabsContent>
             <TabsContent value="players" className="mt-3"><PlayersTab def={def} validation={validation} edit={edit} /></TabsContent>
             <TabsContent value="schedule" className="mt-3"><ScheduleTab def={def} edit={edit} /></TabsContent>

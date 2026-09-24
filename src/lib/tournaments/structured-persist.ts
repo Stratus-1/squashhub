@@ -6,7 +6,7 @@
  */
 import { IntegrityError, assertNoReentry, contractIssues, isDecided, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
-import { confirmPlayoffs, generateFromSpec, previewPlayoffs, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
+import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
 import type { TournamentDefinition } from "../smart-builder/definition";
 
 /* ───── spec from the Beta definition ───── */
@@ -32,6 +32,8 @@ export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
           tieBreaks: (st as any).tieBreaks ?? undefined,
           legs: (st as any).legs === 2 ? 2 : undefined,
           thirdPlace: (st as any).thirdPlace || undefined,
+          discipline: st.discipline ?? undefined,
+          progression: prev && (st as any).progression ? { ...(st as any).progression } : undefined,
           drawSize: kind === "knockout" ? st.groupSize ?? undefined : undefined,
           schedule: {
             rule: s.mode === "fixed" ? "fixed" : s.mode === "play_by" ? "play_by" : (s.mode as string) === "window" ? "window" : null,
@@ -47,6 +49,7 @@ export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
         expectedEntrants: d.sections[0]?.stages[0]?.input?.entrants ?? null,
         seeding: { source: (def as any).event?.seedingSource ?? "entry_order", method: "snake" },
         placements: "champion", stages, entrants: [], poolLabels: d.poolLabels,
+        finalStandings: (def as any).finalStandings ?? "last_stage",
       } satisfies SpecDivision;
     }),
   };
@@ -241,9 +244,11 @@ export function poolStandings(divisionKey: string, stageKey: string, matches: Ar
     return q ? `${p}+${q}` : p;
   };
   const byPool = new Map<number, Map<string, number>>();
-  for (const m of matches.filter((x) => x.stage_key === stageKey && x.pool_number != null)) {
-    const pool = byPool.get(m.pool_number) ?? new Map<string, number>();
-    byPool.set(m.pool_number, pool);
+  // A one-field round robin has no pool number: treat it as a single pool.
+  for (const m of matches.filter((x) => x.stage_key === stageKey)) {
+    const pn = m.pool_number ?? 1;
+    const pool = byPool.get(pn) ?? new Map<string, number>();
+    byPool.set(pn, pool);
     const a = unitOf(m, "a"), b = unitOf(m, "b");
     for (const u of [a, b]) if (u && !pool.has(u)) pool.set(u, 0);
     if (m.winner_member_id) {
@@ -285,6 +290,7 @@ export async function previewStructuredPlayoffs(db: Db, tid: string, divisionKey
   const existing = matches.map((m) => toFixtureRow(divisionKey, m, kindOf(m.stage_key)));
   const srcDone = existing.filter((f) => f.stageId === src.id);
   if (!srcDone.length || !srcDone.every(isDecided)) return { ok: false, reason: `${src.name} is not finished.`, qualifiers: [], stage };
+  if (src.kind === "swiss" && Math.max(...srcDone.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) return { ok: false, reason: `${src.name}: not all Swiss rounds are played yet.`, qualifiers: [], stage };
   const standings = poolStandings(divisionKey, src.id, matches, stage.qualify?.perPool ?? 0);
   return previewPlayoffs(d, stageKey, standings, existing);
 }
@@ -379,4 +385,22 @@ export async function withdrawStructured(db: Db, tid: string, memberId: string):
   if (!entries.length) throw new IntegrityError("not_entered", "That player is not entered.");
   await db.remove("club_champs_entries", entries.map((e) => e.id));
   return rebuildStructured(db, tid);
+}
+
+/** Start the next stage when everyone continues or pairs are formed. Qualifier stages use confirmStructuredPlayoffs. */
+export async function startNextStructuredStage(db: Db, tid: string, divisionKey: string, stageKey: string, opts: { ownerConfirmed: boolean; pairs?: string[][] }) {
+  const [t] = await db.select("tournaments", { id: tid });
+  if (t?.builder_architecture !== "structured") throw new IntegrityError("not_structured", "Tournament has no structured specification.");
+  const spec = await loadEntrants(db, tid, t.builder_spec as TournamentSpec);
+  const d = spec.divisions.find((x) => x.divisionId === divisionKey);
+  if (!d) throw new IntegrityError("no_division", "Unknown division.");
+  const gi = spec.divisions.indexOf(d) + 1;
+  const matches = (await db.select("club_champs_matches", { champ_id: tid })).filter((m) => m.group_number === gi);
+  const existing = matches.map((m) => toFixtureRow(divisionKey, m, d.stages.find((s) => s.id === m.stage_key)?.kind ?? "round_robin"));
+  const plan = nextStageFixtures(tid, d, stageKey, existing, opts);
+  // New pair units are valid entrants of this division for this stage only.
+  const known = new Set(d.entrants.map((e) => e.id));
+  const withUnits: TournamentSpec = { ...spec, divisions: spec.divisions.map((x) => x === d ? { ...x, entrants: [...x.entrants, ...plan.entrants.filter((e) => !known.has(e.id))] } : x) };
+  const ids = await persistStructure(db, tid, withUnits);
+  return insertFixtures(db, tid, withUnits, ids, plan.fixtures, existing);
 }

@@ -83,6 +83,12 @@ const StageSchema = z.object({
   tieBreaks: z.array(z.enum(["buchholz", "sonneborn_berger", "seed"])).optional(),
   /** Round robin: 1 = once, 2 = everyone plays everyone twice. */
   legs: z.union([z.literal(1), z.literal(2)]).optional(),
+  /** Later stages: how entrants arrive from the previous stage (separate from format and grouping). */
+  progression: z.object({
+    mode: z.enum(["qualifiers", "all_continue", "form_pairs"]),
+    standings: z.enum(["carry", "reset"]).nullable().optional(),
+    pairing: z.enum(["fold", "positions", "manual"]).nullable().optional(),
+  }).nullable().optional(),
   /** Knockout: add a 3rd/4th place match. */
   thirdPlace: z.boolean().optional(),
   /** Playoff stages: how qualifiers are placed into the bracket (never inferred). */
@@ -232,6 +238,8 @@ export const DefinitionSchema = z.object({
    *  null = not answered yet (next questions stay hidden). The structure itself lives on the stages. */
   quickAnswers: z.object({ pools: z.boolean().nullable().default(null), playoffs: z.boolean().nullable().default(null) }).optional(),
   name: z.string().default("Untitled tournament"),
+  /** Final table across a multi-stage tournament: last stage only, or points added up across stages. */
+  finalStandings: z.enum(["last_stage", "cumulative"]).optional(),
   ownerKind: z.enum(["club", "association", "federation"]).default("federation"),
   category: z.enum(["championship", "closed", "open", "invitational"]).default("open"),
   /** Separate from category, as in the existing model. */

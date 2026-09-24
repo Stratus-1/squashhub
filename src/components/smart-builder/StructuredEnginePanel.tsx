@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { StructuredEditorDialog } from "./StructuredEditorDialog";
 import {
-  atomically, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
+  atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
+import { progressionOf } from "@/lib/tournaments/contract";
 import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
 /** Operate panel for structured (Beta) tournaments. All actions go through the structured engine. */
@@ -28,6 +29,9 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
     setBusy(key);
     try { await fn(); toast.success(ok); refresh(); } catch (e: any) { toast.error(e.message); } finally { setBusy(null); }
   };
+  const [pairing, setPairing] = useState<{ div: string; stage: string; players: string[]; pairs: string[][]; pick: string | null } | null>(null);
+  const startStage = (div: string, stage: string, pairs?: string[][]) => run(`st${stage}`, () =>
+    atomically(supabaseDb, champId, commitStructured, (db) => startNextStructuredStage(db, champId, div, stage, { ownerConfirmed: true, pairs })), "Next stage created");
   const unitName = (u: string | null) => (u ? u.split("+").map(nameOf).join(" & ") : "TBD");
 
   return (
@@ -78,7 +82,20 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
         return (
           <div key={`${d.divisionId}/${s.id}`} className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground">{d.label} · {s.name}</span>
-            {!exists && matches.length > 0 && (
+            {!exists && matches.length > 0 && progressionOf(s).mode !== "qualifiers" && (
+              <Button size="sm" variant="outline" disabled={!!busy} onClick={() => {
+                const pr = progressionOf(s);
+                if (pr.mode === "form_pairs" && pr.pairing === "manual") {
+                  const prevId = d.stages.find((x) => x.order === s.order - 1)?.id;
+                  const players = [...new Set(matches.filter((m) => m.stage_key === prevId).flatMap((m) => [m.player_a_member_id, m.player_b_member_id]).filter(Boolean))] as string[];
+                  setPairing({ div: d.divisionId, stage: s.id, players, pairs: [], pick: null });
+                  return;
+                }
+                if (!confirm(`Start ${s.name}? Games are created from the finished previous stage.`)) return;
+                startStage(d.divisionId, s.id);
+              }}>Start {s.name}</Button>
+            )}
+            {!exists && matches.length > 0 && progressionOf(s).mode === "qualifiers" && (
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`pv${s.id}`, async () => {
                 const p = await previewStructuredPlayoffs(supabaseDb, champId, d.divisionId, s.id);
                 if (!p.ok) throw new Error(p.reason || "Not ready");
@@ -105,6 +122,33 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
           </div>
         );
       }))}
+      <Dialog open={!!pairing} onOpenChange={(o) => !o && setPairing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Set the doubles pairs</DialogTitle></DialogHeader>
+          {pairing && (() => {
+            const used = new Set(pairing.pairs.flat());
+            return (
+              <div className="space-y-2 text-sm">
+                <div className="text-muted-foreground">Tap two players to pair them. Every player must be in one pair.</div>
+                <div className="flex flex-wrap gap-1">
+                  {pairing.players.filter((p) => !used.has(p)).map((p) => (
+                    <Button key={p} size="sm" variant={pairing.pick === p ? "default" : "outline"} onClick={() => setPairing((x) => !x ? x
+                      : !x.pick ? { ...x, pick: p } : x.pick === p ? { ...x, pick: null } : { ...x, pairs: [...x.pairs, [x.pick, p]], pick: null })}>{nameOf(p)}</Button>
+                  ))}
+                </div>
+                {pairing.pairs.map((pr, i) => (
+                  <div key={i} className="flex items-center gap-2">{nameOf(pr[0])} &amp; {nameOf(pr[1])}
+                    <Button size="sm" variant="ghost" onClick={() => setPairing((x) => x && { ...x, pairs: x.pairs.filter((_, k) => k !== i) })}>Undo</Button></div>
+                ))}
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button disabled={!pairing || pairing.pairs.flat().length !== pairing.players.length || !!busy}
+              onClick={() => { const p = pairing!; setPairing(null); startStage(p.div, p.stage, p.pairs); }}>Create doubles games</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Confirm play-offs</DialogTitle></DialogHeader>

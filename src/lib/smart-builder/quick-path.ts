@@ -36,7 +36,12 @@ function firstStage(path: QuickPath): Stage {
 export function presetDefinition(path: QuickPath): TournamentDefinition {
   const def = emptyDefinition();
   def.quickPath = path;
-  if (path === "custom") return def;
+  if (path === "custom") {
+    // Stage builder starts with one stage; the owner adds more in order.
+    const s = { ...newStage("round_robin", "Stage 1"), groupSize: null, discipline: "singles" as const };
+    def.divisions = [{ id: "div1", name: "Main draw", eligibility: "open", entry: "individual", sections: [{ id: "sec1", name: "Main", stages: [s] }] } as any];
+    return def;
+  }
   def.quickAnswers = { pools: null, playoffs: null };
   def.divisions = [{ id: "div1", name: "Main draw", eligibility: "open", entry: "individual", sections: [{ id: "sec1", name: "Main", stages: [firstStage(path)] }] } as any];
   return def;

@@ -11,12 +11,15 @@ import type { AssistCtx } from "./tools.ts";
 const MATCH_COLS = "id,champ_id,group_number,pool_number,round_number,stage,bracket_position,placeholder_a,placeholder_b,player_a_member_id,partner_a_member_id,player_b_member_id,partner_b_member_id,status,winner_member_id,score,game_scores,side_a_points,side_b_points,is_bye,scheduled_date,scheduled_time,court_id,updated_at";
 
 export async function loadSnapshot(ac: AssistCtx, champId: string) {
-  const [{ data: t }, { data: matches, error: me }, { data: entries }] = await Promise.all([
-    ac.admin.from("club_champs").select("id,name,club_id,participating_club_ids,status,start_date,end_date,scoring_mode,match_type,league_formats,league_playoff_modes,pool_sizes").eq("id", champId).maybeSingle(),
+  const [{ data: t, error: te }, { data: tt }, { data: matches, error: me }, { data: entries }] = await Promise.all([
+    ac.admin.from("club_champs").select("id,name,club_id,status,start_date,end_date,scoring_mode,match_type,league_formats,league_playoff_modes,pool_sizes").eq("id", champId).maybeSingle(),
+    ac.admin.from("tournaments").select("participating_club_ids").eq("id", champId).maybeSingle(),
     ac.admin.from("club_champs_matches").select(MATCH_COLS).eq("champ_id", champId).limit(2000),
     ac.admin.from("club_champs_entries").select("club_member_id,partner_member_id,group_number").eq("champ_id", champId).limit(2000),
   ]);
+  if (te) return { error: "Could not read the tournament: " + te.message } as const;
   if (!t) return { error: "Tournament not found." } as const;
+  (t as any).participating_club_ids = (tt as any)?.participating_club_ids ?? [];
   if (me) return { error: "Could not read fixtures: " + me.message } as const;
   const snapshot: ISnapshot = { settings: t as any, matches: (matches ?? []) as any, entries: (entries ?? []) as any };
   const live = (matches ?? []).some((m: any) => m.scheduled_date === ac.today || (m.status && !["scheduled", "completed"].includes(m.status)));

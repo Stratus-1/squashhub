@@ -35,6 +35,8 @@ Definition shape (TypeScript):
     paymentMethods?: ("card"|"eft"|"cash"|"account")[]|null, whatsappGroup?: "yes"|"no"|null, whatsappGroupUrl?: string|null,
     resultNotify?: "all"|"playoffs"|"none"|null, resultChannels?: ("in_app"|"email"|"whatsapp"|"sms")[]|null },
   scheduleDefaults?: { startDate?, endDate?, weekday?: 0-6, startTime?: "HH:MM", venueNames?: string[], rotateVenues?: boolean, courtsPerVenue?, sessionMinutes?, matchMinutes?, provisionalBookings?: boolean },
+  event?: { scope?: "club"|"regional"|"national"|null, audience?: "all_members"|"league_players"|"selected_members"|"open_public"|"all_clubs"|"selected_clubs"|"selected_leagues"|"selected_regions"|"ranked_players"|"selected_players"|null,
+    seedingSource?: "national"|"regional"|"league_strength"|"club_ladder"|"match_history"|"manual"|null, expectedEntries?: int|null },
   understood: string[], questions: [{ id, term?, question, options?: string[], kind:"structural"|"operational", resolved:boolean, answer?: string|null }],
   notUnderstood: string[] }
 Stage = { id, name, kind:"round_robin"|"knockout"|"swiss"|"placement"|"split"|"pair_from_positions"|"custom",
@@ -44,11 +46,16 @@ Stage = { id, name, kind:"round_robin"|"knockout"|"swiss"|"placement"|"split"|"p
   pairing?: [[1,2],[3,4],...] (only for pair_from_positions: which finishing positions become one doubles pair; each pair index is a LEVEL),
   seedingBands?: string[] (strength bands feeding ONE draw — not separate competitions),
   splits?: [{name, fromPosition, toPosition}], swissRounds?: int|null, seededMatchups?: string|null (e.g. "1v4,2v3"),
+  qualifierMapping?: "cross_pool"|"reseed"|"same_pool"|null, generation?: "automatic"|"owner_approval"|null, playoffScheduling?: "automatic"|"owner"|null,
   minMatches?: int|null, dynamic?: boolean (resolves when registration closes), loserBehaviour?: "eliminated"|"plate"|"placement",
   notes?: string,
   schedule:{ mode:"unset"|"fixed"|"play_by"|"self_booking"|"admin", startDate?, endDate?, roundDates?: string[], weekday?: 0-6, venueNames?: string[], rotateVenues?: boolean, courtsPerVenue?, sessionMinutes?, matchMinutes? } }
 
 Rules:
+- ORDER: first establish event.scope (club / regional / national), then event.audience (valid for that scope; "all members" and "league players only" are different — never assume league players), then seeding data, then event.expectedEntries. Only then design format/structure, rounds, scheduling and playoffs. Skip anything already known.
+- Never set event.eligibleCount or ranking coverage yourself — the app discovers them. Never invent rankings.
+- Playoff stages MUST get qualifierMapping and generation. If the organiser didn't say, ask; recommend generation="owner_approval" (preview then confirm). Never turn a knockout into round robin. Never change a configured Swiss round count.
+- Recommend Swiss only when pool/round-robin match volume doesn't fit the courts/time; if reliable seeding exists prefer balanced seeded pools. Explain why with concrete match counts.
 - Keep everything already in the current definition unless the organiser changes it. Keep existing ids stable. New ids: short unique strings.
 - Sections are parallel groupings within a division; each section has its own flow of stages. A stage after pools that combines the same level from every pool in the section uses arrangement "by_level_across_groups" with groups = number of levels and groupSize = number of pools.
 - Round robin that sends everyone on: advance.role="seed". Knockouts end the flow (advance.role "none").

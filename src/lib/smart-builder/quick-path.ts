@@ -90,7 +90,7 @@ export function tournamentMap(def: TournamentDefinition): string[] {
     const n = d.sections[0]?.stages[0]?.input?.entrants;
     const parts = (d.sections[0]?.stages ?? []).map((s) => {
       if (s.kind === "swiss") return `Swiss ${s.swissRounds ?? "?"} rounds`;
-      if (s.kind === "knockout") return s.input.fromStageId ? `Play-offs (top ${s.input.fromStageId ? "qualifiers" : ""})` : "Knockout";
+      if (s.kind === "knockout") return s.input.fromStageId ? `Play-offs (${s.qualifierMapping === "cross_pool" ? "cross-pool" : s.qualifierMapping === "same_pool" ? "same pool" : "re-seeded"})` : "Knockout (byes where needed)";
       return s.groups > 1 ? `${s.groups} pools, top ${s.advance?.perGroup ?? "?"} each` : "Round robin";
     });
     return `${d.name}: ${n ?? "?"} ${d.entry === "pairs" ? "pairs" : "players"} · ${parts.join(" → ")}`;

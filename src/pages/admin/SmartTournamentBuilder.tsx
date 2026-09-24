@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
 import { DesignCanvas } from "@/components/smart-builder/DesignCanvas";
+import { QuickSetup } from "@/components/smart-builder/QuickSetup";
+import { QUICK_PATHS, presetDefinition, type QuickPath } from "@/lib/smart-builder/quick-path";
 import { InvitationsTab, PlayersTab, ReviewTab, ScheduleTab } from "@/components/smart-builder/BuilderTabs";
 import { canUseSmartBuilder, SMART_BUILDER_LABEL, SMART_BUILDER_SUBLABEL } from "@/lib/smart-builder/access";
 import { emptyDefinition, isBellsDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
@@ -81,6 +83,7 @@ function BetaHeader({ onBack, scope }: { onBack: (() => void) | null; scope: Bui
 function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
   const qc = useQueryClient();
   const [pendingDelete, setPendingDelete] = useState<Draft | null>(null);
+  const [pickPath, setPickPath] = useState(false);
   const scopeKey = scope.kind === "club" ? scope.clubId : "platform";
   const { data: drafts = [] } = useQuery({
     queryKey: ["smart-drafts", scopeKey],
@@ -93,10 +96,10 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
     },
   });
   const create = useMutation({
-    mutationFn: async (mode: "guide" | "describe") => {
+    mutationFn: async ({ mode, path }: { mode: "guide" | "describe"; path?: QuickPath }) => {
       const owner = scope.kind === "club" ? { owner_kind: "club", owner_id: scope.clubId } : {};
       const { data, error } = await fromExt("smart_tournament_drafts")
-        .insert({ mode, title: "Untitled tournament", definition: emptyDefinition(), conversation: [], ...owner }).select("id").single();
+        .insert({ mode, title: "Untitled tournament", definition: path ? presetDefinition(path) : emptyDefinition(), conversation: [], ...owner }).select("id").single();
       if (error) throw error;
       return data.id as string;
     },
@@ -117,15 +120,25 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
       <BetaHeader onBack={nav.exit} scope={scope} />
       <p className="text-xs text-white/60">Describe a tournament, answer only what's unclear, then edit it visually. Nothing becomes a real tournament until you press Create Tournament. The existing setup is unchanged.</p>
       <div className="grid md:grid-cols-2 gap-3">
-        <button onClick={() => create.mutate("guide")} className={cn(panel, "p-4 text-left hover:bg-white/[0.08]")}>
+        <button onClick={() => create.mutate({ mode: "guide" })} className={cn(panel, "p-4 text-left hover:bg-white/[0.08]")}>
           <div className="font-semibold text-white">Guide me</div>
           <div className="text-xs text-white/60">I'm not sure yet — ask me simple questions and help me build the format.</div>
         </button>
-        <button onClick={() => create.mutate("describe")} className={cn(panel, "p-4 text-left hover:bg-white/[0.08]")}>
+        <button onClick={() => setPickPath((v) => !v)} className={cn(panel, "p-4 text-left hover:bg-white/[0.08]", pickPath && "ring-1 ring-amber-300/60")}>
           <div className="font-semibold text-white">I know what I want</div>
-          <div className="text-xs text-white/60">I'll describe it in my own words; ask only what's missing.</div>
+          <div className="text-xs text-white/60">Pick the basic format; I'll ask only the questions for it.</div>
         </button>
       </div>
+      {pickPath && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2">
+          {QUICK_PATHS.map((p) => (
+            <button key={p.key} disabled={create.isPending} onClick={() => create.mutate({ mode: "describe", path: p.key })} className={cn(panel, "p-3 text-left hover:bg-white/[0.08]")}>
+              <div className="font-semibold text-white text-sm">{p.label}</div>
+              <div className="text-[11px] text-white/60">{p.hint}</div>
+            </button>
+          ))}
+        </div>
+      )}
       <div className={cn(panel, "divide-y divide-white/10")}>
         {drafts.length === 0 && <div className="p-4 text-xs text-white/50">No drafts yet.</div>}
         {drafts.map((d) => (
@@ -411,8 +424,9 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
               </div>
             )}
             <TabsContent value="design" className="mt-3 space-y-3">
+              {def.quickPath && def.quickPath !== "custom" && <QuickSetup def={def} edit={edit} />}
               <ScoringRow def={def} edit={edit} />
-              <div data-field="canvas"><DesignCanvas def={def} validation={validation} onChange={(d) => { setDef(d); setDirty(true); }} /></div>
+              <div data-field="canvas" className={def.quickPath && def.quickPath !== "custom" ? "hidden" : undefined}><DesignCanvas def={def} validation={validation} onChange={(d) => { setDef(d); setDirty(true); }} /></div>
             </TabsContent>
             <TabsContent value="players" className="mt-3"><PlayersTab def={def} validation={validation} edit={edit} /></TabsContent>
             <TabsContent value="schedule" className="mt-3"><ScheduleTab def={def} edit={edit} /></TabsContent>

@@ -429,8 +429,17 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
         .insert(sanitizeDraftPayload({ club_id: hostClubId, owner_org_id: ownerOrgId || undefined, status: "planning", ...mapping.champ }))
         .select("id").single();
       if (error) throw error;
-      const { error: exErr } = await fromExt("tournaments").update(sanitizeExtrasPayload(mapping.extras)).eq("id", data.id);
+      // Structured architecture: persist the spec, then divisions/stages/pools, before any game exists.
+      let structuredSpec: ReturnType<typeof specFromDefinition> | null = null;
+      try { structuredSpec = specFromDefinition(def); } catch (e: any) {
+        toast.warning(`${e.message} This tournament uses the current engine instead.`);
+      }
+      const { error: exErr } = await fromExt("tournaments").update({
+        ...sanitizeExtrasPayload(mapping.extras),
+        ...(structuredSpec ? { builder_architecture: "structured", builder_spec: structuredSpec, builder_spec_version: 1 } : {}),
+      }).eq("id", data.id);
       if (exErr) console.warn("extras", exErr.message);
+      if (structuredSpec && !exErr) await persistStructure(supabaseDb, data.id, structuredSpec);
       if (mapping.whatsappGroupUrl) {
         // Link only — the existing group card handles sharing. Nothing is sent here.
         const { error: wgErr } = await fromExt("tournament_whatsapp_groups").insert({ champ_id: data.id, club_id: hostClubId, provider: "manual", invite_url: mapping.whatsappGroupUrl, group_name: def.name, status: "active" });

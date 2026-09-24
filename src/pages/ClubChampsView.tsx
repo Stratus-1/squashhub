@@ -1575,7 +1575,7 @@ export default function ClubChampsView() {
   const autoPlayoffKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!canManage || !enablePlayoffs) return;
-    if (generatePlayoffs.isPending) return;
+    if (generatePlayoffs.isPending || playoffsComplete) return;
     if (!shouldAutoFillPlayoffs({ groupComplete, playoffRows: playoffMatches as any[] })) return;
 
     const completed = (matches as any[]).filter((m: any) => m.status === "completed");

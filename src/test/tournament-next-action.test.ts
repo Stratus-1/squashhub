@@ -92,3 +92,24 @@ describe("tournament next action", () => {
     expect(na.groupNumber).toBe(1);
   });
 });
+
+import { tournamentNextAction as tna2, groupStageControl as gsc2 } from "@/lib/tournaments/round-control";
+describe("placement play-off lifecycle is derived from persisted rows", () => {
+  const pool = [1, 2, 3].map((i) => ({ id: `g${i}`, stage: "group", status: "completed", group_number: 1, player_a_member_id: `a${i}`, player_b_member_id: `b${i}` }));
+  const po = (n: number, status: string) => ({ id: `p${n}`, stage: "playoff_final", status, group_number: 1, bracket_position: 1000 + n, player_a_member_id: `a${n}`, player_b_member_id: `b${n}` });
+  it("pools done, no play-offs → offer generate", () => {
+    expect(tna2(pool as any).action).toBe("generate");
+  });
+  it("play-offs exist but unfinished → never offer generate", () => {
+    const r = tna2([...pool, po(1, "completed"), po(2, "scheduled")] as any);
+    expect(r.action).toBe("await_results");
+    expect(r.ctaLabel).not.toMatch(/Generate/);
+    expect(gsc2([...pool, po(1, "scheduled")] as any, 1)!.action).toBe("await_results");
+  });
+  it("all play-offs played → complete, no action, even when tournament status is stale", () => {
+    const r = tna2([...pool, po(1, "completed"), po(2, "completed")] as any, [], { status: "planning" });
+    expect(r.complete).toBe(true);
+    expect(r.action).toBe("none");
+    expect(r.ctaLabel).toBeNull();
+  });
+});

@@ -14,10 +14,24 @@ import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 
 const STATUSES = ["answered", "proposed", "executed", "failed", "cancelled", "expired", "escalated", "rolled_back"];
+const QUICK: { key: string; label: string }[] = [
+  { key: "executed", label: "Completed actions" },
+  { key: "escalated", label: "Escalated" },
+  { key: "failed", label: "Failed" },
+  { key: "all", label: "Everything" },
+];
+const ACTION_LABELS: Record<string, string> = {
+  create_booking: "Booked a court",
+  cancel_my_booking: "Cancelled a booking",
+  replace_tournament_player: "Replaced a tournament player",
+  correct_match_result: "Corrected a match result",
+  update_my_contact: "Updated contact details",
+};
+const OUTCOME: Record<string, string> = { executed: "Completed", escalated: "Escalated", failed: "Failed", rolled_back: "Completed, then reversed", proposed: "Waiting for confirm", cancelled: "Cancelled by user", expired: "Preview expired", answered: "Answered" };
 
 /** Super Admin: every AI assistant interaction across clubs, plus safe rollback. */
-export function AiActivityPanel() {
-  const [status, setStatus] = useState<string>("all");
+export function AiActivityPanel({ showBetaClubs = true }: { showBetaClubs?: boolean } = {}) {
+  const [status, setStatus] = useState<string>("executed");
   const { data: rows = [], isLoading } = useAiActivity({ status: status === "all" ? undefined : status });
   const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
   const { data: names = {} } = useQuery({
@@ -31,8 +45,11 @@ export function AiActivityPanel() {
 
   return (
     <div className="space-y-3 text-[13px]">
-      <BetaClubsCard />
-      <div className="flex items-center gap-2">
+      {showBetaClubs && <BetaClubsCard />}
+      <div className="flex flex-wrap items-center gap-2">
+        {QUICK.map((q) => (
+          <Button key={q.key} size="sm" variant={status === q.key ? "default" : "outline"} onClick={() => setStatus(q.key)}>{q.label}</Button>
+        ))}
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="w-44 h-8"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -77,7 +94,19 @@ function ActivityRow({ row, who }: { row: AiActivityRow; who: string }) {
           {row.transcript_used && <Badge variant="outline">voice</Badge>}
           <button className="ml-auto text-primary underline text-[12px]" onClick={() => setOpen((v) => !v)}>{open ? "Hide" : "Details"}</button>
         </div>
-        <p className="line-clamp-2">{row.request_text}</p>
+        {row.action_name ? (
+          <div className="space-y-0.5">
+            <p className="font-medium">{ACTION_LABELS[row.action_name] ?? row.action_name} — {OUTCOME[row.status] ?? row.status}{row.kind === "rollback" ? " (reversal)" : ""}</p>
+            {row.preview?.summary && <p>{row.preview.summary}</p>}
+            {(row.preview?.changes ?? []).map((c: string, i: number) => <p key={i} className="text-muted-foreground">Before → after: {c}</p>)}
+            {(row.preview?.affected ?? []).length > 0 && <p className="text-muted-foreground">Affects: {row.preview.affected.join(" · ")}</p>}
+            <p className="text-[12px] text-muted-foreground">
+              Asked: “{row.request_text}” · {row.confirmed_at ? `Confirmed by requester ${format(new Date(row.confirmed_at), "d MMM HH:mm")}` : "Not confirmed"}
+              {row.status === "executed" ? (row.reversible && !row.rolled_back_by ? " · Safe reversal available" : " · No automatic reversal") : ""}
+              {row.ticket_id ? " · Linked support ticket" : ""}
+            </p>
+          </div>
+        ) : <p className="line-clamp-2">{row.request_text}</p>}
         {open && (
           <div className="space-y-2 pt-2 border-t mt-2">
             <Field label="Page">{row.context?.route ?? "—"} {row.context?.ids && Object.keys(row.context.ids).length ? JSON.stringify(row.context.ids) : ""}</Field>
@@ -93,8 +122,8 @@ function ActivityRow({ row, who }: { row: AiActivityRow; who: string }) {
             {row.rollback_of && <Field label="Reverses">{row.rollback_of}</Field>}
             {row.rolled_back_by && <Field label="Reversed by">{row.rolled_back_by}</Field>}
             {(row.before_data || row.after_data) && (
-              <details><summary className="cursor-pointer text-[12px] text-muted-foreground">Before / after data</summary>
-                <pre className="text-[11px] whitespace-pre-wrap bg-muted p-2 rounded">{JSON.stringify({ before: row.before_data, after: row.after_data }, null, 2)}</pre>
+              <details><summary className="cursor-pointer text-[12px] text-muted-foreground">Technical details (IDs, raw before/after)</summary>
+                <pre className="text-[11px] whitespace-pre-wrap bg-muted p-2 rounded">{JSON.stringify({ interaction_id: row.id, club_id: row.club_id, user_id: row.user_id, action_args: row.action_args, before: row.before_data, after: row.after_data }, null, 2)}</pre>
               </details>
             )}
             {row.attachments?.length ? <div className="flex gap-2">{row.attachments.map((a) => <Shot key={a.path} path={a.path} name={a.name} />)}</div> : null}

@@ -61,6 +61,7 @@ import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog } from "lucide
 import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
 
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
+import { computeFinalPlacements, placementSlotLabel } from "@/lib/tournaments/final-standings";
 import { buildPlayoffMatches, buildRegisteredPairMap, enforceRegisteredPairs, isPlayoffRowLocked, shouldAutoFillPlayoffs, type StandingEntity } from "@/lib/tournament-playoffs";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

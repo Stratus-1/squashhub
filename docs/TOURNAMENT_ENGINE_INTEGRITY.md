@@ -40,3 +40,15 @@ OWNER/SCOPE → AUDIENCE → SEEDING DATA → EXPECTED ENTRIES → FORMAT → RO
 - `src/lib/smart-builder/scope.ts`: valid audience options per scope ("all members" and "league players only" are distinct choices), scope-based seeding priority (club → ladder; regional → regional ranking/league strength; national → national ranking) as defaults only, and `recommendSeeding` which skips sources under 50% coverage and never invents values.
 - Readiness asks these items first (`scope`, `event_audience`, `event_seeding`, `expected_entries`) before design questions. The AI is told the same order and must never set eligible counts or coverage itself.
 - Organisation subtree resolution reuses the existing invite-scope/organisation helpers; it is not duplicated here.
+
+## Competition hierarchy (`src/lib/tournaments/hierarchy.ts`)
+
+TOURNAMENT → DIVISION → STAGE → POOL (only in pool stages) → ROUND → FIXTURE.
+
+- A **division** is a separate title/category (Men's, Ladies, 1st League). A **pool** is a grouping inside one division's stage. A **team** is a participant. Never interchangeable.
+- Each division is configured independently (format, pools, rounds, scheduling, playoffs). "Apply this structure to other divisions" copies with fresh ids and is an explicit owner action only.
+- Pools in the same stage share format, scoring and qualification (`hierarchyIssues`) unless `allowMixedPoolFormats` is explicitly set.
+- Names are **display labels only**. Logic keys on stable ids + kind; a division named "Pool A" or a pool named after a team stays what it is. Ids may not be reused across kinds.
+- Every fixture carries tournament/division/stage/round ids; `poolId` only in pool stages. Knockout/playoff fixtures belong to the division's knockout stage, never to a source pool, and cannot carry a pool-stage format (`assertFixtureIdentity`) — the Nelspruit guard.
+- League structure use per division (`leagueUse`): `division_allocation` (league → division, no seeding change), `pool_seeding` (strength only, one division), `team_allocation` (teams kept as units), `ignore`, `manual`. Undecided blocks allocation (`applyLeagueUse`).
+- Defaults: Men's/Ladies for categories, Pool A/B/C…; always renamable.

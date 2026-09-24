@@ -2004,3 +2004,7 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 ### 2026-09-24 — Beta builder: Custom / mixed stage builder + one-field play-off fix
 - Custom / mixed now opens an ordered stage builder (Diamond League template: singles RR → pairs formed → doubles RR, cumulative). Tests: `src/test/stage-builder.test.ts`.
 - Fixed: structured play-offs after a one-field round robin or Swiss found no qualifiers (`poolStandings` ignored rows without a pool number). Swiss play-off preview now waits for every Swiss round.
+
+### Tournament Beta Design: owner/scope, audience and venues first-class (2026-09-24)
+- Problem: "Next to decide: event scope… Go there" pointed at a control that didn't exist on screen.
+- Fix: EventSetupSection at the top of Design — Event level (club/regional/national) + owning organisation (permitted orgs only; club context preselects own club), Who may enter (audience per level), expected entries, seeding data, Venue(s) (single/multiple/none, candidates from the owner's club hierarchy). Readiness points to these controls. Schedule venue pickers only offer the event venue set; out-of-set venues block creation (readiness + specFromDefinition). Review uses Design's owner/venue. Structured editor shows owner/audience/venues from the saved spec.

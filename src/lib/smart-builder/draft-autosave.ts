@@ -59,6 +59,14 @@ export class DraftAutosaver<P> {
     if (this.pending !== null && this.state.status === "pending") await this.flush();
   }
 
+  /** Page is closing: hand the unsent payload to a keepalive request (it outlives the page). */
+  takePendingForBeacon(): { payload: P; revision: number } | null {
+    if (this.pending === null || this.inflight || this.state.status === "conflict") return null;
+    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+    const payload = this.pending; this.pending = null;
+    return { payload, revision: this.revision };
+  }
+
   retry() { if (this.state.status === "error") return this.flush(); return Promise.resolve(); }
   dispose() { if (this.timer) clearTimeout(this.timer); this.listeners.clear(); }
 }

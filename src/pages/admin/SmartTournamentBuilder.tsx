@@ -267,16 +267,32 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
     saver.subscribe(setSaveState);
   }, [draft, isFetching]); // eslint-disable-line react-hooks/exhaustive-deps
   // Leaving the builder, hiding the tab or closing the page flushes any pending save. Leaving never discards.
+  const tokenRef = useRef<string | null>(null);
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => { tokenRef.current = data.session?.access_token ?? null; });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, sess) => { tokenRef.current = sess?.access_token ?? null; });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  useEffect(() => {
+    // Page closing/reloading: a normal request would be cancelled, so send the pending draft with keepalive.
+    const beacon = () => {
+      const t = saverRef.current?.takePendingForBeacon();
+      if (!t || !tokenRef.current) return;
+      const { def: d, chat: c, tab: tb } = t.payload;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/smart_tournament_drafts?id=eq.${draftId}&revision=eq.${t.revision}`;
+      fetch(url, { method: "PATCH", keepalive: true, headers: {
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${tokenRef.current}`, "Content-Type": "application/json", Prefer: "return=minimal",
+      }, body: JSON.stringify({ definition: d, conversation: c, title: d.name || "Untitled tournament", last_tab: tb, revision: t.revision + 1 }) }).catch(() => {});
+    };
     const flush = () => { void saverRef.current?.flush(); };
     const onHide = () => { if (document.visibilityState === "hidden") flush(); };
-    const onUnload = (e: BeforeUnloadEvent) => { if (saverRef.current?.hasUnsaved) { flush(); e.preventDefault(); e.returnValue = ""; } };
+    const onUnload = (e: BeforeUnloadEvent) => { if (saverRef.current?.hasUnsaved) { beacon(); if (saverRef.current?.hasUnsaved) { e.preventDefault(); e.returnValue = ""; } } };
     document.addEventListener("visibilitychange", onHide);
-    window.addEventListener("pagehide", flush);
+    window.addEventListener("pagehide", beacon);
     window.addEventListener("beforeunload", onUnload);
     return () => {
       document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("pagehide", beacon);
       window.removeEventListener("beforeunload", onUnload);
       const sv = saverRef.current;
       if (sv) void sv.flush().finally(() => { sv.dispose(); qc.invalidateQueries({ queryKey: ["smart-drafts"] }); });

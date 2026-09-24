@@ -3,26 +3,21 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { ArrowLeft, Wand2, Send, Loader2, CheckCircle2, AlertTriangle, XCircle, Info, FlaskConical } from "lucide-react";
+import { ArrowLeft, Wand2, Send, Loader2, FlaskConical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { useIsSuperAdmin, useSuperAdminStatus } from "@/hooks/use-club";
-import { useHostClubs, useOwnerOrganisations } from "@/hooks/use-tournaments";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
 import { DesignCanvas } from "@/components/smart-builder/DesignCanvas";
+import { InvitationsTab, PlayersTab, ReviewTab, ScheduleTab } from "@/components/smart-builder/BuilderTabs";
 import { canUseSmartBuilder, SMART_BUILDER_LABEL, SMART_BUILDER_SUBLABEL } from "@/lib/smart-builder/access";
-import { allStages, emptyDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
+import { emptyDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
 import { newProblems, validateDefinition, type Issue } from "@/lib/smart-builder/validate";
 import { mapToExistingTournament } from "@/lib/smart-builder/to-existing";
-import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
+import { assessReadiness, type ReadinessItem, type ReadinessTab } from "@/lib/smart-builder/readiness";
 import { cn } from "@/lib/utils";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
@@ -170,6 +165,26 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   }, [draft?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validation = useMemo(() => validateDefinition(def), [def]);
+  const mapping = useMemo(() => mapToExistingTournament(def), [def]);
+  const readiness = useMemo(() => assessReadiness(def, validation, mapping), [def, validation, mapping]);
+  const [tab, setTab] = useState<ReadinessTab>("design");
+  const tabsRef = useRef<HTMLDivElement>(null);
+  /** Every form edit goes through here: one draft, autosaved. */
+  const edit = (mut: (d: TournamentDefinition) => void) => {
+    setDef((prev) => { const next = structuredClone(prev); mut(next); return next; });
+    setDirty(true);
+  };
+  const jump = (item: ReadinessItem) => {
+    setTab(item.tab);
+    if (!item.field) return;
+    setTimeout(() => {
+      const el = tabsRef.current?.querySelector<HTMLElement>(`[data-field="${item.field}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-amber-300");
+      setTimeout(() => el.classList.remove("ring-2", "ring-amber-300"), 2200);
+    }, 80);
+  };
 
   const save = async (nextDef = def, nextChat = chat) => {
     const { error } = await fromExt("smart_tournament_drafts").update({
@@ -192,7 +207,12 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
     const nextChat = [...chat, { role: "user" as const, content: text }];
     setChat(nextChat); setInput(""); setThinking(true); setProposal(null);
     const { data, error } = await supabase.functions.invoke("smart-tournament-interpret", {
-      body: { message: text, mode: draft?.mode ?? "describe", definition: def, history: chat.slice(-20), clubId: scope.kind === "club" ? scope.clubId : undefined },
+      body: {
+        message: text, mode: draft?.mode ?? "describe", definition: def, history: chat.slice(-20),
+        clubId: scope.kind === "club" ? scope.clubId : undefined,
+        // Deterministic readiness: the AI asks for the next required item instead of the organiser discovering it later.
+        missing: readiness.missing.slice(0, 8).map((m) => ({ section: m.tab, item: m.label, question: m.ask ?? m.detail })),
+      },
     });
     setThinking(false);
     if (error) {
@@ -319,40 +339,45 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
         </div>
 
         {/* ── Workspace tabs ─────────────────────────────────────────── */}
-        <div className={cn(panel, "p-3 min-w-0")}>
-          <Tabs defaultValue="design">
-            <TabsList className="bg-white/5">
-              {["design", "players", "schedule", "invitations", "review"].map((t) => (
-                <TabsTrigger key={t} value={t} className="text-xs uppercase">{t}{t === "review" && !validation.canCreate ? " •" : ""}</TabsTrigger>
-              ))}
+        <div ref={tabsRef} className={cn(panel, "p-3 min-w-0")}>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as ReadinessTab)}>
+            <TabsList className="bg-white/5 flex-wrap h-auto">
+              {(["design", "players", "schedule", "invitations", "review"] as const).map((t) => {
+                const st = t === "review" ? (readiness.missing.length ? "missing" : "complete") : readiness.sections.find((s) => s.key === t)?.state;
+                return (
+                  <TabsTrigger key={t} value={t} className="text-xs uppercase gap-1">
+                    {t}{st === "missing" && <span className="h-1.5 w-1.5 rounded-full bg-red-400" aria-label="missing information" />}
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
+            {readiness.nextMissing && draft.status !== "created" && (
+              <button onClick={() => jump(readiness.nextMissing!)} className="mt-3 w-full text-left rounded-lg border border-amber-300/40 bg-amber-500/10 p-2 text-xs text-amber-100">
+                <span className="font-semibold">Next to decide ({readiness.missing.length} left): </span>
+                {readiness.nextMissing.ask ?? readiness.nextMissing.label} <span className="underline text-white/70">Go there</span>
+              </button>
+            )}
             {openQs.length > 0 && (
-              <div className="mt-3 rounded-lg border border-amber-300/40 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-1">
+              <div data-field="questions" className="mt-3 rounded-lg border border-amber-300/40 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-1">
                 <div className="font-semibold">Still to decide</div>
                 {openQs.map((q) => (
                   <div key={q.id} className="flex items-center gap-2">
                     <span className="flex-1">{q.kind === "operational" ? "(later) " : ""}{q.question}</span>
-                    <button className="underline text-white/70" onClick={() => { setDef({ ...def, questions: def.questions.map((x) => x.id === q.id ? { ...x, resolved: true, answer: "Resolved in design" } : x) }); setDirty(true); }}>Mark resolved</button>
+                    <button className="underline text-white/70" onClick={() => edit((d) => { d.questions = d.questions.map((x) => x.id === q.id ? { ...x, resolved: true, answer: "Resolved in design" } : x); })}>Mark resolved</button>
                   </div>
                 ))}
               </div>
             )}
-            <TabsContent value="design" className="mt-3">
-              <DesignCanvas def={def} validation={validation} onChange={(d) => { setDef(d); setDirty(true); }} />
+            <TabsContent value="design" className="mt-3 space-y-3">
+              <ScoringRow def={def} edit={edit} />
+              <div data-field="canvas"><DesignCanvas def={def} validation={validation} onChange={(d) => { setDef(d); setDirty(true); }} /></div>
             </TabsContent>
-            <TabsContent value="players" className="mt-3"><PlayersTab def={def} validation={validation} /></TabsContent>
-            <TabsContent value="schedule" className="mt-3"><ScheduleTab def={def} onChange={(d) => { setDef(d); setDirty(true); }} /></TabsContent>
-            <TabsContent value="invitations" className="mt-3">
-              <div className="text-xs text-white/70 space-y-2">
-                <p>Invitations, registration and payment use the existing SquashHub flows once the tournament is created. Nothing is sent from the beta builder.</p>
-                <ul className="list-disc pl-4">
-                  {def.divisions.map((d) => <li key={d.id}>{d.name}: {d.eligibility.replace(/_/g, " ")}, {d.entry === "pairs" ? "players enter as pairs" : "players enter individually"}</li>)}
-                </ul>
-              </div>
-            </TabsContent>
+            <TabsContent value="players" className="mt-3"><PlayersTab def={def} validation={validation} edit={edit} /></TabsContent>
+            <TabsContent value="schedule" className="mt-3"><ScheduleTab def={def} edit={edit} /></TabsContent>
+            <TabsContent value="invitations" className="mt-3"><InvitationsTab def={def} edit={edit} /></TabsContent>
             <TabsContent value="review" className="mt-3">
-              <ReviewTab scope={scope} def={def} validation={validation} draftId={draftId} created={draft.status === "created"}
-                onCreated={(id) => { qc.invalidateQueries({ queryKey: ["smart-draft", draftId] }); toast.success("Tournament created as a draft in the existing setup."); nav.afterCreate(id); }} />
+              <ReviewTab scope={scope} def={def} readiness={readiness} mapping={mapping} validation={validation} draftId={draftId} created={draft.status === "created"} onJump={jump}
+                onCreated={(id) => { qc.invalidateQueries({ queryKey: ["smart-draft", draftId] }); toast.success("Tournament created in the existing setup. No invitations were sent."); nav.afterCreate(id); }} />
             </TabsContent>
           </Tabs>
         </div>
@@ -361,149 +386,23 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   );
 }
 
-function PlayersTab({ def, validation }: { def: TournamentDefinition; validation: ReturnType<typeof validateDefinition> }) {
-  const rows = allStages(def);
-  if (!rows.length) return <p className="text-xs text-white/50">No stages yet.</p>;
+function ScoringRow({ def, edit }: { def: TournamentDefinition; edit: (m: (d: TournamentDefinition) => void) => void }) {
+  const s = def.scoring ?? {};
+  const set = (p: Partial<typeof s>) => edit((d) => { d.scoring = { ...d.scoring, ...p }; });
+  const sel = "h-7 rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs";
   return (
-    <table className="w-full text-xs text-white/80">
-      <thead className="text-white/50"><tr className="text-left"><th className="py-1">Stage</th><th>Comes from</th><th>In</th><th>Designed for</th><th>Matches</th><th>Each plays</th><th>Out</th></tr></thead>
-      <tbody>
-        {rows.map(({ division, section, stage }) => {
-          const f = validation.flows[stage.id];
-          const src = stage.input.fromStageId ? rows.find((r) => r.stage.id === stage.input.fromStageId)?.stage.name : "Registrations";
-          return (
-            <tr key={stage.id} className="border-t border-white/10">
-              <td className="py-1">{def.divisions.length > 1 ? `${division.name} · ` : ""}{division.sections.length > 1 ? `${section.name} · ` : ""}{stage.name}</td>
-              <td>{src}</td>
-              <td>{f?.supply ?? "TBD"} {f?.unit}</td>
-              <td>{f?.capacity ?? "—"}</td>
-              <td>{f?.matches ?? "—"}</td>
-              <td>{f?.matchesPerEntrant ?? "—"}</td>
-              <td>{f?.outTotal ?? "—"}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-function ScheduleTab({ def, onChange }: { def: TournamentDefinition; onChange: (d: TournamentDefinition) => void }) {
-  const rows = allStages(def).filter((r) => r.stage.kind !== "pair_from_positions" && r.stage.kind !== "split");
-  const set = (id: string, p: Record<string, any>) => {
-    const next = structuredClone(def);
-    allStages(next).forEach((r) => { if (r.stage.id === id) r.stage.schedule = { ...r.stage.schedule, ...p }; });
-    onChange(next);
-  };
-  const f = "h-8 bg-white/5 border-white/15 text-white text-xs";
-  if (!rows.length) return <p className="text-xs text-white/50">No stages to schedule yet.</p>;
-  return (
-    <div className="space-y-2 text-xs text-white/80">
-      <p className="text-white/50">Competition structure and scheduling are separate. Each stage can use its own approach.</p>
-      {rows.map(({ stage, section, division }) => {
-        const s = stage.schedule;
-        return (
-          <div key={stage.id} className="rounded-lg border border-white/10 p-2 grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
-            <div className="col-span-2 md:col-span-1 font-semibold text-white">{division.name} · {section.name} · {stage.name}</div>
-            <select className="h-8 rounded-md bg-white/5 border border-white/15 text-white px-2" value={s.mode} onChange={(e) => set(stage.id, { mode: e.target.value })}>
-              <option value="unset">Not set</option><option value="fixed">Fixed date</option><option value="play_by">Play by date</option>
-              <option value="self_booking">Players arrange (booking window)</option><option value="admin">Admin schedules</option>
-            </select>
-            <Input type="date" className={f} value={s.startDate ?? ""} onChange={(e) => set(stage.id, { startDate: e.target.value || null })} />
-            <Input type="date" className={f} value={s.endDate ?? ""} onChange={(e) => set(stage.id, { endDate: e.target.value || null })} />
-            <Input className={f} placeholder="Venues (comma)" defaultValue={(s.venueNames ?? []).join(", ")} onBlur={(e) => set(stage.id, { venueNames: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
-            <label className="flex items-center gap-1"><input type="checkbox" checked={!!s.rotateVenues} onChange={(e) => set(stage.id, { rotateVenues: e.target.checked })} />Rotate venues</label>
-            <Input className={f} placeholder="Courts per venue" value={s.courtsPerVenue ?? ""} onChange={(e) => set(stage.id, { courtsPerVenue: e.target.value ? Number(e.target.value) : null })} />
-            <Input className={f} placeholder="Session minutes" value={s.sessionMinutes ?? ""} onChange={(e) => set(stage.id, { sessionMinutes: e.target.value ? Number(e.target.value) : null })} />
-            <Input className={f} placeholder="Match minutes" value={s.matchMinutes ?? ""} onChange={(e) => set(stage.id, { matchMinutes: e.target.value ? Number(e.target.value) : null })} />
-            <select className="h-8 rounded-md bg-white/5 border border-white/15 text-white px-2" value={s.weekday ?? ""} onChange={(e) => set(stage.id, { weekday: e.target.value === "" ? null : Number(e.target.value) })}>
-              <option value="">Any day</option>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => <option key={d} value={i}>Every {d}</option>)}
-            </select>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ReviewTab({ scope, def, validation, draftId, created, onCreated }: {
-  scope: BuilderScope; def: TournamentDefinition; validation: ReturnType<typeof validateDefinition>; draftId: string; created: boolean; onCreated: (id: string) => void;
-}) {
-  const { data: clubs = [] } = useHostClubs();
-  const { data: orgs = [] } = useOwnerOrganisations();
-  const [pickedHostClubId, setHostClubId] = useState("");
-  // Club beta: the tournament always belongs to (and is hosted by) this club.
-  const hostClubId = scope.kind === "club" ? scope.clubId : pickedHostClubId;
-  const [ownerOrgId, setOwnerOrgId] = useState("");
-  const [confirm, setConfirm] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const mapping = useMemo(() => mapToExistingTournament(def), [def]);
-  const icon = (l: Issue["level"]) => l === "error" ? <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" /> : l === "warning" ? <AlertTriangle className="w-3.5 h-3.5 text-amber-300 shrink-0 mt-0.5" /> : <Info className="w-3.5 h-3.5 text-sky-300 shrink-0 mt-0.5" />;
-  const blockers = validation.issues.filter((i) => i.level === "error").length + mapping.unsupported.length;
-
-  const create = async () => {
-    setBusy(true);
-    try {
-      const { data, error } = await fromExt("club_champs")
-        .insert(sanitizeDraftPayload({ club_id: hostClubId, owner_org_id: ownerOrgId || undefined, status: "planning", ...mapping.champ }))
-        .select("id").single();
-      if (error) throw error;
-      const { error: exErr } = await fromExt("tournaments").update(sanitizeExtrasPayload(mapping.extras)).eq("id", data.id);
-      if (exErr) console.warn("extras", exErr.message);
-      await fromExt("smart_tournament_drafts").update({ status: "created", created_tournament_id: data.id }).eq("id", draftId);
-      onCreated(data.id);
-    } catch (e: any) {
-      toast.error(`Create failed: ${e.message}`);
-    } finally { setBusy(false); setConfirm(false); }
-  };
-
-  return (
-    <div className="space-y-4 text-xs text-white/85">
-      <div className="flex items-center gap-2 text-sm">
-        {validation.canCreate ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-red-400" />}
-        {validation.canCreate ? "The structure is valid." : "Fix the problems below before creating."}
-      </div>
-      {validation.facts.length > 0 && (
-        <div><div className="font-semibold text-white mb-1">The maths</div><ul className="list-disc pl-4 space-y-0.5">{validation.facts.map((f, i) => <li key={i}>{f}</li>)}</ul></div>
-      )}
-      <ul className="space-y-1">{validation.issues.map((i, k) => <li key={k} className="flex gap-2">{icon(i.level)}<span>{i.message}{i.fix && <span className="text-white/55"> — {i.fix}</span>}</span></li>)}</ul>
-      {mapping.unsupported.length > 0 && (
-        <div className="rounded-lg border border-amber-300/40 bg-amber-500/10 p-2 space-y-1">
-          <div className="font-semibold text-amber-100">Preview only in this beta</div>
-          {mapping.unsupported.map((u, i) => <div key={i}>{u}</div>)}
-        </div>
-      )}
-      <div className="rounded-lg border border-white/10 p-3 space-y-2">
-        <div className="font-semibold text-white">Create Tournament</div>
-        <p className="text-white/60">Creates a planning-stage tournament in the existing setup. Invitations, players, fees and fixtures are then managed there as usual.</p>
-        {scope.kind === "club" ? (
-          <p className="text-white/60">Host and owner: <span className="text-white">{scope.clubName ?? "this club"}</span></p>
-        ) : <div className="grid md:grid-cols-2 gap-2">
-          <select className="h-8 rounded-md bg-white/5 border border-white/15 text-white px-2" value={ownerOrgId} onChange={(e) => setOwnerOrgId(e.target.value)}>
-            <option value="">Organised by…</option>
-            {orgs.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.kind})</option>)}
-          </select>
-          <select className="h-8 rounded-md bg-white/5 border border-white/15 text-white px-2" value={hostClubId} onChange={(e) => setHostClubId(e.target.value)}>
-            <option value="">Host club…</option>
-            {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>}
-        <Button size="sm" disabled={created || blockers > 0 || !hostClubId || busy} onClick={() => setConfirm(true)}>
-          {created ? "Already created" : "Create Tournament"}
-        </Button>
-      </div>
-      <AlertDialog open={confirm} onOpenChange={setConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Create "{def.name}"?</AlertDialogTitle>
-            <AlertDialogDescription>This creates a real tournament (planning stage, no invitations sent) in the existing tournament setup.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={create} disabled={busy}>Create Tournament</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+    <div data-field="scoring" className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 p-2 text-xs text-white/75">
+      <span className="font-semibold text-white">Scoring</span>
+      <select className={sel} value={s.pointsPerGame ?? ""} onChange={(e) => set({ pointsPerGame: e.target.value ? (Number(e.target.value) as 11 | 15) : null })}>
+        <option value="">PAR — default 11</option><option value="11">PAR 11</option><option value="15">PAR 15</option>
+      </select>
+      <select className={sel} value={s.bestOf ?? ""} onChange={(e) => set({ bestOf: e.target.value ? (Number(e.target.value) as 3 | 5) : null })}>
+        <option value="">Best of — default 5</option><option value="3">Best of 3</option><option value="5">Best of 5</option>
+      </select>
+      <select className={sel} value={s.winCondition ?? ""} onChange={(e) => set({ winCondition: (e.target.value || null) as any })}>
+        <option value="">Win by 2 (default)</option><option value="win_by_2">Win by 2</option><option value="sudden_death">Sudden death</option>
+      </select>
+      <label className="flex items-center gap-1"><input type="checkbox" checked={!!s.playAllGames} onChange={(e) => set({ playAllGames: e.target.checked })} />Play all games</label>
     </div>
   );
 }

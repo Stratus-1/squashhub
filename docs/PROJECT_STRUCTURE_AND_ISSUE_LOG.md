@@ -1937,3 +1937,7 @@ NSA's tournament venue picker merged legacy `association_affiliated_clubs` with 
 - Edge function `ai-help` (ask/confirm/cancel/escalate/rollback): context and permissions resolved server-side; actions = create_booking, cancel_my_booking, replace_tournament_player (admins, unplayed games only), update_my_contact. Preview stored server-side, 15-min one-time confirm; failures/out-of-scope requests open support tickets.
 - Log: `ai_assist_interactions`; Super Admin view at `/admin/support` → "AI Activity (beta)" with beta club switch and inverse-operation rollback.
 - Voice reuses `VoiceInputButton` + `smart-tournament-transcribe` (`purpose=ai_help` checks `can_use_ai_actions`). Screenshots in `support-attachments/ai-help/<uid>/`.
+
+### 2026-09-24 — Tournament Beta: decisions stayed in chat only; readiness review; compact Schedule
+- Cause: the Smart Builder draft only modelled structure, so invitation sending/channels, player selection, fees, WhatsApp group, result messages, scoring and tournament dates had nowhere to be stored.
+- Fix: `players`, `comms`, `scheduleDefaults`, `scoring` added to the draft definition; `readiness.ts` deterministic completeness check drives tab dots, the "Next to decide" prompt, the AI's next question and the Review; `to-existing.ts` now reports ready/partial/blocked executability (partial = later stages deferred, kept in draft) and maps comms to existing fields; Create never sends invitations.

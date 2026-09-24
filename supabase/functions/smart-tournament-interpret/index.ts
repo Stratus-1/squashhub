@@ -15,6 +15,7 @@ const Body = z.object({
   mode: z.enum(["guide", "describe"]),
   definition: z.record(z.any()),
   clubId: z.string().uuid().optional(),
+  missing: z.array(z.object({ section: z.string(), item: z.string(), question: z.string() })).max(12).default([]),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(6000) })).max(30).default([]),
 });
 
@@ -26,6 +27,14 @@ Definition shape (TypeScript):
   registrationClosesAt?: string|null,
   divisions: [{ id, name, eligibility:"men"|"ladies"|"mixed"|"open"|"open_any_pair", entry:"individual"|"pairs",
     sections: [{ id, name, stages: [Stage] }] }],
+  scoring?: { pointsPerGame?: 11|15|null, bestOf?: 3|5|null, playAllGames?: boolean|null, winCondition?: "win_by_2"|"sudden_death"|null },
+  players?: { entryMethod?: "self_entry"|"selected"|"both"|null, audience?: "all_club"|"leagues"|"clubs"|"individuals"|null, confirmAvailabilityOnly?: boolean|null,
+    allocation?: "by_eligibility"|"admin_allocates"|"by_ranking"|null, seedingSource?: "ranking"|"ladder"|"manual"|"none"|null, minEntries?: int|null, maxEntries?: int|null },
+  comms?: { inviteSending?: "manual"|"automatic"|null, inviteChannels?: ("in_app"|"email"|"whatsapp"|"sms")[]|null, registrationOpensAt?: "YYYY-MM-DD"|null, registrationClosesAt?: "YYYY-MM-DD"|null,
+    inviteMessage?: string|null, reminders?: "none"|"before_close"|"before_matches"|"both"|null, entryFeeRands?: number|null (0 = free), paymentRequired?: boolean|null,
+    paymentMethods?: ("card"|"eft"|"cash"|"account")[]|null, whatsappGroup?: "yes"|"no"|null, whatsappGroupUrl?: string|null,
+    resultNotify?: "all"|"playoffs"|"none"|null, resultChannels?: ("in_app"|"email"|"whatsapp"|"sms")[]|null },
+  scheduleDefaults?: { startDate?, endDate?, weekday?: 0-6, startTime?: "HH:MM", venueNames?: string[], rotateVenues?: boolean, courtsPerVenue?, sessionMinutes?, matchMinutes?, provisionalBookings?: boolean },
   understood: string[], questions: [{ id, term?, question, options?: string[], kind:"structural"|"operational", resolved:boolean, answer?: string|null }],
   notUnderstood: string[] }
 Stage = { id, name, kind:"round_robin"|"knockout"|"swiss"|"placement"|"split"|"pair_from_positions"|"custom",
@@ -50,6 +59,10 @@ Rules:
 - If you cannot understand part of a message, add it to notUnderstood instead of guessing.
 - "understood" lists short plain-English facts including derived maths (e.g. "6 players per pool → 5 matches each, 15 per pool; 48 players in total").
 - For an edit ("change Section 2 to 5 pools"), apply exactly that change and list the downstream consequences in "consequences" (e.g. later stages now receive a different number of pairs) with a suggested resolution; do not silently fix other stages.
+- EVERY decision the organiser states must be written into the structured fields above — never leave it only in the reply. Examples: "invitations must not go automatically / admin triggers them" → comms.inviteSending="manual"; "email and WhatsApp" → comms.inviteChannels=["email","whatsapp"]; "selected players only need to confirm availability" → players.entryMethod="selected", players.confirmAvailabilityOnly=true; "no results/congratulations/consolation messages" → comms.resultNotify="none"; "free" → comms.entryFeeRands=0; "PAR 15 best of 3" → scoring; "every Thursday from 18:00 at A, B and C" → scheduleDefaults.weekday=4, startTime, venueNames, rotateVenues if they rotate. Stage-specific dates go on that stage's schedule.
+- Never set comms.inviteSending="automatic" unless the organiser explicitly asks for automatic sending. Creating the tournament never sends anything.
+- If the organiser says a WhatsApp group will be used, set comms.whatsappGroup="yes" and ask them to paste the chat.whatsapp.com invite link (store it in comms.whatsappGroupUrl when given).
+- You receive a "Still missing" list computed by the app. When the structure is settled, ask for the FIRST missing item (one or two at a time) as an operational question, instead of waiting for the organiser to notice. Do not ask about items that are not on the list.
 - In "guide" mode, ask one or two simple questions at a time and build as you go.
 - Reply briefly and plainly for a sports administrator. No jargon about JSON.`;
 
@@ -104,7 +117,7 @@ Deno.serve(async (req) => {
         : { data: false };
       if (allowed !== true) return json({ error: "Tournament Beta isn't switched on for your club, or you don't have tournament permission." }, 403);
     }
-    const { message, mode, definition, history } = parsed.data;
+    const { message, mode, definition, history, missing } = parsed.data;
 
     const key = Deno.env.get("LOVABLE_API_KEY");
     if (!key) return json({ error: "AI is not configured" }, 500);
@@ -118,7 +131,7 @@ Deno.serve(async (req) => {
         role: "user",
         content: [{
           type: "input_text",
-          text: `Mode: ${mode}\nCurrent definition JSON:\n${JSON.stringify(definition)}\n\nOrganiser says:\n${message}`,
+          text: `Mode: ${mode}\nCurrent definition JSON:\n${JSON.stringify(definition)}\n\nStill missing (app readiness check):\n${missing.length ? missing.map((m) => `- [${m.section}] ${m.item}: ${m.question}`).join("\n") : "- nothing"}\n\nOrganiser says:\n${message}`,
         }],
       },
     ];

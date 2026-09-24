@@ -11,6 +11,7 @@ import {
   atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
 import { progressionOf } from "@/lib/tournaments/contract";
+import { pairingLabel, slotLabel } from "@/lib/tournaments/transition";
 import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
 /** Operate panel for structured (Beta) tournaments. All actions go through the structured engine. */
@@ -19,7 +20,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
 }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ div: string; stage: string; p: PlayoffPreview } | null>(null);
+  const [preview, setPreview] = useState<{ div: string; stage: string; p: PlayoffPreview; labels?: string[] } | null>(null);
   const { data: stages = [] } = useQuery({
     queryKey: ["structured-stages", champId, matches.length],
     queryFn: () => supabaseDb.select("tournament_stages", { tournament_id: champId }),

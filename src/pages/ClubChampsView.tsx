@@ -1331,12 +1331,15 @@ export default function ClubChampsView() {
     (m) => (m.stage || "group") !== "group" && (m.stage || "") !== "ko",
   );
   const playoffsExist = playoffMatches.length > 0;
+  // Lifecycle from persisted rows: every play-off row played → stage closed.
+  const playoffsComplete = playoffsExist && playoffMatches.every((m: any) => m.status === "completed");
 
   const generatePlayoffs = useMutation({
     mutationFn: async (opts?: { silent?: boolean }) => {
       if (!champ) throw new Error("Tournament not loaded");
       if (!enablePlayoffs) throw new Error("Play-offs are not enabled for this tournament");
       if (groupResultsCount === 0) throw new Error("At least one group-stage result is needed to seed play-offs");
+      if (playoffsComplete) throw new Error("Play-offs are already played — nothing to generate.");
 
 
       // Winner resolver for already-completed playoff rounds (SF → Final, etc.)
@@ -1572,7 +1575,7 @@ export default function ClubChampsView() {
   const autoPlayoffKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!canManage || !enablePlayoffs) return;
-    if (generatePlayoffs.isPending) return;
+    if (generatePlayoffs.isPending || playoffsComplete) return;
     if (!shouldAutoFillPlayoffs({ groupComplete, playoffRows: playoffMatches as any[] })) return;
 
     const completed = (matches as any[]).filter((m: any) => m.status === "completed");
@@ -1712,7 +1715,7 @@ export default function ClubChampsView() {
                 Reschedule {unassignedCount} TBD match{unassignedCount === 1 ? "" : "es"}
               </Button>
             )}
-            {canManage && enablePlayoffs && (
+            {canManage && enablePlayoffs && !playoffsComplete && String((champ as any)?.status || "").toLowerCase() !== "completed" && (
               <Button
                 variant={groupComplete ? "default" : "outline"}
                 size="sm"
@@ -3125,6 +3128,7 @@ export default function ClubChampsView() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Trophy className="w-5 h-5 text-primary" /> Play-offs
+              {playoffsComplete && <Badge variant="secondary" className="text-xs">Completed</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -3133,9 +3137,13 @@ export default function ClubChampsView() {
               // pool mode; decode it so headings read sensibly.
               const lg = pos >= 1000 ? Math.floor(pos / 1000) : null;
               const p = pos >= 1000 ? pos % 1000 : pos;
-              const heading = lg
-                ? `${getGroupLabel(champ, lg)}${p > 1 ? ` · Position ${p}` : ""} bracket`
-                : `Position ${p} bracket`;
+              // A lone placement final decides two final positions — name it so.
+              const isPlacement = rows.length === 1 && rows[0].stage === "playoff_final" && lg != null;
+              const heading = isPlacement
+                ? `${getGroupLabel(champ, lg!)} · ${placementSlotLabel(p).replace("play-off", "place play-off")}`
+                : lg
+                  ? `${getGroupLabel(champ, lg)}${p > 1 ? ` · Position ${p}` : ""} bracket`
+                  : `Position ${p} bracket`;
               return (
               <div key={pos} className="space-y-1.5">
                 {pos > 0 && (

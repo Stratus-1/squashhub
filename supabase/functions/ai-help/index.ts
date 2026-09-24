@@ -9,9 +9,9 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { ACTIONS, catalogueFor, type Ctx } from "./actions.ts";
 import { READ_TOOLS, type AssistCtx } from "./tools.ts";
+import { MAX_STEPS, ESCALATED_ANSWER, BUDGET_ANSWER, nextStepDecision, replayStored } from "./flow.ts";
 
 const MODEL = "openai/gpt-6-astra";
-const MAX_STEPS = 8;
 const PREVIEW_TTL_MS = 15 * 60 * 1000;
 
 const json = (b: unknown, status = 200) =>
@@ -24,6 +24,7 @@ const Body = z.object({
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).max(12).optional(),
   attachments: z.array(z.object({ path: z.string().max(400), name: z.string().max(200), mime: z.string().max(80), size: z.number().optional() })).max(3).optional(),
   interactionId: z.string().uuid().optional(),
+  clientRequestId: z.string().uuid().optional(),
   reason: z.string().max(1000).optional(),
   context: z.object({
     clubId: z.string().uuid().nullable().optional(),
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
     const role = isSuper ? (member ? `super_admin (club role: ${member.role})` : "super_admin") : member?.role ?? "member";
     const c: Ctx = { user, admin, userId, clubId, memberId: member?.id ?? null, isAdmin, isSuper };
     const attachments = (b.attachments ?? []).filter((a) => a.path.startsWith(`ai-help/${userId}/`) && a.mime.startsWith("image/"));
-    const context = { route: b.context?.route ?? null, ids: b.context?.ids ?? {}, role, club: clubRow.name };
+    const context = { route: b.context?.route ?? null, ids: b.context?.ids ?? {}, role, club: clubRow.name, clientRequestId: b.clientRequestId ?? null };
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
     const ac: AssistCtx = {
       ...c, clubName: clubRow.name, role, myMemberIds: myMems.map((m) => m.id), myClubIds: [...new Set(myMems.map((m) => m.club_id))],
@@ -184,6 +185,19 @@ Deno.serve(async (req) => {
     // ---------- Ask ----------
     const question = (b.question ?? "").trim();
     if (!question) return json({ error: "Please type or say your question." }, 400);
+    // Retry of a request that already completed server-side: return the stored
+    // reply instead of running again (prevents duplicate tickets/actions).
+    if (b.clientRequestId) {
+      const { data: prior } = await admin.from("ai_assist_interactions")
+        .select("id, kind, status, ticket_id, preview, result")
+        .eq("user_id", userId).eq("context->>clientRequestId", b.clientRequestId)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (prior) {
+        console.log(JSON.stringify({ fn: "ai-help", event: "replay", kind: prior.kind, status: prior.status }));
+        return json(replayStored(prior as any));
+      }
+    }
+    const startedAt = Date.now();
     const key = Deno.env.get("LOVABLE_API_KEY");
     if (!key) return json({ error: "AI is not configured." }, 500);
 
@@ -257,7 +271,11 @@ Deno.serve(async (req) => {
     };
 
     let answer = "";
-    for (let step = 0; step < MAX_STEPS; step++) {
+    let steps = 0; let stopReason = "answered";
+    for (let step = 0; ; step++) {
+      const d = nextStepDecision({ step, startedAt, now: Date.now(), escalated: !!outcome.escalated });
+      if (d !== "continue") { stopReason = d; if (d === "stop_escalated") answer = ESCALATED_ANSWER; else if (d === "stop_budget" && !outcome.preview) answer = answer || BUDGET_ANSWER; break; }
+      steps++;
       const r: any = await callModel();
       if (!r.response) {
         console.error("ai-help gateway", r.status, r.text);
@@ -322,6 +340,8 @@ Deno.serve(async (req) => {
     if (!outcome.interactionId && !outcome.ticketId) {
       await admin.from("ai_assist_interactions").insert({ ...base, kind: "question", status: "answered", interpretation: toolLog.map((t) => t.tool).join(", ") || null, result: { answer, tools: toolLog } });
     }
+    console.log(JSON.stringify({ fn: "ai-help", event: "ask_done", ms: Date.now() - startedAt, steps, stop: stopReason,
+      escalated: !!outcome.escalated, preview: !!outcome.preview, voice: !!b.transcriptUsed }));
     return json({ answer, ...outcome });
   } catch (e) {
     console.error("ai-help failed", e);

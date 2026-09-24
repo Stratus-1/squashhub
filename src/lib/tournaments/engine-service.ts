@@ -7,8 +7,8 @@
  */
 import {
   IntegrityError, assertKnockoutShape, assertStageKinds, bracketOrder, canGenerateStage, contractIssues,
-  isDecided, mapQualifiers, nextPow2, roundRobin, snakePools,
-  type DivisionContract, type FixtureRow, type PlannedStage, type PoolStanding,
+  isDecided, mapQualifiers, nextPow2, roundRobin, snakePools, swissRound,
+  type DivisionContract, type FixtureRow, type PlannedStage, type PoolStanding, type SwissTieBreak,
 } from "./contract";
 
 export interface SpecDivision extends DivisionContract {
@@ -54,11 +54,61 @@ function generateStage(tid: string, d: SpecDivision, st: PlannedStage): EngineFi
     const n = st.kind === "pools" ? st.pools ?? 1 : 1;
     const { pools, unranked } = snakePools(d.entrants, n);
     unranked.forEach((u, i) => pools[i % n].push(u)); // placed deterministically after ranked, never given a rank
-    return pools.flatMap((p, pi) => roundRobin(p.map((x) => x.id)).map((m) =>
-      mk({ roundId: `${st.id}:r${m.round}`, round: m.round, poolId: st.kind === "pools" ? poolId(d.divisionId, st.id, pi) : null, a: m.a, b: m.b })));
+    return pools.flatMap((p, pi) => {
+      const once = roundRobin(p.map((x) => x.id));
+      const perLeg = Math.max(0, ...once.map((m) => m.round));
+      const legs = st.legs === 2 ? [...once, ...once.map((m) => ({ round: m.round + perLeg, a: m.b, b: m.a }))] : once;
+      return legs.map((m) => mk({ roundId: `${st.id}:r${m.round}`, round: m.round, poolId: st.kind === "pools" ? poolId(d.divisionId, st.id, pi) : null, a: m.a, b: m.b }));
+    });
   }
+  if (st.kind === "swiss") return swissFixtures(tid, d, st, 1, d.entrants.map((e, i) => ({ id: e.id, points: 0, seed: i + 1 })), new Set());
   if (st.kind === "knockout") return knockoutFirstRound(tid, d, st, d.entrants.map((e) => e.id));
   throw new IntegrityError("unsupported_first_stage", `${st.kind} cannot be generated as a first stage yet.`);
+}
+
+function swissFixtures(tid: string, d: SpecDivision, st: PlannedStage, round: number, players: Array<{ id: string; points: number; seed: number }>, played: Set<string>): EngineFixture[] {
+  return swissRound(players, played).map(([a, b], i) => ({
+    tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "swiss", roundId: `${st.id}:r${round}`, round, poolId: null, slot: i + 1, a, b,
+  }));
+}
+
+const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+/** A bye (no opponent) counts as a win. */
+const swissWinner = (f: FixtureRow) => (f.a && !f.b ? f.a : f.winner ?? null);
+
+/** Swiss standings: wins first, then the stage's tie-breaks in order, then seed. */
+export function swissStandings(d: SpecDivision, st: PlannedStage, rows: FixtureRow[]) {
+  const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === st.id);
+  const pts = new Map(d.entrants.map((e) => [e.id, 0]));
+  const opps = new Map(d.entrants.map((e) => [e.id, [] as string[]]));
+  const beat = new Map(d.entrants.map((e) => [e.id, [] as string[]]));
+  for (const f of mine) {
+    const w = swissWinner(f);
+    if (w && pts.has(w)) pts.set(w, pts.get(w)! + 1);
+    if (f.a && f.b) { opps.get(f.a)?.push(f.b); opps.get(f.b)?.push(f.a); if (w) beat.get(w)?.push(w === f.a ? f.b : f.a); }
+  }
+  const seed = new Map(d.entrants.map((e, i) => [e.id, i + 1]));
+  const tb = (id: string, k: SwissTieBreak) =>
+    k === "buchholz" ? (opps.get(id) ?? []).reduce((s, o) => s + (pts.get(o) ?? 0), 0)
+      : k === "sonneborn_berger" ? (beat.get(id) ?? []).reduce((s, o) => s + (pts.get(o) ?? 0), 0)
+        : -(seed.get(id) ?? 0);
+  const order = [...(st.tieBreaks ?? []), "seed" as const];
+  const table = d.entrants.map((e) => ({ id: e.id, points: pts.get(e.id) ?? 0, tie: order.map((k) => tb(e.id, k)) }));
+  table.sort((x, y) => y.points - x.points || x.tie.reduce((r, _, i) => r || y.tie[i] - x.tie[i], 0));
+  return table;
+}
+
+/** Next Swiss round from completed results. Refuses to exceed the configured round count. */
+export function nextSwissRound(tid: string, d: SpecDivision, stageId: string, rows: FixtureRow[]): EngineFixture[] {
+  const st = d.stages.find((s) => s.id === stageId);
+  if (!st || st.kind !== "swiss") throw new IntegrityError("stage_kind", "Only Swiss stages pair by results.");
+  const mine = rows.filter((f) => f.divisionId === d.divisionId && f.stageId === stageId);
+  const last = Math.max(0, ...mine.map((f) => f.round ?? 1));
+  if (last >= (st.swissRounds ?? 0)) throw new IntegrityError("swiss_done", `All ${st.swissRounds} Swiss rounds have been created.`);
+  if (!mine.filter((f) => (f.round ?? 1) === last).every((f) => swissWinner(f))) throw new IntegrityError("prereq", "Current Swiss round is not finished.");
+  const table = swissStandings(d, st, rows);
+  const played = new Set(mine.filter((f) => f.a && f.b).map((f) => pairKey(f.a!, f.b!)));
+  return swissFixtures(tid, d, st, last + 1, table.map((t, i) => ({ id: t.id, points: t.points, seed: i + 1 })), played);
 }
 
 function knockoutFirstRound(tid: string, d: SpecDivision, st: PlannedStage, seeded: Array<string | null>): EngineFixture[] {
@@ -114,7 +164,7 @@ export interface EditImpact {
 
 const structuralKey = (d: SpecDivision) => JSON.stringify({
   unit: d.unit, seeding: d.seeding, entrants: d.entrants.map((e) => e.id),
-  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, swissRounds: s.swissRounds, qualify: s.qualify })),
+  stages: d.stages.map((s) => ({ id: s.id, order: s.order, kind: s.kind, pools: s.pools, poolSize: s.poolSize, drawSize: s.drawSize, swissRounds: s.swissRounds, qualify: s.qualify, legs: s.legs, tieBreaks: s.tieBreaks, thirdPlace: s.thirdPlace })),
 });
 const scheduleKey = (d: SpecDivision) => JSON.stringify(d.stages.map((s) => [s.id, s.schedule]));
 

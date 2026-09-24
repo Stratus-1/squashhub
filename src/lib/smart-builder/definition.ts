@@ -79,6 +79,12 @@ const StageSchema = z.object({
   /** Split competitions (Championship / Plate / Shield) by finishing positions. */
   splits: z.array(z.object({ name: z.string(), fromPosition: z.number().int(), toPosition: z.number().int() })).optional(),
   swissRounds: z.number().int().min(1).nullable().optional(),
+  /** Swiss tie-breaks after wins, in order. */
+  tieBreaks: z.array(z.enum(["buchholz", "sonneborn_berger", "seed"])).optional(),
+  /** Round robin: 1 = once, 2 = everyone plays everyone twice. */
+  legs: z.union([z.literal(1), z.literal(2)]).optional(),
+  /** Knockout: add a 3rd/4th place match. */
+  thirdPlace: z.boolean().optional(),
   /** Playoff stages: how qualifiers are placed into the bracket (never inferred). */
   qualifierMapping: z.enum(["cross_pool", "reseed", "same_pool"]).nullable().optional(),
   /** Playoff stages: generate automatically once prerequisites finish, or only after the owner previews and confirms. */

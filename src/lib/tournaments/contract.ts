@@ -18,6 +18,8 @@ export type ScheduleRule = "fixed" | "play_by" | "window";
 export type GenerationMode = "automatic" | "owner_approval";
 export type QualifierMapping = "cross_pool" | "reseed" | "same_pool";
 
+export type SwissTieBreak = "buchholz" | "sonneborn_berger" | "seed";
+
 export interface PlannedStage {
   id: string;
   order: number;
@@ -28,6 +30,12 @@ export interface PlannedStage {
   poolSize?: number;
   /** swiss */
   swissRounds?: number;
+  /** swiss tie-breaks, applied in order after wins */
+  tieBreaks?: SwissTieBreak[];
+  /** round robin: 1 = play once, 2 = home and away */
+  legs?: 1 | 2;
+  /** knockout: also play a 3rd/4th place match between the losing semi-finalists */
+  thirdPlace?: boolean;
   /** knockout draw size */
   drawSize?: number;
   schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null };
@@ -93,7 +101,7 @@ export function tournamentMap(c: DivisionContract) {
     if (s.kind === "pools" || s.kind === "round_robin") {
       const pools = s.kind === "pools" ? s.pools ?? 1 : 1;
       const size = s.kind === "pools" ? s.poolSize ?? 0 : entrants;
-      const m = pools * rr(size);
+      const m = pools * rr(size) * (s.legs ?? 1);
       total += m;
       lines.push(`${pools} pool${pools === 1 ? "" : "s"} x ${size}`, `${Math.max(0, size - 1)} pool matches per entrant`, `${m} pool matches`);
       entrants = s.kind === "pools" ? pools * size : entrants;
@@ -231,6 +239,8 @@ export interface FixtureRow {
   winner?: string | null;
   date?: string | null;
   court?: number | null;
+  /** 3rd/4th place match — losers play it, so it never counts as re-entry. */
+  thirdPlace?: boolean;
   venue?: string | null;
 }
 
@@ -315,7 +325,7 @@ export function assertSeedsUnchanged(published: boolean, before: Record<string, 
 /** Eliminated entrants never reappear in a later knockout round. */
 export function assertNoReentry(fixtures: FixtureRow[]) {
   const out = new Set<string>();
-  const byRound = [...fixtures].filter((f) => f.stageKind === "knockout").sort((x, y) => (x.round ?? 0) - (y.round ?? 0));
+  const byRound = [...fixtures].filter((f) => f.stageKind === "knockout" && !f.thirdPlace).sort((x, y) => (x.round ?? 0) - (y.round ?? 0));
   for (const f of byRound) {
     for (const id of [f.a, f.b]) if (id && out.has(id)) throw new IntegrityError("reentry", `Eliminated entrant ${id} reintroduced.`);
     if (f.winner) for (const id of [f.a, f.b]) if (id && id !== f.winner) out.add(id);

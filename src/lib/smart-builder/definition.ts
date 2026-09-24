@@ -245,7 +245,13 @@ const EventScopeSchema = z.object({
     clubIds: z.array(z.string()).default([]),
     /** Display names, same order as clubIds. Labels only. */
     names: z.array(z.string()).default([]),
+    /** Selected court IDs per venue club (real `courts` records). Names are never stored. */
+    courtIds: z.record(z.array(z.number().int())).optional(),
+    /** National events: region filter used to browse clubs (UI only). */
+    regionId: z.string().nullable().optional(),
   }).optional(),
+  /** Venues that became ineligible after an owner/level change; must be resolved before creation. */
+  venuesStale: z.array(z.string()).optional(),
   /** Owner explicitly says no physical venue is needed (e.g. results-only). */
   noVenue: z.boolean().optional(),
 }).default({});

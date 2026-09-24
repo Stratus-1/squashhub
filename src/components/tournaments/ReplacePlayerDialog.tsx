@@ -58,11 +58,11 @@ export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubl
     queryFn: async () => {
       const { data, error } = await supabase
         .from("club_members")
-        .select("id, name, member_number, status")
+        .select("id, name, club_member_number, status")
         .eq("club_id", clubId!)
         .order("name");
       if (error) throw error;
-      return (data || []) as any[];
+      return ((data || []) as any[]).map((m) => ({ ...m, member_number: m.club_member_number }));
     },
   });
 

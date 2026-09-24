@@ -3128,6 +3128,7 @@ export default function ClubChampsView() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Trophy className="w-5 h-5 text-primary" /> Play-offs
+              {playoffsComplete && <Badge variant="secondary" className="text-xs">Completed</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -3136,9 +3137,13 @@ export default function ClubChampsView() {
               // pool mode; decode it so headings read sensibly.
               const lg = pos >= 1000 ? Math.floor(pos / 1000) : null;
               const p = pos >= 1000 ? pos % 1000 : pos;
-              const heading = lg
-                ? `${getGroupLabel(champ, lg)}${p > 1 ? ` · Position ${p}` : ""} bracket`
-                : `Position ${p} bracket`;
+              // A lone placement final decides two final positions — name it so.
+              const isPlacement = rows.length === 1 && rows[0].stage === "playoff_final" && lg != null;
+              const heading = isPlacement
+                ? `${getGroupLabel(champ, lg!)} · ${placementSlotLabel(p).replace("play-off", "place play-off")}`
+                : lg
+                  ? `${getGroupLabel(champ, lg)}${p > 1 ? ` · Position ${p}` : ""} bracket`
+                  : `Position ${p} bracket`;
               return (
               <div key={pos} className="space-y-1.5">
                 {pos > 0 && (

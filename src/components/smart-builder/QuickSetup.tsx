@@ -146,6 +146,7 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
           <Q label={q.pools ? "Qualify from each pool" : "How many qualify"}>
             <Input className={f} inputMode="numeric" value={first.advance?.perGroup ?? ""} onChange={(e) => editStruct((d) => { const s = d.divisions[0].sections[0].stages[0]; s.advance = { ...s.advance, role: "qualify", perGroup: e.target.value ? Number(e.target.value) : null }; })} />
           </Q>
+          <Q label="Play-off format"><div className="h-8 flex items-center text-white/80">Knockout{first.advance?.perGroup ? ` · ${(first.advance.perGroup) * Math.max(1, first.groups)} qualifiers` : ""}</div></Q>
           <Q label="How qualifiers are placed">
             <select className={sel} value={po.qualifierMapping ?? ""} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[1].qualifierMapping = (e.target.value || null) as any; })}>
               <option value="">Not decided</option>

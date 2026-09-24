@@ -126,11 +126,11 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
         </button>
         <button onClick={() => setPickPath((v) => !v)} className={cn(panel, "p-4 text-left hover:bg-white/[0.08]", pickPath && "ring-1 ring-amber-300/60")}>
           <div className="font-semibold text-white">I know what I want</div>
-          <div className="text-xs text-white/60">Pick the basic format; I'll ask only the questions for it.</div>
+          <div className="text-xs text-white/60">Pick how matches are played; pools and play-offs are asked next, only if relevant.</div>
         </button>
       </div>
       {pickPath && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
           {QUICK_PATHS.map((p) => (
             <button key={p.key} disabled={create.isPending} onClick={() => create.mutate({ mode: "describe", path: p.key })} className={cn(panel, "p-3 text-left hover:bg-white/[0.08]")}>
               <div className="font-semibold text-white text-sm">{p.label}</div>

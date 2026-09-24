@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
 import { DesignCanvas } from "@/components/smart-builder/DesignCanvas";
 import { QuickSetup } from "@/components/smart-builder/QuickSetup";
+import { EventSetupSection } from "@/components/smart-builder/EventSetupSection";
 import { StageBuilder } from "@/components/smart-builder/StageBuilder";
 import { QUICK_PATHS, presetDefinition, type QuickPath } from "@/lib/smart-builder/quick-path";
 import { InvitationsTab, PlayersTab, ReviewTab, ScheduleTab } from "@/components/smart-builder/BuilderTabs";
@@ -425,6 +426,7 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
               </div>
             )}
             <TabsContent value="design" className="mt-3 space-y-3">
+              <EventSetupSection def={def} edit={edit} scope={scope} />
               {def.quickPath && def.quickPath !== "custom" && <QuickSetup def={def} edit={edit} />}
               {def.quickPath === "custom" && <StageBuilder def={def} edit={edit} />}
               <ScoringRow def={def} edit={edit} />

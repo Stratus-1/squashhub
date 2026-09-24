@@ -23,6 +23,8 @@ import type { ValidationResult } from "@/lib/smart-builder/validate";
 import type { ExistingMapping } from "@/lib/smart-builder/to-existing";
 import { RESULT_NONE_NOTE, scheduleNeeds, type Readiness, type ItemState, type ReadinessItem } from "@/lib/smart-builder/readiness";
 import { normaliseGroupInviteUrl, isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
+import { eventVenues, SCOPE_LABEL } from "@/lib/smart-builder/venues";
+import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import type { BuilderScope } from "@/pages/admin/SmartTournamentBuilder";
 import { cn } from "@/lib/utils";
@@ -232,7 +234,8 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
           <Field label="End date" tag={d.endDate ? "Required" : "Missing"} field="defaults.endDate"><Input type="date" className={f} value={datePart(d.endDate)} onChange={(e) => setD({ endDate: withDate(e.target.value, d.endDate) })} /></Field>
           <Field label="Day" tag="Optional"><select className={cn(sel, "w-full")} value={d.weekday ?? ""} onChange={(e) => setD({ weekday: e.target.value === "" ? null : Number(e.target.value) })}><option value="">Any</option>{DAYS.map((x, i) => <option key={x} value={i}>{x}</option>)}</select></Field>
           <Field label="Start time" tag="Optional"><Input type="time" className={f} value={d.startTime ?? ""} onChange={(e) => setD({ startTime: e.target.value || null })} /></Field>
-          <Field label="Venues" tag="Optional" className="sm:col-span-2"><Input className={f} placeholder="Club names, comma separated" defaultValue={(d.venueNames ?? []).join(", ")} key={(d.venueNames ?? []).join("|")} onBlur={(e) => setD({ venueNames: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) })} /></Field>
+          <VenuePicker def={def} field="defaults.venues" ids={(d as any).venueClubIds} names={d.venueNames} tag="Optional"
+            onChange={(ids, names) => setD({ venueClubIds: ids, venueNames: names } as any)} />
           <Field label="Courts / venue" tag="Optional"><Input className={f} inputMode="numeric" value={d.courtsPerVenue ?? ""} onChange={(e) => setD({ courtsPerVenue: e.target.value ? Number(e.target.value) : null })} /></Field>
           <Field label="Match minutes" tag="Optional"><Input className={f} inputMode="numeric" value={d.matchMinutes ?? ""} onChange={(e) => setD({ matchMinutes: e.target.value ? Number(e.target.value) : null })} /></Field>
         </div>
@@ -299,6 +302,41 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
   );
 }
 
+/** Schedule venues come ONLY from the event venue set chosen on Design. */
+function VenuePicker({ def, ids, names, tag, field, inheritedNote, onChange }: {
+  def: TournamentDefinition; ids?: string[] | null; names?: string[] | null; tag: "Required" | "Optional" | "Inherited" | "Not needed" | "Missing";
+  field?: string; inheritedNote?: string; onChange: (ids: string[], names: string[]) => void;
+}) {
+  const allowed = eventVenues(def);
+  const chosen = ids?.length ? ids : allowed.clubIds.filter((id, i) => (names ?? []).some((n) => n.trim().toLowerCase() === allowed.names[i]?.trim().toLowerCase()));
+  const strays = ids?.length ? ids.filter((id) => !allowed.clubIds.includes(id)).map((id) => names?.[ids.indexOf(id)] ?? id)
+    : (names ?? []).filter((n) => !allowed.names.some((a) => a.trim().toLowerCase() === n.trim().toLowerCase()));
+  const toggle = (id: string) => {
+    const next = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id];
+    onChange(next, next.map((x) => allowed.names[allowed.clubIds.indexOf(x)] ?? x));
+  };
+  const tone = tag === "Missing" ? "text-red-300" : tag === "Required" ? "text-white/70" : "text-white/40";
+  return (
+    <div data-field={field} className="sm:col-span-2 min-w-0 space-y-0.5 rounded">
+      <span className="flex flex-wrap items-center justify-between gap-x-2 text-[11px] text-white/60">Venues<span className={cn("text-[10px]", tone)}>{tag}</span></span>
+      {def.event?.noVenue ? <p className="text-[11px] text-white/45">No physical venue (set on Design).</p>
+        : !allowed.clubIds.length ? <p className="text-[11px] text-amber-200">Choose the tournament's venue(s) on Design first.</p> : (
+        <div className="flex flex-wrap gap-1">
+          {allowed.clubIds.map((id, i) => {
+            const on = chosen.includes(id);
+            return <button key={id} type="button" aria-pressed={on} onClick={() => toggle(id)}
+              className={cn("rounded-full border px-2 py-0.5 text-[11px]", on ? "border-amber-300 bg-amber-500/15 text-white" : "border-white/15 text-white/70")}>{allowed.names[i]}</button>;
+          })}
+        </div>
+      )}
+      {!chosen.length && inheritedNote && <p className="text-[11px] text-white/45">{inheritedNote}</p>}
+      {strays.length > 0 && (
+        <p className="text-[11px] text-red-300">Not a tournament venue: {strays.join(", ")}. <button type="button" className="underline" onClick={() => onChange(chosen, chosen.map((x) => allowed.names[allowed.clubIds.indexOf(x)] ?? x))}>Remove</button></p>
+      )}
+    </div>
+  );
+}
+
 function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: TournamentDefinition; setS: (id: string, p: Record<string, unknown>) => void }) {
   const s = stage.schedule, e = effectiveSchedule(def, stage), need = scheduleNeeds(s.mode);
   const tag = (needed: boolean, own: unknown, inherited: boolean): "Required" | "Optional" | "Inherited" | "Not needed" | "Missing" =>
@@ -321,10 +359,9 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
           <option value="">{e.weekday.inherited ? `Default (${DAYS[e.weekday.value as number]})` : "Any day"}</option>{DAYS.map((x, i) => <option key={x} value={i}>Every {x}</option>)}
         </select>
       </Field>
-      <Field label="Venues" tag={tag(need.venue, s.venueNames, e.venueNames.inherited)} className="sm:col-span-2">
-        <Input className={f} placeholder={e.venueNames.inherited ? `Default: ${(e.venueNames.value ?? []).join(", ")}` : "Club names, comma separated"} defaultValue={(s.venueNames ?? []).join(", ")}
-          onBlur={(ev) => setS(stage.id, { venueNames: ev.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
-      </Field>
+      <VenuePicker def={def} ids={s.venueClubIds} names={s.venueNames} tag={tag(need.venue, s.venueNames, e.venueNames.inherited)}
+        inheritedNote={e.venueNames.inherited ? `Default: ${(e.venueNames.value ?? []).join(", ")}` : undefined}
+        onChange={(ids, names) => setS(stage.id, { venueClubIds: ids, venueNames: names })} />
       <Field label="Courts / venue" tag={tag(need.courts, s.courtsPerVenue, e.courtsPerVenue.inherited)}>
         <Input className={f} inputMode="numeric" placeholder={e.courtsPerVenue.inherited ? `Default ${e.courtsPerVenue.value}` : ""} value={s.courtsPerVenue ?? ""} onChange={(ev) => setS(stage.id, { courtsPerVenue: ev.target.value ? Number(ev.target.value) : null })} />
       </Field>
@@ -448,9 +485,10 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
 }) {
   const { data: clubs = [] } = useHostClubs();
   const { data: orgs = [] } = useOwnerOrganisations();
-  const [pickedHostClubId, setHostClubId] = useState("");
-  const hostClubId = scope.kind === "club" ? scope.clubId : pickedHostClubId;
-  const [ownerOrgId, setOwnerOrgId] = useState("");
+  const ev = def.event ?? {};
+  // Owner and venues are decided on Design; the first event venue hosts the tournament record.
+  const hostClubId = eventVenues(def).clubIds[0] ?? orgs.find((o) => o.id === ev.ownerId)?.club_id ?? (scope.kind === "club" ? scope.clubId : "");
+  const ownerOrgId = ev.scope && ev.scope !== "club" ? ev.ownerId ?? "" : "";
   const [confirm, setConfirm] = useState(false);
   const [ackPartial, setAckPartial] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -462,10 +500,13 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
   const summary = useMemo(() => {
     const sd = def.scheduleDefaults ?? {}, p = def.players ?? {};
     return [
+      ["Owner", ev.scope ? `${SCOPE_LABEL[ev.scope as EventScope]} — ${ev.ownerName ?? "owner not chosen"}` : "—"],
+      ["Who may enter", ev.scope && ev.audience ? AUDIENCE_OPTIONS[ev.scope as EventScope].find((o) => o.value === ev.audience)?.label ?? "—" : "—"],
+      ["Event venues", ev.noVenue ? "No physical venue" : eventVenues(def).names.join(", ") || "—"],
       ["Format", def.divisions.map((d) => `${d.name}: ${d.sections.flatMap((s) => s.stages.map((st) => shortStageName(st))).join(" → ")}`).join(" | ") || "—"],
       ["Entry", p.entryMethod ? p.entryMethod.replace(/_/g, " ") + (p.confirmAvailabilityOnly ? " (confirm availability only)" : "") : "—"],
       ["Dates", sd.startDate ? `${sd.startDate} → ${sd.endDate ?? "?"}${sd.weekday != null ? `, ${DAYS[sd.weekday]}s` : ""}${sd.startTime ? ` from ${sd.startTime}` : ""}` : "—"],
-      ["Venues", sd.venueNames?.length ? `${sd.venueNames.join(", ")}${sd.rotateVenues ? " (rotating)" : ""}` : "—"],
+      ["Scheduled venues", sd.venueNames?.length ? `${sd.venueNames.join(", ")}${sd.rotateVenues ? " (rotating)" : ""}` : "—"],
       ["Invitations", `${c.inviteSending === "automatic" ? "Automatic" : "Manual"} via ${(c.inviteChannels ?? []).map((x) => CHANNELS.find((k) => k.key === x)?.label).join(", ") || "—"}`],
       ["Fee", c.entryFeeRands == null ? "—" : c.entryFeeRands === 0 ? "Free" : `R${c.entryFeeRands.toFixed(2)}`],
       ["WhatsApp group", c.whatsappGroup === "yes" ? (c.whatsappGroupUrl ? "Yes, link saved" : "Yes, link to add") : c.whatsappGroup === "no" ? "No" : "—"],
@@ -558,16 +599,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
         )}
         <p className="font-semibold text-white">{RESULT_NONE_NOTE}</p>
         <p className="text-white/55">Invitations are sent only later, when an admin presses Send on the tournament. No emails, WhatsApp messages, SMS or bookings are sent by creating it.</p>
-        {scope.kind === "club" ? (
-          <p className="text-white/60">Host and owner: <span className="text-white">{scope.clubName ?? "this club"}</span></p>
-        ) : <div className="grid md:grid-cols-2 gap-2">
-          <select className={sel} value={ownerOrgId} onChange={(e) => setOwnerOrgId(e.target.value)}>
-            <option value="">Organised by…</option>{orgs.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.kind})</option>)}
-          </select>
-          <select className={sel} value={hostClubId} onChange={(e) => setHostClubId(e.target.value)}>
-            <option value="">Host club…</option>{clubs.map((cl) => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
-          </select>
-        </div>}
+        <p className="text-white/60">Owner: <span className="text-white">{ev.ownerName ?? "not chosen"}</span> · Host venue: <span className="text-white">{clubs.find((c) => c.id === hostClubId)?.name ?? "not chosen"}</span> <span className="text-white/45">— change these at the top of Design.</span></p>
         <Button size="sm" disabled={!canPress} onClick={() => setConfirm(true)}>{created ? "Already created" : "Create Tournament"}</Button>
       </div>
 

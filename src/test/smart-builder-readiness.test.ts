@@ -27,7 +27,8 @@ describe("smart builder readiness", () => {
   it("Riverside decisions persist into structured settings and map to existing fields without sending", () => {
     const { m, r } = run({
       ...base,
-      event: { scope: "club", audience: "selected_members", expectedEntries: 16, seedingSource: "club_ladder" },
+      event: { scope: "club", ownerId: "o-riv", ownerName: "Riverside", audience: "selected_members", expectedEntries: 16, seedingSource: "club_ladder",
+        venues: { mode: "single", clubIds: ["riv"], names: ["Riverside"] } },
       players: { entryMethod: "selected", audience: "individuals", confirmAvailabilityOnly: true, seedingSource: "ranking" },
       comms: { inviteSending: "manual", inviteChannels: ["email", "whatsapp"], entryFeeRands: 0, whatsappGroup: "no", resultNotify: "none" },
       scheduleDefaults: { startDate: "2026-10-01", endDate: "2026-10-29", weekday: 4, venueNames: ["Riverside"], courtsPerVenue: 3, matchMinutes: 45 },
@@ -84,10 +85,12 @@ describe("event scope opening steps", () => {
   it("asks scope, then audience, then expected entries — before format", () => {
     const { r: r1 } = run({ ...base });
     expect(r1.nextMissing?.id).toBe("scope");
-    const { r: r2 } = run({ ...base, event: { scope: "regional" } });
+    const { r: r2o } = run({ ...base, event: { scope: "regional" } });
+    expect(r2o.nextMissing?.id).toBe("owner");
+    const { r: r2 } = run({ ...base, event: { scope: "regional", ownerId: "nsa", ownerName: "NSA" } });
     expect(r2.nextMissing?.id).toBe("event_audience");
     expect(r2.nextMissing?.ask).toContain("Selected clubs");
-    const { r: r3 } = run({ ...base, event: { scope: "regional", audience: "all_clubs", eligibleCount: 816, coverage: { regional: 600, national: 200 } } });
+    const { r: r3 } = run({ ...base, event: { scope: "regional", ownerId: "nsa", audience: "all_clubs", eligibleCount: 816, coverage: { regional: 600, national: 200 } } });
     expect(r3.nextMissing?.id).toBe("expected_entries");
     expect(r3.nextMissing?.ask).toContain("816");
   });

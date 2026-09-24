@@ -6,12 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabaseDb } from "@/lib/tournaments/structured-db";
-import { classifyEdit, serializeSpec, type TournamentSpec } from "@/lib/tournaments/engine-service";
+import { classifyEdit, serializeSpec, sourceStageOf, type TournamentSpec } from "@/lib/tournaments/engine-service";
+import { progressionOf } from "@/lib/tournaments/contract";
+import { TransitionEditor } from "./TransitionEditor";
 
 /**
  * Structured Tournament Editor: reopens the saved spec exactly as persisted.
  * Label and schedule edits are saved in place (no games change). Structural edits are
  * shown with their impact and blocked when results exist; entrant changes go through Rebuild.
+ * Play-off mapping (qualification → method → pairing rule) can be changed only while the
+ * destination stage has no games; completed play-offs are never remapped.
  */
 export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
   champId: string; spec: TournamentSpec; matches: any[]; onSaved: () => void;
@@ -23,11 +27,28 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
     divisionId: spec.divisions[(m.group_number ?? 1) - 1]?.divisionId ?? "", stageId: m.stage_key, stageKind: "pools" as const,
     a: m.player_a_member_id, b: m.player_b_member_id, status: m.status, winner: m.winner_member_id,
   })), [matches, spec]);
-  const impact = classifyEdit(spec, draft, fixtures);
+  const hasGames = (divisionId: string, stageKey: string) => fixtures.some((f) => f.divisionId === divisionId && f.stageId === stageKey);
+
+  /** Mapping edits are judged separately, so they don't read as a whole-structure change. */
+  const withSavedTransitions = (d: TournamentSpec): TournamentSpec => {
+    const n = serializeSpec(d);
+    n.divisions.forEach((div) => div.stages.forEach((st) => {
+      const old = spec.divisions.find((x) => x.divisionId === div.divisionId)?.stages.find((x) => x.id === st.id);
+      if (st.qualify) st.qualify.transition = old?.qualify?.transition ?? null;
+    }));
+    return n;
+  };
+  const impact = classifyEdit(spec, withSavedTransitions(draft), fixtures);
+  const changedTransitions = draft.divisions.flatMap((d) => d.stages
+    .filter((st) => JSON.stringify(st.qualify?.transition ?? null) !== JSON.stringify(spec.divisions.find((x) => x.divisionId === d.divisionId)?.stages.find((x) => x.id === st.id)?.qualify?.transition ?? null))
+    .map((st) => ({ divisionId: d.divisionId, label: d.label, stage: st })));
+  const blockedTransitions = changedTransitions.filter((c) => hasGames(c.divisionId, c.stage.id));
   const set = (mut: (s: TournamentSpec) => void) => setDraft((d) => { const n = serializeSpec(d); mut(n); return n; });
+  const canSave = !saving && impact.kind !== "structural" && !blockedTransitions.length && (impact.kind !== "none" || changedTransitions.length > 0);
 
   const save = async () => {
     if (impact.kind === "structural") { toast.error("Structure changes aren't saved here. Use Rebuild for entry changes."); return; }
+    if (blockedTransitions.length) { toast.error("Those play-off games already exist and can't be remapped."); return; }
     setSaving(true);
     try {
       const { error } = await fromExt("tournaments").update({ builder_spec: draft, builder_spec_version: (spec.version ?? 1) }).eq("id", champId);
@@ -40,7 +61,7 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
         const stages = await supabaseDb.select("tournament_stages", { division_id: row.id });
         for (const st of stages) {
           const s = d.stages.find((x) => x.id === st.spec_key);
-          if (s) await supabaseDb.update("tournament_stages", { id: st.id }, { label: s.name });
+          if (s) await supabaseDb.update("tournament_stages", { id: st.id }, { label: s.name, config: { ...(st.config ?? {}), qualify: s.qualify, transition: s.qualify?.transition ?? null } });
           for (const [i, lbl] of (d.poolLabels ?? []).entries()) if (lbl) await supabaseDb.update("tournament_pools", { stage_id: st.id, pool_index: i }, { label: lbl });
         }
       }
@@ -80,18 +101,30 @@ export function StructuredEditorDialog({ champId, spec, matches, onSaved }: {
                     )}
                   </div>
                 ))}
+                {d.stages.filter((st) => st.order > 0 && progressionOf(st).mode === "qualifiers").map((st) => {
+                  const source = sourceStageOf(d, st);
+                  if (!source) return null;
+                  const si = d.stages.findIndex((x) => x.id === st.id);
+                  return (
+                    <TransitionEditor key={`tr-${st.id}`} stage={st} source={source} poolLabels={d.poolLabels}
+                      locked={hasGames(d.divisionId, st.id)} value={st.qualify?.transition ?? null}
+                      onChange={(t) => set((s) => { const q = s.divisions[di].stages[si].qualify ?? { perPool: 0, mapping: null }; q.transition = t; q.perPool = Math.max(q.perPool ?? 0, ...t.positions); q.mapping = t.method === "cross_pool" ? "cross_pool" : "reseed"; s.divisions[di].stages[si].qualify = q; })} />
+                  );
+                })}
               </div>
             ))}
             <div className="rounded bg-muted p-2 text-xs">
-              {impact.kind === "none" && "No changes yet."}
+              {impact.kind === "none" && !changedTransitions.length && "No changes yet."}
               {impact.kind === "safe" && "Safe change: names/dates only. No games are regenerated."}
               {impact.kind === "structural" && "Structure change — not allowed here."}
+              {!!changedTransitions.length && !blockedTransitions.length && <div>Play-off mapping changed for {changedTransitions.map((c) => `${c.label} · ${c.stage.name}`).join(", ")}. No games exist there yet.</div>}
+              {blockedTransitions.map((c) => <div key={c.stage.id} className="text-destructive">• {c.label} · {c.stage.name}: those games already exist and cannot be remapped.</div>)}
               {impact.lockedReasons.map((r) => <div key={r}>• {r}</div>)}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button disabled={saving || impact.kind !== "safe"} onClick={save}>Save</Button>
+            <Button disabled={!canSave} onClick={save}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

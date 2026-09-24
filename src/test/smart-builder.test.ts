@@ -14,7 +14,7 @@ function sectionFlow(sectionId: string, pools: number) {
       { id: `${sectionId}_rr`, name: "Singles pools", kind: "round_robin", discipline: "singles", groups: pools, groupSize: 6, input: {}, advance: { role: "seed" } },
       { id: `${sectionId}_pair`, name: "Doubles pairs", kind: "pair_from_positions", discipline: "doubles", groups: 3, input: { fromStageId: `${sectionId}_rr` }, pairing: [[1, 2], [3, 4], [5, 6]] },
       { id: `${sectionId}_lvl`, name: "Doubles levels", kind: "round_robin", discipline: "doubles", groups: 3, groupSize: 4, input: { fromStageId: `${sectionId}_pair`, arrangement: "by_level_across_groups" }, advance: { role: "seed" } },
-      { id: `${sectionId}_ko`, name: "Level playoffs", kind: "knockout", discipline: "doubles", groups: 3, groupSize: 4, input: { fromStageId: `${sectionId}_lvl` }, seededMatchups: null },
+      { id: `${sectionId}_ko`, name: "Level playoffs", kind: "knockout", discipline: "doubles", groups: 3, groupSize: 4, input: { fromStageId: `${sectionId}_lvl` }, seededMatchups: null, qualifierMapping: "reseed" },
     ],
   };
 }

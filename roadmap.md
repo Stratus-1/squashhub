@@ -85,3 +85,5 @@
 - [x] Live tournament self-heal: integrity engine, automatic deterministic repair (no approval), verify/rollback, audit, admin alerts, Afrikaans/voice tested
 - [ ] "Working…" background reply + polling for requests over ~20s (not built; current replies ~11s)
 - [ ] Approve/Decline card for judgement items (currently reported in chat + escalated)
+
+- [x] Tournament Beta opening steps (model, readiness order, AI order; live coverage lookup still open): owner/scope -> audience (explicit league-only vs all members) -> ranking coverage -> expected entries, before format.

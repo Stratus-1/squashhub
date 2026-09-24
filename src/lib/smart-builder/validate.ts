@@ -346,6 +346,8 @@ export function validateDefinition(def: TournamentDefinition): ValidationResult 
     }
   });
 
+  issues.push(...engineContractIssues(def));
+
   return {
     issues,
     facts,
@@ -367,4 +369,27 @@ export function newProblems(before: ValidationResult, after: ValidationResult): 
   const key = (i: Issue) => `${i.code}|${i.message}`;
   const had = new Set(before.issues.map(key));
   return after.issues.filter((i) => i.level !== "info" && !had.has(key(i)));
+}
+
+/**
+ * Engine contract checks (see docs/TOURNAMENT_ENGINE_INTEGRITY.md). A playoff
+ * stage must state who qualifies, how they are mapped, and how it is generated.
+ * The builder recommends owner approval; it never assumes automatic.
+ */
+export function engineContractIssues(def: TournamentDefinition): Issue[] {
+  const out: Issue[] = [];
+  for (const div of def.divisions) for (const sec of div.sections) sec.stages.forEach((st, i) => {
+    const label = stageLabel(div, sec, st, def);
+    if (st.kind === "swiss" && !st.swissRounds) {
+      out.push({ level: "error", code: "contract_swiss_rounds", stageId: st.id, message: `${label}: set the number of Swiss rounds.`, fix: "The engine never picks a round count for you." });
+    }
+    if (i === 0 || (st.kind !== "knockout" && st.kind !== "placement")) return;
+    const prev = sec.stages[i - 1];
+    if (prev.kind === "pair_from_positions" || prev.kind === "split" || prev.kind === "custom") return;
+    const perGroup = perGroupOut(prev);
+    if (!perGroup) out.push({ level: "error", code: "contract_qualify", stageId: st.id, message: `${label}: say who qualifies from ${prev.name}.` });
+    if (!st.qualifierMapping && !st.seededMatchups) out.push({ level: "error", code: "contract_mapping", stageId: st.id, message: `${label}: choose how qualifiers are placed (cross-pool, reseed by standing, or within pool).`, fix: "Recommended: cross-pool (Pool A winner vs Pool B runner-up)." });
+    if (!st.generation) out.push({ level: "warning", code: "contract_generation", stageId: st.id, message: `${label}: playoffs will wait for owner approval (preview, then confirm).`, fix: "Choose automatic generation only if you want playoffs created the moment pool results are in." });
+  });
+  return out;
 }

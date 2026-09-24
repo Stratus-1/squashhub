@@ -6,7 +6,7 @@
 // Executes use the caller's own signed-in client wherever possible so the
 // existing database permission rules stay the source of truth.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
-import { proposeBooking, confirmBooking, type BookingProposal } from "../ai-assistant/booking.ts";
+import { proposeBooking, confirmBooking, type BookingProposal } from "./booking.ts";
 
 export type Ctx = {
   user: SupabaseClient; // caller-scoped client (RLS + auth.uid())

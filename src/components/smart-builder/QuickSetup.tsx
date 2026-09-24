@@ -32,7 +32,7 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
         <span className="font-semibold text-white">{path?.label}</span>
         <span className="text-white/50">Match format. Pools and play-offs are asked separately below.</span>
         <Button size="sm" variant="outline" className="ml-auto h-7 bg-transparent border-white/20 text-white/80 text-[11px]"
-          onClick={() => edit((d) => { d.quickPath = "custom"; })}>Open full builder</Button>
+          onClick={() => edit((d) => { d.quickPath = null; })}>Open full builder</Button>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">

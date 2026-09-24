@@ -188,7 +188,7 @@ function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: 
     : [["all_continue", "Everyone continues"]];
   return (
     <div className="rounded border border-white/10 p-2 space-y-2">
-      <div className="font-semibold text-white">6. How players move here from Stage {prev.order ?? ""}{prev.name ? ` (${prev.name})` : ""}</div>
+      <div className="font-semibold text-white">6. How players move here from {prev.name || "the previous stage"}</div>
       <div className="grid sm:grid-cols-2 gap-2">
         <Q label="Who continues">
           <select className={sel} value={p.mode ?? ""} onChange={(e) => upd((st, pr) => {

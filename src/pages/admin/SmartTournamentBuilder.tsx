@@ -20,6 +20,7 @@ import { StageBuilder } from "@/components/smart-builder/StageBuilder";
 import { QUICK_PATHS, presetDefinition, type QuickPath } from "@/lib/smart-builder/quick-path";
 import { InvitationsTab, PlayersTab, ReviewTab, ScheduleTab } from "@/components/smart-builder/BuilderTabs";
 import { canUseSmartBuilder, SMART_BUILDER_LABEL, SMART_BUILDER_SUBLABEL } from "@/lib/smart-builder/access";
+import { DraftAutosaver, type SaveState } from "@/lib/smart-builder/draft-autosave";
 import { emptyDefinition, isBellsDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
 import { newProblems, validateDefinition, type Issue } from "@/lib/smart-builder/validate";
 import { mapToExistingTournament } from "@/lib/smart-builder/to-existing";
@@ -31,6 +32,7 @@ type Proposal = {
   reply: string; understood: string[]; questions: { term: string | null; question: string; options: string[]; kind: string }[];
   notUnderstood: string[]; consequences: string[]; definition: TournamentDefinition; newIssues: Issue[];
 };
+type DraftPayload = { def: TournamentDefinition; chat: ChatMsg[]; tab: string };
 type Draft = {
   id: string; title: string; mode: "guide" | "describe"; definition: unknown; conversation: ChatMsg[];
   status: string; created_tournament_id: string | null; updated_at: string;
@@ -195,8 +197,10 @@ async function invokeError(error: unknown) {
 
 function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderScope; nav: BuilderNav }) {
   const qc = useQueryClient();
-  const { data: draft, isLoading } = useQuery({
+  // Always read the draft fresh from the server; a cached copy must never seed the editor.
+  const { data: draft, isLoading: loadingDraft, isFetching } = useQuery({
     queryKey: ["smart-draft", draftId],
+    gcTime: 0, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: false,
     queryFn: async () => {
       const { data, error } = await fromExt("smart_tournament_drafts").select("*").eq("id", draftId).maybeSingle();
       if (error) throw error;
@@ -215,12 +219,44 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   // Text already in the box when a voice transcript starts — the transcript is appended to it.
   const voiceBase = useRef<string | null>(null);
 
+  const isLoading = loadingDraft || (isFetching && !loadedRef.current);
+  const loadedRef = useRef(false);
+  const saverRef = useRef<DraftAutosaver<DraftPayload> | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>({ status: "idle", savedAt: null, error: null });
   useEffect(() => {
-    if (!draft) return;
+    if (!draft || isFetching || loadedRef.current) return;
+    loadedRef.current = true;
     const p = parseDefinition(draft.definition);
     setDef(p.ok ? p.value : emptyDefinition(draft.title));
     setChat(Array.isArray(draft.conversation) ? draft.conversation : []);
-  }, [draft?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (draft.last_tab) setTab(draft.last_tab as ReadinessTab);
+    const saver = new DraftAutosaver<DraftPayload>(async (pl, rev) => {
+      const { data, error } = await fromExt("smart_tournament_drafts").update({
+        definition: pl.def, conversation: pl.chat, title: pl.def.name || "Untitled tournament",
+        validation: validateDefinition(pl.def).issues, last_tab: pl.tab, revision: rev + 1,
+      }).eq("id", draftId).eq("revision", rev).select("revision");
+      if (error) throw new Error(error.message);
+      return data?.length ? (data[0] as any).revision as number : null;
+    }, draft.revision ?? 0);
+    saverRef.current = saver;
+    saver.subscribe(setSaveState);
+  }, [draft, isFetching]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Leaving the builder, hiding the tab or closing the page flushes any pending save. Leaving never discards.
+  useEffect(() => {
+    const flush = () => { void saverRef.current?.flush(); };
+    const onHide = () => { if (document.visibilityState === "hidden") flush(); };
+    const onUnload = (e: BeforeUnloadEvent) => { if (saverRef.current?.hasUnsaved) { flush(); e.preventDefault(); e.returnValue = ""; } };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", onUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", onUnload);
+      const sv = saverRef.current;
+      if (sv) void sv.flush().finally(() => { sv.dispose(); qc.invalidateQueries({ queryKey: ["smart-drafts"] }); });
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validation = useMemo(() => validateDefinition(def), [def]);
   const mapping = useMemo(() => mapToExistingTournament(def), [def]);
@@ -244,20 +280,13 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
     }, 80);
   };
 
-  const save = async (nextDef = def, nextChat = chat) => {
-    const { error } = await fromExt("smart_tournament_drafts").update({
-      definition: nextDef, conversation: nextChat, title: nextDef.name || "Untitled tournament",
-      validation: validateDefinition(nextDef).issues,
-    }).eq("id", draftId);
-    if (error) toast.error(`Draft not saved: ${error.message}`); else setDirty(false);
+  /** Queue the WHOLE draft (definition + conversation + tab) for server autosave. */
+  const save = (nextDef = def, nextChat = chat, nextTab = tab) => {
+    saverRef.current?.schedule({ def: nextDef, chat: nextChat, tab: nextTab });
+    setDirty(false);
   };
-
-  // Autosave manual edits.
-  useEffect(() => {
-    if (!dirty) return;
-    const t = setTimeout(() => save(), 1200);
-    return () => clearTimeout(t);
-  }, [def, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (dirty) save(); }, [def, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (loadedRef.current) save(def, chat, tab); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = async () => {
     const text = input.trim();

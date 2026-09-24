@@ -1403,10 +1403,23 @@ export default function ClubChampsView() {
 
       if (newRows.length === 0) throw new Error("Not enough finishers to build a play-off bracket");
 
+      // Fixed-pair doubles: every side is always the exact registered pair.
+      if (isDoubles) {
+        enforceRegisteredPairs(newRows as any[], buildRegisteredPairMap(entries as any[]));
+      }
+
+      // Started/scored play-off rows are frozen: never re-seed, never delete.
+      const lockedKeys = new Set(
+        playoffMatches
+          .filter((m: any) => isPlayoffRowLocked(m))
+          .map((m: any) => `${m.stage}|${m.bracket_position ?? "null"}|${m.round_number}`),
+      );
+
       // Try to match each newRow to an existing incomplete playoff row so we
       // keep its scheduled_date / scheduled_time / court_id.
       const buckets = new Map<string, any[]>();
       for (const m of incompletePlayoffs) {
+        if (isPlayoffRowLocked(m)) continue;
         const key = `${m.stage}|${m.bracket_position ?? "null"}|${m.round_number}`;
         if (!buckets.has(key)) buckets.set(key, []);
         buckets.get(key)!.push(m);
@@ -1415,6 +1428,7 @@ export default function ClubChampsView() {
       const usedExistingIds = new Set<string>();
       for (const row of newRows) {
         const key = `${row.stage}|${row.bracket_position ?? "null"}|${row.round_number}`;
+        if (lockedKeys.has(key)) continue;
         const bucket = buckets.get(key) || [];
         const target = bucket.shift();
         if (target) {
@@ -1437,6 +1451,7 @@ export default function ClubChampsView() {
       }
       // Delete any leftover incomplete playoff rows that we didn't reuse.
       const leftoverIds = incompletePlayoffs
+        .filter((m: any) => !isPlayoffRowLocked(m))
         .map((m: any) => m.id)
         .filter((id: string) => !usedExistingIds.has(id));
       if (leftoverIds.length > 0) {
@@ -1481,9 +1496,7 @@ export default function ClubChampsView() {
     if (groupResultsCount === 0) return;
     // Once the pools are closed and any play-off game has been played or
     // started, the play-off line-up is locked — never re-seed automatically.
-    const playoffStarted = playoffMatches.some(
-      (m: any) => m.status === "completed" || m.status === "in_progress" || m.status === "live",
-    );
+    const playoffStarted = playoffMatches.some((m: any) => isPlayoffRowLocked(m));
     if (groupComplete && playoffStarted) return;
 
     const completed = (matches as any[]).filter((m: any) => m.status === "completed");

@@ -7,9 +7,13 @@
  */
 import {
   IntegrityError, assertKnockoutShape, assertStageKinds, bracketOrder, canGenerateStage, contractIssues,
-  isDecided, mapQualifiers, progressionOf, disciplineOf, nextPow2, roundRobin, snakePools, swissRound,
+  isDecided, progressionOf, disciplineOf, nextPow2, roundRobin, snakePools, swissRound,
   type DivisionContract, type FixtureRow, type PlannedStage, type PoolStanding, type SwissTieBreak,
 } from "./contract";
+import {
+  effectiveTransition, planTransition, resolveTransition,
+  type QualifierSlot, type SlotPairing, type StageTransition,
+} from "./transition";
 
 export interface SpecDivision extends DivisionContract {
   label: string;

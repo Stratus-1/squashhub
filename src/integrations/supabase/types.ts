@@ -15231,6 +15231,15 @@ export type Database = {
         Returns: undefined
       }
       age_group_for_age: { Args: { _age: number }; Returns: string }
+      ai_correct_champ_result: {
+        Args: {
+          p_games: Json
+          p_match_id: string
+          p_preview?: boolean
+          p_reason?: string
+        }
+        Returns: Json
+      }
       ai_replace_tournament_player: {
         Args: {
           p_champ_id: string

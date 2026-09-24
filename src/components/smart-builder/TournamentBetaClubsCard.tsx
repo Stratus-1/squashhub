@@ -31,7 +31,7 @@ export function TournamentBetaClubsCard() {
         ))}
       </div>
       <div className="flex gap-2">
-        <select className="h-8 flex-1 rounded-md bg-white/5 border border-white/15 text-white text-xs px-2" value={pick} onChange={(e) => setPick(e.target.value)}>
+        <select className="smart-builder-select h-8 flex-1 rounded-md bg-white/5 border border-white/15 text-white text-xs px-2" value={pick} onChange={(e) => setPick(e.target.value)}>
           <option value="">Add a club…</option>
           {clubs.filter((c) => !onIds.has(c.id)).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>

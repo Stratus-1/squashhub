@@ -26,8 +26,8 @@ import type { BuilderScope } from "@/pages/admin/SmartTournamentBuilder";
 import { cn } from "@/lib/utils";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
-const f = "h-8 bg-white/5 border-white/15 text-white text-xs";
-const sel = "h-8 rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs";
+const f = "h-8 min-w-0 w-full bg-white/5 border-white/15 text-white text-xs";
+const sel = "smart-builder-select h-8 rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs";
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const CHANNELS: { key: CommsChannel; label: string }[] = [
   { key: "in_app", label: "In-app" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }, { key: "sms", label: "SMS" },
@@ -42,8 +42,8 @@ export function StateBadge({ state }: { state: ItemState }) {
 function Field({ label, tag, field, children, className }: { label: string; tag: "Required" | "Optional" | "Inherited" | "Not needed" | "Missing"; field?: string; children: ReactNode; className?: string }) {
   const tone = tag === "Missing" ? "text-red-300" : tag === "Required" ? "text-white/70" : "text-white/40";
   return (
-    <label data-field={field} className={cn("block space-y-0.5 rounded", className)}>
-      <span className="flex items-center justify-between gap-2 text-[11px] text-white/60">{label}<span className={cn("text-[10px]", tone)}>{tag}</span></span>
+    <label data-field={field} className={cn("block min-w-0 space-y-0.5 rounded", className)}>
+      <span className="flex flex-wrap items-center justify-between gap-x-2 text-[11px] text-white/60">{label}<span className={cn("text-[10px]", tone)}>{tag}</span></span>
       {children}
     </label>
   );
@@ -150,12 +150,12 @@ export function shortStageName(stage: Stage) {
 const datePart = (s?: string | null) => (s ? s.slice(0, 10) : "");
 const timePart = (s?: string | null) => (s && s.length > 10 ? s.slice(11, 16) : "");
 /** Keep any saved time when the date input changes. */
-const withDate = (v: string, prev?: string | null) => (v ? (timePart(prev) ? `${v}T${prev!.slice(11)}` : v) : null);
+const withDate = (v: string, prev?: string | null) => (v ? (timePart(prev) ? `${v}T${prev?.slice(11) ?? ""}` : v) : null);
 const fmtDate = (s?: string | null) => {
   const d = datePart(s);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
   const out = new Date(`${d}T00:00:00`);
-  return isNaN(out.getTime()) ? null : out.toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
+  return isNaN(out.getTime()) ? (s ?? null) : out.toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
 };
 
 export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Edit }) {
@@ -176,12 +176,12 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
       {/* Tournament defaults */}
       <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2 space-y-2">
         <div className="font-semibold text-white">Tournament defaults <span className="font-normal text-white/45">— every stage uses these unless it sets its own</span></div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Start date" tag={d.startDate ? "Required" : "Missing"} field="defaults.startDate"><Input type="date" className={f} value={datePart(d.startDate)} onChange={(e) => setD({ startDate: withDate(e.target.value, d.startDate) })} /></Field>
           <Field label="End date" tag={d.endDate ? "Required" : "Missing"} field="defaults.endDate"><Input type="date" className={f} value={datePart(d.endDate)} onChange={(e) => setD({ endDate: withDate(e.target.value, d.endDate) })} /></Field>
           <Field label="Day" tag="Optional"><select className={cn(sel, "w-full")} value={d.weekday ?? ""} onChange={(e) => setD({ weekday: e.target.value === "" ? null : Number(e.target.value) })}><option value="">Any</option>{DAYS.map((x, i) => <option key={x} value={i}>{x}</option>)}</select></Field>
           <Field label="Start time" tag="Optional"><Input type="time" className={f} value={d.startTime ?? ""} onChange={(e) => setD({ startTime: e.target.value || null })} /></Field>
-          <Field label="Venues" tag="Optional" className="col-span-2"><Input className={f} placeholder="Club names, comma separated" defaultValue={(d.venueNames ?? []).join(", ")} key={(d.venueNames ?? []).join("|")} onBlur={(e) => setD({ venueNames: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) })} /></Field>
+          <Field label="Venues" tag="Optional" className="sm:col-span-2"><Input className={f} placeholder="Club names, comma separated" defaultValue={(d.venueNames ?? []).join(", ")} key={(d.venueNames ?? []).join("|")} onBlur={(e) => setD({ venueNames: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) })} /></Field>
           <Field label="Courts / venue" tag="Optional"><Input className={f} inputMode="numeric" value={d.courtsPerVenue ?? ""} onChange={(e) => setD({ courtsPerVenue: e.target.value ? Number(e.target.value) : null })} /></Field>
           <Field label="Match minutes" tag="Optional"><Input className={f} inputMode="numeric" value={d.matchMinutes ?? ""} onChange={(e) => setD({ matchMinutes: e.target.value ? Number(e.target.value) : null })} /></Field>
         </div>
@@ -208,9 +208,6 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
             </button>
             {!divClosed && (
               <div className="divide-y divide-white/10">
-                <div className="hidden md:grid grid-cols-[minmax(0,2fr)_1fr_1.2fr_0.8fr_1fr_0.6fr_0.7fr] gap-2 px-2 py-1 text-[10px] uppercase text-white/40">
-                  <span>Stage</span><span>How</span><span>Dates</span><span>Day/time</span><span>Venue</span><span>Courts</span><span>Match</span>
-                </div>
                 {rows.map(({ stage, section }) => {
                   const e = effectiveSchedule(def, stage), need = scheduleNeeds(stage.schedule.mode);
                   const isOpen = open.has(stage.id);
@@ -218,24 +215,25 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
                     v ? <span className={inherited ? "text-white/45" : ""}>{v}{inherited && <span className="text-[9px] ml-1">inh.</span>}</span>
                       : required ? <span className="rounded bg-red-500/20 px-1 text-red-300">Missing</span> : <span className="text-white/30">—</span>;
                   const sameDay = datePart(e.startDate.value) && datePart(e.startDate.value) === datePart(e.endDate.value);
-                  const dates = e.startDate.value || e.endDate.value ? `${fmtDate(e.startDate.value) ?? "…"}${e.endDate.value && !sameDay ? ` – ${fmtDate(e.endDate.value)}` : ""}` : stage.schedule.roundDates?.length ? `${stage.schedule.roundDates.length} round dates` : null;
+                  const dates = e.startDate.value || e.endDate.value ? `${fmtDate(e.startDate.value) ?? "…"}${e.endDate.value && !sameDay ? ` – ${fmtDate(e.endDate.value) ?? "…"}` : ""}` : stage.schedule.roundDates?.length ? `${stage.schedule.roundDates.length} round dates` : null;
                   const stageTime = timePart(e.startDate.value) ? `${timePart(e.startDate.value)}${timePart(e.endDate.value) ? `–${timePart(e.endDate.value)}` : ""}` : null;
-                  const dayName = e.weekday.value != null ? DAYS[e.weekday.value] : datePart(e.startDate.value) ? DAYS[new Date(`${datePart(e.startDate.value)}T00:00:00`).getDay()] : null;
+                   const dayIndex = new Date(`${datePart(e.startDate.value)}T00:00:00`).getDay();
+                   const dayName = e.weekday.value != null ? DAYS[e.weekday.value] : Number.isNaN(dayIndex) ? null : DAYS[dayIndex];
                   const dayTime = [dayName, stageTime ?? e.startTime.value].filter(Boolean).join(" ") || null;
                   const venue = e.venueNames.value?.length ? `${e.venueNames.value.length > 1 ? `${e.venueNames.value.length} venues` : e.venueNames.value[0]}` : null;
                   return (
                     <div key={stage.id} data-field={`stage.${stage.id}`}>
-                      <button className="w-full grid grid-cols-2 md:grid-cols-[minmax(0,2fr)_1fr_1.2fr_0.8fr_1fr_0.6fr_0.7fr] gap-x-2 gap-y-0.5 px-2 py-1.5 text-left hover:bg-white/[0.04]" onClick={() => setOpen((s) => toggle(s, stage.id))}>
-                        <span className="col-span-2 md:col-span-1 flex items-center gap-1 font-medium text-white truncate">
+                      <button className="w-full grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1 px-2 py-2 text-left hover:bg-white/[0.04]" onClick={() => setOpen((s) => toggle(s, stage.id))}>
+                        <span className="col-span-2 sm:col-span-3 flex min-w-0 items-center gap-1 font-medium text-white">
                           {isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
                           <span className="truncate">{div.sections.length > 1 ? `${section.name} · ` : ""}{shortStageName(stage)}</span>
                         </span>
-                        <span>{stage.schedule.mode === "unset" ? <span className="rounded bg-red-500/20 px-1 text-red-300">Not set</span> : MODE_LABEL[stage.schedule.mode]}</span>
-                        <span>{cell(dates, e.startDate.inherited || e.endDate.inherited, need.dates)}</span>
-                        <span>{cell(dayTime, e.weekday.inherited, false)}</span>
-                        <span className="truncate">{cell(venue, e.venueNames.inherited, need.venue)}</span>
-                        <span>{cell(e.courtsPerVenue.value, e.courtsPerVenue.inherited, need.courts)}</span>
-                        <span>{cell(e.matchMinutes.value ? `${e.matchMinutes.value}m` : null, e.matchMinutes.inherited, need.matchMinutes)}</span>
+                        <span className="min-w-0"><span className="text-white/45">How: </span>{stage.schedule.mode === "unset" ? <span className="rounded bg-red-500/20 px-1 text-red-300">Not set</span> : MODE_LABEL[stage.schedule.mode]}</span>
+                        <span className="min-w-0"><span className="text-white/45">Dates: </span>{cell(dates, e.startDate.inherited || e.endDate.inherited, need.dates)}</span>
+                        <span className="min-w-0"><span className="text-white/45">Time: </span>{cell(dayTime, e.weekday.inherited, false)}</span>
+                        <span className="min-w-0 break-words"><span className="text-white/45">Venue: </span>{cell(venue, e.venueNames.inherited, need.venue)}</span>
+                        <span className="min-w-0"><span className="text-white/45">Courts: </span>{cell(e.courtsPerVenue.value, e.courtsPerVenue.inherited, need.courts)}</span>
+                        <span className="min-w-0"><span className="text-white/45">Match: </span>{cell(e.matchMinutes.value ? `${e.matchMinutes.value}m` : null, e.matchMinutes.inherited, need.matchMinutes)}</span>
                       </button>
                       {isOpen && <StageScheduleEditor stage={stage} def={def} setS={setS} />}
                     </div>
@@ -255,7 +253,7 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
   const tag = (needed: boolean, own: unknown, inherited: boolean): "Required" | "Optional" | "Inherited" | "Not needed" | "Missing" =>
     !needed ? "Not needed" : own != null && own !== "" && !(Array.isArray(own) && !own.length) ? "Required" : inherited ? "Inherited" : "Missing";
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 bg-white/[0.02] px-3 py-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-white/[0.02] px-3 py-2">
       <Field label="How it's scheduled" tag={s.mode === "unset" ? "Missing" : "Required"}>
         <select className={cn(sel, "w-full")} value={s.mode} onChange={(ev) => setS(stage.id, { mode: ev.target.value })}>
           {Object.entries(MODE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -272,7 +270,7 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
           <option value="">{e.weekday.inherited ? `Default (${DAYS[e.weekday.value as number]})` : "Any day"}</option>{DAYS.map((x, i) => <option key={x} value={i}>Every {x}</option>)}
         </select>
       </Field>
-      <Field label="Venues" tag={tag(need.venue, s.venueNames, e.venueNames.inherited)} className="col-span-2">
+      <Field label="Venues" tag={tag(need.venue, s.venueNames, e.venueNames.inherited)} className="sm:col-span-2">
         <Input className={f} placeholder={e.venueNames.inherited ? `Default: ${(e.venueNames.value ?? []).join(", ")}` : "Club names, comma separated"} defaultValue={(s.venueNames ?? []).join(", ")}
           onBlur={(ev) => setS(stage.id, { venueNames: ev.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
       </Field>

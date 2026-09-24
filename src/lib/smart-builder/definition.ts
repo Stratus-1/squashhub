@@ -119,12 +119,21 @@ export type OpenQuestion = z.infer<typeof QuestionSchema>;
 
 /** Match scoring. Every field optional; a stage without a value inherits the tournament default. */
 const ScoringSchema = z.object({
+  /** Bells uses a timed points total, not PAR games. */
+  mode: z.enum(["standard", "time_capped_points"]).nullable().optional(),
   pointsPerGame: z.union([z.literal(11), z.literal(15)]).nullable().optional(),
   bestOf: z.union([z.literal(3), z.literal(5)]).nullable().optional(),
   playAllGames: z.boolean().nullable().optional(),
   winCondition: z.enum(["win_by_2", "sudden_death"]).nullable().optional(),
 });
 export type Scoring = z.infer<typeof ScoringSchema>;
+
+/** Recognise older Bells drafts that were described in words before scoring.mode existed. */
+export function isBellsDefinition(def: TournamentDefinition) {
+  if (def.scoring?.mode) return def.scoring.mode === "time_capped_points";
+  return /\bbells\b/i.test(def.name) || def.divisions.some((div) =>
+    div.sections.some((sec) => sec.stages.some((stage) => /\bbells\b/i.test(stage.name))));
+}
 
 /** Who plays and how they get in. null = not decided yet. */
 const PlayersSchema = z.object({

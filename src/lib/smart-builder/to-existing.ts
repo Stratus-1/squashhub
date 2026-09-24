@@ -13,7 +13,7 @@
  * Communication settings map to existing fields only. Nothing here sends
  * anything: invitations are always triggered later from the existing screens.
  */
-import type { Division, Section, Stage, TournamentDefinition } from "./definition";
+import { isBellsDefinition, type Division, type Section, type Stage, type TournamentDefinition } from "./definition";
 
 export type Executability = "ready" | "partial" | "blocked";
 
@@ -124,12 +124,23 @@ export function mapToExistingTournament(def: TournamentDefinition): ExistingMapp
   if (c.paymentRequired != null) champ.payment_required = c.paymentRequired;
   else if (c.entryFeeRands === 0) champ.payment_required = false;
   if (c.paymentMethods?.length) champ.payment_methods = c.paymentMethods;
-  if (sd.startDate) champ.start_date = sd.startDate;
-  if (sd.endDate) champ.end_date = sd.endDate;
-  if (sc.pointsPerGame) champ.points_per_game = sc.pointsPerGame;
-  if (sc.bestOf) champ.best_of = sc.bestOf;
-  if (sc.playAllGames != null) champ.play_all_games = sc.playAllGames;
-  if (sc.winCondition) champ.win_condition = sc.winCondition;
+  const stageDates = def.divisions.flatMap((div) => div.sections.flatMap((sec) => sec.stages))
+    .filter((stage) => stage.kind !== "split" && stage.kind !== "pair_from_positions");
+  const starts = stageDates.map((stage) => stage.schedule.startDate?.slice(0, 10)).filter((d): d is string => !!d).sort();
+  const ends = stageDates.map((stage) => stage.schedule.endDate?.slice(0, 10) ?? stage.schedule.startDate?.slice(0, 10)).filter((d): d is string => !!d).sort();
+  if (sd.startDate || starts.length) champ.start_date = sd.startDate?.slice(0, 10) ?? starts[0];
+  if (sd.endDate || ends.length) champ.end_date = sd.endDate?.slice(0, 10) ?? ends[ends.length - 1];
+  if (isBellsDefinition(def)) {
+    champ.scoring_mode = "time_capped_points";
+    const first = def.divisions.flatMap((div) => div.sections.flatMap((sec) => sec.stages)).find((s) => s.kind !== "split" && s.kind !== "pair_from_positions");
+    const duration = first?.schedule.matchMinutes ?? sd.matchMinutes;
+    if (duration) champ.match_duration_minutes = duration;
+  } else {
+    if (sc.pointsPerGame) champ.points_per_game = sc.pointsPerGame;
+    if (sc.bestOf) champ.best_of = sc.bestOf;
+    if (sc.playAllGames != null) champ.play_all_games = sc.playAllGames;
+    if (sc.winCondition) champ.win_condition = sc.winCondition;
+  }
 
   const extras: Record<string, any> = {
     league_genders: genders,

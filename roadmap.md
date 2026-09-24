@@ -1,5 +1,10 @@
 # Roadmap
 
+## Tournament Beta display and Bells scoring (24 Sep 2026)
+- [x] Make native dropdown options readable throughout Tournament Beta
+- [x] Make Schedule defaults and stage overview legible at Riverside-sized widths
+- [x] Recognise timed Bells scoring as resolved without asking for PAR/best-of; preserve existing draft settings
+
 - [x] Show Nelspruit Family Doubles standings as separate Pool A and Pool B tables for saved single-round-robin divisions
 
 - [x] Restore NSA venue club choices by resolving the Federation owner across all association league rows

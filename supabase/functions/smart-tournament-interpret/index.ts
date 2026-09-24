@@ -27,7 +27,7 @@ Definition shape (TypeScript):
   registrationClosesAt?: string|null,
   divisions: [{ id, name, eligibility:"men"|"ladies"|"mixed"|"open"|"open_any_pair", entry:"individual"|"pairs",
     sections: [{ id, name, stages: [Stage] }] }],
-  scoring?: { pointsPerGame?: 11|15|null, bestOf?: 3|5|null, playAllGames?: boolean|null, winCondition?: "win_by_2"|"sudden_death"|null },
+  scoring?: { mode?: "standard"|"time_capped_points"|null, pointsPerGame?: 11|15|null, bestOf?: 3|5|null, playAllGames?: boolean|null, winCondition?: "win_by_2"|"sudden_death"|null },
   players?: { entryMethod?: "self_entry"|"selected"|"both"|null, audience?: "all_club"|"leagues"|"clubs"|"individuals"|null, confirmAvailabilityOnly?: boolean|null,
     allocation?: "by_eligibility"|"admin_allocates"|"by_ranking"|null, seedingSource?: "ranking"|"ladder"|"manual"|"none"|null, minEntries?: int|null, maxEntries?: int|null },
   comms?: { inviteSending?: "manual"|"automatic"|null, inviteChannels?: ("in_app"|"email"|"whatsapp"|"sms")[]|null, registrationOpensAt?: "YYYY-MM-DD"|null, registrationClosesAt?: "YYYY-MM-DD"|null,
@@ -53,6 +53,7 @@ Rules:
 - Sections are parallel groupings within a division; each section has its own flow of stages. A stage after pools that combines the same level from every pool in the section uses arrangement "by_level_across_groups" with groups = number of levels and groupSize = number of pools.
 - Round robin that sends everyone on: advance.role="seed". Knockouts end the flow (advance.role "none").
 - NEVER guess ambiguous phrases. Put them in questions (kind "structural") with 2-4 short options, and leave the related part out or marked with notes. Examples that MUST be clarified if not already answered: "1st and 2nd, 3rd and 4th" (doubles pairs? matches? seeding?), "groups" (pools/separate competitions vs strength/seeding bands), "rotate" (venues? partners?), how doubles partners are formed, who may enter an "Open" doubles, what happens to losers.
+- Bells or timed points matches use scoring.mode="time_capped_points" and their stated minute cap goes in stage.schedule.matchMinutes (or scheduleDefaults.matchMinutes if shared). Do not ask for PAR points, best-of games or win-by-2 for Bells. If the organiser asks for standard games instead, set scoring.mode="standard" explicitly.
 - Never re-ask something already answered in the conversation or already resolved in questions. Mark answered questions resolved:true with the answer.
 - Once the structure is fully determined, stop asking structural questions. Dates, actual clubs, court availability, registration close and entry counts are "operational" questions — at most list them once, never block on them.
 - Unknown entry counts in self-entry events: set dynamic:true and groupSize:null.

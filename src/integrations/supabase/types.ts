@@ -2753,6 +2753,7 @@ export type Database = {
           champ_id: string
           court_id: number | null
           created_at: string
+          division_id: string | null
           forfeit_member_id: string | null
           game_scores: string | null
           group_number: number
@@ -2769,6 +2770,7 @@ export type Database = {
           play_by: string | null
           player_a_member_id: string | null
           player_b_member_id: string | null
+          pool_id: string | null
           pool_number: number | null
           round_id: string | null
           round_number: number
@@ -2779,6 +2781,7 @@ export type Database = {
           side_a_points: number | null
           side_b_points: number | null
           stage: string
+          stage_id: string | null
           stage_key: string | null
           stage_label: string | null
           status: string
@@ -2794,6 +2797,7 @@ export type Database = {
           champ_id: string
           court_id?: number | null
           created_at?: string
+          division_id?: string | null
           forfeit_member_id?: string | null
           game_scores?: string | null
           group_number: number
@@ -2810,6 +2814,7 @@ export type Database = {
           play_by?: string | null
           player_a_member_id?: string | null
           player_b_member_id?: string | null
+          pool_id?: string | null
           pool_number?: number | null
           round_id?: string | null
           round_number?: number
@@ -2820,6 +2825,7 @@ export type Database = {
           side_a_points?: number | null
           side_b_points?: number | null
           stage?: string
+          stage_id?: string | null
           stage_key?: string | null
           stage_label?: string | null
           status?: string
@@ -2835,6 +2841,7 @@ export type Database = {
           champ_id?: string
           court_id?: number | null
           created_at?: string
+          division_id?: string | null
           forfeit_member_id?: string | null
           game_scores?: string | null
           group_number?: number
@@ -2851,6 +2858,7 @@ export type Database = {
           play_by?: string | null
           player_a_member_id?: string | null
           player_b_member_id?: string | null
+          pool_id?: string | null
           pool_number?: number | null
           round_id?: string | null
           round_number?: number
@@ -2861,6 +2869,7 @@ export type Database = {
           side_a_points?: number | null
           side_b_points?: number | null
           stage?: string
+          stage_id?: string | null
           stage_key?: string | null
           stage_label?: string | null
           status?: string
@@ -2894,6 +2903,13 @@ export type Database = {
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_divisions"
             referencedColumns: ["id"]
           },
           {
@@ -2932,10 +2948,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "club_champs_matches_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_pools"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "club_champs_matches_round_id_fkey"
             columns: ["round_id"]
             isOneToOne: false
             referencedRelation: "club_champs_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_matches_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_stages"
             referencedColumns: ["id"]
           },
           {
@@ -3087,6 +3117,7 @@ export type Database = {
         Row: {
           champ_id: string
           created_at: string
+          division_id: string | null
           field_size: number | null
           generated_at: string | null
           generated_by: string | null
@@ -3100,6 +3131,7 @@ export type Database = {
           scheduling_mode: string
           scope: string | null
           section_number: number
+          stage_id: string | null
           stage_key: string | null
           status: string
           updated_at: string
@@ -3107,6 +3139,7 @@ export type Database = {
         Insert: {
           champ_id: string
           created_at?: string
+          division_id?: string | null
           field_size?: number | null
           generated_at?: string | null
           generated_by?: string | null
@@ -3120,6 +3153,7 @@ export type Database = {
           scheduling_mode?: string
           scope?: string | null
           section_number?: number
+          stage_id?: string | null
           stage_key?: string | null
           status?: string
           updated_at?: string
@@ -3127,6 +3161,7 @@ export type Database = {
         Update: {
           champ_id?: string
           created_at?: string
+          division_id?: string | null
           field_size?: number | null
           generated_at?: string | null
           generated_by?: string | null
@@ -3140,6 +3175,7 @@ export type Database = {
           scheduling_mode?: string
           scope?: string | null
           section_number?: number
+          stage_id?: string | null
           stage_key?: string | null
           status?: string
           updated_at?: string
@@ -3157,6 +3193,20 @@ export type Database = {
             columns: ["champ_id"]
             isOneToOne: false
             referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_rounds_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_champs_rounds_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_stages"
             referencedColumns: ["id"]
           },
         ]
@@ -13420,6 +13470,54 @@ export type Database = {
         }
         Relationships: []
       }
+      tournament_divisions: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+          spec_key: string
+          tournament_id: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          sort_order?: number
+          spec_key: string
+          tournament_id: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          spec_key?: string
+          tournament_id?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_divisions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_divisions_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_draw_versions: {
         Row: {
           created_at: string
@@ -13714,6 +13812,58 @@ export type Database = {
         }
         Relationships: []
       }
+      tournament_pools: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          pool_index: number
+          stage_id: string
+          tournament_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          pool_index: number
+          stage_id: string
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          pool_index?: number
+          stage_id?: string
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_pools_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_pools_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_pools_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_rules: {
         Row: {
           affects_ranking_points: boolean
@@ -13793,6 +13943,73 @@ export type Database = {
             foreignKeyName: "tournament_rules_tournament_id_fkey"
             columns: ["tournament_id"]
             isOneToOne: true
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_stages: {
+        Row: {
+          config: Json
+          created_at: string
+          division_id: string
+          generation: string
+          id: string
+          kind: string
+          label: string
+          spec_key: string
+          stage_order: number
+          status: string
+          tournament_id: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          division_id: string
+          generation?: string
+          id?: string
+          kind: string
+          label: string
+          spec_key: string
+          stage_order: number
+          status?: string
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          division_id?: string
+          generation?: string
+          id?: string
+          kind?: string
+          label?: string
+          spec_key?: string
+          stage_order?: number
+          status?: string
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_stages_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_stages_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_stages_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
             referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
@@ -14080,6 +14297,9 @@ export type Database = {
       tournaments: {
         Row: {
           avoid_back_to_back: boolean
+          builder_architecture: string
+          builder_spec: Json | null
+          builder_spec_version: number
           champion_scope: string
           club_id: string
           competition_level: string | null
@@ -14186,6 +14406,9 @@ export type Database = {
         }
         Insert: {
           avoid_back_to_back?: boolean
+          builder_architecture?: string
+          builder_spec?: Json | null
+          builder_spec_version?: number
           champion_scope?: string
           club_id: string
           competition_level?: string | null
@@ -14292,6 +14515,9 @@ export type Database = {
         }
         Update: {
           avoid_back_to_back?: boolean
+          builder_architecture?: string
+          builder_spec?: Json | null
+          builder_spec_version?: number
           champion_scope?: string
           club_id?: string
           competition_level?: string | null
@@ -17066,6 +17292,7 @@ export type Database = {
           champ_id: string
           court_id: number | null
           created_at: string
+          division_id: string | null
           forfeit_member_id: string | null
           game_scores: string | null
           group_number: number
@@ -17082,6 +17309,7 @@ export type Database = {
           play_by: string | null
           player_a_member_id: string | null
           player_b_member_id: string | null
+          pool_id: string | null
           pool_number: number | null
           round_id: string | null
           round_number: number
@@ -17092,6 +17320,7 @@ export type Database = {
           side_a_points: number | null
           side_b_points: number | null
           stage: string
+          stage_id: string | null
           stage_key: string | null
           stage_label: string | null
           status: string
@@ -17283,6 +17512,7 @@ export type Database = {
           champ_id: string
           court_id: number | null
           created_at: string
+          division_id: string | null
           forfeit_member_id: string | null
           game_scores: string | null
           group_number: number
@@ -17299,6 +17529,7 @@ export type Database = {
           play_by: string | null
           player_a_member_id: string | null
           player_b_member_id: string | null
+          pool_id: string | null
           pool_number: number | null
           round_id: string | null
           round_number: number
@@ -17309,6 +17540,7 @@ export type Database = {
           side_a_points: number | null
           side_b_points: number | null
           stage: string
+          stage_id: string | null
           stage_key: string | null
           stage_label: string | null
           status: string

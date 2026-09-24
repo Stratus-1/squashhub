@@ -62,6 +62,7 @@ import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialo
 
 import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 import { computeFinalPlacements, placementSlotLabel } from "@/lib/tournaments/final-standings";
+import { StructuredEnginePanel } from "@/components/smart-builder/StructuredEnginePanel";
 import { buildPlayoffMatches, buildRegisteredPairMap, enforceRegisteredPairs, isPlayoffRowLocked, shouldAutoFillPlayoffs, type StandingEntity } from "@/lib/tournament-playoffs";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -121,6 +122,17 @@ export default function ClubChampsView() {
   });
 
   const { data: champRounds = [] } = useChampRounds(champId);
+
+  // Architecture discriminator: structured (Beta) tournaments never use the legacy generators below.
+  const { data: arch } = useQuery({
+    queryKey: ["club-champ-arch", champId],
+    queryFn: async () => {
+      const { data } = await fromExt("tournaments").select("builder_architecture,builder_spec").eq("id", champId!).maybeSingle();
+      return data as { builder_architecture?: string; builder_spec?: any } | null;
+    },
+    enabled: !!champId,
+  });
+  const isStructured = arch?.builder_architecture === "structured";
 
   const { data: matches = [] } = useQuery({
     queryKey: ["club-champ-matches", champId],
@@ -1574,7 +1586,7 @@ export default function ClubChampsView() {
   // never re-seeded automatically. Editing slot times never triggers this.
   const autoPlayoffKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!canManage || !enablePlayoffs) return;
+    if (!canManage || !enablePlayoffs || isStructured) return;
     if (generatePlayoffs.isPending || playoffsComplete) return;
     if (!shouldAutoFillPlayoffs({ groupComplete, playoffRows: playoffMatches as any[] })) return;
 
@@ -1715,7 +1727,7 @@ export default function ClubChampsView() {
                 Reschedule {unassignedCount} TBD match{unassignedCount === 1 ? "" : "es"}
               </Button>
             )}
-            {canManage && enablePlayoffs && !playoffsComplete && String((champ as any)?.status || "").toLowerCase() !== "completed" && (
+            {canManage && !isStructured && enablePlayoffs && !playoffsComplete && String((champ as any)?.status || "").toLowerCase() !== "completed" && (
               <Button
                 variant={groupComplete ? "default" : "outline"}
                 size="sm"
@@ -1754,6 +1766,19 @@ export default function ClubChampsView() {
             </Button>
           </div>
         </div>
+
+        {canManage && isStructured && arch?.builder_spec && (
+          <StructuredEnginePanel
+            champId={champId!}
+            spec={arch.builder_spec}
+            matches={matches as any[]}
+            nameOf={(id) => {
+              const e: any = (entries as any[]).find((x: any) => x.club_member_id === id || x.partner_member_id === id);
+              if (!e) return "Player";
+              return e.club_member_id === id ? (e.club_members?.name || "Player") : (e.partner?.name || "Player");
+            }}
+          />
+        )}
 
         <div className="text-center">
           <h1 className="text-2xl md:text-3xl font-bold font-heading">{champ.name}</h1>

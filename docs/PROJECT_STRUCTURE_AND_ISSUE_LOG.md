@@ -2012,3 +2012,11 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 ### Tournament Beta: one canonical date window (2026-09-24)
 - Problem: Start/End dates editable in Schedule "Tournament defaults", QuickSetup and the stage builder — several apparent sources of truth.
 - Fix: `tournaments.start_date/end_date` (builder: `scheduleDefaults.startDate/endDate`) is the only tournament range, edited once in Design → Tournament dates; Schedule shows it read-only. Stages "Use tournament dates" (NULL start/end) or set an explicit "Stage window"; rounds keep fixed date / play-by. `src/lib/tournaments/date-window.ts` validates tournament ⊇ stage ⊇ round ⊇ fixture, resolves inheritance at generation (loadEntrants) without persisting copies (rawSchedule), and reports shrink impact. Structured editor edits the row dates + stage windows with impact and blocks saves that would push anything outside. Tests: `src/test/date-window.test.ts`.
+
+## 2026-09-24 — Tournament Beta venues/courts hierarchy-driven
+- Design venue picker now uses real org hierarchy (club → own club; regional → clubs under association, no all-clubs fallback; national → Region → Club) and real `courts` records via `tournament_host_courts` RPC (security definer, returns name/location only, gated by `can_host_at_club`).
+- `courts.active` added (default true); inactive courts never offered.
+- Selection persists in existing `tournament_venues.court_ids` (no parallel directory); Schedule free-text court counts replaced by the Design court pool; rotation hidden with <2 venues.
+- DB triggers (structured tournaments only): match court must be in tournament_venues.court_ids; removing a court with games is blocked (played → history kept; unplayed → move first).
+- Owner/level change marks ineligible venues `event.venuesStale` instead of silently keeping/dropping.
+- Tests: src/test/venue-courts.test.ts.

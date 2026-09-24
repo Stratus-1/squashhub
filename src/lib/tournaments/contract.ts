@@ -53,8 +53,8 @@ export interface PlannedStage {
   /** knockout draw size */
   drawSize?: number;
   schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null };
-  /** playoff stages only */
-  qualify?: { perPool: number; mapping: QualifierMapping | null } | null;
+  /** playoff stages only. `transition` is the explicit, stable-id progression rule; `mapping` stays in step for older readers. */
+  qualify?: { perPool: number; mapping: QualifierMapping | null; transition?: import("./transition").StageTransition | null } | null;
   generation?: GenerationMode;
 }
 

@@ -186,6 +186,7 @@ function greedyRotation(
     avoid?: Set<string>;
     strengthMode?: "any" | "mixed" | "balanced";
     history?: Array<{ sideA: string[]; sideB: string[] }>;
+    topUp?: boolean;
   } = {},
 ): RotationSchedule {
   const n = players.length;
@@ -340,7 +341,7 @@ function greedyRotation(
       if (short.length === 0) break;
       const quad = short.slice(0, 4);
       const fillers = players
-        .filter((p) => !quad.includes(p) && (playedCount.get(p) || 0) < perPlayerCap! + (o.topUp ? 1 : 0))
+        .filter((p) => !quad.includes(p) && (playedCount.get(p) || 0) < perPlayerCap! + (bias.topUp ? 1 : 0))
         .sort((a, b) =>
           (playedCount.get(a)! - playedCount.get(b)!) ||
           quad.reduce((s2, q) => s2 + (partnered.has(pairKey(q, a)) ? 1 : 0), 0) -

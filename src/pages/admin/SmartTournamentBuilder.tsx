@@ -16,6 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
 import { DesignCanvas } from "@/components/smart-builder/DesignCanvas";
 import { canUseSmartBuilder, SMART_BUILDER_LABEL, SMART_BUILDER_SUBLABEL } from "@/lib/smart-builder/access";
 import { allStages, emptyDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
@@ -156,6 +157,10 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   const [thinking, setThinking] = useState(false);
   const [dirty, setDirty] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [voiceErr, setVoiceErr] = useState<string | null>(null);
+  const [voiceNote, setVoiceNote] = useState<string | null>(null);
+  // Text already in the box when a voice transcript starts — the transcript is appended to it.
+  const voiceBase = useRef<string | null>(null);
 
   useEffect(() => {
     if (!draft) return;
@@ -292,11 +297,24 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
             )}
           </div>
           <div className="border-t border-white/10 p-2 flex gap-2">
-            <Textarea ref={inputRef} autoFocus value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder={def.divisions.length ? "Answer, or ask for a change — e.g. 'Change Section 2 to 5 pools'" : "Describe your tournament…"}
-              className="min-h-[60px] bg-white/5 border-white/15 text-white text-sm" />
-            <Button size="icon" className="self-end h-9 w-9 shrink-0" disabled={thinking || !input.trim()} onClick={send}><Send className="w-4 h-4" /></Button>
+            <div className="flex-1 space-y-1">
+              <Textarea ref={inputRef} autoFocus value={input} onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                placeholder={def.divisions.length ? "Answer, or ask for a change — e.g. 'Change Section 2 to 5 pools'" : "Describe your tournament — type, or tap the mic and speak…"}
+                className="min-h-[60px] bg-white/5 border-white/15 text-white text-sm" />
+              {voiceNote && <p className="text-[11px] text-amber-200">{voiceNote}</p>}
+              {voiceErr && <p className="text-[11px] text-red-300" role="alert">{voiceErr}</p>}
+            </div>
+            <div className="flex flex-col items-end justify-end gap-1">
+              <VoiceInputButton clubId={scope.kind === "club" ? scope.clubId : undefined} disabled={thinking}
+                onError={(m) => { if (m) voiceBase.current = null; setVoiceErr(m); }}
+                onTranscript={(t, final) => {
+                  if (voiceBase.current === null) voiceBase.current = input.trim() ? `${input.trim()} ` : "";
+                  setInput(voiceBase.current + t);
+                  if (final) { voiceBase.current = null; setVoiceNote("Check the transcript, fix anything, then press Send."); inputRef.current?.focus(); }
+                }} />
+              <Button size="icon" className="h-9 w-9 shrink-0" disabled={thinking || !input.trim()} onClick={() => { setVoiceNote(null); send(); }}><Send className="w-4 h-4" /></Button>
+            </div>
           </div>
         </div>
 

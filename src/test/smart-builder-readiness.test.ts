@@ -61,7 +61,7 @@ describe("smart builder readiness", () => {
     const scoring = r.sections.find((s) => s.key === "design")?.items.find((i) => i.id === "scoring");
     expect(scoring?.state).toBe("complete");
     expect(scoring?.detail).toContain("timed points");
-    expect(r.sections.find((s) => s.key === "schedule")?.items.find((i) => i.id === "dates")?.state).toBe("complete");
+    expect(r.sections.find((s) => s.key === "schedule")?.items.find((i) => i.id === "dates")?.state).toBe("missing"); // older draft: dates only on a stage — the one tournament range must be set
     expect(m.champ.scoring_mode).toBe("time_capped_points");
     expect(m.champ.match_duration_minutes).toBe(15);
     expect(m.champ.start_date).toBe("2026-09-24");

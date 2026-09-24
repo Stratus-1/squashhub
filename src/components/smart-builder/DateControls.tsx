@@ -1,6 +1,6 @@
 import { CalendarRange } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { Stage, TournamentDefinition } from "@/lib/smart-builder/definition";
+import { allStages, type Stage, type TournamentDefinition } from "@/lib/smart-builder/definition";
 import { definitionDateIssues, stageWindowOf, tournamentWindow } from "@/lib/smart-builder/dates";
 import { d10 } from "@/lib/tournaments/date-window";
 
@@ -16,6 +16,9 @@ export function TournamentDatesCard({ def, edit }: { def: TournamentDefinition; 
   const set = (patch: Record<string, string | null>) => edit((d) => { d.scheduleDefaults = { ...d.scheduleDefaults, ...patch }; });
   const issues = definitionDateIssues(def);
   const extend = issues.find((i) => i.extendTo);
+  // Older drafts kept dates only on stages: offer to adopt them as the one tournament range.
+  const stageDates = allStages(def).flatMap(({ stage }) => [d10(stage.schedule.startDate), d10(stage.schedule.endDate), ...(stage.schedule.roundDates ?? []).map(d10)]).filter(Boolean).sort() as string[];
+  const adopt = !sd.startDate && !sd.endDate && stageDates.length ? { start: stageDates[0], end: stageDates[stageDates.length - 1] } : null;
   return (
     <section data-field="defaults.startDate" className="rounded-lg border border-white/15 bg-white/[0.04] p-3 space-y-2 text-xs text-white/80">
       <h3 className="flex items-center gap-1.5 text-sm font-semibold text-white"><CalendarRange className="w-4 h-4" />Tournament dates</h3>
@@ -26,6 +29,11 @@ export function TournamentDatesCard({ def, edit }: { def: TournamentDefinition; 
         <label data-field="defaults.endDate" className="space-y-0.5"><span className="text-[11px] text-white/60">Last day</span>
           <Input type="date" className={f} value={d10(sd.endDate) ?? ""} onChange={(e) => set({ endDate: keepTime(e.target.value, sd.endDate) })} /></label>
       </div>
+      {adopt && (
+        <p className="text-amber-200">This draft has dates only on its stages.{" "}
+          <button type="button" className="underline" onClick={() => set({ startDate: adopt.start, endDate: adopt.end })}>Use {fmt(adopt.start)} → {fmt(adopt.end)} as the tournament dates</button>
+        </p>
+      )}
       {issues.filter((i) => i.code === "window_order").map((i) => <p key={i.code} className="text-red-300">{i.message}</p>)}
       {extend?.extendTo && (
         <p className="text-amber-200">{extend.message}{" "}

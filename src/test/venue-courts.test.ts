@@ -105,7 +105,7 @@ describe("12. atomic generation refuses unselected courts", () => {
   function fakeDb() {
     const s = specFromDefinition(def);
     const t: Record<string, any[]> = {
-      tournaments: [{ id: "t", builder_architecture: "structured", builder_spec: s }],
+      tournaments: [{ id: "t", builder_architecture: "structured", builder_spec: s, start_date: "2026-09-28", end_date: "2026-10-05" }],
       tournament_venues: [{ id: "v", tournament_id: "t", club_id: "N", court_ids: [1, 2] }],
       club_champs_entries: Array.from({ length: 4 }, (_, i) => ({ id: `e${i}`, champ_id: "t", club_member_id: `m${i}`, group_number: 1, order_index: i })),
     };

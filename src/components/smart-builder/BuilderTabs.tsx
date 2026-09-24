@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
 const f = "h-8 bg-white/5 border-white/15 text-white text-xs";
-const sel = "h-8 rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs";
+const sel = "smart-builder-select h-8 rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs";
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const CHANNELS: { key: CommsChannel; label: string }[] = [
   { key: "in_app", label: "In-app" }, { key: "email", label: "Email" }, { key: "whatsapp", label: "WhatsApp" }, { key: "sms", label: "SMS" },

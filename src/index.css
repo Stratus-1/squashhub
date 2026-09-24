@@ -200,6 +200,14 @@
       font-size: inherit !important;
     }
   }
+
+  /* Native option menus do not inherit the builder's translucent dark select surface.
+     Give each option an explicit, theme-aware surface and readable foreground. */
+  .smart-builder-select option,
+  .smart-builder-select optgroup {
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+  }
 }
 
 @layer utilities {

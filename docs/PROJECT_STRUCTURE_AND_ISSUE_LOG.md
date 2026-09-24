@@ -1941,3 +1941,7 @@ NSA's tournament venue picker merged legacy `association_affiliated_clubs` with 
 ### 2026-09-24 — Tournament Beta: decisions stayed in chat only; readiness review; compact Schedule
 - Cause: the Smart Builder draft only modelled structure, so invitation sending/channels, player selection, fees, WhatsApp group, result messages, scoring and tournament dates had nowhere to be stored.
 - Fix: `players`, `comms`, `scheduleDefaults`, `scoring` added to the draft definition; `readiness.ts` deterministic completeness check drives tab dots, the "Next to decide" prompt, the AI's next question and the Review; `to-existing.ts` now reports ready/partial/blocked executability (partial = later stages deferred, kept in draft) and maps comms to existing fields; Create never sends invitations.
+
+### 2026-09-24 — Tournament Beta native dropdown options invisible
+- Cause: builder selects had white text on translucent dark surfaces, but browser-native option menus opened with a light background while inheriting white text.
+- Fix: scope an explicit semantic popover background and foreground to the builder's native option menus, including Players, Design, Schedule, Invitations, Review and Super Admin beta-club selector. No tournament settings or data changed.

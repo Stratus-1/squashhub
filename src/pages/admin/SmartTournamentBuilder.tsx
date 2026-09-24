@@ -389,7 +389,7 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
 function ScoringRow({ def, edit }: { def: TournamentDefinition; edit: (m: (d: TournamentDefinition) => void) => void }) {
   const s = def.scoring ?? {};
   const set = (p: Partial<typeof s>) => edit((d) => { d.scoring = { ...d.scoring, ...p }; });
-  const sel = "h-7 rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs";
+  const sel = "smart-builder-select h-7 rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs";
   return (
     <div data-field="scoring" className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 p-2 text-xs text-white/75">
       <span className="font-semibold text-white">Scoring</span>

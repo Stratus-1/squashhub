@@ -10,7 +10,7 @@ import {
 import type { ValidationResult } from "@/lib/smart-builder/validate";
 
 const field = "h-8 bg-white/5 border-white/15 text-white text-xs";
-const sel = "h-8 rounded-md bg-white/5 border border-white/15 text-white text-xs px-2";
+const sel = "smart-builder-select h-8 rounded-md bg-white/5 border border-white/15 text-white text-xs px-2";
 
 interface Props {
   def: TournamentDefinition;

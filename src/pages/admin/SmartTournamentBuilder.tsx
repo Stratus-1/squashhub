@@ -36,6 +36,7 @@ type DraftPayload = { def: TournamentDefinition; chat: ChatMsg[]; tab: string };
 type Draft = {
   id: string; title: string; mode: "guide" | "describe"; definition: unknown; conversation: ChatMsg[];
   status: string; created_tournament_id: string | null; updated_at: string;
+  revision?: number; last_tab?: string | null; owner_name?: string | null;
 };
 
 const panel = "rounded-xl border border-white/10 bg-white/[0.04]";
@@ -93,7 +94,7 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
   const { data: drafts = [] } = useQuery({
     queryKey: ["smart-drafts", scopeKey],
     queryFn: async () => {
-      let q = fromExt("smart_tournament_drafts").select("id,title,mode,status,updated_at,created_tournament_id");
+      let q = fromExt("smart_tournament_drafts").select("id,title,mode,status,updated_at,created_tournament_id,owner_name:definition->event->>ownerName");
       q = scope.kind === "club" ? q.eq("owner_kind", "club").eq("owner_id", scope.clubId) : q.neq("owner_kind", "club");
       const { data, error } = await q.order("updated_at", { ascending: false });
       if (error) throw error;
@@ -149,8 +150,14 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
         {drafts.map((d) => (
           <div key={d.id} className="flex w-full items-center hover:bg-white/[0.05]">
             <button onClick={() => nav.openDraft(d.id)} className="flex flex-1 items-center justify-between p-3 text-left text-sm text-white/85">
-              <span>{d.title}</span>
-              <span className="text-[11px] text-white/50">{d.status === "created" ? "Created" : "Draft"} · {new Date(d.updated_at).toLocaleString()}</span>
+              <span className="min-w-0">
+                <span className="block">{d.title || "Untitled tournament"}</span>
+                <span className="block text-[11px] text-white/50">{d.owner_name ?? "Owner not chosen"}</span>
+              </span>
+              <span className="text-right text-[11px] text-white/50">
+                {d.status === "created" ? "Created" : "Draft"} · updated {new Date(d.updated_at).toLocaleString()}
+                {d.status !== "created" && <span className="block text-amber-200">Continue setup →</span>}
+              </span>
             </button>
             {d.status !== "created" && (
               <button
@@ -219,8 +226,8 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   // Text already in the box when a voice transcript starts — the transcript is appended to it.
   const voiceBase = useRef<string | null>(null);
 
-  const isLoading = loadingDraft || (isFetching && !loadedRef.current);
   const loadedRef = useRef(false);
+  const isLoading = loadingDraft || (isFetching && !loadedRef.current);
   const saverRef = useRef<DraftAutosaver<DraftPayload> | null>(null);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle", savedAt: null, error: null });
   useEffect(() => {

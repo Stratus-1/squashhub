@@ -103,6 +103,15 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
     onSuccess: (id) => { qc.invalidateQueries({ queryKey: ["smart-drafts"] }); nav.openDraft(id); },
     onError: (e: any) => toast.error(e.message),
   });
+  const remove = useMutation({
+    mutationFn: async (draft: Draft) => {
+      if (draft.status === "created") throw new Error("This draft already created a real tournament and can't be deleted here.");
+      const { error } = await fromExt("smart_tournament_drafts").delete().eq("id", draft.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["smart-drafts"] }); setPendingDelete(null); toast.success("Draft deleted"); },
+    onError: (e: any) => { setPendingDelete(null); toast.error(e.message); },
+  });
   return (
     <div className="space-y-5 max-w-5xl py-4">
       <BetaHeader onBack={nav.exit} scope={scope} />

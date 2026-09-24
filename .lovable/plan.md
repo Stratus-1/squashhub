@@ -1,4 +1,4 @@
-# AI Assistant: Live Tournament Diagnose → Repair (Super Admin Beta)
+# AI Assistant: Live Tournament Diagnose → Self-Heal (Beta)
 
 ## Goal
 When someone reports a live tournament problem (e.g. "Rachel & Shania appear twice, Maria & Giselle are missing"), the Assistant checks the real tournament and explains the cause. When it has proven a system bug, it fixes the problem immediately with no approval needed. It then re-checks the tournament and escalates only fixes that would change started or scored games.
@@ -88,17 +88,17 @@ Approval never depends on Willem personally: any admin of the tournament's own c
 
 ## 5. Escalation rules
 A ticket is created only when:
-- the fix would touch a started or scored game (Super Admin approval needed);
+- a judgement item (J1–J4) has not been approved by an admin within 10 minutes during a live tournament;
 - the same fault comes back after a repair (code defect);
 - the plan is out of date twice in a row; or
-- the repair runs but verification still fails.
+- verification fails (the change is rolled back automatically, then escalated).
 A club admin or player reporting a proven bug is not a reason to escalate. Their problem gets fixed.
 
 The ticket body includes: tournament/club IDs, the findings, the suspected cause, the preview change list, steps attempted, and a link to the related Assistant record. It continues to use the existing retry protection against duplicate tickets.
 
 ## 6. UI/UX (AiHelpBetaPanel)
-- Diagnosis card (Super Admin): tournament name, a "Live" badge, findings in plain language with the rows affected, and the suspected cause. Technical detail is collapsed.
-- Repair preview card: a before → after table per game, a risk label, and skipped locked games with the reason. Buttons: Confirm repair / Cancel. Confirm is disabled for high-risk changes.
+- Outcome card for the reporter: "Checked the tournament → found → fixed automatically", a "Live" badge, a before → after list per game, and the verification result. Technical detail is collapsed.
+- Judgement card, shown only to club admins of that tournament and Super Admin: open J-items with a before → after preview and Approve / Decline. Players see "An admin has been asked to decide on 1 item."
 - Verification line after the repair: "Re-checked: all 12 teams appear once, pairs intact" or the list of what remains.
 - AI Activity already lists actions. Add a filter for "Tournament repairs" and show before/after, verification, and rollback.
 - Replies stay in the user's language; checks and actions don't depend on the language. Voice input still goes through transcript → review → send.
@@ -134,7 +134,8 @@ Live acceptance (safe copy): run scenario 1 on a cloned test tournament at River
 
 ## Acceptance criteria
 - When Rachel (club admin) sends her exact report, the assistant finds the cause, fixes it automatically without approval, re-checks, and replies "Fixed". The phone never shows an edge-function error.
-- No started or scored game is changed without Super Admin approval; those games are always skipped and reported.
+- Categories A1–A8 repair automatically, with a snapshot, one transaction, verification, audit and admin notification. J1–J4 always need approval from a club admin of the tournament or Super Admin.
+- A failed verification leaves no partial change: everything is rolled back and escalated.
 - Every automatic fix is visible to Super Admin in AI Activity and can be undone.
 - Every repair appears in AI Activity with before/after, verification and rollback status.
 - All tests above pass. Nothing is published without a request.

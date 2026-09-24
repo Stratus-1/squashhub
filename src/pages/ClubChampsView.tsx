@@ -773,7 +773,13 @@ export default function ClubChampsView() {
    * the same player stays untouched in every other division they entered.
    */
   const renderKnockoutStandings = (gn: number) => {
-    const pools = koPoolsFor(gn);
+    // A round robin with later play-offs keeps its normal points table — the
+    // play-off placeholders must never hijack the standings.
+    const hasGroupStage = (matches as any[]).some(
+      (m: any) => Number(m.group_number) === Number(gn) && ["group", "pool", "league"].includes(String(m.stage || "")),
+    );
+    if (hasGroupStage) return null;
+    const pools = koPoolsFor(gn).filter((p) => p.entrantIds.length > 0);
     if (pools.length === 0) return null;
     const all = getGroupStandings(gn);
     const multi = pools.filter((p) => p.section > 0).length > 1;

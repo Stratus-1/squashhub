@@ -33,31 +33,51 @@ Each finding includes: code, a plain-language message, the rows affected, a susp
 - `tournament_integrity_check(champ_id)`: returns findings + live status (`is_live` = today's date, games in progress, or games scored in the last 6 hours).
 - `tournament_repair_preview(champ_id)`: the change list from `planRepair`.
 
-**Action (Confirm required):** `repair_tournament_playoffs`
-- Classified by risk:
-  - **Low:** fill empty placeholders.
-  - **Medium:** change the teams in unstarted games.
-  - **High:** anything touching a scored or completed game. High-risk changes are never executed by the assistant; they are escalated.
-- Execution goes through a new security-definer RPC, `ai_repair_champ_playoffs(champ_id, plan_hash, changes jsonb)`. In one transaction it:
-  - re-checks Super Admin;
-  - locks the tournament rows;
-  - rejects the repair if the tournament changed since the preview (`plan_hash` mismatch);
-  - refuses to touch locked rows;
-  - applies only the listed pair and slot updates;
-  - writes before/after to the audit record.
-- After success, the edge function re-runs `tournament_integrity_check` and stores the result on the same record ("Verified consistent" or the list of remaining findings).
-- Rollback: the stored before-image is restored by an inverse RPC, only if the affected rows are still unstarted and unscored. Otherwise rollback is refused and the reason is shown.
+**Self-healing action:** `repair_tournament_state`
+- The planner labels every proposed change:
+  - `deterministic`: exactly one correct state follows from saved settings, registered pairs and finished pool results. These run automatically.
+  - `judgement`: more than one plausible answer, conflicting evidence, or the change would alter a human-entered score/result or another human decision. These need approval.
+- Runs through a new security-definer RPC, `ai_repair_champ_state(champ_id, plan_hash, changes jsonb)`. In one transaction it:
+  - checks scope: a club admin/captain or player of that tournament's club, or Super Admin;
+  - locks the rows;
+  - takes a snapshot of every row it will touch;
+  - rejects stale plans (`plan_hash`);
+  - refuses anything labelled `judgement`;
+  - applies the changes;
+  - re-runs the integrity checks inside the same transaction.
+  If any check still fails, the whole transaction is rolled back, so nothing is left half-changed, and the case is escalated.
+- After a successful commit, the assistant:
+  - records the snapshot, cause, changes and verification in `ai_assist_interactions` + `audit_events`;
+  - notifies the tournament's club admins (in-app, plus the Communications engine) and Super Admin in AI Activity;
+  - tells the reporter the outcome.
+- Rollback restores the snapshot through an inverse RPC while the affected games are still unscored.
 
-## 3. Permission model (who approves what)
-A clear system bug does not need anyone's approval. If the tournament breaks its own saved settings (duplicate team, missing qualifier, split pair), that is a fault in SquashHub, not a decision anyone has to make.
-- **Auto-repair (no approval, anyone can trigger by reporting):** the assistant fixes the problem straight away, whether the report comes from a club admin, a player or Super Admin, when all of these are true:
-  - an integrity check proves the inconsistency;
-  - the fix comes directly from the tournament's saved settings and finished pool results;
-  - only unstarted, unscored games change.
-  It then re-checks, tells the reporter "Fixed: Maria & Giselle are now in the 7th/8th playoff", and logs the change in AI Activity so Super Admin can see it and undo it.
-- **Club admin approval:** decisions that are a matter of choice rather than a proven bug stay with the club, e.g. replacing a player or moving a game time. The tournament's own club admin confirms them in chat.
-- **Super Admin approval (only exception):** anything that would change a game that has started or already has a score, or delete data. These are shown as a preview, and the reporter is told support is handling it.
-- **Code defects:** the assistant can repair the data, but it cannot change the app's code. When the same fault keeps coming back, it records it as a system defect with all diagnostics so it can be fixed in the code here. The live tournament stays repaired in the meantime.
+## 3. Approval model: automatic vs approval
+
+**Automatic: no admin or Super Admin approval.** Triggered as soon as anyone in that tournament's club reports a problem (club admin, captain or player) or Super Admin does. Diagnosis runs right away; the repair runs if proven.
+| Category | Example |
+|---|---|
+| A1 Duplicate or missing playoff qualifiers caused by generation/recalculation | Rachel & Shania twice, Maria & Giselle missing → restored from frozen final pool standings |
+| A2 Fixed doubles pair split or rotated | Restore the registered pair in every unscored game |
+| A3 Playoff games counted in pool standings | Recalculate from pool games only; freeze standings |
+| A4 Pool play finished but reserved playoff slots empty or unfilled | Fill the slots from frozen standings, keeping their time and court |
+| A5 Extra pool games generated beyond the configured rounds (unscored) | Remove them / mark them void |
+| A6 Wrong position pairing in a slot (e.g. Pool 1 #3 vs Pool 2 #4) | Restore Pool 1 #N vs Pool 2 #N |
+| A7 Withdrawn team still in unscored fixtures | Apply the existing withdrawal rule |
+| A8 Reserved slot times lost after a format change | Restore them from the saved schedule settings |
+
+**Still needs approval: genuine judgement.**
+| Category | Who approves |
+|---|---|
+| J1 A fix would change or remove a human-entered score or result (started or completed game) | Club admin of the tournament, or Super Admin |
+| J2 More than one plausible correct state (e.g. unresolved tie-break, conflicting records) | Club admin of the tournament, or Super Admin |
+| J3 A human decision rather than a bug (replace a player, move a time, change format) | Club admin of the tournament (existing confirm flow) |
+| J4 Deleting data beyond unscored generated games | Super Admin |
+
+Approval never depends on Willem personally: any admin of the tournament's own club can approve J1–J3. If nobody approves, the automatic parts are still repaired, and the judgement items stay listed as open.
+
+- **Code defects:** the assistant repairs the data but cannot change the app's code. If the same corruption comes back after a repair, it opens a defect ticket with all diagnostics so it can be fixed in the code. The live tournament keeps running on the repaired state.
+- Safety stays on the server: role and scope come from the server, never from what someone types. The tournament must belong to the reporter's club (Super Admin: any club). Beta flag `ai_tournament_repair` is enabled for Super Admin, Riverside and Nelspruit.
 - Safety stays on the server: identity and role are never taken from what someone types, the tournament must belong to the reporter's club (Super Admin: any club), and the repair RPC re-checks all of these conditions itself. Beta flag `ai_tournament_repair` limits this to Super Admin, Riverside and Nelspruit.
 
 ## 4. Timeout and live priority

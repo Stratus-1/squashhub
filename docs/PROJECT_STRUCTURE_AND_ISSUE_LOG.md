@@ -2020,3 +2020,8 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - DB triggers (structured tournaments only): match court must be in tournament_venues.court_ids; removing a court with games is blocked (played → history kept; unplayed → move first).
 - Owner/level change marks ineligible venues `event.venuesStale` instead of silently keeping/dropping.
 - Tests: src/test/venue-courts.test.ts.
+
+## 2026-09-24 — Beta builder drafts lost on leave/return (fixed)
+- Root cause: (1) the Workspace seeded the editor from the React Query cache once per draft id and never re-read the server copy, so returning in the same session showed an old copy and the next edit autosaved it over newer work; (2) the 1.2s debounce timer was cancelled on unmount/close, dropping the last edits; (3) failures were a toast only, with no status.
+- Fix: `DraftAutosaver` (src/lib/smart-builder/draft-autosave.ts) — debounced, serialised, whole-draft writes to `smart_tournament_drafts`; `revision` column for stale-tab detection; `last_tab` restored; fresh server read on open (gcTime 0); flush on unmount/hidden; keepalive PATCH on pagehide/beforeunload; Saving/Saved/Save failed—Retry/Changed elsewhere indicator.
+- Tests: src/test/draft-autosave.test.ts; browser check: type → navigate away mid-save → return → reload, values restored.

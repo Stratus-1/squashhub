@@ -4,8 +4,8 @@
  * readiness Review. Every control reads/writes `def` — the same object the AI
  * proposes changes to — so chat, forms and review can never drift apart.
  */
-import { persistStructure, specFromDefinition } from "@/lib/tournaments/structured-persist";
-import { supabaseDb } from "@/lib/tournaments/structured-db";
+import { atomically, persistStructure, specFromDefinition } from "@/lib/tournaments/structured-persist";
+import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";
@@ -441,7 +441,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
         ...(structuredSpec ? { builder_architecture: "structured", builder_spec: structuredSpec, builder_spec_version: 1 } : {}),
       }).eq("id", data.id);
       if (exErr) console.warn("extras", exErr.message);
-      if (structuredSpec && !exErr) await persistStructure(supabaseDb, data.id, structuredSpec);
+      if (structuredSpec && !exErr) await atomically(supabaseDb, data.id, commitStructured, (db) => persistStructure(db, data.id, structuredSpec));
       if (mapping.whatsappGroupUrl) {
         // Link only — the existing group card handles sharing. Nothing is sent here.
         const { error: wgErr } = await fromExt("tournament_whatsapp_groups").insert({ champ_id: data.id, club_id: hostClubId, provider: "manual", invite_url: mapping.whatsappGroupUrl, group_name: def.name, status: "active" });

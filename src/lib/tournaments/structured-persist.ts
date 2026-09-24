@@ -141,7 +141,7 @@ export async function persistStructure(db: Db, tid: string, spec: TournamentSpec
       let [row] = await db.select("tournament_stages", { division_id: div.id, spec_key: st.id });
       const prev = d.stages.find((s) => s.order === st.order - 1);
       // Explicit, persisted progression rule: stable stage ids + pool indexes, never display names.
-      const tr = prev && st.qualify ? (() => {
+      const tr = prev && st.qualify && progressionOf(st).mode === "qualifiers" ? (() => {
         const t = effectiveTransition(st, prev);
         const poolCount = prev.kind === "pools" ? prev.pools ?? 1 : 1;
         const errs = transitionIssues(t, poolCount).filter((i) => i.level === "error");

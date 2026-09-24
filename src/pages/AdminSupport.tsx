@@ -77,7 +77,7 @@ function statusBadge(status: string) {
 }
 
 export default function AdminSupport() {
-  const [view, setView] = useState<"inbox" | "ai">("inbox");
+  const [view, setView] = useState<"inbox" | "ai">(() => (new URLSearchParams(window.location.search).get("view") === "ai" ? "ai" : "inbox"));
   const { user } = useAuth();
   const { data: threads, isLoading } = useAdminSupportThreads(true);
   const send = useSendSupportMessage();
@@ -240,7 +240,7 @@ export default function AdminSupport() {
   const viewToggle = (
     <div className="px-4 pb-2 flex gap-2">
       <Button size="sm" variant={view === "inbox" ? "default" : "outline"} onClick={() => setView("inbox")}>Tickets</Button>
-      <Button size="sm" variant={view === "ai" ? "default" : "outline"} onClick={() => setView("ai")}>AI Activity (beta)</Button>
+      <Button size="sm" variant={view === "ai" ? "default" : "outline"} onClick={() => setView("ai")}>AI Activity (beta) — completed actions, escalations, failures</Button>
     </div>
   );
 

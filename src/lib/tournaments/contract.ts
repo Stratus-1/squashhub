@@ -322,7 +322,7 @@ export function canGenerateStage(opts: {
 }): { ok: true } | { ok: false; code: string; reason: string } {
   const { stage } = opts;
   if (opts.existing.some((f) => f.stageId === stage.id)) return { ok: false, code: "exists", reason: `${stage.name} already exists.` };
-  if ((stage.kind === "knockout" || stage.kind === "placement") && !stage.qualify?.mapping)
+  if ((stage.kind === "knockout" || stage.kind === "placement") && !stage.qualify?.mapping && !stage.qualify?.transition)
     return { ok: false, code: "no_mapping", reason: "No qualification/mapping rule." };
   const pending = opts.prerequisite.filter((f) => f.a && f.b && !isDecided(f)).length;
   if (pending > 0 && !opts.allowPlaceholders) return { ok: false, code: "prereq", reason: `${pending} prerequisite result(s) outstanding.` };

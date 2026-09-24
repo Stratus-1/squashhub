@@ -307,7 +307,7 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
             </div>
             <div className="flex flex-col items-end justify-end gap-1">
               <VoiceInputButton clubId={scope.kind === "club" ? scope.clubId : undefined} disabled={thinking}
-                onError={setVoiceErr}
+                onError={(m) => { if (m) voiceBase.current = null; setVoiceErr(m); }}
                 onTranscript={(t, final) => {
                   if (voiceBase.current === null) voiceBase.current = input.trim() ? `${input.trim()} ` : "";
                   setInput(voiceBase.current + t);

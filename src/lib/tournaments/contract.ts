@@ -20,6 +20,16 @@ export type QualifierMapping = "cross_pool" | "reseed" | "same_pool";
 
 export type SwissTieBreak = "buchholz" | "sonneborn_berger" | "seed";
 
+/** How entrants move from the previous stage into this one. Stage 1 always takes the entries. */
+export type ProgressionMode = "qualifiers" | "all_continue" | "form_pairs";
+export interface Progression {
+  mode: ProgressionMode;
+  /** all_continue / form_pairs: whether earlier points count in this stage's table. */
+  standings?: "carry" | "reset" | null;
+  /** form_pairs: fold = 1st+last, 2nd+second-last; positions = 1+2, 3+4; manual = owner sets pairs at transition. */
+  pairing?: "fold" | "positions" | "manual" | null;
+}
+
 export interface PlannedStage {
   id: string;
   order: number;
@@ -36,6 +46,10 @@ export interface PlannedStage {
   legs?: 1 | 2;
   /** knockout: also play a 3rd/4th place match between the losing semi-finalists */
   thirdPlace?: boolean;
+  /** singles / doubles for this stage (default = division unit) */
+  discipline?: "singles" | "doubles";
+  /** later stages: explicit progression rule (default for knockout = qualifiers) */
+  progression?: Progression | null;
   /** knockout draw size */
   drawSize?: number;
   schedule: { rule: ScheduleRule | null; date?: string | null; deadline?: string | null; start?: string | null; end?: string | null };
@@ -51,7 +65,13 @@ export interface DivisionContract {
   seeding: { source: string | null; method: "snake" | "banded" | "random" | null };
   stages: PlannedStage[];
   placements: "champion" | "all_positions";
+  /** Final table: last stage only, or points added up across stages. */
+  finalStandings?: "last_stage" | "cumulative";
 }
+
+export const progressionOf = (s: PlannedStage): Progression =>
+  s.progression ?? { mode: s.kind === "knockout" || s.kind === "placement" ? "qualifiers" : "all_continue", standings: null };
+export const disciplineOf = (c: DivisionContract, s: PlannedStage) => s.discipline ?? (c.unit === "pairs" ? "doubles" : "singles");
 
 export interface ContractIssue { level: "error" | "warning"; code: string; message: string; stageId?: string }
 
@@ -72,17 +92,36 @@ export function contractIssues(c: DivisionContract): ContractIssue[] {
     if (s.schedule.rule === "window" && (!s.schedule.start || !s.schedule.end)) e("schedule_window", `${s.name}: window needs a start and end.`, s.id);
     if (s.kind === "pools" && (!s.pools || !s.poolSize)) e("pools", `${s.name}: pool count and pool size are required.`, s.id);
     if (s.kind === "swiss" && !s.swissRounds) e("swiss_rounds", `${s.name}: the number of Swiss rounds must be set.`, s.id);
-    if ((s.kind === "knockout" || s.kind === "placement") && i > 0) {
+    if (i === 0) {
+      if (disciplineOf(c, s) === "doubles" && c.unit !== "pairs") e("first_doubles", `${s.name}: a first-stage doubles event needs pair entries (set the division to doubles).`, s.id);
+      return;
+    }
+    const prev = c.stages[i - 1];
+    const p = progressionOf(s);
+    const dPrev = disciplineOf(c, prev), dCur = disciplineOf(c, s);
+    if (!s.generation) e("playoff_generation", `${s.name}: choose automatic or owner-approved generation.`, s.id);
+    if (dPrev === "doubles" && dCur === "singles") e("doubles_to_singles", `${s.name}: a doubles stage can't feed a singles stage.`, s.id);
+    if (dPrev === "singles" && dCur === "doubles" && p.mode !== "form_pairs")
+      e("pairs_model", `${s.name}: singles players can't become doubles pairs without a pairing rule — choose "Form pairs".`, s.id);
+    if (p.mode === "form_pairs") {
+      if (!(dPrev === "singles" && dCur === "doubles")) e("form_pairs_scope", `${s.name}: forming pairs only applies from a singles stage to a doubles stage.`, s.id);
+      if (!p.pairing) e("pairing", `${s.name}: choose how pairs are formed.`, s.id);
+      if (!p.standings) e("standings_rule", `${s.name}: choose whether points carry forward or reset.`, s.id);
+      if (c.expectedEntrants && c.expectedEntrants % 2 === 1) e("odd_pairs", `${s.name}: ${c.expectedEntrants} players can't all be paired — an even number is needed.`, s.id);
+    }
+    if (p.mode === "all_continue" && !p.standings) e("standings_rule", `${s.name}: choose whether points carry forward or reset.`, s.id);
+    if (p.mode === "qualifiers") {
       if (!s.qualify || !s.qualify.perPool) e("playoff_qualify", `${s.name}: who qualifies is not defined.`, s.id);
-      else if (!s.qualify.mapping) e("playoff_mapping", `${s.name}: how qualifiers are mapped/seeded is not defined.`, s.id);
-      if (!s.generation) e("playoff_generation", `${s.name}: choose automatic or owner-approved generation.`, s.id);
-      const prev = c.stages[i - 1];
+      else if (s.kind === "knockout" && !s.qualify.mapping) e("playoff_mapping", `${s.name}: how qualifiers are mapped/seeded is not defined.`, s.id);
+      if (prev.kind !== "pools" && prev.kind !== "round_robin") e("qualifier_source", `${s.name}: qualifiers can only be taken from a round robin or pool stage.`, s.id);
+      if (s.kind !== "knockout") e("qualifier_target", `${s.name}: qualifiers currently feed a knockout only.`, s.id);
       if (s.qualify?.perPool && prev.pools) {
         const q = s.qualify.perPool * prev.pools;
         if (s.kind === "knockout" && s.drawSize && q > s.drawSize) e("draw_too_small", `${s.name}: ${q} qualifiers but a draw of ${s.drawSize}.`, s.id);
         if (s.kind === "knockout" && !isPow2(q)) out.push({ level: "warning", code: "byes", message: `${s.name}: ${q} qualifiers → ${nextPow2(q) - q} byes.`, stageId: s.id });
       }
     }
+    if (prev.kind === "knockout" && p.mode !== "qualifiers") e("after_knockout", `${s.name}: a knockout eliminates players, so a later stage can't continue with everyone.`, s.id);
   });
   const dates = c.stages.map((s) => s.schedule.date || s.schedule.deadline || s.schedule.end).filter(Boolean) as string[];
   for (let i = 1; i < dates.length; i++) if (dates[i] < dates[i - 1]) e("date_order", "A later stage is dated before an earlier stage.");

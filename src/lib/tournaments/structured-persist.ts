@@ -130,7 +130,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
   void firstDiv;
   const rows = fixtures.map((f) => {
     const sk = `${f.divisionId}/${f.stageId}`;
-    const poolIdx = f.poolId ? Number(f.poolId.split(":pool")[1]) - 1 : null;
+    const poolIdx = f.poolId ? Number(/pool(\d+)$/.exec(f.poolId)![1]) - 1 : null;
     const [a1, a2] = splitUnit(f.a); const [b1, b2] = splitUnit(f.b);
     return {
       champ_id: tid, group_number: spec.divisions.findIndex((d) => d.divisionId === f.divisionId) + 1,

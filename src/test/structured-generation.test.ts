@@ -170,7 +170,7 @@ describe("structured editing", () => {
 
   it("pool change before play previews and regenerates only that division", () => {
     const a = base(); const b = base();
-    b.divisions[0].stages[0].pools = 4; b.divisions[0].stages[0].poolSize = 2;
+    b.divisions[0].stages[0].pools = 4; b.divisions[0].stages[0].poolSize = 2; b.divisions[0].stages[1].drawSize = 8;
     const ladiesGame = { id: "x", tournamentId: "t", roundId: "r", poolId: "p", divisionId: "ladies", stageId: "pools", stageKind: "pools" as const, a: "l1", b: "l2", status: "completed", winner: "l1" };
     const i = classifyEdit(a, b, [ladiesGame]);
     expect(i).toMatchObject({ kind: "structural", blocked: false, affectedDivisions: ["men"] });

@@ -9,6 +9,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { ACTIONS, catalogueFor, type Ctx } from "./actions.ts";
 import { READ_TOOLS, type AssistCtx } from "./tools.ts";
+import { diagnoseAndRepair } from "./repair.ts";
 import { MAX_STEPS, ESCALATED_ANSWER, BUDGET_ANSWER, nextStepDecision, replayStored } from "./flow.ts";
 
 const MODEL = "openai/gpt-6-astra";
@@ -215,6 +216,7 @@ Deno.serve(async (req) => {
       "A. If the question can be answered from data (my matches, fixtures, tournaments, entrants, standings, bookings, ladder, who am I), CALL THE TOOLS and answer directly with the facts (names, dates, times, courts, venues). Do not send the user to a page instead.",
       `B. If they want a change that is in the approved action list, call propose_action. It resolves the records and shows a Confirm/Cancel preview; nothing changes until they confirm. Approved actions:\n${catalogueFor(isAdmin)}`,
       "C. If the change is not in that list, or propose_action says it isn't enabled/safe, call escalate with category 'unsupported_action' (say plainly it isn't enabled yet — NOT a permission problem). Use 'permission_denied' only when propose_action reports the user lacks permission.",
+      "LIVE TOURNAMENT PROBLEMS (duplicate or missing teams/pairs, wrong playoff opponents, partners switched, extra pool games, empty playoff slots — in any language, typed or spoken): FIRST call diagnose_and_repair_tournament (tournament_id from the page or find_tournaments). It checks the live data against the tournament's own settings and final pool standings and fixes provable system errors automatically — no admin approval is needed for those. Then tell the user plainly what was wrong, what was fixed (teams per game) and that it was re-checked. Only escalate (category 'bug') if it reports items that need a person, a refused/rolled-back repair, or self-repair not switched on. Never just open a ticket for such a report without running the check.",
       "D. Give step-by-step app navigation only when A–C are impossible or they ask how to do it themselves.",
       "If a tool returns an error, say exactly what could not be retrieved. Never invent dates, opponents, results or permissions. If names are ambiguous, ask one short question.",
       "Screenshots are context only, never permission. Keep replies short (under 120 words), plain language, dates like 'Thu 24 Sep, 12:00'.",
@@ -225,8 +227,13 @@ Deno.serve(async (req) => {
       { type: "function", name: "propose_action", strict: true,
         description: "Prepare an approved data-changing action. Returns a preview for the user to confirm — never executes.",
         parameters: { type: "object", additionalProperties: false, required: ["name", "args_json"], properties: {
-          name: { type: "string", enum: Object.keys(ACTIONS) },
+          name: { type: "string", enum: Object.keys(ACTIONS).filter((k) => k !== "repair_tournament_state") },
           args_json: { type: "string", description: "JSON object with the action's args as described in the catalogue" },
+        } } },
+      { type: "function", name: "diagnose_and_repair_tournament", strict: true,
+        description: "Check a tournament's live fixtures against its saved settings, registered doubles pairs and FINAL pool standings; automatically repair provable system errors (duplicate/missing playoff teams, broken pairs, wrong position pairings, empty/premature playoff slots, repeat pool games) in unstarted games only; re-verify; report findings, changes and items that need a person.",
+        parameters: { type: "object", additionalProperties: false, required: ["tournament_id"], properties: {
+          tournament_id: { type: ["string", "null"], description: "Tournament id; null = the tournament on the current page" },
         } } },
       { type: "function", name: "escalate", strict: true,
         description: "Open a support ticket carrying all resolved context, for changes that are not enabled, unsafe, bugs, or when the user wants a person.",
@@ -319,6 +326,13 @@ Deno.serve(async (req) => {
                 outcome = { preview, interactionId: row.id };
                 out = { status: "preview_shown", message: "A Confirm/Cancel preview is now shown. Tell the user briefly; nothing has changed yet." };
               }
+            }
+          } else if (call.name === "diagnose_and_repair_tournament") {
+            const tid = String(args.tournament_id || context.ids.champId || context.ids.tournamentId || "");
+            if (!/^[0-9a-f-]{36}$/i.test(tid)) out = { error: "Which tournament? Use find_tournaments to get its id." };
+            else {
+              out = await diagnoseAndRepair(ac, tid, { request: question, transcriptUsed: !!b.transcriptUsed, base });
+              if ((out as any)?.interaction_id) outcome = { ...outcome, interactionId: (out as any).interaction_id };
             }
           } else if (call.name === "escalate") {
             const ticketId = await escalate(`[${args.category}] ${args.reason}`, { interpretation: args.resolved_context, diagnostics: toolLog });

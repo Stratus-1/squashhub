@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * One tournament platform — shared hooks used at club, association and
@@ -415,6 +416,20 @@ export function useCreateOwnedTournament() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tournaments-by-owner"] });
       qc.invalidateQueries({ queryKey: ["club-champs"] });
+    },
+  });
+}
+
+/** Real, active court records at candidate host clubs (only clubs the caller may host at). */
+export function useHostCourts(clubIds: string[]) {
+  const key = [...clubIds].sort().join(",");
+  return useQuery({
+    queryKey: ["tournament-host-courts", key],
+    enabled: clubIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("tournament_host_courts", { _club_ids: clubIds });
+      if (error) throw error;
+      return (data || []) as import("@/lib/smart-builder/venues").CourtLite[];
     },
   });
 }

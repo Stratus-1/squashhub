@@ -35,6 +35,8 @@ export interface EngineFixture extends FixtureRow {
   roundId: string;
   poolId: string | null;
   slot?: number;
+  /** Real court record ID; must be one of the tournament's selected courts (tournament_venues.court_ids). */
+  courtId?: number | null;
 }
 
 const poolId = (div: string, stage: string, i: number) => `${div}:${stage}:pool${i + 1}`;

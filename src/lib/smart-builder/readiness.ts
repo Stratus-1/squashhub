@@ -8,7 +8,7 @@ import type { ValidationResult } from "./validate";
 import type { ExistingMapping } from "./to-existing";
 import { AUDIENCE_OPTIONS, SEEDING_LABELS, coverageSentence, isAudienceValid, recommendSeeding, type EventScope } from "./scope";
 import { definitionDateIssues } from "./dates";
-import { SCOPE_LABEL, eventVenues, venuesOutsideSet, venuesValid } from "./venues";
+import { SCOPE_LABEL, eventVenues, selectedCourtPool, venuesOutsideSet, venuesValid } from "./venues";
 import { isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
 
 export type ReadinessTab = "design" | "players" | "schedule" | "invitations" | "review";
@@ -94,7 +94,7 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
   const ven = eventVenues(def);
   event.push({ id: "venues", label: "Venue(s)", tab: "design", field: "event.venues",
     state: venuesValid(def) ? "complete" : "missing",
-    detail: def.event?.noVenue ? "No physical venue needed" : ven.names.length ? ven.names.join(", ") : "Not chosen",
+    detail: def.event?.noVenue ? "No physical venue needed" : (def.event?.venuesStale ?? []).length ? "Some venues aren't under the current owner — review them" : ven.names.length ? `${ven.names.join(", ")} · ${selectedCourtPool(def).length} court(s)` : "Not chosen",
     ask: "Where may this tournament be played — one venue or several?" });
   const outside = venuesOutsideSet(def);
   if (outside.length) event.push({ id: "venue_outside", label: "Schedule venues", tab: "schedule", field: "defaults.venues",
@@ -161,8 +161,8 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     const gaps: string[] = [];
     if (stage.schedule.mode === "unset") gaps.push("how it's scheduled");
     if (need.dates && !e.startDate.value && !e.endDate.value && !(stage.schedule.roundDates?.length)) gaps.push("dates");
-    if (need.venue && !(e.venueNames.value?.length)) gaps.push("venue");
-    if (need.courts && !e.courtsPerVenue.value) gaps.push("courts");
+    if (need.venue && !(e.venueNames.value?.length) && !eventVenues(def).clubIds.length) gaps.push("venue");
+    if (need.courts && !e.courtsPerVenue.value && !selectedCourtPool(def).length) gaps.push("courts");
     if (need.matchMinutes && !e.matchMinutes.value) gaps.push("match minutes");
     schedule.push({ id: `stage_${stage.id}`, label: `${def.divisions.length > 1 ? `${division.name} · ` : ""}${stage.name}`, tab: "schedule", field: `stage.${stage.id}`,
       state: gaps.length ? "missing" : "complete", detail: gaps.length ? `Needs ${gaps.join(", ")}` : "Scheduled",

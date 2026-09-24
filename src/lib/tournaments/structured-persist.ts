@@ -198,6 +198,13 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     for (const f of fixtures.filter((x) => x.divisionId === d.divisionId))
       for (const u of [f.a, f.b]) if (u && !ents.has(u)) throw new IntegrityError("cross_division", `${u} is not an entrant of ${d.label}.`);
   }
+  // Courts: only the tournament's selected court records (Design venue pool). Never invent one.
+  if (fixtures.some((f) => f.courtId != null)) {
+    const venues = await db.select("tournament_venues", { tournament_id: tid });
+    const pool = new Set<number>(venues.flatMap((v) => (v.court_ids ?? []) as number[]));
+    const bad = fixtures.find((f) => f.courtId != null && !pool.has(f.courtId));
+    if (bad) throw new IntegrityError("court_not_selected", `Court ${bad.courtId} is not one of the tournament's selected courts.`);
+  }
   const roundIds: Record<string, string> = {};
   const [firstDiv] = spec.divisions;
   for (const f of fixtures) {
@@ -225,6 +232,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk],
       pool_id: poolIdx == null ? null : ids.pool[`${sk}/${poolIdx}`] ?? (() => { throw new IntegrityError("no_pool", "Pool not persisted."); })(),
       round_id: roundIds[`${f.divisionId}/${f.stageId}/${f.roundId}`],
+      ...(f.courtId != null ? { court_id: f.courtId } : {}),
     };
   });
   if (rows.some((r) => !r.division_id || !r.stage_id || !r.round_id)) throw new IntegrityError("identity", "Structural identity unresolved.");

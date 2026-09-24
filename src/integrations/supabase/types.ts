@@ -6445,6 +6445,7 @@ export type Database = {
       }
       courts: {
         Row: {
+          active: boolean
           club_id: string | null
           fluss_device_id: string | null
           id: number
@@ -6457,6 +6458,7 @@ export type Database = {
           venue_name: string | null
         }
         Insert: {
+          active?: boolean
           club_id?: string | null
           fluss_device_id?: string | null
           id?: number
@@ -6469,6 +6471,7 @@ export type Database = {
           venue_name?: string | null
         }
         Update: {
+          active?: boolean
           club_id?: string | null
           fluss_device_id?: string | null
           id?: number
@@ -15767,6 +15770,10 @@ export type Database = {
         Args: { _club_id: string; _tournament_id: string; _uid: string }
         Returns: boolean
       }
+      can_host_at_club: {
+        Args: { _club: string; _uid: string }
+        Returns: boolean
+      }
       can_manage_family_group: { Args: { _group_id: string }; Returns: boolean }
       can_manage_tournament:
         | { Args: { _tournament_id: string }; Returns: boolean }
@@ -17604,6 +17611,16 @@ export type Database = {
           owner_net_cents: number
           owner_org_id: string
           platform_fee_cents: number
+        }[]
+      }
+      tournament_host_courts: {
+        Args: { _club_ids: string[] }
+        Returns: {
+          club_id: string
+          court_id: number
+          is_external: boolean
+          name: string
+          venue_name: string
         }[]
       }
       tournament_invite_directory: {

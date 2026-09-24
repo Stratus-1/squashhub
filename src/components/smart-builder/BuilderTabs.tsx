@@ -24,7 +24,7 @@ import type { ExistingMapping } from "@/lib/smart-builder/to-existing";
 import { RESULT_NONE_NOTE, scheduleNeeds, type Readiness, type ItemState, type ReadinessItem } from "@/lib/smart-builder/readiness";
 import { normaliseGroupInviteUrl, isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
 import { StageWindowControl, TournamentDatesDisplay } from "./DateControls";
-import { eventVenues, SCOPE_LABEL } from "@/lib/smart-builder/venues";
+import { eventVenues, rotationVenueIds, SCOPE_LABEL, selectedCourtPool } from "@/lib/smart-builder/venues";
 import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import type { BuilderScope } from "@/pages/admin/SmartTournamentBuilder";
@@ -236,11 +236,11 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
           <Field label="Start time" tag="Optional"><Input type="time" className={f} value={d.startTime ?? ""} onChange={(e) => setD({ startTime: e.target.value || null })} /></Field>
           <VenuePicker def={def} field="defaults.venues" ids={(d as any).venueClubIds} names={d.venueNames} tag="Optional"
             onChange={(ids, names) => setD({ venueClubIds: ids, venueNames: names } as any)} />
-          <Field label="Courts / venue" tag="Optional"><Input className={f} inputMode="numeric" value={d.courtsPerVenue ?? ""} onChange={(e) => setD({ courtsPerVenue: e.target.value ? Number(e.target.value) : null })} /></Field>
+          <CourtPoolSummary def={def} venueIds={(d as any).venueClubIds} />
           <Field label="Match minutes" tag="Optional"><Input className={f} inputMode="numeric" value={d.matchMinutes ?? ""} onChange={(e) => setD({ matchMinutes: e.target.value ? Number(e.target.value) : null })} /></Field>
         </div>
         <div className="flex flex-wrap gap-4 text-[11px]">
-          <label className="flex items-center gap-1"><input type="checkbox" checked={!!d.rotateVenues} onChange={(e) => setD({ rotateVenues: e.target.checked })} />Rotate venues</label>
+          {rotationVenueIds(def).length > 1 && <label className="flex items-center gap-1"><input type="checkbox" checked={!!d.rotateVenues} onChange={(e) => setD({ rotateVenues: e.target.checked })} />Rotate between the {rotationVenueIds(def).length} selected venues</label>}
           <label className="flex items-center gap-1"><input type="checkbox" checked={!!d.provisionalBookings} onChange={(e) => setD({ provisionalBookings: e.target.checked })} />Hold courts provisionally once created</label>
           <label className="flex items-center gap-1">Session minutes <span className="text-white/40">(optional, for capacity)</span>
             <Input className={cn(f, "w-16 h-6")} inputMode="numeric" value={d.sessionMinutes ?? ""} onChange={(e) => setD({ sessionMinutes: e.target.value ? Number(e.target.value) : null })} /></label>
@@ -298,6 +298,17 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Courts come from the real court records selected on Design — never typed in here. */
+function CourtPoolSummary({ def, venueIds }: { def: TournamentDefinition; venueIds?: string[] | null }) {
+  const pool = selectedCourtPool(def).filter((c) => !venueIds?.length || venueIds.includes(c.clubId));
+  return (
+    <div className="space-y-0.5">
+      <span className="text-[11px] text-white/60">Courts</span>
+      <p className="text-[11px] text-white/80">{def.event?.noVenue ? "No physical venue" : pool.length ? `${pool.length} court${pool.length === 1 ? "" : "s"} selected on Design` : "Choose courts under Venue(s) on Design"}</p>
     </div>
   );
 }
@@ -366,16 +377,14 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
       <VenuePicker def={def} ids={s.venueClubIds} names={s.venueNames} tag={tag(need.venue, s.venueNames, e.venueNames.inherited)}
         inheritedNote={e.venueNames.inherited ? `Default: ${(e.venueNames.value ?? []).join(", ")}` : undefined}
         onChange={(ids, names) => setS(stage.id, { venueClubIds: ids, venueNames: names })} />
-      <Field label="Courts / venue" tag={tag(need.courts, s.courtsPerVenue, e.courtsPerVenue.inherited)}>
-        <Input className={f} inputMode="numeric" placeholder={e.courtsPerVenue.inherited ? `Default ${e.courtsPerVenue.value}` : ""} value={s.courtsPerVenue ?? ""} onChange={(ev) => setS(stage.id, { courtsPerVenue: ev.target.value ? Number(ev.target.value) : null })} />
-      </Field>
+      <CourtPoolSummary def={def} venueIds={s.venueClubIds?.length ? s.venueClubIds : (def.scheduleDefaults as any)?.venueClubIds} />
       <Field label="Match minutes" tag={tag(need.matchMinutes, s.matchMinutes, e.matchMinutes.inherited)}>
         <Input className={f} inputMode="numeric" placeholder={e.matchMinutes.inherited ? `Default ${e.matchMinutes.value}` : ""} value={s.matchMinutes ?? ""} onChange={(ev) => setS(stage.id, { matchMinutes: ev.target.value ? Number(ev.target.value) : null })} />
       </Field>
       <Field label="Session minutes" tag={need.venue ? (e.sessionMinutes.inherited && s.sessionMinutes == null ? "Inherited" : "Optional") : "Not needed"}>
         <Input className={f} inputMode="numeric" placeholder={e.sessionMinutes.inherited ? `Default ${e.sessionMinutes.value}` : ""} value={s.sessionMinutes ?? ""} onChange={(ev) => setS(stage.id, { sessionMinutes: ev.target.value ? Number(ev.target.value) : null })} />
       </Field>
-      <label className="flex items-center gap-1 pt-4 text-[11px]"><input type="checkbox" checked={!!s.rotateVenues} onChange={(ev) => setS(stage.id, { rotateVenues: ev.target.checked })} />Rotate venues</label>
+      {rotationVenueIds(def).length > 1 && <label className="flex items-center gap-1 pt-4 text-[11px]"><input type="checkbox" checked={!!s.rotateVenues} onChange={(ev) => setS(stage.id, { rotateVenues: ev.target.checked })} />Rotate venues</label>}
     </div>
   );
 }

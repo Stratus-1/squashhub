@@ -310,6 +310,12 @@ export type GroupStageControl = {
 
 const DONE = new Set(["completed", "complete", "walkover", "forfeit"]);
 
+/** Knockout ("ko") and placement play-off ("playoff_*") rows. */
+export const isPostPoolStage = (stage: unknown): boolean => {
+  const s = String(stage || "");
+  return s === "ko" || s.startsWith("playoff_");
+};
+
 /**
  * Pool/round-robin stage of a division, for the hand-off into the knockout.
  * Only meaningful before any knockout row exists for that division.
@@ -328,8 +334,10 @@ export function groupStageControl(
   for (const m of rows) {
     for (const id of [m.player_a_member_id, m.player_b_member_id]) if (id) players.add(id);
   }
+  // Any persisted knockout OR placement play-off row means the next stage
+  // already exists — never offer to generate it again.
   const hasKo = (matches as any[]).some(
-    (m) => (m.stage || "") === "ko" && Number(m.group_number) === Number(groupNumber),
+    (m) => isPostPoolStage(m.stage) && Number(m.group_number) === Number(groupNumber),
   );
   return {
     groupNumber,
@@ -411,6 +419,28 @@ export function tournamentNextAction(
       groupNumber: null,
       section: null,
       complete: true,
+    };
+  }
+
+  // Placement / legacy play-off rows (playoff_*) — lifecycle is derived
+  // from the persisted rows, not from any "generated" flag.
+  const playoffRows = (matches as any[]).filter((m) => String(m.stage || "").startsWith("playoff_") && !m.is_bye);
+  if (sections.length === 0 && playoffRows.length > 0) {
+    const done = playoffRows.filter((m) => DONE.has(String(m.status || "").toLowerCase())).length;
+    const allDone = done === playoffRows.length;
+    return {
+      stage: allDone ? "complete" : "round_in_progress",
+      status: allDone ? "Tournament complete" : "Play-offs in progress",
+      headline: allDone
+        ? "All play-offs are played — final positions are decided."
+        : `Play-offs — ${done} of ${playoffRows.length} results entered.`,
+      ctaLabel: allDone ? null : "Enter remaining results",
+      action: allDone ? "none" : "await_results",
+      disabled: false,
+      blockedReason: null,
+      groupNumber: null,
+      section: null,
+      complete: allDone,
     };
   }
 

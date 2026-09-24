@@ -8,9 +8,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { StructuredEditorDialog } from "./StructuredEditorDialog";
 import {
-  atomically, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
+  atomically, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
-import type { PlayoffPreview, TournamentSpec } from "@/lib/tournaments/engine-service";
+import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
 /** Operate panel for structured (Beta) tournaments. All actions go through the structured engine. */
 export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
@@ -60,6 +60,18 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
           </select>
         )}
       </div>
+      {matches.length > 0 && spec.divisions.map((d, di) => d.stages.filter((s) => s.kind === "swiss").map((s) => (
+        <div key={`sw-${d.divisionId}/${s.id}`} className="flex items-center gap-2">
+          <span className="text-muted-foreground">{d.label} · {s.name}</span>
+          <Button size="sm" variant="outline" disabled={!!busy} onClick={() => run(`sw${s.id}`, () => atomically(supabaseDb, champId, commitStructured, async (db) => {
+            const full = await loadEntrants(db, champId, spec);
+            const div = full.divisions[di];
+            const rows = matches.filter((m) => m.group_number === di + 1).map((m) => toFixtureRow(d.divisionId, m, d.stages.find((x) => x.id === m.stage_key)?.kind ?? "swiss"));
+            const next = nextSwissRound(champId, div, s.id, rows);
+            await insertFixtures(db, champId, full, await persistStructure(db, champId, full), next, rows);
+          }), "Next Swiss round created")}>Next Swiss round</Button>
+        </div>
+      )))}
       {spec.divisions.map((d) => d.stages.filter((s) => s.order > 0).map((s) => {
         const exists = stages.some((x: any) => x.spec_key === s.id && matches.some((m) => m.stage_id === x.id));
         const koRows = matches.filter((m) => m.stage_key === s.id && m.group_number === spec.divisions.indexOf(d) + 1);
@@ -83,8 +95,8 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
                   winner: !m.winner_member_id ? null : [m.player_a_member_id, m.partner_a_member_id].includes(m.winner_member_id)
                     ? (m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id)
                     : (m.partner_b_member_id ? `${m.player_b_member_id}+${m.partner_b_member_id}` : m.player_b_member_id),
-                  slot: m.bracket_position }));
-                const next = nextKnockoutRound(champId, d.divisionId, s.id, rows);
+                  slot: m.bracket_position, thirdPlace: m.stage_label === "3rd place" || undefined }));
+                const next = nextKnockoutRound(champId, d.divisionId, s.id, rows, { thirdPlace: !!s.thirdPlace });
                 const ids = await persistStructure(db, champId, full);
                 await insertFixtures(db, champId, full, ids, next, rows);
                 });

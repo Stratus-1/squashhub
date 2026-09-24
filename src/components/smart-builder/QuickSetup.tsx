@@ -46,6 +46,30 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
             <option value="">Not decided</option><option value="ranking">Ranking</option><option value="ladder">Club ladder</option><option value="manual">I'll seed manually</option><option value="none">No seeding</option>
           </select>
         </Q>
+        {(def.quickPath === "round_robin" || q.pools) && (
+          <Q label={q.pools ? "In each pool, play each other" : "Play each other"}>
+            <select className={sel} value={first.legs ?? 1} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[0].legs = Number(e.target.value) === 2 ? 2 : 1; })}>
+              <option value={1}>Once</option><option value={2}>Twice</option>
+            </select>
+          </Q>
+        )}
+        {def.quickPath === "knockout" && (
+          <Q label="3rd / 4th place match">
+            <select className={sel} value={first.thirdPlace ? "yes" : "no"} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[0].thirdPlace = e.target.value === "yes"; })}>
+              <option value="no">No</option><option value="yes">Yes — losing semi-finalists play off</option>
+            </select>
+          </Q>
+        )}
+        {q.swiss && (
+          <Q label="Tie-breaks (after wins)">
+            <select className={sel} value={(first.tieBreaks ?? []).join(",")} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[0].tieBreaks = e.target.value ? (e.target.value.split(",") as any) : []; })}>
+              <option value="">Seed only</option>
+              <option value="buchholz">Opponents' wins (Buchholz)</option>
+              <option value="buchholz,sonneborn_berger">Buchholz, then wins over stronger opponents (Sonneborn-Berger)</option>
+              <option value="sonneborn_berger,buchholz">Sonneborn-Berger, then Buchholz</option>
+            </select>
+          </Q>
+        )}
         {q.swiss && (
           <Q label="Number of Swiss rounds">
             <Input className={f} inputMode="numeric" value={first.swissRounds ?? ""} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[0].swissRounds = e.target.value ? Number(e.target.value) : null; })} />
@@ -115,6 +139,11 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
           <Q label="Create play-off games">
             <select className={sel} value={po.generation ?? ""} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[1].generation = (e.target.value || null) as any; })}>
               <option value="">Not decided</option><option value="owner_approval">After I preview and confirm</option><option value="automatic">Automatically when results are in</option>
+            </select>
+          </Q>
+          <Q label="3rd / 4th place match">
+            <select className={sel} value={po.thirdPlace ? "yes" : "no"} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[1].thirdPlace = e.target.value === "yes"; })}>
+              <option value="no">No</option><option value="yes">Yes</option>
             </select>
           </Q>
           <Q label="Play-off courts & times">

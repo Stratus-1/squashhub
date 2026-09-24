@@ -418,3 +418,17 @@ export function useCreateOwnedTournament() {
     },
   });
 }
+
+/** Real, active court records at candidate host clubs (only clubs the caller may host at). */
+export function useHostCourts(clubIds: string[]) {
+  const key = [...clubIds].sort().join(",");
+  return useQuery({
+    queryKey: ["tournament-host-courts", key],
+    enabled: clubIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("tournament_host_courts", { _club_ids: clubIds });
+      if (error) throw error;
+      return (data || []) as import("@/lib/smart-builder/venues").CourtLite[];
+    },
+  });
+}

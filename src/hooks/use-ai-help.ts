@@ -30,7 +30,7 @@ export type AiHelpReply = {
 export function useAiHelpBeta() {
   const { data: clubData } = useMyClub();
   const isSuper = useIsSuperAdmin();
-  const clubId = clubData?.club?.id as string | undefined;
+  const clubId = ((clubData as any)?.club_id ?? (clubData as any)?.club?.id) as string | undefined;
   const q = useQuery({
     queryKey: ["club-beta", AI_ACTIONS_FEATURE, clubId],
     queryFn: async () => {

@@ -6,7 +6,8 @@
  */
 import { IntegrityError, assertNoReentry, contractIssues, isDecided, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
-import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
+import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
+import { effectiveTransition, transitionIssues } from "./transition";
 import type { TournamentDefinition } from "../smart-builder/definition";
 
 /* ───── spec from the Beta definition ───── */
@@ -132,7 +133,16 @@ export async function persistStructure(db: Db, tid: string, spec: TournamentSpec
     ids.division[d.divisionId] = div.id;
     for (const st of d.stages) {
       let [row] = await db.select("tournament_stages", { division_id: div.id, spec_key: st.id });
-      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, qualify: st.qualify, schedule: st.schedule } }]))[0];
+      const prev = d.stages.find((s) => s.order === st.order - 1);
+      // Explicit, persisted progression rule: stable stage ids + pool indexes, never display names.
+      const tr = prev && st.qualify ? (() => {
+        const t = effectiveTransition(st, prev);
+        const poolCount = prev.kind === "pools" ? prev.pools ?? 1 : 1;
+        const errs = transitionIssues(t, poolCount).filter((i) => i.level === "error");
+        if (errs.length) throw new IntegrityError("transition", `${d.label} · ${st.name}: ${errs.map((e) => e.message).join("; ")}`);
+        return { ...t, source_stage_id: ids.stage[`${d.divisionId}/${prev.id}`] ?? null, destination_stage_key: st.id };
+      })() : null;
+      row ??= (await db.insert("tournament_stages", [{ tournament_id: tid, division_id: div.id, spec_key: st.id, label: st.name, kind: st.kind, stage_order: st.order, generation: st.generation ?? "owner_approval", config: { pools: st.pools, poolSize: st.poolSize, drawSize: st.drawSize, swissRounds: st.swissRounds, qualify: st.qualify, transition: tr, schedule: st.schedule } }]))[0];
       const sk = `${d.divisionId}/${st.id}`;
       ids.stage[sk] = row.id; ids.stageKind[sk] = st.kind;
       if (st.kind === "pools") for (let i = 0; i < (st.pools ?? 1); i++) {

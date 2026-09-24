@@ -150,14 +150,28 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
       </Dialog>
       <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Confirm play-offs</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{preview?.p.resolved ? "Confirm play-offs" : "Play-off mapping"}</DialogTitle></DialogHeader>
+          {preview && (
+            <p className="text-xs text-muted-foreground">
+              {preview.p.transition?.method === "cross_pool"
+                ? `Cross-pool: ${pairingLabel(preview.p.transition.poolPairs ?? [], preview.labels)}, ${preview.p.transition.pairing === "same_position" ? "same position vs same position" : "winner vs runner-up"}.`
+                : preview.p.transition?.method === "manual" ? "Mapping set by you, place by place."
+                  : "All qualifiers reseeded into one field."}
+            </p>
+          )}
           <ul className="text-sm space-y-1">
-            {preview?.p.qualifiers.map((q) => <li key={q.slot}>Match {q.slot}: {unitName(q.a)} vs {unitName(q.b)}</li>)}
+            {preview?.p.qualifiers.map((q) => (
+              <li key={q.slot}>
+                Match {q.slot}: {slotLabel(q.aSlot, preview.labels)} vs {slotLabel(q.bSlot, preview.labels)}
+                {(q.a || q.b) && <span className="text-muted-foreground"> — {unitName(q.a)} vs {unitName(q.b)}</span>}
+              </li>
+            ))}
           </ul>
+          {preview && !preview.p.ok && <p className="text-xs text-destructive">{preview.p.reason}</p>}
           <p className="text-xs text-muted-foreground">These games are created in the knockout stage, not in any pool. Nothing is sent to players.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
-            <Button disabled={!!busy} onClick={() => preview && run("cf", async () => {
+            <Button disabled={!!busy || !preview?.p.ok} onClick={() => preview && run("cf", async () => {
               await atomically(supabaseDb, champId, commitStructured, (db) => confirmStructuredPlayoffs(db, champId, preview.div, preview.stage, true)); setPreview(null);
             }, "Play-offs created")}>Confirm</Button>
           </DialogFooter>

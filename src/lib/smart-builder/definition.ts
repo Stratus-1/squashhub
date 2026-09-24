@@ -104,9 +104,18 @@ export type Section = z.infer<typeof SectionSchema>;
 
 const DivisionSchema = z.object({
   id: z.string(),
+  /** Display label only — never drives logic. */
   name: z.string(),
   eligibility: z.enum(["men", "ladies", "mixed", "open", "open_any_pair"]).default("open"),
-  entry: z.enum(["individual", "pairs"]).default("individual"),
+  entry: z.enum(["individual", "pairs", "teams"]).default("individual"),
+  /** How existing league structure is used (see lib/tournaments/hierarchy.ts). null = not yet decided. */
+  leagueUse: z.enum(["division_allocation", "pool_seeding", "team_allocation", "ignore", "manual"]).nullable().optional(),
+  /** Source league ids when leagueUse = division_allocation. */
+  leagueSourceIds: z.array(z.string()).optional(),
+  /** Optional owner labels for pools, by pool index. Labels only. */
+  poolLabels: z.array(z.string()).optional(),
+  /** Explicit advanced opt-in to differing pool formats inside one stage. */
+  allowMixedPoolFormats: z.boolean().optional(),
   sections: z.array(SectionSchema).default([]),
 });
 export type Division = z.infer<typeof DivisionSchema>;

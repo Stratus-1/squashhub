@@ -41,7 +41,13 @@ export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
             date: (s as any).roundDates?.[0] ?? (s as any).startDate ?? null,
             deadline: (s as any).endDate ?? null, start: (s as any).startDate ?? null, end: (s as any).endDate ?? null,
           },
-          qualify: prev ? { perPool: (def.divisions.flatMap((x) => x.sections.flatMap((y) => y.stages)).find((x) => x.id === prev.id)?.advance?.perGroup) ?? 0, mapping: st.qualifierMapping ?? null } : null,
+          qualify: prev ? {
+            perPool: (def.divisions.flatMap((x) => x.sections.flatMap((y) => y.stages)).find((x) => x.id === prev.id)?.advance?.perGroup) ?? 0,
+            mapping: st.qualifierMapping ?? null,
+            transition: st.qualifierTransition
+              ? { ...st.qualifierTransition, positions: [...st.qualifierTransition.positions], sourceStageId: prev.id, destinationStageId: st.id } as any
+              : null,
+          } : null,
           generation: st.generation ?? (prev ? "owner_approval" : undefined),
         });
       }));

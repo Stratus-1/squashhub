@@ -12,7 +12,7 @@ const MATCH_COLS = "id,champ_id,group_number,pool_number,round_number,stage,brac
 
 export async function loadSnapshot(ac: AssistCtx, champId: string) {
   const [{ data: t }, { data: matches, error: me }, { data: entries }] = await Promise.all([
-    ac.admin.from("club_champs").select("id,name,club_id,participating_club_ids,status,start_date,end_date,scoring_mode,league_formats,league_match_types,league_playoffs,league_playoff_modes,pool_sizes").eq("id", champId).maybeSingle(),
+    ac.admin.from("club_champs").select("id,name,club_id,participating_club_ids,status,start_date,end_date,scoring_mode,match_type,league_formats,league_playoff_modes,pool_sizes").eq("id", champId).maybeSingle(),
     ac.admin.from("club_champs_matches").select(MATCH_COLS).eq("champ_id", champId).limit(2000),
     ac.admin.from("club_champs_entries").select("club_member_id,partner_member_id,group_number").eq("champ_id", champId).limit(2000),
   ]);

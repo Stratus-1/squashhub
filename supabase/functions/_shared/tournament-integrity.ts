@@ -38,6 +38,7 @@ export type ISettings = {
   scoring_mode?: string | null;
   league_formats?: Record<string, string> | null;
   league_match_types?: Record<string, string> | null;
+  match_type?: string | null;
   league_playoffs?: Record<string, boolean> | null;
   league_playoff_modes?: Record<string, string> | null;
   pool_sizes?: Record<string, number[]> | null;
@@ -146,7 +147,7 @@ export function checkTournamentIntegrity(snapshot: ISnapshot): IntegrityReport {
 
   for (const div of divisions) {
     const dk = String(div);
-    const isDoubles = (s.league_match_types?.[dk] ?? "") === "doubles" || snapshot.entries.some((e) => (e.group_number ?? 1) === div && !!e.partner_member_id);
+    const isDoubles = (s.league_match_types?.[dk] ?? s.match_type ?? "").includes("doubles") || snapshot.entries.some((e) => (e.group_number ?? 1) === div && !!e.partner_member_id);
     const pairOf = new Map<string, string | null>();
     for (const e of snapshot.entries.filter((x) => (x.group_number ?? 1) === div)) {
       pairOf.set(e.club_member_id, e.partner_member_id);
@@ -155,7 +156,8 @@ export function checkTournamentIntegrity(snapshot: ISnapshot): IntegrityReport {
     const playoffs = snapshot.matches.filter((m) => (m.group_number ?? 1) === div && m.stage === "playoff_final");
 
     // I4 — fixed pairs must stay intact everywhere (unless rotation is configured).
-    if (isDoubles && !s.doubles_rotation) {
+    const rotating = !!s.doubles_rotation || /rotat/i.test(`${s.match_type ?? ""} ${s.league_formats?.[dk] ?? ""}`);
+    if (isDoubles && !rotating) {
       for (const m of snapshot.matches.filter((x) => (x.group_number ?? 1) === div)) {
         for (const side of ["a", "b"] as const) {
           const p = m[`player_${side}_member_id`], q = m[`partner_${side}_member_id`];

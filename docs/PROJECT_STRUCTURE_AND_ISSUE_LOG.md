@@ -1,3 +1,8 @@
+## 2026-09-24 — Family Doubles standings still showed one table
+
+- **Cause:** The detail page recognized only `round_robin` as a per-division round-robin format, while the saved Family Doubles division uses `single_round_robin`. Its pool count therefore fell back to one even though two pools and pool-numbered fixtures were saved.
+- **Fix:** Recognize `single_round_robin` and `double_round_robin` alongside the legacy name when choosing pool-scoped standings. Existing entries, scores, fixtures and playoff rules are unchanged.
+
 ## 2026-09-22 — NSA tournament venue picker showed no Federation clubs
 
 - **Cause:** The association tenant has many league-association rows. The venue planner used only the first returned row to find its Federation organisation; that row was not linked to the organisation, leaving the tree owner empty.

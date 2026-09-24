@@ -195,6 +195,24 @@ function DraftList({ scope, nav }: { scope: BuilderScope; nav: BuilderNav }) {
   );
 }
 
+function SaveIndicator({ state, onRetry, onReload }: { state: SaveState; onRetry: () => void; onReload: () => void }) {
+  const [, tick] = useState(0);
+  useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 15000); return () => clearInterval(t); }, []);
+  const ago = state.savedAt ? Math.round((Date.now() - state.savedAt) / 1000) : null;
+  const text = state.status === "saving" || state.status === "pending" ? "Saving…"
+    : state.status === "saved" ? (ago != null && ago < 20 ? "Saved just now" : `Saved ${ago != null && ago < 3600 ? `${Math.round(ago / 60) || 1} min ago` : ""}`)
+    : state.status === "error" ? "Save failed" : state.status === "conflict" ? "Changed elsewhere" : "All changes saved";
+  return (
+    <div role="status" aria-live="polite" className={cn("text-[11px] flex items-center gap-2",
+      state.status === "error" || state.status === "conflict" ? "text-red-300" : "text-white/60")}>
+      {(state.status === "saving" || state.status === "pending") && <Loader2 className="w-3 h-3 animate-spin" />}
+      <span title={state.error ?? undefined}>{text}</span>
+      {state.status === "error" && <button type="button" className="underline" onClick={onRetry}>Retry</button>}
+      {state.status === "conflict" && <button type="button" className="underline" onClick={onReload}>Reload latest</button>}
+    </div>
+  );
+}
+
 async function invokeError(error: unknown) {
   if (error instanceof FunctionsHttpError) {
     try { const b = await error.context.json(); return b?.error || "Request failed"; } catch { return "Request failed"; }
@@ -355,7 +373,10 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
 
   return (
     <div className="space-y-4 py-4">
-      <BetaHeader onBack={nav.backToList} scope={scope} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <BetaHeader onBack={nav.backToList} scope={scope} />
+        <SaveIndicator state={saveState} onRetry={() => void saverRef.current?.retry()} onReload={() => window.location.reload()} />
+      </div>
       {draft.status === "created" && (
         <div className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 p-2 text-xs text-emerald-200">This draft has already been created as a tournament. Further edits stay in the draft only.</div>
       )}

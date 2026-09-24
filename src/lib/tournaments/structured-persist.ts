@@ -4,7 +4,7 @@
  * against those ids → identity validation → insert. Legacy tournaments never come here.
  * The DB trigger `guard_structured_match_identity` enforces the same identity rules.
  */
-import { IntegrityError, assertNoReentry, contractIssues, isDecided, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
+import { IntegrityError, assertNoReentry, contractIssues, isDecided, progressionOf, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
 import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
 import { effectiveTransition, transitionIssues } from "./transition";

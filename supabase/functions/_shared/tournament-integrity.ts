@@ -259,9 +259,9 @@ export function checkTournamentIntegrity(snapshot: ISnapshot): IntegrityReport {
 
     // I2 — every qualifier appears once (after pools complete).
     if (complete) {
-      const expected = [...P1.sorted, ...P2.sorted].slice(0).map((r) => r.key);
+      const slots = playoffs.filter((m) => (m.bracket_position ?? 0) > 1000).length;
+      const qualifying = [...P1.sorted.slice(0, slots), ...P2.sorted.slice(0, slots)].map((r) => r.key);
       const present = new Set(playoffs.flatMap((m) => [teamKey(m.player_a_member_id, m.partner_a_member_id), teamKey(m.player_b_member_id, m.partner_b_member_id)]));
-      const qualifying = expected.slice(0, playoffs.length * 2 > expected.length ? expected.length : expected.length);
       const missing = qualifying.filter((k) => !present.has(k));
       if (missing.length) findings.push({ code: "I2_MISSING_QUALIFIER", division: div, match_ids: [], repairable: true,
         message: `${missing.length} qualifying team(s) are missing from the playoffs.` });

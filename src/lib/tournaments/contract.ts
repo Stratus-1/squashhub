@@ -138,7 +138,7 @@ export function contractIssues(c: DivisionContract): ContractIssue[] {
         if (s.kind === "knockout" && !isPow2(q)) out.push({ level: "warning", code: "byes", message: `${s.name}: ${q} qualifiers → ${nextPow2(q) - q} byes.`, stageId: s.id });
       }
     }
-    if (prev.kind === "knockout") e("after_knockout", `${s.name}: a knockout eliminates players, so a later stage can't continue with everyone.`, s.id);
+    if (prev.kind === "knockout" && p.mode !== "qualifiers") e("after_knockout", `${s.name}: a knockout eliminates players, so a later stage can't continue with everyone.`, s.id);
   });
   const dates = c.stages.map((s) => s.schedule.date || s.schedule.deadline || s.schedule.end).filter(Boolean) as string[];
   for (let i = 1; i < dates.length; i++) if (dates[i] < dates[i - 1]) e("date_order", "A later stage is dated before an earlier stage.");

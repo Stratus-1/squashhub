@@ -7,7 +7,7 @@
  */
 import {
   IntegrityError, assertKnockoutShape, assertStageKinds, bracketOrder, canGenerateStage, contractIssues,
-  isDecided, progressionOf, disciplineOf, nextPow2, roundRobin, snakePools, swissRound,
+  isDecided, progressionOf, disciplineOf, PAIR_FORMING, nextPow2, roundRobin, snakePools, swissRound,
   type DivisionContract, type FixtureRow, type PlannedStage, type PoolStanding, type SwissTieBreak,
 } from "./contract";
 import {
@@ -336,16 +336,29 @@ export function nextStageFixtures(tid: string, d: SpecDivision, stageId: string,
   if (stage.generation !== "automatic" && !opts.ownerConfirmed) throw new IntegrityError("needs_confirmation", "Owner must confirm before the next stage is created.");
   const seedOrder = d.entrants.map((e) => e.id);
   const earlier = d.stages.filter((s) => s.order < stage.order).map((s) => s.id);
-  let ranked: string[];
-  if (p.mode === "form_pairs" || disciplineOf(d, prev) === disciplineOf(d, stage)) {
-    const prevTable = stageTable(prev.id, div, seedOrder).map((x) => x.id);
-    if (p.standings === "carry") {
-      const pts = playerPoints(earlier, div);
-      const score = (u: string) => unitPlayers(u).reduce((n, x) => n + (pts.get(x) ?? 0), 0);
-      ranked = [...prevTable].sort((x, y) => score(y) - score(x) || prevTable.indexOf(x) - prevTable.indexOf(y));
-    } else ranked = prevTable;
-  } else throw new IntegrityError("pairs_model", "No valid participant model for this stage.");
-  const units = p.mode === "form_pairs" ? formPairs(ranked, p.pairing ?? "fold", opts.pairs) : ranked;
+  // 1. Rank the previous stage (optionally by points carried across earlier stages).
+  const prevTable = stageTable(prev.id, div, seedOrder).map((x) => x.id);
+  let ranked = prevTable;
+  if (p.standings === "carry") {
+    const pts = playerPoints(earlier, div);
+    const score = (u: string) => unitPlayers(u).reduce((n, x) => n + (pts.get(x) ?? 0), 0);
+    ranked = [...prevTable].sort((x, y) => score(y) - score(x) || prevTable.indexOf(x) - prevTable.indexOf(y));
+  }
+  // 2. Who continues.
+  if (p.mode === "top_n") {
+    if (!p.top || p.top > ranked.length) throw new IntegrityError("top_n", `Only ${ranked.length} can continue from ${prev.name}.`);
+    ranked = ranked.slice(0, p.top);
+  }
+  // 3. Participant shape for THIS stage's own discipline — never implicit.
+  const dPrev = disciplineOf(d, prev), dCur = disciplineOf(d, stage);
+  let units: string[];
+  if (dPrev === "singles" && dCur === "doubles") {
+    if (!p.pairing || !PAIR_FORMING.includes(p.pairing)) throw new IntegrityError("pairs_model", "Choose how pairs are formed before starting this stage.");
+    units = formPairs(ranked, p.pairing as "fold" | "positions" | "manual", opts.pairs);
+  } else if (dPrev === "doubles" && dCur === "singles") {
+    if (p.pairing !== "split") throw new IntegrityError("split_model", "Choose how pairs become singles players before starting this stage.");
+    units = ranked.flatMap(unitPlayers);
+  } else units = ranked;
   const entrants = units.map((id, i) => ({ id, rank: i + 1 }));
   const fixtures = generateStage(tid, { ...d, entrants }, stage);
   assertStageKinds(d.stages, fixtures);

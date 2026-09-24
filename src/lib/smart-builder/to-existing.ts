@@ -124,8 +124,12 @@ export function mapToExistingTournament(def: TournamentDefinition): ExistingMapp
   if (c.paymentRequired != null) champ.payment_required = c.paymentRequired;
   else if (c.entryFeeRands === 0) champ.payment_required = false;
   if (c.paymentMethods?.length) champ.payment_methods = c.paymentMethods;
-  if (sd.startDate) champ.start_date = sd.startDate;
-  if (sd.endDate) champ.end_date = sd.endDate;
+  const stageDates = def.divisions.flatMap((div) => div.sections.flatMap((sec) => sec.stages))
+    .filter((stage) => stage.kind !== "split" && stage.kind !== "pair_from_positions");
+  const starts = stageDates.map((stage) => stage.schedule.startDate?.slice(0, 10)).filter((d): d is string => !!d).sort();
+  const ends = stageDates.map((stage) => stage.schedule.endDate?.slice(0, 10) ?? stage.schedule.startDate?.slice(0, 10)).filter((d): d is string => !!d).sort();
+  if (sd.startDate || starts.length) champ.start_date = sd.startDate?.slice(0, 10) ?? starts[0];
+  if (sd.endDate || ends.length) champ.end_date = sd.endDate?.slice(0, 10) ?? ends[ends.length - 1];
   if (isBellsDefinition(def)) {
     champ.scoring_mode = "time_capped_points";
     const first = def.divisions.flatMap((div) => div.sections.flatMap((sec) => sec.stages)).find((s) => s.kind !== "split" && s.kind !== "pair_from_positions");

@@ -78,7 +78,7 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     detail: openStructural.length ? openStructural[0].question : "None", ask: openStructural[0]?.question });
   const sc = def.scoring ?? {};
   const bells = isBellsDefinition(def);
-  const bellsDuration = schedulableStages(def).every(({ stage }) => !!effectiveSchedule(def, stage).matchMinutes.value);
+  const bellsDuration = schedulableStages(def).length > 0 && schedulableStages(def).every(({ stage }) => !!effectiveSchedule(def, stage).matchMinutes.value);
   design.push({ id: "scoring", label: "Scoring", tab: "design", field: "scoring",
     state: bells ? (bellsDuration ? "complete" : "missing") : sc.pointsPerGame && sc.bestOf ? "complete" : "warning",
     detail: bells ? (bellsDuration ? "Bells — timed points; match duration is set on Schedule" : "Bells — set match minutes on Schedule") : sc.pointsPerGame && sc.bestOf
@@ -105,9 +105,11 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
 
   // ── Schedule ──
   const schedule: ReadinessItem[] = [];
+  const planned = schedulableStages(def).map(({ stage }) => effectiveSchedule(def, stage));
+  const hasStageDates = planned.length > 0 && planned.every((s) => !!s.startDate.value && !!s.endDate.value);
   schedule.push({ id: "dates", label: "Tournament dates", tab: "schedule", field: "defaults.startDate",
-    state: sd.startDate && sd.endDate ? "complete" : "missing",
-    detail: sd.startDate ? `${sd.startDate} → ${sd.endDate ?? "?"}` : "Not set", ask: "What are the tournament's start and end dates?" });
+    state: (sd.startDate && sd.endDate) || hasStageDates ? "complete" : "missing",
+    detail: sd.startDate ? `${sd.startDate} → ${sd.endDate ?? "?"}` : hasStageDates ? "Set on individual stages" : "Not set", ask: "What are the tournament's start and end dates?" });
   schedulableStages(def).forEach(({ stage, division }) => {
     const e = effectiveSchedule(def, stage), need = scheduleNeeds(stage.schedule.mode);
     const gaps: string[] = [];

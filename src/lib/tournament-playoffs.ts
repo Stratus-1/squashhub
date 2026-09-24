@@ -178,6 +178,14 @@ const hasPoolMode = (poolsByLeague?: Record<number, number>): boolean =>
 
 const poolLetter = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
 
+const ordinal = (n: number) =>
+  n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
+
+// Two-pool per-position final: Pool A #n vs Pool B #n decides overall
+// positions 2n-1 and 2n — label it by what is actually at stake.
+const placeRangeLabel = (pos: number) =>
+  `${ordinal(2 * pos - 1)}/${ordinal(2 * pos)} Place Play-off`;
+
 /**
  * Build ALL playoff match rows for the tournament. Later-round rows have
  * null players (Final / 3rd-place placeholders). Regenerating after the SFs

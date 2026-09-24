@@ -505,8 +505,11 @@ export default function ClubChampsView() {
       );
     };
     // Exclude byes from standings entirely; we'll add walkover credit separately.
+    // Play-off / knockout games share the group_number but are NOT pool games —
+    // counting them adds a phantom extra game and reshuffles play-off seeding.
+    const isPoolStage = (m: any) => (m.stage || "group") === "group";
     const groupMatchesAll = matches.filter(
-      (m: any) => matchBelongsToGroup(m) && !m.is_bye,
+      (m: any) => matchBelongsToGroup(m) && !m.is_bye && isPoolStage(m),
     );
 
     // "No result" forfeits (per-league neutral rule) are closed out but must not
@@ -1476,6 +1479,12 @@ export default function ClubChampsView() {
     if (!canManage || !enablePlayoffs) return;
     if (generatePlayoffs.isPending) return;
     if (groupResultsCount === 0) return;
+    // Once the pools are closed and any play-off game has been played or
+    // started, the play-off line-up is locked — never re-seed automatically.
+    const playoffStarted = playoffMatches.some(
+      (m: any) => m.status === "completed" || m.status === "in_progress" || m.status === "live",
+    );
+    if (groupComplete && playoffStarted) return;
 
     const completed = (matches as any[]).filter((m: any) => m.status === "completed");
     const key = completed.map((m: any) => m.id).sort().join(",");

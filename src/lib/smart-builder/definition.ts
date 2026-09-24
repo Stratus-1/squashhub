@@ -93,6 +93,19 @@ const StageSchema = z.object({
   thirdPlace: z.boolean().optional(),
   /** Playoff stages: how qualifiers are placed into the bracket (never inferred). */
   qualifierMapping: z.enum(["cross_pool", "reseed", "same_pool"]).nullable().optional(),
+  /** Playoff stages: the explicit pool→next-stage progression rule. Stable pool INDEXES and positions only — never pool names. */
+  qualifierTransition: z.object({
+    positions: z.array(z.number().int().min(1)).default([1, 2]),
+    sourcePoolIndexes: z.array(z.number().int().min(0)).nullable().optional(),
+    method: z.enum(["cross_pool", "reseed", "manual"]).default("cross_pool"),
+    poolPairs: z.array(z.tuple([z.number().int().min(0), z.number().int().min(0)])).optional(),
+    pairing: z.enum(["winner_runner_up", "same_position"]).optional(),
+    manualSlots: z.array(z.tuple([
+      z.object({ poolIndex: z.number().int().min(0), position: z.number().int().min(1) }).nullable(),
+      z.object({ poolIndex: z.number().int().min(0), position: z.number().int().min(1) }).nullable(),
+    ])).optional(),
+    reseedBy: z.enum(["pool_position", "seed"]).optional(),
+  }).nullable().optional(),
   /** Playoff stages: generate automatically once prerequisites finish, or only after the owner previews and confirms. */
   generation: z.enum(["automatic", "owner_approval"]).nullable().optional(),
   /** Playoff stages: courts/times allocated automatically or by the owner. */

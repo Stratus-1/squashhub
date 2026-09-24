@@ -219,8 +219,8 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
     }
     return w;
   })();
-  const [matchOver, setMatchOver] = useState(persisted?.matchOver ?? !!derivedEnd);
-  const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? derivedEnd);
+  const [matchOver, setMatchOver] = useState(!!persisted?.matchOver || !!derivedEnd);
+  const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner || derivedEnd);
   const [handOutFlash, setHandOutFlash] = useState<"a" | "b" | null>(null);
   const handOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pointFlash, setPointFlash] = useState<"a" | "b" | null>(null);

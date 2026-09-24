@@ -23,7 +23,7 @@ export function relink(d: Division) {
 
 export function defaultProgression(prev: Stage, cur: Stage): NonNullable<Stage["progression"]> {
   if (prev.discipline === "singles" && cur.discipline === "doubles") return { mode: "form_pairs", standings: null, pairing: null };
-  if (cur.kind === "knockout" && prev.kind === "round_robin") return { mode: "qualifiers" };
+  if (cur.kind === "knockout" && (prev.kind === "round_robin" || prev.kind === "swiss")) return { mode: "qualifiers" };
   return { mode: "all_continue", standings: null };
 }
 

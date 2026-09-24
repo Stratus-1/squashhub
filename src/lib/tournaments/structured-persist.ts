@@ -290,6 +290,7 @@ export async function previewStructuredPlayoffs(db: Db, tid: string, divisionKey
   const existing = matches.map((m) => toFixtureRow(divisionKey, m, kindOf(m.stage_key)));
   const srcDone = existing.filter((f) => f.stageId === src.id);
   if (!srcDone.length || !srcDone.every(isDecided)) return { ok: false, reason: `${src.name} is not finished.`, qualifiers: [], stage };
+  if (src.kind === "swiss" && Math.max(...srcDone.map((f) => f.round ?? 1)) < (src.swissRounds ?? 1)) return { ok: false, reason: `${src.name}: not all Swiss rounds are played yet.`, qualifiers: [], stage };
   const standings = poolStandings(divisionKey, src.id, matches, stage.qualify?.perPool ?? 0);
   return previewPlayoffs(d, stageKey, standings, existing);
 }

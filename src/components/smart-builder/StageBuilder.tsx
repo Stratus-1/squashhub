@@ -184,7 +184,7 @@ function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: 
   if (prev.discipline === "doubles" && cur.discipline !== "doubles") return <Note>A doubles stage can't feed a singles stage. Change the match type or the order.</Note>;
   if (prev.kind === "knockout") return <Note>A knockout eliminates players, so nothing can follow it here. Put the knockout last.</Note>;
   const modes: Array<[string, string]> = toDoubles ? [["form_pairs", "Form doubles pairs from the singles results"]]
-    : cur.kind === "knockout" && prev.kind === "round_robin" ? [["qualifiers", "Qualifiers continue (top N)"], ["all_continue", "Everyone continues"]]
+    : cur.kind === "knockout" && (prev.kind === "round_robin" || prev.kind === "swiss") ? [["qualifiers", "Qualifiers continue (top N)"], ["all_continue", "Everyone continues"]]
     : [["all_continue", "Everyone continues"]];
   return (
     <div className="rounded border border-white/10 p-2 space-y-2">

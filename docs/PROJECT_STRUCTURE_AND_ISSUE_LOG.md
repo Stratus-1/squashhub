@@ -1999,3 +1999,4 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - StructuredEditorDialog reloads builder_spec; label/date edits only, structural edits blocked/previewed.
 - Builder Players tab: division names, league use, pool names, apply-structure-to-other-divisions.
 - Disposable full simulation test in `src/test/structured-generation.test.ts`.
+- 2026-09-25: Structured engine adds double RR (`legs: 2`), Swiss first-round + `nextSwissRound` with tie-breaks (buchholz, sonneborn_berger, seed), knockout `thirdPlace` match (stage_label "3rd place", excluded from re-entry). Fixed real-DB blockers: rounds used round_type 'round_robin'/status 'generated' which the CHECK constraints rejected — constraint widened (round_robin, swiss), status now 'active'.

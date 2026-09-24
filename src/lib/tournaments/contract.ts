@@ -114,7 +114,7 @@ export function contractIssues(c: DivisionContract): ContractIssue[] {
       if (!s.qualify || !s.qualify.perPool) e("playoff_qualify", `${s.name}: who qualifies is not defined.`, s.id);
       else if (s.kind === "knockout" && !s.qualify.mapping) e("playoff_mapping", `${s.name}: how qualifiers are mapped/seeded is not defined.`, s.id);
       if (prev.kind !== "pools" && prev.kind !== "round_robin") e("qualifier_source", `${s.name}: qualifiers can only be taken from a round robin or pool stage.`, s.id);
-      if (s.kind !== "knockout") e("qualifier_target", `${s.name}: qualifiers currently feed a knockout only.`, s.id);
+      if (s.kind !== "knockout" && s.kind !== "placement") e("qualifier_target", `${s.name}: qualifiers currently feed a knockout only.`, s.id);
       if (s.qualify?.perPool && prev.pools) {
         const q = s.qualify.perPool * prev.pools;
         if (s.kind === "knockout" && s.drawSize && q > s.drawSize) e("draw_too_small", `${s.name}: ${q} qualifiers but a draw of ${s.drawSize}.`, s.id);

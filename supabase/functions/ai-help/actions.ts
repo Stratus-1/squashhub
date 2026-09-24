@@ -227,6 +227,65 @@ export const ACTIONS: Record<string, ActionDef> = {
     },
   },
 
+  correct_match_result: {
+    label: "Correct the score of a completed tournament match (same winner only) — admins / tournament managers",
+    describe: 'args: {"match_id":uuid (from tournament_fixtures),"games":"11-9, 8-11, 11-5, ..." (EVERY game, in order, player A score first as listed in the fixture)}. If the user only gave a games tally like 3-2, ask for each game score first.',
+    async preview(c, args) {
+      const matchId = s(args.match_id);
+      if (!/^[0-9a-f-]{36}$/i.test(matchId)) return { ok: false, reason: "Which match? Look it up with tournament_fixtures first.", escalate: false };
+      const games = s(args.games).split(/[,;]+/).map((g) => g.trim()).filter(Boolean).map((g) => {
+        const mm = g.match(/^(\d{1,2})\s*[-–:]\s*(\d{1,2})$/);
+        return mm ? { a: Number(mm[1]), b: Number(mm[2]) } : null;
+      });
+      if (!games.length || games.some((g) => !g)) return { ok: false, reason: "Please give every game score in order, e.g. 11-9, 8-11, 11-5, 9-11, 11-7.", escalate: false };
+      const { data, error } = await c.user.rpc("ai_correct_champ_result", { p_match_id: matchId, p_games: games, p_preview: true });
+      if (error) return { ok: false, reason: error.message, escalate: /permission/i.test(error.message) };
+      const p = data as any;
+      const sideA = [p.player_a, p.partner_a].filter(Boolean).join(" & ");
+      const sideB = [p.player_b, p.partner_b].filter(Boolean).join(" & ");
+      const oldGames = Array.isArray(p.old_games) ? p.old_games : [];
+      const oldTally = [oldGames.filter((g: any) => g.a > g.b).length, oldGames.filter((g: any) => g.b > g.a).length];
+      const label = `${p.tournament} — ${sideA} vs ${sideB}`;
+      if ((p.blockers ?? []).length) {
+        return { ok: false, escalate: true, reason: `${label}. Current result ${oldTally.join("–")} (${p.old_score}); proposed ${p.new_games_won.join("–")} (${p.new_score}). The assistant can't apply this safely: ${p.blockers.join(" ")}` };
+      }
+      return {
+        ok: true,
+        summary: `Correct result: ${label}. ${oldTally.join("–")} → ${p.new_games_won.join("–")}. Winner stays ${p.new_winner}.`,
+        changes: [`Match score ${p.old_score} → ${p.new_score}`, `Games ${oldTally.join("–")} → ${p.new_games_won.join("–")}`],
+        affected: [`Tournament: ${p.tournament}`, p.is_group ? `Pool ${p.pool ?? "-"} standings: games and points difference update automatically` : "Knockout game: the same player still goes through", "Player match statistics refresh"],
+        consequences: [p.is_group ? "Pool positions can move only if they were tied on wins." : ""].filter(Boolean),
+        unchanged: [`Winner (${p.new_winner}) and win/loss points in the table`, "Ranking points and ladder (same winner, not re-awarded)", "Later rounds / progression", "No result email, WhatsApp or app message is sent", "The original result is kept in the change history"],
+        reversible: true,
+        resolved: { match_id: matchId, games, expected_updated_at: p.updated_at },
+        before: { score: p.old_score, games: p.old_games, winner: p.old_winner },
+      };
+    },
+    async execute(c, r) {
+      const { data: cur } = await c.admin.from("club_champs_matches").select("updated_at").eq("id", r.match_id).maybeSingle();
+      if (!cur || cur.updated_at !== r.expected_updated_at) return { ok: false, message: "The match changed after the preview was made — please ask again so I can re-check it." };
+      const { data, error } = await c.user.rpc("ai_correct_champ_result", { p_match_id: r.match_id, p_games: r.games, p_preview: false, p_reason: "AI assistant — correction confirmed by user" });
+      if (error) return { ok: false, message: error.message };
+      const d = data as any;
+      const { data: after } = await c.admin.from("club_champs_matches").select("score,game_scores,winner_member_id,status").eq("id", r.match_id).maybeSingle();
+      const ok = after?.score === d.new_score && after?.winner_member_id === d.winner_member_id && after?.status === "completed";
+      return { ok, message: ok ? `Done — the score is now ${d.new_score}. Winner unchanged; no notifications were sent.` : "The update ran but verification didn't match — flagged for review.", after: d, reversible: true };
+    },
+    inverse: {
+      async check(c, r, after) {
+        const { data: m } = await c.admin.from("club_champs_matches").select("score").eq("id", r.match_id).maybeSingle();
+        if (m?.score !== after?.new_score) return { ok: false, message: "The score has changed again since — manual review required." };
+        return { ok: true, message: "ok", changes: [`Restore score ${after?.old_score}`] };
+      },
+      async run(c, r, after) {
+        const sets = (() => { try { return JSON.parse(after.old_game_scores).sets; } catch { return null; } })();
+        if (!sets) return { ok: false, message: "Original game scores unreadable — manual review required." };
+        const { data, error } = await c.user.rpc("ai_correct_champ_result", { p_match_id: r.match_id, p_games: sets, p_preview: false, p_reason: "Super Admin reversed an AI result correction" });
+        return error ? { ok: false, message: error.message } : { ok: true, message: "Original score restored", after: data };
+      },
+    },
+  },
+
   update_my_contact: {
     label: "Update my own phone number or email on my member profile",
     describe: 'args: {"phone"?:string,"email"?:string}',
@@ -275,6 +334,6 @@ export const ACTIONS: Record<string, ActionDef> = {
 
 export function catalogueFor(isAdmin: boolean) {
   return Object.entries(ACTIONS)
-    .filter(([k]) => isAdmin || k !== "replace_tournament_player")
+    .filter(([k]) => isAdmin || !["replace_tournament_player", "correct_match_result"].includes(k))
     .map(([k, a]) => `- ${k}: ${a.label}. ${a.describe}`).join("\n");
 }

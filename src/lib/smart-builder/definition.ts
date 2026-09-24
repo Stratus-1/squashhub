@@ -79,6 +79,12 @@ const StageSchema = z.object({
   /** Split competitions (Championship / Plate / Shield) by finishing positions. */
   splits: z.array(z.object({ name: z.string(), fromPosition: z.number().int(), toPosition: z.number().int() })).optional(),
   swissRounds: z.number().int().min(1).nullable().optional(),
+  /** Playoff stages: how qualifiers are placed into the bracket (never inferred). */
+  qualifierMapping: z.enum(["cross_pool", "reseed", "same_pool"]).nullable().optional(),
+  /** Playoff stages: generate automatically once prerequisites finish, or only after the owner previews and confirms. */
+  generation: z.enum(["automatic", "owner_approval"]).nullable().optional(),
+  /** Playoff stages: courts/times allocated automatically or by the owner. */
+  playoffScheduling: z.enum(["automatic", "owner"]).nullable().optional(),
   /** Knockout matchups for seeded playoffs, e.g. "1v4,2v3". */
   seededMatchups: z.string().nullable().optional(),
   /** Minimum matches each entrant should get in this stage. */

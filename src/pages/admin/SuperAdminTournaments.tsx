@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Swords, Wand2 } from "lucide-react";
 import { TournamentPlanner } from "@/components/tournaments/TournamentPlanner";
 import { useIsSuperAdmin } from "@/hooks/use-club";
+import { TournamentBetaClubsCard } from "@/components/smart-builder/TournamentBetaClubsCard";
 import { canUseSmartBuilder, SMART_BUILDER_LABEL, SMART_BUILDER_SUBLABEL } from "@/lib/smart-builder/access";
 
 /**
@@ -38,6 +39,7 @@ export default function SuperAdminTournaments() {
           </div>
         </Link>
       )}
+      {isSuperAdmin && <TournamentBetaClubsCard />}
 
       <TournamentPlanner mode="platform" dark />
     </div>

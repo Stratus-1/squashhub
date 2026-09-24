@@ -232,7 +232,13 @@ export default function Tournaments() {
       // Same slot → sort by court name ascending (Court 1, 2, 3…)
       const ac = a.court?.name || "";
       const bc = b.court?.name || "";
-      return ac.localeCompare(bc, undefined, { numeric: true, sensitivity: "base" });
+      const c = ac.localeCompare(bc, undefined, { numeric: true, sensitivity: "base" });
+      if (c !== 0) return c;
+      // Undated play-off games share one key — order them by bracket position
+      // (Pos 1 final first) instead of leaving them in random database order.
+      const bp = (a.bracket_position ?? 0) - (b.bracket_position ?? 0);
+      if (bp !== 0) return bp;
+      return String(a.id || "").localeCompare(String(b.id || ""));
     });
 
 

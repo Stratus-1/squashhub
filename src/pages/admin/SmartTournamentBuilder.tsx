@@ -292,11 +292,23 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
             )}
           </div>
           <div className="border-t border-white/10 p-2 flex gap-2">
-            <Textarea ref={inputRef} autoFocus value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder={def.divisions.length ? "Answer, or ask for a change — e.g. 'Change Section 2 to 5 pools'" : "Describe your tournament…"}
-              className="min-h-[60px] bg-white/5 border-white/15 text-white text-sm" />
-            <Button size="icon" className="self-end h-9 w-9 shrink-0" disabled={thinking || !input.trim()} onClick={send}><Send className="w-4 h-4" /></Button>
+            <div className="flex-1 space-y-1">
+              <Textarea ref={inputRef} autoFocus value={input} onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                placeholder={def.divisions.length ? "Answer, or ask for a change — e.g. 'Change Section 2 to 5 pools'" : "Describe your tournament — type, or tap the mic and speak…"}
+                className="min-h-[60px] bg-white/5 border-white/15 text-white text-sm" />
+              {voiceNote && <p className="text-[11px] text-amber-200">{voiceNote}</p>}
+              {voiceErr && <p className="text-[11px] text-red-300" role="alert">{voiceErr}</p>}
+            </div>
+            <div className="flex flex-col items-end justify-end gap-1">
+              <VoiceInputButton clubId={scope.kind === "club" ? scope.clubId : undefined} disabled={thinking}
+                onError={setVoiceErr}
+                onTranscript={(t, final) => {
+                  setInput(voiceBase.current + t);
+                  if (final) { setVoiceNote("Check the transcript, fix anything, then press Send."); inputRef.current?.focus(); }
+                }} />
+              <Button size="icon" className="h-9 w-9 shrink-0" disabled={thinking || !input.trim()} onClick={() => { setVoiceNote(null); send(); }}><Send className="w-4 h-4" /></Button>
+            </div>
           </div>
         </div>
 

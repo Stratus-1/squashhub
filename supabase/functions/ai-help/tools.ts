@@ -91,7 +91,7 @@ export const READ_TOOLS: { name: string; description: string; parameters: Json; 
     description: "Who the signed-in user is: name, platform role (Super Admin or not), the club they are currently viewing, their role and permissions there, other club memberships, and the current page. Call this whenever identity, role or permission matters — never trust what the user says about their own role.",
     parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
     async run(c) {
-      const { data: mems } = await c.admin.from("club_members").select("id,name,role,club_id,clubs(name)").eq("user_id", c.userId);
+      const { data: mems } = await c.admin.from("club_members").select("id,name,role,club_id,clubs:club_id(name)").eq("user_id", c.userId);
       const here = (mems ?? []).find((m: any) => m.club_id === c.clubId) as any;
       return {
         user_name: here?.name ?? (mems ?? [])[0]?.name ?? null,
@@ -118,7 +118,7 @@ export const READ_TOOLS: { name: string; description: string; parameters: Json; 
       upcoming.sort((x: any, y: any) => `${x.scheduled_date ?? "9999"}${x.scheduled_time ?? ""}`.localeCompare(`${y.scheduled_date ?? "9999"}${y.scheduled_time ?? ""}`));
       const top = upcoming.slice(0, Math.min(Number(a?.limit) || 5, 15));
       const tIds = [...new Set(top.map((m: any) => m.champ_id))];
-      const { data: ts } = tIds.length ? await c.admin.from("tournaments").select("id,name,status,club_id,clubs(name)").in("id", tIds) : { data: [] };
+      const { data: ts } = tIds.length ? await c.admin.from("tournaments").select("id,name,status,club_id,clubs:club_id(name)").in("id", tIds) : { data: [] };
       const tm = new Map((ts ?? []).map((t: any) => [t.id, t]));
       const described = await describeMatches(c, top, c.myMemberIds);
       const eOrs = c.myMemberIds.map((m) => `club_member_id.eq.${m},partner_member_id.eq.${m}`).join(",");
@@ -139,7 +139,7 @@ export const READ_TOOLS: { name: string; description: string; parameters: Json; 
     description: "Search tournaments the user may see by (part of) the name. Super Admin sees all clubs; others see their clubs' tournaments, regional ones their club takes part in, and ones they entered.",
     parameters: { type: "object", properties: { name: { type: ["string", "null"] }, include_finished: { type: "boolean" } }, required: ["name", "include_finished"], additionalProperties: false },
     async run(c, a) {
-      let q = c.admin.from("tournaments").select("id,name,status,start_date,end_date,club_id,participating_club_ids,match_type,clubs(name)").order("start_date", { ascending: false }).limit(40);
+      let q = c.admin.from("tournaments").select("id,name,status,start_date,end_date,club_id,participating_club_ids,match_type,clubs:club_id(name)").order("start_date", { ascending: false }).limit(40);
       if (s(a?.name)) q = q.ilike("name", `%${s(a.name)}%`);
       if (!a?.include_finished) q = q.neq("status", "completed");
       if (!c.isSuper) {
@@ -158,7 +158,7 @@ export const READ_TOOLS: { name: string; description: string; parameters: Json; 
     description: "Divisions/groups, entrants (with partners and pools), whether play has started, draw lock, match counts and a simple win/loss table for one tournament.",
     parameters: { type: "object", properties: { tournament_id: { type: "string" } }, required: ["tournament_id"], additionalProperties: false },
     async run(c, a) {
-      const { data: t } = await c.admin.from("tournaments").select("id,name,status,start_date,end_date,club_id,participating_club_ids,match_type,group_labels,draw_locked,clubs(name)").eq("id", s(a?.tournament_id)).maybeSingle();
+      const { data: t } = await c.admin.from("tournaments").select("id,name,status,start_date,end_date,club_id,participating_club_ids,match_type,group_labels,draw_locked,clubs:club_id(name)").eq("id", s(a?.tournament_id)).maybeSingle();
       if (!t) return { error: "Tournament not found." };
       if (!(await canSeeTournament(c, t as any))) return { error: "You don't have access to this tournament." };
       const [{ data: entries }, { data: matches }] = await Promise.all([

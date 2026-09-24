@@ -178,6 +178,14 @@ const hasPoolMode = (poolsByLeague?: Record<number, number>): boolean =>
 
 const poolLetter = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
 
+const ordinal = (n: number) =>
+  n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
+
+// Two-pool per-position final: Pool A #n vs Pool B #n decides overall
+// positions 2n-1 and 2n — label it by what is actually at stake.
+const placeRangeLabel = (pos: number) =>
+  `${ordinal(2 * pos - 1)}/${ordinal(2 * pos)} Place Play-off`;
+
 /**
  * Build ALL playoff match rows for the tournament. Later-round rows have
  * null players (Final / 3rd-place placeholders). Regenerating after the SFs
@@ -284,7 +292,7 @@ export function buildPlayoffMatches(input: BuildInput): PlayoffMatchRow[] {
         const size = K <= 2 ? 2 : K <= 4 ? 4 : 8;
         const firstRoundStage = size === 8 ? "playoff_qf" : size === 4 ? "playoff_sf" : "playoff_final";
         const posPrefix = `${labelForLeague(lg)} · Pos ${pos}`;
-        const firstRoundLabel = size === 8 ? `${posPrefix} · Quarter-final` : size === 4 ? `${posPrefix} · Semi-final` : `${posPrefix} · Final`;
+        const firstRoundLabel = size === 8 ? `${posPrefix} · Quarter-final` : size === 4 ? `${posPrefix} · Semi-final` : `${posPrefix} · ${placeRangeLabel(pos)}`;
         const bp = poolBracketPos(lg, pos);
         const pairs = firstRoundPairs(seeded);
         pairs.forEach(([a, b]) => {
@@ -611,7 +619,7 @@ export function buildPlayoffPlaceholders(input: PlaceholderInput): PlayoffMatchR
         const bp = poolBracketPos(lg, pos);
 
         if (size === 2) {
-          rows.push(placeholderRow(champId, 1, "playoff_final", `${posPrefix} · Final`, bp,
+          rows.push(placeholderRow(champId, 1, "playoff_final", `${posPrefix} · ${placeRangeLabel(pos)}`, bp,
             `${poolName(1)} #${pos}`, `${poolName(2)} #${pos}`));
           continue;
         }
@@ -704,8 +712,8 @@ export function buildPlayoffPlaceholders(input: PlaceholderInput): PlayoffMatchR
     const posLabel = `Pos ${pos}`;
 
     if (size === 2) {
-      // Two leagues: single Final per position
-      rows.push(placeholderRow(champId, 1, "playoff_final", `${posLabel} · Final`,
+      // Two leagues: single play-off per position, deciding 2pos-1 / 2pos
+      rows.push(placeholderRow(champId, 1, "playoff_final", `${posLabel} · ${placeRangeLabel(pos)}`,
         pos, `${labelFor(1)} #${pos}`, `${labelFor(2)} #${pos}`));
       continue;
     }

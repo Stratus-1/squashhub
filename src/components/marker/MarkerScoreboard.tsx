@@ -203,8 +203,24 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
   const [server, setServer] = useState<"a" | "b">(persisted?.server ?? savedState?.server ?? "a");
   const [serveSide, setServeSide] = useState<ServeSide>(persisted?.serveSide ?? savedState?.serveSide ?? "R");
   const [history, setHistory] = useState<PointEvent[]>(persisted?.history ?? []);
-  const [matchOver, setMatchOver] = useState(persisted?.matchOver ?? false);
-  const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner ?? null);
+  // If the saved games already finish the match (e.g. reopened on another
+  // phone), lock scoring instead of letting a 4th game start.
+  const derivedEnd = (() => {
+    const games = persisted?.completedGames ?? savedState?.completedGames ?? [];
+    const ga = games.filter((g) => g.winnerId === "a").length;
+    const gb = games.filter((g) => g.winnerId === "b").length;
+    const ends = config.playAllGames ? games.length >= config.bestOf : (ga >= gamesToWin || gb >= gamesToWin);
+    if (!ends || games.length === 0) return null;
+    let w: "a" | "b" = ga >= gb ? "a" : "b";
+    if (ga === gb) {
+      const ta = games.reduce((s, g) => s + g.a, 0);
+      const tb = games.reduce((s, g) => s + g.b, 0);
+      w = ta >= tb ? "a" : "b";
+    }
+    return w;
+  })();
+  const [matchOver, setMatchOver] = useState(!!persisted?.matchOver || !!derivedEnd);
+  const [matchWinner, setMatchWinner] = useState<"a" | "b" | null>(persisted?.matchWinner || derivedEnd);
   const [handOutFlash, setHandOutFlash] = useState<"a" | "b" | null>(null);
   const handOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pointFlash, setPointFlash] = useState<"a" | "b" | null>(null);

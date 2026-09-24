@@ -103,3 +103,4 @@
 - [x] Structured Tournament Editor reload UI; builder questions (division/pool names, league use, apply-to-all)
 - [x] Disposable full simulation
 - [x] Fast "I know what I want" path: RR / Swiss / Knockout / Pools→Play-offs / Custom, progressive questions, same spec + engine, tournament map
+- [x] Double round robin, Swiss (generation + next round + tie-breaks), 3rd/4th place match

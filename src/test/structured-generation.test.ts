@@ -28,6 +28,10 @@ function fakeDb() {
     async insert(table, rows) {
       const out = rows.map((r) => ({ id: `${table}-${++n}`, ...r }));
       if (table === "club_champs_matches") out.forEach(guard);
+      if (table === "club_champs_rounds") out.forEach((r: any) => {
+        if (!["knockout", "semi_final", "final", "third_place", "round_robin", "swiss"].includes(r.round_type)) throw new Error("round_type check");
+        if (!["pending", "active", "complete"].includes(r.status)) throw new Error("round status check");
+      });
       (t[table] ??= []).push(...out);
       return out;
     },
@@ -285,5 +289,48 @@ describe("disposable full simulation", () => {
     await atomically(env.db, TID, send, (db) => rebuildStructured(db, TID));
     expect(env.t.club_champs_matches.filter((m) => m.winner_member_id).length).toBe(played);
     expect(() => nextKnockoutRound(TID, "men", "ko", [...rows, { ...fin[0], winner: fin[0].a }])).toThrow(/final/);
+  });
+});
+
+describe("double round robin, Swiss tie-breaks, 3rd place", () => {
+  const baseDiv = (stages: any[], n = 8) => ({
+    divisionId: "d", label: "D", unit: "players" as const, expectedEntrants: n, seeding: { source: "entry_order", method: "snake" as const },
+    placements: "champion" as const, stages, entrants: Array.from({ length: n }, (_, i) => ({ id: `p${i + 1}`, rank: i + 1 })),
+  });
+  const sch = { rule: "fixed" as const, date: "2026-10-01" };
+  it("twice = every pairing twice with sides swapped, rounds continue", async () => {
+    const { generateFromSpec } = await import("@/lib/tournaments/engine-service");
+    const d = baseDiv([{ id: "rr", order: 0, kind: "round_robin", name: "RR", legs: 2, schedule: sch }], 4);
+    const fx = generateFromSpec({ version: 1, architecture: "structured", name: "x", divisions: [d as any] }, "t");
+    expect(fx).toHaveLength(12);
+    expect(Math.max(...fx.map((f) => f.round!))).toBe(6);
+    expect(fx.filter((f) => f.a === "p1" && f.b === "p2").length + fx.filter((f) => f.a === "p2" && f.b === "p1").length).toBe(2);
+  });
+  it("Swiss: round 1 generated, next round pairs by wins + tie-breaks, never beyond round count or repeats", async () => {
+    const { generateFromSpec, nextSwissRound, swissStandings } = await import("@/lib/tournaments/engine-service");
+    const st = { id: "sw", order: 0, kind: "swiss", name: "Swiss", swissRounds: 2, tieBreaks: ["buchholz"], schedule: sch };
+    const d = baseDiv([st]) as any;
+    const r1 = generateFromSpec({ version: 1, architecture: "structured", name: "x", divisions: [d] }, "t");
+    expect(r1).toHaveLength(4);
+    const done = r1.map((f) => ({ ...f, winner: f.a, status: "completed" }));
+    const r2 = nextSwissRound("t", d, "sw", done);
+    const winners = new Set(done.map((f) => f.a));
+    expect(r2.every((f) => winners.has(f.a!) === winners.has(f.b!))).toBe(true);
+    const played = new Set(done.map((f) => [f.a, f.b].sort().join("|")));
+    expect(r2.some((f) => played.has([f.a, f.b].sort().join("|")))).toBe(false);
+    expect(swissStandings(d, st as any, done)[0].points).toBe(1);
+    expect(() => nextSwissRound("t", d, "sw", [...done, ...r2.map((f) => ({ ...f, winner: f.a }))])).toThrow(/Swiss rounds/);
+  });
+  it("3rd place: losing semi-finalists play; not treated as re-entry; final stays the final", () => {
+    const sf = [
+      { id: "s1", divisionId: "d", stageId: "ko", stageKind: "knockout" as const, round: 1, a: "p1", b: "p4", winner: "p1", slot: 1 },
+      { id: "s2", divisionId: "d", stageId: "ko", stageKind: "knockout" as const, round: 1, a: "p2", b: "p3", winner: "p3", slot: 2 },
+    ];
+    const next = nextKnockoutRound("t", "d", "ko", sf as any, { thirdPlace: true });
+    expect(next).toHaveLength(2);
+    expect(next.find((f) => !f.thirdPlace)).toMatchObject({ a: "p1", b: "p3" });
+    expect(next.find((f) => f.thirdPlace)).toMatchObject({ a: "p4", b: "p2" });
+    const played = next.map((f) => ({ ...f, winner: f.a }));
+    expect(() => nextKnockoutRound("t", "d", "ko", [...sf, ...played] as any, { thirdPlace: true })).toThrow(/final/);
   });
 });

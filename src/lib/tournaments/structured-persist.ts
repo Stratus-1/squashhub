@@ -29,6 +29,9 @@ export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
           pools: kind === "pools" ? st.groups : undefined,
           poolSize: st.groupSize ?? undefined,
           swissRounds: st.swissRounds ?? undefined,
+          tieBreaks: (st as any).tieBreaks ?? undefined,
+          legs: (st as any).legs === 2 ? 2 : undefined,
+          thirdPlace: (st as any).thirdPlace || undefined,
           drawSize: kind === "knockout" ? st.groupSize ?? undefined : undefined,
           schedule: {
             rule: s.mode === "fixed" ? "fixed" : s.mode === "play_by" ? "play_by" : (s.mode as string) === "window" ? "window" : null,
@@ -174,7 +177,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     const [r] = await db.insert("club_champs_rounds", [{
       champ_id: tid, group_number: spec.divisions.findIndex((d) => d.divisionId === f.divisionId) + 1, round_number: f.round ?? 1,
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk], stage_key: f.stageId,
-      round_type: legacyStage(f.stageKind) === "ko" ? "knockout" : "round_robin", label: `Round ${f.round ?? 1}`, status: "generated",
+      round_type: legacyStage(f.stageKind) === "ko" ? "knockout" : f.stageKind === "swiss" ? "swiss" : "round_robin", label: `Round ${f.round ?? 1}`, status: "active",
     }]);
     roundIds[key] = r.id;
   }
@@ -188,6 +191,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
       round_number: f.round ?? 1, stage: legacyStage(f.stageKind), stage_key: f.stageId, status: "scheduled",
       player_a_member_id: a1, partner_a_member_id: a2, player_b_member_id: b1, partner_b_member_id: b2,
       pool_number: poolIdx == null ? null : poolIdx + 1, bracket_position: f.slot ?? null,
+      ...(f.thirdPlace ? { stage_label: "3rd place" } : {}),
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk],
       pool_id: poolIdx == null ? null : ids.pool[`${sk}/${poolIdx}`] ?? (() => { throw new IntegrityError("no_pool", "Pool not persisted."); })(),
       round_id: roundIds[`${f.divisionId}/${f.stageId}/${f.roundId}`],
@@ -257,11 +261,11 @@ export function poolStandings(divisionKey: string, stageKey: string, matches: Ar
   return out;
 }
 
-const toFixtureRow = (divisionKey: string, m: Record<string, any>, kind: StageKind): FixtureRow => ({
+export const toFixtureRow = (divisionKey: string, m: Record<string, any>, kind: StageKind): FixtureRow => ({
   id: m.id, divisionId: divisionKey, stageId: m.stage_key, stageKind: kind, round: m.round_number,
   a: m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id,
   b: m.partner_b_member_id ? `${m.player_b_member_id}+${m.partner_b_member_id}` : m.player_b_member_id,
-  status: m.status, score: m.score, ...({ slot: m.bracket_position } as object),
+  status: m.status, score: m.score, thirdPlace: m.stage_label === "3rd place" || undefined, ...({ slot: m.bracket_position } as object),
   winner: !m.winner_member_id ? null
     : [m.player_a_member_id, m.partner_a_member_id].includes(m.winner_member_id)
       ? (m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id)
@@ -299,12 +303,12 @@ export async function confirmStructuredPlayoffs(db: Db, tid: string, divisionKey
 }
 
 /** Next knockout round (QF → SF → Final) inside the SAME knockout stage; pool stays NULL. */
-export function nextKnockoutRound(tid: string, divisionKey: string, stageKey: string, rows: FixtureRow[]): EngineFixture[] {
+export function nextKnockoutRound(tid: string, divisionKey: string, stageKey: string, rows: FixtureRow[], opts?: { thirdPlace?: boolean }): EngineFixture[] {
   const ko = rows.filter((f) => f.divisionId === divisionKey && f.stageId === stageKey);
   if (!ko.length) throw new IntegrityError("no_stage_rows", "Knockout stage has no games yet.");
   if (ko.some((f) => f.stageKind !== "knockout")) throw new IntegrityError("stage_kind", "Only knockout stages advance by rounds.");
   const last = Math.max(...ko.map((f) => f.round ?? 1));
-  const cur = ko.filter((f) => (f.round ?? 1) === last).sort((a, b) => ((a as any).slot ?? 0) - ((b as any).slot ?? 0));
+  const cur = ko.filter((f) => (f.round ?? 1) === last && !f.thirdPlace).sort((a, b) => ((a as any).slot ?? 0) - ((b as any).slot ?? 0));
   if (cur.length < 2) throw new IntegrityError("final_done", "The final has already been generated.");
   if (!cur.every((f) => f.winner || !f.a || !f.b)) throw new IntegrityError("prereq", "Current round is not finished.");
   const win = (f: FixtureRow) => f.winner ?? f.a ?? f.b;
@@ -313,6 +317,12 @@ export function nextKnockoutRound(tid: string, divisionKey: string, stageKey: st
     tournamentId: tid, divisionId: divisionKey, stageId: stageKey, stageKind: "knockout",
     roundId: `${stageKey}:r${last + 1}`, round: last + 1, poolId: null, slot: i / 2 + 1, a: win(cur[i]), b: win(cur[i + 1]),
   });
+  // 3rd/4th place: when the final is created from two semi-finals, the two losers play off.
+  if (cur.length === 2 && opts?.thirdPlace) {
+    const lose = (f: FixtureRow) => (f.a && f.b ? (f.winner === f.a ? f.b : f.a) : null);
+    const [l1, l2] = [lose(cur[0]), lose(cur[1])];
+    if (l1 && l2) next.push({ tournamentId: tid, divisionId: divisionKey, stageId: stageKey, stageKind: "knockout", roundId: `${stageKey}:r${last + 1}`, round: last + 1, poolId: null, slot: 2, a: l1, b: l2, thirdPlace: true });
+  }
   assertNoReentry([...ko, ...next]);
   return next;
 }

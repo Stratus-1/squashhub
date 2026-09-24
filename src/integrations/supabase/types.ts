@@ -15231,6 +15231,16 @@ export type Database = {
         Returns: undefined
       }
       age_group_for_age: { Args: { _age: number }; Returns: string }
+      ai_replace_tournament_player: {
+        Args: {
+          p_champ_id: string
+          p_new_member: string
+          p_old_member: string
+          p_only_match_ids?: string[]
+          p_preview?: boolean
+        }
+        Returns: Json
+      }
       allocate_next_member_number: {
         Args: { _club_id: string }
         Returns: string

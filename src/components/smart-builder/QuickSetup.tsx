@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
-import { QUICK_PATHS, hasPlayoffs, quickQuestions, setPlayoffs, syncDivisions, tournamentMap } from "@/lib/smart-builder/quick-path";
+import { QUICK_PATHS, derivePoolShape, hasPlayoffs, hasPools, quickFormat, quickQuestions, setPlayoffs, setPools, syncDivisions, tournamentMapBlocks } from "@/lib/smart-builder/quick-path";
 import { cn } from "@/lib/utils";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
@@ -20,7 +20,8 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
   const stages = d0?.sections[0]?.stages ?? [];
   const first = stages[0];
   const po = stages[1];
-  const path = QUICK_PATHS.find((p) => p.key === def.quickPath);
+  const fmt = quickFormat(def);
+  const path = QUICK_PATHS.find((p) => p.key === fmt);
   // Structure edits go to division 1, then are copied to every division so all stay identical.
   const editStruct = (mut: (d: TournamentDefinition) => void) => edit((d) => { mut(d); syncDivisions(d); });
   if (!d0 || !first) return null;
@@ -29,7 +30,7 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
     <div className="rounded-lg border border-white/15 bg-white/[0.03] p-3 space-y-3 text-xs text-white/80" data-field="quick-setup">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold text-white">{path?.label}</span>
-        <span className="text-white/50">Only the questions for this format are shown.</span>
+        <span className="text-white/50">Match format. Pools and play-offs are asked separately below.</span>
         <Button size="sm" variant="outline" className="ml-auto h-7 bg-transparent border-white/20 text-white/80 text-[11px]"
           onClick={() => edit((d) => { d.quickPath = "custom"; })}>Open full builder</Button>
       </div>
@@ -46,14 +47,14 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
             <option value="">Not decided</option><option value="ranking">Ranking</option><option value="ladder">Club ladder</option><option value="manual">I'll seed manually</option><option value="none">No seeding</option>
           </select>
         </Q>
-        {(def.quickPath === "round_robin" || q.pools) && (
+        {fmt === "round_robin" && (
           <Q label={q.pools ? "In each pool, play each other" : "Play each other"}>
             <select className={sel} value={first.legs ?? 1} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[0].legs = Number(e.target.value) === 2 ? 2 : 1; })}>
               <option value={1}>Once</option><option value={2}>Twice</option>
             </select>
           </Q>
         )}
-        {def.quickPath === "knockout" && (
+        {q.thirdPlace && (
           <Q label="3rd / 4th place match">
             <select className={sel} value={first.thirdPlace ? "yes" : "no"} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[0].thirdPlace = e.target.value === "yes"; })}>
               <option value="no">No</option><option value="yes">Yes — losing semi-finalists play off</option>
@@ -100,10 +101,25 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
         })}>Add division (same format)</Button>
       </div>
 
+      {q.poolsToggle && (
+        <Q label="Divide the players into pools / groups?" className="max-w-sm">
+          <select className={sel} value={def.quickAnswers?.pools === null && !hasPools(def) ? "" : hasPools(def) ? "yes" : "no"}
+            onChange={(e) => e.target.value && editStruct((d) => setPools(d, e.target.value === "yes"))}>
+            <option value="">Choose…</option><option value="no">No — one field</option><option value="yes">Yes — divide into pools</option>
+          </select>
+        </Q>
+      )}
+
       {q.pools && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
-          <Q label="Number of pools"><Input className={f} inputMode="numeric" value={first.groups} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[0].groups = Math.max(1, Number(e.target.value) || 1); })} /></Q>
-          <Q label="Players per pool"><Input className={f} inputMode="numeric" value={first.groupSize ?? ""} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[0].groupSize = e.target.value ? Number(e.target.value) : null; })} /></Q>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 rounded border border-white/10 p-2">
+          <Q label="Number of pools"><Input className={f} inputMode="numeric" value={first.groups} onChange={(e) => editStruct((d) => {
+            const s = d.divisions[0].sections[0].stages[0]; const g = Math.max(2, Number(e.target.value) || 2);
+            s.groups = g; s.groupSize = derivePoolShape(s.input?.entrants, g, null).size ?? s.groupSize;
+          })} /></Q>
+          <Q label="Or players per pool"><Input className={f} inputMode="numeric" value={first.groupSize ?? ""} onChange={(e) => editStruct((d) => {
+            const s = d.divisions[0].sections[0].stages[0]; const size = e.target.value ? Number(e.target.value) : null;
+            s.groupSize = size; const g = derivePoolShape(s.input?.entrants, null, size).groups; if (g) s.groups = g;
+          })} /></Q>
           <Q label="Pool names (optional)" className="lg:col-span-2">
             <div className="flex flex-wrap gap-1">
               {Array.from({ length: first.groups }, (_, i) => (
@@ -112,13 +128,15 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
               ))}
             </div>
           </Q>
+          <div className="lg:col-span-4 text-[11px] text-white/50">Players are spread across pools by seeding (strongest separated). Matches inside each pool are round robin.</div>
         </div>
       )}
+      {fmt === "swiss" && <div className="text-[11px] text-white/50">Swiss is played as one field. Separate Swiss groups aren't supported yet — use Custom / mixed or separate divisions.</div>}
 
       {q.playoffToggle && (
-        <Q label="Play-offs afterwards?" className="max-w-xs">
-          <select className={sel} value={hasPlayoffs(def) ? "yes" : "no"} onChange={(e) => editStruct((d) => setPlayoffs(d, e.target.value === "yes"))}>
-            <option value="no">No — final table decides</option><option value="yes">Yes</option>
+        <Q label="Will there be play-offs after this stage?" className="max-w-xs">
+          <select className={sel} value={def.quickAnswers?.playoffs === null && !hasPlayoffs(def) ? "" : hasPlayoffs(def) ? "yes" : "no"} onChange={(e) => e.target.value && editStruct((d) => setPlayoffs(d, e.target.value === "yes"))}>
+            <option value="">Choose…</option><option value="no">No — final table decides</option><option value="yes">Yes</option>
           </select>
         </Q>
       )}
@@ -128,6 +146,7 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
           <Q label={q.pools ? "Qualify from each pool" : "How many qualify"}>
             <Input className={f} inputMode="numeric" value={first.advance?.perGroup ?? ""} onChange={(e) => editStruct((d) => { const s = d.divisions[0].sections[0].stages[0]; s.advance = { ...s.advance, role: "qualify", perGroup: e.target.value ? Number(e.target.value) : null }; })} />
           </Q>
+          <Q label="Play-off format"><div className="h-8 flex items-center text-white/80">Knockout{first.advance?.perGroup ? ` · ${(first.advance.perGroup) * Math.max(1, first.groups)} qualifiers` : ""}</div></Q>
           <Q label="How qualifiers are placed">
             <select className={sel} value={po.qualifierMapping ?? ""} onChange={(e) => editStruct((d) => { d.divisions[0].sections[0].stages[1].qualifierMapping = (e.target.value || null) as any; })}>
               <option value="">Not decided</option>
@@ -174,7 +193,12 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
 
       <div className="rounded border border-white/10 bg-white/[0.03] p-2">
         <div className="font-semibold text-white mb-1">Tournament map</div>
-        {tournamentMap(def).map((l) => <div key={l}>{l}</div>)}
+        <div className="grid sm:grid-cols-2 gap-2">
+          {tournamentMapBlocks(def).map((b, i) => (
+            <div key={i}><div className="font-medium text-white/90">{b.division}</div>
+              {b.lines.map((l, j) => <div key={j} className="whitespace-pre text-white/70">{l}</div>)}</div>
+          ))}
+        </div>
         <div className="text-white/50 mt-1">Who can enter, invitations and scoring are on the other tabs. The same checks run before anything is created.</div>
       </div>
     </div>

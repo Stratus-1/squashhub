@@ -225,8 +225,12 @@ export type EventScopeSettings = z.infer<typeof EventScopeSchema>;
 export const DefinitionSchema = z.object({
   event: EventScopeSchema,
   version: z.literal(1).default(1),
-  /** Fast "I know what I want" setup path. Only controls which questions are shown — never the engine. */
+  /** Fast "I know what I want" setup path = MATCH FORMAT only. Only controls which questions are shown — never the engine.
+   *  "pools_playoffs" is legacy (older drafts); it is read as round_robin + pools + play-offs. */
   quickPath: z.enum(["round_robin", "swiss", "knockout", "pools_playoffs", "custom"]).nullable().optional(),
+  /** Progressive-disclosure answers for the fast path. Grouping and progression are separate dimensions;
+   *  null = not answered yet (next questions stay hidden). The structure itself lives on the stages. */
+  quickAnswers: z.object({ pools: z.boolean().nullable().default(null), playoffs: z.boolean().nullable().default(null) }).optional(),
   name: z.string().default("Untitled tournament"),
   ownerKind: z.enum(["club", "association", "federation"]).default("federation"),
   category: z.enum(["championship", "closed", "open", "invitational"]).default("open"),

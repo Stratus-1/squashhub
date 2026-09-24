@@ -1,3 +1,9 @@
+## 2026-09-24 — Tournament engine contract and integrity guards
+
+- **Weakness:** Structure was partly inferred at runtime (stage type from rows, playoff mapping from settings, round count from roster), so a settings change or rebuild could reshape a live draw (Nelspruit Family Doubles).
+- **Fix:** Added `src/lib/tournaments/contract.ts` (contract checks, stage plan, snake seeding, deterministic cross-pool mapping, Swiss pairing without repeats, rebuild planner, stage/knockout/re-entry/seed/schedule guards) and `docs/TOURNAMENT_ENGINE_INTEGRITY.md`. The Smart Builder now blocks playoff stages without an explicit qualifier mapping and defaults playoffs to owner approval. 13 regression tests added. No tournament data changed.
+- **Open:** Legacy generator/rebuild paths in `ClubChampsView.tsx` are not yet routed through `planRebuild`/`canGenerateStage`.
+
 ## 2026-09-24 — Family Doubles standings still showed one table
 
 - **Cause:** The detail page recognized only `round_robin` as a per-division round-robin format, while the saved Family Doubles division uses `single_round_robin`. Its pool count therefore fell back to one even though two pools and pool-numbered fixtures were saved.

@@ -330,10 +330,40 @@ export const ACTIONS: Record<string, ActionDef> = {
       },
     },
   },
+
+  // Recorded by the automatic self-heal (repair.ts); never proposed by the model.
+  // Exists here so Super Admin can reverse it from AI Activity.
+  repair_tournament_state: {
+    label: "Automatic tournament repair",
+    describe: "internal",
+    async preview() {
+      return { ok: false, reason: "Use the diagnose_and_repair_tournament tool instead.", escalate: false };
+    },
+    async execute() {
+      return { ok: false, message: "Automatic repairs run through diagnose_and_repair_tournament." };
+    },
+    inverse: {
+      async check(c, _r, after) {
+        const snap = (after?.snapshot ?? []) as any[];
+        if (!after?.tournament_id || !snap.length) return { ok: false, message: "No snapshot stored for this repair." };
+        const ids = snap.map((e) => e.row?.id).filter(Boolean);
+        const { data } = await c.admin.from("club_champs_matches").select("id,status,score,winner_member_id").in("id", ids);
+        const locked = (data ?? []).filter((m: any) => (m.status && m.status !== "scheduled") || m.score || m.winner_member_id);
+        return locked.length
+          ? { ok: false, message: `${locked.length} affected game(s) have started or been scored since — reversing would disturb real results.` }
+          : { ok: true, message: `Restore ${snap.length} game(s) to how they were before the automatic repair.`, changes: [`${snap.length} fixture(s) restored`] };
+      },
+      async run(c, _r, after) {
+        const { data, error } = await c.admin.rpc("ai_rollback_champ_repair", { p_champ: after.tournament_id, p_snapshot: after.snapshot });
+        return error ? { ok: false, message: error.message } : { ok: true, message: `Restored ${(data as any)?.restored ?? 0} game(s)`, after: data };
+      },
+    },
+  },
 };
 
 export function catalogueFor(isAdmin: boolean) {
   return Object.entries(ACTIONS)
+    .filter(([k]) => k !== "repair_tournament_state")
     .filter(([k]) => isAdmin || !["replace_tournament_player", "correct_match_result"].includes(k))
     .map(([k, a]) => `- ${k}: ${a.label}. ${a.describe}`).join("\n");
 }

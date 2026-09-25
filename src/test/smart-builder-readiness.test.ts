@@ -27,6 +27,8 @@ describe("smart builder readiness", () => {
   it("Riverside decisions persist into structured settings and map to existing fields without sending", () => {
     const { m, r } = run({
       ...base,
+      // Schedule maths: a 16-draw knockout needs 4 fixed round dates.
+      divisions: [{ ...base.divisions[0], sections: [{ ...base.divisions[0].sections[0], stages: [{ ...base.divisions[0].sections[0].stages[0], schedule: { mode: "fixed", roundDates: ["2026-10-01", "2026-10-08", "2026-10-15", "2026-10-22"] } }] }] }],
       event: { scope: "club", ownerId: "o-riv", ownerName: "Riverside", audience: "selected_members", expectedEntries: 16, seedingSource: "club_ladder",
         venues: { mode: "single", clubIds: ["riv"], names: ["Riverside"] } },
       players: { entryMethod: "selected", audience: "individuals", confirmAvailabilityOnly: true, seedingSource: "ranking" },

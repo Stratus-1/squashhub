@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { StructuredEditorDialog } from "./StructuredEditorDialog";
+import { StageProgressPanel } from "./StageProgressPanel";
 import {
   atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
@@ -39,6 +40,7 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
   return (
     <div className="rounded-lg border p-3 space-y-2 text-sm">
       <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /><span className="font-semibold">Structured tournament</span><Badge variant="outline">BETA engine</Badge></div>
+      {matches.length > 0 && <StageProgressPanel champId={champId} spec={spec} matches={matches} nameOf={nameOf} />}
       {matches.length === 0 && (
         <Button size="sm" disabled={!!busy} onClick={() => run("gen", () => atomically(supabaseDb, champId, commitStructured, (db) => generateStructuredTournament(db, champId)), "Games generated")}>
           {busy === "gen" && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}Generate games

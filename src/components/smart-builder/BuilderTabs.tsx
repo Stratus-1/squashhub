@@ -33,6 +33,7 @@ import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import type { BuilderScope } from "@/pages/admin/SmartTournamentBuilder";
 import { cn } from "@/lib/utils";
+import { transitionPlan } from "@/lib/smart-builder/deferred";
 import { applyPlan, applyStructure } from "@/lib/smart-builder/division-structure";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
@@ -717,6 +718,17 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
         </div>
         <p className="mt-1 text-white/55">{schedMaths.capacityNote}.</p>
       </details>
+
+      {transitionPlan(def).length > 0 && (
+        <div className="rounded-lg border border-white/15 p-3 space-y-1" data-field="stage-transitions">
+          <div className="font-semibold text-white">How each stage begins</div>
+          <ul className="list-disc pl-4 text-white/80">
+            {transitionPlan(def).map((x, i) => (
+              <li key={i}>{def.divisions.length > 1 ? `${x.divisionName}: ` : ""}{x.text}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {mapping.laterStages.length > 0 && (
         <div className="rounded-lg border border-sky-300/40 bg-sky-500/10 p-3 space-y-1 text-sky-100" data-field="later-stages">

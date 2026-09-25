@@ -58,3 +58,20 @@ export function definedOnly(def: TournamentDefinition): TournamentDefinition {
 }
 
 export const deferredLabel = (s: Stage) => `${s.name} — Define later`;
+
+/** Review: how each stage after the first begins — created with the tournament, automatically, or Define later. */
+export function transitionPlan(def: TournamentDefinition): Array<{ divisionName: string; stageName: string; how: "with_tournament" | "automatic" | "define_later"; text: string }> {
+  const out: ReturnType<typeof transitionPlan> = [];
+  for (const d of def.divisions) {
+    const stages = d.sections.flatMap((s) => s.stages).filter((s) => s.kind !== "pair_from_positions" && s.kind !== "split");
+    stages.forEach((s, i) => {
+      if (i === 0) return;
+      const src = stages.find((x) => x.id === (s.mapping?.source === "stage_standings" ? s.mapping.sourceStageId : s.input?.fromStageId)) ?? stages[i - 1];
+      if (isDeferred(s)) out.push({ divisionName: d.name, stageName: s.name, how: "define_later", text: `${s.name} — Define later: you'll be asked to set it up when ${src.name} finishes.` });
+      else if (s.kind === "cross_pool_league" && (s.mapping?.source ?? "seed_pools") === "seed_pools" && !s.input?.fromStageId)
+        out.push({ divisionName: d.name, stageName: s.name, how: "with_tournament", text: `${s.name} — created with the tournament (same seeded pools).` });
+      else out.push({ divisionName: d.name, stageName: s.name, how: "automatic", text: `${s.name} — starts automatically when ${src.name} finishes (held for you if a tie or result needs a decision).` });
+    });
+  }
+  return out;
+}

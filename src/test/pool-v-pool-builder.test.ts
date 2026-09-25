@@ -158,5 +158,16 @@ describe("Pool-v-pool league built from builder controls", () => {
     expect(stageCourts(def, d, st)).toMatchObject({ source: "division", count: 2 });
     expect(stageMatch(def, st).text).toBe("6 games × 20m = 120m per tie (Bells)");
   });
+
+  it("club chooses divisions × pools; singles+doubles session and semis/finals stay", () => {
+    const def = applyDiamondLeague(emptyDefinition(), { divisions: 1, poolsPerDivision: 6 });
+    expect(def.divisions.map((d) => d.poolNames?.length)).toEqual([6]);
+    expect(def.admission?.capacity).toBe(36);
+    const [s1, s2, semis, finals] = def.divisions[0].sections[0].stages;
+    expect([s1.discipline, s2.discipline, s2.sameSessionAs]).toEqual(["singles", "doubles", s1.id]);
+    expect(s1.schedule.roundDates).toHaveLength(5);
+    expect(semis.name).toBe("Semi-finals"); expect(finals.name).toBe("Finals");
+    expect(sessionPlan(def).sessions[0].label).toMatch(/Singles \+ Doubles/);
+  });
 });
 

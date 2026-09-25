@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
-import { DIAMOND_KEY, applyDiamondLeague, diamondShape, shapeText, diamondChain, sessionTie, diamondTieStage, poolLetter, poolName, poolRotation, rubberLabel, tieEveningCheck, tieMinutes, tieCourt, tieSlots, toTemplate } from "@/lib/smart-builder/diamond-league";
+import { DIAMOND_KEY, applyDiamondLeague, diamondLayout, shapeText, diamondChain, sessionTie, diamondTieStage, poolLetter, poolName, poolRotation, rubberLabel, tieEveningCheck, tieMinutes, tieCourt, tieSlots, toTemplate } from "@/lib/smart-builder/diamond-league";
 import { fromExt } from "@/lib/supabase-ext";
 import { useState } from "react";
 
@@ -16,12 +16,14 @@ export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefin
   const tie = sessionTie(def);
   const setStart = (v: string) => edit((x) => { for (const d of x.divisions) { const st = diamondTieStage(d); if (st?.tieFormat) st.tieFormat.startTime = v || null; } });
   const curPools = def.divisions.map((d) => d.poolNames?.length ?? 0);
-  const [cap, setCap] = useState<number>(def.admission?.capacity ?? 48);
-  const [poolSize, setPoolSize] = useState<number>(def.divisions[0]?.sections[0]?.stages[0]?.groupSize ?? 6);
+  const curSize = def.divisions[0]?.sections[0]?.stages[0]?.groupSize ?? 6;
+  const [nDiv, setNDiv] = useState<number>(def.divisions.length || 2);
   const [ppd, setPpd] = useState<number>(Math.max(2, ...curPools));
-  const shape = diamondShape(cap || 0, poolSize || 6, ppd || 4);
-  const same = shape.divisions.join(",") === curPools.join(",") && poolSize === (def.divisions[0]?.sections[0]?.stages[0]?.groupSize ?? 6);
-  const rebuild = () => edit((x) => { const st = diamondTieStage(x.divisions[0])?.tieFormat?.startTime; applyDiamondLeague(x, { capacity: cap, poolSize, poolsPerDivision: ppd, startDate: x.scheduleDefaults?.startDate ?? undefined, startTime: st ?? undefined }); });
+  const [poolSize, setPoolSize] = useState<number>(curSize);
+  const shape = diamondLayout(nDiv || 1, ppd || 2, poolSize || 6);
+  const cap = shape.capacity;
+  const same = shape.divisions.join(",") === curPools.join(",") && poolSize === curSize;
+  const rebuild = () => edit((x) => { const st = diamondTieStage(x.divisions[0])?.tieFormat?.startTime; applyDiamondLeague(x, { divisions: nDiv, poolsPerDivision: ppd, poolSize, startDate: x.scheduleDefaults?.startDate ?? undefined, startTime: st ?? undefined }); });
   const rounds = Array.from({ length: Math.max(0, ...def.divisions.map((d) => poolRotation(d.poolNames?.length ?? 0).length)) }, (_, r) => r);
   const saveTemplate = async () => {
     if (!clubId) { toast.error("Templates are saved per club — open the builder from a club."); return; }
@@ -39,15 +41,15 @@ export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefin
         {diamondChain(def).map((l, i) => <li key={i} className="flex gap-2"><span className="text-amber-300">{i + 1}.</span><span>{l}</span></li>)}
       </ol>
       <div className="grid sm:grid-cols-3 gap-2">
-        <label className="space-y-1 text-[11px] text-white/70"><span>Players (capacity)</span>
-          <Input type="number" className={f} value={cap || ""} onChange={(e) => setCap(Number(e.target.value) || 0)} /></label>
+        <label className="space-y-1 text-[11px] text-white/70"><span>Divisions</span>
+          <Input type="number" className={f} value={nDiv || ""} onChange={(e) => setNDiv(Number(e.target.value) || 0)} /></label>
         <label className="space-y-1 text-[11px] text-white/70"><span>Players per pool</span>
           <Input type="number" className={f} value={poolSize || ""} onChange={(e) => setPoolSize(Number(e.target.value) || 0)} /></label>
-        <label className="space-y-1 text-[11px] text-white/70"><span>Max pools per division</span>
+        <label className="space-y-1 text-[11px] text-white/70"><span>Pools per division</span>
           <Input type="number" className={f} value={ppd || ""} onChange={(e) => setPpd(Number(e.target.value) || 0)} /></label>
         <div className="sm:col-span-3 flex flex-wrap items-center gap-2 text-[11px]" data-field="diamond-shape">
-          <span className={same && cap === def.admission?.capacity ? "text-white/60" : "text-amber-200"}>{shapeText(shape)}</span>
-          {!(same && cap === def.admission?.capacity) && <Button size="sm" variant="outline" className="h-7 bg-transparent border-amber-300/50 text-amber-200 text-[11px]" disabled={shape.pools < 2} onClick={rebuild}>Rebuild pools for {cap} players</Button>}
+          <span className={same ? "text-white/60" : "text-amber-200"}>{shapeText(shape)}</span>
+          {!same && <Button size="sm" variant="outline" className="h-7 bg-transparent border-amber-300/50 text-amber-200 text-[11px]" disabled={shape.pools < 2} onClick={rebuild}>Apply: {nDiv} division{nDiv === 1 ? "" : "s"} × {ppd} pools ({cap} players)</Button>}
         </div>
         <label className="space-y-1 text-[11px] text-white/70"><span>Admission</span>
           <select className="smart-builder-select h-8 w-full rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs" value={def.admission?.mode ?? "first_confirmed"} onChange={(e) => edit((x) => { x.admission = { capacity: 48, waitlist: true, ...x.admission, mode: e.target.value as "first_confirmed" | "manual" }; })}>

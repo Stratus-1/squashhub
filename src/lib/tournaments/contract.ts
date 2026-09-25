@@ -13,7 +13,7 @@
  *  - Divisions are isolated; pairs are units and are never split.
  */
 
-export type StageKind = "round_robin" | "pools" | "knockout" | "swiss" | "placement";
+export type StageKind = "round_robin" | "pools" | "knockout" | "swiss" | "placement" | "mapped";
 export type ScheduleRule = "fixed" | "play_by" | "window";
 export type GenerationMode = "automatic" | "owner_approval";
 export type QualifierMapping = "cross_pool" | "reseed" | "same_pool";
@@ -92,6 +92,8 @@ export interface PlannedStage {
   /** playoff stages only. `transition` is the explicit, stable-id progression rule; `mapping` stays in step for older readers. */
   qualify?: { perPool: number; mapping: QualifierMapping | null; transition?: import("./transition").StageTransition | null } | null;
   generation?: GenerationMode;
+  /** mapped stages: explicit source → units (players/pairs) → matchups. See ./mapping. */
+  mapping?: import("./mapping").StageMapping | null;
 }
 
 export interface DivisionContract {
@@ -128,6 +130,11 @@ export function contractIssues(c: DivisionContract): ContractIssue[] {
     if (s.schedule.rule === "window" && (!s.schedule.start || !s.schedule.end)) e("schedule_window", `${s.name}: window needs a start and end.`, s.id);
     if (s.kind === "pools" && (!s.pools || !s.poolSize)) e("pools", `${s.name}: pool count and pool size are required.`, s.id);
     if (s.kind === "swiss" && !s.swissRounds) e("swiss_rounds", `${s.name}: the number of Swiss rounds must be set.`, s.id);
+    if (s.kind === "mapped") {
+      // Explicit mapping replaces progression/pairing rules: units say exactly who forms each side.
+      mappedIssues(s, c.stages.slice(0, i)).forEach((m) => e("mapping", m, s.id));
+      return;
+    }
     if (i === 0) {
       if (disciplineOf(c, s) === "doubles" && c.unit !== "pairs") e("first_doubles", `${s.name}: a first-stage doubles event needs pair entries (set the division to doubles).`, s.id);
       return;
@@ -441,3 +448,22 @@ export function assertScheduleWithin(
     if (f.court != null) { if (used.has(slot)) throw new IntegrityError("double_booked", `Court clash at ${slot}.`); used.add(slot); }
   }
 }
+
+/** Engine rules for an explicit-mapping stage (structure checks live in ./mapping). */
+function mappedIssues(s: PlannedStage, earlier: PlannedStage[]): string[] {
+  const m = s.mapping;
+  const out = mappingIssuesLazy(m, s.name);
+  if (!m) return out;
+  if (m.source === "seed_pools") {
+    const firstSeeded = earlier.find((x) => x.kind === "mapped" && x.mapping?.source === "seed_pools");
+    if (earlier.length && !firstSeeded) out.push(`${s.name}: entry-seeded pools can only be used by the opening stage (or stages sharing its pools).`);
+    if (firstSeeded && (firstSeeded.mapping!.pools !== m.pools || firstSeeded.mapping!.poolSize !== m.poolSize)) out.push(`${s.name}: uses different pools from ${firstSeeded.name}.`);
+  } else {
+    const src = earlier.find((x) => x.id === m.sourceStageId);
+    if (!src) out.push(`${s.name}: its source stage must be an earlier stage of this division.`);
+    else if (src.kind !== "pools" && src.kind !== "round_robin") out.push(`${s.name}: finishing positions can only come from a pools / round robin stage (${src.name} is ${src.kind}).`);
+    else if ((src.kind === "pools" ? src.pools ?? 1 : 1) !== m.pools) out.push(`${s.name}: ${src.name} has ${src.kind === "pools" ? src.pools : 1} pools, the mapping uses ${m.pools}.`);
+  }
+  return out;
+}
+import { mappingIssues as mappingIssuesLazy } from "./mapping";

@@ -10,6 +10,7 @@ import { confirmPlayoffs, generateFromSpec, mappedFixtures, nextStageFixtures, p
 import { effectiveTransition, transitionIssues } from "./transition";
 import type { TournamentDefinition } from "../smart-builder/definition";
 import { engineVerdicts } from "../smart-builder/engine-support";
+import { definedOnly, deferredStages } from "../smart-builder/deferred";
 import { effectiveMapping } from "../smart-builder/matchups";
 import { venuesOutsideSet } from "../smart-builder/venues";
 import { rawSchedule, resolveSpecDates, specDateIssues } from "./date-window";
@@ -17,7 +18,11 @@ import { rawSchedule, resolveSpecDates, specDateIssues } from "./date-window";
 /* ───── spec from the Beta definition ───── */
 
 export function specFromDefinition(input: TournamentDefinition): TournamentSpec {
-  const def = input;
+  // Stages deliberately left for later are recorded as planning targets only. They are never
+  // persisted as runnable stages, so the tournament cannot advance into them; the admin
+  // configures them once the stage before has finished, and they are then created normally.
+  const def = definedOnly(input);
+  const deferred = deferredStages(input);
   const blocked = engineVerdicts(def).find((v) => v.state === "unsupported");
   if (blocked) throw new IntegrityError("unsupported_stage", blocked.detail);
   const tw = { start: def.scheduleDefaults?.startDate ?? null, end: def.scheduleDefaults?.endDate ?? null };
@@ -72,6 +77,8 @@ export function specFromDefinition(input: TournamentDefinition): TournamentSpec 
         seeding: { source: (def as any).event?.seedingSource ?? "entry_order", method: "snake" },
         placements: "champion", stages, entrants: [], poolLabels: d.poolLabels,
         finalStandings: (def as any).finalStandings ?? "last_stage",
+        deferredStages: deferred.filter((x) => x.divisionId === d.id)
+          .map((x) => ({ stageKey: x.stageId, name: x.stageName, plannedDate: x.plannedDate })),
       } satisfies SpecDivision;
     }),
   };

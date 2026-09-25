@@ -718,6 +718,18 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
         <p className="mt-1 text-white/55">{schedMaths.capacityNote}.</p>
       </details>
 
+      {mapping.laterStages.length > 0 && (
+        <div className="rounded-lg border border-sky-300/40 bg-sky-500/10 p-3 space-y-1 text-sky-100" data-field="later-stages">
+          <div className="font-semibold">To be defined later (this is fine)</div>
+          <ul className="list-disc pl-4">
+            {mapping.laterStages.map((l, i) => (
+              <li key={i}>{def.divisions.length > 1 ? `${l.division}: ` : ""}{l.stage} — Define later{l.plannedDate ? ` (planned for ${l.plannedDate})` : ""}</li>
+            ))}
+          </ul>
+          <p className="text-white/70">The tournament is created without them and the earlier stages run normally. Set each one up once the stage before it has finished — it can't start before that.</p>
+        </div>
+      )}
+
       <div className="rounded-lg border border-white/10 p-3 space-y-2">
         <div className="font-semibold text-white">Create Tournament</div>
         {exec === "ready" && <p className="flex gap-1.5 text-emerald-200"><CheckCircle2 className="w-4 h-4 shrink-0" />{mapping.structured && allStages(def).length > def.divisions.length

@@ -124,6 +124,12 @@ const StageSchema = z.object({
   minMatches: z.number().int().min(0).nullable().optional(),
   /** Resolves only after registration closes (draw size, byes, bands). */
   dynamic: z.boolean().optional(),
+  /**
+   * DELIBERATELY not decided yet (semi-finals / final / later play-offs). A valid, intentional
+   * state: the stage is kept as a planning target, is not validated or created, and the
+   * tournament cannot advance into it until the admin configures it (see ./deferred).
+   */
+  defineLater: z.boolean().optional(),
   loserBehaviour: z.enum(["eliminated", "plate", "placement"]).optional(),
   notes: z.string().optional(),
   schedule: ScheduleSchema.default({ mode: "unset" }),

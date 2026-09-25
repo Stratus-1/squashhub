@@ -16,6 +16,7 @@ import { allStages, effectiveSchedule, type Stage, type TournamentDefinition } f
 import { d10, inside } from "@/lib/tournaments/date-window";
 import { selectedCourtPool } from "./venues";
 import { sessionPlan, type PlannedSession } from "./sessions";
+import { definedOnly } from "./deferred";
 
 export interface ScheduleIssue {
   code: "window" | "rounds_short" | "round_order" | "round_outside" | "dependency" | "deadline_order" | "knockout_order" | "capacity" | "after_end" | "session";
@@ -180,7 +181,9 @@ export function issueField(i: ScheduleIssue): string {
   return i.round != null ? `stage.${i.stageId}.round${i.round}` : `stage.${i.stageId}`;
 }
 
-export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
+export function scheduleMaths(input: TournamentDefinition): ScheduleMaths {
+  // Stages left as "Define later" are planning targets only — never scheduled or checked.
+  const def = definedOnly(input);
   const out: ScheduleIssue[] = [];
   const facts: ScheduleFact[] = [];
   const tw = { start: d10(def.scheduleDefaults?.startDate), end: d10(def.scheduleDefaults?.endDate) };

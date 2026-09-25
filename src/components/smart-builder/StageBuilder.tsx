@@ -107,8 +107,8 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
                 {i > 0 && <div className="pl-3 text-white/50">{transitionText(stages[i - 1], s)}</div>}
                 <div className={cn("flex items-center gap-1 rounded border px-2 py-1", s.id === sel0?.id ? "border-white/60 bg-white/[0.06]" : "border-white/10")}>
                   <button className="flex-1 text-left" onClick={() => setSelId(s.id)} aria-label={`Edit ${s.name}`}>
-                    <div className="text-white">Stage {i + 1} — {s.name}</div>
-                    <div className="text-white/60">{stageSummary(s, i === 0 ? entrants : null)}</div>
+                    <div className="text-white">Stage {i + 1} — {s.name}{s.defineLater ? " — Define later" : ""}</div>
+                    <div className="text-white/60">{s.defineLater ? "To be set up once the stage before it has finished" : stageSummary(s, i === 0 ? entrants : null)}</div>
                   </button>
                   <Button size="icon" variant="ghost" className="h-6 w-6 text-white/60" aria-label="Move stage up" disabled={i === 0} onClick={() => editDiv((x) => moveStage(x, s.id, -1))}><ArrowUp className="h-3 w-3" /></Button>
                   <Button size="icon" variant="ghost" className="h-6 w-6 text-white/60" aria-label="Move stage down" disabled={i === stages.length - 1} onClick={() => editDiv((x) => moveStage(x, s.id, 1))}><ArrowDown className="h-3 w-3" /></Button>
@@ -130,6 +130,12 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               <span className="text-[11px] text-white/50">set up on its own — nothing is copied from other stages</span>
               {prev && <Button size="sm" variant="outline" className={cn(btn, "ml-auto")} onClick={() => editDiv((x) => copyPreviousStage(x, sel0.id))}>Copy previous stage settings</Button>}
             </div>
+            <label className="flex items-start gap-2 text-white/80" data-field={`stage.${sel0.id}.defineLater`}>
+              <input type="checkbox" className="mt-0.5" checked={!!sel0.defineLater} onChange={(e) => editStage((s) => { s.defineLater = e.target.checked || undefined; })} />
+              <span>Define later — decide this stage's format and matchups once the stage before it has finished.
+                <span className="block text-[11px] text-white/50">The tournament can still be created and the earlier stages run normally. This stage can't start until it is set up.</span>
+              </span>
+            </label>
             <div className="grid sm:grid-cols-2 gap-2">
               <Q label="Stage name"><Input className={f} value={sel0.name} onChange={(e) => editStage((s) => { s.name = e.target.value; })} /></Q>
               <Q label="1. Match type">

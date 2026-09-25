@@ -21,6 +21,12 @@ export interface SpecDivision extends DivisionContract {
   /** Entrant ids in seed order (strongest first). */
   entrants: Array<{ id: string; rank: number | null }>;
   poolLabels?: string[];
+  /**
+   * Stages the owner deliberately left "Define later" (semi-finals, final, …). Planning
+   * targets only: never generated, never advanced into, kept so the admin can configure
+   * them once the stage before them has finished.
+   */
+  deferredStages?: Array<{ stageKey: string; name: string; plannedDate: string | null }>;
 }
 export interface TournamentSpec {
   version: number;

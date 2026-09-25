@@ -14,6 +14,7 @@
  * anything: invitations are always triggered later from the existing screens.
  */
 import { engineBlockers } from "./engine-support";
+import { definedOnly, deferredStages as laterStageList } from "./deferred";
 import { specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { isBellsDefinition, type Division, type Section, type Stage, type TournamentDefinition } from "./definition";
 
@@ -27,6 +28,8 @@ export interface ExistingMapping {
   /** Stages that are kept in the draft but not created (executability "partial"). */
   deferredStages: { division: string; stage: string; reason: string }[];
   executability: Executability;
+  /** Stages deliberately left "Define later" — intentional, never a blocker. */
+  laterStages: { division: string; stage: string; plannedDate: string | null }[];
   /** True when the design runs on the structured multi-stage engine. */
   structured?: boolean;
   /** WhatsApp group link to store on the tournament's group record after insert. */
@@ -44,8 +47,10 @@ const GENDER: Record<Division["eligibility"], string> = {
 const MAPPABLE_FIRST = new Set(["knockout", "round_robin", "swiss"]);
 
 export function mapToExistingTournament(input: TournamentDefinition): ExistingMapping {
-  const def = input;
-  const blockers = engineBlockers(input);
+  // "Define later" stages are intentional and are mapped to nothing — see ./deferred.
+  const def = definedOnly(input);
+  const blockers = engineBlockers(def);
+  const laterStages = laterStageList(input).map((x) => ({ division: x.divisionName, stage: x.stageName, plannedDate: x.plannedDate }));
   const unsupported: string[] = [];
   const deferredStages: ExistingMapping["deferredStages"] = [];
   const leagueFormats: Record<string, string> = {};
@@ -182,7 +187,7 @@ export function mapToExistingTournament(input: TournamentDefinition): ExistingMa
   }
 
   return {
-    unsupported, deferredStages, executability, champ, extras, structured,
+    unsupported, deferredStages, laterStages, executability, champ, extras, structured,
     whatsappGroupUrl: c.whatsappGroup === "yes" ? (c.whatsappGroupUrl ?? null) : null,
   };
 }

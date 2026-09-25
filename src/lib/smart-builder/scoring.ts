@@ -62,7 +62,7 @@ const isStep = (s: Stage) => s.kind === "pair_from_positions" || s.kind === "spl
 export function scoringIssues(def: TournamentDefinition): ScoringIssue[] {
   const out: ScoringIssue[] = [];
   for (const d of def.divisions) for (const sec of d.sections) for (const st of sec.stages) {
-    if (isStep(st)) continue;
+    if (isStep(st) || st.defineLater) continue;
     const where = `${def.divisions.length > 1 ? `${d.name} · ` : ""}${st.name}`;
     const sc = effectiveScoring(def, st);
     if (isBells(sc) && !sc.timeCapMinutes) out.push({ stageId: st.id, message: `${where}: Bells scoring needs its time cap (minutes until the bell).` });

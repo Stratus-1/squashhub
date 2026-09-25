@@ -10,6 +10,7 @@ import type { ValidationResult } from "./validate";
 import type { ExistingMapping } from "./to-existing";
 import { AUDIENCE_OPTIONS, SEEDING_LABELS, coverageSentence, isAudienceValid, recommendSeeding, type EventScope } from "./scope";
 import { issueField, scheduleMaths } from "./schedule-maths";
+import { deferredStages, isDeferred } from "./deferred";
 import { SCOPE_LABEL, eventVenues, selectedCourtPool, venuesOutsideSet, venuesValid } from "./venues";
 import { isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
 
@@ -46,7 +47,8 @@ const worst = (items: ReadinessItem[]): ItemState =>
 
 /** Stages that need a schedule (transforms/splits are bookkeeping steps). */
 export function schedulableStages(def: TournamentDefinition) {
-  return allStages(def).filter((r) => r.stage.kind !== "pair_from_positions" && r.stage.kind !== "split");
+  // Deferred ("Define later") stages are planning targets: never scheduled, never checked.
+  return allStages(def).filter((r) => r.stage.kind !== "pair_from_positions" && r.stage.kind !== "split" && !isDeferred(r.stage));
 }
 
 /** Which schedule inputs a stage actually needs, based on its mode. */

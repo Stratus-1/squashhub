@@ -187,7 +187,7 @@ export function mapToExistingTournament(input: TournamentDefinition): ExistingMa
   }
 
   return {
-    unsupported, deferredStages, executability, champ, extras, structured,
+    unsupported, deferredStages, laterStages, executability, champ, extras, structured,
     whatsappGroupUrl: c.whatsappGroup === "yes" ? (c.whatsappGroupUrl ?? null) : null,
   };
 }

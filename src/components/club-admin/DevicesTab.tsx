@@ -396,6 +396,12 @@ export function DevicesTab({ clubId }: { clubId: string }) {
   };
 
   const openEditor = (device: IoTDevice) => {
+    // Never open the main door with default (geofence off) values before its saved settings load —
+    // saving that form would overwrite the real settings.
+    if (device.source === "main-access" && !clubDoor) {
+      toast.error("Door settings are still loading — try again in a moment.");
+      return;
+    }
     setSelectedDevice(null);
     const next = toForm(device);
     if (device.source === "main-access" && clubDoor) {
@@ -509,7 +515,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       if (form.source === "main-access") {
         const lat = parseFloat(form.geofence_lat);
         const lng = parseFloat(form.geofence_lng);
-        const { error: clubErr } = await fromExt("clubs")
+        const { data: savedClub, error: clubErr } = await fromExt("clubs")
           .update({
             door_show_on_dashboard: form.show_on_dashboard,
             door_dashboard_role_ids: form.dashboard_role_ids,
@@ -522,8 +528,10 @@ export function DevicesTab({ clubId }: { clubId: string }) {
             door_auto_unlock_enabled: form.geofence_enabled && form.geofence_auto,
             door_auto_unlock_seconds: Number.isFinite(autoSeconds) && autoSeconds >= 1 ? autoSeconds : 12,
           })
-          .eq("id", clubId);
+          .eq("id", clubId)
+          .select("id");
         if (clubErr) throw clubErr;
+        if (!savedClub?.length) throw new Error("Door settings were not saved — you may not have permission to change club settings.");
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["iot-club-door", clubId] }),
           queryClient.invalidateQueries({ queryKey: ["my-club"] }),

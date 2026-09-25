@@ -97,7 +97,9 @@ function ActivityRow({ row, who }: { row: AiActivityRow; who: string }) {
           <span className="font-semibold">{who}</span>
           <span className="text-muted-foreground">{row.clubs?.name ?? "—"} · {row.role ?? "member"}</span>
           <Badge variant="outline">{row.kind}</Badge>
-          <Badge variant={STATUS_VARIANT[row.status] ?? "secondary"} className={row.status === "bug_reported" ? "border-destructive text-destructive" : undefined}>{OUTCOME[row.status] ?? row.status.replace("_", " ")}</Badge>
+          {row.bug_report_id ? <BugStatusBadge id={row.bug_report_id} /> : (
+            <Badge variant={STATUS_VARIANT[row.status] ?? "secondary"}>{OUTCOME[row.status] ?? row.status.replace("_", " ")}</Badge>
+          )}
           {reasonCode(row.escalation_reason) && <Badge variant="outline">{reasonCode(row.escalation_reason)!.replace(/_/g, " ")}</Badge>}
           {row.transcript_used && <Badge variant="outline">voice</Badge>}
           <button className="ml-auto text-primary underline text-[12px]" onClick={() => setOpen((v) => !v)}>{open ? "Hide" : "Details"}</button>
@@ -210,12 +212,31 @@ function BetaClubsCard() {
   );
 }
 
-/** Structured bug record linked to an assistant interaction (Super Admin only via RLS). */
-function BugSummary({ id }: { id: string }) {
-  const { data: bug } = useQuery({
+/** Bug lifecycle (separate from the AI request outcome). Only "fixed" means the defect is resolved. */
+const BUG_LIFECYCLE: Record<string, { label: string; cls: string }> = {
+  open: { label: "Open", cls: "border-destructive text-destructive" },
+  investigating: { label: "Investigating", cls: "border-destructive text-destructive" },
+  fixed: { label: "Fixed", cls: "border-primary text-primary" },
+  wont_fix: { label: "Won't fix", cls: "" },
+  duplicate: { label: "Duplicate", cls: "" },
+};
+
+function useBug(id: string) {
+  return useQuery({
     queryKey: ["ai-bug", id],
     queryFn: async () => { const { data } = await fromExt("ai_bug_reports").select("*").eq("id", id).maybeSingle(); return data as any; },
   });
+}
+
+function BugStatusBadge({ id }: { id: string }) {
+  const { data: bug } = useBug(id);
+  const lc = bug ? BUG_LIFECYCLE[bug.status] ?? { label: bug.status, cls: "" } : { label: "…", cls: "" };
+  return <Badge variant="outline" className={lc.cls}>Bug reported · {lc.label}</Badge>;
+}
+
+/** Structured bug record linked to an assistant interaction (Super Admin only via RLS). */
+function BugSummary({ id }: { id: string }) {
+  const { data: bug } = useBug(id);
   if (!bug) return null;
   return (
     <div className="border border-destructive/40 rounded p-2 space-y-0.5 mt-1">
@@ -224,13 +245,14 @@ function BugSummary({ id }: { id: string }) {
         <span className="font-medium">{bug.title}</span>
         <Badge variant="outline">{bug.verification}</Badge>
         <Badge variant="outline">{bug.severity}</Badge>
-        <Badge variant="outline">{bug.status}</Badge>
+        <Badge variant="outline" className={BUG_LIFECYCLE[bug.status]?.cls}>Bug status: {BUG_LIFECYCLE[bug.status]?.label ?? bug.status}</Badge>
         {bug.occurrences > 1 && <Badge variant="secondary">{bug.occurrences} occurrences · last {format(new Date(bug.last_seen_at), "d MMM HH:mm")}</Badge>}
       </div>
       <Field label="Feature">{bug.feature}{bug.screen ? ` · ${bug.screen}` : ""}</Field>
       <Field label="Expected">{bug.expected_behaviour}</Field>
       <Field label="Actual">{bug.actual_behaviour}</Field>
       <Field label="Evidence">{bug.evidence}</Field>
+      {bug.resolution_note && <Field label="Resolution">{bug.resolution_note}</Field>}
       {bug.reproduction && <Field label="Reproduce">{bug.reproduction}</Field>}
       {bug.related_ids && Object.keys(bug.related_ids).length > 0 && <Field label="Record IDs"><span className="font-mono text-[11px]">{Object.entries(bug.related_ids).map(([k, v]) => `${k}: ${v}`).join(" · ")}</span></Field>}
       <Field label="Reported">{bug.reporter_role ?? "—"} · {format(new Date(bug.first_seen_at), "d MMM yyyy HH:mm")}</Field>

@@ -18,6 +18,7 @@ export interface ClubSecrets {
   shelly_door_device_id?: string;
   shelly_door_channel?: number;
   shelly_door_pulse_ms?: number;
+  shelly_door_inverted?: boolean;
   shelly_door_ble_mac?: string;
   bank_name?: string;
   bank_account_name?: string;

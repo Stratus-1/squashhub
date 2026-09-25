@@ -115,6 +115,7 @@ type DeviceForm = {
   auto_seconds: string;
   near_only: boolean;
   button_radius: string;
+  output_inverted: boolean;
 };
 
 const emptyForm = (category: DeviceCategory): DeviceForm => ({
@@ -151,6 +152,7 @@ const emptyForm = (category: DeviceCategory): DeviceForm => ({
   auto_seconds: "12",
   near_only: false,
   button_radius: "150",
+  output_inverted: false,
 });
 
 const toForm = (d: IoTDevice): DeviceForm => ({
@@ -189,6 +191,7 @@ const toForm = (d: IoTDevice): DeviceForm => ({
   auto_seconds: String(d.auto_unlock_seconds ?? 12),
   near_only: !!(d as any).button_near_door_only,
   button_radius: String(d.geofence_radius_m ?? 50),
+  output_inverted: !!(d as any).output_inverted,
 });
 
 const ADD_OPTIONS: Array<{ category: DeviceCategory; title: string; description: string }> = [

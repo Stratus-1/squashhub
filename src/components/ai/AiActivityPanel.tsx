@@ -13,13 +13,14 @@ import { useAiActivity, useAiRollback, useBetaClubs, useSetBetaClub, AI_ACTIONS_
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 
-const STATUSES = ["answered", "proposed", "executed", "denied", "needs_clarification", "failed", "cancelled", "expired", "escalated", "rolled_back"];
+const STATUSES = ["answered", "proposed", "executed", "denied", "needs_clarification", "failed", "cancelled", "expired", "escalated", "bug_reported", "rolled_back"];
 const QUICK: { key: string; label: string }[] = [
   { key: "executed", label: "Completed actions" },
   { key: "proposed", label: "Waiting for confirm" },
   { key: "denied", label: "Permission denied" },
-  { key: "escalated", label: "Escalated" },
-  { key: "failed", label: "Failed" },
+  { key: "bug_reported", label: "Bug reported" },
+  { key: "escalated", label: "Support escalation" },
+  { key: "failed", label: "Backend failure" },
   { key: "all", label: "Everything" },
 ];
 const ACTION_LABELS: Record<string, string> = {
@@ -30,7 +31,8 @@ const ACTION_LABELS: Record<string, string> = {
   update_my_contact: "Updated contact details",
   remove_club_member: "Removed a member from the club list",
 };
-const OUTCOME: Record<string, string> = { executed: "Completed", escalated: "Escalated", failed: "Failed", rolled_back: "Completed, then reversed", proposed: "Waiting for confirm", cancelled: "Cancelled by user", expired: "Preview expired", answered: "Answered", denied: "Permission denied", needs_clarification: "Needed clarification" };
+const OUTCOME: Record<string, string> = { executed: "Completed", escalated: "Support escalation", bug_reported: "Bug reported", failed: "Backend failure", rolled_back: "Completed, then reversed", proposed: "Waiting for confirm", cancelled: "Cancelled by user", expired: "Preview expired", answered: "Answered", denied: "Permission denied", needs_clarification: "Needed clarification" };
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = { executed: "default", failed: "destructive", bug_reported: "outline", denied: "outline", proposed: "secondary", escalated: "secondary" };
 /** Reason code stored as "[code] detail" in escalation_reason. */
 const reasonCode = (r?: string | null) => r?.match(/^\[([a-z_]+)\]/)?.[1] ?? null;
 
@@ -95,7 +97,7 @@ function ActivityRow({ row, who }: { row: AiActivityRow; who: string }) {
           <span className="font-semibold">{who}</span>
           <span className="text-muted-foreground">{row.clubs?.name ?? "—"} · {row.role ?? "member"}</span>
           <Badge variant="outline">{row.kind}</Badge>
-          <Badge variant={row.status === "failed" ? "destructive" : row.status === "executed" ? "default" : "secondary"}>{row.status.replace("_", " ")}</Badge>
+          <Badge variant={STATUS_VARIANT[row.status] ?? "secondary"} className={row.status === "bug_reported" ? "border-destructive text-destructive" : undefined}>{OUTCOME[row.status] ?? row.status.replace("_", " ")}</Badge>
           {reasonCode(row.escalation_reason) && <Badge variant="outline">{reasonCode(row.escalation_reason)!.replace(/_/g, " ")}</Badge>}
           {row.transcript_used && <Badge variant="outline">voice</Badge>}
           <button className="ml-auto text-primary underline text-[12px]" onClick={() => setOpen((v) => !v)}>{open ? "Hide" : "Details"}</button>
@@ -113,6 +115,7 @@ function ActivityRow({ row, who }: { row: AiActivityRow; who: string }) {
             </p>
           </div>
         ) : <p className="line-clamp-2">{row.request_text}</p>}
+        {row.bug_report_id && <BugSummary id={row.bug_report_id} />}
         {open && (
           <div className="space-y-2 pt-2 border-t mt-2">
             <Field label="Page">{row.context?.route ?? "—"} {row.context?.ids && Object.keys(row.context.ids).length ? JSON.stringify(row.context.ids) : ""}</Field>
@@ -204,5 +207,33 @@ function BetaClubsCard() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/** Structured bug record linked to an assistant interaction (Super Admin only via RLS). */
+function BugSummary({ id }: { id: string }) {
+  const { data: bug } = useQuery({
+    queryKey: ["ai-bug", id],
+    queryFn: async () => { const { data } = await fromExt("ai_bug_reports").select("*").eq("id", id).maybeSingle(); return data as any; },
+  });
+  if (!bug) return null;
+  return (
+    <div className="border border-destructive/40 rounded p-2 space-y-0.5 mt-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="destructive">BUG</Badge>
+        <span className="font-medium">{bug.title}</span>
+        <Badge variant="outline">{bug.verification}</Badge>
+        <Badge variant="outline">{bug.severity}</Badge>
+        <Badge variant="outline">{bug.status}</Badge>
+        {bug.occurrences > 1 && <Badge variant="secondary">{bug.occurrences} occurrences · last {format(new Date(bug.last_seen_at), "d MMM HH:mm")}</Badge>}
+      </div>
+      <Field label="Feature">{bug.feature}{bug.screen ? ` · ${bug.screen}` : ""}</Field>
+      <Field label="Expected">{bug.expected_behaviour}</Field>
+      <Field label="Actual">{bug.actual_behaviour}</Field>
+      <Field label="Evidence">{bug.evidence}</Field>
+      {bug.reproduction && <Field label="Reproduce">{bug.reproduction}</Field>}
+      {bug.related_ids && Object.keys(bug.related_ids).length > 0 && <Field label="Record IDs"><span className="font-mono text-[11px]">{Object.entries(bug.related_ids).map(([k, v]) => `${k}: ${v}`).join(" · ")}</span></Field>}
+      <Field label="Reported">{bug.reporter_role ?? "—"} · {format(new Date(bug.first_seen_at), "d MMM yyyy HH:mm")}</Field>
+    </div>
   );
 }

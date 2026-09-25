@@ -101,7 +101,7 @@ export type AiActivityRow = {
   id: string; user_id: string; club_id: string | null; role: string | null; kind: string;
   request_text: string | null; transcript_used: boolean; attachments: { path: string; name: string }[];
   context: { route?: string; ids?: Record<string, string> }; interpretation: string | null;
-  action_name: string | null; action_args: unknown; preview: AiHelpPreview | null; status: string;
+  action_name: string | null; action_args: unknown; bug_report_id?: string | null; preview: AiHelpPreview | null; status: string;
   confirmed_at: string | null; executed_at: string | null; before_data: unknown; after_data: unknown;
   result: { message?: string; answer?: string } | null; error: string | null; escalation_reason: string | null;
   ticket_id: string | null; reversible: boolean; rollback_of: string | null; rolled_back_by: string | null; created_at: string;

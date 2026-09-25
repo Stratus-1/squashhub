@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { emptyDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
+import { emptyDefinition, parseDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
 import { addStage, setFormat, setDiscipline, setSameSession, stageDetailLines } from "@/lib/smart-builder/stage-builder";
 import { stageCourts, stageMatch } from "@/lib/smart-builder/court-allocation";
 import { diamondShape, applyDiamondLeague, buildTies, snakeAllocate } from "@/lib/smart-builder/diamond-league";
@@ -168,6 +168,23 @@ describe("Pool-v-pool league built from builder controls", () => {
     expect(s1.schedule.roundDates).toHaveLength(5);
     expect(semis.name).toBe("Semi-finals"); expect(finals.name).toBe("Finals");
     expect(sessionPlan(def).sessions[0].label).toMatch(/Singles \+ Doubles/);
+  });
+
+  it("older drafts with singles+doubles in one stage are split into Singles + same-session Doubles on open", () => {
+    const def = applyDiamondLeague(emptyDefinition());
+    const sec = def.divisions[0].sections[0];
+    const [s1, s2, semis] = sec.stages;
+    s1.name = "Pool-v-pool ties";
+    s1.tieFormat!.rubbers = [...s1.tieFormat!.rubbers, ...s2.tieFormat!.rubbers];
+    sec.stages = [s1, semis]; semis.input = { fromStageId: s1.id };
+    const p = parseDefinition(JSON.parse(JSON.stringify(def)));
+    expect(p.ok).toBe(true);
+    const st = (p as any).value.divisions[0].sections[0].stages;
+    expect(st.map((x: any) => x.name)).toEqual(["Singles", "Doubles", "Semi-finals", "Finals"]);
+    expect(st[1].sameSessionAs).toBe(st[0].id);
+    expect(st[1].tieFormat.rubbers.map((r: any) => r.positions)).toEqual([[1, 2], [3, 4], [5, 6]]);
+    expect(st[2].input.fromStageId).toBe(st[1].id);
+    expect(sessionPlan((p as any).value).sessions[0].label).toMatch(/Singles \+ Doubles/);
   });
 });
 

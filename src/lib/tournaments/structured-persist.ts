@@ -6,7 +6,8 @@
  */
 import { IntegrityError, rankPoolTally, assertNoReentry, contractIssues, isDecided, progressionOf, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
-import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
+import { confirmPlayoffs, generateFromSpec, mappedFixtures, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
+import type { PlannedStage as _PS } from "./contract";
 import { effectiveTransition, transitionIssues } from "./transition";
 import type { TournamentDefinition } from "../smart-builder/definition";
 import { engineVerdicts, translateForEngine } from "../smart-builder/engine-support";
@@ -250,7 +251,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
       round_number: f.round ?? 1, stage: legacyStage(f.stageKind), stage_key: f.stageId, status: "scheduled",
       player_a_member_id: a1, partner_a_member_id: a2, player_b_member_id: b1, partner_b_member_id: b2,
       pool_number: poolIdx == null ? null : poolIdx + 1, bracket_position: f.slot ?? null,
-      ...(f.thirdPlace ? { stage_label: "3rd place" } : koLabel ? { stage_label: koLabel } : {}),
+      ...(f.thirdPlace ? { stage_label: "3rd place" } : koLabel ? { stage_label: koLabel } : f.label ? { stage_label: f.label } : {}),
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk],
       pool_id: poolIdx == null ? null : ids.pool[`${sk}/${poolIdx}`] ?? (() => { throw new IntegrityError("no_pool", "Pool not persisted."); })(),
       round_id: roundIds[`${f.divisionId}/${f.stageId}/${f.roundId}`],
@@ -464,10 +465,34 @@ export async function startNextStructuredStage(db: Db, tid: string, divisionKey:
   const gi = spec.divisions.indexOf(d) + 1;
   const matches = (await db.select("club_champs_matches", { champ_id: tid })).filter((m) => m.group_number === gi);
   const existing = matches.map((m) => toFixtureRow(divisionKey, m, d.stages.find((s) => s.id === m.stage_key)?.kind ?? "round_robin"));
+  const target = d.stages.find((s) => s.id === stageKey);
+  if (target?.kind === "mapped") return startMappedStage(db, tid, spec, d, target, matches, existing, opts.ownerConfirmed);
   const plan = nextStageFixtures(tid, d, stageKey, existing, opts);
   // New pair units are valid entrants of this division for this stage only.
   const known = new Set(d.entrants.map((e) => e.id));
   const withUnits: TournamentSpec = { ...spec, divisions: spec.divisions.map((x) => x === d ? { ...x, entrants: [...x.entrants, ...plan.entrants.filter((e) => !known.has(e.id))] } : x) };
   const ids = await persistStructure(db, tid, withUnits);
   return insertFixtures(db, tid, withUnits, ids, plan.fixtures, existing);
+}
+
+/** Mapped stage fed by finishing positions of an earlier pool stage: positions → units → fixtures. */
+async function startMappedStage(db: Db, tid: string, spec: TournamentSpec, d: SpecDivision, st: PlannedStage, matches: Array<Record<string, any>>, existing: FixtureRow[], ownerConfirmed: boolean) {
+  const m = st.mapping;
+  if (!m || m.source !== "stage_standings") throw new IntegrityError("mapping_source", `${st.name}: its games were created with the tournament.`);
+  if (existing.some((f) => f.stageId === st.id)) throw new IntegrityError("exists", `${st.name} already has games.`);
+  if (st.generation !== "automatic" && !ownerConfirmed) throw new IntegrityError("needs_confirmation", "Owner must confirm before the next stage is created.");
+  const src = d.stages.find((s) => s.id === m.sourceStageId);
+  if (!src) throw new IntegrityError("mapping_source", `${st.name}: source stage not found.`);
+  const done = existing.filter((f) => f.stageId === src.id);
+  if (!done.length || !done.every(isDecided)) throw new IntegrityError("prereq", `${src.name} is not finished.`);
+  // Every position used must be decided; a tie at any used position blocks (owner decides, never invented).
+  const standings = poolStandings(d.divisionId, src.id, matches, m.poolSize);
+  const positions: string[][] = Array.from({ length: m.pools }, () => []);
+  for (const s of standings) positions[s.pool - 1][s.position - 1] = s.id;
+  const fixtures = mappedFixtures(tid, d, st, positions);
+  const known = new Set(d.entrants.map((e) => e.id));
+  const units = [...new Set(fixtures.flatMap((f) => [f.a!, f.b!]))].filter((u) => !known.has(u)).map((id) => ({ id, rank: null }));
+  const withUnits: TournamentSpec = { ...spec, divisions: spec.divisions.map((x) => x === d ? { ...x, entrants: [...x.entrants, ...units] } : x) };
+  const ids = await persistStructure(db, tid, withUnits);
+  return insertFixtures(db, tid, withUnits, ids, fixtures, existing);
 }

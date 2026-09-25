@@ -468,3 +468,8 @@ function mappedIssues(s: PlannedStage, earlier: PlannedStage[]): string[] {
   }
   return out;
 }
+
+/** Number of pools a stage's finishing positions are ranked in (pool-v-pool matchups rank inside their seeded pools). */
+export function sourcePoolCount(s: PlannedStage): number {
+  return s.kind === "pools" ? s.pools ?? 1 : s.kind === "mapped" ? s.mapping?.pools ?? 1 : 1;
+}

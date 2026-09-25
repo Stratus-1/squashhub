@@ -181,7 +181,7 @@ export function specWithSetup(spec: TournamentSpec, divisionKey: string, stageKe
   const order = Math.max(0, ...d.stages.map((s) => s.order)) + 1;
   const stage: PlannedStage = {
     id: stageKey, order, name: later.name, kind: setup.kind, discipline: setup.discipline,
-    schedule: setup.schedule ?? { rule: null, ...(later.plannedDate ? { date: later.plannedDate } : {}) },
+    schedule: setup.schedule ?? (later.plannedDate ? { rule: "fixed", date: later.plannedDate, roundDates: [later.plannedDate] } : { rule: "window" }),
     generation: "owner_approval",
     ...(setup.kind === "mapped" ? { mapping: setup.mapping ?? null, progression: { mode: "all_continue", standings: "reset" } } : {}),
     ...(setup.kind === "knockout" ? { qualify: setup.qualify ?? null, thirdPlace: !!setup.thirdPlace, progression: { mode: "qualifiers", standings: null } } : {}),

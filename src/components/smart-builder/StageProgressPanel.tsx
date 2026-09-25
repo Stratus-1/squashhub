@@ -93,7 +93,7 @@ function SetupDialog({ champId, spec, status, exec, onClose, onDone }: { champId
   const build = (): DeferredSetup => ({
     kind, matchFormat: format, discipline,
     ...(kind === "mapped" ? { mapping: parsed.mapping ?? undefined } : { qualify: { perPool, mapping: method, transition: null }, thirdPlace }),
-    schedule: { rule: date ? "fixed" : null, ...(date ? { date, roundDates: [date] } : {}) },
+    schedule: { rule: date ? "fixed" : "window", ...(date ? { date, roundDates: [date] } : {}) },
   });
   const run = async (create: boolean) => {
     setBusy(true);

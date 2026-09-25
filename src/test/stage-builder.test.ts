@@ -57,6 +57,7 @@ const supportedPairsFlow = () => {
   const def = presetDefinition("custom"); const d = def.divisions[0];
   addStage(d); setDiscipline(d, d.sections[0].stages[1].id, "doubles");
   d.sections[0].stages[1].progression = { mode: "form_pairs", pairing: "positions", standings: "carry" };
+  def.finalStandings = "cumulative";
   return def;
 };
 const errs = (def: TournamentDefinition) => contractIssues(specFromDefinition(def).divisions[0]).filter((i) => i.level === "error").map((i) => i.code);

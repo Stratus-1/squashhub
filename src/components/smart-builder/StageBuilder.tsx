@@ -74,7 +74,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
                 <option value="individual">Individual players</option><option value="pairs">Pairs</option>
               </select>
             </Q>
-            <Q label="Expected entries"><Input className={f} inputMode="numeric" value={entrants ?? ""} onChange={(e) => editDiv((x) => { const s = x.sections[0].stages[0]; s.input = { ...s.input, entrants: e.target.value ? Number(e.target.value) : null }; })} /></Q>
+            <Q label="Expected entries"><Input className={f} inputMode="numeric" value={entrants ?? ""} onChange={(e) => editDiv((x) => { const s = x.sections[0]?.stages[0]; if (!s) return; s.input = { ...s.input, entrants: e.target.value ? Number(e.target.value) : null }; })} /></Q>
           </div>
 
           <div className="rounded border border-white/10 p-2 space-y-1" data-field="tournament-map">

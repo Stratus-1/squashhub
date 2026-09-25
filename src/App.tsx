@@ -63,6 +63,7 @@ const RegisterClub = lazy(() => import("./pages/RegisterClub"));
 const LeagueSignup = lazy(() => import("./pages/LeagueSignup"));
 const ClubAdmin = lazy(() => import("./pages/ClubAdmin"));
 const ClubChampsView = lazy(() => import("./pages/ClubChampsView"));
+const BetaTournamentOperate = lazy(() => import("./pages/BetaTournamentOperate"));
 const ClubLanding = lazy(() => import("./pages/ClubLanding"));
 const ClubAuth = lazy(() => import("./pages/ClubAuth"));
 const BookingResponse = lazy(() => import("./pages/BookingResponse"));
@@ -559,6 +560,7 @@ function AppRoutes() {
         } />
         <Route path="/club-admin" element={<ProtectedRoute><ClubAdmin /></ProtectedRoute>} />
         <Route path="/honesty-bar" element={<ProtectedRoute><CapabilityRoute capability="bar"><HonestyBar /></CapabilityRoute></ProtectedRoute>} />
+        <Route path="/beta-tournament/:champId" element={<ProtectedRoute><BetaTournamentOperate /></ProtectedRoute>} />
         <Route path="/club-champs/:champId" element={<ProtectedRoute><CapabilityRoute capability="tournaments"><ClubChampsView /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/league-games" element={<ProtectedRoute><CapabilityRoute capability="leagues"><LeagueGames /></CapabilityRoute></ProtectedRoute>} />
         <Route path="/league-games/:fixtureId" element={<ProtectedRoute><CapabilityRoute capability="leagues"><LeagueGameDetail /></CapabilityRoute></ProtectedRoute>} />

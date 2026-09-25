@@ -1770,6 +1770,12 @@ export default function ClubChampsView() {
           </div>
         </div>
 
+        {isStructured && (
+          <div className="rounded border border-primary/40 bg-primary/5 px-3 py-2 text-sm flex flex-wrap items-center gap-2">
+            This is a Tournament Beta tournament.
+            <Button size="sm" onClick={() => navigate(`/beta-tournament/${champId}`)}>Open the Beta control page</Button>
+          </div>
+        )}
         {canManage && isStructured && arch?.builder_spec && (
           <StructuredEnginePanel
             champId={champId!}

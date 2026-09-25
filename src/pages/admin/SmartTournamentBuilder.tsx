@@ -68,7 +68,7 @@ export default function SmartTournamentBuilder() {
     openDraft: (id) => navigate(`/admin/tournaments/smart/${id}`),
     backToList: () => navigate("/admin/tournaments/smart"),
     exit: () => navigate("/admin/tournaments"),
-    afterCreate: (id) => navigate("/admin/tournaments", { state: { openChampId: id } }),
+    afterCreate: (id) => navigate(`/beta-tournament/${id}`),
   };
   return <SmartTournamentBuilderCore scope={{ kind: "platform" }} draftId={draftId ?? null} nav={nav} />;
 }

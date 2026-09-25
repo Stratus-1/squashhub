@@ -15,6 +15,7 @@ import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { pulseAccessDeviceBle } from "@/lib/shelly-door";
 import { formatLatLngDM } from "@/lib/geo-format";
+import { useGeofenceAutoUnlock } from "@/hooks/use-geofence-auto-unlock";
 import {
   DEVICE_CATEGORY_LIST,
   DEVICE_CATEGORY_META,
@@ -131,9 +132,9 @@ function DoorRow({ door }: { door: DoorControl }) {
         <p className="text-xs text-muted-foreground">
           {adminOverride
             ? "Remote unlock (admin) — you're not at the club"
-            : nearDoor
-            ? "Unlock the clubhouse door"
-            : proximity.hint}
+            : (club as any)?.door_auto_unlock_enabled && proximity.active
+            ? "Unlock the clubhouse door · opens automatically when you arrive"
+            : "Unlock the clubhouse door"}
         </p>
         {proximity.active && (
           <>
@@ -141,7 +142,7 @@ function DoorRow({ door }: { door: DoorControl }) {
               GPS: {proximity.state}
               {proximity.distance != null && ` · ${Math.round(proximity.distance)} m from door`}
               {proximity.accuracy != null && ` · ±${Math.round(proximity.accuracy)} m accuracy`}
-              {` · radius ${club?.door_geofence_radius_m ?? 150} m · auto ${proximity.triggerRadiusM} m`}
+              {` · geofence ${club?.door_geofence_radius_m ?? 150} m`}
             </p>
             {proximity.coords && (
               <p className="text-[11px] text-muted-foreground/80 tabular-nums">
@@ -158,8 +159,8 @@ function DoorRow({ door }: { door: DoorControl }) {
       </div>
       <Button
         size="sm"
-        onClick={door.openDoor}
-        disabled={loading || !nearDoor}
+        onClick={() => door.openDoor("manual")}
+        disabled={loading}
         variant={adminOverride ? "outline" : "default"}
         className="gap-1.5 shrink-0"
       >
@@ -210,7 +211,7 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
    * door still opens it over BLE. Other categories deliberately don't — a
    * geyser can wait for the network.
    */
-  const bleRescue = async (cloudError: string) => {
+  const bleRescue = async (cloudError: string, trigger: "manual" | "geofence" = "manual") => {
     const secrets: any = clubSecrets || {};
     if (device.category !== "access" || !secrets.ble_fallback_enabled) {
       toast.error(cloudError);
@@ -226,7 +227,10 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
         shellyDeviceId: d.shelly_device_id,
         password: secrets.shelly_ble_control_password,
         channel: d.shelly_channel ?? 0,
-        pulseMs: d.pulse_ms ?? 3000,
+        pulseMs:
+          trigger === "geofence"
+            ? Math.min(120, Math.max(1, Number(d.auto_unlock_seconds ?? 12))) * 1000
+            : d.pulse_ms ?? 3000,
         cloudError,
       });
       toast.success(`${device.name} opened over Bluetooth (club internet is down)`);
@@ -237,16 +241,20 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
     }
   };
 
-  const run = async (action: "on" | "off" | "pulse") => {
+  const run = async (action: "on" | "off" | "pulse", trigger: "manual" | "geofence" = "manual") => {
     if (action !== "pulse") setOptimistic(action === "on");
     try {
-      const res = await control.mutateAsync({ deviceId: device.id, action });
+      const res = await control.mutateAsync({ deviceId: device.id, action, trigger });
       if (action === "pulse") {
         if (res && res.ok === false) {
-          await bleRescue(`${device.name} is offline.`);
+          await bleRescue(`${device.name} is offline.`, trigger);
           return;
         }
-        toast.success(`${device.name} triggered`);
+        toast.success(
+          trigger === "geofence"
+            ? `You've arrived — ${device.name} unlocked automatically`
+            : `${device.name} triggered`,
+        );
       } else {
         toast.success(
           `${device.name} switched ${action}${
@@ -260,12 +268,34 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
       setOptimistic(null);
       const msg = e instanceof Error ? e.message : `Could not switch ${device.name}`;
       if (action === "pulse" && device.category === "access") {
-        await bleRescue(msg);
+        await bleRescue(msg, trigger);
         return;
       }
       toast.error(msg);
     }
   };
+
+  // Geofence auto-unlock for access devices. The manual Open button below is
+  // unaffected — it stays available per the member's access permissions.
+  const autoOn =
+    device.category === "access" &&
+    isPulse &&
+    device.enabled !== false &&
+    !!device.geofence_enabled &&
+    !!device.auto_unlock_enabled &&
+    device.geofence_latitude != null &&
+    device.geofence_longitude != null;
+  useGeofenceAutoUnlock({
+    id: `device-${device.id}`,
+    enabled: autoOn,
+    fence: {
+      enabled: autoOn,
+      latitude: device.geofence_latitude ?? null,
+      longitude: device.geofence_longitude ?? null,
+      radiusM: device.geofence_radius_m ?? 50,
+    },
+    onEnter: () => run("pulse", "geofence"),
+  });
 
   return (
     <Card className="p-3 flex items-center gap-3">

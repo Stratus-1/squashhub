@@ -13,6 +13,7 @@
  * Communication settings map to existing fields only. Nothing here sends
  * anything: invitations are always triggered later from the existing screens.
  */
+import { engineBlockers, translateForEngine } from "./engine-support";
 import { specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { isBellsDefinition, type Division, type Section, type Stage, type TournamentDefinition } from "./definition";
 
@@ -42,7 +43,10 @@ const GENDER: Record<Division["eligibility"], string> = {
 
 const MAPPABLE_FIRST = new Set(["knockout", "round_robin", "swiss"]);
 
-export function mapToExistingTournament(def: TournamentDefinition): ExistingMapping {
+export function mapToExistingTournament(input: TournamentDefinition): ExistingMapping {
+  // Map the design as the engine will run it (exact supported translations applied).
+  const def = translateForEngine(input).def;
+  const blockers = engineBlockers(input);
   const unsupported: string[] = [];
   const deferredStages: ExistingMapping["deferredStages"] = [];
   const leagueFormats: Record<string, string> = {};
@@ -69,7 +73,7 @@ export function mapToExistingTournament(def: TournamentDefinition): ExistingMapp
     if (!first) { unsupported.push(`${label} has no stages.`); return; }
     matchTypes[key] = first.discipline;
     if (!MAPPABLE_FIRST.has(first.kind)) {
-      unsupported.push(`${label}: the first stage (${first.name}) is a ${first.kind.replace(/_/g, " ")} stage, which today's engine can't run.`);
+      unsupported.push(blockers.find((b) => b.stageId === first.id)?.detail ?? `${label}: the first stage (${first.name}) is a ${first.kind.replace(/_/g, " ")} stage, which today's engine can't run.`);
       return;
     }
     if (first.groupSize) expected[key] = first.groups * first.groupSize;
@@ -107,6 +111,8 @@ export function mapToExistingTournament(def: TournamentDefinition): ExistingMapp
   try { specFromDefinition(def); structured = true; }
   catch (e: any) { structured = !["unsupported_stage", "venue_outside"].includes(e?.code); }
   if (structured && !unsupported.length) deferredStages.length = 0;
+  // Any stage the engine can't generate blocks — later stages included; nothing is left to fail at Create.
+  for (const b of blockers) if (!unsupported.includes(b.detail)) unsupported.push(b.detail);
   const executability: Executability = unsupported.length ? "blocked" : deferredStages.length ? "partial" : "ready";
 
   // ── Players / communications → existing fields (no send triggers) ──

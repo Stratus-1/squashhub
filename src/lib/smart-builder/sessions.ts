@@ -10,7 +10,7 @@
  */
 import { allStages, effectiveSchedule, type Stage, type TournamentDefinition } from "./definition";
 import { d10 } from "@/lib/tournaments/date-window";
-import { scoringMinutes, stageScoringLine } from "./scoring";
+import { stageScoringLine } from "./scoring";
 import { stageCourts } from "./court-allocation";
 
 const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
@@ -44,7 +44,7 @@ export function sessionMembers(def: TournamentDefinition, leader: Stage): Stage[
 }
 
 /** Per-game minutes: a stage's Bells cap wins over the slot length typed on each game. */
-const gameMins = (def: TournamentDefinition, st: Stage, r: { minutes?: number }) => scoringMinutes(def, st) ?? r.minutes ?? 0;
+const gameMins = (def: TournamentDefinition, st: Stage, r: { minutes?: number }) => r.minutes ?? 0;
 const tieMins = (def: TournamentDefinition, st: Stage) => st.tieFormat?.rubbers.reduce((n, r) => n + gameMins(def, st, r), 0) ?? 0;
 
 /** Court minutes one stage needs in one session. */
@@ -58,7 +58,7 @@ function partMinutes(def: TournamentDefinition, st: Stage, courtsFor: number): {
     return { minutes: perCourt * tieMins(def, st), detail: `${stageScoringLine(def, st)} · ${txt} per court` };
   }
   const e = effectiveSchedule(def, st);
-  const mm = scoringMinutes(def, st) ?? (e.matchMinutes.value as number | null);
+  const mm = e.matchMinutes.value as number | null;
   const n = st.groupSize ?? null;
   if (!mm || !n || !courtsFor) return { minutes: null, detail: "Game length or courts not set" };
   const games = Math.floor(n / 2) * groups;

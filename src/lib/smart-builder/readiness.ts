@@ -129,7 +129,12 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     state: sm0 ? "missing" : "complete",
     detail: sm0 ? `${sm0.message}${smx.issues.length > 1 ? ` (+${smx.issues.length - 1} more)` : ""}` : `Valid — rounds, stage order and dependencies fit the dates. ${smx.capacityNote}.`,
     ask: sm0?.message });
-  const sized = stages.filter(({ stage }) => stage.groupSize == null && !stage.dynamic && stage.kind !== "pair_from_positions" && stage.kind !== "split");
+  const sized = schedulableStages(def).filter(({ stage }) => stage.groupSize == null && !stage.dynamic);
+  const later = deferredStages(def);
+  if (later.length) design.push({ id: "later_stages", label: "Later stages", tab: "design", field: "canvas", stageId: later[0].stageId,
+    state: "complete",
+    detail: later.map((l) => `${l.stageName} — Define later${l.plannedDate ? ` (planned ${l.plannedDate})` : ""}`).join(" · ") +
+      ". Set these up once the stage before them is finished; they can't start until then." });
   if (stages.length) design.push({ id: "sizes", label: "Stage sizes", tab: "design", field: "canvas",
     state: sized.length ? "missing" : "complete",
     detail: sized.length ? `${sized.map((s) => s.stage.name).join(", ")}: size not set (or mark it as decided when entries close)` : "Every stage has a size or resolves when entries close" });

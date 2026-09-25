@@ -227,9 +227,18 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     const d = (sch.roundDates ?? [])[(f.round ?? 1) - 1] ?? ((f.round ?? 1) === 1 ? sch.date : null);
     return d ? String(d).slice(0, 10) : null;
   };
+  // Knockout rounds carry their real name (QF/SF/Final) so result messages and member pages
+  // recognise the final. Named from the number of games in that round of the draw.
+  const koCount = new Map<string, number>();
+  for (const f of fixtures) if (legacyStage(f.stageKind) === "ko" && !f.thirdPlace) {
+    const k = `${f.divisionId}/${f.stageId}/${f.round ?? 1}`;
+    koCount.set(k, (koCount.get(k) ?? 0) + 1);
+  }
+  const koName = (n: number) => (n <= 1 ? "Final" : n === 2 ? "Semi-final" : n <= 4 ? "Quarter-final" : `Round of ${Math.pow(2, Math.ceil(Math.log2(n * 2)))}`);
   const rows = fixtures.map((f) => {
     const sk = `${f.divisionId}/${f.stageId}`;
     const date = roundDate(f);
+    const koLabel = legacyStage(f.stageKind) === "ko" && !f.thirdPlace ? koName(koCount.get(`${f.divisionId}/${f.stageId}/${f.round ?? 1}`) ?? 1) : null;
     const poolIdx = f.poolId ? Number(/pool(\d+)$/.exec(f.poolId)![1]) - 1 : null;
     const [a1, a2] = splitUnit(f.a); const [b1, b2] = splitUnit(f.b);
     return {
@@ -237,7 +246,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
       round_number: f.round ?? 1, stage: legacyStage(f.stageKind), stage_key: f.stageId, status: "scheduled",
       player_a_member_id: a1, partner_a_member_id: a2, player_b_member_id: b1, partner_b_member_id: b2,
       pool_number: poolIdx == null ? null : poolIdx + 1, bracket_position: f.slot ?? null,
-      ...(f.thirdPlace ? { stage_label: "3rd place" } : {}),
+      ...(f.thirdPlace ? { stage_label: "3rd place" } : koLabel ? { stage_label: koLabel } : {}),
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk],
       pool_id: poolIdx == null ? null : ids.pool[`${sk}/${poolIdx}`] ?? (() => { throw new IntegrityError("no_pool", "Pool not persisted."); })(),
       round_id: roundIds[`${f.divisionId}/${f.stageId}/${f.roundId}`],

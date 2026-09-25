@@ -173,10 +173,10 @@ describe("Pool-v-pool league built from builder controls", () => {
   it("older drafts with singles+doubles in one stage are split into Singles + same-session Doubles on open", () => {
     const def = applyDiamondLeague(emptyDefinition());
     const sec = def.divisions[0].sections[0];
-    const [s1, s2, semis] = sec.stages;
+    const [s1, s2, semis, finals] = sec.stages;
     s1.name = "Pool-v-pool ties";
     s1.tieFormat!.rubbers = [...s1.tieFormat!.rubbers, ...s2.tieFormat!.rubbers];
-    sec.stages = [s1, semis]; semis.input = { fromStageId: s1.id };
+    sec.stages = [s1, semis, finals]; semis.input = { fromStageId: s1.id };
     const p = parseDefinition(JSON.parse(JSON.stringify(def)));
     expect(p.ok).toBe(true);
     const st = (p as any).value.divisions[0].sections[0].stages;

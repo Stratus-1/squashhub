@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
 import {
-  FORMAT_LABEL, addStage, diamondTemplate, moveStage, relink, removeStage, setDiscipline, setFormat, stageSummary, transitionText,
+  FORMAT_LABEL, PAIRING_LABEL, addStage, copyPreviousStage, diamondTemplate, shapeChange, moveStage, relink, removeStage, setDiscipline, setFormat, stageSummary, transitionText,
   type BuilderFormat,
 } from "@/lib/smart-builder/stage-builder";
 import { cn } from "@/lib/utils";
@@ -108,7 +108,11 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
 
         {sel0 && (
           <div className="rounded border border-white/10 p-2 space-y-2" data-field="stage-panel">
-            <div className="font-semibold text-white">Stage {si + 1} settings</div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-white">Stage {si + 1} settings</span>
+              <span className="text-[11px] text-white/50">set up on its own — nothing is copied from other stages</span>
+              {prev && <Button size="sm" variant="outline" className={cn(btn, "ml-auto")} onClick={() => editDiv((x) => copyPreviousStage(x, sel0.id))}>Copy previous stage settings</Button>}
+            </div>
             <div className="grid sm:grid-cols-2 gap-2">
               <Q label="Stage name"><Input className={f} value={sel0.name} onChange={(e) => editStage((s) => { s.name = e.target.value; })} /></Q>
               <Q label="1. Match type">
@@ -176,30 +180,35 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
 
 function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: any; cur: any; editDiv: (m: (x: any) => void) => void }) {
   const p = cur.progression ?? {};
-  const toDoubles = prev.discipline !== "doubles" && cur.discipline === "doubles";
+  const sc = shapeChange(prev, cur);
+  const mode = p.mode === "form_pairs" ? "all_continue" : p.mode;
   const upd = (mut: (st: any, pr: any) => void) => editDiv((x) => {
     const ss = x.sections[0].stages; const i = ss.findIndex((s: any) => s.id === cur.id);
     mut(ss[i], ss[i - 1]); relink(x);
   });
-  if (prev.discipline === "doubles" && cur.discipline !== "doubles") return <Note>A doubles stage can't feed a singles stage. Change the match type or the order.</Note>;
   if (prev.kind === "knockout") return <Note>A knockout eliminates players, so nothing can follow it here. Put the knockout last.</Note>;
-  const modes: Array<[string, string]> = toDoubles ? [["form_pairs", "Form doubles pairs from the singles results"]]
-    : cur.kind === "knockout" && (prev.kind === "round_robin" || prev.kind === "swiss") ? [["qualifiers", "Qualifiers continue (top N)"], ["all_continue", "Everyone continues"]]
-    : [["all_continue", "Everyone continues"]];
+  const modes: Array<[string, string]> = [["all_continue", "Everyone continues"], ["top_n", "Top finishers continue (choose how many)"]];
+  if (!sc && cur.kind === "knockout" && (prev.kind === "round_robin" || prev.kind === "swiss")) modes.push(["qualifiers", "Qualifiers by pool position (play-off mapping)"]);
+  const pairOpts: Array<[string, string]> = sc === "to_pairs" ? [["positions", "By finishing position: 1st + 2nd, 3rd + 4th…"], ["fold", "Balanced: 1st + last, 2nd + second-last…"], ["manual", "I'll set the pairs when this stage starts"]]
+    : sc === "to_singles" ? [["split", "Each pair's players continue individually, at the pair's position"]] : [];
   return (
-    <div className="rounded border border-white/10 p-2 space-y-2">
-      <div className="font-semibold text-white">6. How players move here from {prev.name || "the previous stage"}</div>
+    <div className="rounded border border-white/10 p-2 space-y-2" data-field="stage-transition">
+      <div className="font-semibold text-white">6. How participants move here from {prev.name || "the previous stage"}</div>
       <div className="grid sm:grid-cols-2 gap-2">
         <Q label="Who continues">
-          <select className={sel} value={p.mode ?? ""} onChange={(e) => upd((st, pr) => {
-            st.progression = { mode: e.target.value, standings: null, pairing: null };
-            if (e.target.value === "qualifiers") { pr.advance = { role: "qualify", perGroup: pr.groups > 1 ? 2 : 4 }; st.qualifierMapping = pr.groups > 1 ? "cross_pool" : "reseed"; }
+          <select className={sel} value={mode ?? ""} onChange={(e) => upd((st, pr) => {
+            const m = e.target.value;
+            st.progression = m ? { mode: m, standings: p.standings ?? null, pairing: p.pairing ?? null, top: m === "top_n" ? p.top ?? null : null } : null;
+            if (m === "qualifiers") { st.progression = { mode: m }; pr.advance = { role: "qualify", perGroup: pr.groups > 1 ? 2 : 4 }; st.qualifierMapping = pr.groups > 1 ? "cross_pool" : "reseed"; }
             else pr.advance = { role: "none" };
           })}>
             <option value="">Choose…</option>{modes.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
         </Q>
-        {p.mode === "qualifiers" && (
+        {mode === "top_n" && (
+          <Q label={`How many continue${prev.discipline === "doubles" ? " (pairs)" : ""}`}><Input className={f} inputMode="numeric" value={p.top ?? ""} onChange={(e) => upd((st) => { st.progression = { ...st.progression, top: e.target.value ? Number(e.target.value) : null }; })} /></Q>
+        )}
+        {mode === "qualifiers" && (
           <>
             <Q label={prev.groups > 1 ? "Qualify from each pool" : "How many qualify"}><Input className={f} inputMode="numeric" value={prev.advance?.perGroup ?? ""} onChange={(e) => upd((_st, pr) => { pr.advance = { role: "qualify", perGroup: e.target.value ? Number(e.target.value) : null }; })} /></Q>
             <Q label="How qualifiers are placed">
@@ -209,21 +218,21 @@ function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: 
             </Q>
           </>
         )}
-        {p.mode === "form_pairs" && (
-          <Q label="How pairs are formed">
+        {sc && mode && mode !== "qualifiers" && (
+          <Q label={sc === "to_pairs" ? "How are pairs formed?" : "How do pairs become singles players?"}>
             <select className={sel} value={p.pairing ?? ""} onChange={(e) => upd((st) => { st.progression = { ...st.progression, pairing: e.target.value || null }; })}>
-              <option value="">Choose…</option><option value="fold">Balanced: 1st + last, 2nd + second-last</option><option value="positions">By position: 1st + 2nd, 3rd + 4th</option><option value="manual">I'll set the pairs when this stage starts</option>
+              <option value="">Choose…</option>{pairOpts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
           </Q>
         )}
-        {(p.mode === "all_continue" || p.mode === "form_pairs") && (
+        {mode && mode !== "qualifiers" && (
           <Q label="Points from earlier stages">
             <select className={sel} value={p.standings ?? ""} onChange={(e) => upd((st) => { st.progression = { ...st.progression, standings: e.target.value || null }; })}>
-              <option value="">Choose…</option><option value="carry">Carry forward</option><option value="reset">Reset for this stage</option>
+              <option value="">Choose…</option><option value="carry">Carry forward (also used to rank who continues / pairs)</option><option value="reset">Reset — rank by {prev.name || "previous stage"} only</option>
             </select>
           </Q>
         )}
-        {p.mode && (
+        {mode && (
           <Q label="Create this stage's games">
             <select className={sel} value={cur.generation ?? ""} onChange={(e) => upd((st) => { st.generation = e.target.value || null; })}>
               <option value="">Not decided</option><option value="owner_approval">After I preview and confirm</option><option value="automatic">Automatically when the previous stage is done</option>
@@ -231,6 +240,7 @@ function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: 
           </Q>
         )}
       </div>
+      {sc === "to_pairs" && <div className="text-[11px] text-white/50">Singles players are never turned into pairs without this rule. Pairs keep the same identity for every game in this stage.</div>}
     </div>
   );
 }

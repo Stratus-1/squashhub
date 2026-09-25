@@ -107,8 +107,8 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
                 {i > 0 && <div className="pl-3 text-white/50">{transitionText(stages[i - 1], s)}</div>}
                 <div className={cn("flex items-center gap-1 rounded border px-2 py-1", s.id === sel0?.id ? "border-white/60 bg-white/[0.06]" : "border-white/10")}>
                   <button className="flex-1 text-left" onClick={() => setSelId(s.id)} aria-label={`Edit ${s.name}`}>
-                    <div className="text-white">Stage {i + 1} — {s.name}</div>
-                    <div className="text-white/60">{stageSummary(s, i === 0 ? entrants : null)}</div>
+                    <div className="text-white">Stage {i + 1} — {s.name}{s.defineLater ? " — Define later" : ""}</div>
+                    <div className="text-white/60">{s.defineLater ? "To be set up once the stage before it has finished" : stageSummary(s, i === 0 ? entrants : null)}</div>
                   </button>
                   <Button size="icon" variant="ghost" className="h-6 w-6 text-white/60" aria-label="Move stage up" disabled={i === 0} onClick={() => editDiv((x) => moveStage(x, s.id, -1))}><ArrowUp className="h-3 w-3" /></Button>
                   <Button size="icon" variant="ghost" className="h-6 w-6 text-white/60" aria-label="Move stage down" disabled={i === stages.length - 1} onClick={() => editDiv((x) => moveStage(x, s.id, 1))}><ArrowDown className="h-3 w-3" /></Button>

@@ -1023,6 +1023,20 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                         can stay physically open after the lock re-engages.
                       </p>
                     )}
+                    <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/20 p-3">
+                      <div className="min-w-0">
+                        <Label className="text-sm">Invert relay output</Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Switch this on if pressing the button locks the door instead of releasing it
+                          (the lock is wired so the relay being on keeps it locked). The pulse then
+                          switches the relay off for the unlock duration and back on.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={form.output_inverted}
+                        onCheckedChange={(v) => set("output_inverted", v)}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-1.5">

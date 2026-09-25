@@ -17,7 +17,7 @@ import { d10, inside } from "@/lib/tournaments/date-window";
 import { selectedCourtPool } from "./venues";
 
 export interface ScheduleIssue {
-  code: "rounds_short" | "round_order" | "round_outside" | "dependency" | "deadline_order" | "knockout_order" | "capacity" | "after_end";
+  code: "window" | "rounds_short" | "round_order" | "round_outside" | "dependency" | "deadline_order" | "knockout_order" | "capacity" | "after_end";
   message: string;
   divisionId: string;
   stageId: string;
@@ -56,33 +56,63 @@ const matchesPerRound = (st: Stage) => {
   return st.kind === "knockout" ? 0 : Math.floor(n / 2) * Math.max(1, st.groups ?? 1);
 };
 
-export function scheduleMathsIssues(def: TournamentDefinition): ScheduleIssue[] {
+export interface ScheduleFact { where: string; lines: string[]; result: string; ok: boolean }
+export interface ScheduleMaths {
+  issues: ScheduleIssue[];
+  facts: ScheduleFact[];
+  /** checked = court capacity was calculated; not_checked = some input is missing (NOT validated); none = nothing on fixed courts. */
+  capacity: "checked" | "not_checked" | "none";
+  capacityNote: string;
+}
+
+/** "Go there" anchor for an issue: exact round box, stage window, or tournament dates. */
+export function issueField(i: ScheduleIssue): string {
+  if (!i.stageId) return "defaults.startDate";
+  if (i.code === "window" ) return `stage.${i.stageId}.window`;
+  return i.round != null ? `stage.${i.stageId}.round${i.round}` : `stage.${i.stageId}`;
+}
+
+export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
   const out: ScheduleIssue[] = [];
+  const facts: ScheduleFact[] = [];
   const tw = { start: d10(def.scheduleDefaults?.startDate), end: d10(def.scheduleDefaults?.endDate) };
   const load = new Map<string, number>();
-  let cap = Infinity;
+  let cap = Infinity, fixedStages = 0;
+  const capMissing = new Set<string>();
+  if (!tw.start || !tw.end) out.push({ code: "window", divisionId: "", stageId: "", message: "Tournament dates: first and last day must both be set before the schedule can be checked." });
+  else if (tw.end < tw.start) out.push({ code: "window", divisionId: "", stageId: "", message: `Tournament dates: last day (${tw.end}) is before the first day (${tw.start}).` });
+  facts.push({ where: "Tournament", lines: [`Window: ${tw.start ?? "?"} → ${tw.end ?? "?"}`], result: tw.start && tw.end && tw.end >= tw.start ? "Valid" : "Not valid", ok: !!(tw.start && tw.end && tw.end >= tw.start) });
   for (const div of def.divisions) {
     const stages = allStages(def).filter((r) => r.division.id === div.id).map((r) => r.stage).filter((s) => !isStep(s));
-    let prev: { name: string; done: string | null; fixed: boolean; deadline: string | null } | null = null;
+    let prev: { where: string; name: string; done: string | null; fixed: boolean; deadline: string | null } | null = null;
     for (const st of stages) {
       const s = st.schedule;
       const where = `${def.divisions.length > 1 ? `${div.name} · ` : ""}${st.name}`;
       const own = { start: d10(s.startDate), end: d10(s.endDate) };
       const sw = { start: own.start ?? tw.start, end: own.end ?? tw.end };
       const need = requiredRounds(st);
+      const before = out.length;
       const push = (i: Omit<ScheduleIssue, "divisionId" | "stageId">) => out.push({ ...i, divisionId: div.id, stageId: st.id });
       const dates = (s.roundDates ?? []).map(d10);
+      const lines: string[] = [];
       let start: string | null = null, done: string | null = null, deadline: string | null = null;
       const names = roundNames(st, Math.max(need ?? 0, dates.length));
+      lines.push(own.start || own.end ? `Stage window: ${own.start ?? "?"} → ${own.end ?? "?"}` : "Stage window: uses tournament dates");
+      if (own.start && own.end && own.end < own.start) push({ code: "window", message: `${where}: stage window ends (${own.end}) before it starts (${own.start}).` });
+      for (const x of [own.start, own.end]) if (x && !inside(x, tw))
+        push({ code: tw.end && x > tw.end ? "after_end" : "window", message: `${where}: stage window date ${x} is outside the tournament dates ${tw.start} → ${tw.end}.` });
+      if (s.mode !== "unset") lines.push(`Scheduling: ${s.mode === "fixed" ? "fixed dates" : s.mode === "play_by" ? "play-by" : s.mode.replace(/_/g, " ")}`);
 
       if (s.mode === "fixed") {
+        fixedStages++;
         const valid = dates.filter((x): x is string => !!x && inside(x, sw));
+        lines.push(`Required rounds: ${need ?? "not known until the stage size is set"}`, `Configured valid dates: ${valid.length}`);
         dates.forEach((x, i) => {
           if (x && !inside(x, sw)) push({ code: tw.end && x > tw.end ? "after_end" : "round_outside", round: i,
             message: `${where}: ${names[i] ?? `Round ${i + 1}`} (${x}) is outside the ${own.start || own.end ? "stage window" : "tournament dates"}${sw.start && sw.end ? ` ${sw.start} → ${sw.end}` : ""}.` });
         });
         if (need != null && valid.length < need)
-          push({ code: "rounds_short", round: valid.length, message: `${where} requires ${need} rounds but only ${valid.length} valid round date${valid.length === 1 ? " is" : "s are"} available.` });
+          push({ code: "rounds_short", round: valid.length, message: `${where} requires ${need} rounds but only ${valid.length} valid round date${valid.length === 1 ? " is" : "s are"} configured.` });
         for (let i = 1; i < dates.length; i++) {
           const a = dates[i - 1], b = dates[i];
           if (a && b && b < a) push({ code: st.kind === "knockout" ? "knockout_order" : "round_order", round: i,
@@ -92,15 +122,19 @@ export function scheduleMathsIssues(def: TournamentDefinition): ScheduleIssue[] 
         }
         start = dates.find(Boolean) ?? own.start ?? null;
         done = (need != null ? dates[need - 1] : null) ?? [...dates].reverse().find(Boolean) ?? null;
-        // Court capacity per day (only with enough information).
+        if (done) lines.push(`Latest required completion: ${done}`);
         const e = effectiveSchedule(def, st);
         const courts = selectedCourtPool(def).length, mm = e.matchMinutes.value as number | null, sm = e.sessionMinutes.value as number | null;
-        if (courts && mm && sm) dates.slice(0, need ?? dates.length).forEach((x) => { if (x) load.set(x, (load.get(x) ?? 0) + matchesPerRound(st)); });
-        if (courts && mm && sm) cap = Math.min(cap, courts * Math.floor(sm / mm));
+        if (!courts) capMissing.add("courts"); if (!mm) capMissing.add("match minutes"); if (!sm) capMissing.add("session minutes");
+        if (courts && mm && sm) {
+          dates.slice(0, need ?? dates.length).forEach((x) => { if (x) load.set(x, (load.get(x) ?? 0) + matchesPerRound(st)); });
+          cap = Math.min(cap, courts * Math.floor(sm / mm));
+        }
       } else if (s.mode === "play_by") {
         deadline = own.end ?? tw.end;
         start = own.start;
         done = deadline;
+        lines.push(`Required rounds: ${need ?? "not known yet"}`, `Stage play-by date: ${deadline ?? "?"}`);
         for (let i = 1; i < dates.length; i++) {
           const a = dates[i - 1], b = dates[i];
           if (a && b && b <= a) push({ code: "deadline_order", round: i, message: `${where}: ${names[i]} play-by (${b}) must be after ${names[i - 1]} play-by (${a}).` });
@@ -110,11 +144,13 @@ export function scheduleMathsIssues(def: TournamentDefinition): ScheduleIssue[] 
         start = own.start; done = own.end;
       }
 
-      if (prev?.done) {
+      if (prev) {
+        lines.push(`Depends on: ${prev.where}`, `${prev.name} latest required completion: ${prev.done ?? "not known"}`);
         const both = prev.fixed && s.mode === "fixed";
         const firstDate = s.mode === "fixed" ? dates.find(Boolean) ?? null : null;
         const opening = firstDate ?? start;
-        if (opening && (both ? opening < prev.done : opening <= prev.done))
+        if (opening) lines.push(`${st.name} configured start: ${opening}`);
+        if (prev.done && opening && (both ? opening < prev.done : opening <= prev.done))
           push({ code: "dependency", round: 0,
             message: `${where} opens on ${opening}, but ${prev.name} only resolves ${prev.fixed ? "after its last round on" : "at its play-by date"} ${prev.done}. Move ${st.name} after ${prev.done}.` });
         if (s.mode === "play_by" && prev.deadline && deadline && deadline <= prev.deadline)
@@ -122,14 +158,24 @@ export function scheduleMathsIssues(def: TournamentDefinition): ScheduleIssue[] 
         if (s.mode === "play_by" && !own.start && !own.end && prev.deadline && prev.deadline === tw.end)
           push({ code: "dependency", message: `${where}: ${prev.name} plays until the tournament's last day (${tw.end}), so ${st.name} has no time left. Give ${prev.name} an earlier stage window or extend the tournament.` });
       }
-      prev = { name: st.name, done, fixed: s.mode === "fixed", deadline };
+      const mine = out.slice(before);
+      facts.push({ where, lines, ok: !mine.length,
+        result: !mine.length ? "Feasible" : mine.some((m) => m.code === "dependency") ? "Starts too early" : mine.some((m) => m.code === "rounds_short") ? "Not feasible — too few dates" : "Not feasible" });
+      prev = { where, name: st.name, done, fixed: s.mode === "fixed", deadline };
     }
   }
-  // Capacity: every fixed round sharing a day must fit the courts × slots of that day.
   if (Number.isFinite(cap)) for (const [day, n] of load) if (n > cap) {
     const first = allStages(def).find((r) => (r.stage.schedule.roundDates ?? []).some((x) => d10(x) === day));
-    out.push({ code: "capacity", divisionId: first?.division.id ?? "", stageId: first?.stage.id ?? "",
+    const ri = (first?.stage.schedule.roundDates ?? []).findIndex((x) => d10(x) === day);
+    out.push({ code: "capacity", divisionId: first?.division.id ?? "", stageId: first?.stage.id ?? "", round: ri >= 0 ? ri : undefined,
       message: `${day}: ${n} games are scheduled but the selected courts fit only ${cap} in the session.` });
   }
-  return out;
+  const capacity: ScheduleMaths["capacity"] = !fixedStages ? "none" : capMissing.size ? "not_checked" : "checked";
+  const capacityNote = capacity === "checked" ? `Court capacity checked: up to ${cap} games per day`
+    : capacity === "not_checked" ? `Court capacity not checked — needs ${[...capMissing].join(", ")}` : "No fixed-date stages — court capacity not applicable";
+  return { issues: out, facts, capacity, capacityNote };
+}
+
+export function scheduleMathsIssues(def: TournamentDefinition): ScheduleIssue[] {
+  return scheduleMaths(def).issues;
 }

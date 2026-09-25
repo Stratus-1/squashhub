@@ -77,7 +77,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
         )}
       </div>
 
-      <DiamondLeaguePanel def={def} edit={edit} clubId={(def.event as any)?.ownerKind === "club" || def.ownerKind === "club" ? (def.event as any)?.ownerId ?? null : (def.event as any)?.ownerId ?? null} />
+      <DiamondLeaguePanel def={def} edit={edit} clubId={(def.event as any)?.ownerId ?? null} />
 
       <DivisionsPanel def={def} edit={edit} di={di} onSelect={(i) => { setDivIdx(i); setSelId(null); }} />
 

@@ -2800,8 +2800,20 @@ export default function ClubChampsView() {
       overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
     // A completed final/play-off final is authoritative for the overall
     // winner — pool standings must never override who won the final.
-    const decidedFinal = matches.find((m: any) =>
-      ["final", "playoff_final"].includes(m.stage) && m.status === "completed" && m.winner_member_id && !m.is_bye);
+    // Placement play-offs (3rd/4th … 11th/12th) share stage "playoff_final",
+    // so only a true final or the 1st/2nd play-off decides the champion.
+    const decidedFinal = (() => {
+      const done = matches.filter((m: any) =>
+        ["final", "playoff_final"].includes(m.stage) && m.status === "completed" && m.winner_member_id && !m.is_bye);
+      const trueFinal = done.find((m: any) => m.stage === "final");
+      if (trueFinal) return trueFinal;
+      const isTitle = (m: any) => /1st\s*\/\s*2nd|\bpos\s*1\b/i.test(m.stage_label || "") || /#1$/.test(m.placeholder_a || "") && /#1$/.test(m.placeholder_b || "");
+      const title = done.filter(isTitle);
+      if (title.length === 1) return title[0];
+      const placement = done.some((m: any) => /place play-off/i.test(m.stage_label || ""));
+      if (placement) return null; // can't prove which one is the title match
+      return done.length === 1 ? done[0] : null;
+    })();
     const finalChampion = decidedFinal
       ? (decidedFinal.winner_member_id === decidedFinal.player_a_member_id ? getMatchTeamA(decidedFinal) : getMatchTeamB(decidedFinal))
       : null;

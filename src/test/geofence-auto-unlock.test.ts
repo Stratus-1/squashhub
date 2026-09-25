@@ -60,3 +60,14 @@ describe("geofence auto-unlock", () => {
     expect(clampUnlockSeconds("abc", 12)).toBe(12);
   });
 });
+
+describe("auto-unlock outside→inside only", () => {
+  it("does not fire while repeatedly inside across many GPS updates", () => {
+    const samples: [number, number, number][] = Array.from({ length: 50 }, (_, i) => [10 + (i % 7), 8, i * 3000]);
+    expect(run(samples).fires).toBe(1);
+  });
+  it("a short dip outside (under the exit confirmation) does not re-arm", () => {
+    const { fires } = run([[20, 8, 0], [300, 8, 5000], [300, 8, 20000], [20, 8, 30000]]);
+    expect(fires).toBe(1);
+  });
+});

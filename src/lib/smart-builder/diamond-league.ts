@@ -201,7 +201,7 @@ export function buildTies(pools: (string | null)[][][], divisions: Pick<Division
     const side = (pi: number, pos: number[]) => pos.every((p) => dp[pi]?.[p - 1]) ? pos.map((p) => dp[pi][p - 1]).join("+") : null;
     out.push({
       round: r + 1, division: di, poolA: pa, poolB: pb, court: divisions[di] ? tieCourt(divisions[di], pa, pb, k) : null,
-      rubbers: tieSlots(t, t.startTime).map((s) => ({ ...s, a: side(pa, s.positions), b: side(pb, s.positions) })),
+      rubbers: tieSlots(t, t.startTime).map((s) => ({ ...s, discipline: s.discipline!, positions: s.positions!, minutes: s.minutes!, a: side(pa, s.positions!), b: side(pb, s.positions!) })),
     });
   })));
   return out;

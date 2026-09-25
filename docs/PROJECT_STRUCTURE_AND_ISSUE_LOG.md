@@ -2075,3 +2075,5 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Definition gains `cross_pool_league`, `poolNames`, `poolGroups`, `admission`, `poolSeeding`, `templateMeta`, `pairSource` (additive).
 - `tournament_templates` table (club-admin RLS). Live creation of cross_pool_league stages is still blocked with a clear message.
 - Open organiser items: points formula/tie-break, pair source, final mechanics, play-off weighting, Wed 4/5 allocation.
+
+- 2026-09-25: Diamond League template corrected to weekly pool-v-pool ties (6 singles @20 + 3 doubles @30, one court, 210 min) via Stage.tieFormat; semis/finals rules pending organiser spreadsheet; removed singles→rerank→doubles dependency.

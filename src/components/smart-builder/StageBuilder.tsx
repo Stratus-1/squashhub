@@ -9,6 +9,8 @@ import {
   type BuilderFormat,
 } from "@/lib/smart-builder/stage-builder";
 import { cn } from "@/lib/utils";
+import { addDivision, applyPlan, applyStructure, removeDivision } from "@/lib/smart-builder/division-structure";
+import { toast } from "sonner";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
 const f = "h-8 min-w-0 w-full bg-white/5 border-white/15 text-white text-xs";
@@ -61,16 +63,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
         )}
       </div>
 
-      <div className="flex flex-wrap items-end gap-2">
-        {def.divisions.map((x, i) => (
-          <button key={x.id} onClick={() => { setDivIdx(i); setSelId(null); }} className={cn("rounded border px-2 py-1", i === di ? "border-white/60 text-white" : "border-white/15 text-white/60")}>{x.name}</button>
-        ))}
-        <Button size="sm" variant="outline" className={btn} onClick={() => edit((x) => {
-          const id = `div${x.divisions.length + 1}_${Date.now().toString(36)}`;
-          const copy = JSON.parse(JSON.stringify(x.divisions[di]).replace(/"(id|fromStageId)":"(stage[^"]+)"/g, (_m, k, v) => `"${k}":"${v}-${id}"`));
-          x.divisions.push({ ...copy, id, name: `Division ${x.divisions.length + 1}` });
-        })}>Add division (copy of this one)</Button>
-      </div>
+      <DivisionsPanel def={def} edit={edit} di={di} onSelect={(i) => { setDivIdx(i); setSelId(null); }} />
 
       <div className="grid lg:grid-cols-[1fr_1.3fr] gap-3">
         <div className="space-y-2">
@@ -81,11 +74,12 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
                 <option value="individual">Individual players</option><option value="pairs">Pairs</option>
               </select>
             </Q>
-            <Q label="Expected entries"><Input className={f} inputMode="numeric" value={entrants ?? ""} onChange={(e) => editDiv((x) => { const s = x.sections[0].stages[0]; s.input = { ...s.input, entrants: e.target.value ? Number(e.target.value) : null }; })} /></Q>
+            <Q label="Expected entries"><Input className={f} inputMode="numeric" value={entrants ?? ""} onChange={(e) => editDiv((x) => { const s = x.sections[0]?.stages[0]; if (!s) return; s.input = { ...s.input, entrants: e.target.value ? Number(e.target.value) : null }; })} /></Q>
           </div>
 
           <div className="rounded border border-white/10 p-2 space-y-1" data-field="tournament-map">
-            <div className="font-semibold text-white">{d.name}</div>
+            <div className="font-semibold text-white">{def.divisions.length > 1 ? <>Editing structure for: <span className="underline">{d.name}</span></> : d.name}</div>
+            {stages.length === 0 && <div className="text-white/50">No stages yet — add the first stage for {d.name}.</div>}
             {stages.map((s, i) => (
               <div key={s.id}>
                 {i > 0 && <div className="pl-3 text-white/50">{transitionText(stages[i - 1], s)}</div>}
@@ -102,7 +96,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
             ))}
             <div className="pl-3 text-white/50">↓</div>
             <div className="px-2 text-white/80">Final standings · {stages.length > 1 && def.finalStandings === "cumulative" ? "points added up across stages" : "last stage decides"}</div>
-            <Button size="sm" variant="outline" className={cn(btn, "mt-1")} onClick={() => { let nid = ""; editDiv((x) => { nid = addStage(x); }); setTimeout(() => setSelId(nid), 0); }}><Plus className="h-3 w-3 mr-1" />Add stage</Button>
+            <Button size="sm" variant="outline" className={cn(btn, "mt-1")} onClick={() => { let nid = ""; editDiv((x) => { nid = addStage(x); }); setTimeout(() => setSelId(nid), 0); }}><Plus className="h-3 w-3 mr-1" />Add stage{def.divisions.length > 1 ? ` to ${d.name}` : ""}</Button>
           </div>
         </div>
 
@@ -246,3 +240,86 @@ function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: 
 }
 
 const Note = ({ children }: { children: ReactNode }) => <div className="rounded border border-white/10 p-2 text-[11px] text-white/60">{children}</div>;
+
+/** Divisions first: how many, their names, then pick one to build its own stages. Copy/apply is always explicit. */
+function DivisionsPanel({ def, edit, di, onSelect }: { def: TournamentDefinition; edit: Edit; di: number; onSelect: (i: number) => void }) {
+  const [multi, setMulti] = useState(def.divisions.length > 1);
+  const [adding, setAdding] = useState<{ name: string; from: string } | null>(null);
+  const [applying, setApplying] = useState<{ targets: string[]; replace: boolean } | null>(null);
+  const src = def.divisions[di];
+  const plan = applying ? applyPlan(def, src.id, applying.targets) : [];
+  const configured = plan.filter((p) => p.status === "configured");
+  return (
+    <div className="rounded border border-white/10 p-2 space-y-2" data-field="divisions">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="font-semibold text-white">1. How many divisions / categories?</span>
+        <label className="flex items-center gap-1"><input type="radio" checked={!multi} disabled={def.divisions.length > 1} onChange={() => setMulti(false)} />One division</label>
+        <label className="flex items-center gap-1"><input type="radio" checked={multi} onChange={() => setMulti(true)} />Multiple divisions</label>
+        {def.divisions.length > 1 && <span className="text-white/40">(remove extra divisions to go back to one)</span>}
+      </div>
+      {multi && (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            {def.divisions.map((x, i) => (
+              <span key={x.id} className={cn("inline-flex items-center rounded border", i === di ? "border-white/60 text-white bg-white/[0.06]" : "border-white/15 text-white/60")}>
+                <button className="px-2 py-1" onClick={() => onSelect(i)}>{x.name} <span className="text-white/40">· {x.sections.flatMap((y) => y.stages).length} stages</span></button>
+                {def.divisions.length > 1 && <button aria-label={`Remove ${x.name}`} className="px-1 text-white/40 hover:text-white" onClick={() => {
+                  if (!confirm(`Remove ${x.name} and its own stages? Other divisions are not affected.`)) return;
+                  edit((dd) => { removeDivision(dd, x.id); }); onSelect(0);
+                }}><Trash2 className="h-3 w-3" /></button>}
+              </span>
+            ))}
+            <Button size="sm" variant="outline" className={btn} onClick={() => setAdding({ name: "", from: "" })}><Plus className="h-3 w-3 mr-1" />Add division</Button>
+            {def.divisions.length > 1 && <Button size="sm" variant="outline" className={btn} onClick={() => setApplying({ targets: def.divisions.filter((x) => x.id !== src.id).map((x) => x.id), replace: false })}>Apply {src.name} structure to other divisions…</Button>}
+          </div>
+          {adding && (
+            <div className="flex flex-wrap items-end gap-2 rounded border border-white/10 p-2">
+              <Q label="New division name" className="w-40"><Input className={f} autoFocus value={adding.name} placeholder="e.g. Ladies" onChange={(e) => setAdding({ ...adding, name: e.target.value })} /></Q>
+              <Q label="Start with" className="w-56">
+                <select className={sel} value={adding.from} onChange={(e) => setAdding({ ...adding, from: e.target.value })}>
+                  <option value="">Blank — no stages</option>
+                  {def.divisions.map((x) => <option key={x.id} value={x.id}>Copy structure from {x.name} (independent copy)</option>)}
+                </select>
+              </Q>
+              <Button size="sm" className="h-8 text-xs" onClick={() => {
+                let nid = ""; edit((dd) => { nid = addDivision(dd, adding.name, adding.from ? { copyFromId: adding.from } : undefined); });
+                setAdding(null); setTimeout(() => onSelect(def.divisions.length), 0); void nid;
+              }}>Add</Button>
+              <Button size="sm" variant="ghost" className="h-8 text-xs text-white/60" onClick={() => setAdding(null)}>Cancel</Button>
+            </div>
+          )}
+          {applying && (
+            <div className="rounded border border-white/10 p-2 space-y-1">
+              <div className="text-white">Apply {src.name} structure to:</div>
+              {def.divisions.filter((x) => x.id !== src.id).map((x) => {
+                const st = plan.find((p) => p.id === x.id)?.status;
+                return (
+                  <label key={x.id} className="flex items-center gap-2">
+                    <input type="checkbox" checked={applying.targets.includes(x.id)} onChange={(e) => setApplying({ ...applying, targets: e.target.checked ? [...applying.targets, x.id] : applying.targets.filter((t) => t !== x.id) })} />
+                    {x.name} <span className="text-white/40">{st === "configured" ? "— already has stages" : st === "blank" ? "— blank" : ""}</span>
+                  </label>
+                );
+              })}
+              {configured.length > 0 && (
+                <label className="flex items-center gap-2 text-amber-300">
+                  <input type="checkbox" checked={applying.replace} onChange={(e) => setApplying({ ...applying, replace: e.target.checked })} />
+                  Replace the existing stages in {configured.map((c) => c.name).join(", ")} (otherwise they are skipped)
+                </label>
+              )}
+              <div className="flex gap-2 pt-1">
+                <Button size="sm" className="h-7 text-xs" disabled={!applying.targets.length} onClick={() => {
+                  let r = { applied: [] as string[], skipped: [] as { name: string }[] };
+                  edit((dd) => { r = applyStructure(dd, src.id, applying.targets, { replaceConfigured: applying.replace }); });
+                  toast.success(`Copied to ${r.applied.length} division(s)${r.skipped.length ? `; skipped ${r.skipped.map((s) => s.name).join(", ")}` : ""}. Each copy is independent.`);
+                  setApplying(null);
+                }}>Apply</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs text-white/60" onClick={() => setApplying(null)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+          <div className="text-white/50">2. Select a division, then build its stages. Each division owns its own stages — changes never spread to another division unless you copy or apply.</div>
+        </>
+      )}
+    </div>
+  );
+}

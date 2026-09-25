@@ -29,6 +29,7 @@ import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import type { BuilderScope } from "@/pages/admin/SmartTournamentBuilder";
 import { cn } from "@/lib/utils";
+import { applyPlan, applyStructure } from "@/lib/smart-builder/division-structure";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
 const f = "h-8 min-w-0 w-full bg-white/5 border-white/15 text-white text-xs";
@@ -150,16 +151,18 @@ export function PlayersTab({ def, validation, edit }: { def: TournamentDefinitio
                 )}
                 {def.divisions.length > 1 && (
                   <Button type="button" size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => {
-                    if (!confirm(`Copy ${d.name}'s format, stages, schedule rules and pool names to the other divisions? Division names and who can enter stay as they are.`)) return;
+                    const others = def.divisions.filter((_, k) => k !== di).map((x) => x.id);
+                    const plan = applyPlan(def, d.id, others);
+                    const conf = plan.filter((p) => p.status === "configured");
+                    if (!confirm(`Copy ${d.name}'s stages to the other divisions as independent copies?${conf.length ? `\n\n${conf.map((c) => c.name).join(", ")} already ha${conf.length > 1 ? "ve" : "s"} stages — press OK next to decide whether to replace them.` : ""}`)) return;
+                    const replace = conf.length ? confirm(`Replace the existing stages in ${conf.map((c) => c.name).join(", ")}? Cancel keeps them and only fills blank divisions.`) : false;
+                    let r = { applied: [] as string[], skipped: [] as { name: string }[] };
                     edit((dd) => {
                       const src = dd.divisions[di];
-                      dd.divisions.forEach((x, k) => {
-                        if (k === di) return;
-                        x.entry = src.entry; x.leagueUse = src.leagueUse; x.poolLabels = src.poolLabels ? [...src.poolLabels] : undefined;
-                        x.sections = JSON.parse(JSON.stringify(src.sections).replace(/"id":"([^"]+)"/g, (_m, id) => `"id":"${id}-${x.id}"`).replace(/"fromStageId":"([^"]+)"/g, (_m, id) => `"fromStageId":"${id}-${x.id}"`));
-                      });
+                      r = applyStructure(dd, src.id, others, { replaceConfigured: replace });
+                      dd.divisions.forEach((x) => { if (r.applied.includes(x.id)) { x.leagueUse = src.leagueUse; x.poolLabels = src.poolLabels ? [...src.poolLabels] : undefined; } });
                     });
-                    toast.success("Applied to other divisions");
+                    toast.success(`Copied to ${r.applied.length} division(s)${r.skipped.length ? `; kept ${r.skipped.map((s) => s.name).join(", ")}` : ""}`);
                   }}>Apply structure to other divisions</Button>
                 )}
               </div>

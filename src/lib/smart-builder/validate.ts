@@ -1,3 +1,4 @@
+import { ownershipIssues } from "./division-structure";
 /**
  * Deterministic validator for a Smart Builder Tournament Definition.
  * Pure functions only — no AI, no database. Every generate/create step must
@@ -86,8 +87,9 @@ export function validateDefinition(def: TournamentDefinition): ValidationResult 
     issues.push({ level: "error", code: "empty", message: "There are no divisions yet." });
   }
 
+  ownershipIssues(def).forEach((m) => issues.push({ level: "error", code: "stage_ownership", message: m }));
   for (const division of def.divisions) {
-    if (division.sections.length === 0) {
+    if (division.sections.length === 0 || division.sections.every((x) => x.stages.length === 0)) {
       issues.push({ level: "error", code: "empty_division", message: `${division.name} has no stages yet.` });
     }
     for (const section of division.sections) {

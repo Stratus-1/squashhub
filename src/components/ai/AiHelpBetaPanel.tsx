@@ -45,7 +45,7 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"chat" | "history">("chat");
   // Stable id so follow-ups belong to the same request/conversation on the server.
-  const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
+  const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
   const mine = useMyAiRequests(user?.id);
   const rowsById = new Map((mine.data?.rows ?? []).map((r) => [r.id, r]));
   const retried = new Set((mine.data?.rows ?? []).map((r) => r.retry_of).filter(Boolean) as string[]);

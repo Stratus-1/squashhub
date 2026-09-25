@@ -157,7 +157,8 @@ export function mappingSummary(m: StageMapping, opts?: { poolNames?: (string | n
   lines.push(m.source === "seed_pools"
     ? `Who takes part: pool positions from entry seeding — ${usedPools.map((p) => `${poolName(p, names)} (${poolLetter(p)}1–${poolLetter(p)}${m.poolSize})`).join(", ")}`
     : `Who takes part: finishing positions in ${opts?.sourceName ?? "the earlier stage"} — ${usedPools.map((p) => `${poolName(p, names)} ${poolLetter(p)}1–${poolLetter(p)}${m.poolSize}`).join(", ")}`);
-  if (m.discipline === "doubles") lines.push(`Pairs: ${m.units.map((u, i) => `Pair ${i + 1} = ${u.slots.map(slotKey).join(" + ")}`).join(" · ")}`);
+  const sorted = [...m.units].sort((a, b) => a.slots[0].pool - b.slots[0].pool || a.slots[0].position - b.slots[0].position);
+  if (m.discipline === "doubles") lines.push(`Pairs: ${sorted.map((u, i) => `Pair ${i + 1} = ${u.slots.map(slotKey).join(" + ")}`).join(" · ")}`);
   const rounds = [...new Set(m.matches.map((x) => x.round))].sort((a, b) => a - b);
   for (const r of rounds) {
     const ms = m.matches.filter((x) => x.round === r).sort((a, b) => a.order - b.order);

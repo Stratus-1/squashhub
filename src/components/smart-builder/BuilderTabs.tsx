@@ -12,7 +12,8 @@ import { requiredRounds, roundDatePlan, roundNames, scheduleMaths, scheduleMaths
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
-import { syncTournamentVenues, useHostClubs, useOwnerOrganisations } from "@/hooks/use-tournaments";
+import { syncTournamentVenues, useHostClubs, useHostCourts, useOwnerOrganisations } from "@/hooks/use-tournaments";
+import { courtKey, stageCourts, stageMatch } from "@/lib/smart-builder/court-allocation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -269,10 +270,12 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
               {divClosed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}{div.name}
               <span className="font-normal text-white/45">{rows.length} stage{rows.length === 1 ? "" : "s"}</span>
             </button>
+            {!divClosed && <DivisionCourts def={def} divId={div.id} edit={edit} />}
             {!divClosed && (
               <div className="divide-y divide-white/10">
                 {rows.map(({ stage, section }) => {
                   const e = effectiveSchedule(def, stage), need = scheduleNeeds(stage.schedule.mode);
+                  const sc = stageCourts(def, div, stage), sm = stageMatch(def, stage);
                   const isOpen = open.has(stage.id);
                   const cell = (v: ReactNode, inherited: boolean, required: boolean) =>
                     v ? <span className={inherited ? "text-white/45" : ""}>{v}{inherited && <span className="text-[9px] ml-1">inh.</span>}</span>
@@ -295,8 +298,8 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
                         <span className="min-w-0"><span className="text-white/45">Dates: </span>{cell(dates, e.startDate.inherited || e.endDate.inherited, need.dates)}</span>
                         <span className="min-w-0"><span className="text-white/45">Time: </span>{cell(dayTime, e.weekday.inherited, false)}</span>
                         <span className="min-w-0 break-words"><span className="text-white/45">Venue: </span>{cell(venue, e.venueNames.inherited, need.venue)}</span>
-                        <span className="min-w-0"><span className="text-white/45">Courts: </span>{cell(e.courtsPerVenue.value, e.courtsPerVenue.inherited, need.courts)}</span>
-                        <span className="min-w-0"><span className="text-white/45">Match: </span>{cell(e.matchMinutes.value ? `${e.matchMinutes.value}m` : null, e.matchMinutes.inherited, need.matchMinutes)}</span>
+                        <span className="min-w-0"><span className="text-white/45">Courts: </span>{cell(sc.count ? sc.text : null, sc.source === "tournament" || sc.source === "division", need.courts)}</span>
+                        <span className="min-w-0"><span className="text-white/45">Match: </span>{cell(sm.text, !stage.scoring?.mode && !stage.tieFormat && e.matchMinutes.inherited, need.matchMinutes)}</span>
                       </button>
                       {isOpen && <StageScheduleEditor stage={stage} def={def} setS={setS} />}
                     </div>
@@ -307,6 +310,27 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Optional: reserve some of the tournament's courts for one division. Empty = the division uses every tournament court. */
+function DivisionCourts({ def, divId, edit }: { def: TournamentDefinition; divId: string; edit: Edit }) {
+  const pool = selectedCourtPool(def);
+  const { data: courts = [] } = useHostCourts(eventVenues(def).clubIds);
+  const div = def.divisions.find((d) => d.id === divId)!;
+  if (!pool.length) return <p className="px-2 pb-1 text-[11px] text-red-300">No courts chosen yet — pick courts under Venue(s) on Design; every division and stage then uses them.</p>;
+  if ((div.poolGroups ?? []).some((g) => g.court)) return <p className="px-2 pb-1 text-[11px] text-white/55">Courts: set per pool pair (home courts) in the stage builder.</p>;
+  const keys = new Set(div.courtKeys ?? []);
+  const name = (c: { clubId: string; courtId: number }) => courts.find((x: any) => x.club_id === c.clubId && x.court_id === c.courtId)?.name ?? `Court ${c.courtId}`;
+  const toggle = (k: string) => edit((x) => { const d = x.divisions.find((y) => y.id === divId)!; const s = new Set(d.courtKeys ?? []); s.has(k) ? s.delete(k) : s.add(k); d.courtKeys = [...s]; });
+  return (
+    <div className="px-2 pb-2 flex flex-wrap items-center gap-1 text-[11px]" data-field={`division.${divId}.courts`}>
+      <span className="text-white/55">Courts for {div.name}:</span>
+      {pool.map((c) => { const k = courtKey(c); const on = keys.has(k); return (
+        <button key={k} onClick={() => toggle(k)} className={cn("rounded border px-1.5 py-0.5", on ? "border-amber-300/70 text-amber-200" : "border-white/15 text-white/60")}>{name(c)}</button>
+      ); })}
+      <span className="text-white/40">{keys.size ? `${keys.size} reserved` : "none picked = all tournament courts"}</span>
     </div>
   );
 }

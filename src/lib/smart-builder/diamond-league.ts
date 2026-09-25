@@ -247,58 +247,92 @@ export const DIAMOND_INSTANCE_FIELDS = ["name", "scheduleDefaults", "admission",
 export const DIAMOND_WEDNESDAYS = weeklyDates("2026-10-07", 5);
 
 /** Builds the Diamond League structure into `def` (replacing its divisions). */
-export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: string[][]; startDate?: string | null; startTime?: string | null } = {}) {
-  const courts = opts.courts ?? [["Court 1", "Court 2"], ["Court 3", "Court 4"]];
-  const dates = opts.startDate === null ? [] : weeklyDates(opts.startDate ?? "2026-10-07", 5);
+/** Pool-v-pool rounds for n pools (odd n: one pool rests each round). */
+const poolRounds = (n: number) => (n < 2 ? 0 : n % 2 ? n : n - 1);
+
+export interface DiamondShape { capacity: number; poolSize: number; pools: number; divisions: number[]; unplaced: number; rounds: number; weeks: number; courts: number }
+/**
+ * Scales the Diamond League to the entry: pools of `poolSize`, grouped into divisions of up to
+ * `poolsPerDivision` pools (spread evenly). 48 → 8 pools → 2 × 4; 36 → 6 pools → 2 × 3; 24 → 4 pools → 1 × 4.
+ */
+export function diamondShape(capacity = 48, poolSize = 6, poolsPerDivision = 4): DiamondShape {
+  const pools = Math.max(0, Math.floor(capacity / poolSize));
+  const nd = Math.max(1, Math.ceil(pools / Math.max(2, poolsPerDivision)));
+  const divisions = Array.from({ length: nd }, (_, i) => Math.floor(pools / nd) + (i < pools % nd ? 1 : 0)).filter((n) => n > 0);
+  const rounds = Math.max(0, ...divisions.map(poolRounds));
+  return { capacity, poolSize, pools, divisions, unplaced: capacity - pools * poolSize, rounds, weeks: rounds + 2, courts: divisions.reduce((n, d) => n + Math.floor(d / 2), 0) };
+}
+
+export function shapeText(sh: DiamondShape): string {
+  const div = sh.divisions.length === 1 ? `1 division of ${sh.divisions[0]} pools` : `${sh.divisions.length} divisions (${sh.divisions.join(" + ")} pools)`;
+  const rest = sh.divisions.some((d) => d % 2) ? " · one pool rests each week in odd divisions" : "";
+  return `${sh.capacity} players → ${sh.pools} pools of ${sh.poolSize} in ${div} · ${sh.rounds} pool-v-pool weeks + semi-finals + finals · ${sh.courts} courts per evening${rest}${sh.unplaced ? ` · ${sh.unplaced} player(s) don't fill a pool` : ""}`;
+}
+
+/** Builds the Diamond League structure into `def` (replacing its divisions), scaled to the entry. */
+export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: string[]; startDate?: string | null; startTime?: string | null; capacity?: number; poolSize?: number; poolsPerDivision?: number } = {}) {
+  const sh = diamondShape(opts.capacity ?? 48, opts.poolSize ?? 6, opts.poolsPerDivision ?? 4);
+  const courtNames = opts.courts ?? Array.from({ length: Math.max(sh.courts, 1) }, (_, i) => `Court ${i + 1}`);
+  const dates = opts.startDate === null ? [] : weeklyDates(opts.startDate ?? "2026-10-07", sh.weeks);
+  const oldNames = def.divisions.map((d) => d.poolNames ?? []);
   def.name = def.name && def.name !== "Untitled tournament" ? def.name : "Diamond League";
   def.category = "open";
   def.quickPath = "custom";
   def.finalStandings = "cumulative";
-  def.admission = { capacity: 48, mode: "first_confirmed", waitlist: true };
+  def.admission = { mode: "first_confirmed", waitlist: true, ...(def.admission ?? {}), capacity: sh.capacity };
   def.poolSeeding = { source: "ladder", allocation: "snake", scope: "tournament" };
   def.pairSource = "seed"; // doubles = pool positions 1+2 / 3+4 / 5+6 in each weekly tie
   def.templateMeta = { key: DIAMOND_KEY, name: "Diamond League", instanceFields: DIAMOND_INSTANCE_FIELDS };
-  def.scheduleDefaults = { ...(def.scheduleDefaults ?? {}), weekday: 3, startDate: dates[0] ?? null, endDate: dates[4] ?? null } as TournamentDefinition["scheduleDefaults"];
+  def.scheduleDefaults = { ...(def.scheduleDefaults ?? {}), weekday: 3, startDate: dates[0] ?? null, endDate: dates[sh.weeks - 1] ?? null } as TournamentDefinition["scheduleDefaults"];
   const fixed = (from: number, to: number) => dates.length
     ? { mode: "fixed" as const, startDate: dates[from], endDate: dates[to], roundDates: dates.slice(from, to + 1), weekday: 3 }
     : { mode: "unset" as const };
-  def.divisions = [0, 1].map((di) => {
-    // One weekly SESSION (same date, same court per tie) holds two sequential stages.
+  const R = sh.rounds;
+  let courtAt = 0;
+  def.divisions = sh.divisions.map((np, di) => {
+    const lastRound = Math.max(0, poolRounds(np) - 1);
     const s1 = stage("Singles", "cross_pool_league", "singles", {
-      input: { entrants: 24 }, legs: 1,
+      groups: np, groupSize: sh.poolSize, input: { entrants: np * sh.poolSize }, legs: 1,
       scoring: { mode: "time_capped_points", timeCapMinutes: 20 },
       standings: { method: null, bellsScore: null, tieBreaks: [] }, // organiser spreadsheet pending
-      tieFormat: { ...structuredClone(DIAMOND_SINGLES_TIE), startTime: opts.startTime === undefined ? "17:45" : opts.startTime },
-      notes: "Each Wednesday every pool plays one other pool on its home court: 6 singles, same positions (1v1…6v6), 20 min each.",
-      schedule: fixed(0, 2),
+      tieFormat: { ...structuredClone(DIAMOND_SINGLES_TIE), rubbers: standardRubbersLocal("singles", sh.poolSize, 20), startTime: opts.startTime === undefined ? "17:45" : opts.startTime },
+      notes: "Each week every pool plays one other pool on its home court: singles by position (1v1, 2v2…), 20 min each.",
+      schedule: fixed(0, lastRound),
     });
     const s2 = stage("Doubles", "cross_pool_league", "doubles", {
-      input: { fromStageId: s1.id }, legs: 1, sameSessionAs: s1.id,
+      groups: np, groupSize: sh.poolSize, input: { fromStageId: s1.id }, legs: 1, sameSessionAs: s1.id,
       progression: { mode: "form_pairs", pairing: "positions", standings: "carry" },
       scoring: { mode: "time_capped_points", timeCapMinutes: 30 },
       standings: { method: null, bellsScore: null, tieBreaks: [] },
-      tieFormat: structuredClone(DIAMOND_DOUBLES_TIE),
-      notes: "Same evening, same court, straight after the singles: 3 doubles, pool positions 1+2, 3+4, 5+6 v the same pair, 30 min each.",
-      schedule: fixed(0, 2),
+      tieFormat: { ...structuredClone(DIAMOND_DOUBLES_TIE), rubbers: standardRubbersLocal("doubles", sh.poolSize, 30) },
+      notes: "Same evening, same court, straight after the singles: doubles by position pairs (1+2, 3+4, 5+6…) v the same pair, 30 min each.",
+      schedule: fixed(0, lastRound),
     });
     const s3 = stage("Semi-finals", "knockout", "singles", {
       groups: 1, groupSize: null, input: { fromStageId: s2.id }, generation: "owner_approval", dynamic: true,
-      notes: "Semi-final rules need confirmation (organiser spreadsheet).", schedule: fixed(3, 3),
+      notes: "Semi-final rules need confirmation (organiser spreadsheet).", schedule: fixed(R, R),
     });
     const s4 = stage("Finals", "knockout", "singles", {
       groups: 1, groupSize: null, input: { fromStageId: s3.id }, generation: "owner_approval", dynamic: true,
-      notes: "Final rules need confirmation (organiser spreadsheet).", schedule: fixed(4, 4),
+      notes: "Final rules need confirmation (organiser spreadsheet).", schedule: fixed(R + 1, R + 1),
     });
+    const poolGroups = Array.from({ length: Math.floor(np / 2) }, (_, k) => ({ pools: [2 * k, 2 * k + 1] as [number, number], court: courtNames[courtAt++] ?? null }));
     return {
-      id: newId("div"), name: `Division ${di + 1}`, eligibility: "open", entry: "individual", leagueUse: null,
-      poolNames: ["", "", "", ""],
-      poolGroups: [{ pools: [0, 1], court: courts[di][0] }, { pools: [2, 3], court: courts[di][1] }],
+      id: newId("div"), name: sh.divisions.length > 1 ? `Division ${di + 1}` : "Main division", eligibility: "open", entry: "individual", leagueUse: null,
+      poolNames: Array.from({ length: np }, (_, i) => oldNames[di]?.[i] ?? ""),
+      poolGroups,
       sections: [{ id: newId("sec"), name: "Main", stages: [s1, s2, s3, s4] }],
     } as unknown as Division;
   });
   const keep = def.questions.filter((q) => !q.id.startsWith("dl_"));
   def.questions = [...keep, ...DIAMOND_QUESTIONS.map((q) => ({ ...q }))];
   return def;
+}
+
+function standardRubbersLocal(discipline: "singles" | "doubles", n: number, minutes: number) {
+  return discipline === "singles"
+    ? Array.from({ length: n }, (_, i) => ({ discipline, positions: [i + 1], minutes }))
+    : Array.from({ length: Math.floor(n / 2) }, (_, i) => ({ discipline, positions: [2 * i + 1, 2 * i + 2], minutes }));
 }
 
 /** Strip per-instance settings so the saved template keeps only the competition logic. */
@@ -337,11 +371,11 @@ export function diamondChain(def: TournamentDefinition): string[] {
   const m = tieMinutes(t);
   return [
     `Registration: first ${def.admission?.capacity ?? "—"} confirmed accepted, rest wait-listed`,
-    "Ladder seeding (admin can adjust) → snake into 8 pools of 6 (2 divisions × 4 pools)",
-    "Wednesdays 1–3: each pool plays each other pool in its division once (4 ties per evening, one per court)",
+    `Ladder seeding (admin can adjust) → snake into ${def.divisions.reduce((n, d) => n + (d.poolNames?.length ?? 0), 0)} pools (${def.divisions.map((d) => d.poolNames?.length ?? 0).join(" + ")} per division)`,
+    `Pool-v-pool weeks: each pool plays each other pool in its division once (${def.divisions.reduce((n, d) => n + Math.floor((d.poolNames?.length ?? 0) / 2), 0)} ties per evening, one per court)`,
     `Each Wednesday is one session with two stages on the same court: Singles (6 × 20 min) then Doubles (1+2 / 3+4 / 5+6, 3 × 30 min) = ${m} min${t.startTime ? ` (${t.startTime}–${tieFinish(t, t.startTime)})` : ""}`,
-    "Wednesday 4: semi-finals (rules need confirmation)",
-    "Wednesday 5: finals / conclusion (rules need confirmation)",
+    "Then: semi-finals (rules need confirmation)",
+    "Then: finals / conclusion (rules need confirmation)",
   ];
 }
 

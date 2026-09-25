@@ -11,6 +11,7 @@
 import { allStages, effectiveSchedule, type Stage, type TournamentDefinition } from "./definition";
 import { d10 } from "@/lib/tournaments/date-window";
 import { scoringMinutes, stageScoringLine } from "./scoring";
+import { stageCourts } from "./court-allocation";
 
 const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -82,7 +83,7 @@ export function sessionPlan(def: TournamentDefinition): { sessions: PlannedSessi
     }
     if (stage.schedule.mode !== "fixed") continue;
     const members = sessionMembers(def, stage);
-    const courts = new Set((division.poolGroups ?? []).map((g) => g.court).filter(Boolean)).size || (effectiveSchedule(def, stage).courtsPerVenue.value as number | null) || 0;
+    const courts = stageCourts(def, division, stage).count;
     const start = stage.tieFormat?.startTime ?? def.scheduleDefaults?.startTime ?? null;
     const limit = (effectiveSchedule(def, stage).sessionMinutes.value as number | null) ?? null;
     let at = start ? toMin(start) : null, total: number | null = 0;

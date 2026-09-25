@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { emptyDefinition, type TournamentDefinition } from "@/lib/smart-builder/definition";
 import { addStage, setFormat, setDiscipline, setSameSession, stageDetailLines } from "@/lib/smart-builder/stage-builder";
-import { applyDiamondLeague, buildTies, snakeAllocate } from "@/lib/smart-builder/diamond-league";
+import { stageCourts, stageMatch } from "@/lib/smart-builder/court-allocation";
+import { diamondShape, applyDiamondLeague, buildTies, snakeAllocate } from "@/lib/smart-builder/diamond-league";
 import { opponentPositions, tieIssues, standardRubbers } from "@/lib/smart-builder/ties";
 import { sessionPlan } from "@/lib/smart-builder/sessions";
 import { scheduleMaths } from "@/lib/smart-builder/schedule-maths";
@@ -127,6 +128,35 @@ describe("Pool-v-pool league built from builder controls", () => {
     def.divisions = [{ id: "d", name: "D", eligibility: "open", entry: "individual", sections: [{ id: "s", name: "Main", stages: [{ id: "rr", name: "RR", kind: "round_robin", discipline: "singles", groups: 1, groupSize: 4, input: { entrants: 4 }, advance: { role: "none" }, schedule: { mode: "unset" } } as any] }] } as any];
     const st = validateDefinition(def).issues.filter((i) => i.code === "standings");
     expect(st.every((i) => i.level === "warning")).toBe(true);
+  });
+
+  it("Diamond scales with entry: 48 → 2×4, 36 → 2×3, 24 → 1×4; dates and courts follow", () => {
+    expect(diamondShape(48).divisions).toEqual([4, 4]);
+    expect(diamondShape(36).divisions).toEqual([3, 3]);
+    expect(diamondShape(36, 6, 6).divisions).toEqual([6]);
+    expect(diamondShape(24).divisions).toEqual([4]);
+    expect(diamondShape(40).unplaced).toBe(4);
+    const def = applyDiamondLeague(emptyDefinition(), { capacity: 36 });
+    expect(def.divisions.map((d) => d.poolNames?.length)).toEqual([3, 3]);
+    const s1 = def.divisions[0].sections[0].stages[0];
+    expect(s1.groups).toBe(3);
+    expect(s1.schedule.roundDates).toHaveLength(3); // 3 pools → 3 weeks, one pool rests
+    expect(def.divisions[0].sections[0].stages[2].schedule.roundDates).toEqual(["2026-10-28"]);
+    expect(validateDefinition(def).issues.filter((i) => i.level === "error" && i.code.startsWith("tie_"))).toEqual([]);
+    const d24 = applyDiamondLeague(emptyDefinition(), { capacity: 24 });
+    expect(d24.divisions).toHaveLength(1);
+    expect(sessionPlan(d24).sessions[0].minutes).toBe(210);
+  });
+  it("courts resolve from pools, then division, then the tournament — never 'missing' when the tournament has courts", () => {
+    const def = applyDiamondLeague(emptyDefinition());
+    const d = def.divisions[0], st = d.sections[0].stages[0];
+    expect(stageCourts(def, d, st)).toMatchObject({ source: "pools", count: 2 });
+    d.poolGroups = [];
+    def.event = { ...(def.event ?? {}), venues: { clubIds: ["c1"], courtIds: { c1: [1, 2, 3, 4] } } } as any;
+    expect(stageCourts(def, d, st)).toMatchObject({ source: "tournament", count: 4 });
+    d.courtKeys = ["c1:1", "c1:2"];
+    expect(stageCourts(def, d, st)).toMatchObject({ source: "division", count: 2 });
+    expect(stageMatch(def, st).text).toBe("6 games × 20m = 120m per tie (Bells)");
   });
 });
 

@@ -63,6 +63,7 @@ export function useDoorControl(): DoorControl {
     door_auto_unlock_radius_m?: number | null;
     door_auto_unlock_enabled?: boolean | null;
     door_auto_unlock_seconds?: number | null;
+    door_button_near_only?: boolean | null;
     door_show_on_dashboard?: boolean | null;
     door_dashboard_role_ids?: string[] | null;
   } | undefined;
@@ -118,9 +119,11 @@ export function useDoorControl(): DoorControl {
 
   const configured =
     !!club?.id && accessOn && doorEnabled && !doorBlocked && !visitorBlocked && dashboardAllowed;
-  // The manual button follows access permissions only. The geofence drives
-  // automatic unlocking; it never hides the button.
-  const available = configured;
+  // The manual button follows access permissions. It is only restricted by
+  // location when the club explicitly chose "Only show button when near the
+  // door" — auto-unlock never hides it. Admins keep remote access.
+  const nearOnly = !!club?.door_button_near_only && !!club?.door_geofence_enabled;
+  const available = configured && !(nearOnly && proximity.active && !nearDoor);
 
   const openDoor = async (trigger: "manual" | "geofence" = "manual") => {
     if (!club?.id) return;
@@ -183,7 +186,7 @@ export function useDoorControl(): DoorControl {
   const autoEnabled = !!club?.door_auto_unlock_enabled && !!club?.door_geofence_enabled && configured;
   const openRef = useRef<null | ((t: "manual" | "geofence") => Promise<void>)>(null);
   openRef.current = openDoor;
-  const radiusM = club?.door_geofence_radius_m ?? 150;
+  const radiusM = club?.door_auto_unlock_radius_m ?? club?.door_geofence_radius_m ?? 30;
 
   useEffect(() => {
     if (!autoEnabled || !club?.id || !proximity.active) return;

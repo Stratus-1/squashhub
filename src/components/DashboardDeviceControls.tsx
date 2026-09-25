@@ -7,7 +7,7 @@ import { DoorOpen, Loader2, MapPin, ShieldCheck, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { useMyClub } from "@/hooks/use-club";
+import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useHasCapability } from "@/hooks/use-club-capabilities";
 import { useClubDevices, useDeviceControl } from "@/hooks/use-club-devices";
 import { useDoorControl, type DoorControl } from "@/hooks/use-door-control";
@@ -285,17 +285,26 @@ function DeviceRow({ device, clubId }: { device: ClubDevice; clubId: string }) {
     !!device.auto_unlock_enabled &&
     device.geofence_latitude != null &&
     device.geofence_longitude != null;
-  useGeofenceAutoUnlock({
+  const hasFence =
+    device.category === "access" &&
+    !!device.geofence_enabled &&
+    device.geofence_latitude != null &&
+    device.geofence_longitude != null;
+  const nearOnly = hasFence && !!(device as any).button_near_door_only;
+  const isAdmin = useIsClubAdmin();
+  const proximity = useGeofenceAutoUnlock({
     id: `device-${device.id}`,
     enabled: autoOn,
+    watch: nearOnly,
     fence: {
-      enabled: autoOn,
+      enabled: hasFence,
       latitude: device.geofence_latitude ?? null,
       longitude: device.geofence_longitude ?? null,
       radiusM: device.geofence_radius_m ?? 50,
     },
     onEnter: () => run("pulse", "geofence"),
   });
+  if (nearOnly && !isAdmin && proximity.active && !proximity.allowed) return null;
 
   return (
     <Card className="p-3 flex items-center gap-3">

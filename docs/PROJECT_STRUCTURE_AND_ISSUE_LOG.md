@@ -2077,3 +2077,5 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Open organiser items: points formula/tie-break, pair source, final mechanics, play-off weighting, Wed 4/5 allocation.
 
 - 2026-09-25: Diamond League template corrected to weekly pool-v-pool ties (6 singles @20 + 3 doubles @30, one court, 210 min) via Stage.tieFormat; semis/finals rules pending organiser spreadsheet; removed singles→rerank→doubles dependency.
+
+- 2026-09-25: Nelspruit main-door geofence never persisted. Cause: Access Control tab re-synced its geofence state from the club on every club refetch (window focus after the location-permission prompt), wiping the pinned location + enabled switch before Save; and its method/device Save also rewrote geofence columns from that stale state with no error check. Fix: resync only when not editing; geofence saved only by the Location card, atomically verified; IoT main-door save also verifies enabled+lat/lng persisted.

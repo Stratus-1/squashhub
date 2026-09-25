@@ -275,6 +275,7 @@ export type Database = {
           occurrence_log: Json
           occurrences: number
           related_ids: Json
+          reopened_count: number
           reporter_role: string | null
           reporter_user_id: string | null
           reproduction: string | null
@@ -300,6 +301,7 @@ export type Database = {
           occurrence_log?: Json
           occurrences?: number
           related_ids?: Json
+          reopened_count?: number
           reporter_role?: string | null
           reporter_user_id?: string | null
           reproduction?: string | null
@@ -325,6 +327,7 @@ export type Database = {
           occurrence_log?: Json
           occurrences?: number
           related_ids?: Json
+          reopened_count?: number
           reporter_role?: string | null
           reporter_user_id?: string | null
           reproduction?: string | null

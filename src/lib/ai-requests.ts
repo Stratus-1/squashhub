@@ -10,7 +10,11 @@ export type MyAiRow = {
 export type Tone = "waiting" | "done" | "bug" | "support" | "denied" | "failed" | "muted";
 export type StatusInfo = { label: string; tone: Tone };
 
-const BUG: Record<string, string> = { open: "Open", investigating: "Investigating", fixed: "Fixed", wont_fix: "Won't fix", duplicate: "Duplicate" };
+const BUG: Record<string, string> = {
+  open: "Reported", investigating: "Investigating", fix_in_development: "Fix in development",
+  fix_ready: "Fix ready · awaiting publish", published: "Published · awaiting verification",
+  fixed: "Fixed · verified", closed: "Closed", wont_fix: "Won't fix", duplicate: "Duplicate",
+};
 const TICKET: Record<string, string> = { open: "Open", pending: "Waiting on support", in_progress: "Being handled", resolved: "Resolved", closed: "Closed" };
 
 /** Status reflects the real underlying lifecycle, never just "the AI replied". */

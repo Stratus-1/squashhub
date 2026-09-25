@@ -388,7 +388,15 @@ Deno.serve(async (req) => {
             }
             await admin.from("audit_events").insert({ club_id: clubId, actor_user_id: userId, entity_type: "ai_bug_report", entity_id: bug.id, action: bug.duplicate ? "ai_bug_occurrence" : "ai_bug_reported", reason: args.title, after_data: { feature: args.feature, related_ids: rid, verified: args.verified && isAdmin } });
             outcome = { ...outcome, bugId: bug.id };
-            out = { status: "bug_reported", duplicate: bug.duplicate, occurrences: bug.occurrences, next: "Tell the user plainly it has been logged as a SquashHub bug for the development team (mention if it was already known), what you found, and that no results/data were changed." };
+            out = { status: "bug_reported", duplicate: bug.duplicate, occurrences: bug.occurrences, bug_status: bug.status ?? "open",
+              next: bug.status === "reopened"
+                ? "Tell the user this bug had been marked fixed but they reproduced it, so the SAME bug has been reopened with their evidence. No data was changed."
+                : bug.duplicate
+                ? `Tell the user this is an already-known SquashHub bug (current status: ${bug.status}); their report was added to it and they can follow it under My requests. Do NOT open a support ticket. No data was changed.`
+                : "Tell the user it has been logged as a SquashHub bug in the Super Admin bug list with the evidence you found, and they can follow it under My requests. No data was changed." };
+            bugLogged = true;
+          } else if (call.name === "escalate" && bugLogged) {
+            out = { status: "not_needed", message: "A bug is already logged for this request. Do not open a support ticket." };
           } else if (call.name === "escalate") {
             const ticketId = await escalate(`[${args.category}] ${args.reason}`, { interpretation: args.resolved_context, diagnostics: toolLog });
             outcome = { ...outcome, ticketId, escalated: true };

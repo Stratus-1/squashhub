@@ -106,7 +106,7 @@
 - [x] Double round robin, Swiss (generation + next round + tie-breaks), 3rd/4th place match
 
 ## Tournament Beta standalone operation (25 Sep 2026)
-- [ ] Derive round counts and auto-generate weekly round dates; persist onto created rounds/fixtures
+- [x] Derive round counts and auto-generate weekly round dates; persist onto created rounds/fixtures
 - [ ] Audit step 1: verify schedule dialog on Beta games, result emails, reminders, member pages
 - [ ] Audit step 2: Beta tournament Operate page
 - [ ] Audit step 3: Beta entries and allocation

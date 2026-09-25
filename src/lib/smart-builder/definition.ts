@@ -215,6 +215,7 @@ export type Scoring = z.infer<typeof ScoringSchema>;
 
 /** Recognise older Bells drafts that were described in words before scoring.mode existed. */
 export function isBellsDefinition(def: TournamentDefinition) {
+  if (def.divisions.some((d) => d.sections.some((sec) => sec.stages.some((st) => st.scoring?.mode === "time_capped_points")))) return true;
   if (def.scoring?.mode) return def.scoring.mode === "time_capped_points";
   return /\bbells\b/i.test(def.name) || def.divisions.some((div) =>
     div.sections.some((sec) => sec.stages.some((stage) => /\bbells\b/i.test(stage.name))));

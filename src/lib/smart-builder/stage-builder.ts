@@ -5,6 +5,7 @@ import { applyDiamondLeague } from "./diamond-league";
  * rounds (swissRounds/legs, derived otherwise), schedule, and progression from the previous stage.
  * Nothing here generates games; the definition → spec → engine path is unchanged.
  */
+import { stageScoringLine, scoringText, effectiveScoring } from "./scoring";
 import { TIE_PAIRING_LABEL, gameLabel, standardRubbers } from "./ties";
 import { newStage, type Division, type Stage, type TournamentDefinition } from "./definition";
 
@@ -196,7 +197,13 @@ export function transitionText(prev: Stage, cur: Stage): string {
 }
 
 /** Accurate plain-language description of one stage, used by the stage list, map and Review. */
-export function stageDetailLines(s: Stage): string[] {
+export function stageDetailLines(s: Stage, def?: TournamentDefinition | null): string[] {
+  const base = stageDetailBase(s);
+  const rounds = Object.keys(s.roundScoring ?? {}).map((k) => `Round ${Number(k) + 1} scoring: ${scoringText(effectiveScoring(def, s, Number(k)))}`);
+  return [...base, `Scoring: ${stageScoringLine(def, s)}`, ...rounds];
+}
+
+function stageDetailBase(s: Stage): string[] {
   const disc = s.discipline === "doubles" ? "Doubles" : "Singles";
   if (s.kind === "cross_pool_league") {
     const t = s.tieFormat;

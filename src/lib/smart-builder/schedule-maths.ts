@@ -15,6 +15,7 @@
 import { allStages, effectiveSchedule, type Stage, type TournamentDefinition } from "./definition";
 import { d10, inside } from "@/lib/tournaments/date-window";
 import { selectedCourtPool } from "./venues";
+import { scoringMinutes } from "./scoring";
 import { sessionPlan, type PlannedSession } from "./sessions";
 
 export interface ScheduleIssue {
@@ -232,7 +233,7 @@ export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
         done = (need != null ? dates[need - 1] : null) ?? [...dates].reverse().find(Boolean) ?? null;
         if (done) lines.push(`Latest required completion: ${done}`);
         const e = effectiveSchedule(def, st);
-        const courts = selectedCourtPool(def).length, mm = e.matchMinutes.value as number | null, sm = e.sessionMinutes.value as number | null;
+        const courts = selectedCourtPool(def).length, mm = scoringMinutes(def, st) ?? (e.matchMinutes.value as number | null), sm = e.sessionMinutes.value as number | null;
         if (!courts) capMissing.add("courts"); if (!mm) capMissing.add("match minutes"); if (!sm) capMissing.add("session minutes");
         if (courts && mm && sm && !st.tieFormat && !st.sameSessionAs && !sessionMembersOf(def, st)) {
           dates.slice(0, need ?? dates.length).forEach((x) => { if (x) load.set(x, (load.get(x) ?? 0) + matchesPerRound(st)); });

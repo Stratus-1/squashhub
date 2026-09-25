@@ -1,4 +1,5 @@
 import { tieIssues } from "./ties";
+import { scoringIssues } from "./scoring";
 import { ownershipIssues } from "./division-structure";
 /**
  * Deterministic validator for a Smart Builder Tournament Definition.
@@ -307,6 +308,8 @@ export function validateDefinition(def: TournamentDefinition): ValidationResult 
         }
 
         // ── Pool-v-pool ties: pairing rule, games, positions ─────────────
+        for (const t of scoringIssues({ ...def, divisions: [{ ...division, sections: [{ ...section, stages: [stage] }] }] } as TournamentDefinition))
+          issues.push({ level: "error", code: "scoring_cap", stageId: stage.id, message: t.message, fix: "Set the Bells minutes per match for this stage or round." });
         for (const t of tieIssues(stage, label)) issues.push({ level: t.level, code: t.code, stageId: stage.id, message: t.message });
 
         // ── Dates ────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@
  * Communication settings map to existing fields only. Nothing here sends
  * anything: invitations are always triggered later from the existing screens.
  */
-import { engineBlockers, translateForEngine } from "./engine-support";
+import { engineBlockers } from "./engine-support";
 import { specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { isBellsDefinition, type Division, type Section, type Stage, type TournamentDefinition } from "./definition";
 

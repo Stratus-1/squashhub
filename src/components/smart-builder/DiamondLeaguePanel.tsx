@@ -2,9 +2,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
-import { DIAMOND_KEY, applyDiamondLeague, diamondLayout, shapeText, diamondChain, sessionTie, diamondTieStage, poolLetter, poolName, poolRotation, rubberLabel, tieEveningCheck, tieMinutes, tieCourt, tieSlots, toTemplate } from "@/lib/smart-builder/diamond-league";
+import { DIAMOND_KEY, diamondCurrent, resizeDiamond, diamondLayout, shapeText, diamondChain, sessionTie, diamondTieStage, poolLetter, poolName, poolRotation, rubberLabel, tieEveningCheck, tieMinutes, tieCourt, tieSlots, toTemplate } from "@/lib/smart-builder/diamond-league";
 import { fromExt } from "@/lib/supabase-ext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
 const f = "h-8 bg-white/5 border-white/15 text-white text-xs";
@@ -15,15 +15,19 @@ export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefin
   const open = def.questions.filter((q) => q.id.startsWith("dl_") && !q.resolved);
   const tie = sessionTie(def);
   const setStart = (v: string) => edit((x) => { for (const d of x.divisions) { const st = diamondTieStage(d); if (st?.tieFormat) st.tieFormat.startTime = v || null; } });
-  const curPools = def.divisions.map((d) => d.poolNames?.length ?? 0);
-  const curSize = def.divisions[0]?.sections[0]?.stages[0]?.groupSize ?? 6;
-  const [nDiv, setNDiv] = useState<number>(def.divisions.length || 2);
-  const [ppd, setPpd] = useState<number>(Math.max(2, ...curPools));
-  const [poolSize, setPoolSize] = useState<number>(curSize);
-  const shape = diamondLayout(nDiv || 1, ppd || 2, poolSize || 6);
+  // Shape is read from the canonical definition every render — no local copy to drift out of sync.
+  const cur = diamondCurrent(def);
+  const shape = diamondLayout(cur.divisions || 1, cur.poolsPerDivision || 2, cur.poolSize || 6);
   const cap = shape.capacity;
-  const same = shape.divisions.join(",") === curPools.join(",") && poolSize === curSize;
-  const rebuild = () => edit((x) => { const st = diamondTieStage(x.divisions[0])?.tieFormat?.startTime; applyDiamondLeague(x, { divisions: nDiv, poolsPerDivision: ppd, poolSize, startDate: x.scheduleDefaults?.startDate ?? undefined, startTime: st ?? undefined }); });
+  const commit = (patch: Partial<typeof cur>) => {
+    const next = { ...cur, ...patch };
+    if (next.divisions < 1 || next.poolsPerDivision < 2 || next.poolSize < 2) { toast.error("Needs at least 1 division, 2 pools per division and 2 players per pool."); return; }
+    if (next.divisions < cur.divisions) {
+      const gone = def.divisions.slice(next.divisions).map((d) => d.name).join(", ");
+      if (!confirm(`Remove ${gone} and its own stages? The other divisions keep all their settings.`)) return;
+    }
+    edit((x) => { resizeDiamond(x, next); });
+  };
   const rounds = Array.from({ length: Math.max(0, ...def.divisions.map((d) => poolRotation(d.poolNames?.length ?? 0).length)) }, (_, r) => r);
   const saveTemplate = async () => {
     if (!clubId) { toast.error("Templates are saved per club — open the builder from a club."); return; }
@@ -41,18 +45,14 @@ export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefin
         {diamondChain(def).map((l, i) => <li key={i} className="flex gap-2"><span className="text-amber-300">{i + 1}.</span><span>{l}</span></li>)}
       </ol>
       <div className="grid sm:grid-cols-3 gap-2">
-        <label className="space-y-1 text-[11px] text-white/70"><span>Divisions</span>
-          <Input type="number" className={f} value={nDiv || ""} onChange={(e) => setNDiv(Number(e.target.value) || 0)} /></label>
-        <label className="space-y-1 text-[11px] text-white/70"><span>Players per pool</span>
-          <Input type="number" className={f} value={poolSize || ""} onChange={(e) => setPoolSize(Number(e.target.value) || 0)} /></label>
-        <label className="space-y-1 text-[11px] text-white/70"><span>Pools per division</span>
-          <Input type="number" className={f} value={ppd || ""} onChange={(e) => setPpd(Number(e.target.value) || 0)} /></label>
-        <div className="sm:col-span-3 flex flex-wrap items-center gap-2 text-[11px]" data-field="diamond-shape">
-          <span className={same ? "text-white/60" : "text-amber-200"}>{shapeText(shape)}</span>
-          {!same && <Button size="sm" variant="outline" className="h-7 bg-transparent border-amber-300/50 text-amber-200 text-[11px]" disabled={shape.pools < 2} onClick={rebuild}>Apply: {nDiv} division{nDiv === 1 ? "" : "s"} × {ppd} pools ({cap} players)</Button>}
+        <NumField label="Divisions" value={cur.divisions} onCommit={(v) => commit({ divisions: v })} />
+        <NumField label="Players per pool" value={cur.poolSize} onCommit={(v) => commit({ poolSize: v })} />
+        <NumField label="Pools per division" value={cur.poolsPerDivision} onCommit={(v) => commit({ poolsPerDivision: v })} />
+        <div className="sm:col-span-3 flex flex-wrap items-center gap-2 text-[11px] text-white/60" data-field="diamond-shape">
+          {shapeText(shape)}
         </div>
         <label className="space-y-1 text-[11px] text-white/70"><span>Admission</span>
-          <select className="smart-builder-select h-8 w-full rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs" value={def.admission?.mode ?? "first_confirmed"} onChange={(e) => edit((x) => { x.admission = { capacity: 48, waitlist: true, ...x.admission, mode: e.target.value as "first_confirmed" | "manual" }; })}>
+          <select className="smart-builder-select h-8 w-full rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs" value={def.admission?.mode ?? "first_confirmed"} onChange={(e) => edit((x) => { x.admission = { waitlist: true, ...x.admission, capacity: cap, mode: e.target.value as "first_confirmed" | "manual" }; })}>
             <option value="first_confirmed">First confirmed, then waiting list</option><option value="manual">Admin chooses</option>
           </select></label>
         <label className="space-y-1 text-[11px] text-white/70"><span>Session start time (each evening)</span>
@@ -102,5 +102,16 @@ export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefin
         </div>
       )}
     </div>
+  );
+}
+
+/** Number box bound to the canonical value; the typed text is committed on blur / Enter only. */
+function NumField({ label, value, onCommit }: { label: string; value: number; onCommit: (v: number) => void }) {
+  const [text, setText] = useState(String(value || ""));
+  useEffect(() => { setText(String(value || "")); }, [value]);
+  const go = () => { const v = Number(text); if (v && v !== value) onCommit(v); else setText(String(value || "")); };
+  return (
+    <label className="space-y-1 text-[11px] text-white/70"><span>{label}</span>
+      <Input type="number" className={f} value={text} onChange={(e) => setText(e.target.value)} onBlur={go} onKeyDown={(e) => { if (e.key === "Enter") go(); }} /></label>
   );
 }

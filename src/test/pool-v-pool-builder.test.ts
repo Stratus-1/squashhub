@@ -97,6 +97,9 @@ describe("Pool-v-pool league built from builder controls", () => {
     semis.roundScoring = { "0": { mode: "standard", pointsPerGame: 11, bestOf: 5 } };
     expect(scoringText(effectiveScoring(def, semis, 0))).toBe("PAR 11 — best of 5");
     semis.roundScoring = { "0": { mode: "time_capped_points" } };
+    // Deferred semis are never scoring-checked; once defined, a missing cap blocks.
+    expect(scoringIssues(def).some((i) => i.stageId === semis.id)).toBe(false);
+    semis.defineLater = undefined;
     expect(scoringIssues(def).some((i) => i.stageId === semis.id && i.round === 0)).toBe(true);
   });
   it("stage scoring overrides tournament scoring family", () => {

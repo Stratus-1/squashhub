@@ -275,6 +275,11 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
             {!divClosed && (
               <div className="divide-y divide-white/10">
                 {rows.map(({ stage, section }) => {
+                  if (stage.defineLater) return (
+                    <div key={stage.id} data-field={`stage.${stage.id}`} className="px-2 py-2 text-white/60">
+                      <span className="font-medium text-white">{shortStageName(stage)}</span> — Define later{stage.schedule?.roundDates?.[0] ? ` · planned ${fmtDate(stage.schedule.roundDates[0])}` : ""}. Scheduled when it is set up; nothing is needed now.
+                    </div>
+                  );
                   const e = effectiveSchedule(def, stage), need = scheduleNeeds(stage.schedule.mode);
                   const sc = stageCourts(def, div, stage), sm = stageMatch(def, stage);
                   const isOpen = open.has(stage.id);

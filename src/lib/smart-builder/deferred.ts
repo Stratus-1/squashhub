@@ -75,3 +75,79 @@ export function transitionPlan(def: TournamentDefinition): Array<{ divisionName:
   }
   return out;
 }
+
+/*
+ * ── One rule for what may be deferred ────────────────────────────────────────
+ * "Define later" means "set this up once the stage before it has finished". So:
+ *  - the FIRST stage of a division can never be deferred (nothing finishes before it);
+ *  - a stage played in the SAME SESSION as a defined stage can't be deferred (it plays
+ *    straight after, on the same evening — there is no "after it finishes");
+ *  - deferral is always a SUFFIX: once a stage is deferred, every later stage is too.
+ * These are enforced when the admin ticks the box, repaired on load, and reported by the validator.
+ */
+type DivLike = { name?: string; sections?: Array<{ stages?: Stage[] }> };
+const stagesOfDiv = (d: DivLike): Stage[] => (d.sections ?? []).flatMap((s) => s.stages ?? []);
+
+/** Why a stage can't be deferred, or null when it can. */
+export function cannotDefer(d: DivLike, stageId: string): string | null {
+  const ss = stagesOfDiv(d);
+  const i = ss.findIndex((s) => s.id === stageId);
+  if (i <= 0) return "The first stage is always set up now — nothing finishes before it.";
+  const s = ss[i];
+  const partner = s.sameSessionAs ? ss.find((x) => x.id === s.sameSessionAs) : null;
+  if (partner && !partner.defineLater) return `Played in the same session as ${partner.name}, so it's set up with it.`;
+  return null;
+}
+
+/**
+ * Tick/untick "Define later" keeping the suffix rule: deferring a stage defers every later stage;
+ * defining a stage defines every earlier one. Returns false (and changes nothing) when not allowed.
+ */
+export function setDefineLater(d: DivLike, stageId: string, on: boolean): boolean {
+  const ss = stagesOfDiv(d);
+  const i = ss.findIndex((s) => s.id === stageId);
+  if (i < 0) return false;
+  if (on) {
+    if (cannotDefer(d, stageId)) return false;
+    for (let k = i; k < ss.length; k++) { ss[k].defineLater = true; ss[k].sameSessionAs = null; }
+  } else {
+    for (let k = 0; k <= i; k++) ss[k].defineLater = undefined;
+  }
+  return true;
+}
+
+/** Load-time repair of drafts saved before the rule existed. Never defers anything new. */
+export function normalizeDeferral<T extends { divisions?: DivLike[] }>(def: T): T {
+  for (const d of def.divisions ?? []) {
+    const ss = stagesOfDiv(d);
+    ss.forEach((s, i) => {
+      if (!s.defineLater) return;
+      const partner = s.sameSessionAs ? ss.find((x) => x.id === s.sameSessionAs) : null;
+      if (i === 0 || (partner && !partner.defineLater)) s.defineLater = undefined;
+    });
+    // Suffix: a defined stage after a deferred one makes the earlier deferral meaningless — define it.
+    let lastDefined = -1;
+    ss.forEach((s, i) => { if (!s.defineLater) lastDefined = i; });
+    for (let k = 0; k < lastDefined; k++) ss[k].defineLater = undefined;
+    ss.forEach((s) => { if (s.defineLater) s.sameSessionAs = null; });
+  }
+  return def;
+}
+
+/** Validator errors for a definition that breaks the rule (only reachable via hand-edited data). */
+export function deferralIssues(def: { divisions?: DivLike[] }): Array<{ stageId: string; message: string }> {
+  const out: Array<{ stageId: string; message: string }> = [];
+  for (const d of def.divisions ?? []) {
+    const ss = stagesOfDiv(d);
+    ss.forEach((s, i) => {
+      if (!s.defineLater) {
+        const earlier = ss.slice(0, i).find((x) => x.defineLater);
+        if (earlier) out.push({ stageId: s.id, message: `${d.name} · ${s.name} is set up now but comes after ${earlier.name}, which is Define later.` });
+        return;
+      }
+      const why = cannotDefer(d, s.id);
+      if (why) out.push({ stageId: s.id, message: `${d.name} · ${s.name} can't be Define later: ${why}` });
+    });
+  }
+  return out;
+}

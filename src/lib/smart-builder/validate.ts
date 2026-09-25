@@ -1,5 +1,5 @@
 import { engineBlockers } from "./engine-support";
-import { definedOnly, deferredStages } from "./deferred";
+import { definedOnly, deferredStages, deferralIssues } from "./deferred";
 import { tieIssues } from "./ties";
 import { scoringIssues } from "./scoring";
 import { standingsIssues } from "./standings";
@@ -81,6 +81,7 @@ export function validateDefinition(input: TournamentDefinition): ValidationResul
     level: "info" as const, code: "define_later", stageId: d.stageId,
     message: `${d.divisionName} · ${d.stageName}: to be defined later${d.plannedDate ? ` (planned for ${d.plannedDate})` : ""}.`,
   }));
+  deferralIssues(input).forEach((x) => issues.push({ level: "error", code: "define_later_order", stageId: x.stageId, message: x.message }));
   const facts: string[] = [];
   const flows: Record<string, StageFlow> = {};
   const byId = new Map<string, { division: Division; section: Section; stage: Stage }>();
@@ -101,7 +102,9 @@ export function validateDefinition(input: TournamentDefinition): ValidationResul
   ownershipIssues(def).forEach((m) => issues.push({ level: "error", code: "stage_ownership", message: m }));
   for (const division of def.divisions) {
     if (division.sections.length === 0 || division.sections.every((x) => x.stages.length === 0)) {
-      issues.push({ level: "error", code: "empty_division", message: `${division.name} has no stages yet.` });
+      const all = input.divisions.find((x) => x.id === division.id)?.sections.flatMap((x) => x.stages) ?? [];
+      issues.push({ level: "error", code: "empty_division", stageId: all[0]?.id,
+        message: all.length ? `${division.name}: every stage is set to Define later — its first stage must be set up now.` : `${division.name} has no stages yet.` });
     }
     for (const section of division.sections) {
       const consumed = new Map<string, Set<number>>();

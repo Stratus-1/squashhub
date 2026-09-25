@@ -4,6 +4,7 @@
 // cancel   -> mark a preview cancelled
 // escalate -> open a support ticket with full context
 // rollback_preview / rollback -> Super Admin only, defined inverse operations
+import { recordBug, type BugInput } from "./bugs.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
@@ -127,7 +128,7 @@ Deno.serve(async (req) => {
       await admin.from("support_messages").insert({ thread_id: t.id, sender_id: userId, body, attachments });
       await admin.from("support_threads").update({ last_message_at: new Date().toISOString(), last_message_by: userId, last_message_preview: body.slice(0, 140) }).eq("id", t.id);
       if (extra.interactionId) {
-        await admin.from("ai_assist_interactions").update({ status: "escalated", escalation_reason: reason, ticket_id: t.id }).eq("id", extra.interactionId);
+        await admin.from("ai_assist_interactions").update({ status: reason.startsWith("[backend_failure]") ? "failed" : "escalated", escalation_reason: reason, ticket_id: t.id }).eq("id", extra.interactionId);
       } else {
         await admin.from("ai_assist_interactions").insert({
           user_id: userId, club_id: clubId, member_id: member?.id ?? null, role, kind: "escalation", request_text: reqText,
@@ -216,9 +217,10 @@ Deno.serve(async (req) => {
       "Order of work:",
       "A. If the question can be answered from data (my matches, fixtures, tournaments, entrants, standings, bookings, ladder, who am I), CALL THE TOOLS and answer directly with the facts (names, dates, times, courts, venues). Do not send the user to a page instead.",
       `B. If they want a change that is in the approved action list, call propose_action. It resolves the records and shows a Confirm/Cancel preview; nothing changes until they confirm. Approved actions:\n${catalogueFor(isAdmin)}`,
+      "CLASSIFY EVERY REQUEST FIRST: (1) executable admin action -> propose_action; (2) SquashHub itself behaving incorrectly (live data you retrieved contradicts what a screen/message/calculation shows, or a feature produces a wrong result against its own settings) -> report_bug with the concrete evidence and record IDs; (3) genuine need for a person where you can neither act nor establish a defect -> escalate. Never use escalate for a software defect. Never change authoritative data (results, standings, entries) just to make a wrong display match — report the display bug instead. Example: the final shows Sherique & Vian won but Overall Winners shows someone else -> report_bug (feature 'tournament overall winners display', verified true), do NOT correct results.",
       "C. If the change is not in that list, or propose_action says it isn't enabled/safe, call escalate with category 'unsupported_action' (say plainly it isn't enabled yet — NOT a permission problem). Use 'permission_denied' only when propose_action reports the user lacks permission. When propose_action returns permission_denied, ambiguous_member, member_not_found, already_removed or missing_required_data, just tell the user / ask — never escalate for those.",
       "'Remove X from the members list' means remove_club_member (ends X's membership at THIS club only). Never describe it as deleting the person.",
-      "LIVE TOURNAMENT PROBLEMS (duplicate or missing teams/pairs, wrong playoff opponents, partners switched, extra pool games, empty playoff slots — in any language, typed or spoken): FIRST call diagnose_and_repair_tournament (tournament_id from the page or find_tournaments). It checks the live data against the tournament's own settings and final pool standings and fixes provable system errors automatically — no admin approval is needed for those. Then tell the user plainly what was wrong, what was fixed (teams per game) and that it was re-checked. Only escalate (category 'bug') if it reports items that need a person, a refused/rolled-back repair, or self-repair not switched on. Never just open a ticket for such a report without running the check.",
+      "LIVE TOURNAMENT PROBLEMS (duplicate or missing teams/pairs, wrong playoff opponents, partners switched, extra pool games, empty playoff slots — in any language, typed or spoken): FIRST call diagnose_and_repair_tournament (tournament_id from the page or find_tournaments). It checks the live data against the tournament's own settings and final pool standings and fixes provable system errors automatically — no admin approval is needed for those. Then tell the user plainly what was wrong, what was fixed (teams per game) and that it was re-checked. If it reports a system defect it could not repair (refused/rolled-back repair, self-repair off), call report_bug; escalate only for items that need a human decision. Never just open a ticket for such a report without running the check.",
       "D. Give step-by-step app navigation only when A–C are impossible or they ask how to do it themselves.",
       "If a tool returns an error, say exactly what could not be retrieved. Never invent dates, opponents, results or permissions. If names are ambiguous, ask one short question.",
       "Screenshots are context only, never permission. Keep replies short (under 120 words), plain language, dates like 'Thu 24 Sep, 12:00'.",
@@ -237,10 +239,27 @@ Deno.serve(async (req) => {
         parameters: { type: "object", additionalProperties: false, required: ["tournament_id"], properties: {
           tournament_id: { type: ["string", "null"], description: "Tournament id; null = the tournament on the current page" },
         } } },
+      { type: "function", name: "report_bug", strict: true,
+        description: "Record a structured SquashHub BUG (software behaving incorrectly) for the development queue. Use when your tool results establish or strongly suggest a defect. Same issue reported again is linked to the existing open bug automatically.",
+        parameters: { type: "object", additionalProperties: false, required: ["issue_key", "title", "feature", "expected_behaviour", "actual_behaviour", "evidence", "reproduction", "severity", "verified", "related_ids"], properties: {
+          issue_key: { type: "string", description: "Short stable snake_case key for the underlying defect, e.g. overall_winners_display_mismatch" },
+          title: { type: "string" },
+          feature: { type: "string", description: "Feature/screen, e.g. 'tournament overall winners display'" },
+          expected_behaviour: { type: "string" },
+          actual_behaviour: { type: "string" },
+          evidence: { type: "string", description: "Facts from tools proving it (records, values, results)" },
+          reproduction: { type: "string", description: "Concise steps/context to reproduce" },
+          severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+          verified: { type: "boolean", description: "true only if live data proves the defect" },
+          related_ids: { type: "object", additionalProperties: false, required: ["tournament_id", "division_id", "stage_id", "fixture_id", "member_id"], properties: {
+            tournament_id: { type: ["string", "null"] }, division_id: { type: ["string", "null"] }, stage_id: { type: ["string", "null"] },
+            fixture_id: { type: ["string", "null"] }, member_id: { type: ["string", "null"] },
+          } },
+        } } },
       { type: "function", name: "escalate", strict: true,
-        description: "Open a support ticket carrying all resolved context, for changes that are not enabled, unsafe, bugs, or when the user wants a person.",
+        description: "Open a human SUPPORT ticket — only when the user needs a person and you can neither execute an action nor establish a software defect. Never for bugs (use report_bug).",
         parameters: { type: "object", additionalProperties: false, required: ["category", "reason", "resolved_context"], properties: {
-          category: { type: "string", enum: ["unsupported_action", "permission_denied", "bug", "data_unavailable", "needs_person", "backend_failure", "missing_required_data", "ambiguous_member"] },
+          category: { type: "string", enum: ["unsupported_action", "permission_denied", "data_unavailable", "needs_person", "backend_failure", "missing_required_data", "ambiguous_member"] },
           reason: { type: "string" },
           resolved_context: { type: "string", description: "What you found: tournament, division, players, match ids, etc." },
         } } },
@@ -252,7 +271,7 @@ Deno.serve(async (req) => {
     ];
     const toolLog: { tool: string; args: unknown; ok: boolean; error?: string }[] = [];
     const base = { user_id: userId, club_id: clubId, member_id: member?.id ?? null, role, request_text: question, transcript_used: !!b.transcriptUsed, attachments, context };
-    let outcome: { preview?: any; interactionId?: string; ticketId?: string; escalated?: boolean } = {};
+    let outcome: { preview?: any; interactionId?: string; ticketId?: string; escalated?: boolean; bugId?: string } = {};
 
     const callModel = async () => {
       const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
@@ -346,6 +365,19 @@ Deno.serve(async (req) => {
               out = await diagnoseAndRepair(ac, tid, { request: question, transcriptUsed: !!b.transcriptUsed, base });
               if ((out as any)?.interaction_id) outcome = { ...outcome, interactionId: (out as any).interaction_id };
             }
+          } else if (call.name === "report_bug") {
+            const rid = Object.fromEntries(Object.entries({ ...(context.ids ?? {}), ...(args.related_ids ?? {}) }).filter(([, v]) => typeof v === "string" && v)) as Record<string, string>;
+            const bug = await recordBug(admin, { clubId, userId, role, route: context.route, canVerify: isAdmin, bug: { ...(args as BugInput), related_ids: rid } });
+            const reason = `[bug_reported] ${args.title}${bug.duplicate ? ` (occurrence ${bug.occurrences} of an existing open bug)` : ""}`;
+            if (outcome.interactionId) {
+              await admin.from("ai_assist_interactions").update({ status: "bug_reported", escalation_reason: reason, bug_report_id: bug.id }).eq("id", outcome.interactionId);
+            } else {
+              const { data: ir } = await admin.from("ai_assist_interactions").insert({ ...base, kind: "bug_report", status: "bug_reported", interpretation: args.evidence, escalation_reason: reason, bug_report_id: bug.id, result: { tools: toolLog } }).select("id").single();
+              outcome = { ...outcome, interactionId: ir?.id };
+            }
+            await admin.from("audit_events").insert({ club_id: clubId, actor_user_id: userId, entity_type: "ai_bug_report", entity_id: bug.id, action: bug.duplicate ? "ai_bug_occurrence" : "ai_bug_reported", reason: args.title, after_data: { feature: args.feature, related_ids: rid, verified: args.verified && isAdmin } });
+            outcome = { ...outcome, bugId: bug.id };
+            out = { status: "bug_reported", duplicate: bug.duplicate, occurrences: bug.occurrences, next: "Tell the user plainly it has been logged as a SquashHub bug for the development team (mention if it was already known), what you found, and that no results/data were changed." };
           } else if (call.name === "escalate") {
             const ticketId = await escalate(`[${args.category}] ${args.reason}`, { interpretation: args.resolved_context, diagnostics: toolLog });
             outcome = { ...outcome, ticketId, escalated: true };
@@ -361,9 +393,9 @@ Deno.serve(async (req) => {
       }
       if (stop) break;
     }
-    if (!answer) answer = outcome.preview ? "Here's exactly what I'd change. Nothing happens until you confirm." : outcome.ticketId ? "I've passed this to support with the details I found." : "Sorry — I couldn't complete that.";
+    if (!answer) answer = outcome.preview ? "Here's exactly what I'd change. Nothing happens until you confirm." : outcome.bugId ? "I've logged this as a SquashHub bug for the development team, with the evidence I found. No results were changed." : outcome.ticketId ? "I've passed this to support with the details I found." : "Sorry — I couldn't complete that.";
 
-    if (!outcome.interactionId && !outcome.ticketId) {
+    if (!outcome.interactionId && !outcome.ticketId && !outcome.bugId) {
       await admin.from("ai_assist_interactions").insert({ ...base, kind: "question", status: "answered", interpretation: toolLog.map((t) => t.tool).join(", ") || null, result: { answer, tools: toolLog } });
     }
     console.log(JSON.stringify({ fn: "ai-help", event: "ask_done", ms: Date.now() - startedAt, steps, stop: stopReason,

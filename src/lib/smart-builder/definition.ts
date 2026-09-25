@@ -129,6 +129,8 @@ const StageSchema = z.object({
   schedule: ScheduleSchema.default({ mode: "unset" }),
   /** Per-stage scoring overrides; unset fields inherit the tournament scoring. */
   scoring: z.lazy(() => ScoringSchema).optional(),
+  /** Per-round scoring overrides (round index → scoring), e.g. a Final played best of 5. */
+  roundScoring: z.record(z.lazy(() => ScoringSchema)).optional(),
   /**
    * Compound fixture: one pool-v-pool (team-v-team) TIE on one court, one evening, made of
    * ordered rubbers of different disciplines and slot lengths. The tie is the scheduling unit;
@@ -206,6 +208,8 @@ const ScoringSchema = z.object({
   bestOf: z.union([z.literal(3), z.literal(5)]).nullable().optional(),
   playAllGames: z.boolean().nullable().optional(),
   winCondition: z.enum(["win_by_2", "sudden_death"]).nullable().optional(),
+  /** Bells / time-capped: minutes per match. Required when mode = time_capped_points. */
+  timeCapMinutes: z.number().int().min(1).nullable().optional(),
 });
 export type Scoring = z.infer<typeof ScoringSchema>;
 

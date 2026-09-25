@@ -79,7 +79,8 @@ describe("custom / mixed stage builder", () => {
     addStage(d); addStage(d, "knockout");
     const ss = () => d.sections[0].stages;
     expect(ss().map((s) => s.input.fromStageId)).toEqual([null, ss()[0].id, ss()[1].id]);
-    expect(ss()[2].progression?.mode).toBe("qualifiers");
+    // No silent transition: the owner must choose.
+    expect(ss()[2].progression).toBeNull();
     const [a, b] = [ss()[0].id, ss()[1].id];
     expect(moveStage(d, b, -1)).toBe(true);
     expect(ss()[0].id).toBe(b); expect(ss()[0].progression).toBeNull(); expect(ss()[1].input.fromStageId).toBe(b);
@@ -91,7 +92,7 @@ describe("custom / mixed stage builder", () => {
   it("singles → doubles without a pairing rule blocks Generate; unresolved carry/reset blocks too", () => {
     const def = presetDefinition("custom"); const d = def.divisions[0];
     addStage(d); setDiscipline(d, d.sections[0].stages[1].id, "doubles");
-    expect(errs(sched(def, 8))).toEqual(expect.arrayContaining(["pairing", "standings_rule"]));
+    expect(errs(sched(def, 8))).toEqual(expect.arrayContaining(["pairs_model", "standings_rule"]));
     d.sections[0].stages[1].progression = { mode: "all_continue", standings: "carry" };
     expect(errs(sched(def, 8))).toContain("pairs_model");
   });
@@ -100,7 +101,7 @@ describe("custom / mixed stage builder", () => {
     expect(errs(sched(def, 7))).toContain("odd_pairs");
     const d2 = presetDefinition("custom"); const d = d2.divisions[0]; d.entry = "pairs";
     d.sections[0].stages[0].discipline = "doubles"; addStage(d); setDiscipline(d, d.sections[0].stages[1].id, "singles");
-    expect(errs(sched(d2, 8))).toContain("doubles_to_singles");
+    expect(errs(sched(d2, 8))).toContain("split_model");
     const d3 = presetDefinition("custom"); const x = d3.divisions[0];
     setFormat(x, x.sections[0].stages[0].id, "knockout"); addStage(x);
     x.sections[0].stages[1].progression = { mode: "all_continue", standings: "reset" };
@@ -110,7 +111,7 @@ describe("custom / mixed stage builder", () => {
     const def = presetDefinition("custom"); diamondTemplate(def);
     const d = sched(def, 8);
     const [s1, s2] = d.divisions[0].sections[0].stages;
-    expect(transitionText(s1, s2)).toContain("pairs formed");
+    expect(transitionText(s1, s2)).toContain("1st + 2nd");
     expect(errs(d)).toEqual([]);
     const env = await setup(d, 8);
     expect(env.t.club_champs_matches).toHaveLength(28);
@@ -122,7 +123,7 @@ describe("custom / mixed stage builder", () => {
     expect(dbl).toHaveLength(6);
     expect(dbl.every((m: any) => m.partner_a_member_id && m.partner_b_member_id)).toBe(true);
     const pairs = new Set(dbl.flatMap((m: any) => [`${m.player_a_member_id}+${m.partner_a_member_id}`, `${m.player_b_member_id}+${m.partner_b_member_id}`]));
-    expect(pairs).toEqual(new Set(["p1+p8", "p2+p7", "p3+p6", "p4+p5"]));
+    expect(pairs).toEqual(new Set(["p1+p2", "p3+p4", "p5+p6", "p7+p8"]));
     await expect(startNextStructuredStage(env.db, "t", "div1", s2.id, { ownerConfirmed: true })).rejects.toThrow(/already/);
     playAll(env, s2.id);
     const spec = env.t.tournaments[0].builder_spec as TournamentSpec;

@@ -107,7 +107,7 @@
 
 ## Tournament Beta standalone operation (25 Sep 2026)
 - [x] Derive round counts and auto-generate weekly round dates; persist onto created rounds/fixtures
-- [ ] Audit step 1: verify schedule dialog on Beta games, result emails, reminders, member pages
+- [x] Audit step 1: verify schedule dialog on Beta games, result emails, reminders, member pages
 - [ ] Audit step 2: Beta tournament Operate page
 - [ ] Audit step 3: Beta entries and allocation
 - [ ] Audit step 4: bulk scheduling

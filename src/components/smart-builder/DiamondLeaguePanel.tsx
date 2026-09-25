@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
-import { DIAMOND_KEY, diamondChain, poolLetter, toTemplate } from "@/lib/smart-builder/diamond-league";
+import { DIAMOND_KEY, DIAMOND_TIE, diamondChain, diamondTieStage, poolLetter, poolName, poolRotation, rubberLabel, tieEveningCheck, tieMinutes, tieSlots, toTemplate } from "@/lib/smart-builder/diamond-league";
 import { fromExt } from "@/lib/supabase-ext";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
@@ -12,11 +12,9 @@ const f = "h-8 bg-white/5 border-white/15 text-white text-xs";
 export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefinition; edit: Edit; clubId?: string | null }) {
   if (def.templateMeta?.key !== DIAMOND_KEY) return null;
   const open = def.questions.filter((q) => q.id.startsWith("dl_") && !q.resolved);
-  const setPairSource = (v: string) => edit((x) => {
-    x.pairSource = (v || null) as TournamentDefinition["pairSource"];
-    const q = x.questions.find((y) => y.id === "dl_pair_source");
-    if (q) { q.resolved = !!v; q.answer = v ? (v === "seed" ? "Seeded positions" : "Re-ranked after singles") : null; }
-  });
+  const tie = def.divisions.map(diamondTieStage).find(Boolean)?.tieFormat ?? DIAMOND_TIE;
+  const setStart = (v: string) => edit((x) => { for (const d of x.divisions) { const st = diamondTieStage(d); if (st?.tieFormat) st.tieFormat.startTime = v || null; } });
+  const rounds = poolRotation(4);
   const saveTemplate = async () => {
     if (!clubId) { toast.error("Templates are saved per club — open the builder from a club."); return; }
     const { error } = await fromExt("tournament_templates").insert({ club_id: clubId, template_key: DIAMOND_KEY, name: def.templateMeta?.name ?? "Diamond League", definition: toTemplate(def) });
@@ -39,10 +37,31 @@ export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefin
           <select className="smart-builder-select h-8 w-full rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs" value={def.admission?.mode ?? "first_confirmed"} onChange={(e) => edit((x) => { x.admission = { capacity: 48, waitlist: true, ...x.admission, mode: e.target.value as "first_confirmed" | "manual" }; })}>
             <option value="first_confirmed">First confirmed, then waiting list</option><option value="manual">Admin chooses</option>
           </select></label>
-        <label className="space-y-1 text-[11px] text-white/70"><span>Doubles pairs come from</span>
-          <select className="smart-builder-select h-8 w-full rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs" value={def.pairSource ?? ""} onChange={(e) => setPairSource(e.target.value)}>
-            <option value="">Needs confirmation</option><option value="seed">Seeded positions</option><option value="prior_stage_standings">Each pool re-ranked after singles</option>
-          </select></label>
+        <label className="space-y-1 text-[11px] text-white/70"><span>Tie start time (each evening)</span>
+          <Input type="time" className={f} value={tie.startTime ?? ""} onChange={(e) => setStart(e.target.value)} /></label>
+      </div>
+      <div className="space-y-1" data-field="tie-format">
+        <div className="text-white/70">One tie = one court, one evening, in this order ({tieMinutes(tie)} min):</div>
+        <div className="flex flex-wrap gap-1">
+          {tieSlots(tie, tie.startTime).map((r) => (
+            <span key={r.order} className={`rounded px-1.5 py-0.5 text-[11px] ${r.discipline === "doubles" ? "bg-amber-400/15 text-amber-200" : "bg-white/10 text-white/80"}`}>
+              {r.discipline === "doubles" ? "D" : "S"} {rubberLabel(r)} · {r.minutes}m{r.start ? ` · ${r.start}` : ""}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-1" data-field="tie-rounds">
+        {rounds.map((pairs, r) => {
+          const ties = def.divisions.flatMap((d) => pairs.map(([a, b]) => ({ d, a, b, court: (d.poolGroups ?? []).find((g) => g.pools.includes(a) && g.pools.includes(b))?.court ?? null })));
+          const chk = tieEveningCheck(ties, tie);
+          return (
+            <div key={r} className="text-[11px]">
+              <span className="text-amber-300">Wednesday {r + 1}:</span>{" "}
+              {ties.map((t, i) => <span key={i} className="mr-2">{t.d.name.replace("Division ", "D")} {poolName(t.d, t.a)} v {poolName(t.d, t.b)} ({t.court ?? "no court"})</span>)}
+              <span className={chk.state === "feasible" ? "text-emerald-300" : chk.state === "infeasible" ? "text-red-300" : "text-white/50"}>· {chk.detail}</span>
+            </div>
+          );
+        })}
       </div>
       <div className="grid md:grid-cols-2 gap-3">
         {def.divisions.map((d, di) => (
@@ -61,7 +80,7 @@ export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefin
         <div className="space-y-1">
           <div className="font-medium text-amber-300">Needs organiser confirmation ({open.length})</div>
           <ul className="list-disc pl-5 space-y-0.5">{open.map((q) => <li key={q.id}>{q.question}</li>)}</ul>
-          <div className="text-white/50">Games are only generated for confirmed logic. Singles can be created; doubles pairs, play-offs and the final wait for these answers.</div>
+          <div className="text-white/50">Games are only generated for confirmed logic. Semi-finals and finals wait for the organiser\'s rules.</div>
         </div>
       )}
     </div>

@@ -49,7 +49,8 @@ describe("divisions first, then stages per division", () => {
     addDivision(def, "Ladies", { copyFromId: men.id });
     const spec = specFromDefinition(def);
     const [sm, sl] = [spec.divisions.find((d) => d.label === "Men")!, spec.divisions.find((d) => d.label === "Ladies")!];
-    const poolIds = (d: typeof sm) => d.stages.flatMap((s) => s.pools?.map((p: any) => p.id) ?? []);
+    // Same deterministic pool identity persistStructure uses.
+    const poolIds = (d: typeof sm) => d.stages.flatMap((s) => Array.from({ length: s.kind === "pools" ? s.pools ?? 0 : 0 }, (_, i) => `${d.divisionId}:${s.id}:pool${i + 1}`));
     expect(poolIds(sl).length).toBe(4);
     expect(poolIds(sl).some((p) => poolIds(sm).includes(p))).toBe(false);
     const lko = div(def, "Ladies").sections[0].stages[1];

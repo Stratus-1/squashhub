@@ -21,6 +21,8 @@ import { TransitionEditor } from "./TransitionEditor";
 import { DiamondLeaguePanel } from "./DiamondLeaguePanel";
 import { specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { poolDisplay } from "@/lib/tournaments/transition";
+import { defaultSource, effectiveMapping, stageMappingIssues } from "@/lib/smart-builder/matchups";
+import { formatMapping, parseMapping } from "@/lib/tournaments/mapping";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
 const f = "h-8 min-w-0 w-full bg-white/5 border-white/15 text-white text-xs";
@@ -137,7 +139,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               </Q>
               <Q label="2. Match format">
                 <select className={sel} value={sel0.kind} onChange={(e) => editDiv((x) => setFormat(x, sel0.id, e.target.value as BuilderFormat))}>
-                  {(Object.keys(FORMAT_LABEL) as BuilderFormat[]).map((k) => <option key={k} value={k}>{FORMAT_LABEL[k]}{k === "cross_pool_league" ? " (engine: singles opening stage only)" : ""}</option>)}
+                  {(Object.keys(FORMAT_LABEL) as BuilderFormat[]).map((k) => <option key={k} value={k}>{FORMAT_LABEL[k]}{k === "cross_pool_league" ? " (explicit matchups)" : ""}</option>)}
                 </select>
                 {(() => { const v = engineVerdicts(def).find((x) => x.stageId === sel0.id); return v && v.state !== "supported" ? <p className={cn("text-xs", v.state === "unsupported" ? "text-red-400" : "text-amber-300")} data-field={`stage.${sel0.id}.engine`}>{v.state === "unsupported" ? `Can't be created: ${v.detail}` : v.detail}</p> : null; })()}
               </Q>
@@ -207,6 +209,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
             <RoundScoring def={def} stage={sel0} editStage={editStage} />
             {hasStandings(sel0) && <StandingsPicker def={def} stage={sel0} editStage={editStage} />}
             {sel0.kind === "cross_pool_league" && <TieGames stage={sel0} editStage={editStage} />}
+            {sel0.kind === "cross_pool_league" && <MatchupEditor division={d} stage={sel0} editStage={editStage} />}
             {prev && (
               <label className="flex items-center gap-2 text-white/80" data-field={`stage.${sel0.id}.sameSession`}>
                 <input type="checkbox" checked={sel0.sameSessionAs === prev.id} onChange={(e) => editDiv((x) => setSameSession(x, sel0.id, e.target.checked))} />
@@ -459,6 +462,53 @@ function TieGames({ stage, editStage }: { stage: any; editStage: (m: (s: any) =>
         <Plus className="h-3 w-3 mr-1" />Add game
       </Button>
       <div className="text-white/50 text-[11px]">One match type per stage. For singles then doubles on the same evening, add a Doubles stage and tick "Same session".</div>
+    </div>
+  );
+}
+
+/**
+ * Explicit matchup layer: qualification source → who forms each side → who plays whom.
+ * Proposed from rotation + pairing; the admin can overwrite any line ("R1: A1+B1 v C3+D3").
+ */
+function MatchupEditor({ division, stage, editStage }: { division: any; stage: any; editStage: (m: (s: any) => void) => void }) {
+  const eff = effectiveMapping(division, stage);
+  const [text, setText] = useState(eff ? formatMapping(eff) : "");
+  const [errs, setErrs] = useState<string[]>([]);
+  const key = eff ? formatMapping(eff) : "";
+  useEffect(() => { setText(key); setErrs([]); }, [key, stage.id]);
+  const all = division.sections.flatMap((x: any) => x.stages);
+  const earlierPools = all.slice(0, all.findIndex((x: any) => x.id === stage.id)).filter((x: any) => x.kind === "round_robin");
+  const src = eff?.source ?? defaultSource(division, stage).source;
+  const srcId = eff?.sourceStageId ?? defaultSource(division, stage).sourceStageId;
+  const base = { source: src, sourceStageId: srcId, pools: stage.groups ?? 1, poolSize: stage.groupSize ?? 1, discipline: stage.discipline === "doubles" ? "doubles" : "singles" } as const;
+  const issues = stageMappingIssues(division, stage);
+  const setSource = (v: string) => editStage((s) => {
+    const m = effectiveMapping(division, s) ?? { ...base, units: [], matches: [], derived: true };
+    s.mapping = v === "seed" ? { ...m, source: "seed_pools", sourceStageId: null } : { ...m, source: "stage_standings", sourceStageId: v };
+  });
+  const apply = () => {
+    const r = parseMapping(text, base);
+    setErrs(r.errors);
+    if (r.mapping) editStage((s) => { s.mapping = r.mapping; });
+  };
+  return (
+    <div className="rounded border border-white/10 p-2 space-y-1.5" data-field={`stage.${stage.id}.matchups`}>
+      <div className="font-semibold text-white">Who plays whom</div>
+      <Q label="Qualification source (where the pool positions come from)">
+        <select className={sel} value={src === "seed_pools" ? "seed" : srcId ?? ""} onChange={(e) => setSource(e.target.value)}>
+          <option value="seed">Entry seeding into pools (A1 = strongest in pool A)</option>
+          {earlierPools.map((x: any) => <option key={x.id} value={x.id}>Finishing positions in {x.name}</option>)}
+        </select>
+      </Q>
+      <Q label={`Matchups — one per line, e.g. "R1: A1 v B2"${stage.discipline === "doubles" ? ' or "R1: A1+B1 v A3+B3" (each + forms a pair)' : ""}`}>
+        <textarea className="w-full min-h-[120px] rounded-md bg-white/5 border border-white/15 text-white p-2 text-xs font-mono" value={text} onChange={(e) => setText(e.target.value)} aria-label="Matchups" />
+      </Q>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" className={btn} onClick={apply} disabled={text === key}>Save matchups</Button>
+        <Button size="sm" variant="outline" className={btn} disabled={!stage.mapping || stage.mapping.derived} onClick={() => editStage((s) => { s.mapping = s.mapping ? { ...s.mapping, derived: true } : null; })}>Use proposal from rotation + pairing</Button>
+        <span className="text-[11px] text-white/50 self-center">{eff ? (eff.derived ? "Proposed from pool rotation + pairing" : "Set by you") : "Not worked out yet"}</span>
+      </div>
+      {[...errs, ...issues].slice(0, 6).map((m, i) => <div key={i} className="text-[11px] text-destructive">{m}</div>)}
     </div>
   );
 }

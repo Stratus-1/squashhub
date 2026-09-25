@@ -52,7 +52,7 @@ describe("Pool-v-pool league built from builder controls", () => {
     const lines = stageDetailLines(def.divisions[0].sections[0].stages[0]);
     expect(lines).toContain("Pool rotation: round robin — each pool plays every other pool once");
     expect(lines).toContain("Pairing: position-to-position");
-    expect(lines[0]).toBe("Pool-v-pool league · Singles");
+    expect(lines[0]).toBe("Pool-v-pool with explicit matchups · Singles");
     expect(lines.join(" ")).not.toMatch(/Match format: Round robin/);
   });
   it("pairing is its own rule: missing pairing blocks; crossover and custom drive generated fixtures", () => {

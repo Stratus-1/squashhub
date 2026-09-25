@@ -1,0 +1,2 @@
+ALTER TABLE public.tournament_stages DROP CONSTRAINT tournament_stages_kind_check;
+ALTER TABLE public.tournament_stages ADD CONSTRAINT tournament_stages_kind_check CHECK (kind = ANY (ARRAY['round_robin','pools','knockout','swiss','placement','mapped']));

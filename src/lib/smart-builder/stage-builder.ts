@@ -1,3 +1,4 @@
+import { stageMappingLines } from "./matchups";
 import { applyDiamondLeague } from "./diamond-league";
 /**
  * Custom / mixed format — ordered stage builder over the SAME TournamentDefinition.
@@ -201,7 +202,7 @@ export function transitionText(prev: Stage, cur: Stage): string {
 export function stageDetailLines(s: Stage, def?: TournamentDefinition | null): string[] {
   const base = stageDetailBase(s);
   const rounds = Object.keys(s.roundScoring ?? {}).map((k) => `Round ${Number(k) + 1} scoring: ${scoringText(effectiveScoring(def, s, Number(k)))}`);
-  return [...base, `Match format: ${stageScoringLine(def, s)}`, ...rounds, ...standingsLines(def, s)];
+  return [...base, ...stageMappingLines(def, s), `Match format: ${stageScoringLine(def, s)}`, ...rounds, ...standingsLines(def, s)];
 }
 
 function stageDetailBase(s: Stage): string[] {
@@ -210,7 +211,7 @@ function stageDetailBase(s: Stage): string[] {
     const t = s.tieFormat;
     const mins = t?.rubbers.reduce((n, r) => n + r.minutes, 0) ?? 0;
     return [
-      `Pool-v-pool league · ${disc}`,
+      `Pool-v-pool with explicit matchups · ${disc}`,
       `Pools: ${s.groups ?? "?"} × ${s.groupSize ?? "?"} players`,
       `Pool rotation: round robin — each pool plays every other pool ${s.legs === 2 ? "twice" : "once"}`,
       `Pairing: ${t?.pairing ? TIE_PAIRING_LABEL[t.pairing].replace(/ \(.*\)$/, "").toLowerCase() : "not decided"}`,

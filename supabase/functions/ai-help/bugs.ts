@@ -18,6 +18,9 @@ export type BugInput = {
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 80);
 
+/** Every state in which a bug is still being worked on; repeats attach here. */
+export const OPEN_BUG_STATUSES = ["open", "investigating", "fix_in_development", "fix_ready", "published"];
+
 /** Stable identity of an underlying issue: feature + issue key + primary record. */
 export function bugFingerprint(clubId: string | null, b: Pick<BugInput, "issue_key" | "feature" | "related_ids">): string {
   const ids = b.related_ids ?? {};
@@ -38,13 +41,13 @@ export function sanitiseBug(b: BugInput, canVerify: boolean): BugInput {
 
 export async function recordBug(admin: any, p: {
   clubId: string | null; userId: string; role: string; route: string | null; canVerify: boolean; bug: BugInput;
-}): Promise<{ id: string; duplicate: boolean; occurrences: number }> {
+}): Promise<{ id: string; duplicate: boolean; occurrences: number; status?: string }> {
   const bug = sanitiseBug(p.bug, p.canVerify);
   const fp = bugFingerprint(p.clubId, bug);
   const now = new Date().toISOString();
   const occ = { at: now, user_id: p.userId, role: p.role, club_id: p.clubId, route: p.route, evidence: bug.evidence.slice(0, 1000) };
-  const { data: existing } = await admin.from("ai_bug_reports").select("id, occurrences, occurrence_log, verification")
-    .eq("fingerprint", fp).in("status", ["open", "investigating"]).maybeSingle();
+  const { data: existing } = await admin.from("ai_bug_reports").select("id, occurrences, occurrence_log, verification, status")
+    .eq("fingerprint", fp).in("status", OPEN_BUG_STATUSES).maybeSingle();
   if (existing) {
     const n = (existing.occurrences ?? 1) + 1;
     await admin.from("ai_bug_reports").update({
@@ -52,7 +55,18 @@ export async function recordBug(admin: any, p: {
       occurrence_log: [...(existing.occurrence_log ?? []), occ].slice(-50),
       ...(bug.verified && existing.verification !== "verified" ? { verification: "verified" } : {}),
     }).eq("id", existing.id);
-    return { id: existing.id, duplicate: true, occurrences: n };
+    return { id: existing.id, duplicate: true, occurrences: n, status: existing.status };
+  }
+  // Supposedly fixed but reproduced live -> reopen the same bug (regression), never a fresh duplicate.
+  const { data: fixed } = await admin.from("ai_bug_reports").select("id, occurrences, occurrence_log, reopened_count")
+    .eq("fingerprint", fp).in("status", ["fixed", "closed"]).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  if (fixed) {
+    const n = (fixed.occurrences ?? 1) + 1;
+    await admin.from("ai_bug_reports").update({
+      status: "open", occurrences: n, last_seen_at: now, updated_at: now, reopened_count: (fixed.reopened_count ?? 0) + 1,
+      occurrence_log: [...(fixed.occurrence_log ?? []), { ...occ, reopened: true }].slice(-50),
+    }).eq("id", fixed.id);
+    return { id: fixed.id, duplicate: true, occurrences: n, status: "reopened" };
   }
   const { data, error } = await admin.from("ai_bug_reports").insert({
     fingerprint: fp, club_id: p.clubId, reporter_user_id: p.userId, reporter_role: p.role,

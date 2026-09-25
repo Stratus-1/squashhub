@@ -1,5 +1,5 @@
 /**
- * Diamond League (Uitsig) — pure engine pieces + reusable template.
+ * Diamond League — pure engine pieces + reusable template.
  *
  * General building blocks, not Uitsig-only:
  *  - admission: capacity + first-confirmed + waiting list
@@ -158,13 +158,69 @@ export function weeklyDates(start: string, count: number): string[] {
   return Array.from({ length: count }, (_, i) => new Date(d.getTime() + i * 7 * 864e5).toISOString().slice(0, 10));
 }
 
+// ── Pool-v-pool ties (compound fixtures) ─────────────────────────────────────
+export type TieFormat = NonNullable<Stage["tieFormat"]>;
+/** Diamond League tie: 6 singles @20 then 3 doubles @30, same court, in order. */
+export const DIAMOND_TIE: TieFormat = {
+  sameCourt: true,
+  startTime: null,
+  rubbers: [
+    ...[1, 2, 3, 4, 5, 6].map((p) => ({ discipline: "singles" as const, positions: [p], minutes: 20 })),
+    ...[[1, 2], [3, 4], [5, 6]].map((p) => ({ discipline: "doubles" as const, positions: p, minutes: 30 })),
+  ],
+};
+export const tieMinutes = (t: TieFormat) => t.rubbers.reduce((n, r) => n + r.minutes, 0);
+const toMin = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
+const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+export const rubberLabel = (r: TieFormat["rubbers"][number]) => r.positions.join("+") + " v " + r.positions.join("+");
+
+/** Ordered rubber slots for one tie from a start time (null start = durations only). */
+export function tieSlots(t: TieFormat, start?: string | null) {
+  let at = start ? toMin(start) : 0;
+  return t.rubbers.map((r, i) => { const s = at; at += r.minutes; return { order: i + 1, ...r, start: start ? hhmm(s) : null, end: start ? hhmm(at) : null }; });
+}
+export const tieFinish = (t: TieFormat, start: string) => hhmm(toMin(start) + tieMinutes(t));
+
+export interface Tie {
+  round: number; division: number; poolA: number; poolB: number; court: string | null;
+  rubbers: Array<{ order: number; discipline: "singles" | "doubles"; positions: number[]; minutes: number; start: string | null; end: string | null; a: string | null; b: string | null }>;
+}
+/**
+ * Round-robin of pool-v-pool ties inside each division (circle rotation — every pool meets every other once).
+ * `pools[division][pool][position-1]` = player id. Rubbers keep their tie, court and evening.
+ */
+export function buildTies(pools: (string | null)[][][], divisions: Pick<Division, "poolGroups">[], t: TieFormat): Tie[] {
+  const out: Tie[] = [];
+  pools.forEach((dp, di) => poolRotation(dp.length).forEach((pairs, r) => pairs.forEach(([pa, pb]) => {
+    const side = (pi: number, pos: number[]) => pos.every((p) => dp[pi]?.[p - 1]) ? pos.map((p) => dp[pi][p - 1]).join("+") : null;
+    out.push({
+      round: r + 1, division: di, poolA: pa, poolB: pb, court: divisions[di] ? homeCourt(divisions[di], pa, pb) : null,
+      rubbers: tieSlots(t, t.startTime).map((s) => ({ ...s, a: side(pa, s.positions), b: side(pb, s.positions) })),
+    });
+  })));
+  return out;
+}
+
+/** Schedule maths per evening: ties on one court run back to back; must fit before the evening ends. */
+export function tieEveningCheck(ties: Pick<Tie, "court">[], t: TieFormat, eveningEnd?: string | null): EveningCheck & { finish: string | null; tieMinutes: number } {
+  const perCourt: Record<string, number> = {};
+  for (const x of ties) perCourt[x.court ?? "unassigned"] = (perCourt[x.court ?? "unassigned"] ?? 0) + 1;
+  const mins = tieMinutes(t);
+  const base = { perCourt, tieMinutes: mins, slotsPerCourt: null as number | null };
+  if (perCourt.unassigned) return { ...base, state: "incomplete", detail: `${perCourt.unassigned} ties have no court.`, finish: null };
+  const worst = Math.max(0, ...Object.values(perCourt));
+  if (!t.startTime) return { ...base, state: "incomplete", detail: `Each tie needs ${mins} min of court time; set a start time to check the evening.`, finish: null };
+  const finish = hhmm(toMin(t.startTime) + worst * mins);
+  if (!eveningEnd) return { ...base, state: "feasible", detail: `${worst} tie per court · ${t.startTime}–${finish}.`, finish };
+  const ok = toMin(t.startTime) + worst * mins <= toMin(eveningEnd);
+  return { ...base, state: ok ? "feasible" : "infeasible", detail: ok ? `${t.startTime}–${finish}, fits before ${eveningEnd}.` : `Busiest court finishes ${finish}, after ${eveningEnd}.`, finish };
+}
+
 // ── Open questions (Review "Needs organiser confirmation") ───────────────────
 export const DIAMOND_QUESTIONS: OpenQuestion[] = [
-  { id: "dl_points", term: "Points formula", question: "What is the exact singles and doubles points formula, and the tie-break inside a pool?", kind: "structural", resolved: false, answer: null },
-  { id: "dl_pair_source", term: "Doubles pair source", question: "Are doubles pairs (#1+#2, #3+#4, #5+#6) formed from the original seeded positions, or from each pool re-ranked after the singles?", options: ["Seeded positions", "Re-ranked after singles"], kind: "structural", resolved: false, answer: null },
-  { id: "dl_final", term: "Final", question: "How does the final / placement conclusion work after the crossover semi-finals (and what happens to positions 5 and 6)?", kind: "structural", resolved: false, answer: null },
-  { id: "dl_overall", term: "Overall pool winner", question: "Do play-off and final points count towards the winning pool's total, and with what weighting?", kind: "structural", resolved: false, answer: null },
-  { id: "dl_w45", term: "Wednesdays 4 and 5", question: "Which of Wednesday 28 Oct and 4 Nov is the doubles stage and which is play-offs/final, and how many rounds are played each evening?", options: ["28 Oct doubles, 4 Nov play-offs", "28 Oct play-offs, 4 Nov doubles", "Other"], kind: "structural", resolved: false, answer: null },
+  { id: "dl_points", term: "Points", question: "What points does each singles and doubles rubber (and each tie) earn, and what breaks ties in the standings?", kind: "structural", resolved: false, answer: null },
+  { id: "dl_semis", term: "Semi-finals", question: "Semi-final rules (Wednesday 4): who qualifies, the crossover, and what each semi-final contains.", kind: "structural", resolved: false, answer: null },
+  { id: "dl_final", term: "Finals", question: "Final rules (Wednesday 5): what is played, placement games, and how the overall winner is decided.", kind: "structural", resolved: false, answer: null },
 ];
 
 // ── Template ─────────────────────────────────────────────────────────────────
@@ -175,11 +231,11 @@ function stage(name: string, kind: Stage["kind"], discipline: "singles" | "doubl
   } as Stage;
 }
 
-export const DIAMOND_INSTANCE_FIELDS = ["name", "scheduleDefaults", "admission", "divisions.poolNames", "divisions.poolGroups.court", "scoring", "event"];
+export const DIAMOND_INSTANCE_FIELDS = ["name", "scheduleDefaults", "admission", "divisions.poolNames", "divisions.poolGroups.court", "tieFormat.startTime", "scoring", "event"];
 export const DIAMOND_WEDNESDAYS = weeklyDates("2026-10-07", 5);
 
-/** Builds the Uitsig Diamond League structure into `def` (replacing its divisions). */
-export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: string[][]; startDate?: string | null } = {}) {
+/** Builds the Diamond League structure into `def` (replacing its divisions). */
+export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: string[][]; startDate?: string | null; startTime?: string | null } = {}) {
   const courts = opts.courts ?? [["Court 1", "Court 2"], ["Court 3", "Court 4"]];
   const dates = opts.startDate === null ? [] : weeklyDates(opts.startDate ?? "2026-10-07", 5);
   def.name = def.name && def.name !== "Untitled tournament" ? def.name : "Diamond League";
@@ -188,29 +244,26 @@ export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: s
   def.finalStandings = "cumulative";
   def.admission = { capacity: 48, mode: "first_confirmed", waitlist: true };
   def.poolSeeding = { source: "ladder", allocation: "snake", scope: "tournament" };
-  def.pairSource = null;
+  def.pairSource = "seed"; // doubles = pool positions 1+2 / 3+4 / 5+6 in each weekly tie
   def.templateMeta = { key: DIAMOND_KEY, name: "Diamond League", instanceFields: DIAMOND_INSTANCE_FIELDS };
   def.scheduleDefaults = { ...(def.scheduleDefaults ?? {}), weekday: 3, startDate: dates[0] ?? null, endDate: dates[4] ?? null } as TournamentDefinition["scheduleDefaults"];
+  const fixed = (from: number, to: number) => dates.length
+    ? { mode: "fixed" as const, startDate: dates[from], endDate: dates[to], roundDates: dates.slice(from, to + 1), weekday: 3 }
+    : { mode: "unset" as const };
   def.divisions = [0, 1].map((di) => {
-    const s1 = stage("Singles cross-pool league", "cross_pool_league", "singles", {
+    const s1 = stage("Pool-v-pool ties", "cross_pool_league", "singles", {
       input: { entrants: 24 }, legs: 1,
-      schedule: { mode: dates.length ? "fixed" : "unset", startDate: dates[0] ?? null, endDate: dates[2] ?? null, roundDates: dates.slice(0, 3), weekday: 3 },
+      tieFormat: { ...DIAMOND_TIE, startTime: opts.startTime === undefined ? "17:45" : opts.startTime },
+      notes: "Each round every pool plays one other pool on its home court: 6 singles (1v1…6v6, 20 min) then 3 doubles (1+2, 3+4, 5+6, 30 min).",
+      schedule: fixed(0, 2),
     });
-    const s2 = stage("Doubles cross-pool league", "cross_pool_league", "doubles", {
-      input: { fromStageId: s1.id, arrangement: "same_group" }, groupSize: 3,
-      pairing: [[1, 2], [3, 4], [5, 6]],
-      progression: { mode: "form_pairs", standings: "carry", pairing: "positions" },
-      generation: "owner_approval",
-      notes: "Pairs 1+2, 3+4, 5+6 inside each pool. Pair source (seed vs re-ranked singles) needs confirmation.",
-      schedule: { mode: "unset" },
+    const s2 = stage("Semi-finals", "knockout", "singles", {
+      groups: 1, groupSize: null, input: { fromStageId: s1.id }, generation: "owner_approval", dynamic: true,
+      notes: "Semi-final rules need confirmation (organiser spreadsheet).", schedule: fixed(3, 3),
     });
-    const s3 = stage("Crossover play-offs", "knockout", "singles", {
-      groups: 1, groupSize: 16, input: { fromStageId: s2.id },
-      qualifierTransition: { positions: [1, 2, 3, 4], method: "cross_pool", poolPairs: [[0, 1], [2, 3]], pairing: "winner_runner_up" },
-      qualifierMapping: "cross_pool", generation: "owner_approval",
-      progression: { mode: "top_n", top: 4, perPool: true, standings: "carry" },
-      notes: "A#1 v B#2, B#1 v A#2, A#3 v B#4, B#3 v A#4 (and C/D). Final mechanics need confirmation.",
-      schedule: { mode: "unset" },
+    const s3 = stage("Finals", "knockout", "singles", {
+      groups: 1, groupSize: null, input: { fromStageId: s2.id }, generation: "owner_approval", dynamic: true,
+      notes: "Final rules need confirmation (organiser spreadsheet).", schedule: fixed(4, 4),
     });
     return {
       id: newId("div"), name: `Division ${di + 1}`, eligibility: "open", entry: "individual", leagueUse: null,
@@ -230,23 +283,28 @@ export function toTemplate(def: TournamentDefinition): TournamentDefinition {
   t.scheduleDefaults = {} as TournamentDefinition["scheduleDefaults"];
   for (const d of t.divisions) {
     d.poolNames = d.poolNames?.map(() => "");
-    for (const s of d.sections.flatMap((x) => x.stages)) s.schedule = { mode: "unset" };
+    for (const s of d.sections.flatMap((x) => x.stages)) {
+      s.schedule = { mode: "unset" };
+      if (s.tieFormat) s.tieFormat.startTime = null;
+    }
   }
   t.questions = t.questions.map((q) => ({ ...q, resolved: false, answer: null }));
   return t;
 }
 
+export const diamondTieStage = (d: Division) => d.sections.flatMap((x) => x.stages).find((s) => s.tieFormat);
+
 /** Plain chain for the builder map. */
 export function diamondChain(def: TournamentDefinition): string[] {
-  const src = def.pairSource === "seed" ? "from seeded positions" : def.pairSource === "prior_stage_standings" ? "from each pool re-ranked after singles" : "source needs confirmation";
+  const t = def.divisions.map(diamondTieStage).find(Boolean)?.tieFormat ?? DIAMOND_TIE;
+  const m = tieMinutes(t);
   return [
     `Registration: first ${def.admission?.capacity ?? "—"} confirmed accepted, rest wait-listed`,
-    "Ladder seeding (admin can adjust) → snake into 8 pools",
-    "Singles R1 → Singles R2 → Singles R3 (same position v other pools)",
-    `Form doubles 1+2 / 3+4 / 5+6 in each pool (${src})`,
-    "Doubles cross-pool stage",
-    "Crossover play-offs (A1 v B2, B1 v A2, A3 v B4, B3 v A4; C/D mirrored) → final (needs confirmation)",
-    "Overall: pool with most points (play-off weighting needs confirmation)",
+    "Ladder seeding (admin can adjust) → snake into 8 pools of 6 (2 divisions × 4 pools)",
+    "Wednesdays 1–3: each pool plays each other pool in its division once (4 ties per evening, one per court)",
+    `Each tie on one court: 6 singles 1v1…6v6 @20 min → 3 doubles 1+2 / 3+4 / 5+6 @30 min = ${m} min${t.startTime ? ` (${t.startTime}–${tieFinish(t, t.startTime)})` : ""}`,
+    "Wednesday 4: semi-finals (rules need confirmation)",
+    "Wednesday 5: finals / conclusion (rules need confirmation)",
   ];
 }
 
@@ -257,10 +315,11 @@ export function interpretTranscript(text: string) {
   const has = (re: RegExp) => re.test(t);
   if (has(/diamond/)) rules.push({ rule: "Diamond League structure", confirmed: true });
   const cap = t.match(/(\d{2,3})\s*(players|entries|accepted)/); if (cap) rules.push({ rule: `Capacity ${cap[1]}`, confirmed: true });
-  if (has(/cross[- ]?pool|same position|#1 in pool a plays/)) rules.push({ rule: "Cross-pool league by position", confirmed: true });
+  if (has(/pool[- ]?v(s|ersus)?[- ]?pool|same position|1 v 1|tie/)) rules.push({ rule: "Pool-v-pool ties by position", confirmed: true });
   if (has(/1\s*\+\s*2|#1\s*\+\s*#2/)) rules.push({ rule: "Doubles pairs 1+2 / 3+4 / 5+6", confirmed: true });
   if (has(/snake|serpentine/)) rules.push({ rule: "Snake seeding", confirmed: true });
   if (has(/points?/) && !has(/points? (formula|=)\s*\d/)) rules.push({ rule: "Points formula", confirmed: false });
-  if (has(/final/)) rules.push({ rule: "Final mechanics", confirmed: false });
+  if (has(/semi/)) rules.push({ rule: "Semi-final rules", confirmed: false });
+  if (has(/final/)) rules.push({ rule: "Final rules", confirmed: false });
   return { rules, fallbackUsed: false as const };
 }

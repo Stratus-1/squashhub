@@ -214,9 +214,13 @@ function BetaClubsCard() {
 
 /** Bug lifecycle (separate from the AI request outcome). Only "fixed" means the defect is resolved. */
 const BUG_LIFECYCLE: Record<string, { label: string; cls: string }> = {
-  open: { label: "Open", cls: "border-destructive text-destructive" },
+  open: { label: "Reported", cls: "border-destructive text-destructive" },
   investigating: { label: "Investigating", cls: "border-destructive text-destructive" },
-  fixed: { label: "Fixed", cls: "border-primary text-primary" },
+  fix_in_development: { label: "Fix in development", cls: "border-destructive text-destructive" },
+  fix_ready: { label: "Fix ready · awaiting publish", cls: "border-amber-500 text-amber-600" },
+  published: { label: "Published · awaiting verification", cls: "border-amber-500 text-amber-600" },
+  fixed: { label: "Fixed · verified", cls: "border-primary text-primary" },
+  closed: { label: "Closed", cls: "" },
   wont_fix: { label: "Won't fix", cls: "" },
   duplicate: { label: "Duplicate", cls: "" },
 };

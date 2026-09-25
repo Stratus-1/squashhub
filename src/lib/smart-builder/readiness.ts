@@ -23,6 +23,8 @@ export interface ReadinessItem {
   tab: ReadinessTab;
   /** Field anchor on that tab (data-field attribute). */
   field?: string;
+  /** Offending stage, so "Go there" can open that division + stage. */
+  stageId?: string;
   /** Question the builder asks when this is the next missing item. */
   ask?: string;
 }
@@ -108,8 +110,13 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     detail: def.divisions.length ? `${def.divisions.length} division(s), ${stages.length} stage(s)` : "No divisions yet",
     ask: "What divisions will this tournament have, and how does each one play (pools, knockout, etc.)?" });
   const errs = validation.issues.filter((i) => i.level === "error");
-  design.push({ id: "structure_valid", label: "Structure maths", tab: "design", field: "canvas",
-    state: errs.length ? "missing" : "complete", detail: errs.length ? errs[0].message : "Counts, progression and draw sizes add up" });
+  const e0 = errs[0];
+  const transitionCodes = new Set(["pairs_model", "split_model", "pairing_scope", "pairs_qualifiers", "form_pairs_scope", "standings_rule", "odd_pairs", "top_n", "top_exceeds_pool", "per_pool_source", "per_pool_mode", "missing_source"]);
+  design.push({ id: "structure_valid", label: "Structure maths", tab: "design",
+    field: e0?.stageId ? (transitionCodes.has(e0.code) ? "stage-transition" : "stage-panel") : "canvas",
+    stageId: e0?.stageId,
+    state: errs.length ? "missing" : "complete",
+    detail: e0 ? `${e0.message}${e0.fix ? ` ${e0.fix}` : ""}` : "Counts, progression and draw sizes add up" });
   const sized = stages.filter(({ stage }) => stage.groupSize == null && !stage.dynamic && stage.kind !== "pair_from_positions" && stage.kind !== "split");
   if (stages.length) design.push({ id: "sizes", label: "Stage sizes", tab: "design", field: "canvas",
     state: sized.length ? "missing" : "complete",

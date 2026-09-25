@@ -122,6 +122,19 @@ export function validateDefinition(def: TournamentDefinition): ValidationResult 
         if (!stage.input.fromStageId) {
           supply = stage.input.entrants ?? null;
           if (supply == null && stage.groupSize && !stage.dynamic) supply = stage.groups * stage.groupSize;
+        } else if (prevFlow && prev && stage.progression && stage.progression.mode !== "qualifiers") {
+          // Stage-builder model: the transition lives on THIS stage (progression), not on the
+          // source's legacy `advance`. Count who continues first, then apply pair formation / split.
+          const p = stage.progression;
+          const prevUnits = prevFlow.supply ?? prevFlow.capacity;
+          let continuing: number | null = null;
+          if (p.mode === "all_continue" || p.mode === "form_pairs") continuing = prevUnits;
+          else if (p.mode === "top_n") continuing = p.top == null ? null : p.perPool ? p.top * prev.groups : p.top;
+          const sc = prev.discipline !== "doubles" && stage.discipline === "doubles" ? "to_pairs"
+            : prev.discipline === "doubles" && stage.discipline !== "doubles" ? "to_singles" : null;
+          supply = continuing == null ? null
+            : sc === "to_pairs" ? Math.floor(continuing / 2) : sc === "to_singles" ? continuing * 2 : continuing;
+          if (supply != null && stage.groups > 0 && supply % stage.groups === 0) supplyPerGroup = supply / stage.groups;
         } else if (prevFlow) {
           supply = prevFlow.outTotal;
           if (prevFlow.outGroups === stage.groups && prevFlow.outPerGroup != null) supplyPerGroup = prevFlow.outPerGroup;

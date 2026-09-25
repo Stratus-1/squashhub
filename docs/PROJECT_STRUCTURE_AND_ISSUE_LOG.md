@@ -2094,3 +2094,9 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - `sourcePositions` ranks finishing positions per source pool (incl. entry-seeded pool-v-pool stages); level wins at a used position block unless the admin recorded an order.
 - `structured_commit` gained append-only `set_spec`; trigger `guard_structured_stage_round_once` prevents duplicate stage rounds.
 - Limitation: auto-progression runs when a tournament manager has the run page open (engine is client-side), not from a member phone result save alone.
+
+### 2026-09-25 — Smart Builder: one canonical division/pool structure; Define-later rule
+- Cause 1: Diamond panel kept its own copies of divisions/pools/players and "Apply" rebuilt every division from scratch (losing per-division settings); the stage builder separately asked "One/Multiple divisions" via a local flag. Now both read/write `def.divisions` only; `resizeDiamond` changes shape in place, keeps ids/settings, copies the last division for additions, confirms removals.
+- Cause 2: "Division 2 has no stages" = all four Division 2 stages had `defineLater: true`, so the defined-only view was empty. The tick box allowed deferring the first stage and same-session stages, and division copies duplicated the flag. Rule now in `deferred.ts` (`cannotDefer`/`setDefineLater`/`normalizeDeferral`/`deferralIssues`): first stage never deferred, same-session stages never deferred, deferral is a suffix; repaired on load.
+- Cause 3: Diamond template never marked Semis/Finals as Define later and their questions were structural, so they blocked Create on rounds/Bells. Template now defers them; semi/final questions are operational; points question still blocks.
+- `cloneStructure` now also remaps `sameSessionAs` and `mapping.sourceStageId` (copies pointed back at the source division).

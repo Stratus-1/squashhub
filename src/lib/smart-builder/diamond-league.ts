@@ -16,6 +16,7 @@ import { gameLabel, opponentPositions } from "./ties";
  * functions return a `blocked` reason instead of guessing.
  */
 import { newId, type Division, type OpenQuestion, type Stage, type TournamentDefinition } from "./definition";
+import { cloneStructure } from "./division-structure";
 
 export const DIAMOND_KEY = "diamond_league";
 export const poolLetter = (i: number) => String.fromCharCode(65 + i);
@@ -231,8 +232,8 @@ export function tieEveningCheck(ties: Pick<Tie, "court">[], t: TieFormat, evenin
 // ── Open questions (Review "Needs organiser confirmation") ───────────────────
 export const DIAMOND_QUESTIONS: OpenQuestion[] = [
   { id: "dl_points", term: "Points", question: "What points does each singles and doubles rubber (and each tie) earn, and what breaks ties in the standings?", kind: "structural", resolved: false, answer: null },
-  { id: "dl_semis", term: "Semi-finals", question: "Semi-final rules (Wednesday 4): who qualifies, the crossover, and what each semi-final contains.", kind: "structural", resolved: false, answer: null },
-  { id: "dl_final", term: "Finals", question: "Final rules (Wednesday 5): what is played, placement games, and how the overall winner is decided.", kind: "structural", resolved: false, answer: null },
+  { id: "dl_semis", term: "Semi-finals", question: "Semi-final rules (Wednesday 4): who qualifies, the crossover, and what each semi-final contains.", kind: "operational", resolved: false, answer: null },
+  { id: "dl_final", term: "Finals", question: "Final rules (Wednesday 5): what is played, placement games, and how the overall winner is decided.", kind: "operational", resolved: false, answer: null },
 ];
 
 // ── Template ─────────────────────────────────────────────────────────────────
@@ -317,12 +318,12 @@ export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: s
       schedule: fixed(0, lastRound),
     });
     const s3 = stage("Semi-finals", "knockout", "singles", {
-      groups: 1, groupSize: null, input: { fromStageId: s2.id }, generation: "owner_approval", dynamic: true,
-      notes: "Semi-final rules need confirmation (organiser spreadsheet).", schedule: fixed(R, R),
+      groups: 1, groupSize: null, input: { fromStageId: s2.id }, generation: "owner_approval", dynamic: true, defineLater: true,
+      notes: "Define later: semi-final rules are set once the doubles stage has finished.", schedule: fixed(R, R),
     });
     const s4 = stage("Finals", "knockout", "singles", {
-      groups: 1, groupSize: null, input: { fromStageId: s3.id }, generation: "owner_approval", dynamic: true,
-      notes: "Final rules need confirmation (organiser spreadsheet).", schedule: fixed(R + 1, R + 1),
+      groups: 1, groupSize: null, input: { fromStageId: s3.id }, generation: "owner_approval", dynamic: true, defineLater: true,
+      notes: "Define later: final rules are set once the semi-finals have finished.", schedule: fixed(R + 1, R + 1),
     });
     const poolGroups = Array.from({ length: Math.floor(np / 2) }, (_, k) => ({ pools: [2 * k, 2 * k + 1] as [number, number], court: courtNames[courtAt++] ?? null }));
     return {
@@ -401,4 +402,70 @@ export function interpretTranscript(text: string) {
   if (has(/semi/)) rules.push({ rule: "Semi-final rules", confirmed: false });
   if (has(/final/)) rules.push({ rule: "Final rules", confirmed: false });
   return { rules, fallbackUsed: false as const };
+}
+
+/** Current Diamond shape read straight from the canonical definition (never a separate copy). */
+export function diamondCurrent(def: TournamentDefinition): { divisions: number; poolsPerDivision: number; poolSize: number } {
+  const first = def.divisions[0]?.sections[0]?.stages[0];
+  return { divisions: def.divisions.length, poolsPerDivision: first?.groups ?? 0, poolSize: first?.groupSize ?? 0 };
+}
+
+/**
+ * Change the Diamond shape IN PLACE on the canonical definition. Existing divisions keep their ids,
+ * stages, scoring, standings, pairing, Define-later choices and pool names; only the pool counts and
+ * sizes (and the dates that follow from the number of rotation weeks) change. New divisions are an
+ * independent copy of the last division's structure; removed divisions are the last ones (the caller
+ * confirms first). Returns the division names that were removed.
+ */
+export function resizeDiamond(def: TournamentDefinition, next: { divisions: number; poolsPerDivision: number; poolSize: number }): string[] {
+  const n = Math.max(1, Math.floor(next.divisions)), np = Math.max(2, Math.floor(next.poolsPerDivision)), size = Math.max(2, Math.floor(next.poolSize));
+  if (!def.divisions.length) { applyDiamondLeague(def, { divisions: n, poolsPerDivision: np, poolSize: size }); return []; }
+  const removed = def.divisions.slice(n).map((d) => d.name);
+  def.divisions = def.divisions.slice(0, n);
+  while (def.divisions.length < n) {
+    const src = def.divisions[def.divisions.length - 1];
+    const copy: Division = JSON.parse(JSON.stringify(src));
+    copy.id = newId("div");
+    copy.name = `Division ${def.divisions.length + 1}`;
+    copy.poolNames = [];
+    copy.sections = cloneStructure(src);
+    def.divisions.push(copy);
+  }
+  const R = poolRounds(np);
+  const dates = def.scheduleDefaults?.startDate ? weeklyDates(def.scheduleDefaults.startDate.slice(0, 10), R + 2) : [];
+  let courtAt = 0;
+  def.divisions.forEach((d, di) => {
+    if (n > 1 && /^(Main division|Division \d+)$/.test(d.name)) d.name = `Division ${di + 1}`;
+    if (n === 1 && /^Division \d+$/.test(d.name)) d.name = "Main division";
+    d.poolNames = Array.from({ length: np }, (_, i) => d.poolNames?.[i] ?? "");
+    const oldGroups = d.poolGroups ?? [];
+    d.poolGroups = Array.from({ length: Math.floor(np / 2) }, (_, k) => {
+      courtAt++;
+      return { pools: [2 * k, 2 * k + 1] as [number, number], court: oldGroups[k]?.court ?? `Court ${courtAt}` };
+    });
+    const ss = d.sections.flatMap((x) => x.stages);
+    let poolIdx = 0, laterIdx = 0;
+    ss.forEach((st, i) => {
+      if (st.kind === "cross_pool_league") {
+        const sizeChanged = st.groupSize !== size;
+        st.groups = np; st.groupSize = size;
+        if (i === 0) st.input = { ...st.input, entrants: np * size };
+        if (sizeChanged && st.tieFormat) {
+          const disc = st.discipline === "doubles" ? "doubles" : "singles";
+          const mins = st.tieFormat.rubbers?.[0]?.minutes ?? (disc === "doubles" ? 30 : 20);
+          st.tieFormat = { ...st.tieFormat, rubbers: standardRubbersLocal(disc, size, mins) };
+        }
+        if (dates.length && st.schedule?.mode === "fixed") st.schedule = { ...st.schedule, startDate: dates[0], endDate: dates[Math.max(0, R - 1)], roundDates: dates.slice(0, R) };
+        poolIdx++;
+      } else if (dates.length && st.schedule?.mode === "fixed") {
+        const w = Math.min(R + laterIdx, dates.length - 1);
+        st.schedule = { ...st.schedule, startDate: dates[w], endDate: dates[w], roundDates: [dates[w]] };
+        laterIdx++;
+      }
+    });
+    void poolIdx;
+  });
+  if (dates.length) def.scheduleDefaults = { ...(def.scheduleDefaults ?? {}), endDate: dates[dates.length - 1] } as TournamentDefinition["scheduleDefaults"];
+  def.admission = { mode: "first_confirmed", waitlist: true, ...(def.admission ?? {}), capacity: n * np * size };
+  return removed;
 }

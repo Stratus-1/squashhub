@@ -21,6 +21,10 @@ export function cloneStructure(src: Division): Division["sections"] {
       st.id = idMap.get(st.id)!;
       const from = st.input?.fromStageId;
       st.input = { ...st.input, fromStageId: from ? idMap.get(from) ?? null : null };
+      // Every stage-to-stage reference must point inside the copy, never back at the source division.
+      if (st.sameSessionAs) st.sameSessionAs = idMap.get(st.sameSessionAs) ?? null;
+      const m = (st as any).mapping;
+      if (m?.sourceStageId) m.sourceStageId = idMap.get(m.sourceStageId) ?? null;
     }
   }
   return copy;
@@ -82,8 +86,8 @@ export function ownershipIssues(def: TournamentDefinition): string[] {
     for (const s of stagesIn(d)) {
       if (seen.has(s.id)) out.push(`Stage ${s.id} is shared by ${seen.get(s.id)} and ${d.name}.`);
       seen.set(s.id, d.name);
-      const f = s.input?.fromStageId;
-      if (f && !own.has(f)) out.push(`${d.name} · ${s.name} refers to a stage in another division.`);
+      for (const f of [s.input?.fromStageId, s.sameSessionAs, (s as any).mapping?.sourceStageId])
+        if (f && !own.has(f)) { out.push(`${d.name} · ${s.name} refers to a stage in another division.`); break; }
     }
   }
   if (new Set(def.divisions.map((d) => d.id)).size !== def.divisions.length) out.push("Duplicate division.");

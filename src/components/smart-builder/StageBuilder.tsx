@@ -17,6 +17,8 @@ import { requiredRounds, roundNames } from "@/lib/smart-builder/schedule-maths";
 import { TIE_PAIRING_LABEL, opponentPositions, standardRubbers, type TiePairing } from "@/lib/smart-builder/ties";
 import { addDivision, applyPlan, applyStructure, removeDivision } from "@/lib/smart-builder/division-structure";
 import { toast } from "sonner";
+import { cannotDefer, setDefineLater } from "@/lib/smart-builder/deferred";
+import { DIAMOND_KEY } from "@/lib/smart-builder/diamond-league";
 import { TransitionEditor } from "./TransitionEditor";
 import { DiamondLeaguePanel } from "./DiamondLeaguePanel";
 import { specFromDefinition } from "@/lib/tournaments/structured-persist";
@@ -131,9 +133,9 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               {prev && <Button size="sm" variant="outline" className={cn(btn, "ml-auto")} onClick={() => editDiv((x) => copyPreviousStage(x, sel0.id))}>Copy previous stage settings</Button>}
             </div>
             <label className="flex items-start gap-2 text-white/80" data-field={`stage.${sel0.id}.defineLater`}>
-              <input type="checkbox" className="mt-0.5" checked={!!sel0.defineLater} onChange={(e) => editStage((s) => { s.defineLater = e.target.checked || undefined; })} />
+              <input type="checkbox" className="mt-0.5" checked={!!sel0.defineLater} disabled={!sel0.defineLater && !!cannotDefer(d, sel0.id)} onChange={(e) => editDiv((x) => { setDefineLater(x, sel0.id, e.target.checked); })} />
               <span>Define later — decide this stage's format and matchups once the stage before it has finished.
-                <span className="block text-[11px] text-white/50">The tournament can still be created and the earlier stages run normally. This stage can't start until it is set up.</span>
+                <span className="block text-[11px] text-white/50">{!sel0.defineLater && cannotDefer(d, sel0.id) ? cannotDefer(d, sel0.id) : "The tournament can still be created and the earlier stages run normally. Every stage after this one is also left for later; this stage can't start until it is set up."}</span>
               </span>
             </label>
             <div className="grid sm:grid-cols-2 gap-2">
@@ -333,7 +335,8 @@ const Note = ({ children }: { children: ReactNode }) => <div className="rounded 
 
 /** Divisions first: how many, their names, then pick one to build its own stages. Copy/apply is always explicit. */
 function DivisionsPanel({ def, edit, di, onSelect }: { def: TournamentDefinition; edit: Edit; di: number; onSelect: (i: number) => void }) {
-  const [multi, setMulti] = useState(def.divisions.length > 1);
+  // The division list IS the count — there is no separate "one or multiple" setting to drift from it.
+  const diamond = def.templateMeta?.key === DIAMOND_KEY;
   const [adding, setAdding] = useState<{ name: string; from: string } | null>(null);
   const [applying, setApplying] = useState<{ targets: string[]; replace: boolean } | null>(null);
   const src = def.divisions[di];
@@ -342,24 +345,22 @@ function DivisionsPanel({ def, edit, di, onSelect }: { def: TournamentDefinition
   return (
     <div className="rounded border border-white/10 p-2 space-y-2" data-field="divisions">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="font-semibold text-white">1. How many divisions / categories?</span>
-        <label className="flex items-center gap-1"><input type="radio" checked={!multi} disabled={def.divisions.length > 1} onChange={() => setMulti(false)} />One division</label>
-        <label className="flex items-center gap-1"><input type="radio" checked={multi} onChange={() => setMulti(true)} />Multiple divisions</label>
-        {def.divisions.length > 1 && <span className="text-white/40">(remove extra divisions to go back to one)</span>}
+        <span className="font-semibold text-white">Divisions ({def.divisions.length})</span>
+        {diamond && <span className="text-white/40">Change the number of divisions in the Diamond League settings above.</span>}
       </div>
-      {multi && (
+      {(
         <>
           <div className="flex flex-wrap items-center gap-2">
             {def.divisions.map((x, i) => (
               <span key={x.id} className={cn("inline-flex items-center rounded border", i === di ? "border-white/60 text-white bg-white/[0.06]" : "border-white/15 text-white/60")}>
                 <button className="px-2 py-1" onClick={() => onSelect(i)}>{x.name} <span className="text-white/40">· {x.sections.flatMap((y) => y.stages).length} stages</span></button>
-                {def.divisions.length > 1 && <button aria-label={`Remove ${x.name}`} className="px-1 text-white/40 hover:text-white" onClick={() => {
+                {def.divisions.length > 1 && !diamond && <button aria-label={`Remove ${x.name}`} className="px-1 text-white/40 hover:text-white" onClick={() => {
                   if (!confirm(`Remove ${x.name} and its own stages? Other divisions are not affected.`)) return;
                   edit((dd) => { removeDivision(dd, x.id); }); onSelect(0);
                 }}><Trash2 className="h-3 w-3" /></button>}
               </span>
             ))}
-            <Button size="sm" variant="outline" className={btn} onClick={() => setAdding({ name: "", from: "" })}><Plus className="h-3 w-3 mr-1" />Add division</Button>
+            {!diamond && <Button size="sm" variant="outline" className={btn} onClick={() => setAdding({ name: "", from: "" })}><Plus className="h-3 w-3 mr-1" />Add division</Button>}
             {def.divisions.length > 1 && <Button size="sm" variant="outline" className={btn} onClick={() => setApplying({ targets: def.divisions.filter((x) => x.id !== src.id).map((x) => x.id), replace: false })}>Apply {src.name} structure to other divisions…</Button>}
           </div>
           {adding && (
@@ -407,7 +408,7 @@ function DivisionsPanel({ def, edit, di, onSelect }: { def: TournamentDefinition
               </div>
             </div>
           )}
-          <div className="text-white/50">2. Select a division, then build its stages. Each division owns its own stages — changes never spread to another division unless you copy or apply.</div>
+          <div className="text-white/50">Select a division, then build its stages. Each division owns its own stages — changes never spread to another division unless you copy or apply.</div>
         </>
       )}
     </div>

@@ -10,6 +10,7 @@
  * only proposes a new Definition; the deterministic validator checks it, and
  * only an explicit "Create Tournament" maps it onto the existing engine.
  */
+import { normalizeDeferral } from "./deferred";
 import { z } from "zod";
 
 export const STAGE_KINDS = [
@@ -406,7 +407,7 @@ export function emptyDefinition(name = "Untitled tournament"): TournamentDefinit
 /** Parse untrusted JSON (AI output / stored draft) into a Definition. */
 export function parseDefinition(raw: unknown): { ok: true; value: TournamentDefinition } | { ok: false; error: string } {
   const r = DefinitionSchema.safeParse(raw);
-  if (r.success) return { ok: true, value: splitMixedTieStages(r.data) };
+  if (r.success) return { ok: true, value: normalizeDeferral(splitMixedTieStages(r.data)) };
   return { ok: false, error: r.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
 }
 

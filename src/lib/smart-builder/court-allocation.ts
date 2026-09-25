@@ -17,8 +17,8 @@ export function stageCourts(def: TournamentDefinition, div: Division, st: Stage)
   const pool = new Set(selectedCourtPool(def).map(courtKey));
   const mine = (div.courtKeys ?? []).filter((k) => pool.has(k));
   if (mine.length) return { count: mine.length, source: "division", text: `${mine.length} for ${div.name}` };
-  const own = st.schedule.courtsPerVenue;
-  if (own) return { count: own, source: "stage", text: `${own} (this stage)` };
+  const own = effectiveSchedule(def, st).courtsPerVenue.value as number | null;
+  if (own) return { count: own, source: "stage", text: `${own} per venue` };
   if (pool.size) return { count: pool.size, source: "tournament", text: `All ${pool.size} tournament courts` };
   return { count: 0, source: null, text: "" };
 }

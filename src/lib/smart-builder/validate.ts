@@ -307,10 +307,11 @@ export function validateDefinition(def: TournamentDefinition): ValidationResult 
 
         // ── Dates ────────────────────────────────────────────────────────
         const sch = stage.schedule;
-        if (prev?.schedule?.endDate && sch.startDate && sch.startDate < prev.schedule.endDate) {
+        const sameSession = !!stage.sameSessionAs && stage.sameSessionAs === prev?.id;
+        if (!sameSession && prev?.schedule?.endDate && sch.startDate && sch.startDate < prev.schedule.endDate) {
           issues.push({ level: "error", code: "date_order", stageId: stage.id, message: `${label} starts ${sch.startDate} but ${prev.name} finishes on ${prev.schedule.endDate}.` });
         }
-        if (prev?.schedule?.endDate && sch.endDate && sch.endDate < prev.schedule.endDate) {
+        if (!sameSession && prev?.schedule?.endDate && sch.endDate && sch.endDate < prev.schedule.endDate) {
           issues.push({ level: "error", code: "date_order", stageId: stage.id, message: `${label} must be complete by ${sch.endDate} but ${prev.name} finishes on ${prev.schedule.endDate}.` });
         }
         if (sch.startDate && sch.endDate && sch.endDate < sch.startDate) {

@@ -529,9 +529,13 @@ export function DevicesTab({ clubId }: { clubId: string }) {
             door_auto_unlock_seconds: Number.isFinite(autoSeconds) && autoSeconds >= 1 ? autoSeconds : 12,
           })
           .eq("id", clubId)
-          .select("id");
+          .select("door_geofence_enabled, door_latitude, door_longitude");
         if (clubErr) throw clubErr;
-        if (!savedClub?.length) throw new Error("Door settings were not saved — you may not have permission to change club settings.");
+        const row = (savedClub as any[] | null)?.[0];
+        if (!row) throw new Error("Door settings were not saved — you may not have permission to change club settings.");
+        if (form.geofence_enabled && (!row.door_geofence_enabled || row.door_latitude == null || row.door_longitude == null)) {
+          throw new Error("Geofence did not save correctly (location missing). Please try again.");
+        }
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["iot-club-door", clubId] }),
           queryClient.invalidateQueries({ queryKey: ["my-club"] }),

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Club } from "@/hooks/use-club";
 import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
@@ -43,6 +44,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const [step, setStep] = useState("method");
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     access_control_type: "none" as AccessType,
@@ -234,7 +236,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
       if (geofence.enabled && (!row.door_geofence_enabled || row.door_latitude == null || row.door_longitude == null)) {
         throw new Error("Door location did not save correctly. Please try again.");
       }
-      await queryClient.invalidateQueries();
+      await Promise.all(["club-by-subdomain", "club-by-subdomain-restricted", "my-club", "iot-club-door"].map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
       toast.success(geofence.enabled ? "Door location saved — geofencing is on" : "Door location settings saved");
       onDone?.();
     } catch (err: any) {

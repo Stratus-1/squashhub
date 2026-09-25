@@ -1,5 +1,5 @@
 import { StageWindowControl } from "./DateControls";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,16 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
   const d = def.divisions[Math.min(divIdx, def.divisions.length - 1)];
   const stages = d?.sections[0]?.stages ?? [];
   const [selId, setSelId] = useState<string | null>(null);
+  // Review → "Go there": open the offending division and stage.
+  useEffect(() => {
+    const h = (e: Event) => {
+      const id = (e as CustomEvent<{ stageId: string }>).detail?.stageId;
+      const i = def.divisions.findIndex((x) => x.sections.some((s) => s.stages.some((st) => st.id === id)));
+      if (i >= 0) { setDivIdx(i); setSelId(id); }
+    };
+    window.addEventListener("smart-builder:focus-stage", h);
+    return () => window.removeEventListener("smart-builder:focus-stage", h);
+  }, [def]);
   const sel0 = stages.find((s) => s.id === selId) ?? stages[0];
   const si = sel0 ? stages.indexOf(sel0) : -1;
   const prev = si > 0 ? stages[si - 1] : null;

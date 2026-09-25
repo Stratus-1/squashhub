@@ -312,8 +312,13 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   const jump = (item: ReadinessItem) => {
     setTab(item.tab);
     if (!item.field) return;
+    // Open the exact division + stage first (stage builder / canvas listen for this).
+    if (item.stageId) setTimeout(() => window.dispatchEvent(new CustomEvent("smart-builder:focus-stage", { detail: { stageId: item.stageId } })), 40);
     setTimeout(() => {
-      const el = tabsRef.current?.querySelector<HTMLElement>(`[data-field="${item.field}"]`);
+      const visible = (x: HTMLElement | null | undefined) => !!x && x.offsetParent !== null;
+      let el = tabsRef.current?.querySelector<HTMLElement>(`[data-field="${item.field}"]`);
+      if (!visible(el)) el = [item.stageId ? `stage.${item.stageId}` : "", "stage-builder", "quick-setup", "canvas"]
+        .filter(Boolean).map((k) => tabsRef.current?.querySelector<HTMLElement>(`[data-field="${k}"]`)).find(visible) ?? null;
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.classList.add("ring-2", "ring-amber-300");

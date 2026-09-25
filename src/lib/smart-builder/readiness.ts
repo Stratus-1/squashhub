@@ -3,6 +3,7 @@
  * structured draft. The AI, the tabs and the Review page all read this; the
  * AI is told the next missing item so it asks for it itself.
  */
+import { scoringIssues, stageScoringLine } from "./scoring";
 import { allStages, effectiveSchedule, isBellsDefinition, type TournamentDefinition } from "./definition";
 import type { ValidationResult } from "./validate";
 import type { ExistingMapping } from "./to-existing";
@@ -133,10 +134,12 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     detail: openStructural.length ? openStructural[0].question : "None", ask: openStructural[0]?.question });
   const sc = def.scoring ?? {};
   const bells = isBellsDefinition(def);
-  const bellsDuration = schedulableStages(def).length > 0 && schedulableStages(def).every(({ stage }) => !!effectiveSchedule(def, stage).matchMinutes.value);
+  const capIssues = scoringIssues(def);
+  const perStage = schedulableStages(def).some(({ stage }) => stage.scoring?.mode);
+  const bellsDuration = perStage ? capIssues.length === 0 : schedulableStages(def).length > 0 && schedulableStages(def).every(({ stage }) => !!(def.scoring?.timeCapMinutes || effectiveSchedule(def, stage).matchMinutes.value));
   design.push({ id: "scoring", label: "Scoring", tab: "design", field: "scoring",
     state: bells ? (bellsDuration ? "complete" : "missing") : sc.pointsPerGame && sc.bestOf ? "complete" : "warning",
-    detail: bells ? (bellsDuration ? "Bells — timed points; match duration is set on Schedule" : "Bells — set match minutes on Schedule") : sc.pointsPerGame && sc.bestOf
+    detail: perStage ? (capIssues[0]?.message ?? schedulableStages(def).map(({ stage }) => `${stage.name}: ${stageScoringLine(def, stage)}`).join(" · ")) : bells ? (bellsDuration ? "Bells — timed points; match duration is set on Schedule" : "Bells — set match minutes on Schedule") : sc.pointsPerGame && sc.bestOf
       ? `PAR ${sc.pointsPerGame}, best of ${sc.bestOf}${sc.playAllGames ? ", play all games" : ""}${sc.winCondition === "sudden_death" ? ", sudden death" : ""}`
       : "Not set — the existing default (PAR 11, best of 5) will be used",
     ask: bells ? "How many minutes should each Bells match last?" : "What scoring should matches use — PAR 11 or 15, best of 3 or 5?" });

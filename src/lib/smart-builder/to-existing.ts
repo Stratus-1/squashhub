@@ -143,7 +143,7 @@ export function mapToExistingTournament(def: TournamentDefinition): ExistingMapp
   if (isBellsDefinition(def)) {
     champ.scoring_mode = "time_capped_points";
     const first = def.divisions.flatMap((div) => div.sections.flatMap((sec) => sec.stages)).find((s) => s.kind !== "split" && s.kind !== "pair_from_positions");
-    const duration = first?.schedule.matchMinutes ?? sd.matchMinutes;
+    const duration = (first?.scoring?.timeCapMinutes ?? def.scoring?.timeCapMinutes) ?? first?.schedule.matchMinutes ?? sd.matchMinutes;
     if (duration) champ.match_duration_minutes = duration;
   } else {
     if (sc.pointsPerGame) champ.points_per_game = sc.pointsPerGame;

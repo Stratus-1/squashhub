@@ -10,6 +10,8 @@ import {
   type BuilderFormat,
 } from "@/lib/smart-builder/stage-builder";
 import { cn } from "@/lib/utils";
+import { SCORING_CHOICES, choiceOf, scoringFromChoice, effectiveScoring, scoringText, type ScoringChoice } from "@/lib/smart-builder/scoring";
+import { requiredRounds, roundNames } from "@/lib/smart-builder/schedule-maths";
 import { TIE_PAIRING_LABEL, opponentPositions, standardRubbers, type TiePairing } from "@/lib/smart-builder/ties";
 import { addDivision, applyPlan, applyStructure, removeDivision } from "@/lib/smart-builder/division-structure";
 import { toast } from "sonner";
@@ -183,6 +185,8 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
                   </select>
                 </Q>
               )}
+              <ScoringPicker label="Match scoring (this stage)" value={sel0.scoring} inheritText={`Tournament default — ${scoringText(effectiveScoring(def, { ...sel0, scoring: undefined, roundScoring: undefined }))}`} field={`stage.${sel0.id}.scoring`}
+                onChange={(sc) => editStage((s) => { s.scoring = sc; if (sc?.mode === "time_capped_points" && sc.timeCapMinutes && s.tieFormat) s.tieFormat.rubbers.forEach((r: any) => { r.minutes = sc.timeCapMinutes; }); })} />
               <Q label="5. Scheduling">
                 <select className={sel} value={sel0.schedule.mode === "fixed" || sel0.schedule.mode === "play_by" ? sel0.schedule.mode : ""} onChange={(e) => editStage((s) => { s.schedule = { ...s.schedule, mode: (e.target.value || "unset") as any }; })}>
                   <option value="">Not decided</option><option value="fixed">Fixed dates & times</option><option value="play_by">Play by a deadline</option>
@@ -196,6 +200,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               )}
             </div>
 
+            <RoundScoring def={def} stage={sel0} editStage={editStage} />
             {sel0.kind === "cross_pool_league" && <TieGames stage={sel0} editStage={editStage} />}
             {prev && (
               <label className="flex items-center gap-2 text-white/80" data-field={`stage.${sel0.id}.sameSession`}>
@@ -450,6 +455,47 @@ function TieGames({ stage, editStage }: { stage: any; editStage: (m: (s: any) =>
       </Button>
       <div className="text-white/50 text-[11px]">One match type per stage. For singles then doubles on the same evening, add a Doubles stage and tick "Same session".</div>
     </div>
+  );
+}
+
+/** Scoring choice + Bells minutes. Empty = inherit from the level above. */
+function ScoringPicker({ label, value, inheritText, onChange, field }: { label: string; value: any; inheritText: string; onChange: (sc: any) => void; field: string }) {
+  const c = choiceOf(value);
+  return (
+    <>
+      <Q label={label}>
+        <select className={sel} data-field={field} value={c} onChange={(e) => onChange(scoringFromChoice(e.target.value as ScoringChoice, value))}>
+          <option value="">{inheritText}</option>
+          {SCORING_CHOICES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+      </Q>
+      {c === "bells" && (
+        <Q label="Bells — minutes per match (required)">
+          <Input className={cn(f, !value?.timeCapMinutes && "border-red-400/60")} inputMode="numeric" data-field={`${field}.timeCap`} value={value?.timeCapMinutes ?? ""}
+            onChange={(e) => onChange({ ...value, timeCapMinutes: e.target.value ? Math.max(1, Number(e.target.value)) : null })} />
+        </Q>
+      )}
+    </>
+  );
+}
+
+/** Optional per-round overrides (e.g. a Final best of 5, or a Bells round with its own cap). */
+function RoundScoring({ def, stage, editStage }: { def: TournamentDefinition; stage: any; editStage: (m: (s: any) => void) => void }) {
+  const n = requiredRounds(stage, def) ?? (stage.kind === "knockout" ? 1 : 0);
+  if (!n) return null;
+  const names = roundNames(stage, n);
+  const set = Object.keys(stage.roundScoring ?? {}).length;
+  return (
+    <details className="rounded border border-white/10 p-2" open={set > 0}>
+      <summary className="cursor-pointer text-white/80">Different scoring for a specific round{set ? ` (${set} set)` : ""}</summary>
+      <div className="grid sm:grid-cols-2 gap-2 mt-1">
+        {names.map((nm, i) => (
+          <ScoringPicker key={i} label={nm} field={`stage.${stage.id}.round${i}.scoring`} value={stage.roundScoring?.[String(i)]}
+            inheritText={`Same as stage — ${scoringText(effectiveScoring(def, stage))}`}
+            onChange={(sc) => editStage((s) => { const r = { ...(s.roundScoring ?? {}) }; if (sc) r[String(i)] = sc; else delete r[String(i)]; s.roundScoring = Object.keys(r).length ? r : undefined; })} />
+        ))}
+      </div>
+    </details>
   );
 }
 

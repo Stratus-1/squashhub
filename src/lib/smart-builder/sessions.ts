@@ -10,6 +10,7 @@
  */
 import { allStages, effectiveSchedule, type Stage, type TournamentDefinition } from "./definition";
 import { d10 } from "@/lib/tournaments/date-window";
+import { scoringMinutes, stageScoringLine } from "./scoring";
 
 const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -41,7 +42,9 @@ export function sessionMembers(def: TournamentDefinition, leader: Stage): Stage[
   return out;
 }
 
-const tieMins = (st: Stage) => st.tieFormat?.rubbers.reduce((n, r) => n + r.minutes, 0) ?? 0;
+/** Per-game minutes: a stage's Bells cap wins over the slot length typed on each game. */
+const gameMins = (def: TournamentDefinition, st: Stage, r: { minutes?: number }) => scoringMinutes(def, st) ?? r.minutes ?? 0;
+const tieMins = (def: TournamentDefinition, st: Stage) => st.tieFormat?.rubbers.reduce((n, r) => n + gameMins(def, st, r), 0) ?? 0;
 
 /** Court minutes one stage needs in one session. */
 function partMinutes(def: TournamentDefinition, st: Stage, courtsFor: number): { minutes: number | null; detail: string } {
@@ -49,12 +52,12 @@ function partMinutes(def: TournamentDefinition, st: Stage, courtsFor: number): {
   if (st.tieFormat) {
     const ties = Math.floor(groups / 2);
     const perCourt = Math.ceil(ties / Math.max(1, courtsFor || ties));
-    const counts = st.tieFormat.rubbers.reduce<Record<string, { n: number; m: number }>>((a, r) => { a[r.discipline] = { n: (a[r.discipline]?.n ?? 0) + 1, m: r.minutes }; return a; }, {});
+    const counts = st.tieFormat.rubbers.reduce<Record<string, { n: number; m: number }>>((a, r) => { a[r.discipline] = { n: (a[r.discipline]?.n ?? 0) + 1, m: gameMins(def, st, r) }; return a; }, {});
     const txt = Object.entries(counts).map(([d, v]) => `${v.n} ${d} × ${v.m} min`).join(" + ");
-    return { minutes: perCourt * tieMins(st), detail: `${txt} per court` };
+    return { minutes: perCourt * tieMins(def, st), detail: `${stageScoringLine(def, st)} · ${txt} per court` };
   }
   const e = effectiveSchedule(def, st);
-  const mm = e.matchMinutes.value as number | null;
+  const mm = scoringMinutes(def, st) ?? (e.matchMinutes.value as number | null);
   const n = st.groupSize ?? null;
   if (!mm || !n || !courtsFor) return { minutes: null, detail: "Game length or courts not set" };
   const games = Math.floor(n / 2) * groups;

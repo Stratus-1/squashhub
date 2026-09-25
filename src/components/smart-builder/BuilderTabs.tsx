@@ -561,7 +561,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
       ["Owner", ev.scope ? `${SCOPE_LABEL[ev.scope as EventScope]} — ${ev.ownerName ?? "owner not chosen"}` : "—"],
       ["Who may enter", ev.scope && ev.audience ? AUDIENCE_OPTIONS[ev.scope as EventScope].find((o) => o.value === ev.audience)?.label ?? "—" : "—"],
       ["Event venues", ev.noVenue ? "No physical venue" : eventVenues(def).names.length ? `${eventVenues(def).names.join(", ")} · ${selectedCourtPool(def).length} court(s)` : "—"],
-      ["Stages", def.divisions.map((d) => `${d.name}: ${d.sections.flatMap((x) => x.stages).map((st, i) => `${i + 1}. ${st.name} — ${stageDetailLines(st).join("; ")}`).join(" | ")}`).join(" || ") || "—"],
+      ["Stages", def.divisions.map((d) => `${d.name}: ${d.sections.flatMap((x) => x.stages).map((st, i) => `${i + 1}. ${st.name} — ${stageDetailLines(st, def).join("; ")}`).join(" | ")}`).join(" || ") || "—"],
       ["Flow", def.divisions.map((d) => `${d.name}: ${d.sections.flatMap((s) => s.stages.map((st) => shortStageName(st))).join(" → ")}`).join(" | ") || "—"],
       ["Entry", p.entryMethod ? p.entryMethod.replace(/_/g, " ") + (p.confirmAvailabilityOnly ? " (confirm availability only)" : "") : "—"],
       ["Dates", sd.startDate ? `${sd.startDate} → ${sd.endDate ?? "?"}${sd.weekday != null ? `, ${DAYS[sd.weekday]}s` : ""}${sd.startTime ? ` from ${sd.startTime}` : ""}` : "—"],
@@ -647,6 +647,21 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
         <dl className="grid sm:grid-cols-[120px_1fr] gap-x-2 gap-y-0.5">
           {summary.map(([k, v]) => <Fragment key={k}><dt className="text-white/50">{k}</dt><dd>{v}</dd></Fragment>)}
         </dl>
+      </div>
+
+      <div className="rounded-lg border border-white/10 p-3 space-y-1.5" data-field="review-stages">
+        <div className="font-semibold text-white">Stages and match scoring</div>
+        {def.divisions.map((d) => (
+          <div key={d.id}>
+            {def.divisions.length > 1 && <div className="text-white/60">{d.name}</div>}
+            {d.sections.flatMap((x) => x.stages).map((st, i) => (
+              <div key={st.id} className="pl-2">
+                <div className="text-white">Stage {i + 1} — {st.name}</div>
+                {stageDetailLines(st, def).map((l, k) => <div key={k} className={l.includes("not set") ? "pl-3 text-red-300" : "pl-3 text-white/65"}>{l}</div>)}
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
 
       {schedMaths.sessions.length > 0 && (

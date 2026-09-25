@@ -5,6 +5,7 @@ import { applyDiamondLeague, buildTies, snakeAllocate } from "@/lib/smart-builde
 import { opponentPositions, tieIssues, standardRubbers } from "@/lib/smart-builder/ties";
 import { sessionPlan } from "@/lib/smart-builder/sessions";
 import { scheduleMaths } from "@/lib/smart-builder/schedule-maths";
+import { stageScoringLine, scoringText, effectiveScoring, scoringIssues } from "@/lib/smart-builder/scoring";
 import { validateDefinition } from "@/lib/smart-builder/validate";
 
 /** Build the Diamond League weekly structure using ONLY the builder's own control functions. */
@@ -76,4 +77,31 @@ describe("Pool-v-pool league built from builder controls", () => {
     expect(codes).toContain("tie_discipline");
     expect(codes).toContain("tie_positions");
   });
+
+  it("scoring is per stage: Diamond Singles Bells 20, Doubles Bells 30; missing cap blocks; round override", () => {
+    const def = applyDiamondLeague(emptyDefinition());
+    const [s1, s2, semis] = def.divisions[0].sections[0].stages;
+    expect(stageScoringLine(def, s1)).toBe("Singles — Bells — 20 min per match");
+    expect(stageScoringLine(def, s2)).toBe("Doubles — Bells — 30 min per match");
+    expect(stageDetailLines(s2, def)).toContain("Scoring: Doubles — Bells — 30 min per match");
+    expect(sessionPlan(def).sessions[0].minutes).toBe(210);
+    expect(validateDefinition(def).issues.filter((i) => i.code === "scoring_cap")).toEqual([]);
+    s2.scoring = { mode: "time_capped_points", timeCapMinutes: null };
+    expect(validateDefinition(def).issues.some((i) => i.code === "scoring_cap" && i.level === "error")).toBe(true);
+    s2.scoring = { mode: "time_capped_points", timeCapMinutes: 40 };
+    expect(sessionPlan(def).sessions[0].minutes).toBe(120 + 120);
+    semis.roundScoring = { "0": { mode: "standard", pointsPerGame: 11, bestOf: 5 } };
+    expect(scoringText(effectiveScoring(def, semis, 0))).toBe("PAR 11 — best of 5");
+    semis.roundScoring = { "0": { mode: "time_capped_points" } };
+    expect(scoringIssues(def).some((i) => i.stageId === semis.id && i.round === 0)).toBe(true);
+  });
+  it("stage scoring overrides tournament scoring family", () => {
+    const def = applyDiamondLeague(emptyDefinition());
+    def.scoring = { pointsPerGame: 15, bestOf: 3, mode: "standard" };
+    const s1 = def.divisions[0].sections[0].stages[0];
+    expect(effectiveScoring(def, s1)).toEqual({ mode: "time_capped_points", timeCapMinutes: 20 });
+    s1.scoring = undefined;
+    expect(scoringText(effectiveScoring(def, s1))).toBe("PAR 15 — best of 3");
+  });
 });
+

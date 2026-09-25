@@ -266,14 +266,16 @@ export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: s
     // One weekly SESSION (same date, same court per tie) holds two sequential stages.
     const s1 = stage("Singles", "cross_pool_league", "singles", {
       input: { entrants: 24 }, legs: 1,
-      tieFormat: { ...DIAMOND_SINGLES_TIE, startTime: opts.startTime === undefined ? "17:45" : opts.startTime },
+      scoring: { mode: "time_capped_points", timeCapMinutes: 20 },
+      tieFormat: { ...structuredClone(DIAMOND_SINGLES_TIE), startTime: opts.startTime === undefined ? "17:45" : opts.startTime },
       notes: "Each Wednesday every pool plays one other pool on its home court: 6 singles, same positions (1v1…6v6), 20 min each.",
       schedule: fixed(0, 2),
     });
     const s2 = stage("Doubles", "cross_pool_league", "doubles", {
       input: { fromStageId: s1.id }, legs: 1, sameSessionAs: s1.id,
       progression: { mode: "form_pairs", pairing: "positions", standings: "carry" },
-      tieFormat: { ...DIAMOND_DOUBLES_TIE },
+      scoring: { mode: "time_capped_points", timeCapMinutes: 30 },
+      tieFormat: structuredClone(DIAMOND_DOUBLES_TIE),
       notes: "Same evening, same court, straight after the singles: 3 doubles, pool positions 1+2, 3+4, 5+6 v the same pair, 30 min each.",
       schedule: fixed(0, 2),
     });

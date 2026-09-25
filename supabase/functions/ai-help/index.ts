@@ -177,7 +177,8 @@ Deno.serve(async (req) => {
         before_data: row.before_data, after_data: res.after ?? null,
       });
       if (!res.ok) {
-        const ticketId = await escalate(`Action failed: ${res.message}`, { request: row.request_text, proposed: { name: row.action_name, args: row.action_args }, interactionId: row.id });
+        const ticketId = await escalate(`[backend_failure] Action failed: ${res.message}`, { request: row.request_text, proposed: { name: row.action_name, args: row.action_args }, interactionId: row.id });
+        await admin.from("ai_assist_interactions").update({ status: "failed" }).eq("id", row.id);
         return json({ answer: `That didn't go through: ${res.message}. I've opened a support ticket so someone can look at it.`, ticketId, failed: true });
       }
       return json({ answer: res.message, executed: true });
@@ -215,7 +216,8 @@ Deno.serve(async (req) => {
       "Order of work:",
       "A. If the question can be answered from data (my matches, fixtures, tournaments, entrants, standings, bookings, ladder, who am I), CALL THE TOOLS and answer directly with the facts (names, dates, times, courts, venues). Do not send the user to a page instead.",
       `B. If they want a change that is in the approved action list, call propose_action. It resolves the records and shows a Confirm/Cancel preview; nothing changes until they confirm. Approved actions:\n${catalogueFor(isAdmin)}`,
-      "C. If the change is not in that list, or propose_action says it isn't enabled/safe, call escalate with category 'unsupported_action' (say plainly it isn't enabled yet — NOT a permission problem). Use 'permission_denied' only when propose_action reports the user lacks permission.",
+      "C. If the change is not in that list, or propose_action says it isn't enabled/safe, call escalate with category 'unsupported_action' (say plainly it isn't enabled yet — NOT a permission problem). Use 'permission_denied' only when propose_action reports the user lacks permission. When propose_action returns permission_denied, ambiguous_member, member_not_found, already_removed or missing_required_data, just tell the user / ask — never escalate for those.",
+      "'Remove X from the members list' means remove_club_member (ends X's membership at THIS club only). Never describe it as deleting the person.",
       "LIVE TOURNAMENT PROBLEMS (duplicate or missing teams/pairs, wrong playoff opponents, partners switched, extra pool games, empty playoff slots — in any language, typed or spoken): FIRST call diagnose_and_repair_tournament (tournament_id from the page or find_tournaments). It checks the live data against the tournament's own settings and final pool standings and fixes provable system errors automatically — no admin approval is needed for those. Then tell the user plainly what was wrong, what was fixed (teams per game) and that it was re-checked. Only escalate (category 'bug') if it reports items that need a person, a refused/rolled-back repair, or self-repair not switched on. Never just open a ticket for such a report without running the check.",
       "D. Give step-by-step app navigation only when A–C are impossible or they ask how to do it themselves.",
       "If a tool returns an error, say exactly what could not be retrieved. Never invent dates, opponents, results or permissions. If names are ambiguous, ask one short question.",
@@ -238,7 +240,7 @@ Deno.serve(async (req) => {
       { type: "function", name: "escalate", strict: true,
         description: "Open a support ticket carrying all resolved context, for changes that are not enabled, unsafe, bugs, or when the user wants a person.",
         parameters: { type: "object", additionalProperties: false, required: ["category", "reason", "resolved_context"], properties: {
-          category: { type: "string", enum: ["unsupported_action", "permission_denied", "bug", "data_unavailable", "needs_person"] },
+          category: { type: "string", enum: ["unsupported_action", "permission_denied", "bug", "data_unavailable", "needs_person", "backend_failure", "missing_required_data", "ambiguous_member"] },
           reason: { type: "string" },
           resolved_context: { type: "string", description: "What you found: tournament, division, players, match ids, etc." },
         } } },
@@ -315,7 +317,17 @@ Deno.serve(async (req) => {
             else {
               if (args.name === "replace_tournament_player" && !aArgs.tournament_id && context.ids.champId) aArgs.tournament_id = context.ids.champId;
               const pv = await def.preview(c, aArgs);
-              if (!pv.ok) out = { status: pv.escalate ? "cannot_execute_safely" : "needs_clarification", message: pv.reason, next: pv.escalate ? "Call escalate (unsupported_action unless it's about permission)." : "Ask the user." };
+              if (!pv.ok && pv.code && !pv.escalate) {
+                // Coded refusal (permission, ambiguous, not found…): record it so AI Activity
+                // shows the real reason, tell the user, and do NOT open a ticket.
+                const denied = pv.code === "permission_denied";
+                const { data: row } = await admin.from("ai_assist_interactions").insert({
+                  ...base, kind: "action", action_name: args.name, action_args: aArgs, interpretation: pv.reason,
+                  status: denied ? "denied" : "needs_clarification", escalation_reason: `[${pv.code}] ${pv.reason}`,
+                }).select("id").single();
+                if (row && !outcome.interactionId) outcome = { ...outcome, interactionId: row.id };
+                out = { status: pv.code, message: pv.reason, next: denied ? "Explain the permission restriction to the user. Do NOT call escalate." : "Tell the user / ask the one short question. Do NOT call escalate." };
+              } else if (!pv.ok) out = { status: pv.escalate ? "cannot_execute_safely" : "needs_clarification", message: pv.reason, next: pv.escalate ? "Call escalate (unsupported_action unless it's about permission)." : "Ask the user." };
               else {
                 const preview = { summary: pv.summary, changes: pv.changes, affected: pv.affected, consequences: pv.consequences, unchanged: pv.unchanged, reversible: pv.reversible, request: question };
                 const { data: row, error } = await admin.from("ai_assist_interactions").insert({

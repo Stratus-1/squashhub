@@ -56,6 +56,15 @@ export interface ClubDevice {
   show_on_dashboard?: boolean | null;
   /** Optional permission roles allowed to see/use the dashboard control. */
   dashboard_role_ids?: string[] | null;
+  /** Access devices: GPS geofence around the door. */
+  geofence_enabled?: boolean | null;
+  geofence_latitude?: number | null;
+  geofence_longitude?: number | null;
+  geofence_radius_m?: number | null;
+  /** Unlock automatically once on entering the geofence. */
+  auto_unlock_enabled?: boolean | null;
+  /** Relay on/auto-off time for automatic unlocks (seconds). */
+  auto_unlock_seconds?: number | null;
 
   schedule_enabled?: boolean | null;
   schedule_timezone?: string | null;

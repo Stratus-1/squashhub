@@ -174,6 +174,22 @@ const StageSchema = z.object({
    * as the named earlier stage, straight after it. Unset = normal later-date progression.
    */
   sameSessionAs: z.string().nullable().optional(),
+  /**
+   * Explicit matchup mapping for pool-v-pool stages (see src/lib/tournaments/mapping.ts):
+   * source (entry-seeded pools or an earlier stage's finishing positions), units (which positions
+   * form each player/pair) and matchups (who plays whom, per round). Absent = proposed from
+   * rotation + in-tie pairing; saved once the admin edits it.
+   */
+  mapping: z.object({
+    source: z.enum(["seed_pools", "stage_standings"]),
+    sourceStageId: z.string().nullable().optional(),
+    pools: z.number().int().min(1),
+    poolSize: z.number().int().min(1),
+    discipline: z.enum(["singles", "doubles"]),
+    units: z.array(z.object({ id: z.string(), slots: z.array(z.object({ pool: z.number().int().min(0), position: z.number().int().min(1) })).min(1).max(2) })),
+    matches: z.array(z.object({ round: z.number().int().min(1), order: z.number().int().min(1), a: z.string(), b: z.string(), tie: z.string().optional() })),
+    derived: z.boolean().default(false),
+  }).nullable().optional(),
 });
 export type Stage = z.infer<typeof StageSchema>;
 

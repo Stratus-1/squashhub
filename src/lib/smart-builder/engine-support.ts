@@ -40,7 +40,7 @@ export function engineVerdicts(def: TournamentDefinition): EngineVerdict[] {
     // Pool totals of a pool-v-pool stage (points per pool / per position across ties) are not computed
     // by the engine yet, so a later stage can't take qualifiers from one — block rather than rank wrongly.
     const src = sec.stages.find((x) => x.id === st.input?.fromStageId) ?? (i > 0 ? sec.stages[i - 1] : null);
-    if (src?.kind === "cross_pool_league" && st.kind !== "cross_pool_league") {
+    if (src?.kind === "cross_pool_league") {
       out.push({ ...base, state: "unsupported", detail: `${d.name} · ${st.name}: qualifying from ${src.name}'s pool-v-pool standings isn't supported by the engine yet (pool totals across ties aren't calculated).` });
       return;
     }

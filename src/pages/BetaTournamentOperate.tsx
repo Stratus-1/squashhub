@@ -106,6 +106,15 @@ export default function BetaTournamentOperate() {
     return done === ms.length ? { label: "Complete", tone: "default" as const, ms } : { label: `${done}/${ms.length} played`, tone: "secondary" as const, ms };
   };
   const fmtDate = (d?: string | null) => (d ? format(new Date(d), "EEE d MMM") : "No date");
+  /**
+   * Stages the owner deliberately left "Define later". They are not created, so nothing can
+   * advance into them; they are shown as planned work, never as an error.
+   */
+  const deferredFor = (d: any) => {
+    const spec: any = t.arch?.builder_spec;
+    const sd = (spec?.divisions ?? []).find((x: any) => x.divisionId === d.spec_key || x.label === d.label);
+    return (sd?.deferredStages ?? []) as Array<{ stageKey: string; name: string; plannedDate: string | null }>;
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-4 space-y-4 text-[13px]">

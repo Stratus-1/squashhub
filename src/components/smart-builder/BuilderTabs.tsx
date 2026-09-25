@@ -374,12 +374,21 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
         <StageWindowControl def={def} stage={stage} onChange={(patch) => setS(stage.id, patch)} />
       </div>
       {(s.mode === "fixed" || s.mode === "play_by") && (() => {
-        // One date per required round (fixed = round date; play-by = optional per-round play-by date).
-        const need = requiredRounds(stage);
+        // One date per DERIVED round (fixed = round date; play-by = per-round play-by date).
+        const need = requiredRounds(stage, def);
+        const plan = roundDatePlan(def).get(stage.id);
+        const auto = !!plan?.auto;
         const have = s.roundDates ?? [];
-        const count = Math.max(need ?? 0, have.length, s.mode === "fixed" ? 1 : 0);
+        const ov = s.roundDateOverrides ?? {};
+        const count = auto ? need ?? 0 : Math.max(need ?? 0, have.length, s.mode === "fixed" ? 1 : 0);
         const names = roundNames(stage, count);
         const setRound = (i: number, v: string) => {
+          if (auto) {
+            const next = { ...ov };
+            if (v) next[String(i)] = v; else delete next[String(i)];
+            setS(stage.id, { roundDateOverrides: Object.keys(next).length ? next : undefined });
+            return;
+          }
           const next = [...have]; while (next.length < i) next.push("");
           next[i] = v;
           while (next.length && !next[next.length - 1]) next.pop();
@@ -389,17 +398,19 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
         return (
           <div className="sm:col-span-2 lg:col-span-3 space-y-1">
             <span className="flex flex-wrap items-center justify-between gap-x-2 text-[11px] text-white/60">
-              {s.mode === "fixed" ? "Round dates (fixed)" : "Round play-by dates (optional — the stage's last day is the final deadline)"}
-              <span className="text-[10px] text-white/50">{need != null ? `${need} round${need === 1 ? "" : "s"} needed` : "Round count known once the stage size is set"}</span>
+              {s.mode === "fixed" ? "Round dates (fixed)" : "Round play-by dates (the stage's last day is the final deadline)"}
+              <span className="text-[10px] text-white/50">{need != null ? `${need} round${need === 1 ? "" : "s"} needed (worked out from the ${stage.kind === "swiss" ? "Swiss round count" : stage.kind === "knockout" ? "draw size" : "pool size"})` : "Round count known once the stage size is set"}</span>
             </span>
+            <p className="text-[10px] text-white/45">{auto ? `Generated every ${DAYS[(s.weekday ?? def.scheduleDefaults?.weekday) as number]} from ${plan?.anchor}. Change a date to override that round only.` : "Pick a Day below (and a start date) to fill these in automatically."}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
               {names.map((n, i) => (
                 <label key={i} data-field={`stage.${stage.id}.round${i}`} className="block min-w-0 space-y-0.5 rounded">
-                  <span className={cn("text-[10px]", s.mode === "fixed" && need != null && i < need && !have[i] ? "text-red-300" : "text-white/50")}>{n}</span>
+                  <span className={cn("text-[10px]", s.mode === "fixed" && need != null && i < need && !have[i] ? "text-red-300" : "text-white/50")}>{n}{auto && ov[String(i)] ? " · changed" : ""}</span>
                   <Input type="date" className={f} value={datePart(have[i])} onChange={(ev) => setRound(i, ev.target.value)} />
                 </label>
               ))}
             </div>
+            {auto && Object.keys(ov).length > 0 && <button type="button" className="text-[10px] underline text-white/60" onClick={() => setS(stage.id, { roundDateOverrides: undefined })}>Reset to generated dates</button>}
           </div>
         );
       })()}

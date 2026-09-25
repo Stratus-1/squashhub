@@ -306,7 +306,7 @@ function Workspace({ draftId, scope, nav }: { draftId: string; scope: BuilderSco
   const tabsRef = useRef<HTMLDivElement>(null);
   /** Every form edit goes through here: one draft, autosaved. */
   const edit = (mut: (d: TournamentDefinition) => void) => {
-    setDef((prev) => { const next = structuredClone(prev); mut(next); return next; });
+    setDef((prev) => { const next = structuredClone(prev); mut(next); syncDerivedRoundDates(next); return next; });
     setDirty(true);
   };
   const jump = (item: ReadinessItem) => {

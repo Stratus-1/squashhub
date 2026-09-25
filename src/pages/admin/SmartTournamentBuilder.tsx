@@ -26,6 +26,7 @@ import { newProblems, validateDefinition, type Issue } from "@/lib/smart-builder
 import { mapToExistingTournament } from "@/lib/smart-builder/to-existing";
 import { assessReadiness, type ReadinessItem, type ReadinessTab } from "@/lib/smart-builder/readiness";
 import { cn } from "@/lib/utils";
+import { syncDerivedRoundDates } from "@/lib/smart-builder/schedule-maths";
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 type Proposal = {

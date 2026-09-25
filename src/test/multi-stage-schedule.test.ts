@@ -104,7 +104,7 @@ describe("schedule maths", () => {
   it("6: 5 RR rounds + 4 dates fails with a clear message", () => {
     const issues = scheduleMathsIssues(make({ s1: WEEKLY.slice(0, 4) }));
     expect(issues[0].code).toBe("rounds_short");
-    expect(issues[0].message).toContain("requires 5 rounds but only 4 valid round dates are available");
+    expect(issues[0].message).toContain("requires 5 rounds but only 4 valid round dates are configured");
     expect(issues[0].stageId).toBe("A1");
   });
   it("7: Stage 2 opening before Stage 1 resolves fails", () => {

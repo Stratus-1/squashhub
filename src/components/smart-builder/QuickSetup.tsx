@@ -1,3 +1,4 @@
+import { SEEDING_LABELS } from "@/lib/smart-builder/scope";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,10 +43,8 @@ export function QuickSetup({ def, edit }: { def: TournamentDefinition; edit: Edi
             <option value="individual">Singles</option><option value="pairs">Doubles (pairs)</option>
           </select>
         </Q>
-        <Q label="Seeding">
-          <select className={sel} value={def.players?.seedingSource ?? ""} onChange={(e) => edit((d) => { d.players = { ...d.players, seedingSource: (e.target.value || null) as any }; })}>
-            <option value="">Not decided</option><option value="ranking">Ranking</option><option value="ladder">Club ladder</option><option value="manual">I'll seed manually</option><option value="none">No seeding</option>
-          </select>
+        <Q label="Seeding source">
+          <div className="rounded border border-white/10 px-2 py-1.5 text-white/70" data-field="event.seedingSource">{def.event?.seedingSource ? SEEDING_LABELS[def.event.seedingSource] : (def.players?.seedingSource ? `${def.players.seedingSource} (older setting)` : "Set under Seeding data above")}<span className="block text-[10px] text-white/40">Set once for the whole tournament</span></div>
         </Q>
         {fmt === "round_robin" && (
           <Q label={q.pools ? "In each pool, play each other" : "Play each other"}>

@@ -217,7 +217,8 @@ const sendTo = (db: Db, log: CommitOp[][]) => async (_tid: string, ops: CommitOp
   for (const o of ops) {
     if (o.op === "insert") await db.insert(o.table, o.rows);
     else if (o.op === "delete_unplayed_matches") await db.remove!("club_champs_matches", o.ids);
-    else await db.remove!("club_champs_entries", o.ids);
+    else if (o.op === "delete_entries") await db.remove!("club_champs_entries", o.ids);
+    else await db.update("tournaments", {}, { builder_spec: o.spec });
   }
 };
 const finish = (rows: any[], pick: (m: any) => string) => rows.forEach((m) => { m.winner_member_id = pick(m); m.status = "completed"; });

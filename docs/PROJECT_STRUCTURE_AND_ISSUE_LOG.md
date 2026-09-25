@@ -2035,3 +2035,8 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - `src/lib/smart-builder/division-structure.ts`: addDivision (blank or independent copy), cloneStructure (fresh section/stage IDs, remapped fromStageId; pools stay index-based so persisted pool IDs are per division), applyPlan/applyStructure (blank filled, configured only with explicit replace, divisions with games never touched, replace-not-append so repeats never duplicate), ownershipIssues (shared stage IDs / cross-division references block validation).
 - Stage builder: "How many divisions?" step, division chips with stage counts, "Editing structure for: X", "Add stage to X", Add division (blank / copy from), Apply structure preview. Old regex-based copy removed from StageBuilder and BuilderTabs.
 - Tests: `src/test/division-structure.test.ts`.
+
+### 2026-09-25 — Tournament Beta: per-pool qualification
+- Progression `top_n` + `perPool` = top N from EACH pool. Slots = source stage id + pool index + position (`perPoolSlots`), resolved by `perPoolQualifiers` from each pool's own table using the shared `rankPoolTally` (also used by play-off `poolStandings`; tie on the qualifying line blocks). FixtureRow now carries `pool`. Unfinished pools, N > pool size, duplicate slots and cross-division rows are refused. Pair formation still required separately for singles→doubles.
+- Builder: "Top N from each pool" option (same-type knockout uses the cross-pool mapping editor + preview); slot list shown; knockout-last enforced on Add stage.
+- Tests: `src/test/per-pool-qualification.test.ts`.

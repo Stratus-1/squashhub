@@ -13,9 +13,11 @@ import { useAiActivity, useAiRollback, useBetaClubs, useSetBetaClub, AI_ACTIONS_
 import { useQuery } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 
-const STATUSES = ["answered", "proposed", "executed", "failed", "cancelled", "expired", "escalated", "rolled_back"];
+const STATUSES = ["answered", "proposed", "executed", "denied", "needs_clarification", "failed", "cancelled", "expired", "escalated", "rolled_back"];
 const QUICK: { key: string; label: string }[] = [
   { key: "executed", label: "Completed actions" },
+  { key: "proposed", label: "Waiting for confirm" },
+  { key: "denied", label: "Permission denied" },
   { key: "escalated", label: "Escalated" },
   { key: "failed", label: "Failed" },
   { key: "all", label: "Everything" },
@@ -26,8 +28,11 @@ const ACTION_LABELS: Record<string, string> = {
   replace_tournament_player: "Replaced a tournament player",
   correct_match_result: "Corrected a match result",
   update_my_contact: "Updated contact details",
+  remove_club_member: "Removed a member from the club list",
 };
-const OUTCOME: Record<string, string> = { executed: "Completed", escalated: "Escalated", failed: "Failed", rolled_back: "Completed, then reversed", proposed: "Waiting for confirm", cancelled: "Cancelled by user", expired: "Preview expired", answered: "Answered" };
+const OUTCOME: Record<string, string> = { executed: "Completed", escalated: "Escalated", failed: "Failed", rolled_back: "Completed, then reversed", proposed: "Waiting for confirm", cancelled: "Cancelled by user", expired: "Preview expired", answered: "Answered", denied: "Permission denied", needs_clarification: "Needed clarification" };
+/** Reason code stored as "[code] detail" in escalation_reason. */
+const reasonCode = (r?: string | null) => r?.match(/^\[([a-z_]+)\]/)?.[1] ?? null;
 
 /** Super Admin: every AI assistant interaction across clubs, plus safe rollback. */
 export function AiActivityPanel({ showBetaClubs = true }: { showBetaClubs?: boolean } = {}) {
@@ -91,6 +96,7 @@ function ActivityRow({ row, who }: { row: AiActivityRow; who: string }) {
           <span className="text-muted-foreground">{row.clubs?.name ?? "—"} · {row.role ?? "member"}</span>
           <Badge variant="outline">{row.kind}</Badge>
           <Badge variant={row.status === "failed" ? "destructive" : row.status === "executed" ? "default" : "secondary"}>{row.status.replace("_", " ")}</Badge>
+          {reasonCode(row.escalation_reason) && <Badge variant="outline">{reasonCode(row.escalation_reason)!.replace(/_/g, " ")}</Badge>}
           {row.transcript_used && <Badge variant="outline">voice</Badge>}
           <button className="ml-auto text-primary underline text-[12px]" onClick={() => setOpen((v) => !v)}>{open ? "Hide" : "Details"}</button>
         </div>
@@ -117,7 +123,7 @@ function ActivityRow({ row, who }: { row: AiActivityRow; who: string }) {
             {row.result?.message && <Field label="Result">{row.result.message}</Field>}
             {row.result?.answer && <Field label="Answer">{row.result.answer}</Field>}
             {row.error && <Field label="Error">{row.error}</Field>}
-            {row.escalation_reason && <Field label="Escalated because">{row.escalation_reason}</Field>}
+            {row.escalation_reason && <Field label={row.status === "escalated" || row.status === "failed" ? "Escalated because" : "Reason"}>{row.escalation_reason}</Field>}
             {row.ticket_id && <Field label="Ticket"><Link className="text-primary underline" to={`/admin/support?thread=${row.ticket_id}`}>Open ticket</Link></Field>}
             {row.rollback_of && <Field label="Reverses">{row.rollback_of}</Field>}
             {row.rolled_back_by && <Field label="Reversed by">{row.rolled_back_by}</Field>}

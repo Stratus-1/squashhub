@@ -30,6 +30,11 @@ export interface SpecDivision extends DivisionContract {
 }
 export interface TournamentSpec {
   version: number;
+  /**
+   * Admin-decided order for tied finishing positions, keyed `${divisionId}/${stageId}` → pool index → unit ids
+   * (best first). Only consulted where results are level; never overrides a real difference in wins.
+   */
+  positionOrders?: Record<string, Record<number, string[]>>;
   architecture: "structured";
   tournamentId?: string;
   name: string;

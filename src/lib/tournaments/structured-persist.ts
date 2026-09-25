@@ -8,6 +8,7 @@ import { IntegrityError, rankPoolTally, assertNoReentry, contractIssues, isDecid
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
 import { confirmPlayoffs, generateFromSpec, mappedFixtures, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
 import { effectiveTransition, transitionIssues } from "./transition";
+import { seedPools } from "./mapping";
 import type { TournamentDefinition } from "../smart-builder/definition";
 import { engineVerdicts } from "../smart-builder/engine-support";
 import { definedOnly, deferredStages } from "../smart-builder/deferred";
@@ -102,7 +103,9 @@ export interface Db {
 export type CommitOp =
   | { op: "insert"; table: string; rows: Record<string, unknown>[] }
   | { op: "delete_unplayed_matches"; ids: string[] }
-  | { op: "delete_entries"; ids: string[] };
+  | { op: "delete_entries"; ids: string[] }
+  /** Replace the saved structured spec (only used to ADD a set-up stage or record a tie order). */
+  | { op: "set_spec"; spec: TournamentSpec };
 
 const uuid = () => (globalThis.crypto?.randomUUID?.() ?? "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, () => ((Math.random() * 16) | 0).toString(16)));
 
@@ -114,6 +117,7 @@ export function bufferedDb(base: Db) {
   const ops: CommitOp[] = [];
   const pending: Record<string, Array<Record<string, any>>> = {};
   const removed = new Set<string>();
+  let specOverride: TournamentSpec | null = null;
   const match = (r: Record<string, any>, f: Record<string, unknown>) => Object.entries(f).every(([k, v]) => r[k] === v);
   const db: Db = {
     async insert(table, rows) {
@@ -123,10 +127,18 @@ export function bufferedDb(base: Db) {
       return out;
     },
     async select(table, filter) {
-      const real = (await base.select(table, filter)).filter((r) => !removed.has(r.id));
+      let real = (await base.select(table, filter)).filter((r) => !removed.has(r.id));
+      if (table === "tournaments" && specOverride) real = real.map((r) => ({ ...r, builder_spec: specOverride }));
       return [...real, ...(pending[table] ?? []).filter((r) => match(r, filter))];
     },
-    async update() { throw new IntegrityError("unsupported", "Updates are not part of structured commits."); },
+    async update(table, _filter, patch) {
+      const keys = Object.keys(patch);
+      if (table !== "tournaments" || keys.length !== 1 || keys[0] !== "builder_spec") throw new IntegrityError("unsupported", "Updates are not part of structured commits.");
+      specOverride = patch.builder_spec as TournamentSpec;
+      const i = ops.findIndex((o) => o.op === "set_spec");
+      if (i >= 0) ops.splice(i, 1);
+      ops.unshift({ op: "set_spec", spec: specOverride });
+    },
     async remove(table, ids) {
       if (!ids.length) return;
       if (table === "club_champs_matches") ops.push({ op: "delete_unplayed_matches", ids });
@@ -542,7 +554,7 @@ async function startMappedStage(db: Db, tid: string, spec: TournamentSpec, d: Sp
   const done = existing.filter((f) => f.stageId === src.id);
   if (!done.length || !done.every(isDecided)) throw new IntegrityError("prereq", `${src.name} is not finished.`);
   const used = new Set(m.units.flatMap((u) => u.slots.map((s) => `${s.pool}:${s.position}`)));
-  const positions = sourcePositions(d, src, matches, (spec as any).positionOrders?.[`${d.divisionId}/${src.id}`], used);
+  const positions = sourcePositions(d, src, matches, spec.positionOrders?.[`${d.divisionId}/${src.id}`], used);
   const fixtures = mappedFixtures(tid, d, st, positions);
   const known = new Set(d.entrants.map((e) => e.id));
   const units = [...new Set(fixtures.flatMap((f) => [f.a!, f.b!]))].filter((u) => !known.has(u)).map((id) => ({ id, rank: null }));

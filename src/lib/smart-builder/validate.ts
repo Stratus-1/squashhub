@@ -1,4 +1,5 @@
 import { engineBlockers } from "./engine-support";
+import { definedOnly, deferredStages } from "./deferred";
 import { tieIssues } from "./ties";
 import { scoringIssues } from "./scoring";
 import { standingsIssues } from "./standings";
@@ -72,8 +73,14 @@ function stageLabel(division: Division, section: Section, stage: Stage, def: Tou
   return parts.join(" · ");
 }
 
-export function validateDefinition(def: TournamentDefinition): ValidationResult {
-  const issues: Issue[] = [];
+export function validateDefinition(input: TournamentDefinition): ValidationResult {
+  // Stages the owner deliberately left for later are planning targets, not incomplete work:
+  // they are reported as info and take no part in any check (see ./deferred).
+  const def = definedOnly(input);
+  const issues: Issue[] = deferredStages(input).map((d) => ({
+    level: "info" as const, code: "define_later", stageId: d.stageId,
+    message: `${d.divisionName} · ${d.stageName}: to be defined later${d.plannedDate ? ` (planned for ${d.plannedDate})` : ""}.`,
+  }));
   const facts: string[] = [];
   const flows: Record<string, StageFlow> = {};
   const byId = new Map<string, { division: Division; section: Section; stage: Stage }>();

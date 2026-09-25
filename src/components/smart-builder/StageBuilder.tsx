@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
 import {
-  FORMAT_LABEL, PAIRING_LABEL, addStage, copyPreviousStage, diamondTemplate, shapeChange, moveStage, relink, removeStage, setDiscipline, setFormat, stageSummary, transitionText,
+  FORMAT_LABEL, addStage, copyPreviousStage, diamondTemplate, shapeChange, moveStage, relink, removeStage, setDiscipline, setFormat, stageSummary, transitionText,
   type BuilderFormat,
 } from "@/lib/smart-builder/stage-builder";
 import { cn } from "@/lib/utils";

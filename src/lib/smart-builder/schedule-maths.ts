@@ -192,7 +192,7 @@ export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
       const where = `${def.divisions.length > 1 ? `${div.name} · ` : ""}${st.name}`;
       const own = { start: d10(s.startDate), end: d10(s.endDate) };
       const sw = { start: own.start ?? tw.start, end: own.end ?? tw.end };
-      const need = requiredRounds(st);
+      const need = requiredRounds(st, def);
       const before = out.length;
       const push = (i: Omit<ScheduleIssue, "divisionId" | "stageId">) => out.push({ ...i, divisionId: div.id, stageId: st.id });
       const dates = (s.roundDates ?? []).map(d10);

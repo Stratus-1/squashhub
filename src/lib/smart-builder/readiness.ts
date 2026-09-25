@@ -7,8 +7,7 @@ import { allStages, effectiveSchedule, isBellsDefinition, type TournamentDefinit
 import type { ValidationResult } from "./validate";
 import type { ExistingMapping } from "./to-existing";
 import { AUDIENCE_OPTIONS, SEEDING_LABELS, coverageSentence, isAudienceValid, recommendSeeding, type EventScope } from "./scope";
-import { definitionDateIssues } from "./dates";
-import { scheduleMathsIssues } from "./schedule-maths";
+import { issueField, scheduleMaths } from "./schedule-maths";
 import { SCOPE_LABEL, eventVenues, selectedCourtPool, venuesOutsideSet, venuesValid } from "./venues";
 import { isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
 
@@ -118,6 +117,12 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     stageId: e0?.stageId,
     state: errs.length ? "missing" : "complete",
     detail: e0 ? `${e0.message}${e0.fix ? ` ${e0.fix}` : ""}` : "Counts, progression and draw sizes add up" });
+  const smx = scheduleMaths(def), sm0 = smx.issues[0];
+  design.push({ id: "schedule_maths", label: "Schedule maths", tab: sm0 ? (sm0.stageId ? "schedule" : "design") : "schedule",
+    field: sm0 ? issueField(sm0) : undefined, stageId: sm0?.stageId || undefined,
+    state: sm0 ? "missing" : "complete",
+    detail: sm0 ? `${sm0.message}${smx.issues.length > 1 ? ` (+${smx.issues.length - 1} more)` : ""}` : `Valid — rounds, stage order and dependencies fit the dates. ${smx.capacityNote}.`,
+    ask: sm0?.message });
   const sized = stages.filter(({ stage }) => stage.groupSize == null && !stage.dynamic && stage.kind !== "pair_from_positions" && stage.kind !== "split");
   if (stages.length) design.push({ id: "sizes", label: "Stage sizes", tab: "design", field: "canvas",
     state: sized.length ? "missing" : "complete",
@@ -161,16 +166,9 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
   schedule.push({ id: "dates", label: "Tournament dates", tab: "design", field: "defaults.startDate",
     state: sd.startDate && sd.endDate ? "complete" : "missing",
     detail: sd.startDate ? `${sd.startDate.slice(0, 10)} → ${sd.endDate?.slice(0, 10) ?? "?"}` : "Not set", ask: "What are the tournament's first and last days?" });
-  const dateErrs = definitionDateIssues(def);
-  if (dateErrs.length) schedule.push({ id: "date_hierarchy", label: "Dates fit inside each other", tab: dateErrs[0].stageId ? "schedule" : "design", field: dateErrs[0].stageId ? undefined : "defaults.startDate",
-    state: "missing", detail: dateErrs[0].message, ask: dateErrs[0].message });
-  const sm = scheduleMathsIssues(def);
-  schedule.push({ id: "schedule_maths", label: "Schedule maths", tab: "schedule",
-    field: sm[0]?.stageId ? `stage.${sm[0].stageId}${sm[0].round != null ? `.round${sm[0].round}` : ""}` : "defaults.startDate",
-    stageId: sm[0]?.stageId || undefined,
-    state: sm.length ? "missing" : "complete",
-    detail: sm.length ? `${sm[0].message}${sm.length > 1 ? ` (+${sm.length - 1} more)` : ""}` : "Rounds, stage order and dependencies fit the dates",
-    ask: sm[0]?.message });
+  // Schedule card can never be COMPLETE while schedule maths fails (the check itself lives under Design).
+  if (smx.issues.length) schedule.push({ id: "schedule_maths_ref", label: "Schedule maths", tab: sm0!.stageId ? "schedule" : "design", field: issueField(sm0!), stageId: sm0!.stageId || undefined,
+    state: "missing", detail: "Dates are filled in but don't fit the structure — see Schedule maths under Design" });
   schedulableStages(def).forEach(({ stage, division }) => {
     const e = effectiveSchedule(def, stage), need = scheduleNeeds(stage.schedule.mode);
     const gaps: string[] = [];
@@ -230,7 +228,7 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     { key: "invitations", title: "Invitations & messages", items: inv, state: worst(inv) },
     { key: "support", title: "Structure support", items: support, state: worst(support) },
   ];
-  const missing = sections.flatMap((s) => s.items.filter((i) => i.state === "missing"));
+  const missing = sections.flatMap((s) => s.items.filter((i) => i.state === "missing" && i.id !== "schedule_maths_ref"));
   return { sections, missing, nextMissing: missing.find((m) => m.ask) ?? missing[0] ?? null, executability: mapping.executability };
 }
 

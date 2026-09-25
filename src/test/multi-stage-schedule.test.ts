@@ -3,7 +3,9 @@ import { atomically, generateStructuredTournament, specFromDefinition, startNext
 import { serializeSpec } from "@/lib/tournaments/engine-service";
 import { DefinitionSchema } from "@/lib/smart-builder/definition";
 import { mapToExistingTournament } from "@/lib/smart-builder/to-existing";
-import { requiredRounds, roundNames, scheduleMathsIssues } from "@/lib/smart-builder/schedule-maths";
+import { issueField, requiredRounds, roundNames, scheduleMaths, scheduleMathsIssues } from "@/lib/smart-builder/schedule-maths";
+import { validateDefinition } from "@/lib/smart-builder/validate";
+import { assessReadiness } from "@/lib/smart-builder/readiness";
 
 function fakeDb() {
   const t: Record<string, any[]> = {};
@@ -104,7 +106,7 @@ describe("schedule maths", () => {
   it("6: 5 RR rounds + 4 dates fails with a clear message", () => {
     const issues = scheduleMathsIssues(make({ s1: WEEKLY.slice(0, 4) }));
     expect(issues[0].code).toBe("rounds_short");
-    expect(issues[0].message).toContain("requires 5 rounds but only 4 valid round dates are available");
+    expect(issues[0].message).toContain("requires 5 rounds but only 4 valid round dates are configured");
     expect(issues[0].stageId).toBe("A1");
   });
   it("7: Stage 2 opening before Stage 1 resolves fails", () => {
@@ -147,5 +149,43 @@ describe("schedule maths", () => {
     // selectedCourtPool may use a different shape; only assert when a pool is detected.
     const cap = scheduleMathsIssues(d).filter((x) => x.code === "capacity");
     expect(cap.length === 0 || /selected courts fit only/.test(cap[0].message)).toBe(true);
+  });
+
+  it("stage window outside the tournament window fails and points at the stage window", () => {
+    const d = make();
+    d.divisions[0].sections[0].stages[1].schedule.startDate = "2026-12-20";
+    const i = scheduleMathsIssues(d).find((x) => x.stageId === "A2" && /stage window/.test(x.message))!;
+    expect(i).toBeTruthy();
+    expect(issueField({ ...i, code: "window" })).toBe("stage.A2.window");
+  });
+  it("stage-specific window must contain its rounds", () => {
+    const d = make();
+    Object.assign(d.divisions[0].sections[0].stages[0].schedule, { startDate: "2026-10-01", endDate: "2026-10-22" });
+    const i = scheduleMathsIssues(d).filter((x) => x.stageId === "A1");
+    expect(i.map((x) => x.code)).toEqual(expect.arrayContaining(["round_outside", "rounds_short"]));
+    expect(issueField(i.find((x) => x.code === "round_outside")!)).toBe("stage.A1.round4");
+  });
+  it("The maths explains how each conclusion was reached", () => {
+    const m = scheduleMaths(make({ s1: WEEKLY.slice(0, 4) }));
+    const a1 = m.facts.find((f) => f.where === "A · Stage 1")!;
+    expect(a1.lines).toEqual(expect.arrayContaining(["Required rounds: 5", "Configured valid dates: 4"]));
+    expect(a1.ok).toBe(false);
+    const late = scheduleMaths(make({ s2: ["2026-10-22", ...S2.slice(1)] })).facts.find((f) => f.where === "A · Stage 2")!;
+    expect(late.lines).toEqual(expect.arrayContaining(["Depends on: A · Stage 1", "Stage 1 latest required completion: 2026-10-29", "Stage 2 configured start: 2026-10-22"]));
+    expect(late.result).toBe("Starts too early");
+    expect(m.capacity).toBe("not_checked");
+  });
+  it("Review can't show Schedule COMPLETE just because every date box is filled", () => {
+    // Every stage has a mode and dates, but Stage 1 is one round short.
+    const d = make({ s1: WEEKLY.slice(0, 4) });
+    const r = assessReadiness(d, validateDefinition(d), mapToExistingTournament(d));
+    expect(r.sections.find((s) => s.title === "Schedule")!.state).toBe("missing");
+    const item = r.sections.find((s) => s.title === "Design")!.items.find((i) => i.id === "schedule_maths")!;
+    expect(item.state).toBe("missing");
+    expect(item.field).toBe("stage.A1.round4");
+    expect(item.stageId).toBe("A1");
+    const ok = make();
+    const r2 = assessReadiness(ok, validateDefinition(ok), mapToExistingTournament(ok));
+    expect(r2.sections.find((s) => s.title === "Design")!.items.find((i) => i.id === "schedule_maths")!.state).toBe("complete");
   });
 });

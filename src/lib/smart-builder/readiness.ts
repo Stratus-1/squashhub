@@ -3,6 +3,7 @@
  * structured draft. The AI, the tabs and the Review page all read this; the
  * AI is told the next missing item so it asks for it itself.
  */
+import { stageCourts, stageMatch } from "./court-allocation";
 import { scoringIssues, stageScoringLine } from "./scoring";
 import { allStages, effectiveSchedule, isBellsDefinition, type TournamentDefinition } from "./definition";
 import type { ValidationResult } from "./validate";
@@ -179,8 +180,8 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     if (stage.schedule.mode === "unset") gaps.push("how it's scheduled");
     if (need.dates && !e.startDate.value && !e.endDate.value && !(stage.schedule.roundDates?.length)) gaps.push("dates");
     if (need.venue && !(e.venueNames.value?.length) && !eventVenues(def).clubIds.length) gaps.push("venue");
-    if (need.courts && !e.courtsPerVenue.value && !selectedCourtPool(def).length) gaps.push("courts");
-    if (need.matchMinutes && !e.matchMinutes.value) gaps.push("match minutes");
+    if (need.courts && !stageCourts(def, division, stage).count) gaps.push("courts");
+    if (need.matchMinutes && !stageMatch(def, stage).text) gaps.push("match minutes (or a Bells time on the stage)");
     schedule.push({ id: `stage_${stage.id}`, label: `${def.divisions.length > 1 ? `${division.name} · ` : ""}${stage.name}`, tab: "schedule", field: `stage.${stage.id}`,
       state: gaps.length ? "missing" : "complete", detail: gaps.length ? `Needs ${gaps.join(", ")}` : "Scheduled",
       ask: gaps.length ? `For ${stage.name}: ${gaps.includes("how it's scheduled") ? "is it on fixed dates, a play-by date, players arranging their own matches, or admin-scheduled?" : `what ${gaps.join(", ")} should it use?`}` : undefined });

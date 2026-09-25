@@ -198,6 +198,8 @@ const DivisionSchema = z.object({
   /** Editable pool names by stable pool index (0 = A). Display only. */
   poolNames: z.array(z.string()).optional(),
   /** Confirmed pool pairings used for home courts and crossover play-offs, by pool index. */
+  /** Courts reserved for this division, as "clubId:courtId" keys from the tournament's selected courts. Empty = all. */
+  courtKeys: z.array(z.string()).optional(),
   poolGroups: z.array(z.object({ pools: z.tuple([z.number().int().min(0), z.number().int().min(0)]), court: z.string().nullable().optional() })).optional(),
 });
 export type Division = z.infer<typeof DivisionSchema>;

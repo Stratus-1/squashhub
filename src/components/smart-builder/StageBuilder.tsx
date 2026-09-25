@@ -99,7 +99,8 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
             ))}
             <div className="pl-3 text-white/50">↓</div>
             <div className="px-2 text-white/80">Final standings · {stages.length > 1 && def.finalStandings === "cumulative" ? "points added up across stages" : "last stage decides"}</div>
-            <Button size="sm" variant="outline" className={cn(btn, "mt-1")} onClick={() => { let nid = ""; editDiv((x) => { nid = addStage(x); }); setTimeout(() => setSelId(nid), 0); }}><Plus className="h-3 w-3 mr-1" />Add stage{def.divisions.length > 1 ? ` to ${d.name}` : ""}</Button>
+            {stages[stages.length - 1]?.kind === "knockout" && <div className="text-[11px] text-white/50">A knockout is always the last stage for now — change the last stage's format to add another after it.</div>}
+            <Button size="sm" variant="outline" className={cn(btn, "mt-1")} disabled={stages[stages.length - 1]?.kind === "knockout"} onClick={() => { let nid = ""; editDiv((x) => { nid = addStage(x); }); setTimeout(() => setSelId(nid), 0); }}><Plus className="h-3 w-3 mr-1" />Add stage{def.divisions.length > 1 ? ` to ${d.name}` : ""}</Button>
           </div>
         </div>
 

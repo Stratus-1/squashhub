@@ -1,0 +1,2 @@
+ALTER TABLE public.club_devices ADD COLUMN IF NOT EXISTS button_near_door_only boolean NOT NULL DEFAULT false;
+ALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS door_button_near_only boolean NOT NULL DEFAULT false;

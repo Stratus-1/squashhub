@@ -154,8 +154,9 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     state: def.divisions.length ? "complete" : "missing",
     detail: def.divisions.map((d) => `${d.name}: ${d.eligibility.replace(/_/g, " ")}, ${d.entry === "pairs" ? "pairs" : "individual"}`).join("; ") || "No divisions" });
   const usesSeeding = stages.some(({ stage }) => stage.kind === "knockout" || (stage.seedingBands?.length ?? 0) > 0);
-  if (usesSeeding) players.push({ id: "seeding", label: "Seeding source", tab: "players", field: "seedingSource",
-    state: p.seedingSource ? "complete" : "missing", detail: p.seedingSource ? p.seedingSource : "Not decided",
+  if (usesSeeding) players.push({ id: "seeding", label: "Seeding source", tab: "design", field: "event.seedingSource",
+    state: (ev.seedingSource || p.seedingSource) ? "complete" : "missing",
+    detail: ev.seedingSource ? SEEDING_LABELS[ev.seedingSource] : p.seedingSource ? `${p.seedingSource} (older setting)` : "Not decided — set Seeding data",
     ask: "How should players be seeded — by ranking, ladder, manually, or not at all?" });
 
   // ── Schedule ──

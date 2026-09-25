@@ -1,3 +1,4 @@
+import { SEEDING_LABELS } from "@/lib/smart-builder/scope";
 /**
  * Smart Builder workspace tabs that edit the ONE structured draft:
  * Players settings, Schedule (summary-first), Invitations & messages, and the
@@ -93,11 +94,8 @@ export function PlayersTab({ def, validation, edit }: { def: TournamentDefinitio
             <option value="clubs">Other clubs</option><option value="individuals">Specific people</option>
           </select>
         </Field>
-        <Field label="Seeding" tag={p.seedingSource ? "Required" : "Optional"} field="seedingSource">
-          <select className={cn(sel, "w-full")} value={p.seedingSource ?? ""} onChange={(e) => set({ seedingSource: (e.target.value || null) as any })}>
-            <option value="">Not decided</option><option value="ranking">Ranking</option><option value="ladder">Club ladder</option>
-            <option value="manual">Organiser seeds manually</option><option value="none">No seeding</option>
-          </select>
+        <Field label="Seeding source" tag="Optional" field="event.seedingSource">
+          <div className="rounded border border-white/10 px-2 py-1.5 text-xs text-white/70">{(def as any).event?.seedingSource ? SEEDING_LABELS[(def as any).event.seedingSource as keyof typeof SEEDING_LABELS] : (p.seedingSource ? `${p.seedingSource} (older setting)` : "Set under Seeding data in the Design tab")}</div>
         </Field>
         <Field label="Division allocation" tag="Optional" field="allocation">
           <select className={cn(sel, "w-full")} value={p.allocation ?? ""} onChange={(e) => set({ allocation: (e.target.value || null) as any })}>

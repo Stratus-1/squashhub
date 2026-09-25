@@ -1,3 +1,4 @@
+import { SEEDING_LABELS } from "@/lib/smart-builder/scope";
 import { StageWindowControl } from "./DateControls";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
@@ -63,10 +64,8 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
         <Q label="Tournament name"><Input className={f} value={def.name} onChange={(e) => edit((x) => { x.name = e.target.value; })} /></Q>
-        <Q label="Seeding">
-          <select className={sel} value={def.players?.seedingSource ?? ""} onChange={(e) => edit((x) => { x.players = { ...x.players, seedingSource: (e.target.value || null) as any }; })}>
-            <option value="">Not decided</option><option value="ranking">Ranking</option><option value="ladder">Club ladder</option><option value="manual">I'll seed manually</option><option value="none">No seeding</option>
-          </select>
+        <Q label="Seeding source">
+          <div className="rounded border border-white/10 px-2 py-1.5 text-white/70" data-field="event.seedingSource">{def.event?.seedingSource ? SEEDING_LABELS[def.event.seedingSource] : (def.players?.seedingSource ? `${def.players.seedingSource} (older setting)` : "Set under Seeding data above")}<span className="block text-[10px] text-white/40">Set once for the whole tournament</span></div>
         </Q>
         {stages.length > 1 && (
           <Q label="Final result">

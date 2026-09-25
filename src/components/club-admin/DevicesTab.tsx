@@ -112,6 +112,7 @@ type DeviceForm = {
   geofence_radius: string;
   geofence_auto_radius: string;
   geofence_auto: boolean;
+  auto_seconds: string;
 };
 
 const emptyForm = (category: DeviceCategory): DeviceForm => ({
@@ -126,7 +127,7 @@ const emptyForm = (category: DeviceCategory): DeviceForm => ({
   provider: "shelly",
   shelly_device_id: "",
   shelly_channel: "0",
-  pulse_ms: "3000",
+  pulse_ms: "3",
   ble_mac: "",
   auto_off_minutes: "",
   schedule_enabled: false,
@@ -142,9 +143,10 @@ const emptyForm = (category: DeviceCategory): DeviceForm => ({
   geofence_enabled: false,
   geofence_lat: "",
   geofence_lng: "",
-  geofence_radius: "150",
-  geofence_auto_radius: "5",
+  geofence_radius: "50",
+  geofence_auto_radius: "50",
   geofence_auto: false,
+  auto_seconds: "12",
 });
 
 const toForm = (d: IoTDevice): DeviceForm => ({
@@ -161,7 +163,7 @@ const toForm = (d: IoTDevice): DeviceForm => ({
   provider: d.provider,
   shelly_device_id: d.shelly_device_id || "",
   shelly_channel: String(d.shelly_channel ?? 0),
-  pulse_ms: String(d.pulse_ms ?? 3000),
+  pulse_ms: String((d.pulse_ms ?? 3000) / 1000),
   ble_mac: d.ble_mac || "",
   auto_off_minutes: d.auto_off_minutes == null ? "" : String(d.auto_off_minutes),
   schedule_enabled: !!d.schedule_enabled,
@@ -174,12 +176,13 @@ const toForm = (d: IoTDevice): DeviceForm => ({
   auth_key: d.auth_key || "",
   show_on_dashboard: d.show_on_dashboard !== false,
   dashboard_role_ids: d.dashboard_role_ids || [],
-  geofence_enabled: false,
-  geofence_lat: "",
-  geofence_lng: "",
-  geofence_radius: "150",
-  geofence_auto_radius: "5",
-  geofence_auto: false,
+  geofence_enabled: !!d.geofence_enabled,
+  geofence_lat: d.geofence_latitude == null ? "" : String(d.geofence_latitude),
+  geofence_lng: d.geofence_longitude == null ? "" : String(d.geofence_longitude),
+  geofence_radius: String(d.geofence_radius_m ?? 50),
+  geofence_auto_radius: String(d.geofence_radius_m ?? 50),
+  geofence_auto: !!d.auto_unlock_enabled,
+  auto_seconds: String(d.auto_unlock_seconds ?? 12),
 });
 
 const ADD_OPTIONS: Array<{ category: DeviceCategory; title: string; description: string }> = [
@@ -255,7 +258,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
         .select(
-          "id, door_show_on_dashboard, door_dashboard_role_ids, door_geofence_enabled, door_latitude, door_longitude, door_geofence_radius_m, door_auto_unlock_radius_m, door_auto_unlock_enabled",
+          "id, door_show_on_dashboard, door_dashboard_role_ids, door_geofence_enabled, door_latitude, door_longitude, door_geofence_radius_m, door_auto_unlock_radius_m, door_auto_unlock_enabled, door_auto_unlock_seconds",
         )
         .eq("id", clubId)
         .maybeSingle();
@@ -394,6 +397,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       next.geofence_radius = String(clubDoor.door_geofence_radius_m ?? 150);
       next.geofence_auto_radius = String(clubDoor.door_auto_unlock_radius_m ?? 5);
       next.geofence_auto = !!clubDoor.door_auto_unlock_enabled;
+      next.auto_seconds = String(clubDoor.door_auto_unlock_seconds ?? 12);
     }
     setForm(next);
   };
@@ -412,10 +416,31 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       toast.error("Enter the club's Shelly Cloud auth key.");
       return;
     }
-    const pulseMs = Number(form.pulse_ms);
-    if (form.control_mode === "pulse" && (!Number.isFinite(pulseMs) || pulseMs < 200)) {
-      toast.error("Pulse length must be at least 200 ms.");
+    const pulseMs = Math.round(Number(form.pulse_ms) * 1000);
+    if (form.control_mode === "pulse" && (!Number.isFinite(pulseMs) || pulseMs < 200 || pulseMs > 120000)) {
+      toast.error(
+        form.category === "access"
+          ? "Manual unlock duration must be between 0.2 and 120 seconds."
+          : "Pulse length must be between 0.2 and 120 seconds.",
+      );
       return;
+    }
+    const geoRadius = Math.round(Number(form.geofence_radius));
+    const autoSeconds = Math.round(Number(form.auto_seconds));
+    const hasGeofenceSettings = form.source === "main-access" || (form.source === "registry" && form.category === "access");
+    if (hasGeofenceSettings && form.geofence_enabled) {
+      if (!Number.isFinite(parseFloat(form.geofence_lat)) || !Number.isFinite(parseFloat(form.geofence_lng))) {
+        toast.error("Set the door's location (latitude and longitude) for the geofence.");
+        return;
+      }
+      if (!Number.isFinite(geoRadius) || geoRadius < 5 || geoRadius > 5000) {
+        toast.error("Geofence radius must be between 5 and 5000 metres.");
+        return;
+      }
+      if (form.geofence_auto && (!Number.isFinite(autoSeconds) || autoSeconds < 1 || autoSeconds > 120)) {
+        toast.error("Auto-unlock duration must be between 1 and 120 seconds.");
+        return;
+      }
     }
     const autoOff = form.auto_off_minutes.trim() === "" ? null : Number(form.auto_off_minutes);
     if (autoOff != null && (!Number.isFinite(autoOff) || autoOff < 1 || autoOff > 1440)) {
@@ -480,9 +505,10 @@ export function DevicesTab({ clubId }: { clubId: string }) {
             door_geofence_enabled: form.geofence_enabled,
             door_latitude: Number.isFinite(lat) ? lat : null,
             door_longitude: Number.isFinite(lng) ? lng : null,
-            door_geofence_radius_m: Number(form.geofence_radius) || 150,
-            door_auto_unlock_radius_m: Number(form.geofence_auto_radius) || 5,
-            door_auto_unlock_enabled: form.geofence_auto,
+            door_geofence_radius_m: geoRadius || 150,
+            door_auto_unlock_radius_m: geoRadius || 150,
+            door_auto_unlock_enabled: form.geofence_enabled && form.geofence_auto,
+            door_auto_unlock_seconds: Number.isFinite(autoSeconds) && autoSeconds >= 1 ? autoSeconds : 12,
           })
           .eq("id", clubId);
         if (clubErr) throw clubErr;
@@ -534,6 +560,16 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         pulse_ms: Number.isFinite(pulseMs) ? pulseMs : 3000,
         ble_mac: form.ble_mac.trim() || null,
         auto_off_minutes: form.control_mode === "pulse" ? null : autoOff,
+        ...(hasGeofenceSettings
+          ? {
+              geofence_enabled: form.geofence_enabled,
+              geofence_latitude: Number.isFinite(parseFloat(form.geofence_lat)) ? parseFloat(form.geofence_lat) : null,
+              geofence_longitude: Number.isFinite(parseFloat(form.geofence_lng)) ? parseFloat(form.geofence_lng) : null,
+              geofence_radius_m: Number.isFinite(geoRadius) && geoRadius >= 5 ? geoRadius : 50,
+              auto_unlock_enabled: form.geofence_enabled && form.geofence_auto,
+              auto_unlock_seconds: Number.isFinite(autoSeconds) && autoSeconds >= 1 ? autoSeconds : 12,
+            }
+          : {}),
         schedule_enabled: form.source === "registry" && form.category === "gadgets" && form.control_mode === "toggle"
           ? form.schedule_enabled
           : false,
@@ -953,16 +989,25 @@ export function DevicesTab({ clubId }: { clubId: string }) {
 
                 {form.control_mode === "pulse" ? (
                   <div className="space-y-1.5">
-                    <Label>Pulse length (ms)</Label>
+                    <Label>
+                      {form.category === "access" ? "Manual unlock duration (seconds)" : "Pulse length (seconds)"}
+                    </Label>
                     <Input
                       type="number"
-                      inputMode="numeric"
-                      min={200}
-                      max={3600000}
-                      step={100}
+                      inputMode="decimal"
+                      min={0.2}
+                      max={120}
+                      step={0.5}
                       value={form.pulse_ms}
                       onChange={(e) => set("pulse_ms", e.target.value)}
                     />
+                    {form.category === "access" && (
+                      <p className="text-[11px] text-muted-foreground">
+                        How long the lock stays released after a member taps Open Door (the Shelly
+                        relay's on / auto-off time). Around 3 seconds suits most doors. The door itself
+                        can stay physically open after the lock re-engages.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-1.5">
@@ -1224,14 +1269,14 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                   </div>
                 )}
 
-                {form.source === "main-access" && (
+                {(form.source === "main-access" || (form.source === "registry" && form.category === "access")) && (
                   <div className="space-y-3 rounded-xl border bg-muted/20 p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <Label className="text-sm">Only near the door (GPS)</Label>
+                        <Label className="text-sm">GPS geofence</Label>
                         <p className="text-[11px] text-muted-foreground">
-                          Members are only offered the door when their phone is at the club.
-                          Club admins can still open it from anywhere.
+                          A circle around this door, used for automatic unlocking. The Open Door
+                          button stays available to members allowed to use it, wherever they are.
                         </p>
                       </div>
                       <Switch
@@ -1259,25 +1304,19 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                               onChange={(e) => set("geofence_lng", e.target.value)}
                             />
                           </div>
-                          <div className="space-y-1.5">
-                            <Label>Button radius (m)</Label>
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <Label>Geofence radius (metres)</Label>
                             <Input
                               type="number"
-                              min={25}
-                              max={2000}
+                              min={5}
+                              max={5000}
                               value={form.geofence_radius}
                               onChange={(e) => set("geofence_radius", e.target.value)}
                             />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label>Auto-unlock radius (m)</Label>
-                            <Input
-                              type="number"
-                              min={8}
-                              max={500}
-                              value={form.geofence_auto_radius}
-                              onChange={(e) => set("geofence_auto_radius", e.target.value)}
-                            />
+                            <p className="text-[11px] text-muted-foreground">
+                              Phone GPS is usually accurate to 5–20 m outdoors and worse indoors, so
+                              30–75 m is a practical range.
+                            </p>
                           </div>
                         </div>
                         <Button
@@ -1305,9 +1344,11 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                         </Button>
                         <div className="flex items-center justify-between gap-3 rounded-md border p-2.5">
                           <div className="min-w-0">
-                            <Label className="text-sm">Open automatically at the door</Label>
+                            <Label className="text-sm">Auto-unlock on entering the geofence</Label>
                             <p className="text-[11px] text-muted-foreground">
-                              Fires once per visit inside the auto-unlock radius.
+                              Opens once when an authorised member arrives inside the circle. It won't
+                              open again while they stay inside — only after they have clearly left and
+                              come back.
                             </p>
                           </div>
                           <Switch
@@ -1315,6 +1356,25 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             onCheckedChange={(v) => set("geofence_auto", v)}
                           />
                         </div>
+                        {form.geofence_auto && (
+                          <div className="space-y-1.5">
+                            <Label>Geofence auto-unlock duration (seconds)</Label>
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={120}
+                              value={form.auto_seconds}
+                              onChange={(e) => set("auto_seconds", e.target.value)}
+                            />
+                            <p className="text-[11px] text-muted-foreground">
+                              How long the lock stays released after an automatic unlock. Set this
+                              longer than the manual duration (about 12 seconds) because GPS can fire
+                              before the member reaches the door. The door can stay physically open
+                              after the lock re-engages.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

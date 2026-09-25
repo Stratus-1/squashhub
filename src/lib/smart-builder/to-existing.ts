@@ -28,6 +28,8 @@ export interface ExistingMapping {
   /** Stages that are kept in the draft but not created (executability "partial"). */
   deferredStages: { division: string; stage: string; reason: string }[];
   executability: Executability;
+  /** Stages deliberately left "Define later" — intentional, never a blocker. */
+  laterStages: { division: string; stage: string; plannedDate: string | null }[];
   /** True when the design runs on the structured multi-stage engine. */
   structured?: boolean;
   /** WhatsApp group link to store on the tournament's group record after insert. */

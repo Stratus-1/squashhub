@@ -331,6 +331,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         updated_at: "",
         source: "main-access",
         configured: !!doorId,
+        output_inverted: secrets?.shelly_door_inverted === true,
         server_url: secrets?.shelly_server_url || null,
         auth_key: secrets?.shelly_auth_key || null,
     });
@@ -533,6 +534,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
           shelly_door_device_id: form.shelly_device_id.trim(),
           shelly_door_channel: Number(form.shelly_channel) || 0,
           shelly_door_pulse_ms: Number.isFinite(pulseMs) ? pulseMs : 3000,
+          shelly_door_inverted: form.output_inverted,
           shelly_door_ble_mac: form.ble_mac.trim().toUpperCase() || undefined,
           shelly_server_url: form.server_url.trim() || undefined,
         });
@@ -569,6 +571,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         shelly_device_id: form.shelly_device_id.trim() || null,
         shelly_channel: Number(form.shelly_channel) || 0,
         pulse_ms: Number.isFinite(pulseMs) ? pulseMs : 3000,
+        output_inverted: form.control_mode === "pulse" ? form.output_inverted : false,
         ble_mac: form.ble_mac.trim() || null,
         auto_off_minutes: form.control_mode === "pulse" ? null : autoOff,
         ...(hasGeofenceSettings

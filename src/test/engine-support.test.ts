@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { DefinitionSchema } from "@/lib/smart-builder/definition";
-import { presetDefinition } from "@/lib/smart-builder/quick-path";
-import { diamondTemplate } from "@/lib/smart-builder/stage-builder";
 import { engineVerdicts } from "@/lib/smart-builder/engine-support";
 import { validateDefinition } from "@/lib/smart-builder/validate";
 import { mapToExistingTournament } from "@/lib/smart-builder/to-existing";
@@ -18,27 +16,20 @@ const crossPoolSingles = () => DefinitionSchema.parse({
 });
 
 describe("engine capability is a design-time hard constraint", () => {
-  it("Diamond pool-v-pool singles→doubles is flagged at design time, not only at Review", () => {
-    const def = presetDefinition("custom"); diamondTemplate(def);
-    const v = validateDefinition(def);
+  it("pool-v-pool stages with a complete mapping are engine-supported; an incomplete one blocks at design time", () => {
+    const def = crossPoolSingles();
+    expect(engineVerdicts(def)[0].state).toBe("supported");
+    const spec = specFromDefinition(def);
+    expect(spec.divisions[0].stages[0].kind).toBe("mapped");
+    const broken = crossPoolSingles();
+    broken.divisions[0].sections[0].stages[0].tieFormat!.pairing = null;
+    const v = validateDefinition(broken);
     expect(v.issues.some((i) => i.code === "engine_unsupported" && i.level === "error")).toBe(true);
-    const r = assessReadiness(def, v, mapToExistingTournament(def));
+    const r = assessReadiness(broken, v, mapToExistingTournament(broken));
     const checks = r.sections.find((s) => s.title === "Ready to create")!;
     expect(checks.items.map((i) => i.label)).toEqual(["Structure valid", "Engine supported", "Schedule feasible", "Scoring complete"]);
     expect(checks.items.find((i) => i.id === "check_engine")!.state).toBe("missing");
-    expect(() => specFromDefinition(def)).toThrow(/pool-v-pool/);
-  });
-
-  it("an exactly-representable pool-v-pool singles stage is translated to banded position groups", () => {
-    const def = crossPoolSingles();
-    expect(engineVerdicts(def)[0].state).toBe("translated");
-    expect(validateDefinition(def).issues.some((i) => i.code === "engine_unsupported")).toBe(false);
-    const spec = specFromDefinition(def);
-    const st = spec.divisions[0].stages[0];
-    expect(st.kind).toBe("pools");
-    expect(st.pools).toBe(3); // one group per pool position
-    expect(st.poolSize).toBe(4); // one player from each pool
-    expect(spec.divisions[0].seeding.method).toBe("banded");
+    expect(() => specFromDefinition(broken)).toThrow();
   });
 
   it("Bells time cap is scoring only — duration comes from match minutes", () => {

@@ -10,8 +10,8 @@ import { validateDefinition } from "@/lib/smart-builder/validate";
 /** Build the Diamond League weekly structure using ONLY the builder's own control functions. */
 function buildFromControls(): TournamentDefinition {
   const def = emptyDefinition();
+  def.divisions = [{ id: "div1", name: "Division 1", eligibility: "open", entry: "individual", sections: [] } as any];
   const d = def.divisions[0];
-  d.sections = [];
   const s1id = addStage(d);
   const s1 = d.sections[0].stages[0];
   s1.groupSize = 6; s1.input = { entrants: 24 };

@@ -2088,3 +2088,9 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Added engine stage kind `mapped` (DB `tournament_stages_kind_check` widened) driven by `StageMapping`: qualification source (entry-seeded pools or an earlier pools stage's finishing positions), units (1 slot singles / 2 slots doubles, any pools), matchups per round. Seed-pool mapped stages are generated with the tournament; standings-sourced ones start via startNextStructuredStage and block on tied positions.
 - Builder: "Who plays whom" editor per pool-v-pool stage ("R1: A1+B1 v A3+B3"); Review lists source, pairs, every matchup per round and the next stage.
 - Limitation: a knockout taking qualifiers from a pool-v-pool stage is blocked (pool totals across ties not computed yet).
+
+## 2026-09-25 — Beta tournaments: automatic stage progression + Define-later set-up
+- New `src/lib/tournaments/progression.ts` (lifecycle, autoProgress, setupDeferredStage, decidePositionOrder); `StageProgressPanel` on the run page.
+- `sourcePositions` ranks finishing positions per source pool (incl. entry-seeded pool-v-pool stages); level wins at a used position block unless the admin recorded an order.
+- `structured_commit` gained append-only `set_spec`; trigger `guard_structured_stage_round_once` prevents duplicate stage rounds.
+- Limitation: auto-progression runs when a tournament manager has the run page open (engine is client-side), not from a member phone result save alone.

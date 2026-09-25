@@ -8,6 +8,7 @@ import type { ValidationResult } from "./validate";
 import type { ExistingMapping } from "./to-existing";
 import { AUDIENCE_OPTIONS, SEEDING_LABELS, coverageSentence, isAudienceValid, recommendSeeding, type EventScope } from "./scope";
 import { definitionDateIssues } from "./dates";
+import { scheduleMathsIssues } from "./schedule-maths";
 import { SCOPE_LABEL, eventVenues, selectedCourtPool, venuesOutsideSet, venuesValid } from "./venues";
 import { isGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
 
@@ -163,6 +164,13 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
   const dateErrs = definitionDateIssues(def);
   if (dateErrs.length) schedule.push({ id: "date_hierarchy", label: "Dates fit inside each other", tab: dateErrs[0].stageId ? "schedule" : "design", field: dateErrs[0].stageId ? undefined : "defaults.startDate",
     state: "missing", detail: dateErrs[0].message, ask: dateErrs[0].message });
+  const sm = scheduleMathsIssues(def);
+  schedule.push({ id: "schedule_maths", label: "Schedule maths", tab: "schedule",
+    field: sm[0]?.stageId ? `stage.${sm[0].stageId}${sm[0].round != null ? `.round${sm[0].round}` : ""}` : "defaults.startDate",
+    stageId: sm[0]?.stageId || undefined,
+    state: sm.length ? "missing" : "complete",
+    detail: sm.length ? `${sm[0].message}${sm.length > 1 ? ` (+${sm.length - 1} more)` : ""}` : "Rounds, stage order and dependencies fit the dates",
+    ask: sm[0]?.message });
   schedulableStages(def).forEach(({ stage, division }) => {
     const e = effectiveSchedule(def, stage), need = scheduleNeeds(stage.schedule.mode);
     const gaps: string[] = [];
@@ -209,7 +217,7 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
 
   // ── Structure support ──
   const support: ReadinessItem[] = [];
-  if (mapping.executability === "ready") support.push({ id: "exec", label: "Engine support", tab: "review", state: "complete", detail: "Every stage can run on today's engine" });
+  if (mapping.executability === "ready") support.push({ id: "exec", label: "Engine support", tab: "review", state: "complete", detail: mapping.structured ? "Every stage is created now; later stages start when the stage before them finishes" : "Every stage can run on today's engine" });
   else if (mapping.executability === "partial") support.push({ id: "exec", label: "Engine support", tab: "design", field: "canvas", state: "warning",
     detail: `${mapping.deferredStages.length} later stage(s) can't be created yet and stay in the draft only` });
   else support.push({ id: "exec", label: "Engine support", tab: "design", field: "canvas", state: "missing", detail: mapping.unsupported[0] ?? "Structure can't be created" });

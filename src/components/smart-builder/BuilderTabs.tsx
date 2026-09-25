@@ -6,7 +6,8 @@
  */
 import { atomically, persistStructure, specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { requiredRounds, roundNames, scheduleMathsIssues } from "@/lib/smart-builder/schedule-maths";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
@@ -223,6 +224,12 @@ export function ScheduleTab({ def, edit }: { def: TournamentDefinition; edit: Ed
   });
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [closedDivs, setClosedDivs] = useState<Set<string>>(new Set());
+  // "Go there" from Review opens the offending stage's schedule editor.
+  useEffect(() => {
+    const on = (e: Event) => { const id = (e as CustomEvent).detail?.stageId; if (id) setOpen((s) => new Set(s).add(id)); };
+    window.addEventListener("smart-builder:focus-stage", on);
+    return () => window.removeEventListener("smart-builder:focus-stage", on);
+  }, []);
   const toggle = (s: Set<string>, k: string) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; };
   const groups = def.divisions.map((div) => ({ div, rows: allStages(def).filter((r) => r.division.id === div.id && r.stage.kind !== "pair_from_positions" && r.stage.kind !== "split") })).filter((g) => g.rows.length);
   const allIds = groups.flatMap((g) => g.rows.map((r) => r.stage.id));
@@ -366,12 +373,36 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
         <span className="text-[11px] text-white/60">Stage window</span>
         <StageWindowControl def={def} stage={stage} onChange={(patch) => setS(stage.id, patch)} />
       </div>
-      {s.mode === "fixed" && (
-        <Field label="Round 1 date (fixed)" tag="Optional">
-          <Input type="date" className={f} value={datePart(s.roundDates?.[0])}
-            onChange={(ev) => setS(stage.id, { roundDates: ev.target.value ? [ev.target.value, ...(s.roundDates ?? []).slice(1)] : (s.roundDates ?? []).slice(1) })} />
-        </Field>
-      )}
+      {(s.mode === "fixed" || s.mode === "play_by") && (() => {
+        // One date per required round (fixed = round date; play-by = optional per-round play-by date).
+        const need = requiredRounds(stage);
+        const have = s.roundDates ?? [];
+        const count = Math.max(need ?? 0, have.length, s.mode === "fixed" ? 1 : 0);
+        const names = roundNames(stage, count);
+        const setRound = (i: number, v: string) => {
+          const next = [...have]; while (next.length < i) next.push("");
+          next[i] = v;
+          while (next.length && !next[next.length - 1]) next.pop();
+          setS(stage.id, { roundDates: next });
+        };
+        if (!count) return null;
+        return (
+          <div className="sm:col-span-2 lg:col-span-3 space-y-1">
+            <span className="flex flex-wrap items-center justify-between gap-x-2 text-[11px] text-white/60">
+              {s.mode === "fixed" ? "Round dates (fixed)" : "Round play-by dates (optional — the stage's last day is the final deadline)"}
+              <span className="text-[10px] text-white/50">{need != null ? `${need} round${need === 1 ? "" : "s"} needed` : "Round count known once the stage size is set"}</span>
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              {names.map((n, i) => (
+                <label key={i} data-field={`stage.${stage.id}.round${i}`} className="block min-w-0 space-y-0.5 rounded">
+                  <span className={cn("text-[10px]", s.mode === "fixed" && need != null && i < need && !have[i] ? "text-red-300" : "text-white/50")}>{n}</span>
+                  <Input type="date" className={f} value={datePart(have[i])} onChange={(ev) => setRound(i, ev.target.value)} />
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       <Field label="Day" tag={e.weekday.inherited && s.weekday == null ? "Inherited" : "Optional"}>
         <select className={cn(sel, "w-full")} value={s.weekday ?? ""} onChange={(ev) => setS(stage.id, { weekday: ev.target.value === "" ? null : Number(ev.target.value) })}>
           <option value="">{e.weekday.inherited ? `Default (${DAYS[e.weekday.value as number]})` : "Any day"}</option>{DAYS.map((x, i) => <option key={x} value={i}>Every {x}</option>)}
@@ -532,7 +563,11 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
 
   const create = async () => {
     setBusy(true);
+    let createdId: string | null = null;
     try {
+      // Validate structure + schedule maths BEFORE anything is written.
+      const sched = scheduleMathsIssues(def)[0];
+      if (sched) throw new Error(sched.message);
       const { data, error } = await fromExt("club_champs")
         .insert(sanitizeDraftPayload({ club_id: hostClubId, owner_org_id: ownerOrgId || undefined, status: "planning", ...mapping.champ }))
         .select("id").single();
@@ -540,14 +575,19 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
       // Structured architecture: persist the spec, then divisions/stages/pools, before any game exists.
       let structuredSpec: ReturnType<typeof specFromDefinition> | null = null;
       try { structuredSpec = specFromDefinition(def); } catch (e: any) {
+        // A multi-stage design must never silently fall back to half a tournament.
+        if (mapping.structured || def.divisions.some((d) => d.sections.some((s) => s.stages.length > 1))) throw e;
         toast.warning(`${e.message} This tournament uses the current engine instead.`);
       }
+      createdId = data.id;
       const { error: exErr } = await fromExt("tournaments").update({
         ...sanitizeExtrasPayload(mapping.extras),
         ...(structuredSpec ? { builder_architecture: "structured", builder_spec: structuredSpec, builder_spec_version: 1 } : {}),
       }).eq("id", data.id);
       if (exErr) console.warn("extras", exErr.message);
-      if (structuredSpec && !exErr) await atomically(supabaseDb, data.id, commitStructured, (db) => persistStructure(db, data.id, structuredSpec));
+      if (structuredSpec && exErr) throw exErr;
+      // Every division, every stage (later ones Pending), pools and transition rules — one transaction.
+      if (structuredSpec) await atomically(supabaseDb, data.id, commitStructured, (db) => persistStructure(db, data.id, structuredSpec));
       // Host venues + selected court IDs go into the existing authoritative venue table.
       const venueRows = venueRowsFromDefinition(def, hostClubId);
       if (venueRows.length) {
@@ -564,7 +604,12 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
       await fromExt("smart_tournament_drafts").update({ status: "created", created_tournament_id: data.id }).eq("id", draftId);
       onCreated(data.id);
     } catch (e: any) {
-      toast.error(`Create failed: ${e.message}`);
+      // No half-created tournament: remove the shell if structure didn't commit.
+      if (createdId) {
+        const { error: delErr } = await fromExt("tournaments").delete().eq("id", createdId);
+        if (delErr) toast.error(`Create failed, and the partial tournament couldn't be removed automatically: ${delErr.message}`);
+      }
+      toast.error(`Create failed — nothing was created: ${e.message}`);
     } finally { setBusy(false); setConfirm(false); }
   };
 
@@ -599,7 +644,9 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
 
       <div className="rounded-lg border border-white/10 p-3 space-y-2">
         <div className="font-semibold text-white">Create Tournament</div>
-        {exec === "ready" && <p className="flex gap-1.5 text-emerald-200"><CheckCircle2 className="w-4 h-4 shrink-0" />Every stage can run on today's tournament engine.</p>}
+        {exec === "ready" && <p className="flex gap-1.5 text-emerald-200"><CheckCircle2 className="w-4 h-4 shrink-0" />{mapping.structured && allStages(def).length > def.divisions.length
+          ? "Every division and every stage is created. Opening games are made when you generate them; each later stage shows as Pending and starts when the stage before it finishes."
+          : "Every stage can run on today's tournament engine."}</p>}
         {exec === "partial" && (
           <div className="rounded border border-amber-300/40 bg-amber-500/10 p-2 space-y-1 text-amber-100">
             <div className="font-semibold">Can be created as a planning-stage tournament — some later stages can't run yet</div>
@@ -632,7 +679,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
           <AlertDialogHeader>
             <AlertDialogTitle>Create "{def.name}"?</AlertDialogTitle>
             <AlertDialogDescription>
-              This creates a real planning-stage tournament in the existing setup. {RESULT_NONE_NOTE}
+              This creates the tournament with all its divisions and stages. {RESULT_NONE_NOTE}
               {exec === "partial" && ` ${mapping.deferredStages.length} later stage(s) are not created and stay in the draft.`}
             </AlertDialogDescription>
           </AlertDialogHeader>

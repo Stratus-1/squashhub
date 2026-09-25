@@ -13,6 +13,7 @@
  * Communication settings map to existing fields only. Nothing here sends
  * anything: invitations are always triggered later from the existing screens.
  */
+import { specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { isBellsDefinition, type Division, type Section, type Stage, type TournamentDefinition } from "./definition";
 
 export type Executability = "ready" | "partial" | "blocked";
@@ -25,6 +26,8 @@ export interface ExistingMapping {
   /** Stages that are kept in the draft but not created (executability "partial"). */
   deferredStages: { division: string; stage: string; reason: string }[];
   executability: Executability;
+  /** True when the design runs on the structured multi-stage engine. */
+  structured?: boolean;
   /** WhatsApp group link to store on the tournament's group record after insert. */
   whatsappGroupUrl: string | null;
 }
@@ -97,6 +100,13 @@ export function mapToExistingTournament(def: TournamentDefinition): ExistingMapp
   const genderValues = Array.from(new Set(Object.values(genders)));
   const matchValues = Array.from(new Set(Object.values(matchTypes)));
   const firstFormat = Object.values(leagueFormats)[0] ?? "knockout";
+  // Multi-stage designs run on the structured engine: every stage is persisted as a real
+  // stage (later ones Pending until their source stage resolves). Only stages the structured
+  // engine genuinely can't run stay deferred. Date/schedule problems are reported by Review.
+  let structured = false;
+  try { specFromDefinition(def); structured = true; }
+  catch (e: any) { structured = !["unsupported_stage", "venue_outside"].includes(e?.code); }
+  if (structured && !unsupported.length) deferredStages.length = 0;
   const executability: Executability = unsupported.length ? "blocked" : deferredStages.length ? "partial" : "ready";
 
   // ── Players / communications → existing fields (no send triggers) ──
@@ -160,7 +170,7 @@ export function mapToExistingTournament(def: TournamentDefinition): ExistingMapp
   }
 
   return {
-    unsupported, deferredStages, executability, champ, extras,
+    unsupported, deferredStages, executability, champ, extras, structured,
     whatsappGroupUrl: c.whatsappGroup === "yes" ? (c.whatsappGroupUrl ?? null) : null,
   };
 }

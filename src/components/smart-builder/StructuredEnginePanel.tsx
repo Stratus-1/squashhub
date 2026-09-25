@@ -84,6 +84,13 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
         return (
           <div key={`${d.divisionId}/${s.id}`} className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground">{d.label} · {s.name}</span>
+            {!exists && (() => {
+              const prevSt = d.stages.find((x) => x.order === s.order - 1);
+              const gi = spec.divisions.indexOf(d) + 1;
+              const src = matches.filter((m) => m.stage_key === prevSt?.id && m.group_number === gi);
+              const srcDone = src.length > 0 && src.every((m) => m.winner_member_id || ["completed", "walkover", "bye"].includes(String(m.status ?? "").toLowerCase()));
+              return <span className="rounded-full border px-2 py-0.5 text-[11px]">{srcDone ? "Ready to start" : `Pending ${prevSt?.name ?? "previous stage"} completion`}</span>;
+            })()}
             {!exists && matches.length > 0 && progressionOf(s).mode !== "qualifiers" && (
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => {
                 const pr = progressionOf(s);

@@ -11,6 +11,9 @@ import {
 import { cn } from "@/lib/utils";
 import { addDivision, applyPlan, applyStructure, removeDivision } from "@/lib/smart-builder/division-structure";
 import { toast } from "sonner";
+import { TransitionEditor } from "./TransitionEditor";
+import { specFromDefinition } from "@/lib/tournaments/structured-persist";
+import { poolDisplay } from "@/lib/tournaments/transition";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
 const f = "h-8 min-w-0 w-full bg-white/5 border-white/15 text-white text-xs";
@@ -172,17 +175,23 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
   );
 }
 
-function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: any; cur: any; editDiv: (m: (x: any) => void) => void }) {
+function Progression({ def, prev, cur, editDiv }: { def: TournamentDefinition; prev: any; cur: any; editDiv: (m: (x: any) => void) => void }) {
   const p = cur.progression ?? {};
   const sc = shapeChange(prev, cur);
-  const mode = p.mode === "form_pairs" ? "all_continue" : p.mode;
+  const pooled = prev.kind === "round_robin" && prev.groups > 1;
+  // "Top N from each pool" is one owner choice: into a same-type knockout it uses the play-off mapping path,
+  // otherwise per-pool slots then this stage's own format (and pair rule when the match type changes).
+  const mode = p.mode === "form_pairs" ? "all_continue" : p.mode === "qualifiers" && pooled ? "per_pool" : p.mode === "top_n" && p.perPool ? "per_pool" : p.mode;
+  const koMapping = !sc && cur.kind === "knockout";
+  const perPoolN = p.mode === "qualifiers" ? prev.advance?.perGroup : p.top;
   const upd = (mut: (st: any, pr: any) => void) => editDiv((x) => {
     const ss = x.sections[0].stages; const i = ss.findIndex((s: any) => s.id === cur.id);
     mut(ss[i], ss[i - 1]); relink(x);
   });
   if (prev.kind === "knockout") return <Note>A knockout eliminates players, so nothing can follow it here. Put the knockout last.</Note>;
-  const modes: Array<[string, string]> = [["all_continue", "Everyone continues"], ["top_n", "Top finishers continue (choose how many)"]];
-  if (!sc && cur.kind === "knockout" && (prev.kind === "round_robin" || prev.kind === "swiss")) modes.push(["qualifiers", "Qualifiers by pool position (play-off mapping)"]);
+  const modes: Array<[string, string]> = [["all_continue", "Everyone continues"], ["top_n", "Top finishers overall (one combined ranking)"]];
+  if (pooled) modes.push(["per_pool", "Top N from each pool"]);
+  if (!pooled && !sc && cur.kind === "knockout" && (prev.kind === "round_robin" || prev.kind === "swiss")) modes.push(["qualifiers", "Qualifiers by position (play-off mapping)"]);
   const pairOpts: Array<[string, string]> = sc === "to_pairs" ? [["positions", "By finishing position: 1st + 2nd, 3rd + 4th…"], ["fold", "Balanced: 1st + last, 2nd + second-last…"], ["manual", "I'll set the pairs when this stage starts"]]
     : sc === "to_singles" ? [["split", "Each pair's players continue individually, at the pair's position"]] : [];
   return (
@@ -191,7 +200,9 @@ function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: 
       <div className="grid sm:grid-cols-2 gap-2">
         <Q label="Who continues">
           <select className={sel} value={mode ?? ""} onChange={(e) => upd((st, pr) => {
-            const m = e.target.value;
+            let m = e.target.value;
+            if (m === "per_pool" && koMapping) m = "qualifiers";
+            if (m === "per_pool") { st.progression = { mode: "top_n", perPool: true, top: 2, standings: p.standings ?? null, pairing: p.pairing ?? null }; pr.advance = { role: "none" }; return; }
             st.progression = m ? { mode: m, standings: p.standings ?? null, pairing: p.pairing ?? null, top: m === "top_n" ? p.top ?? null : null } : null;
             if (m === "qualifiers") { st.progression = { mode: m }; pr.advance = { role: "qualify", perGroup: pr.groups > 1 ? 2 : 4 }; st.qualifierMapping = pr.groups > 1 ? "cross_pool" : "reseed"; }
             else pr.advance = { role: "none" };
@@ -199,10 +210,19 @@ function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: 
             <option value="">Choose…</option>{modes.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
         </Q>
+        {mode === "per_pool" && (
+          <Q label="How many qualify from each pool">
+            <Input className={f} inputMode="numeric" value={perPoolN ?? ""} onChange={(e) => upd((st, pr) => {
+              const n = e.target.value ? Number(e.target.value) : null;
+              if (st.progression?.mode === "qualifiers") { pr.advance = { role: "qualify", perGroup: n }; if (st.qualifierTransition) st.qualifierTransition.positions = Array.from({ length: n ?? 0 }, (_, i) => i + 1); }
+              else st.progression = { ...st.progression, top: n };
+            })} />
+          </Q>
+        )}
         {mode === "top_n" && (
           <Q label={`How many continue${prev.discipline === "doubles" ? " (pairs)" : ""}`}><Input className={f} inputMode="numeric" value={p.top ?? ""} onChange={(e) => upd((st) => { st.progression = { ...st.progression, top: e.target.value ? Number(e.target.value) : null }; })} /></Q>
         )}
-        {mode === "qualifiers" && (
+        {mode === "qualifiers" && !pooled && (
           <>
             <Q label={prev.groups > 1 ? "Qualify from each pool" : "How many qualify"}><Input className={f} inputMode="numeric" value={prev.advance?.perGroup ?? ""} onChange={(e) => upd((_st, pr) => { pr.advance = { role: "qualify", perGroup: e.target.value ? Number(e.target.value) : null }; })} /></Q>
             <Q label="How qualifiers are placed">
@@ -212,14 +232,14 @@ function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: 
             </Q>
           </>
         )}
-        {sc && mode && mode !== "qualifiers" && (
+        {sc && mode && p.mode !== "qualifiers" && (
           <Q label={sc === "to_pairs" ? "How are pairs formed?" : "How do pairs become singles players?"}>
             <select className={sel} value={p.pairing ?? ""} onChange={(e) => upd((st) => { st.progression = { ...st.progression, pairing: e.target.value || null }; })}>
               <option value="">Choose…</option>{pairOpts.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
           </Q>
         )}
-        {mode && mode !== "qualifiers" && (
+        {mode && p.mode !== "qualifiers" && (
           <Q label="Points from earlier stages">
             <select className={sel} value={p.standings ?? ""} onChange={(e) => upd((st) => { st.progression = { ...st.progression, standings: e.target.value || null }; })}>
               <option value="">Choose…</option><option value="carry">Carry forward (also used to rank who continues / pairs)</option><option value="reset">Reset — rank by {prev.name || "previous stage"} only</option>
@@ -234,6 +254,16 @@ function Progression({ prev, cur, editDiv }: { def: TournamentDefinition; prev: 
           </Q>
         )}
       </div>
+      {mode === "per_pool" && perPoolN ? (
+        <div className="text-[11px] text-white/70" data-field="per-pool-slots">
+          {prev.groups} pools × top {perPoolN} = {prev.groups * perPoolN} qualifiers:{" "}
+          {Array.from({ length: perPoolN }, (_, pos) => Array.from({ length: prev.groups }, (_, i) => `${poolDisplay(i, def.divisions.find((d) => d.sections[0]?.stages.some((x: any) => x.id === prev.id))?.poolLabels).replace(/^Pool /, "")}${pos + 1}`)).flat().join(", ")}
+          {" "}— each from its own pool's final table, never a combined ranking.
+          {!koMapping && cur.kind === "knockout" && " Pairs are formed first, then seeded into the bracket."}
+          {!koMapping && cur.kind !== "knockout" && ` Seeded into ${cur.name || "this stage"} as all 1st places, then all 2nd places…`}
+        </div>
+      ) : null}
+      {p.mode === "qualifiers" && pooled && <PoolMapping def={def} prev={prev} cur={cur} upd={upd} />}
       {sc === "to_pairs" && <div className="text-[11px] text-white/50">Singles players are never turned into pairs without this rule. Pairs keep the same identity for every game in this stage.</div>}
     </div>
   );
@@ -321,5 +351,23 @@ function DivisionsPanel({ def, edit, di, onSelect }: { def: TournamentDefinition
         </>
       )}
     </div>
+  );
+}
+
+/** Cross-pool mapping for a same-type knockout, using the same transition editor/preview as Edit tournament. */
+function PoolMapping({ def, prev, cur, upd }: { def: TournamentDefinition; prev: any; cur: any; upd: (m: (st: any, pr: any) => void) => void }) {
+  let spec: ReturnType<typeof specFromDefinition> | null = null;
+  try { spec = specFromDefinition(def); } catch { return null; }
+  const d = spec.divisions.find((x) => x.stages.some((s) => s.id === cur.id));
+  const st = d?.stages.find((s) => s.id === cur.id), src = d?.stages.find((s) => s.id === prev.id);
+  if (!d || !st || !src) return null;
+  const labels = def.divisions.find((x) => x.id === d.divisionId)?.poolLabels;
+  return (
+    <TransitionEditor stage={st} source={src} poolLabels={labels} value={st.qualify?.transition ?? null}
+      onChange={(t) => upd((s, pr) => {
+        const { sourceStageId: _a, destinationStageId: _b, generation: _g, ...rest } = t as any;
+        s.qualifierTransition = rest; s.qualifierMapping = t.method === "cross_pool" ? "cross_pool" : "reseed";
+        pr.advance = { role: "qualify", perGroup: Math.max(...t.positions) };
+      })} />
   );
 }

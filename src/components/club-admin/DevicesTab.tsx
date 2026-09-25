@@ -113,6 +113,8 @@ type DeviceForm = {
   geofence_auto_radius: string;
   geofence_auto: boolean;
   auto_seconds: string;
+  near_only: boolean;
+  button_radius: string;
 };
 
 const emptyForm = (category: DeviceCategory): DeviceForm => ({
@@ -147,6 +149,8 @@ const emptyForm = (category: DeviceCategory): DeviceForm => ({
   geofence_auto_radius: "50",
   geofence_auto: false,
   auto_seconds: "12",
+  near_only: false,
+  button_radius: "150",
 });
 
 const toForm = (d: IoTDevice): DeviceForm => ({
@@ -183,6 +187,8 @@ const toForm = (d: IoTDevice): DeviceForm => ({
   geofence_auto_radius: String(d.geofence_radius_m ?? 50),
   geofence_auto: !!d.auto_unlock_enabled,
   auto_seconds: String(d.auto_unlock_seconds ?? 12),
+  near_only: !!(d as any).button_near_door_only,
+  button_radius: String(d.geofence_radius_m ?? 50),
 });
 
 const ADD_OPTIONS: Array<{ category: DeviceCategory; title: string; description: string }> = [
@@ -258,7 +264,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data, error } = await fromExt("clubs")
         .select(
-          "id, door_show_on_dashboard, door_dashboard_role_ids, door_geofence_enabled, door_latitude, door_longitude, door_geofence_radius_m, door_auto_unlock_radius_m, door_auto_unlock_enabled, door_auto_unlock_seconds",
+          "id, door_show_on_dashboard, door_dashboard_role_ids, door_geofence_enabled, door_latitude, door_longitude, door_geofence_radius_m, door_auto_unlock_radius_m, door_auto_unlock_enabled, door_auto_unlock_seconds, door_button_near_only",
         )
         .eq("id", clubId)
         .maybeSingle();
@@ -394,8 +400,9 @@ export function DevicesTab({ clubId }: { clubId: string }) {
       next.geofence_enabled = !!clubDoor.door_geofence_enabled;
       next.geofence_lat = clubDoor.door_latitude == null ? "" : String(clubDoor.door_latitude);
       next.geofence_lng = clubDoor.door_longitude == null ? "" : String(clubDoor.door_longitude);
-      next.geofence_radius = String(clubDoor.door_geofence_radius_m ?? 150);
-      next.geofence_auto_radius = String(clubDoor.door_auto_unlock_radius_m ?? 5);
+      next.geofence_radius = String(clubDoor.door_auto_unlock_radius_m ?? 30);
+      next.button_radius = String(clubDoor.door_geofence_radius_m ?? 150);
+      next.near_only = !!clubDoor.door_button_near_only;
       next.geofence_auto = !!clubDoor.door_auto_unlock_enabled;
       next.auto_seconds = String(clubDoor.door_auto_unlock_seconds ?? 12);
     }
@@ -505,8 +512,9 @@ export function DevicesTab({ clubId }: { clubId: string }) {
             door_geofence_enabled: form.geofence_enabled,
             door_latitude: Number.isFinite(lat) ? lat : null,
             door_longitude: Number.isFinite(lng) ? lng : null,
-            door_geofence_radius_m: geoRadius || 150,
-            door_auto_unlock_radius_m: geoRadius || 150,
+            door_geofence_radius_m: Math.round(Number(form.button_radius)) || 150,
+            door_auto_unlock_radius_m: geoRadius || 30,
+            door_button_near_only: form.geofence_enabled && form.near_only,
             door_auto_unlock_enabled: form.geofence_enabled && form.geofence_auto,
             door_auto_unlock_seconds: Number.isFinite(autoSeconds) && autoSeconds >= 1 ? autoSeconds : 12,
           })
@@ -567,6 +575,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
               geofence_longitude: Number.isFinite(parseFloat(form.geofence_lng)) ? parseFloat(form.geofence_lng) : null,
               geofence_radius_m: Number.isFinite(geoRadius) && geoRadius >= 5 ? geoRadius : 50,
               auto_unlock_enabled: form.geofence_enabled && form.geofence_auto,
+              button_near_door_only: form.geofence_enabled && form.near_only,
               auto_unlock_seconds: Number.isFinite(autoSeconds) && autoSeconds >= 1 ? autoSeconds : 12,
             }
           : {}),
@@ -1275,8 +1284,8 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                       <div className="min-w-0">
                         <Label className="text-sm">GPS geofence</Label>
                         <p className="text-[11px] text-muted-foreground">
-                          A circle around this door, used for automatic unlocking. The Open Door
-                          button stays available to members allowed to use it, wherever they are.
+                          The door's location. Used by the two optional behaviours below, which
+                          are independent of each other.
                         </p>
                       </div>
                       <Switch
@@ -1305,7 +1314,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                             />
                           </div>
                           <div className="space-y-1.5 sm:col-span-2">
-                            <Label>Geofence radius (metres)</Label>
+                            <Label>Auto-unlock geofence radius (metres)</Label>
                             <Input
                               type="number"
                               min={5}
@@ -1342,9 +1351,37 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                         >
                           Use my current location (stand at the door)
                         </Button>
+                        <div className="space-y-2 rounded-md border p-2.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <Label className="text-sm">Only show button when near the door</Label>
+                              <p className="text-[11px] text-muted-foreground">
+                                Off: the Open Door button is always available to members allowed to use
+                                this door. On: members only see it inside the button radius. Club admins
+                                always keep remote access.
+                              </p>
+                            </div>
+                            <Switch checked={form.near_only} onCheckedChange={(v) => set("near_only", v)} />
+                          </div>
+                          {form.near_only && form.source === "main-access" && (
+                            <div className="space-y-1.5">
+                              <Label>Button radius (metres)</Label>
+                              <Input
+                                type="number"
+                                min={10}
+                                max={5000}
+                                value={form.button_radius}
+                                onChange={(e) => set("button_radius", e.target.value)}
+                              />
+                            </div>
+                          )}
+                          {form.near_only && form.source === "registry" && (
+                            <p className="text-[11px] text-muted-foreground">Uses the geofence radius above.</p>
+                          )}
+                        </div>
                         <div className="flex items-center justify-between gap-3 rounded-md border p-2.5">
                           <div className="min-w-0">
-                            <Label className="text-sm">Auto-unlock on entering the geofence</Label>
+                            <Label className="text-sm">Automatically unlock when an authorised member enters the geofence</Label>
                             <p className="text-[11px] text-muted-foreground">
                               Opens once when an authorised member arrives inside the circle. It won't
                               open again while they stay inside — only after they have clearly left and

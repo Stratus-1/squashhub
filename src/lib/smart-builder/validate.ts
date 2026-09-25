@@ -1,3 +1,4 @@
+import { tieIssues } from "./ties";
 import { ownershipIssues } from "./division-structure";
 /**
  * Deterministic validator for a Smart Builder Tournament Definition.
@@ -304,6 +305,9 @@ export function validateDefinition(def: TournamentDefinition): ValidationResult 
         if (stage.minMatches && perEntrant != null && perEntrant < stage.minMatches) {
           issues.push({ level: "warning", code: "min_matches", stageId: stage.id, message: `${label} gives ${perEntrant} matches each, below the minimum of ${stage.minMatches}.` });
         }
+
+        // ── Pool-v-pool ties: pairing rule, games, positions ─────────────
+        for (const t of tieIssues(stage, label)) issues.push({ level: t.level, code: t.code, stageId: stage.id, message: t.message });
 
         // ── Dates ────────────────────────────────────────────────────────
         const sch = stage.schedule;

@@ -7,7 +7,7 @@
 import { atomically, persistStructure, specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
-import { requiredRounds, roundNames } from "@/lib/smart-builder/schedule-maths";
+import { requiredRounds, roundNames, scheduleMathsIssues } from "@/lib/smart-builder/schedule-maths";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
@@ -565,6 +565,9 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
     setBusy(true);
     let createdId: string | null = null;
     try {
+      // Validate structure + schedule maths BEFORE anything is written.
+      const sched = scheduleMathsIssues(def)[0];
+      if (sched) throw new Error(sched.message);
       const { data, error } = await fromExt("club_champs")
         .insert(sanitizeDraftPayload({ club_id: hostClubId, owner_org_id: ownerOrgId || undefined, status: "planning", ...mapping.champ }))
         .select("id").single();

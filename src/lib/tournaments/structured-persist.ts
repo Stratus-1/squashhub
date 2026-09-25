@@ -10,7 +10,6 @@ import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, 
 import { effectiveTransition, transitionIssues } from "./transition";
 import type { TournamentDefinition } from "../smart-builder/definition";
 import { venuesOutsideSet } from "../smart-builder/venues";
-import { scheduleMathsIssues } from "../smart-builder/schedule-maths";
 import { rawSchedule, resolveSpecDates, specDateIssues } from "./date-window";
 
 /* ───── spec from the Beta definition ───── */
@@ -71,8 +70,6 @@ export function specFromDefinition(def: TournamentDefinition): TournamentSpec {
   };
   const dateErr = specDateIssues(spec, tw)[0];
   if (dateErr) throw new IntegrityError(dateErr.code, dateErr.message);
-  const sched = scheduleMathsIssues(def)[0];
-  if (sched) throw new IntegrityError(`schedule_${sched.code}`, sched.message);
   return spec;
 }
 

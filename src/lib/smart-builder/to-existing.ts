@@ -14,6 +14,7 @@
  * anything: invitations are always triggered later from the existing screens.
  */
 import { engineBlockers } from "./engine-support";
+import { definedOnly, deferredStages } from "./deferred";
 import { specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { isBellsDefinition, type Division, type Section, type Stage, type TournamentDefinition } from "./definition";
 
@@ -44,8 +45,10 @@ const GENDER: Record<Division["eligibility"], string> = {
 const MAPPABLE_FIRST = new Set(["knockout", "round_robin", "swiss"]);
 
 export function mapToExistingTournament(input: TournamentDefinition): ExistingMapping {
-  const def = input;
-  const blockers = engineBlockers(input);
+  // "Define later" stages are intentional and are mapped to nothing — see ./deferred.
+  const def = definedOnly(input);
+  const blockers = engineBlockers(def);
+  const laterStages = deferredStages(input).map((x) => ({ division: x.divisionName, stage: x.stageName, plannedDate: x.plannedDate }));
   const unsupported: string[] = [];
   const deferredStages: ExistingMapping["deferredStages"] = [];
   const leagueFormats: Record<string, string> = {};

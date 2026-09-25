@@ -104,3 +104,12 @@
 - [x] Disposable full simulation
 - [x] Fast "I know what I want" path: RR / Swiss / Knockout / Pools→Play-offs / Custom, progressive questions, same spec + engine, tournament map
 - [x] Double round robin, Swiss (generation + next round + tie-breaks), 3rd/4th place match
+
+## Tournament Beta standalone operation (25 Sep 2026)
+- [ ] Derive round counts and auto-generate weekly round dates; persist onto created rounds/fixtures
+- [ ] Audit step 1: verify schedule dialog on Beta games, result emails, reminders, member pages
+- [ ] Audit step 2: Beta tournament Operate page
+- [ ] Audit step 3: Beta entries and allocation
+- [ ] Audit step 4: bulk scheduling
+- [ ] Audit step 5: stage-complete prompts, "automatic" behaviour, complete tournament
+- [ ] Audit step 6: full Diamond League browser run

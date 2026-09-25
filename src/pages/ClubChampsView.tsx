@@ -1175,8 +1175,11 @@ export default function ClubChampsView() {
         ].filter(Boolean) as string[];
 
         let assigned = false;
+        // Beta tournaments: a game already carrying its round date keeps that date (only time/court are filled).
+        const pinned = isStructured && m.scheduled_date ? String(m.scheduled_date).slice(0, 10) : null;
         outer: for (const d of allDates) {
           const ds = format(d, "yyyy-MM-dd");
+          if (pinned && ds !== pinned) continue;
           if (!players.every((p) => canScheduleOn(p, ds))) continue;
           for (const ts of timeSlots) {
             for (const cid of courtIds) {

@@ -40,7 +40,8 @@ export function stageMappingIssues(d: Division, st: Stage): string[] {
     const src = all.find((x) => x.id === m.sourceStageId);
     const si = src ? all.indexOf(src) : -1;
     if (!src || si >= i) out.push(`${label}: its finishing positions must come from an earlier stage.`);
-    else if (src.kind !== "round_robin") out.push(`${label}: finishing positions can only come from a pools / round robin stage (${src.name} is not).`);
+    else if (src.kind !== "round_robin" && !(src.kind === "cross_pool_league" && effectiveMapping(d, src)?.source === "seed_pools"))
+      out.push(`${label}: finishing positions can only come from a pools / round robin stage or entry-seeded pool-v-pool stage (${src.name} is not).`);
     else if ((src.groups ?? 1) !== m.pools) out.push(`${label}: ${src.name} has ${src.groups ?? 1} pools but the matchups use ${m.pools}.`);
     else if (src.groupSize && src.groupSize < m.poolSize) out.push(`${label}: ${src.name} pools have ${src.groupSize} places, the matchups use ${m.poolSize}.`);
   } else {

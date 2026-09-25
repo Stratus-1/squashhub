@@ -603,7 +603,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
     } catch (e: any) {
       // No half-created tournament: remove the shell if structure didn't commit.
       if (createdId) {
-        const { error: delErr } = await fromExt("club_champs").delete().eq("id", createdId);
+        const { error: delErr } = await fromExt("tournaments").delete().eq("id", createdId);
         if (delErr) toast.error(`Create failed, and the partial tournament couldn't be removed automatically: ${delErr.message}`);
       }
       toast.error(`Create failed — nothing was created: ${e.message}`);

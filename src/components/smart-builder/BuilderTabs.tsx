@@ -657,7 +657,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
             {d.sections.flatMap((x) => x.stages).map((st, i) => (
               <div key={st.id} className="pl-2">
                 <div className="text-white">Stage {i + 1} — {st.name}</div>
-                {stageDetailLines(st, def).map((l, k) => <div key={k} className={l.includes("not set") ? "pl-3 text-red-300" : "pl-3 text-white/65"}>{l}</div>)}
+                {stageDetailLines(st, def).map((l, k) => <div key={k} className={/not set|Needs confirmation/.test(l) ? "pl-3 text-red-300" : "pl-3 text-white/65"}>{l}</div>)}
               </div>
             ))}
           </div>

@@ -103,5 +103,30 @@ describe("Pool-v-pool league built from builder controls", () => {
     s1.scoring = undefined;
     expect(scoringText(effectiveScoring(def, s1))).toBe("PAR 15 — best of 3");
   });
+
+  it("standings method is per stage: Diamond stays Needs confirmation and blocks; choices validate", () => {
+    const def = applyDiamondLeague(emptyDefinition());
+    const [s1] = def.divisions[0].sections[0].stages;
+    const lines = stageDetailLines(s1, def);
+    expect(lines).toContain("Standings: Needs confirmation");
+    expect(lines).toContain("Score at the bell: Needs confirmation");
+    expect(lines).toContain("Tie-breaks: Needs confirmation");
+    const errs = () => validateDefinition(def).issues.filter((i) => i.code === "standings" && i.level === "error" && i.stageId === s1.id);
+    expect(errs().length).toBe(3);
+    s1.standings = { method: "result_points", resultPoints: { win: 2, draw: null, loss: 0 }, bellsScore: "decides_winner", tieBreaks: ["head_to_head"] };
+    expect(errs().map((e) => e.message).join()).toMatch(/win, draw and loss/);
+    s1.standings.resultPoints!.draw = 1;
+    expect(errs()).toEqual([]);
+    expect(stageDetailLines(s1, def)).toContain("Standings: result points (win 2 / draw 1 / loss 0)");
+    s1.standings = { method: "combined", combined: { primary: "raw_total", secondary: ["rubbers_won"] }, bellsScore: "counts_directly", tieBreaks: ["points_difference", "head_to_head"] };
+    expect(errs()).toEqual([]);
+    expect(stageDetailLines(s1, def)).toContain("Tie-breaks: Points difference → Head-to-head");
+  });
+  it("older round robins without a standings choice only get a warning (backward compatible)", () => {
+    const def = emptyDefinition();
+    def.divisions = [{ id: "d", name: "D", eligibility: "open", entry: "individual", sections: [{ id: "s", name: "Main", stages: [{ id: "rr", name: "RR", kind: "round_robin", discipline: "singles", groups: 1, groupSize: 4, input: { entrants: 4 }, advance: { role: "none" }, schedule: { mode: "unset" } } as any] }] } as any];
+    const st = validateDefinition(def).issues.filter((i) => i.code === "standings");
+    expect(st.every((i) => i.level === "warning")).toBe(true);
+  });
 });
 

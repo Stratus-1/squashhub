@@ -9,7 +9,7 @@ import { specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { ownershipIssues } from "@/lib/smart-builder/division-structure";
 
 const stagesOf = (def: TournamentDefinition, di: number) => def.divisions[di].sections.flatMap((s) => s.stages);
-const roundTrip = (def: TournamentDefinition) => { const r = parseDefinition(JSON.parse(JSON.stringify(def))); if (!r.ok) throw new Error(r.error); return r.value; };
+const roundTrip = (def: TournamentDefinition) => { const r = parseDefinition(JSON.parse(JSON.stringify(def))); if (r.ok === false) throw new Error(r.error); return r.value; };
 const diamond = (divisions = 2, ppd = 4, size = 6) => { const d = emptyDefinition(); applyDiamondLeague(d, { divisions, poolsPerDivision: ppd, poolSize: size }); return d; };
 
 describe("one canonical structure: template → form → Review → create payload", () => {
@@ -38,7 +38,7 @@ describe("one canonical structure: template → form → Review → create paylo
     const spec = specFromDefinition(roundTrip(diamond()));
     expect(spec.divisions).toHaveLength(2);
     for (const d of spec.divisions) {
-      expect(d.stages.map((s) => s.label ?? (s as any).name)).toHaveLength(2);
+      expect(d.stages).toHaveLength(2);
       expect(d.deferredStages?.map((x) => x.name)).toEqual(["Semi-finals", "Finals"]);
     }
   });

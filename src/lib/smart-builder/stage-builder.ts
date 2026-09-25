@@ -144,7 +144,7 @@ export function setDiscipline(d: Division, id: string, disc: "singles" | "double
   if (i < 0 || started.has(id)) return false;
   ss[i].discipline = disc;
   const t = ss[i].tieFormat;
-  if (t && ss[i].groupSize) t.rubbers = standardRubbers(disc, ss[i].groupSize!, t.rubbers[0]?.minutes ?? (disc === "doubles" ? 30 : 20));
+  if (t && ss[i].groupSize) t.rubbers = standardRubbers(disc, ss[i].groupSize!, t.rubbers[0]?.discipline === disc ? t.rubbers[0].minutes : disc === "doubles" ? 30 : 20);
   if (i > 0) reconcile(ss[i - 1], ss[i]);
   if (ss[i + 1]) reconcile(ss[i], ss[i + 1]);
   return true;

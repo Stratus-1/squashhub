@@ -1,3 +1,4 @@
+import { stageDetailLines } from "./stage-builder";
 /**
  * Fast "I know what I want" path.
  * Three SEPARATE layers over the SAME TournamentDefinition:
@@ -153,6 +154,7 @@ export function tournamentMapBlocks(def: TournamentDefinition): Array<{ division
     const unit = d.entry === "pairs" ? "pairs" : "players";
     const lines: string[] = [];
     stages.forEach((s, i) => {
+      if (s.kind === "cross_pool_league") { lines.push(`Stage ${i + 1} — ${s.name}`, ...stageDetailLines(s).map((l) => `  ${l}`)); return; }
       let fmt = FORMAT_LABEL[s.kind] ?? s.kind;
       if (s.kind === "swiss") fmt += ` · ${s.swissRounds ?? "?"} rounds`;
       if (s.kind === "round_robin" && s.legs === 2) fmt += " · twice";
@@ -178,6 +180,7 @@ export function tournamentMap(def: TournamentDefinition): string[] {
   return def.divisions.map((d) => {
     const n = d.sections[0]?.stages[0]?.input?.entrants;
     const parts = (d.sections[0]?.stages ?? []).map((s, i) => {
+      if (s.kind === "cross_pool_league") return `Pool-v-pool league (${s.discipline})${s.sameSessionAs ? " same session" : ""}`;
       const fmt = s.kind === "swiss" ? `Swiss ${s.swissRounds ?? "?"} rounds` : FORMAT_LABEL[s.kind] ?? s.kind;
       if (i === 0) return s.groups > 1 ? `${fmt} in ${s.groups} pools, top ${s.advance?.perGroup ?? "?"} each` : fmt;
       return `${fmt} play-offs`;

@@ -5,10 +5,11 @@ import { applyDiamondLeague } from "./diamond-league";
  * rounds (swissRounds/legs, derived otherwise), schedule, and progression from the previous stage.
  * Nothing here generates games; the definition → spec → engine path is unchanged.
  */
+import { TIE_PAIRING_LABEL, gameLabel, standardRubbers } from "./ties";
 import { newStage, type Division, type Stage, type TournamentDefinition } from "./definition";
 
-export type BuilderFormat = "round_robin" | "swiss" | "knockout";
-export const FORMAT_LABEL: Record<BuilderFormat, string> = { round_robin: "Round robin", swiss: "Swiss", knockout: "Knockout" };
+export type BuilderFormat = "round_robin" | "cross_pool_league" | "swiss" | "knockout";
+export const FORMAT_LABEL: Record<BuilderFormat, string> = { round_robin: "Individual round robin", cross_pool_league: "Pool-v-pool league", swiss: "Swiss", knockout: "Knockout" };
 
 const stagesOf = (d: Division) => d.sections[0]?.stages ?? [];
 
@@ -17,6 +18,7 @@ export function relink(d: Division) {
   const ss = stagesOf(d);
   ss.forEach((s, i) => {
     s.input = { ...s.input, fromStageId: i === 0 ? null : ss[i - 1].id };
+    if (s.sameSessionAs && (i === 0 || ss[i - 1].id !== s.sameSessionAs)) s.sameSessionAs = null;
     if (i === 0) { s.progression = null; s.qualifierMapping = s.kind === "knockout" ? null : s.qualifierMapping; }
     else if (s.progression) reconcile(ss[i - 1], s);
   });
@@ -123,7 +125,11 @@ export function setFormat(d: Division, id: string, format: BuilderFormat, starte
   const s = ss.find((x) => x.id === id)!;
   if (started.has(id)) return false;
   s.kind = format;
-  if (format !== "round_robin") { s.groups = 1; s.legs = undefined; }
+  if (format === "cross_pool_league") {
+    s.groups = Math.max(2, s.groups ?? 2); s.legs = s.legs ?? 1;
+    s.tieFormat = s.tieFormat ?? { rubbers: s.groupSize ? standardRubbers(s.discipline, s.groupSize, 20) : [], pairing: null, sameCourt: true, startTime: null };
+  } else { s.tieFormat = undefined; }
+  if (format !== "round_robin" && format !== "cross_pool_league") { s.groups = 1; s.legs = undefined; }
   if (format === "swiss") s.swissRounds = s.swissRounds ?? 5; else s.swissRounds = null;
   if (format !== "knockout") s.thirdPlace = undefined;
   const i = ss.indexOf(s);
@@ -137,8 +143,26 @@ export function setDiscipline(d: Division, id: string, disc: "singles" | "double
   const i = ss.findIndex((x) => x.id === id);
   if (i < 0 || started.has(id)) return false;
   ss[i].discipline = disc;
+  const t = ss[i].tieFormat;
+  if (t && ss[i].groupSize) t.rubbers = standardRubbers(disc, ss[i].groupSize!, t.rubbers[0]?.minutes ?? (disc === "doubles" ? 30 : 20));
   if (i > 0) reconcile(ss[i - 1], ss[i]);
   if (ss[i + 1]) reconcile(ss[i], ss[i + 1]);
+  return true;
+}
+
+/**
+ * Explicit "same session" link: this stage is played straight after the previous stage on the
+ * SAME dates and courts. Copies the previous stage's dates so both stay in one session.
+ */
+export function setSameSession(d: Division, id: string, on: boolean, started = new Set<string>()) {
+  const ss = stagesOf(d);
+  const i = ss.findIndex((x) => x.id === id);
+  if (i <= 0 || started.has(id)) return false;
+  const s = ss[i], prev = ss[i - 1];
+  if (!on) { s.sameSessionAs = null; return true; }
+  s.sameSessionAs = prev.id;
+  s.schedule = { ...prev.schedule, roundDates: [...(prev.schedule.roundDates ?? [])], roundDateOverrides: prev.schedule.roundDateOverrides ? { ...prev.schedule.roundDateOverrides } : undefined };
+  if (!s.progression) s.progression = shapeChange(prev, s) === "to_pairs" ? { mode: "form_pairs", pairing: "positions", standings: "carry" } : { mode: "all_continue", standings: "carry" };
   return true;
 }
 
@@ -171,7 +195,29 @@ export function transitionText(prev: Stage, cur: Stage): string {
   return `↓ ${who}${shape} · ${carry}`;
 }
 
+/** Accurate plain-language description of one stage, used by the stage list, map and Review. */
+export function stageDetailLines(s: Stage): string[] {
+  const disc = s.discipline === "doubles" ? "Doubles" : "Singles";
+  if (s.kind === "cross_pool_league") {
+    const t = s.tieFormat;
+    const mins = t?.rubbers.reduce((n, r) => n + r.minutes, 0) ?? 0;
+    return [
+      `Pool-v-pool league · ${disc}`,
+      `Pools: ${s.groups ?? "?"} × ${s.groupSize ?? "?"} players`,
+      `Pool rotation: round robin — each pool plays every other pool ${s.legs === 2 ? "twice" : "once"}`,
+      `Pairing: ${t?.pairing ? TIE_PAIRING_LABEL[t.pairing].replace(/ \(.*\)$/, "").toLowerCase() : "not decided"}`,
+      `Each tie: ${t?.rubbers.length ? t.rubbers.map((r) => gameLabel(r, t.pairing)).join(", ") : "no games yet"}${t?.rubbers.length ? ` (${t.rubbers.length} × ${t.rubbers[0].minutes} min = ${mins} min)` : ""}`,
+      ...(s.sameSessionAs ? ["Same session as the previous stage — straight after it, same dates and courts"] : []),
+    ];
+  }
+  return [stageSummary(s)];
+}
+
 export function stageSummary(s: Stage, entrants?: number | null): string {
+  if (s.kind === "cross_pool_league") {
+    const t = s.tieFormat;
+    return `${s.discipline === "doubles" ? "Doubles" : "Singles"} · Pool-v-pool league · ${s.groups} pools × ${s.groupSize ?? "?"} · pairing ${t?.pairing ?? "not decided"} · ${t?.rubbers.length ?? 0} games per tie${s.sameSessionAs ? " · same session as previous" : ""}`;
+  }
   const disc = s.discipline === "doubles" ? "Doubles" : "Singles";
   const fmt = FORMAT_LABEL[s.kind as BuilderFormat] ?? s.kind;
   const extra = s.kind === "swiss" ? ` · ${s.swissRounds ?? "?"} rounds`

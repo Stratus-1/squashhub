@@ -1,12 +1,15 @@
 import { useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ImagePlus, Loader2, LifeBuoy, Send, X, CheckCircle2, ShieldAlert, RotateCcw } from "lucide-react";
+import { ImagePlus, Loader2, LifeBuoy, Send, X, CheckCircle2, ShieldAlert, RotateCcw, History, Plus, ChevronLeft } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { canRetry, groupConversations, requestStatus, turnsFromRows, type MyAiRow, type Tone, type Conversation } from "@/lib/ai-requests";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
-import { buildAskPayload, callAiHelp, pageIds, uploadAiScreenshot, type AiHelpPreview } from "@/hooks/use-ai-help";
+import { buildAskPayload, callAiHelp, pageIds, uploadAiScreenshot, useMyAiRequests, type AiHelpPreview } from "@/hooks/use-ai-help";
 
 type Att = { path: string; name: string; mime: string; size: number; preview: string };
 type Turn = {
@@ -15,11 +18,11 @@ type Turn = {
   attachments?: Att[];
   preview?: AiHelpPreview;
   interactionId?: string;
-  state?: "pending" | "done" | "cancelled" | "busy";
+  state?: "pending" | "done" | "cancelled" | "busy" | "expired" | "failed";
   ticketId?: string;
   error?: boolean;
   /** Failed send that can be retried with the same request id. */
-  retry?: { question: string; atts: Att[]; voice: boolean; requestId: string; history: { role: "user" | "assistant"; content: string }[] };
+  retry?: { question: string; atts: Att[]; voice: boolean; requestId: string; history: { role: "user" | "assistant"; content: string }[]; retryOf?: string };
 };
 
 /**
@@ -39,6 +42,15 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
   const [usedVoice, setUsedVoice] = useState(false);
   const voiceBase = useRef<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
+  const [tab, setTab] = useState<"chat" | "history">("chat");
+  // Stable id so follow-ups belong to the same request/conversation on the server.
+  const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
+  const mine = useMyAiRequests(user?.id);
+  const rowsById = new Map((mine.data?.rows ?? []).map((r) => [r.id, r]));
+  const retried = new Set((mine.data?.rows ?? []).map((r) => r.retry_of).filter(Boolean) as string[]);
+  const statusOf = (r: MyAiRow) => requestStatus(r, r.bug_report_id ? mine.data?.bugs[r.bug_report_id] : null, r.ticket_id ? mine.data?.tickets[r.ticket_id] : null);
+  const refresh = () => qc.invalidateQueries({ queryKey: ["my-ai-requests"] });
 
   const context = { clubId, route: location.pathname, ids: pageIds(location.pathname, location.search), today: new Date().toISOString().slice(0, 10) };
   const lastUserText = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
@@ -66,8 +78,9 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
 
   const runAsk = async (retry: NonNullable<Turn["retry"]>) => {
     setBusy(true);
-    const r = await callAiHelp(buildAskPayload({ ...retry, context }));
+    const r = await callAiHelp({ ...buildAskPayload({ ...retry, context }), conversationId, ...(retry.retryOf ? { retryOf: retry.retryOf } : {}) });
     setBusy(false);
+    void refresh();
     if (r.error) return push({ role: "assistant", content: r.error, error: true, retry: r.retryable ? retry : undefined });
     push({ role: "assistant", content: r.answer ?? "", preview: r.preview, interactionId: r.interactionId, state: r.preview ? "pending" : undefined, ticketId: r.ticketId });
   };
@@ -93,19 +106,72 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
   const decide = async (i: number, t: Turn, confirm: boolean) => {
     patch(i, { state: "busy" });
     const r = await callAiHelp({ mode: confirm ? "confirm" : "cancel", interactionId: t.interactionId, context });
-    patch(i, { state: confirm && !r.error ? "done" : confirm ? "pending" : "cancelled" });
+    patch(i, { state: confirm && !r.error ? (r.failed ? "failed" : "done") : confirm ? (/already been handled|expired/i.test(r.error ?? "") ? "expired" : "pending") : "cancelled" });
+    void refresh();
     push({ role: "assistant", content: r.error ?? r.answer ?? "", error: !!r.error || r.failed, ticketId: r.ticketId });
   };
 
   const escalate = async () => {
     setBusy(true);
-    const r = await callAiHelp({ mode: "escalate", question: lastUserText || input, reason: "User asked for a person", context });
+    const r = await callAiHelp({ mode: "escalate", question: lastUserText || input, reason: "User asked for a person", context: { ...context }, conversationId });
     setBusy(false);
+    void refresh();
     push({ role: "assistant", content: r.error ?? r.answer ?? "", ticketId: r.ticketId, error: !!r.error });
   };
 
+  const newChat = () => { setTurns([]); setConversationId(crypto.randomUUID()); setTab("chat"); };
+  const openConversation = (c: Conversation) => {
+    const now = Date.now();
+    setConversationId(c.id);
+    setTurns(turnsFromRows(c.rows).map((t) => {
+      const r = t.row;
+      if (!r) return { role: t.role, content: t.content };
+      const expired = r.status === "proposed" && !!r.expires_at && new Date(r.expires_at).getTime() < now;
+      const state: Turn["state"] = !r.preview ? undefined : r.status === "proposed" ? (expired ? "expired" : "pending")
+        : r.status === "executed" || r.status === "rolled_back" ? "done" : r.status === "failed" ? "failed" : r.status === "expired" ? "expired" : "cancelled";
+      return { role: t.role, content: t.content, interactionId: r.id, preview: r.preview ?? undefined, state, ticketId: r.ticket_id ?? undefined };
+    }));
+    setTab("chat");
+  };
+  const retryOld = async (r: MyAiRow) => {
+    if (busy || !r.request_text) return;
+    push({ role: "user", content: r.request_text });
+    await runAsk({ question: r.request_text, atts: [], voice: false, requestId: crypto.randomUUID(), history: [], retryOf: r.id });
+  };
+  const conversations = user?.id ? groupConversations(mine.data?.rows ?? [], user.id) : [];
+
+  if (tab === "history") return (
+    <div className="flex flex-col gap-2 text-[13px]">
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="ghost" onClick={() => setTab("chat")}><ChevronLeft className="w-4 h-4 mr-1" /> Back</Button>
+        <span className="font-semibold">My requests</span>
+        <Button size="sm" variant="outline" className="ml-auto" onClick={newChat}><Plus className="w-4 h-4 mr-1" /> New request</Button>
+      </div>
+      <div className="flex flex-col gap-1 max-h-[60vh] overflow-y-auto">
+        {mine.isLoading && <p className="text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</p>}
+        {!mine.isLoading && conversations.length === 0 && <p className="text-muted-foreground">You haven't asked the assistant anything yet.</p>}
+        {conversations.map((c) => {
+          const st = statusOf(c.latest);
+          return (
+            <button key={c.id} onClick={() => openConversation(c)} className="text-left rounded-md border p-2 hover:bg-muted/50">
+              <div className="flex items-center gap-2">
+                <span className="font-medium line-clamp-1 flex-1">{c.title}</span>
+                <StatusPill s={st} />
+              </div>
+              <div className="text-[11px] text-muted-foreground">{format(new Date(c.updatedAt), "d MMM yyyy HH:mm")}{c.rows.length > 1 ? ` · ${c.rows.length} messages` : ""}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-3 text-[13px]">
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => setTab("history")}><History className="w-4 h-4 mr-1" /> My requests</Button>
+        {turns.length > 0 && <Button size="sm" variant="ghost" onClick={newChat}><Plus className="w-4 h-4 mr-1" /> New</Button>}
+      </div>
       <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
         <Badge variant="outline" className="text-[10px]">Beta</Badge>
         I only change things you're already allowed to change, and always ask you to confirm first.
@@ -118,6 +184,19 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
         {turns.map((t, i) => (
           <div key={i} className={t.role === "user" ? "self-end max-w-[85%] rounded-2xl bg-primary text-primary-foreground px-3 py-2" : "max-w-full"}>
             <p className={t.error ? "text-destructive" : "whitespace-pre-wrap"}>{t.content}</p>
+            {t.role === "assistant" && t.interactionId && rowsById.get(t.interactionId) && (() => {
+              const r = rowsById.get(t.interactionId!)!;
+              return (
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <StatusPill s={statusOf(r)} />
+                  {r.executed_at && r.status === "executed" && <span className="text-[11px] text-muted-foreground">{format(new Date(r.executed_at), "d MMM HH:mm")}</span>}
+                  {canRetry(r, retried.has(r.id)) && (
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => retryOld(r)}><RotateCcw className="w-3.5 h-3.5 mr-1" /> Try again with the assistant</Button>
+                  )}
+                  {retried.has(r.id) && <span className="text-[11px] text-muted-foreground">Retried as a new request</span>}
+                </div>
+              );
+            })()}
             {t.retry && (
               <Button size="sm" variant="outline" className="mt-1" disabled={busy} onClick={() => retryTurn(i, t)}>
                 <RotateCcw className="w-3.5 h-3.5 mr-1" /> Retry
@@ -143,7 +222,7 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
                   </div>
                 ) : (
                   <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                    {t.state === "done" ? <><CheckCircle2 className="w-3 h-3" /> Confirmed</> : "Cancelled — nothing changed"}
+                    {t.state === "done" ? <><CheckCircle2 className="w-3 h-3" /> Confirmed</> : t.state === "failed" ? "Confirmed, but it didn't go through" : t.state === "expired" ? "Preview expired — nothing changed. Ask again to re-check." : "Cancelled — nothing changed"}
                   </p>
                 )}
               </div>
@@ -213,4 +292,12 @@ function Section({ title, items }: { title: string; items: string[] }) {
       <ul className="list-disc pl-4">{items.map((x, i) => <li key={i}>{x}</li>)}</ul>
     </div>
   );
+}
+
+const TONE: Record<Tone, string> = {
+  waiting: "border-primary text-primary", done: "border-primary bg-primary/10 text-primary", bug: "border-destructive text-destructive",
+  support: "border-accent-foreground/40", denied: "border-destructive text-destructive", failed: "border-destructive bg-destructive/10 text-destructive", muted: "text-muted-foreground",
+};
+function StatusPill({ s }: { s: { label: string; tone: Tone } }) {
+  return <Badge variant="outline" className={`text-[10px] whitespace-nowrap ${TONE[s.tone]}`}>{s.label}</Badge>;
 }

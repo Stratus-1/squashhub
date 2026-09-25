@@ -1,3 +1,4 @@
+import { applyDiamondLeague } from "./diamond-league";
 /**
  * Custom / mixed format — ordered stage builder over the SAME TournamentDefinition.
  * Each stage keeps separate dimensions: discipline, format (kind), grouping (groups/groupSize),
@@ -141,18 +142,9 @@ export function setDiscipline(d: Division, id: string, disc: "singles" | "double
   return true;
 }
 
-/** Starting template: singles round robin → pairs formed → doubles round robin, points added up. */
+/** Diamond League template: the real Uitsig structure (cross-pool singles → position pairs → cross-pool doubles → crossover play-offs). */
 export function diamondTemplate(def: TournamentDefinition) {
-  const d = def.divisions[0];
-  if (!d) return;
-  d.entry = "individual";
-  const s1 = makeStage("round_robin", "singles", 1); s1.name = "Singles round robin";
-  const s2 = makeStage("round_robin", "doubles", 2); s2.name = "Doubles round robin";
-  s2.progression = { mode: "all_continue", standings: "carry", pairing: "positions" };
-  s2.generation = "owner_approval";
-  d.sections = [{ id: d.sections[0]?.id ?? "sec1", name: "Main", stages: [s1, s2] }];
-  def.finalStandings = "cumulative";
-  relink(d);
+  applyDiamondLeague(def);
 }
 
 export const PAIRING_LABEL: Record<string, string> = {

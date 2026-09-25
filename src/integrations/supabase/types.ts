@@ -14172,6 +14172,47 @@ export type Database = {
           },
         ]
       }
+      tournament_templates: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string | null
+          definition: Json
+          id: string
+          name: string
+          template_key: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          definition: Json
+          id?: string
+          name: string
+          template_key: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          definition?: Json
+          id?: string
+          name?: string
+          template_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_templates_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_venues: {
         Row: {
           club_id: string

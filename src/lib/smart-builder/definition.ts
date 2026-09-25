@@ -20,6 +20,7 @@ export const STAGE_KINDS = [
   "split",
   "pair_from_positions",
   "custom",
+  "cross_pool_league",
 ] as const;
 export type StageKind = (typeof STAGE_KINDS)[number];
 
@@ -149,6 +150,10 @@ const DivisionSchema = z.object({
   /** Explicit advanced opt-in to differing pool formats inside one stage. */
   allowMixedPoolFormats: z.boolean().optional(),
   sections: z.array(SectionSchema).default([]),
+  /** Editable pool names by stable pool index (0 = A). Display only. */
+  poolNames: z.array(z.string()).optional(),
+  /** Confirmed pool pairings used for home courts and crossover play-offs, by pool index. */
+  poolGroups: z.array(z.object({ pools: z.tuple([z.number().int().min(0), z.number().int().min(0)]), court: z.string().nullable().optional() })).optional(),
 });
 export type Division = z.infer<typeof DivisionSchema>;
 
@@ -288,6 +293,18 @@ export const DefinitionSchema = z.object({
   scheduleDefaults: ScheduleDefaultsSchema,
   understood: z.array(z.string()).default([]),
   questions: z.array(QuestionSchema).default([]),
+  /** Entry capacity and admission; null = no cap. */
+  admission: z.object({
+    capacity: z.number().int().min(1).nullable().optional(),
+    mode: z.enum(["first_confirmed", "manual"]).default("first_confirmed"),
+    waitlist: z.boolean().default(true),
+  }).optional(),
+  /** Seeding into pools across ALL divisions (e.g. ladder snake over 8 pools). */
+  poolSeeding: z.object({ source: z.enum(["ladder", "ranking", "manual"]).default("ladder"), allocation: z.enum(["snake", "banded"]).default("snake"), scope: z.enum(["division", "tournament"]).default("tournament") }).optional(),
+  /** Which template this came from and which fields are per-instance settings. */
+  templateMeta: z.object({ key: z.string(), name: z.string(), instanceFields: z.array(z.string()).default([]) }).optional(),
+  /** Pair source for position-based doubles: seeded order or re-ranked stage standings. null = unresolved. */
+  pairSource: z.enum(["seed", "prior_stage_standings"]).nullable().optional(),
   notUnderstood: z.array(z.string()).default([]),
 });
 export type TournamentDefinition = z.infer<typeof DefinitionSchema>;
@@ -347,6 +364,7 @@ export const STAGE_LABELS: Record<StageKind, string> = {
   split: "Split (Championship / Plate)",
   pair_from_positions: "Create doubles pairs from results",
   custom: "Custom stage",
+  cross_pool_league: "Cross-pool league (same position v other pools)",
 };
 
 /** All stages with their division/section context, in flow order. */

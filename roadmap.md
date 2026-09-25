@@ -114,4 +114,4 @@
 - [ ] Audit step 5: stage-complete prompts, "automatic" behaviour, complete tournament
 - [ ] Audit step 6: full Diamond League browser run
 
-- [ ] Diamond League (Uitsig) Beta Builder template: singles-results re-rank -> doubles, 5 Wednesdays from 7 Oct, 8 named pools, open category, 48 cap + waitlist, unresolved scoring/final/W4-W5
+- [ ] Diamond League (Uitsig) Beta Builder template: pair source (seed vs singles re-rank) UNRESOLVED/configurable; A+B, C+D crossover mirrored; 5 Wednesdays from 7 Oct; 8 named pools; open; 48 cap + waitlist; scoring/final/W4-W5 unresolved

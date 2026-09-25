@@ -37,6 +37,7 @@ export function reconcile(prev: Stage, cur: Stage) {
   if (sc === "to_pairs" && (p.pairing === "split")) p.pairing = null;
   if (sc === "to_singles" && p.pairing && p.pairing !== "split") p.pairing = null;
   if (!sc) p.pairing = null;
+  if (p.perPool && !(prev.kind === "round_robin" && prev.groups > 1)) { p.perPool = false; p.top = null; }
   if (p.mode === "qualifiers" && (cur.kind !== "knockout" || sc)) cur.progression = { mode: "top_n", top: null, standings: p.standings ?? null, pairing: p.pairing ?? null };
 }
 
@@ -162,8 +163,17 @@ export function transitionText(prev: Stage, cur: Stage): string {
   const p = cur.progression;
   if (!p) return "↓ not decided";
   const carry = p.standings === "carry" ? "points carry forward" : p.standings === "reset" ? "points reset" : "points: not decided";
-  if (p.mode === "qualifiers") return `↓ top ${prev.advance?.perGroup ?? "?"}${prev.groups > 1 ? " from each pool" : ""} qualify`;
-  const who = p.mode === "top_n" ? `top ${p.top ?? "?"} continue` : "everyone continues";
+  if (p.mode === "qualifiers") {
+    const n = prev.advance?.perGroup;
+    const t = cur.qualifierTransition;
+    const L = (i: number) => String.fromCharCode(65 + i);
+    const map = t?.method === "cross_pool" && t.poolPairs?.length && n === 2
+      ? " · " + t.poolPairs.flatMap(([a, b]) => [`${L(a)}1 v ${L(b)}2`, `${L(b)}1 v ${L(a)}2`]).join(", ")
+      : t?.method === "reseed" ? " · reseeded" : "";
+    return `↓ top ${n ?? "?"}${prev.groups > 1 ? ` from each pool${n ? ` (${n * prev.groups} qualifiers)` : ""}` : ""} qualify${map}`;
+  }
+  const who = p.mode === "top_n" && p.perPool ? `top ${p.top ?? "?"} from each pool${p.top && prev.groups > 1 ? ` (${p.top * prev.groups} qualifiers)` : ""}`
+    : p.mode === "top_n" ? `top ${p.top ?? "?"} overall continue` : "everyone continues";
   const sc = shapeChange(prev, cur);
   const shape = sc ? ` · ${p.pairing ? PAIRING_LABEL[p.pairing] : sc === "to_pairs" ? "pairing not decided" : "split not decided"}` : "";
   return `↓ ${who}${shape} · ${carry}`;

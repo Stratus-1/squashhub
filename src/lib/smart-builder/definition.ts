@@ -91,6 +91,8 @@ const StageSchema = z.object({
     pairing: z.enum(["fold", "positions", "manual", "split"]).nullable().optional(),
     /** top_n: how many continue. */
     top: z.number().int().min(1).nullable().optional(),
+    /** top_n from a pooled stage: top N of EACH pool (slots = pool index + position). */
+    perPool: z.boolean().optional(),
   }).nullable().optional(),
   /** Knockout: add a 3rd/4th place match. */
   thirdPlace: z.boolean().optional(),

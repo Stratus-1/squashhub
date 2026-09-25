@@ -42,7 +42,7 @@ export function scoringFromChoice(c: ScoringChoice, prev?: Scoring | null): Scor
 export function scoringText(sc: Scoring): string {
   if (isBells(sc)) return `Bells — ${sc.timeCapMinutes ? `${sc.timeCapMinutes} min per match` : "match minutes not set"}`;
   if (sc.pointsPerGame || sc.bestOf) return `PAR ${sc.pointsPerGame ?? 11} — best of ${sc.bestOf ?? 5}${sc.playAllGames ? ", play all games" : ""}`;
-  return "Scoring not set";
+  return "Needs confirmation (no match format chosen for this stage or the tournament)";
 }
 
 /** "Singles — Bells — 20 min per match". */

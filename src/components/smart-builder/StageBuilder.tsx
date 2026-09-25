@@ -11,6 +11,7 @@ import {
 } from "@/lib/smart-builder/stage-builder";
 import { cn } from "@/lib/utils";
 import { SCORING_CHOICES, choiceOf, scoringFromChoice, effectiveScoring, scoringText, type ScoringChoice } from "@/lib/smart-builder/scoring";
+import { STANDINGS_LABEL, TIEBREAK_LABEL, hasStandings, standingsIssues, type StandingsMethod, type TieBreak } from "@/lib/smart-builder/standings";
 import { requiredRounds, roundNames } from "@/lib/smart-builder/schedule-maths";
 import { TIE_PAIRING_LABEL, opponentPositions, standardRubbers, type TiePairing } from "@/lib/smart-builder/ties";
 import { addDivision, applyPlan, applyStructure, removeDivision } from "@/lib/smart-builder/division-structure";
@@ -201,6 +202,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
             </div>
 
             <RoundScoring def={def} stage={sel0} editStage={editStage} />
+            {hasStandings(sel0) && <StandingsPicker def={def} stage={sel0} editStage={editStage} />}
             {sel0.kind === "cross_pool_league" && <TieGames stage={sel0} editStage={editStage} />}
             {prev && (
               <label className="flex items-center gap-2 text-white/80" data-field={`stage.${sel0.id}.sameSession`}>
@@ -496,6 +498,74 @@ function RoundScoring({ def, stage, editStage }: { def: TournamentDefinition; st
         ))}
       </div>
     </details>
+  );
+}
+
+/** Standings method, Bells score rule and ordered tie-breaks for one stage. Nothing pre-filled. */
+function StandingsPicker({ def, stage, editStage }: { def: TournamentDefinition; stage: any; editStage: (m: (s: any) => void) => void }) {
+  const st = stage.standings ?? {};
+  const up = (patch: any) => editStage((s) => { s.standings = { ...(s.standings ?? {}), ...patch }; });
+  const probs = standingsIssues(def, stage);
+  const bells = probs.some((p) => p.message.includes("Bells")) || st.bellsScore != null || stage.scoring?.mode === "time_capped_points" || def.scoring?.mode === "time_capped_points";
+  const tbs: TieBreak[] = st.tieBreaks ?? [];
+  const num = (v: any) => (v === "" || v == null ? null : Number(v));
+  const MEASURES = ["raw_total", "result_points", "rubbers_won"] as const;
+  return (
+    <div className="rounded border border-white/10 p-2 space-y-2" data-field={`stage.${stage.id}.standings`}>
+      <div className="font-semibold text-white">Standings for this stage</div>
+      <div className="grid sm:grid-cols-2 gap-2">
+        <Q label="Scoring method (standings)">
+          <select className={sel} value={st.method ?? ""} onChange={(e) => up({ method: (e.target.value || null) as StandingsMethod | null })}>
+            <option value="">Needs confirmation</option>
+            {(Object.keys(STANDINGS_LABEL) as StandingsMethod[]).map((k) => <option key={k} value={k}>{STANDINGS_LABEL[k]}</option>)}
+          </select>
+        </Q>
+        {bells && (
+          <Q label="Score at the bell">
+            <select className={sel} value={st.bellsScore ?? ""} onChange={(e) => up({ bellsScore: e.target.value || null })}>
+              <option value="">Needs confirmation</option>
+              <option value="counts_directly">Counts directly towards the competition total</option>
+              <option value="decides_winner">Only decides the rubber winner (then result points)</option>
+            </select>
+          </Q>
+        )}
+        {st.method === "combined" && (
+          <>
+            <Q label="Primary measure">
+              <select className={sel} value={st.combined?.primary ?? ""} onChange={(e) => up({ combined: { ...(st.combined ?? {}), primary: e.target.value || null } })}>
+                <option value="">Choose…</option>{MEASURES.map((m) => <option key={m} value={m}>{STANDINGS_LABEL[m]}</option>)}
+              </select>
+            </Q>
+            <Q label="Secondary measures (in order)">
+              <div className="flex flex-wrap gap-2 text-[11px]">{MEASURES.filter((m) => m !== st.combined?.primary).map((m) => (
+                <label key={m} className="flex items-center gap-1"><input type="checkbox" checked={!!st.combined?.secondary?.includes(m)} onChange={(e) => { const cur = st.combined?.secondary ?? []; up({ combined: { ...(st.combined ?? {}), secondary: e.target.checked ? [...cur, m] : cur.filter((x: string) => x !== m) } }); }} />{m.replace(/_/g, " ")}</label>
+              ))}</div>
+            </Q>
+          </>
+        )}
+        {(st.method === "result_points" || st.combined?.primary === "result_points" || st.combined?.secondary?.includes("result_points")) && (
+          <Q label="Result points — win / draw / loss">
+            <div className="flex gap-1">{(["win", "draw", "loss"] as const).map((k) => (
+              <Input key={k} className={f} placeholder={k} inputMode="numeric" aria-label={`${k} points`} value={st.resultPoints?.[k] ?? ""} onChange={(e) => up({ resultPoints: { ...(st.resultPoints ?? {}), [k]: num(e.target.value) } })} />
+            ))}</div>
+          </Q>
+        )}
+      </div>
+      <div className="space-y-1">
+        <div className="text-white/70 text-[11px]">Tie-breaks, in order {tbs.length ? "" : "— Needs confirmation"}</div>
+        <div className="flex flex-wrap gap-1">
+          {tbs.map((t, i) => (
+            <span key={t} className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] text-white/85">{i + 1}. {TIEBREAK_LABEL[t]}
+              <button className="ml-1 text-white/50" aria-label={`Remove ${TIEBREAK_LABEL[t]}`} onClick={() => up({ tieBreaks: tbs.filter((x) => x !== t) })}>×</button></span>
+          ))}
+          <select className={cn(sel, "w-auto")} value="" onChange={(e) => e.target.value && up({ tieBreaks: [...tbs, e.target.value as TieBreak] })} aria-label="Add tie-break">
+            <option value="">+ Add tie-break</option>
+            {(Object.keys(TIEBREAK_LABEL) as TieBreak[]).filter((t) => !tbs.includes(t)).map((t) => <option key={t} value={t}>{TIEBREAK_LABEL[t]}</option>)}
+          </select>
+        </div>
+      </div>
+      {probs.length > 0 && <ul className="text-[11px] space-y-0.5">{probs.map((p, i) => <li key={i} className={p.level === "error" ? "text-red-300" : "text-amber-200"}>{p.message}</li>)}</ul>}
+    </div>
   );
 }
 

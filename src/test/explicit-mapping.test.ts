@@ -116,6 +116,6 @@ describe("explicit matchup mapping (source → sides → who plays whom)", () =>
     expect(md.units.every((u) => u.slots.length === 2 && u.slots[0].pool === u.slots[1].pool)).toBe(true);
     const lines = stageMappingLines(def, db).join("\n");
     expect(lines).toMatch(/Pairs: Pair 1 = A1 \+ A2/);
-    expect(lines).toMatch(/Round 1.*A1\+A2 v B1\+B2/);
+    expect(lines).toMatch(/Round 1.*A1\+A2 v D1\+D2/);
   });
 });

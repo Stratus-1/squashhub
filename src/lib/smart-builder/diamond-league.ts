@@ -255,6 +255,14 @@ export interface DiamondShape { capacity: number; poolSize: number; pools: numbe
  * Scales the Diamond League to the entry: pools of `poolSize`, grouped into divisions of up to
  * `poolsPerDivision` pools (spread evenly). 48 → 8 pools → 2 × 4; 36 → 6 pools → 2 × 3; 24 → 4 pools → 1 × 4.
  */
+/** Club-chosen layout: `divisions` × `poolsPerDivision` pools of `poolSize`. */
+export function diamondLayout(divisions: number, poolsPerDivision: number, poolSize = 6): DiamondShape {
+  const divs = Array.from({ length: Math.max(1, divisions) }, () => Math.max(2, poolsPerDivision));
+  const pools = divs.reduce((a, b) => a + b, 0);
+  const rounds = poolRounds(divs[0]);
+  return { capacity: pools * poolSize, poolSize, pools, divisions: divs, unplaced: 0, rounds, weeks: rounds + 2, courts: divs.reduce((n, d) => n + Math.floor(d / 2), 0) };
+}
+
 export function diamondShape(capacity = 48, poolSize = 6, poolsPerDivision = 4): DiamondShape {
   const pools = Math.max(0, Math.floor(capacity / poolSize));
   const nd = Math.max(1, Math.ceil(pools / Math.max(2, poolsPerDivision)));
@@ -270,8 +278,8 @@ export function shapeText(sh: DiamondShape): string {
 }
 
 /** Builds the Diamond League structure into `def` (replacing its divisions), scaled to the entry. */
-export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: string[]; startDate?: string | null; startTime?: string | null; capacity?: number; poolSize?: number; poolsPerDivision?: number } = {}) {
-  const sh = diamondShape(opts.capacity ?? 48, opts.poolSize ?? 6, opts.poolsPerDivision ?? 4);
+export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: string[]; startDate?: string | null; startTime?: string | null; capacity?: number; poolSize?: number; poolsPerDivision?: number; divisions?: number } = {}) {
+  const sh = opts.divisions ? diamondLayout(opts.divisions, opts.poolsPerDivision ?? 4, opts.poolSize ?? 6) : diamondShape(opts.capacity ?? 48, opts.poolSize ?? 6, opts.poolsPerDivision ?? 4);
   const courtNames = opts.courts ?? Array.from({ length: Math.max(sh.courts, 1) }, (_, i) => `Court ${i + 1}`);
   const dates = opts.startDate === null ? [] : weeklyDates(opts.startDate ?? "2026-10-07", sh.weeks);
   const oldNames = def.divisions.map((d) => d.poolNames ?? []);

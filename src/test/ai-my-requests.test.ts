@@ -50,8 +50,8 @@ describe("My requests (requester history)", () => {
   it("6: bug request shows bug lifecycle, not generic Completed", () => {
     const b = row({ kind: "bug_report", status: "bug_reported", bug_report_id: "b1" });
     expect(requestStatus(b, "investigating").label).toBe("Bug reported · Investigating");
-    expect(requestStatus(b, "open").label).toBe("Bug reported · Open");
-    expect(requestStatus(b, "fixed").label).toBe("Bug reported · Fixed");
+    expect(requestStatus(b, "open").label).toBe("Bug reported · Reported");
+    expect(requestStatus(b, "fixed").label).toBe("Bug reported · Fixed · verified");
     expect(requestStatus(b, "open").label).not.toMatch(/Completed/);
   });
 

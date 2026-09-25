@@ -647,6 +647,20 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
         </dl>
       </div>
 
+      {schedMaths.sessions.length > 0 && (
+        <div className="rounded-lg border border-white/10 p-3 space-y-1.5" data-field="review-sessions">
+          <div className="font-semibold text-white">Schedule (sessions)</div>
+          {schedMaths.sessions.map((x, i) => (
+            <div key={i}>
+              <div className={x.state === "infeasible" ? "text-red-300" : "text-white"}>{x.label}{x.divisionIds.length > 1 ? ` · ${x.divisionIds.length} divisions` : ""}</div>
+              {x.parts.length > 1 && x.parts.map((p, k) => (
+                <div key={k} className="pl-3 text-white/65">{k + 1}. {p.name}{p.start && p.end ? ` ${p.start}–${p.end}` : ""} · {p.detail}</div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
       <details className="rounded-lg border border-white/10 p-2"><summary className="cursor-pointer font-semibold text-white">The maths</summary>
         <div className="mt-1 font-semibold text-white/80">Structure maths</div>
         {validation.facts.length ? <ul className="list-disc pl-4 mt-0.5 space-y-0.5">{validation.facts.map((x, i) => <li key={i}>{x}</li>)}</ul> : <p className="text-white/50">Nothing to calculate yet.</p>}

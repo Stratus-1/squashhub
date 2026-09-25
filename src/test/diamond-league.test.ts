@@ -8,7 +8,7 @@ import { emptyDefinition, DefinitionSchema } from "@/lib/smart-builder/definitio
 import { sessionTie } from "@/lib/smart-builder/diamond-league";
 import { sessionPlan } from "@/lib/smart-builder/sessions";
 import { scheduleMaths, requiredRounds } from "@/lib/smart-builder/schedule-maths";
-import { validate } from "@/lib/smart-builder/validate";
+import { validateDefinition as validate } from "@/lib/smart-builder/validate";
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `p${i + 1}`);
 

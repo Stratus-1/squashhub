@@ -60,6 +60,7 @@ export function scheduleMathsIssues(def: TournamentDefinition): ScheduleIssue[] 
   const out: ScheduleIssue[] = [];
   const tw = { start: d10(def.scheduleDefaults?.startDate), end: d10(def.scheduleDefaults?.endDate) };
   const load = new Map<string, number>();
+  let cap = Infinity;
   for (const div of def.divisions) {
     const stages = allStages(def).filter((r) => r.division.id === div.id).map((r) => r.stage).filter((s) => !isStep(s));
     let prev: { name: string; done: string | null; fixed: boolean; deadline: string | null } | null = null;
@@ -95,7 +96,7 @@ export function scheduleMathsIssues(def: TournamentDefinition): ScheduleIssue[] 
         const e = effectiveSchedule(def, st);
         const courts = selectedCourtPool(def).length, mm = e.matchMinutes.value as number | null, sm = e.sessionMinutes.value as number | null;
         if (courts && mm && sm) dates.slice(0, need ?? dates.length).forEach((x) => { if (x) load.set(x, (load.get(x) ?? 0) + matchesPerRound(st)); });
-        if (courts && mm && sm) (st as any).__cap = courts * Math.floor(sm / mm);
+        if (courts && mm && sm) cap = Math.min(cap, courts * Math.floor(sm / mm));
       } else if (s.mode === "play_by") {
         deadline = own.end ?? tw.end;
         start = own.start;
@@ -125,8 +126,6 @@ export function scheduleMathsIssues(def: TournamentDefinition): ScheduleIssue[] 
     }
   }
   // Capacity: every fixed round sharing a day must fit the courts × slots of that day.
-  const cap = Math.min(...allStages(def).map((r) => (r.stage as any).__cap).filter((x) => typeof x === "number"));
-  allStages(def).forEach((r) => delete (r.stage as any).__cap);
   if (Number.isFinite(cap)) for (const [day, n] of load) if (n > cap) {
     const first = allStages(def).find((r) => (r.stage.schedule.roundDates ?? []).some((x) => d10(x) === day));
     out.push({ code: "capacity", divisionId: first?.division.id ?? "", stageId: first?.stage.id ?? "",

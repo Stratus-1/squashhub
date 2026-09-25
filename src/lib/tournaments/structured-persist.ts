@@ -508,7 +508,7 @@ const unitOfRow = (x: Record<string, any>, side: "a" | "b") => {
  * Ranking = wins, then the admin's recorded order (`orders[pool]`) for ties. A tie touching any
  * position the next stage uses is NEVER guessed: it blocks with a message naming the pool and places.
  */
-export function sourcePositions(d: SpecDivision, src: PlannedStage, matches: Array<Record<string, any>>, orders?: Record<number, string[]> | null, used?: Set<string>): string[][] {
+export function sourcePositions(d: SpecDivision, src: PlannedStage, matches: Array<Record<string, any>>, orders?: Record<number, string[]> | null, used?: Set<string>, allowTies = false): string[][] {
   const rows = matches.filter((x) => x.stage_key === src.id);
   const wins = new Map<string, number>();
   for (const x of rows) if (x.winner_member_id) {
@@ -536,7 +536,7 @@ export function sourcePositions(d: SpecDivision, src: PlannedStage, matches: Arr
     for (let i = 0; i + 1 < ranked.length; i++) {
       const [x, y] = [ranked[i], ranked[i + 1]];
       const touches = !used || used.has(`${pi}:${i + 1}`) || used.has(`${pi}:${i + 2}`);
-      if (touches && (wins.get(x) ?? 0) === (wins.get(y) ?? 0) && (idx(x) === 1e9 || idx(y) === 1e9))
+      if (!allowTies && touches && (wins.get(x) ?? 0) === (wins.get(y) ?? 0) && (idx(x) === 1e9 || idx(y) === 1e9))
         throw new IntegrityError("tie", `${d.poolLabels?.[pi] ?? `Pool ${String.fromCharCode(65 + pi)}`}: positions ${i + 1} and ${i + 2} are tied on wins — decide the order before the next stage is formed.`);
     }
     return ranked;

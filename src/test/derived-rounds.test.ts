@@ -112,3 +112,18 @@ describe("derived round dates", () => {
     expect([1, 2, 3, 4, 5].map((r) => [...byRound.get(r)!])).toEqual([["2026-10-07"], ["2026-10-14"], ["2026-10-21"], ["2026-10-28"], ["2026-11-04"]]);
   });
 });
+
+describe("knockout round names on Beta games", () => {
+  it("an 8-player knockout's first round is labelled Quarter-final", async () => {
+    const def = make({ kind: "knockout", groupSize: 8, input: { entrants: 8 } });
+    syncDerivedRoundDates(def);
+    const spec = specFromDefinition(def);
+    const { db, t } = fakeDb();
+    t.tournaments = [{ id: "T", builder_architecture: "structured", builder_spec: serializeSpec(spec), start_date: "2026-10-07", end_date: "2026-12-31" }];
+    t.club_champs_entries = Array.from({ length: 8 }, (_, i) => ({ id: `e${i}`, champ_id: "T", group_number: 1, club_member_id: `m${i}`, order_index: i }));
+    await generateStructuredTournament(db, "T");
+    const r1 = t.club_champs_matches.filter((m: any) => m.round_number === 1);
+    expect(new Set(r1.map((m: any) => m.stage_label))).toEqual(new Set(["Quarter-final"]));
+    expect(r1.every((m: any) => m.scheduled_date === "2026-10-07")).toBe(true);
+  });
+});

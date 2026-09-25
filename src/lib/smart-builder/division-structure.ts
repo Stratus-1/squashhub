@@ -21,8 +21,6 @@ export function cloneStructure(src: Division): Division["sections"] {
       st.id = idMap.get(st.id)!;
       const from = st.input?.fromStageId;
       st.input = { ...st.input, fromStageId: from ? idMap.get(from) ?? null : null };
-      // Live participant counts are per division — keep the planned number but never participant identities.
-      delete (st.input as Record<string, unknown>).entrantIds;
     }
   }
   return copy;

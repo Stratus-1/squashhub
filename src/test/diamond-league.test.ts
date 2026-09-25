@@ -5,6 +5,10 @@ import {
   DIAMOND_TIE, tieMinutes, tieSlots, buildTies, tieEveningCheck, tieFinish,
 } from "@/lib/smart-builder/diamond-league";
 import { emptyDefinition, DefinitionSchema } from "@/lib/smart-builder/definition";
+import { sessionTie } from "@/lib/smart-builder/diamond-league";
+import { sessionPlan } from "@/lib/smart-builder/sessions";
+import { scheduleMaths, requiredRounds } from "@/lib/smart-builder/schedule-maths";
+import { validate } from "@/lib/smart-builder/validate";
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `p${i + 1}`);
 
@@ -62,9 +66,13 @@ describe("Diamond League", () => {
     expect(def.divisions.map((d) => d.eligibility)).toEqual(["open", "open"]);
     expect(homeCourt(def.divisions[0], 0, 1)).toBe("Court 1");
     expect(homeCourt(def.divisions[1], 2, 3)).toBe("Court 4");
-    const [ties, semis, finals] = def.divisions[0].sections[0].stages;
-    expect(ties.tieFormat?.rubbers).toHaveLength(9);
+    const [ties, dbl, semis, finals] = def.divisions[0].sections[0].stages;
+    expect(ties.tieFormat?.rubbers.map((r) => r.discipline)).toEqual(Array(6).fill("singles"));
+    expect(dbl.discipline).toBe("doubles");
+    expect(dbl.sameSessionAs).toBe(ties.id);
+    expect(dbl.tieFormat?.rubbers.map((r) => r.positions)).toEqual([[1, 2], [3, 4], [5, 6]]);
     expect(ties.schedule.roundDates).toEqual(DIAMOND_WEDNESDAYS.slice(0, 3));
+    expect(dbl.schedule.roundDates).toEqual(DIAMOND_WEDNESDAYS.slice(0, 3));
     expect(semis.schedule.roundDates).toEqual([DIAMOND_WEDNESDAYS[3]]);
     expect(finals.schedule.roundDates).toEqual([DIAMOND_WEDNESDAYS[4]]);
     expect(def.questions.filter((q) => q.id.startsWith("dl_") && !q.resolved).map((q) => q.id)).toEqual(["dl_points", "dl_semis", "dl_final"]);
@@ -106,5 +114,34 @@ describe("Diamond League", () => {
     const r = interpretTranscript("Diamond League, 48 players, cross-pool, pairs #1+#2, points to be decided, then a final");
     expect(r.fallbackUsed).toBe(false);
     expect(r.rules.find((x) => x.rule === "Points formula")?.confirmed).toBe(false);
+  });
+
+  it("sessions: Wed 1-3 = one 17:45-21:15 session holding Singles then Doubles; no date-overlap errors", () => {
+    const def = applyDiamondLeague(emptyDefinition());
+    const { sessions, issues } = sessionPlan(def);
+    expect(issues).toEqual([]);
+    const wk = sessions.filter((x) => x.parts.length === 2);
+    expect(wk.map((x) => x.date)).toEqual(DIAMOND_WEDNESDAYS.slice(0, 3));
+    expect(wk[0].label).toBe("Wednesday 7 Oct, 17:45–21:15 — Singles + Doubles");
+    expect(wk[0].divisionIds).toHaveLength(2);
+    expect(wk[0].parts.map((p) => [p.name, p.start, p.end, p.minutesPerCourt])).toEqual([["Singles", "17:45", "19:45", 120], ["Doubles", "19:45", "21:15", 90]]);
+    const m = scheduleMaths(def);
+    expect(m.issues.filter((i) => ["dependency", "session", "round_order"].includes(i.code))).toEqual([]);
+    expect(validate(def).issues.filter((i) => i.code === "date_order")).toEqual([]);
+    expect(sessionTie(def).rubbers).toHaveLength(9);
+    expect(requiredRounds(def.divisions[0].sections[0].stages[0], def)).toBe(3);
+  });
+  it("sessions: a same-session stage on different dates, or an overrunning evening, is flagged", () => {
+    const def = applyDiamondLeague(emptyDefinition());
+    def.divisions[0].sections[0].stages[1].schedule.roundDates = ["2026-10-28"];
+    expect(sessionPlan(def).issues.some((i) => i.code === "session_dates")).toBe(true);
+    const d2 = applyDiamondLeague(emptyDefinition());
+    d2.scheduleDefaults.sessionMinutes = 180;
+    expect(sessionPlan(d2).issues.some((i) => i.code === "session_overrun")).toBe(true);
+  });
+  it("without a same-session link, a later stage on the same date is still a dependency error", () => {
+    const def = applyDiamondLeague(emptyDefinition());
+    def.divisions[0].sections[0].stages[1].sameSessionAs = null;
+    expect(scheduleMaths(def).issues.some((i) => i.code === "dependency")).toBe(true);
   });
 });

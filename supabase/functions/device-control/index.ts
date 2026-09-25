@@ -30,6 +30,8 @@ type ControlDevice = {
   name: string;
   enabled: boolean;
   control_mode: "toggle" | "pulse";
+  /** Locks wired so relay-ON keeps the door locked: a pulse switches OFF then back ON. */
+  output_inverted?: boolean;
   provider: "shelly" | "other";
   shelly_device_id: string | null;
   shelly_channel: number;
@@ -120,7 +122,9 @@ async function setShellyRelay(params: {
     channel: params.channel,
     on: params.on,
   };
-  if (params.on && params.autoOffSeconds && params.autoOffSeconds > 0) {
+  // toggle_after flips the relay back after the delay, so it works for both
+  // normal (on -> off) and inverted (off -> on) pulses.
+  if (params.autoOffSeconds && params.autoOffSeconds > 0) {
     body.toggle_after = Math.max(1, Math.round(params.autoOffSeconds));
   }
 
@@ -158,7 +162,7 @@ async function setShellyRelay(params: {
       id: params.deviceId,
       channel: String(params.channel),
       turn: params.on ? "on" : "off",
-      ...(params.on && params.autoOffSeconds
+      ...(params.autoOffSeconds
         ? { timer: String(Math.max(1, Math.round(params.autoOffSeconds))) }
         : {}),
     }),
@@ -341,7 +345,8 @@ Deno.serve(async (req) => {
         return json({ error: "Auto-unlock is not enabled for this device." }, 400);
       }
     }
-    const turnOn = action === "on" || action === "pulse";
+    const inverted = (device as any).output_inverted === true;
+    const turnOn = action === "on" || (action === "pulse" && !inverted);
     const autoOffSeconds =
       action === "pulse"
         ? isGeofence

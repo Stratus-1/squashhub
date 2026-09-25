@@ -71,6 +71,8 @@ async function pulseShellyRelay(params: {
   deviceId: string;
   channel: number;
   pulseMs: number;
+  /** Locks wired so relay-ON keeps the door locked: pulse switches OFF then back ON. */
+  inverted?: boolean;
 }) {
   const server = normalizeShellyServer(params.server);
   // Prefer v2 with a timed "on" pulse when the device supports Gen2+ (Shelly 1 Mini Gen3 does).
@@ -82,7 +84,7 @@ async function pulseShellyRelay(params: {
       body: JSON.stringify({
         id: params.deviceId,
         channel: params.channel,
-        on: true,
+        on: !params.inverted,
         toggle_after: Math.max(1, Math.round(params.pulseMs / 1000)),
       }),
     },
@@ -112,7 +114,7 @@ async function pulseShellyRelay(params: {
       auth_key: params.authKey,
       id: params.deviceId,
       channel: String(params.channel),
-      turn: "on",
+      turn: params.inverted ? "off" : "on",
       timer: String(Math.max(1, Math.round(params.pulseMs / 1000))),
     }),
   });
@@ -235,7 +237,7 @@ Deno.serve(async (req) => {
     const { data: secrets, error: secErr } = await admin
       .from("club_secrets")
       .select(
-        "shelly_auth_key, shelly_server_url, shelly_door_device_id, shelly_door_channel, shelly_door_pulse_ms",
+        "shelly_auth_key, shelly_server_url, shelly_door_device_id, shelly_door_channel, shelly_door_pulse_ms, shelly_door_inverted",
       )
       .eq("club_id", club_id)
       .maybeSingle();
@@ -278,6 +280,7 @@ Deno.serve(async (req) => {
     // Send first, then verify. Shelly Cloud limits this API to one request per
     // second, so a separate status preflight would collide with the command.
     const raw = await pulseShellyRelay({
+      inverted: secrets.shelly_door_inverted === true,
       server: secrets.shelly_server_url,
       authKey: secrets.shelly_auth_key,
       deviceId,

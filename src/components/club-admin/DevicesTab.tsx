@@ -115,6 +115,7 @@ type DeviceForm = {
   auto_seconds: string;
   near_only: boolean;
   button_radius: string;
+  output_inverted: boolean;
 };
 
 const emptyForm = (category: DeviceCategory): DeviceForm => ({
@@ -151,6 +152,7 @@ const emptyForm = (category: DeviceCategory): DeviceForm => ({
   auto_seconds: "12",
   near_only: false,
   button_radius: "150",
+  output_inverted: false,
 });
 
 const toForm = (d: IoTDevice): DeviceForm => ({
@@ -189,6 +191,7 @@ const toForm = (d: IoTDevice): DeviceForm => ({
   auto_seconds: String(d.auto_unlock_seconds ?? 12),
   near_only: !!(d as any).button_near_door_only,
   button_radius: String(d.geofence_radius_m ?? 50),
+  output_inverted: !!(d as any).output_inverted,
 });
 
 const ADD_OPTIONS: Array<{ category: DeviceCategory; title: string; description: string }> = [
@@ -328,6 +331,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         updated_at: "",
         source: "main-access",
         configured: !!doorId,
+        output_inverted: secrets?.shelly_door_inverted === true,
         server_url: secrets?.shelly_server_url || null,
         auth_key: secrets?.shelly_auth_key || null,
     });
@@ -530,6 +534,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
           shelly_door_device_id: form.shelly_device_id.trim(),
           shelly_door_channel: Number(form.shelly_channel) || 0,
           shelly_door_pulse_ms: Number.isFinite(pulseMs) ? pulseMs : 3000,
+          shelly_door_inverted: form.output_inverted,
           shelly_door_ble_mac: form.ble_mac.trim().toUpperCase() || undefined,
           shelly_server_url: form.server_url.trim() || undefined,
         });
@@ -566,6 +571,7 @@ export function DevicesTab({ clubId }: { clubId: string }) {
         shelly_device_id: form.shelly_device_id.trim() || null,
         shelly_channel: Number(form.shelly_channel) || 0,
         pulse_ms: Number.isFinite(pulseMs) ? pulseMs : 3000,
+        output_inverted: form.control_mode === "pulse" ? form.output_inverted : false,
         ble_mac: form.ble_mac.trim() || null,
         auto_off_minutes: form.control_mode === "pulse" ? null : autoOff,
         ...(hasGeofenceSettings
@@ -1017,6 +1023,20 @@ export function DevicesTab({ clubId }: { clubId: string }) {
                         can stay physically open after the lock re-engages.
                       </p>
                     )}
+                    <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/20 p-3">
+                      <div className="min-w-0">
+                        <Label className="text-sm">Invert relay output</Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Switch this on if pressing the button locks the door instead of releasing it
+                          (the lock is wired so the relay being on keeps it locked). The pulse then
+                          switches the relay off for the unlock duration and back on.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={form.output_inverted}
+                        onCheckedChange={(v) => set("output_inverted", v)}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-1.5">

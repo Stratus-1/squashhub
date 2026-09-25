@@ -65,6 +65,8 @@ export interface ClubDevice {
   auto_unlock_enabled?: boolean | null;
   /** Relay on/auto-off time for automatic unlocks (seconds). */
   auto_unlock_seconds?: number | null;
+  /** Locks wired so relay-ON keeps the door locked: pulse switches OFF then back ON. */
+  output_inverted?: boolean | null;
 
   schedule_enabled?: boolean | null;
   schedule_timezone?: string | null;

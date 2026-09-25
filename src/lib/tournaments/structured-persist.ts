@@ -77,6 +77,8 @@ export function specFromDefinition(input: TournamentDefinition): TournamentSpec 
         seeding: { source: (def as any).event?.seedingSource ?? "entry_order", method: "snake" },
         placements: "champion", stages, entrants: [], poolLabels: d.poolLabels,
         finalStandings: (def as any).finalStandings ?? "last_stage",
+        deferredStages: deferred.filter((x) => x.divisionId === d.id)
+          .map((x) => ({ stageKey: x.stageId, name: x.stageName, plannedDate: x.plannedDate })),
       } satisfies SpecDivision;
     }),
   };

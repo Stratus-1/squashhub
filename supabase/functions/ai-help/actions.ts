@@ -7,6 +7,7 @@
 // existing database permission rules stay the source of truth.
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { proposeBooking, confirmBooking, type BookingProposal } from "./booking.ts";
+import { planRemoval, executeRemoval, type MemberRow } from "./member-removal.ts";
 
 export type Ctx = {
   user: SupabaseClient; // caller-scoped client (RLS + auth.uid())
@@ -30,7 +31,7 @@ export type Preview = {
   resolved: Record<string, unknown>;
   before?: unknown;
 };
-export type Refusal = { ok: false; reason: string; escalate: boolean };
+export type Refusal = { ok: false; reason: string; escalate: boolean; code?: string };
 
 export type ActionDef = {
   label: string;
@@ -331,6 +332,64 @@ export const ACTIONS: Record<string, ActionDef> = {
     },
   },
 
+  remove_club_member: {
+    label: "Remove a member from THIS club's member list (ends the club membership; never deletes the person) — club admins",
+    describe: 'args: {"member_name":string (full name as the user said it)}',
+    async preview(c, args) {
+      const { data: adm } = await c.admin.rpc("is_club_admin", { _user_id: c.userId, _club_id: c.clubId });
+      const { data: club } = await c.admin.from("clubs").select("name").eq("id", c.clubId).maybeSingle();
+      const q = s(args.member_name);
+      const first = q.split(/\s+/)[0] ?? "";
+      const { data: rows } = first
+        ? await c.admin.from("club_members").select("id,name,status,club_id,person_id,user_id,role").eq("club_id", c.clubId).ilike("name", `%${first}%`).limit(200)
+        : { data: [] };
+      const target = (rows ?? []) as MemberRow[];
+      // Count the person's memberships elsewhere so the preview can say they stay.
+      const others: Record<string, number> = {};
+      for (const m of target) {
+        if (!m.person_id && !m.user_id) continue;
+        const { count } = await c.admin.from("club_members").select("id", { count: "exact", head: true })
+          .neq("club_id", c.clubId).eq(m.person_id ? "person_id" : "user_id", (m.person_id ?? m.user_id)!);
+        others[m.id] = count ?? 0;
+      }
+      const plan = planRemoval({ canManage: adm === true || c.isSuper, query: q, clubName: club?.name ?? "this club", rows: target, callerMemberId: c.memberId, otherMembershipCount: (m) => others[m.id] ?? 0 });
+      if (!plan.ok) return { ok: false, reason: plan.reason, escalate: plan.code === "needs_person", code: plan.code };
+      return { ok: true, summary: plan.summary, changes: plan.changes, affected: plan.affected, consequences: plan.consequences, unchanged: plan.unchanged, reversible: true, resolved: plan.resolved, before: plan.before };
+    },
+    async execute(c, r) {
+      const res = await executeRemoval(
+        async (id, club) => {
+          // Same update the Members page "Resigned" option makes, under the caller's own permissions.
+          const { data, error } = await c.user.from("club_members").update({ status: "resigned" })
+            .eq("id", id).eq("club_id", club).neq("status", "resigned").select("id,status").maybeSingle();
+          return { data: data as any, error };
+        },
+        async (id) => ((await c.admin.from("club_members").select("status").eq("id", id).maybeSingle()).data?.status ?? null),
+        r,
+      );
+      if (res.ok) {
+        await c.admin.from("audit_events").insert({
+          club_id: c.clubId, actor_user_id: c.userId, entity_type: "club_member", entity_id: String(r.member_id),
+          action: "membership_ended", reason: "Removed from member list via AI assistant (confirmed)",
+          before_data: { status: r.previous_status }, after_data: { status: "resigned" },
+        });
+      }
+      return res;
+    },
+    inverse: {
+      async check(c, r) {
+        const { data: m } = await c.admin.from("club_members").select("status").eq("id", r.member_id).maybeSingle();
+        if (!m) return { ok: false, message: "The membership row no longer exists — manual review required." };
+        if (m.status !== "resigned") return { ok: false, message: "The membership has changed since — manual review required." };
+        return { ok: true, message: "ok", changes: [`Restore ${r.name}'s membership to ${r.previous_status}`] };
+      },
+      async run(c, r) {
+        const { error } = await c.admin.from("club_members").update({ status: String(r.previous_status ?? "active") }).eq("id", r.member_id).eq("status", "resigned");
+        return error ? { ok: false, message: error.message } : { ok: true, message: "Membership restored", after: { status: r.previous_status } };
+      },
+    },
+  },
+
   // Recorded by the automatic self-heal (repair.ts); never proposed by the model.
   // Exists here so Super Admin can reverse it from AI Activity.
   repair_tournament_state: {
@@ -365,5 +424,6 @@ export function catalogueFor(isAdmin: boolean) {
   return Object.entries(ACTIONS)
     .filter(([k]) => k !== "repair_tournament_state")
     .filter(([k]) => isAdmin || !["replace_tournament_player", "correct_match_result"].includes(k))
+    // remove_club_member is always listed: its preview does the real admin check and explains a refusal.
     .map(([k, a]) => `- ${k}: ${a.label}. ${a.describe}`).join("\n");
 }

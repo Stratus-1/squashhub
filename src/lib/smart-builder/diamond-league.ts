@@ -59,7 +59,9 @@ export function poolRotation(pools: number): Array<Array<[number, number]>> {
     rounds.push(pairs.sort((x, y) => x[0] - y[0]));
     rest = [rest[rest.length - 1], ...rest.slice(0, -1)];
   }
-  return rounds;
+  // A v B, then A v C, then A v D (organiser's order).
+  const opp = (r: Array<[number, number]>) => r.find((p) => p[0] === 0)?.[1] ?? 99;
+  return rounds.sort((x, y) => opp(x) - opp(y));
 }
 
 export interface CrossPoolFixture { round: number; poolA: number; poolB: number; position: number; a: string | null; b: string | null }

@@ -2798,6 +2798,13 @@ export default function ClubChampsView() {
     const overallPool = overallRows;
     const overallWinner =
       overallPool.find((s: any) => (s.played || 0) > 0) || overallPool[0] || null;
+    // A completed final/play-off final is authoritative for the overall
+    // winner — pool standings must never override who won the final.
+    const decidedFinal = matches.find((m: any) =>
+      ["final", "playoff_final"].includes(m.stage) && m.status === "completed" && m.winner_member_id && !m.is_bye);
+    const finalChampion = decidedFinal
+      ? (decidedFinal.winner_member_id === decidedFinal.player_a_member_id ? getMatchTeamA(decidedFinal) : getMatchTeamB(decidedFinal))
+      : null;
 
     const winnersCard = !koRunning && leagueWinners.length > 0 ? (
       <CollapsibleCard key="winners" defaultOpen={false} className="border-amber-500/40 bg-amber-50/40 dark:bg-amber-500/5"
@@ -2852,7 +2859,20 @@ export default function ClubChampsView() {
                     )}
                   </tr>
                 ))}
-                {overallWinner && (
+                {finalChampion ? (
+                  <tr className="bg-amber-500/10 font-semibold">
+                    <td className="py-2">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Trophy className="h-3.5 w-3.5 text-amber-600" />
+                        Overall
+                      </span>
+                    </td>
+                    <td className="py-2" colSpan={99}>
+                      {finalChampion}
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">(won the final{decidedFinal?.score ? ` ${decidedFinal.score}` : ""})</span>
+                    </td>
+                  </tr>
+                ) : overallWinner && (
                   <tr className="bg-amber-500/10 font-semibold">
                     <td className="py-2">
                       <span className="inline-flex items-center gap-1.5">

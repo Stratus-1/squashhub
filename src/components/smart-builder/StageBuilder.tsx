@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { addDivision, applyPlan, applyStructure, removeDivision } from "@/lib/smart-builder/division-structure";
 import { toast } from "sonner";
 import { TransitionEditor } from "./TransitionEditor";
+import { DiamondLeaguePanel } from "./DiamondLeaguePanel";
 import { specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { poolDisplay } from "@/lib/tournaments/transition";
 
@@ -75,6 +76,8 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
           </Q>
         )}
       </div>
+
+      <DiamondLeaguePanel def={def} edit={edit} clubId={(def.event as any)?.ownerKind === "club" || def.ownerKind === "club" ? (def.event as any)?.ownerId ?? null : (def.event as any)?.ownerId ?? null} />
 
       <DivisionsPanel def={def} edit={edit} di={di} onSelect={(i) => { setDivIdx(i); setSelId(null); }} />
 

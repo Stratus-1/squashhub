@@ -2059,3 +2059,6 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Coded refusals (permission_denied, ambiguous_member, member_not_found, already_removed, missing_required_data) are stored as `denied`/`needs_clarification` rows with `[code]` reason and no ticket; confirm failures escalate as `[backend_failure]`. AI Activity shows reason badges and new filters.
 - 10:43 Willem "yes sherique…": separate — assistant correctly found the final (Sherique & Vian won) but the "Overall winners" display is not an assistant action, so `[unsupported_action]`. It's the Family Doubles winners-display bug, not routing.
 - Tests: `src/test/ai-member-removal.test.ts`.
+
+### 2026-09-25 — AI Assistant: requester "My requests" history + bug lifecycle labels
+- Requesters had no way to reopen their own AI requests (chat was in-memory only). Added `conversation_id`, `assistant_answer`, `retry_of` on `ai_assist_interactions` (trigger fills conversation from context), `my_ai_bug_statuses` RPC (status only, own linked bugs), "My requests" list in the Assistant with real lifecycle statuses, reopen/confirm pending previews, deliberate retry of old escalations (never auto-executed; `confirmGate` in ai-help/flow.ts). AI Activity shows "Bug reported · <bug status>". Tests: `src/test/ai-my-requests.test.ts`.

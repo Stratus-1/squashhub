@@ -121,12 +121,14 @@ export type Database = {
           action_args: Json | null
           action_name: string | null
           after_data: Json | null
+          assistant_answer: string | null
           attachments: Json
           before_data: Json | null
           bug_report_id: string | null
           club_id: string | null
           confirmed_at: string | null
           context: Json
+          conversation_id: string | null
           created_at: string
           error: string | null
           escalation_reason: string | null
@@ -139,6 +141,7 @@ export type Database = {
           preview: Json | null
           request_text: string | null
           result: Json | null
+          retry_of: string | null
           reversible: boolean
           role: string | null
           rollback_of: string | null
@@ -153,12 +156,14 @@ export type Database = {
           action_args?: Json | null
           action_name?: string | null
           after_data?: Json | null
+          assistant_answer?: string | null
           attachments?: Json
           before_data?: Json | null
           bug_report_id?: string | null
           club_id?: string | null
           confirmed_at?: string | null
           context?: Json
+          conversation_id?: string | null
           created_at?: string
           error?: string | null
           escalation_reason?: string | null
@@ -171,6 +176,7 @@ export type Database = {
           preview?: Json | null
           request_text?: string | null
           result?: Json | null
+          retry_of?: string | null
           reversible?: boolean
           role?: string | null
           rollback_of?: string | null
@@ -185,12 +191,14 @@ export type Database = {
           action_args?: Json | null
           action_name?: string | null
           after_data?: Json | null
+          assistant_answer?: string | null
           attachments?: Json
           before_data?: Json | null
           bug_report_id?: string | null
           club_id?: string | null
           confirmed_at?: string | null
           context?: Json
+          conversation_id?: string | null
           created_at?: string
           error?: string | null
           escalation_reason?: string | null
@@ -203,6 +211,7 @@ export type Database = {
           preview?: Json | null
           request_text?: string | null
           result?: Json | null
+          retry_of?: string | null
           reversible?: boolean
           role?: string | null
           rollback_of?: string | null
@@ -226,6 +235,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_assist_interactions_retry_of_fkey"
+            columns: ["retry_of"]
+            isOneToOne: false
+            referencedRelation: "ai_assist_interactions"
             referencedColumns: ["id"]
           },
           {
@@ -17060,6 +17076,14 @@ export type Database = {
           name: string
           subdomain: string
           tenant_type: string
+        }[]
+      }
+      my_ai_bug_statuses: {
+        Args: { _ids: string[] }
+        Returns: {
+          id: string
+          status: string
+          verification: string
         }[]
       }
       new_invite_token: { Args: never; Returns: string }

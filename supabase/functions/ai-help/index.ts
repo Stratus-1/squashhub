@@ -11,7 +11,7 @@ import { z } from "npm:zod@3";
 import { ACTIONS, catalogueFor, type Ctx } from "./actions.ts";
 import { READ_TOOLS, type AssistCtx } from "./tools.ts";
 import { diagnoseAndRepair } from "./repair.ts";
-import { MAX_STEPS, ESCALATED_ANSWER, BUDGET_ANSWER, nextStepDecision, replayStored } from "./flow.ts";
+import { MAX_STEPS, ESCALATED_ANSWER, BUDGET_ANSWER, nextStepDecision, replayStored, confirmGate } from "./flow.ts";
 
 const MODEL = "openai/gpt-6-astra";
 const PREVIEW_TTL_MS = 15 * 60 * 1000;
@@ -27,6 +27,8 @@ const Body = z.object({
   attachments: z.array(z.object({ path: z.string().max(400), name: z.string().max(200), mime: z.string().max(80), size: z.number().optional() })).max(3).optional(),
   interactionId: z.string().uuid().optional(),
   clientRequestId: z.string().uuid().optional(),
+  conversationId: z.string().uuid().optional(),
+  retryOf: z.string().uuid().optional(),
   reason: z.string().max(1000).optional(),
   context: z.object({
     clubId: z.string().uuid().nullable().optional(),
@@ -104,7 +106,7 @@ Deno.serve(async (req) => {
     const role = isSuper ? (member ? `super_admin (club role: ${member.role})` : "super_admin") : member?.role ?? "member";
     const c: Ctx = { user, admin, userId, clubId, memberId: member?.id ?? null, isAdmin, isSuper };
     const attachments = (b.attachments ?? []).filter((a) => a.path.startsWith(`ai-help/${userId}/`) && a.mime.startsWith("image/"));
-    const context = { route: b.context?.route ?? null, ids: b.context?.ids ?? {}, role, club: clubRow.name, clientRequestId: b.clientRequestId ?? null };
+    const context = { route: b.context?.route ?? null, ids: b.context?.ids ?? {}, role, club: clubRow.name, clientRequestId: b.clientRequestId ?? null, conversationId: b.conversationId ?? null, retryOf: null as string | null };
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
     const ac: AssistCtx = {
       ...c, clubName: clubRow.name, role, myMemberIds: myMems.map((m) => m.id), myClubIds: [...new Set(myMems.map((m) => m.club_id))],
@@ -148,8 +150,9 @@ Deno.serve(async (req) => {
     // ---------- Confirm / cancel a stored preview ----------
     if (b.mode === "confirm" || b.mode === "cancel") {
       const { data: row } = await admin.from("ai_assist_interactions").select("*").eq("id", b.interactionId!).maybeSingle();
-      if (!row || row.user_id !== userId || row.club_id !== clubId) return json({ error: "That request wasn't found." }, 404);
-      if (row.status !== "proposed") return json({ error: "This request has already been handled." }, 409);
+      const gate = confirmGate(row, userId, clubId);
+      if (gate === "not_found") return json({ error: "That request wasn't found." }, 404);
+      if (gate === "handled") return json({ error: "This request has already been handled." }, 409);
       if (b.mode === "cancel") {
         await admin.from("ai_assist_interactions").update({ status: "cancelled" }).eq("id", row.id);
         return json({ answer: "Cancelled — nothing was changed." });
@@ -188,6 +191,14 @@ Deno.serve(async (req) => {
     // ---------- Ask ----------
     const question = (b.question ?? "").trim();
     if (!question) return json({ error: "Please type or say your question." }, 400);
+    // Deliberate retry of an older request (e.g. a pre-fix escalation). The old
+    // row is never executed; the retry runs as a brand-new request that still
+    // needs its own preview + Confirm.
+    if (b.retryOf) {
+      const { data: old } = await admin.from("ai_assist_interactions").select("id,user_id,status").eq("id", b.retryOf).maybeSingle();
+      if (!old || old.user_id !== userId) return json({ error: "That request wasn't found." }, 404);
+      context.retryOf = old.id;
+    }
     // Retry of a request that already completed server-side: return the stored
     // reply instead of running again (prevents duplicate tickets/actions).
     if (b.clientRequestId) {
@@ -397,6 +408,10 @@ Deno.serve(async (req) => {
 
     if (!outcome.interactionId && !outcome.ticketId && !outcome.bugId) {
       await admin.from("ai_assist_interactions").insert({ ...base, kind: "question", status: "answered", interpretation: toolLog.map((t) => t.tool).join(", ") || null, result: { answer, tools: toolLog } });
+    }
+    if (b.clientRequestId) {
+      await admin.from("ai_assist_interactions").update({ assistant_answer: answer.slice(0, 8000) })
+        .eq("user_id", userId).eq("context->>clientRequestId", b.clientRequestId).is("assistant_answer", null);
     }
     console.log(JSON.stringify({ fn: "ai-help", event: "ask_done", ms: Date.now() - startedAt, steps, stop: stopReason,
       escalated: !!outcome.escalated, preview: !!outcome.preview, voice: !!b.transcriptUsed }));

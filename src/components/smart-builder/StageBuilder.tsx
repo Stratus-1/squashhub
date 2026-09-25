@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
 import {
-  FORMAT_LABEL, addStage, copyPreviousStage, diamondTemplate, shapeChange, moveStage, relink, removeStage, setDiscipline, setFormat, stageSummary, transitionText,
+  FORMAT_LABEL, setSameSession, addStage, copyPreviousStage, diamondTemplate, shapeChange, moveStage, relink, removeStage, setDiscipline, setFormat, stageSummary, transitionText,
   type BuilderFormat,
 } from "@/lib/smart-builder/stage-builder";
 import { cn } from "@/lib/utils";
+import { TIE_PAIRING_LABEL, opponentPositions, standardRubbers, type TiePairing } from "@/lib/smart-builder/ties";
 import { addDivision, applyPlan, applyStructure, removeDivision } from "@/lib/smart-builder/division-structure";
 import { toast } from "sonner";
 import { TransitionEditor } from "./TransitionEditor";
@@ -155,6 +156,23 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
                   </select>
                 </Q>
               )}
+              {sel0.kind === "cross_pool_league" && (
+                <>
+                  <Q label="3. Number of pools"><Input className={f} inputMode="numeric" value={sel0.groups} onChange={(e) => editStage((s) => { s.groups = Math.max(2, Number(e.target.value) || 2); })} /></Q>
+                  <Q label="Players per pool"><Input className={f} inputMode="numeric" value={sel0.groupSize ?? ""} onChange={(e) => editStage((s) => { s.groupSize = e.target.value ? Number(e.target.value) : null; })} /></Q>
+                  <Q label="4. Pool rotation">
+                    <select className={sel} value={sel0.legs ?? 1} onChange={(e) => editStage((s) => { s.legs = Number(e.target.value) === 2 ? 2 : 1; })}>
+                      <option value={1}>Round robin — each pool plays every other pool once</option><option value={2}>Round robin — every other pool twice</option>
+                    </select>
+                  </Q>
+                  <Q label="Pairing inside each tie">
+                    <select className={sel} data-field={`stage.${sel0.id}.tiePairing`} value={sel0.tieFormat?.pairing ?? ""} onChange={(e) => editStage((s) => { s.tieFormat = { rubbers: [], sameCourt: true, ...s.tieFormat, pairing: (e.target.value || null) as TiePairing | null }; })}>
+                      <option value="">Not decided</option>
+                      {(Object.keys(TIE_PAIRING_LABEL) as TiePairing[]).map((k) => <option key={k} value={k}>{TIE_PAIRING_LABEL[k]}</option>)}
+                    </select>
+                  </Q>
+                </>
+              )}
               {sel0.kind === "swiss" && (
                 <Q label="4. Number of Swiss rounds"><Input className={f} inputMode="numeric" value={sel0.swissRounds ?? ""} onChange={(e) => editStage((s) => { s.swissRounds = e.target.value ? Number(e.target.value) : null; })} /></Q>
               )}
@@ -178,6 +196,16 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               )}
             </div>
 
+            {sel0.kind === "cross_pool_league" && <TieGames stage={sel0} editStage={editStage} />}
+            {prev && (
+              <label className="flex items-center gap-2 text-white/80" data-field={`stage.${sel0.id}.sameSession`}>
+                <input type="checkbox" checked={sel0.sameSessionAs === prev.id} onChange={(e) => editDiv((x) => setSameSession(x, sel0.id, e.target.checked))} />
+                Same session as {prev.name || "the previous stage"} — played straight after it on the same dates and courts
+              </label>
+            )}
+            {sel0.kind === "cross_pool_league" && !sel0.sameSessionAs && (
+              <Q label="Session start time (each date)"><Input type="time" className={f} value={sel0.tieFormat?.startTime ?? ""} onChange={(e) => editStage((s) => { if (s.tieFormat) s.tieFormat.startTime = e.target.value || null; })} /></Q>
+            )}
             {prev && <Progression def={def} prev={prev} cur={sel0} editDiv={editDiv} />}
             {!prev && <div className="text-[11px] text-white/50">Stage 1 takes the entries.</div>}
           </div>
@@ -384,3 +412,44 @@ function PoolMapping({ def, prev, cur, upd }: { def: TournamentDefinition; prev:
       })} />
   );
 }
+
+/** Ordered games inside one pool-v-pool tie (one discipline per stage; link stages for mixed evenings). */
+function TieGames({ stage, editStage }: { stage: any; editStage: (m: (s: any) => void) => void }) {
+  const t = stage.tieFormat ?? { rubbers: [], pairing: null };
+  const need = stage.discipline === "doubles" ? 2 : 1;
+  const parse = (v: string) => v.split(/[+,\s]+/).map(Number).filter((n) => n > 0).slice(0, 2);
+  const upd = (i: number, patch: any) => editStage((s) => { s.tieFormat.rubbers[i] = { ...s.tieFormat.rubbers[i], ...patch }; });
+  return (
+    <div className="rounded border border-white/10 p-2 space-y-1" data-field={`stage.${stage.id}.tieGames`}>
+      <div className="flex items-center gap-2">
+        <span className="font-semibold text-white">Games in each tie (in order, same court)</span>
+        <Button size="sm" variant="outline" className="ml-auto h-7 bg-transparent border-white/20 text-white/80 text-[11px]" disabled={!stage.groupSize}
+          onClick={() => editStage((s) => { s.tieFormat = { sameCourt: true, pairing: null, ...s.tieFormat, rubbers: standardRubbers(s.discipline, s.groupSize, s.discipline === "doubles" ? 30 : 20) }; })}>
+          Fill {stage.discipline === "doubles" ? "1+2, 3+4…" : "1v1…"} from pool size
+        </Button>
+      </div>
+      {t.rubbers.map((r: any, i: number) => {
+        const opp = opponentPositions(r, t.pairing);
+        return (
+          <div key={i} className="flex items-center gap-1 text-[11px]">
+            <span className="w-12 text-white/50">Game {i + 1}</span>
+            <Input className="h-7 w-16 bg-white/5 border-white/15 text-white text-xs" value={r.positions.join("+")} onChange={(e) => { const p = parse(e.target.value); if (p.length) upd(i, { positions: p, discipline: stage.discipline }); }} aria-label={`Game ${i + 1} positions`} />
+            <span className="text-white/50">v</span>
+            {t.pairing === "custom"
+              ? <Input className="h-7 w-16 bg-white/5 border-white/15 text-white text-xs" value={(r.positionsB ?? []).join("+")} onChange={(e) => upd(i, { positionsB: parse(e.target.value) })} aria-label={`Game ${i + 1} opponent positions`} />
+              : <span className="w-16 text-white/80">{opp ? opp.join("+") : "?"}</span>}
+            <Input className="h-7 w-14 bg-white/5 border-white/15 text-white text-xs" inputMode="numeric" value={r.minutes} onChange={(e) => upd(i, { minutes: Math.max(1, Number(e.target.value) || 1) })} aria-label={`Game ${i + 1} minutes`} />
+            <span className="text-white/50">min</span>
+            <Button size="icon" variant="ghost" className="h-6 w-6 text-white/60" aria-label={`Remove game ${i + 1}`} onClick={() => editStage((s) => { s.tieFormat.rubbers.splice(i, 1); })}><Trash2 className="h-3 w-3" /></Button>
+          </div>
+        );
+      })}
+      <Button size="sm" variant="outline" className="h-7 bg-transparent border-white/20 text-white/80 text-[11px]"
+        onClick={() => editStage((s) => { s.tieFormat = { sameCourt: true, pairing: null, rubbers: [], ...s.tieFormat }; const n = s.tieFormat.rubbers.length; s.tieFormat.rubbers.push({ discipline: s.discipline, positions: need === 2 ? [2 * n + 1, 2 * n + 2] : [n + 1], minutes: need === 2 ? 30 : 20 }); })}>
+        <Plus className="h-3 w-3 mr-1" />Add game
+      </Button>
+      <div className="text-white/50 text-[11px]">One match type per stage. For singles then doubles on the same evening, add a Doubles stage and tick "Same session".</div>
+    </div>
+  );
+}
+

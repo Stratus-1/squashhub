@@ -20,6 +20,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { stageDetailLines } from "@/lib/smart-builder/stage-builder";
 import { allStages, effectiveSchedule, STAGE_LABELS, type Stage, type TournamentDefinition, type CommsChannel } from "@/lib/smart-builder/definition";
 import type { ValidationResult } from "@/lib/smart-builder/validate";
 import type { ExistingMapping } from "@/lib/smart-builder/to-existing";
@@ -560,7 +561,8 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
       ["Owner", ev.scope ? `${SCOPE_LABEL[ev.scope as EventScope]} — ${ev.ownerName ?? "owner not chosen"}` : "—"],
       ["Who may enter", ev.scope && ev.audience ? AUDIENCE_OPTIONS[ev.scope as EventScope].find((o) => o.value === ev.audience)?.label ?? "—" : "—"],
       ["Event venues", ev.noVenue ? "No physical venue" : eventVenues(def).names.length ? `${eventVenues(def).names.join(", ")} · ${selectedCourtPool(def).length} court(s)` : "—"],
-      ["Format", def.divisions.map((d) => `${d.name}: ${d.sections.flatMap((s) => s.stages.map((st) => shortStageName(st))).join(" → ")}`).join(" | ") || "—"],
+      ["Stages", def.divisions.map((d) => `${d.name}: ${d.sections.flatMap((x) => x.stages).map((st, i) => `${i + 1}. ${st.name} — ${stageDetailLines(st).join("; ")}`).join(" | ")}`).join(" || ") || "—"],
+      ["Flow", def.divisions.map((d) => `${d.name}: ${d.sections.flatMap((s) => s.stages.map((st) => shortStageName(st))).join(" → ")}`).join(" | ") || "—"],
       ["Entry", p.entryMethod ? p.entryMethod.replace(/_/g, " ") + (p.confirmAvailabilityOnly ? " (confirm availability only)" : "") : "—"],
       ["Dates", sd.startDate ? `${sd.startDate} → ${sd.endDate ?? "?"}${sd.weekday != null ? `, ${DAYS[sd.weekday]}s` : ""}${sd.startTime ? ` from ${sd.startTime}` : ""}` : "—"],
       ["Scheduled venues", sd.venueNames?.length ? `${sd.venueNames.join(", ")}${sd.rotateVenues ? " (rotating)" : ""}` : "—"],

@@ -139,8 +139,16 @@ const StageSchema = z.object({
       discipline: z.enum(["singles", "doubles"]),
       /** Pool positions per side: [1] = #1 v #1; [1,2] = pair of positions 1+2 v 1+2. */
       positions: z.array(z.number().int().min(1)).min(1).max(2),
+      /** Opponent side's positions — only for custom pairing; otherwise derived from `pairing`. */
+      positionsB: z.array(z.number().int().min(1)).min(1).max(2).optional(),
       minutes: z.number().int().min(1),
     })).min(1),
+    /**
+     * How the two pools' players meet inside a tie (its own rule, never inferred from the rotation):
+     * position = 1v1, 2v2…; crossover = 1v2, 2v1, 3v4, 4v3…; custom = each game's opponent set explicitly.
+     * null = not decided (blocks Create).
+     */
+    pairing: z.enum(["position", "crossover", "custom"]).nullable().optional(),
     sameCourt: z.boolean().default(true),
     /** Evening start (HH:MM). Instance setting. */
     startTime: z.string().nullable().optional(),
@@ -385,7 +393,7 @@ export const STAGE_LABELS: Record<StageKind, string> = {
   split: "Split (Championship / Plate)",
   pair_from_positions: "Create doubles pairs from results",
   custom: "Custom stage",
-  cross_pool_league: "Pool-v-pool ties (same positions meet)",
+  cross_pool_league: "Pool-v-pool league",
 };
 
 /** All stages with their division/section context, in flow order. */

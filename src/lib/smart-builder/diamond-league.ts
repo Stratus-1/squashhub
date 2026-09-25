@@ -1,3 +1,4 @@
+import { gameLabel, opponentPositions } from "./ties";
 /**
  * Diamond League — pure engine pieces + reusable template.
  *
@@ -163,6 +164,7 @@ export type TieFormat = NonNullable<Stage["tieFormat"]>;
 /** Diamond League tie: 6 singles @20 then 3 doubles @30, same court, in order. */
 export const DIAMOND_TIE: TieFormat = {
   sameCourt: true,
+  pairing: "position",
   startTime: null,
   rubbers: [
     ...[1, 2, 3, 4, 5, 6].map((p) => ({ discipline: "singles" as const, positions: [p], minutes: 20 })),
@@ -170,18 +172,18 @@ export const DIAMOND_TIE: TieFormat = {
   ],
 };
 /** Stage 1 of each weekly session: 6 singles @20 min. */
-export const DIAMOND_SINGLES_TIE: TieFormat = { sameCourt: true, startTime: null, rubbers: DIAMOND_TIE.rubbers.filter((r) => r.discipline === "singles") };
+export const DIAMOND_SINGLES_TIE: TieFormat = { sameCourt: true, pairing: "position", startTime: null, rubbers: DIAMOND_TIE.rubbers.filter((r) => r.discipline === "singles") };
 /** Stage 2, same session, straight after: 3 doubles @30 min (pool positions 1+2, 3+4, 5+6). */
-export const DIAMOND_DOUBLES_TIE: TieFormat = { sameCourt: true, startTime: null, rubbers: DIAMOND_TIE.rubbers.filter((r) => r.discipline === "doubles") };
+export const DIAMOND_DOUBLES_TIE: TieFormat = { sameCourt: true, pairing: "position", startTime: null, rubbers: DIAMOND_TIE.rubbers.filter((r) => r.discipline === "doubles") };
 export const tieMinutes = (t: TieFormat) => t.rubbers.reduce((n, r) => n + r.minutes, 0);
 const toMin = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-export const rubberLabel = (r: TieFormat["rubbers"][number]) => r.positions.join("+") + " v " + r.positions.join("+");
+export const rubberLabel = (r: TieFormat["rubbers"][number], pairing: TieFormat["pairing"] = "position") => gameLabel(r, pairing ?? "position");
 
 /** Ordered rubber slots for one tie from a start time (null start = durations only). */
 export function tieSlots(t: TieFormat, start?: string | null) {
   let at = start ? toMin(start) : 0;
-  return t.rubbers.map((r, i) => { const s = at; at += r.minutes; return { order: i + 1, ...r, start: start ? hhmm(s) : null, end: start ? hhmm(at) : null }; });
+  return t.rubbers.map((r, i) => { const s = at; at += r.minutes; return { order: i + 1, ...r, positionsB: opponentPositions(r, t.pairing ?? "position") ?? r.positions, start: start ? hhmm(s) : null, end: start ? hhmm(at) : null }; });
 }
 export const tieFinish = (t: TieFormat, start: string) => hhmm(toMin(start) + tieMinutes(t));
 
@@ -193,7 +195,7 @@ export function tieCourt(d: Pick<Division, "poolGroups">, a: number, b: number, 
 
 export interface Tie {
   round: number; division: number; poolA: number; poolB: number; court: string | null;
-  rubbers: Array<{ order: number; discipline: "singles" | "doubles"; positions: number[]; minutes: number; start: string | null; end: string | null; a: string | null; b: string | null }>;
+  rubbers: Array<{ order: number; discipline: "singles" | "doubles"; positions: number[]; positionsB: number[]; minutes: number; start: string | null; end: string | null; a: string | null; b: string | null }>;
 }
 /**
  * Round-robin of pool-v-pool ties inside each division (circle rotation — every pool meets every other once).
@@ -205,7 +207,7 @@ export function buildTies(pools: (string | null)[][][], divisions: Pick<Division
     const side = (pi: number, pos: number[]) => pos.every((p) => dp[pi]?.[p - 1]) ? pos.map((p) => dp[pi][p - 1]).join("+") : null;
     out.push({
       round: r + 1, division: di, poolA: pa, poolB: pb, court: divisions[di] ? tieCourt(divisions[di], pa, pb, k) : null,
-      rubbers: tieSlots(t, t.startTime).map((s) => ({ ...s, discipline: s.discipline!, positions: s.positions!, minutes: s.minutes!, a: side(pa, s.positions!), b: side(pb, s.positions!) })),
+      rubbers: tieSlots(t, t.startTime).map((s) => ({ ...s, discipline: s.discipline!, positions: s.positions!, minutes: s.minutes!, a: side(pa, s.positions!), b: side(pb, s.positionsB) })),
     });
   })));
   return out;
@@ -318,10 +320,11 @@ export function sessionTie(def: TournamentDefinition): TieFormat {
   const lead = d && diamondTieStage(d);
   if (!d || !lead?.tieFormat) return DIAMOND_TIE;
   const stages = d.sections.flatMap((x) => x.stages);
-  const rubbers = [...lead.tieFormat.rubbers];
+  const withB = (st: Stage) => (st.tieFormat?.rubbers ?? []).map((r) => ({ ...r, positionsB: opponentPositions(r, st.tieFormat?.pairing ?? "position") ?? r.positions }));
+  const rubbers = withB(lead);
   for (let cur = lead, next = stages.find((s) => s.sameSessionAs === cur.id); next; cur = next, next = stages.find((s) => s.sameSessionAs === cur.id))
-    rubbers.push(...(next.tieFormat?.rubbers ?? []));
-  return { sameCourt: true, startTime: lead.tieFormat.startTime ?? null, rubbers };
+    rubbers.push(...withB(next));
+  return { sameCourt: true, pairing: "custom", startTime: lead.tieFormat.startTime ?? null, rubbers };
 }
 
 /** Plain chain for the builder map. */

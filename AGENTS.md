@@ -159,4 +159,4 @@ Supabase currently owns the dominant data and backend path. Migrate incrementall
 - Tests, lint, and build have run as appropriate.
 - `ARCHITECTURE.md` is updated for changed boundaries or migration paths.
 - Reusable tournament templates live in `tournament_templates` (club-scoped) and store definitions with instance fields stripped via `toTemplate`; why: fixed logic vs per-event settings stay separate.
-- Compound fixtures (team/pool-v-pool ties) are modelled as `Stage.tieFormat` ordered rubbers; the tie is the scheduling unit (court+evening); why: rubbers must keep their tie/court/evening relationship.
+- Sessions (date/court/time blocks) are separate from stages: a stage joins an earlier stage's session only via explicit `Stage.sameSessionAs`; `sessionPlan` adds sequential durations; compound ties stay `Stage.tieFormat` rubbers; why: several stages can share one evening without being flagged as overlapping.

@@ -103,7 +103,7 @@ describe("derived round dates", () => {
     const spec = specFromDefinition(def);
     expect(spec.divisions[0].stages[0].schedule?.roundDates).toHaveLength(5);
     const { db, t } = fakeDb();
-    t.tournaments = [{ id: "T", builder_architecture: "structured", builder_spec: JSON.parse(serializeSpec(spec)), start_date: "2026-10-07", end_date: "2026-12-31" }];
+    t.tournaments = [{ id: "T", builder_architecture: "structured", builder_spec: serializeSpec(spec), start_date: "2026-10-07", end_date: "2026-12-31" }];
     t.club_champs_entries = Array.from({ length: 6 }, (_, i) => ({ id: `e${i}`, champ_id: "T", group_number: 1, club_member_id: `m${i}`, order_index: i }));
     await generateStructuredTournament(db, "T");
     const byRound = new Map<number, Set<string>>();

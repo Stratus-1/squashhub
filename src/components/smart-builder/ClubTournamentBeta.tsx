@@ -14,7 +14,7 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
     openDraft: setDraftId,
     backToList: () => setDraftId(null),
     exit: null,
-    afterCreate: () => navigate("/club-admin?tab=champs"),
+    afterCreate: (id: string) => navigate(`/beta-tournament/${id}`),
   };
   return (
     <div className="dark rounded-xl bg-background p-4 text-foreground">

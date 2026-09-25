@@ -1,3 +1,4 @@
+import { mappingIssues, resolveMapping, seedPools } from "./mapping";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -47,8 +48,11 @@ export function generateFromSpec(spec: TournamentSpec, tournamentId: string): En
   for (const d of spec.divisions) {
     const errs = contractIssues(d).filter((i) => i.level === "error");
     if (errs.length) throw new IntegrityError("contract", `${d.label}: ${errs.map((e) => e.message).join("; ")}`);
-    const first = [...d.stages].sort((a, b) => a.order - b.order)[0];
-    out.push(...generateStage(tournamentId, d, first));
+    const ordered = [...d.stages].sort((a, b) => a.order - b.order);
+    out.push(...generateStage(tournamentId, d, ordered[0]));
+    // Later mapped stages that draw from the same entry-seeded pools (e.g. same-evening doubles
+    // by pool position) depend on no results, so they are generated now, from the same pools.
+    for (const st of ordered.slice(1)) if (st.kind === "mapped" && st.mapping?.source === "seed_pools") out.push(...generateStage(tournamentId, d, st));
   }
   return out;
 }
@@ -67,9 +71,24 @@ export function generateStage(tid: string, d: SpecDivision, st: PlannedStage): E
       return legs.map((m) => mk({ roundId: `${st.id}:r${m.round}`, round: m.round, poolId: st.kind === "pools" ? poolId(d.divisionId, st.id, pi) : null, a: m.a, b: m.b }));
     });
   }
+  if (st.kind === "mapped") {
+    if (!st.mapping || st.mapping.source !== "seed_pools") throw new IntegrityError("mapping_source", `${st.name}: waits for the finishing positions of an earlier stage.`);
+    return mappedFixtures(tid, d, st, seedPools(d.entrants, st.mapping.pools, d.seeding.method));
+  }
   if (st.kind === "swiss") return swissFixtures(tid, d, st, 1, d.entrants.map((e, i) => ({ id: e.id, points: 0, seed: i + 1 })), new Set());
   if (st.kind === "knockout") return knockoutFirstRound(tid, d, st, d.entrants.map((e) => e.id));
   throw new IntegrityError("unsupported_first_stage", `${st.kind} cannot be generated as a first stage yet.`);
+}
+
+/** Explicit mapping → fixtures. Cross-pool games belong to the stage (pool_id NULL); the tie is kept in the label. */
+export function mappedFixtures(tid: string, d: SpecDivision, st: PlannedStage, positions: string[][]): EngineFixture[] {
+  const issues = mappingIssues(st.mapping, st.name);
+  if (issues.length) throw new IntegrityError("mapping", issues.join("; "));
+  return resolveMapping(st.mapping!, positions).map((x) => ({
+    tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "mapped" as const,
+    roundId: `${st.id}:r${x.round}`, round: x.round, poolId: null, slot: x.order, a: x.aId, b: x.bId,
+    label: `${x.a} v ${x.b}`,
+  }));
 }
 
 function swissFixtures(tid: string, d: SpecDivision, st: PlannedStage, round: number, players: Array<{ id: string; points: number; seed: number }>, played: Set<string>): EngineFixture[] {

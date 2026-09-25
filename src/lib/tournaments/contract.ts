@@ -1,3 +1,4 @@
+import { mappingIssues as mappingIssuesLazy } from "./mapping";
 /**
  * Tournament Engine — Contract, Stage Plan and Integrity Guards.
  *
@@ -466,4 +467,3 @@ function mappedIssues(s: PlannedStage, earlier: PlannedStage[]): string[] {
   }
   return out;
 }
-import { mappingIssues as mappingIssuesLazy } from "./mapping";

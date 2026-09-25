@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/hooks/use-club", () => ({
   useMyClub: () => ({ data: { club: { id: "club-1" } } }),
+  useIsClubAdmin: () => false,
 }));
 
 vi.mock("@/hooks/use-club-capabilities", () => ({

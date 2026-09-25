@@ -123,6 +123,7 @@ export type Database = {
           after_data: Json | null
           attachments: Json
           before_data: Json | null
+          bug_report_id: string | null
           club_id: string | null
           confirmed_at: string | null
           context: Json
@@ -154,6 +155,7 @@ export type Database = {
           after_data?: Json | null
           attachments?: Json
           before_data?: Json | null
+          bug_report_id?: string | null
           club_id?: string | null
           confirmed_at?: string | null
           context?: Json
@@ -185,6 +187,7 @@ export type Database = {
           after_data?: Json | null
           attachments?: Json
           before_data?: Json | null
+          bug_report_id?: string | null
           club_id?: string | null
           confirmed_at?: string | null
           context?: Json
@@ -212,6 +215,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "ai_assist_interactions_bug_report_id_fkey"
+            columns: ["bug_report_id"]
+            isOneToOne: false
+            referencedRelation: "ai_bug_reports"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ai_assist_interactions_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
@@ -230,6 +240,92 @@ export type Database = {
             columns: ["rolled_back_by"]
             isOneToOne: false
             referencedRelation: "ai_assist_interactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_bug_reports: {
+        Row: {
+          actual_behaviour: string
+          club_id: string | null
+          created_at: string
+          evidence: string
+          expected_behaviour: string
+          feature: string
+          fingerprint: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          occurrence_log: Json
+          occurrences: number
+          related_ids: Json
+          reporter_role: string | null
+          reporter_user_id: string | null
+          reproduction: string | null
+          resolution_note: string | null
+          screen: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+          verification: string
+        }
+        Insert: {
+          actual_behaviour: string
+          club_id?: string | null
+          created_at?: string
+          evidence: string
+          expected_behaviour: string
+          feature: string
+          fingerprint: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          occurrence_log?: Json
+          occurrences?: number
+          related_ids?: Json
+          reporter_role?: string | null
+          reporter_user_id?: string | null
+          reproduction?: string | null
+          resolution_note?: string | null
+          screen?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+          verification?: string
+        }
+        Update: {
+          actual_behaviour?: string
+          club_id?: string | null
+          created_at?: string
+          evidence?: string
+          expected_behaviour?: string
+          feature?: string
+          fingerprint?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          occurrence_log?: Json
+          occurrences?: number
+          related_ids?: Json
+          reporter_role?: string | null
+          reporter_user_id?: string | null
+          reproduction?: string | null
+          resolution_note?: string | null
+          screen?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          verification?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_bug_reports_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]

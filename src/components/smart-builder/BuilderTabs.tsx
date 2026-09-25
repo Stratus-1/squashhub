@@ -7,7 +7,7 @@
 import { atomically, persistStructure, specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
-import { requiredRounds, roundNames, scheduleMathsIssues } from "@/lib/smart-builder/schedule-maths";
+import { requiredRounds, roundNames, scheduleMaths, scheduleMathsIssues } from "@/lib/smart-builder/schedule-maths";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
@@ -369,7 +369,7 @@ function StageScheduleEditor({ stage, def, setS }: { stage: Stage; def: Tourname
           {Object.entries(MODE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </Field>
-      <div className="sm:col-span-2 lg:col-span-2 space-y-0.5">
+      <div data-field={`stage.${stage.id}.window`} className="sm:col-span-2 lg:col-span-2 space-y-0.5 rounded">
         <span className="text-[11px] text-white/60">Stage window</span>
         <StageWindowControl def={def} stage={stage} onChange={(patch) => setS(stage.id, patch)} />
       </div>
@@ -542,6 +542,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
   const c = def.comms ?? {};
   const requiredMissing = readiness.missing.filter((m) => m.id !== "exec");
   const exec = readiness.executability;
+  const schedMaths = useMemo(() => scheduleMaths(def), [def]);
   const canPress = !created && exec !== "blocked" && requiredMissing.length === 0 && !!hostClubId && !busy && (exec === "ready" || ackPartial);
 
   const summary = useMemo(() => {
@@ -637,10 +638,21 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
         </dl>
       </div>
 
-      {validation.facts.length > 0 && (
-        <details className="rounded-lg border border-white/10 p-2"><summary className="cursor-pointer font-semibold text-white">The maths</summary>
-          <ul className="list-disc pl-4 mt-1 space-y-0.5">{validation.facts.map((x, i) => <li key={i}>{x}</li>)}</ul></details>
-      )}
+      <details className="rounded-lg border border-white/10 p-2"><summary className="cursor-pointer font-semibold text-white">The maths</summary>
+        <div className="mt-1 font-semibold text-white/80">Structure maths</div>
+        {validation.facts.length ? <ul className="list-disc pl-4 mt-0.5 space-y-0.5">{validation.facts.map((x, i) => <li key={i}>{x}</li>)}</ul> : <p className="text-white/50">Nothing to calculate yet.</p>}
+        <div className="mt-2 font-semibold text-white/80">Schedule maths</div>
+        <div className="grid sm:grid-cols-2 gap-2 mt-0.5">
+          {schedMaths.facts.map((x, i) => (
+            <div key={i} className="rounded border border-white/10 p-1.5">
+              <div className="font-medium text-white">{x.where}</div>
+              {x.lines.map((l, k) => <div key={k} className="text-white/65">{l}</div>)}
+              <div className={x.ok ? "text-emerald-300" : "text-red-300"}>Result: {x.result}</div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-1 text-white/55">{schedMaths.capacityNote}.</p>
+      </details>
 
       <div className="rounded-lg border border-white/10 p-3 space-y-2">
         <div className="font-semibold text-white">Create Tournament</div>

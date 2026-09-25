@@ -49,9 +49,8 @@ describe("per-pool qualification", () => {
     expect(a).toEqual(b);
   });
   it("7. a tie on the qualifying line blocks (same rule as play-offs)", () => {
-    // Pool A: p12, p13, p14 each win once → 3-way tie for 2nd.
-    const rows = poolRows("D", (a, b) => (a === "p12" && b === "p13") || (a === "p13" && b === "p14") || (a === "p12" && b === "p14" && false) ? true : false);
-    const tieRows = rows.map((r) => r.pool === 1 && r.a === "p12" && r.b === "p14" ? { ...r, winner: "p14" } : r);
+    // Pool A: p12 beats p13, p13 beats p14, p14 beats p12 → 3-way tie for 2nd.
+    const tieRows = poolRows("D", (a, b) => a === "p12" && b === "p14");
     expect(() => perPoolQualifiers(pools, tieRows, 2)).toThrow(/tie/);
   });
   it("8. unfinished pools resolve nothing", () => {
@@ -63,7 +62,7 @@ describe("per-pool qualification", () => {
     expect(() => perPoolQualifiers(pools, poolRows(), 5)).toThrow(/only 4/);
   });
   const spec = (s2: Partial<PlannedStage>): SpecDivision => ({
-    divisionId: "D", label: "Men", unit: "individual", expectedEntrants: 16,
+    divisionId: "D", label: "Men", unit: "individual", expectedEntrants: 16, seeding: { source: "ranking" },
     entrants: Array.from({ length: 16 }, (_, i) => ({ id: P(Math.floor(i / 4) + 1, (i % 4) + 1), rank: i + 1 })),
     stages: [pools, { id: "S2", order: 1, kind: "round_robin", name: "Next", generation: "automatic", schedule: { rule: "fixed", date: "2026-10-02" }, ...s2 } as PlannedStage],
   } as any);

@@ -3441,6 +3441,8 @@ export type Database = {
       club_devices: {
         Row: {
           auto_off_minutes: number | null
+          auto_unlock_enabled: boolean
+          auto_unlock_seconds: number
           ble_mac: string | null
           category: string
           club_id: string
@@ -3449,6 +3451,10 @@ export type Database = {
           created_by: string | null
           dashboard_role_ids: string[]
           enabled: boolean
+          geofence_enabled: boolean
+          geofence_latitude: number | null
+          geofence_longitude: number | null
+          geofence_radius_m: number
           icon: string | null
           id: string
           last_error: string | null
@@ -3475,6 +3481,8 @@ export type Database = {
         }
         Insert: {
           auto_off_minutes?: number | null
+          auto_unlock_enabled?: boolean
+          auto_unlock_seconds?: number
           ble_mac?: string | null
           category: string
           club_id: string
@@ -3483,6 +3491,10 @@ export type Database = {
           created_by?: string | null
           dashboard_role_ids?: string[]
           enabled?: boolean
+          geofence_enabled?: boolean
+          geofence_latitude?: number | null
+          geofence_longitude?: number | null
+          geofence_radius_m?: number
           icon?: string | null
           id?: string
           last_error?: string | null
@@ -3509,6 +3521,8 @@ export type Database = {
         }
         Update: {
           auto_off_minutes?: number | null
+          auto_unlock_enabled?: boolean
+          auto_unlock_seconds?: number
           ble_mac?: string | null
           category?: string
           club_id?: string
@@ -3517,6 +3531,10 @@ export type Database = {
           created_by?: string | null
           dashboard_role_ids?: string[]
           enabled?: boolean
+          geofence_enabled?: boolean
+          geofence_latitude?: number | null
+          geofence_longitude?: number | null
+          geofence_radius_m?: number
           icon?: string | null
           id?: string
           last_error?: string | null
@@ -5827,6 +5845,7 @@ export type Database = {
           currency_symbol: string
           door_auto_unlock_enabled: boolean
           door_auto_unlock_radius_m: number
+          door_auto_unlock_seconds: number
           door_dashboard_role_ids: string[]
           door_geofence_enabled: boolean
           door_geofence_radius_m: number
@@ -5976,6 +5995,7 @@ export type Database = {
           currency_symbol?: string
           door_auto_unlock_enabled?: boolean
           door_auto_unlock_radius_m?: number
+          door_auto_unlock_seconds?: number
           door_dashboard_role_ids?: string[]
           door_geofence_enabled?: boolean
           door_geofence_radius_m?: number
@@ -6125,6 +6145,7 @@ export type Database = {
           currency_symbol?: string
           door_auto_unlock_enabled?: boolean
           door_auto_unlock_radius_m?: number
+          door_auto_unlock_seconds?: number
           door_dashboard_role_ids?: string[]
           door_geofence_enabled?: boolean
           door_geofence_radius_m?: number

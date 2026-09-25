@@ -17,6 +17,10 @@ export type ShellyDoorOptions = {
   } | null;
   /** Club member id for offline attribution. */
   clubMemberId?: string | null;
+  /** "geofence" = automatic unlock on arrival (uses the auto-unlock duration). */
+  trigger?: "manual" | "geofence";
+  /** Unlock duration for the Bluetooth fallback when it differs from the manual one. */
+  bleDurationMs?: number | null;
 };
 
 export type ShellyDoorResult = {
@@ -64,7 +68,7 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
   // 1) Primary: cloud
   try {
     const { error } = await supabase.functions.invoke("shelly-door-trigger", {
-      body: { club_id: opts.clubId, door_name: opts.doorName ?? "Main door" },
+      body: { club_id: opts.clubId, door_name: opts.doorName ?? "Main door", trigger: opts.trigger ?? "manual" },
     });
     if (error) throw error;
     return { ok: true, via: "cloud", message: "Door pulsed via Shelly Cloud" };
@@ -104,7 +108,7 @@ export async function triggerShellyDoor(opts: ShellyDoorOptions): Promise<Shelly
         mac: ble.mac,
         password: ble.password ?? undefined,
         channel: ble.channel ?? 0,
-        pulseMs: ble.pulseMs ?? 3000,
+        pulseMs: opts.bleDurationMs ?? ble.pulseMs ?? 3000,
         turn: "on",
       });
     } catch (e) {

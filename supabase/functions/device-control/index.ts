@@ -192,9 +192,11 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: "Not authenticated" }, 401);
 
     const body = await req.json().catch(() => ({}));
-    const { device_id, action } = body as {
+    const { device_id, action, trigger } = body as {
       device_id?: string;
       action?: "on" | "off" | "pulse" | "status";
+      /** "geofence" = automatic unlock on arrival; uses the separate auto-unlock duration. */
+      trigger?: "manual" | "geofence";
     };
     if (!device_id) return json({ error: "Missing device_id" }, 400);
     if (!action || !["on", "off", "pulse", "status"].includes(action)) {
@@ -332,10 +334,19 @@ Deno.serve(async (req) => {
       .eq("user_id", userId)
       .maybeSingle();
 
+    const isGeofence = trigger === "geofence";
+    if (isGeofence) {
+      const d: any = device;
+      if (action !== "pulse" || device.category !== "access" || !d.geofence_enabled || !d.auto_unlock_enabled) {
+        return json({ error: "Auto-unlock is not enabled for this device." }, 400);
+      }
+    }
     const turnOn = action === "on" || action === "pulse";
     const autoOffSeconds =
       action === "pulse"
-        ? Math.max(1, Math.round(Number(device.pulse_ms ?? 3000) / 1000))
+        ? isGeofence
+          ? Math.min(120, Math.max(1, Math.round(Number((device as any).auto_unlock_seconds ?? 12))))
+          : Math.max(1, Math.round(Number(device.pulse_ms ?? 3000) / 1000))
         : action === "on" && device.auto_off_minutes
         ? Number(device.auto_off_minutes) * 60
         : null;
@@ -366,6 +377,7 @@ Deno.serve(async (req) => {
         device_id,
         category: device.category,
         action,
+        trigger: isGeofence ? "geofence" : "manual",
         shelly_device_id: device.shelly_device_id,
         channel,
         auto_off_seconds: autoOffSeconds,

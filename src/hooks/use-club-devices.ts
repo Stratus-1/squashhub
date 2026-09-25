@@ -158,9 +158,17 @@ export interface DeviceCommandResult {
 export function useDeviceControl(clubId?: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ deviceId, action }: { deviceId: string; action: DeviceAction }) => {
+    mutationFn: async ({
+      deviceId,
+      action,
+      trigger,
+    }: {
+      deviceId: string;
+      action: DeviceAction;
+      trigger?: "manual" | "geofence";
+    }) => {
       const { data, error } = await supabase.functions.invoke("device-control", {
-        body: { device_id: deviceId, action },
+        body: { device_id: deviceId, action, trigger: trigger ?? "manual" },
       });
       if (error) {
         throw new Error(await extractFunctionError(error, "Device command failed"));

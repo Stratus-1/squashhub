@@ -130,8 +130,8 @@ Deno.serve(async (req) => {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const body = await req.json().catch(() => ({}));
-    const { club_id, door_name = "Main door", device_id: overrideDeviceId, source_user_id, source_member_id } =
-      body as { club_id?: string; door_name?: string; device_id?: string; source_user_id?: string; source_member_id?: string };
+    const { club_id, door_name = "Main door", device_id: overrideDeviceId, source_user_id, source_member_id, trigger } =
+      body as { club_id?: string; door_name?: string; device_id?: string; source_user_id?: string; source_member_id?: string; trigger?: "manual" | "geofence" };
     if (!club_id) {
       return new Response(JSON.stringify({ error: "Missing club_id" }), {
         status: 400,
@@ -257,7 +257,23 @@ Deno.serve(async (req) => {
     }
 
     const channel = Number(secrets.shelly_door_channel ?? 0);
-    const pulseMs = Number(secrets.shelly_door_pulse_ms ?? 3000);
+    let pulseMs = Number(secrets.shelly_door_pulse_ms ?? 3000);
+    if (trigger === "geofence") {
+      // Automatic unlock on arrival uses its own, usually longer, duration
+      // because GPS can fire before the member reaches the door.
+      const { data: clubRow } = await admin
+        .from("clubs")
+        .select("door_auto_unlock_enabled, door_auto_unlock_seconds")
+        .eq("id", club_id)
+        .maybeSingle();
+      if (!clubRow?.door_auto_unlock_enabled) {
+        return new Response(JSON.stringify({ error: "Auto-unlock is not enabled for this door" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      pulseMs = Math.min(120, Math.max(1, Number(clubRow.door_auto_unlock_seconds ?? 12))) * 1000;
+    }
 
     // Send first, then verify. Shelly Cloud limits this API to one request per
     // second, so a separate status preflight would collide with the command.
@@ -322,6 +338,7 @@ Deno.serve(async (req) => {
         device_id: deviceId,
         channel,
         pulse_ms: pulseMs,
+        trigger: trigger === "geofence" ? "geofence" : "manual",
         online: verification.online,
         output_confirmed: verification.output,
         response: raw?.slice?.(0, 500) ?? null,

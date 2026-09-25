@@ -8,12 +8,12 @@ import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
 import { useClubSecrets } from "@/hooks/use-club-secrets";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { triggerShellyDoor } from "@/lib/shelly-door";
+import { markDoorOpened } from "@/lib/door-open-state";
 import {
-  markDoorOpened,
-  autoUnlockFired,
-  markAutoUnlockFired,
-  rearmAutoUnlock,
-} from "@/lib/door-open-state";
+  loadAutoUnlockState,
+  saveAutoUnlockState,
+  stepAutoUnlock,
+} from "@/lib/geofence-auto-unlock";
 import { useMyBookings } from "@/hooks/use-data";
 import { useMemberAccessGate } from "@/hooks/use-member-access-gate";
 import { useDoorProximity } from "@/hooks/use-door-proximity";
@@ -31,7 +31,7 @@ export interface DoorControl {
   /** Admin is opening remotely, from outside the geofence. */
   adminOverride: boolean;
   loading: boolean;
-  openDoor: () => Promise<void>;
+  openDoor: (trigger?: "manual" | "geofence") => Promise<void>;
   proximity: ReturnType<typeof useDoorProximity>;
   club:
     | {
@@ -61,6 +61,8 @@ export function useDoorControl(): DoorControl {
     door_longitude?: number | null;
     door_geofence_radius_m?: number | null;
     door_auto_unlock_radius_m?: number | null;
+    door_auto_unlock_enabled?: boolean | null;
+    door_auto_unlock_seconds?: number | null;
     door_show_on_dashboard?: boolean | null;
     door_dashboard_role_ids?: string[] | null;
   } | undefined;
@@ -91,7 +93,6 @@ export function useDoorControl(): DoorControl {
     latitude: club?.door_latitude ?? null,
     longitude: club?.door_longitude ?? null,
     radiusM: club?.door_geofence_radius_m ?? 150,
-    triggerRadiusM: club?.door_auto_unlock_radius_m ?? 5,
   });
   const nearDoor = proximity.allowed || isClubAdmin;
 
@@ -117,11 +118,11 @@ export function useDoorControl(): DoorControl {
 
   const configured =
     !!club?.id && accessOn && doorEnabled && !doorBlocked && !visitorBlocked && dashboardAllowed;
-  // Geofenced clubs only surface the control once the member is actually at
-  // the door; admins and staff keep remote access.
-  const available = configured && !(proximity.active && !nearDoor);
+  // The manual button follows access permissions only. The geofence drives
+  // automatic unlocking; it never hides the button.
+  const available = configured;
 
-  const openDoor = async () => {
+  const openDoor = async (trigger: "manual" | "geofence" = "manual") => {
     if (!club?.id) return;
     setLoading(true);
     try {
@@ -131,6 +132,11 @@ export function useDoorControl(): DoorControl {
           clubId: club.id,
           doorName: "Main door",
           clubMemberId: activeMember?.id ?? null,
+          trigger,
+          bleDurationMs:
+            trigger === "geofence"
+              ? Math.min(120, Math.max(1, Number(club?.door_auto_unlock_seconds ?? 12))) * 1000
+              : null,
           ble: {
             enabled: !!s.ble_fallback_enabled,
             mac: s.shelly_door_ble_mac,
@@ -139,7 +145,11 @@ export function useDoorControl(): DoorControl {
             pulseMs: s.shelly_door_pulse_ms,
           },
         });
-        toast.success(res.message || "Door opening… 🚪");
+        toast.success(
+          trigger === "geofence"
+            ? "You've arrived — door unlocked automatically 🚪"
+            : res.message || "Door opening… 🚪",
+        );
       } else {
         const resp = await supabase.functions.invoke("fluss-trigger", {
           body: { club_id: club.id },
@@ -167,29 +177,26 @@ export function useDoorControl(): DoorControl {
     }
   };
 
-  // ---- Auto-unlock at the door ------------------------------------------
-  // The outer ring only arms the control. The door pulses automatically once
-  // the member reaches the tight inner ring (default 5 m, right at the
-  // Shelly), and re-arms only after they've clearly left the outer ring.
-  const autoEnabled = !!(club as any)?.door_auto_unlock_enabled && !!club?.door_geofence_enabled && configured;
-  const openRef = useRef<null | (() => Promise<void>)>(null);
+  // ---- Auto-unlock on entering the geofence ------------------------------
+  // Fires once when an authorised member enters the configured radius, and
+  // re-arms only after a sustained, genuine exit (see geofence-auto-unlock).
+  const autoEnabled = !!club?.door_auto_unlock_enabled && !!club?.door_geofence_enabled && configured;
+  const openRef = useRef<null | ((t: "manual" | "geofence") => Promise<void>)>(null);
   openRef.current = openDoor;
   const radiusM = club?.door_geofence_radius_m ?? 150;
 
   useEffect(() => {
-    if (!autoEnabled || !club?.id) return;
-    if (proximity.atDoor) {
-      if (autoUnlockFired(club.id, 30 * 60 * 1000)) return;
-      markAutoUnlockFired(club.id);
-      void openRef.current?.();
-    } else if (
-      proximity.state === "outside" &&
-      proximity.distance != null &&
-      proximity.distance > radiusM + 40
-    ) {
-      rearmAutoUnlock(club.id);
-    }
-  }, [autoEnabled, club?.id, proximity.atDoor, proximity.state, proximity.distance, radiusM]);
+    if (!autoEnabled || !club?.id || !proximity.active) return;
+    if (proximity.distance == null || proximity.accuracy == null) return;
+    const key = `main-door-${club.id}`;
+    const { state, fire } = stepAutoUnlock(
+      loadAutoUnlockState(key),
+      { distanceM: proximity.distance, accuracyM: proximity.accuracy, now: Date.now() },
+      radiusM,
+    );
+    saveAutoUnlockState(key, state);
+    if (fire) void openRef.current?.("geofence");
+  }, [autoEnabled, club?.id, proximity.active, proximity.distance, proximity.accuracy, radiusM]);
 
   return {
     available,

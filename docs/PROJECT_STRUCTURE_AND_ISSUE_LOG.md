@@ -2062,3 +2062,8 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 
 ### 2026-09-25 — AI Assistant: requester "My requests" history + bug lifecycle labels
 - Requesters had no way to reopen their own AI requests (chat was in-memory only). Added `conversation_id`, `assistant_answer`, `retry_of` on `ai_assist_interactions` (trigger fills conversation from context), `my_ai_bug_statuses` RPC (status only, own linked bugs), "My requests" list in the Assistant with real lifecycle statuses, reopen/confirm pending previews, deliberate retry of old escalations (never auto-executed; `confirmGate` in ai-help/flow.ts). AI Activity shows "Bug reported · <bug status>". Tests: `src/test/ai-my-requests.test.ts`.
+
+## 2026-09-25 — Door geofence & unlock durations per door
+- Open Door button no longer hidden/disabled outside the geofence; access permissions (can_open_club_door / can_operate_device) remain the gate.
+- Per-door settings: geofence radius, auto-unlock on entry, manual unlock duration (seconds, = relay on/auto-off), separate geofence auto-unlock duration (default 12 s). Main door: clubs.door_auto_unlock_seconds; registry access devices: club_devices.geofence_* / auto_unlock_*.
+- Auto-unlock fires once on entry; re-arms only after a sustained exit beyond radius + max(25 m, 30%) for 45 s (src/lib/geofence-auto-unlock.ts, tests in src/test/geofence-auto-unlock.test.ts). Edge functions accept trigger="geofence" and apply the auto duration server-side.

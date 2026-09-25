@@ -11,7 +11,7 @@ import { z } from "npm:zod@3";
 import { ACTIONS, catalogueFor, type Ctx } from "./actions.ts";
 import { READ_TOOLS, type AssistCtx } from "./tools.ts";
 import { diagnoseAndRepair } from "./repair.ts";
-import { MAX_STEPS, ESCALATED_ANSWER, BUDGET_ANSWER, nextStepDecision, replayStored } from "./flow.ts";
+import { MAX_STEPS, ESCALATED_ANSWER, BUDGET_ANSWER, nextStepDecision, replayStored, confirmGate } from "./flow.ts";
 
 const MODEL = "openai/gpt-6-astra";
 const PREVIEW_TTL_MS = 15 * 60 * 1000;

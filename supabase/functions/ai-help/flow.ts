@@ -28,3 +28,17 @@ export function replayStored(row: {
   if (row.ticket_id) return { answer: ESCALATED_ANSWER, ticketId: row.ticket_id, escalated: true, replayed: true };
   return { answer: row.result?.answer ?? "Your earlier request was already handled.", replayed: true };
 }
+
+/**
+ * Only the requester's own, still-"proposed" preview in the same club can be
+ * confirmed/cancelled. Old escalations, answered rows, already-executed or
+ * already-claimed rows can never run an action (idempotent double-tap).
+ */
+export function confirmGate(
+  row: { user_id: string; club_id: string | null; status: string } | null | undefined,
+  userId: string, clubId: string,
+): "ok" | "not_found" | "handled" {
+  if (!row || row.user_id !== userId || row.club_id !== clubId) return "not_found";
+  if (row.status !== "proposed") return "handled";
+  return "ok";
+}

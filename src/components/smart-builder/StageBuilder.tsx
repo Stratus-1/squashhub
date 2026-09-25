@@ -143,7 +143,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               {sel0.kind === "round_robin" && sel0.groups > 1 && (
                 <>
                   <Q label="Number of pools"><Input className={f} inputMode="numeric" value={sel0.groups} onChange={(e) => editStage((s) => { s.groups = Math.max(2, Number(e.target.value) || 2); })} /></Q>
-                  <Q label="Players per pool"><Input className={f} inputMode="numeric" value={sel0.groupSize ?? ""} onChange={(e) => editStage((s) => { s.groupSize = e.target.value ? Number(e.target.value) : null; })} /></Q>
+                  <Q label={sel0.discipline === "doubles" ? "Pairs per pool" : "Players per pool"}><Input className={f} inputMode="numeric" value={sel0.groupSize ?? ""} onChange={(e) => editStage((s) => { s.groupSize = e.target.value ? Number(e.target.value) : null; })} /></Q>
                 </>
               )}
               {sel0.kind === "round_robin" && (

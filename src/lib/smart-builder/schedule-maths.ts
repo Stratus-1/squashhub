@@ -27,21 +27,123 @@ export interface ScheduleIssue {
 
 const isStep = (s: Stage) => s.kind === "pair_from_positions" || s.kind === "split";
 
-/** Units per pool/field for this stage (null = not known yet). */
-function unitsPerGroup(st: Stage): number | null {
+/** Total units entering a stage, from its own size or what the stage before sends on. */
+function stageTotal(st: Stage, def?: TournamentDefinition): number | null {
+  if (st.groupSize) return st.groupSize * Math.max(1, st.groups ?? 1);
+  if (st.input?.entrants) return st.input.entrants;
+  if (!def) return null;
+  const list = allStages(def).map((r) => r.stage);
+  const idx = list.findIndex((x) => x.id === st.id);
+  if (idx <= 0) return null;
+  let halve = false;
+  let j = idx - 1;
+  while (j >= 0 && isStep(list[j])) { if (list[j].kind === "pair_from_positions") halve = true; j--; }
+  const prev = list[j];
+  if (!prev) return null;
+  const prevTotal = stageTotal(prev, def);
+  if (prevTotal == null) return null;
+  const pg = Math.max(1, prev.groups ?? 1);
+  const p = st.progression;
+  let n: number | null = prevTotal;
+  if (p?.mode === "top_n") n = p.top ? (p.perPool ? p.top * pg : p.top) : null;
+  else if (p?.mode === "qualifiers" || (!p && st.kind === "knockout")) {
+    const per = st.qualifierTransition?.positions?.length ?? prev.advance?.positions?.length ?? prev.advance?.perGroup ?? null;
+    n = per != null ? per * pg : null;
+  }
+  if (n == null) return null;
+  if (p?.mode === "form_pairs" || p?.pairing === "fold" || p?.pairing === "positions" || p?.pairing === "manual" || halve) n = Math.floor(n / 2);
+  return n;
+}
+
+/** Units in the LARGEST pool/field of this stage (unequal pools: the biggest drives the round slots). */
+function unitsPerGroup(st: Stage, def?: TournamentDefinition): number | null {
   if (st.groupSize) return st.groupSize;
-  const n = st.input?.entrants;
+  const n = stageTotal(st, def);
   return n ? Math.ceil(n / Math.max(1, st.groups ?? 1)) : null;
 }
 
-/** Rounds this stage needs, from its own format. null = can't be known yet. */
-export function requiredRounds(st: Stage): number | null {
-  const n = unitsPerGroup(st);
+/** Round-robin rounds for n units (odd n adds a bye round). */
+export const rrRounds = (n: number, legs = 1) => (n % 2 === 0 ? n - 1 : n) * (legs === 2 ? 2 : 1);
+
+/**
+ * Rounds this stage needs, DERIVED from its structure — never typed by the owner.
+ * Round robin: from the largest pool (byes for odd sizes, doubled for return legs).
+ * Knockout: from the draw size (8 → QF, SF, Final). Swiss: the owner's explicit round count.
+ */
+export function requiredRounds(st: Stage, def?: TournamentDefinition): number | null {
   if (st.kind === "swiss") return st.swissRounds ?? null;
+  const n = unitsPerGroup(st, def);
   if (n == null || n < 2) return null;
   if (st.kind === "knockout") return Math.ceil(Math.log2(n));
-  if (st.kind === "round_robin") return (n % 2 === 0 ? n - 1 : n) * ((st as any).legs === 2 ? 2 : 1);
+  if (st.kind === "round_robin") return rrRounds(n, (st as any).legs === 2 ? 2 : 1);
   return null;
+}
+
+/* ───── derived round dates: recurrence → one date per required round ───── */
+
+const addDays = (d: string, n: number) => { const x = new Date(`${d}T00:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+const dow = (d: string) => new Date(`${d}T00:00:00Z`).getUTCDay();
+
+/** `count` dates, first on/after `anchor` that falls on `weekday`, then every `everyDays`. */
+export function recurringDates(anchor: string, weekday: number | null | undefined, count: number, everyDays = 7): string[] {
+  let first = anchor;
+  if (weekday != null) first = addDays(anchor, (weekday - dow(anchor) + 7) % 7);
+  return Array.from({ length: count }, (_, i) => addDays(first, i * everyDays));
+}
+
+export interface RoundPlan { need: number | null; dates: string[]; auto: boolean; anchor: string | null }
+
+/** Round date plan per stage id, in division order. Later stages start after the previous stage's last round. */
+export function roundDatePlan(def: TournamentDefinition): Map<string, RoundPlan> {
+  const out = new Map<string, RoundPlan>();
+  const tw = d10(def.scheduleDefaults?.startDate);
+  for (const div of def.divisions) {
+    let prevLast: string | null = null;
+    for (const st of allStages(def).filter((r) => r.division.id === div.id).map((r) => r.stage)) {
+      if (isStep(st)) continue;
+      const s = st.schedule;
+      const need = requiredRounds(st, def);
+      const weekday = s.weekday ?? def.scheduleDefaults?.weekday ?? null;
+      const anchor = d10(s.startDate) ?? (prevLast ? addDays(prevLast, 1) : tw);
+      const dated = s.mode === "fixed" || s.mode === "play_by";
+      const auto = dated && need != null && !!anchor && weekday != null;
+      let dates: string[];
+      if (auto) {
+        const gen = recurringDates(anchor!, weekday, need!);
+        const ov = s.roundDateOverrides ?? {};
+        dates = gen.map((g, i) => d10(ov[String(i)]) ?? g);
+      } else {
+        dates = [...(s.roundDates ?? [])];
+        if (need != null && dates.length > need) dates = dates.slice(0, need);
+      }
+      out.set(st.id, { need, dates, auto, anchor: anchor ?? null });
+      const last = [...dates].reverse().map(d10).find(Boolean);
+      prevLast = last ?? (s.mode === "play_by" ? d10(s.endDate) : null) ?? prevLast;
+    }
+  }
+  return out;
+}
+
+/**
+ * Write the derived plan back onto the definition (mutates). Keeps overrides only for rounds that
+ * still exist, so shrinking a pool never leaves stale extra rounds. Returns true if anything changed.
+ */
+export function syncDerivedRoundDates(def: TournamentDefinition): boolean {
+  const plan = roundDatePlan(def);
+  let changed = false;
+  for (const { stage } of allStages(def)) {
+    const p = plan.get(stage.id);
+    if (!p) continue;
+    const s = stage.schedule;
+    const before = JSON.stringify([s.roundDates ?? [], s.roundDateOverrides ?? {}]);
+    if (p.dates.length || s.roundDates?.length) s.roundDates = p.dates;
+    if (s.roundDateOverrides && p.need != null) {
+      const kept = Object.fromEntries(Object.entries(s.roundDateOverrides).filter(([k, v]) => Number(k) < p.need! && v));
+      s.roundDateOverrides = Object.keys(kept).length ? kept : undefined;
+    }
+    if (JSON.stringify([s.roundDates ?? [], s.roundDateOverrides ?? {}]) !== before) changed = true;
+  }
+  return changed;
 }
 
 /** Display names for a stage's rounds (knockout rounds are named from the final back). */
@@ -90,7 +192,7 @@ export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
       const where = `${def.divisions.length > 1 ? `${div.name} · ` : ""}${st.name}`;
       const own = { start: d10(s.startDate), end: d10(s.endDate) };
       const sw = { start: own.start ?? tw.start, end: own.end ?? tw.end };
-      const need = requiredRounds(st);
+      const need = requiredRounds(st, def);
       const before = out.length;
       const push = (i: Omit<ScheduleIssue, "divisionId" | "stageId">) => out.push({ ...i, divisionId: div.id, stageId: st.id });
       const dates = (s.roundDates ?? []).map(d10);

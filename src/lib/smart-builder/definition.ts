@@ -34,6 +34,8 @@ const ScheduleSchema = z.object({
   endDate: z.string().nullable().optional(),
   /** Optional per-round dates (round robin / knockout rounds). */
   roundDates: z.array(z.string()).optional(),
+  /** Deliberate per-round overrides (round index → date). Everything else is generated from the recurrence. */
+  roundDateOverrides: z.record(z.string()).optional(),
   /** 0=Sun … 6=Sat for recurring evenings (e.g. every Thursday). */
   weekday: z.number().int().min(0).max(6).nullable().optional(),
   /** Venue club ids (existing clubs). Names are kept for display when ids are unknown. */

@@ -219,8 +219,17 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     roundIds[key] = r.id;
   }
   void firstDiv;
+  // Fixed-date stages: every game inherits its round's date (times/courts are set later).
+  const roundDate = (f: EngineFixture): string | null => {
+    const st = spec.divisions.find((d) => d.divisionId === f.divisionId)?.stages.find((s) => s.id === f.stageId);
+    const sch = st?.schedule as any;
+    if (!sch || sch.rule !== "fixed") return null;
+    const d = (sch.roundDates ?? [])[(f.round ?? 1) - 1] ?? ((f.round ?? 1) === 1 ? sch.date : null);
+    return d ? String(d).slice(0, 10) : null;
+  };
   const rows = fixtures.map((f) => {
     const sk = `${f.divisionId}/${f.stageId}`;
+    const date = roundDate(f);
     const poolIdx = f.poolId ? Number(/pool(\d+)$/.exec(f.poolId)![1]) - 1 : null;
     const [a1, a2] = splitUnit(f.a); const [b1, b2] = splitUnit(f.b);
     return {
@@ -233,6 +242,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
       pool_id: poolIdx == null ? null : ids.pool[`${sk}/${poolIdx}`] ?? (() => { throw new IntegrityError("no_pool", "Pool not persisted."); })(),
       round_id: roundIds[`${f.divisionId}/${f.stageId}/${f.roundId}`],
       ...(f.courtId != null ? { court_id: f.courtId } : {}),
+      ...(date ? { scheduled_date: date } : {}),
     };
   });
   if (rows.some((r) => !r.division_id || !r.stage_id || !r.round_id)) throw new IntegrityError("identity", "Structural identity unresolved.");

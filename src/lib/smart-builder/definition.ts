@@ -129,6 +129,22 @@ const StageSchema = z.object({
   schedule: ScheduleSchema.default({ mode: "unset" }),
   /** Per-stage scoring overrides; unset fields inherit the tournament scoring. */
   scoring: z.lazy(() => ScoringSchema).optional(),
+  /**
+   * Compound fixture: one pool-v-pool (team-v-team) TIE on one court, one evening, made of
+   * ordered rubbers of different disciplines and slot lengths. The tie is the scheduling unit;
+   * rubbers are never scheduled independently of their tie.
+   */
+  tieFormat: z.object({
+    rubbers: z.array(z.object({
+      discipline: z.enum(["singles", "doubles"]),
+      /** Pool positions per side: [1] = #1 v #1; [1,2] = pair of positions 1+2 v 1+2. */
+      positions: z.array(z.number().int().min(1)).min(1).max(2),
+      minutes: z.number().int().min(1),
+    })).min(1),
+    sameCourt: z.boolean().default(true),
+    /** Evening start (HH:MM). Instance setting. */
+    startTime: z.string().nullable().optional(),
+  }).optional(),
 });
 export type Stage = z.infer<typeof StageSchema>;
 
@@ -364,7 +380,7 @@ export const STAGE_LABELS: Record<StageKind, string> = {
   split: "Split (Championship / Plate)",
   pair_from_positions: "Create doubles pairs from results",
   custom: "Custom stage",
-  cross_pool_league: "Cross-pool league (same position v other pools)",
+  cross_pool_league: "Pool-v-pool ties (same positions meet)",
 };
 
 /** All stages with their division/section context, in flow order. */

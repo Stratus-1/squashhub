@@ -162,7 +162,7 @@ async function setShellyRelay(params: {
       id: params.deviceId,
       channel: String(params.channel),
       turn: params.on ? "on" : "off",
-      ...(params.on && params.autoOffSeconds
+      ...(params.autoOffSeconds
         ? { timer: String(Math.max(1, Math.round(params.autoOffSeconds))) }
         : {}),
     }),

@@ -52,6 +52,14 @@ const sched = (def: TournamentDefinition, n: number) => {
   def.divisions[0].sections[0].stages[0].input.entrants = n;
   return DefinitionSchema.parse(def);
 };
+/** Engine-supported equivalent of "singles, then pairs 1+2 / 3+4 from the standings, then doubles". */
+const supportedPairsFlow = () => {
+  const def = presetDefinition("custom"); const d = def.divisions[0];
+  addStage(d); setDiscipline(d, d.sections[0].stages[1].id, "doubles");
+  d.sections[0].stages[1].progression = { mode: "form_pairs", pairing: "positions", standings: "carry" };
+  def.finalStandings = "cumulative";
+  return def;
+};
 const errs = (def: TournamentDefinition) => contractIssues(specFromDefinition(def).divisions[0]).filter((i) => i.level === "error").map((i) => i.code);
 
 async function setup(def: TournamentDefinition, n: number) {
@@ -97,7 +105,7 @@ describe("custom / mixed stage builder", () => {
     expect(errs(sched(def, 8))).toContain("pairs_model");
   });
   it("odd player count can't form pairs; doubles can't feed singles; nothing follows a knockout", () => {
-    const def = presetDefinition("custom"); diamondTemplate(def);
+    const def = supportedPairsFlow();
     expect(errs(sched(def, 7))).toContain("odd_pairs");
     const d2 = presetDefinition("custom"); const d = d2.divisions[0]; d.entry = "pairs";
     d.sections[0].stages[0].discipline = "doubles"; addStage(d); setDiscipline(d, d.sections[0].stages[1].id, "singles");
@@ -107,8 +115,8 @@ describe("custom / mixed stage builder", () => {
     x.sections[0].stages[1].progression = { mode: "all_continue", standings: "reset" };
     expect(errs(sched(d3, 8))).toContain("after_knockout");
   });
-  it("Diamond League: singles RR → pairs formed → doubles RR → cumulative final standings", async () => {
-    const def = presetDefinition("custom"); diamondTemplate(def);
+  it("supported pairs flow: singles RR → pairs formed → doubles RR → cumulative final standings", async () => {
+    const def = supportedPairsFlow();
     const d = sched(def, 8);
     const [s1, s2] = d.divisions[0].sections[0].stages;
     expect(transitionText(s1, s2)).toContain("1st + 2nd");

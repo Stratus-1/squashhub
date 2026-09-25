@@ -10,6 +10,7 @@ import {
   type BuilderFormat,
 } from "@/lib/smart-builder/stage-builder";
 import { cn } from "@/lib/utils";
+import { engineVerdicts } from "@/lib/smart-builder/engine-support";
 import { SCORING_CHOICES, choiceOf, scoringFromChoice, effectiveScoring, scoringText, type ScoringChoice } from "@/lib/smart-builder/scoring";
 import { STANDINGS_LABEL, TIEBREAK_LABEL, hasStandings, standingsIssues, type StandingsMethod, type TieBreak } from "@/lib/smart-builder/standings";
 import { requiredRounds, roundNames } from "@/lib/smart-builder/schedule-maths";
@@ -136,8 +137,9 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               </Q>
               <Q label="2. Match format">
                 <select className={sel} value={sel0.kind} onChange={(e) => editDiv((x) => setFormat(x, sel0.id, e.target.value as BuilderFormat))}>
-                  {(Object.keys(FORMAT_LABEL) as BuilderFormat[]).map((k) => <option key={k} value={k}>{FORMAT_LABEL[k]}</option>)}
+                  {(Object.keys(FORMAT_LABEL) as BuilderFormat[]).map((k) => <option key={k} value={k}>{FORMAT_LABEL[k]}{k === "cross_pool_league" ? " (engine: singles opening stage only)" : ""}</option>)}
                 </select>
+                {(() => { const v = engineVerdicts(def).find((x) => x.stageId === sel0.id); return v && v.state !== "supported" ? <p className={cn("text-xs", v.state === "unsupported" ? "text-red-400" : "text-amber-300")} data-field={`stage.${sel0.id}.engine`}>{v.state === "unsupported" ? `Can't be created: ${v.detail}` : v.detail}</p> : null; })()}
               </Q>
               {sel0.kind === "round_robin" && (
                 <Q label="3. Grouping">
@@ -187,7 +189,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
                 </Q>
               )}
               <ScoringPicker label="Match scoring (this stage)" value={sel0.scoring} inheritText={`Tournament default — ${scoringText(effectiveScoring(def, { ...sel0, scoring: undefined, roundScoring: undefined }))}`} field={`stage.${sel0.id}.scoring`}
-                onChange={(sc) => editStage((s) => { s.scoring = sc; if (sc?.mode === "time_capped_points" && sc.timeCapMinutes && s.tieFormat) s.tieFormat.rubbers.forEach((r: any) => { r.minutes = sc.timeCapMinutes; }); })} />
+                onChange={(sc) => editStage((s) => { s.scoring = sc; })} />
               <Q label="5. Scheduling">
                 <select className={sel} value={sel0.schedule.mode === "fixed" || sel0.schedule.mode === "play_by" ? sel0.schedule.mode : ""} onChange={(e) => editStage((s) => { s.schedule = { ...s.schedule, mode: (e.target.value || "unset") as any }; })}>
                   <option value="">Not decided</option><option value="fixed">Fixed dates & times</option><option value="play_by">Play by a deadline</option>
@@ -196,6 +198,7 @@ export function StageBuilder({ def, edit }: { def: TournamentDefinition; edit: E
               {(sel0.schedule.mode === "fixed" || sel0.schedule.mode === "play_by") && (
                 <>
                   <StageWindowControl def={def} stage={sel0} onChange={(patch) => editStage((s) => { s.schedule = { ...s.schedule, ...patch }; })} />
+                  {!sel0.tieFormat && <Q label="Match duration — minutes per court slot"><Input className={f} inputMode="numeric" data-field={`stage.${sel0.id}.matchMinutes`} value={sel0.schedule.matchMinutes ?? ""} onChange={(e) => editStage((s) => { s.schedule = { ...s.schedule, matchMinutes: e.target.value ? Math.max(1, Number(e.target.value)) : null }; })} /></Q>}
                   <Q label="Courts available"><Input className={f} inputMode="numeric" value={sel0.schedule.courtsPerVenue ?? ""} onChange={(e) => editStage((s) => { s.schedule = { ...s.schedule, courtsPerVenue: e.target.value ? Number(e.target.value) : null }; })} /></Q>
                 </>
               )}
@@ -472,7 +475,7 @@ function ScoringPicker({ label, value, inheritText, onChange, field }: { label: 
         </select>
       </Q>
       {c === "bells" && (
-        <Q label="Bells — minutes per match (required)">
+        <Q label="Bells — time cap, minutes until the bell (scoring rule)">
           <Input className={cn(f, !value?.timeCapMinutes && "border-red-400/60")} inputMode="numeric" data-field={`${field}.timeCap`} value={value?.timeCapMinutes ?? ""}
             onChange={(e) => onChange({ ...value, timeCapMinutes: e.target.value ? Math.max(1, Number(e.target.value)) : null })} />
         </Q>

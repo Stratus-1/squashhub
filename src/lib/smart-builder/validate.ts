@@ -1,3 +1,4 @@
+import { engineBlockers } from "./engine-support";
 import { tieIssues } from "./ties";
 import { scoringIssues } from "./scoring";
 import { standingsIssues } from "./standings";
@@ -310,7 +311,7 @@ export function validateDefinition(def: TournamentDefinition): ValidationResult 
 
         // ── Pool-v-pool ties: pairing rule, games, positions ─────────────
         for (const t of scoringIssues({ ...def, divisions: [{ ...division, sections: [{ ...section, stages: [stage] }] }] } as TournamentDefinition))
-          issues.push({ level: "error", code: "scoring_cap", stageId: stage.id, message: t.message, fix: "Set the Bells minutes per match for this stage or round." });
+          issues.push({ level: "error", code: "scoring_cap", stageId: stage.id, message: t.message, fix: "Set the Bells time cap (minutes until the bell) for this stage or round." });
         for (const t of standingsIssues(def, stage, label)) issues.push({ level: t.level, code: "standings", stageId: stage.id, message: t.message, fix: "Decide the standings method, Bells score rule and tie-break order for this stage." });
         for (const t of tieIssues(stage, label)) issues.push({ level: t.level, code: t.code, stageId: stage.id, message: t.message });
 
@@ -373,6 +374,8 @@ export function validateDefinition(def: TournamentDefinition): ValidationResult 
 
   issues.push(...engineContractIssues(def));
 
+  // Engine capability is a hard design-time constraint (same list Create uses).
+  for (const b of engineBlockers(def)) issues.push({ level: "error", code: "engine_unsupported", stageId: b.stageId, message: b.detail, fix: "Choose a supported format for this stage (individual round robin / pools, knockout or Swiss)." });
   return {
     issues,
     facts,

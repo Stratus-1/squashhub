@@ -577,7 +577,7 @@ export function ReviewTab({ scope, def, readiness, mapping, validation, draftId,
   const requiredMissing = readiness.missing.filter((m) => m.id !== "exec");
   const exec = readiness.executability;
   const schedMaths = useMemo(() => scheduleMaths(def), [def]);
-  const canPress = !created && exec !== "blocked" && requiredMissing.length === 0 && !!hostClubId && !busy && (exec === "ready" || ackPartial);
+  const canPress = !created && exec !== "blocked" && requiredMissing.length === 0 && !!hostClubId && !busy && exec === "ready"; void ackPartial; // all four checks (structure, engine, schedule, scoring) must pass
 
   const summary = useMemo(() => {
     const sd = def.scheduleDefaults ?? {}, p = def.players ?? {};

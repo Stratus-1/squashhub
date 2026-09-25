@@ -40,7 +40,7 @@ export function scoringFromChoice(c: ScoringChoice, prev?: Scoring | null): Scor
 }
 
 export function scoringText(sc: Scoring): string {
-  if (isBells(sc)) return `Bells — ${sc.timeCapMinutes ? `${sc.timeCapMinutes} min per match` : "match minutes not set"}`;
+  if (isBells(sc)) return `Bells — ${sc.timeCapMinutes ? `bell at ${sc.timeCapMinutes} min` : "time cap not set"}`;
   if (sc.pointsPerGame || sc.bestOf) return `PAR ${sc.pointsPerGame ?? 11} — best of ${sc.bestOf ?? 5}${sc.playAllGames ? ", play all games" : ""}`;
   return "Needs confirmation (no match format chosen for this stage or the tournament)";
 }
@@ -49,7 +49,7 @@ export function scoringText(sc: Scoring): string {
 export const stageScoringLine = (def: TournamentDefinition | null | undefined, st: Stage, round?: number) =>
   `${st.discipline === "doubles" ? "Doubles" : "Singles"} — ${scoringText(effectiveScoring(def, st, round))}`;
 
-/** Match minutes set by scoring (Bells cap), or null when scoring doesn't fix a duration. */
+/** Bells time cap (a SCORING rule). Never use this as schedule duration — see court-allocation stageMatch. */
 export function scoringMinutes(def: TournamentDefinition | null | undefined, st: Stage, round?: number): number | null {
   const sc = effectiveScoring(def, st, round);
   return isBells(sc) ? sc.timeCapMinutes ?? null : null;
@@ -65,10 +65,10 @@ export function scoringIssues(def: TournamentDefinition): ScoringIssue[] {
     if (isStep(st)) continue;
     const where = `${def.divisions.length > 1 ? `${d.name} · ` : ""}${st.name}`;
     const sc = effectiveScoring(def, st);
-    if (isBells(sc) && !sc.timeCapMinutes) out.push({ stageId: st.id, message: `${where}: Bells scoring needs the minutes per match.` });
+    if (isBells(sc) && !sc.timeCapMinutes) out.push({ stageId: st.id, message: `${where}: Bells scoring needs its time cap (minutes until the bell).` });
     for (const k of Object.keys(st.roundScoring ?? {})) {
       const r = effectiveScoring(def, st, Number(k));
-      if (isBells(r) && !r.timeCapMinutes) out.push({ stageId: st.id, round: Number(k), message: `${where} round ${Number(k) + 1}: Bells scoring needs the minutes per match.` });
+      if (isBells(r) && !r.timeCapMinutes) out.push({ stageId: st.id, round: Number(k), message: `${where} round ${Number(k) + 1}: Bells scoring needs its time cap (minutes until the bell).` });
     }
   }
   return out;

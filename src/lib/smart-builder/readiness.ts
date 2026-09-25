@@ -111,7 +111,9 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     state: def.divisions.length && stages.length ? "complete" : "missing",
     detail: def.divisions.length ? `${def.divisions.length} division(s), ${stages.length} stage(s)` : "No divisions yet",
     ask: "What divisions will this tournament have, and how does each one play (pools, knockout, etc.)?" });
-  const errs = validation.issues.filter((i) => i.level === "error");
+  const SCORING_CODES = new Set(["scoring_cap", "standings"]);
+  const errs = validation.issues.filter((i) => i.level === "error" && !SCORING_CODES.has(i.code) && i.code !== "engine_unsupported");
+  const scoringErrs = validation.issues.filter((i) => i.level === "error" && SCORING_CODES.has(i.code));
   const e0 = errs[0];
   const transitionCodes = new Set(["pairs_model", "split_model", "pairing_scope", "pairs_qualifiers", "form_pairs_scope", "standings_rule", "odd_pairs", "top_n", "top_exceeds_pool", "per_pool_source", "per_pool_mode", "missing_source"]);
   design.push({ id: "structure_valid", label: "Structure maths", tab: "design",
@@ -137,13 +139,15 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
   const bells = isBellsDefinition(def);
   const capIssues = scoringIssues(def);
   const perStage = schedulableStages(def).some(({ stage }) => stage.scoring?.mode);
-  const bellsDuration = perStage ? capIssues.length === 0 : schedulableStages(def).length > 0 && schedulableStages(def).every(({ stage }) => !!(def.scoring?.timeCapMinutes || effectiveSchedule(def, stage).matchMinutes.value));
-  design.push({ id: "scoring", label: "Scoring", tab: "design", field: "scoring",
-    state: bells ? (bellsDuration ? "complete" : "missing") : sc.pointsPerGame && sc.bestOf ? "complete" : "warning",
-    detail: perStage ? (capIssues[0]?.message ?? schedulableStages(def).map(({ stage }) => `${stage.name}: ${stageScoringLine(def, stage)}`).join(" · ")) : bells ? (bellsDuration ? "Bells — timed points; match duration is set on Schedule" : "Bells — set match minutes on Schedule") : sc.pointsPerGame && sc.bestOf
+  // Scoring is complete when every stage can decide results/standings. Match duration is a
+  // SCHEDULE input (court-slot minutes) and is checked under Schedule, never here.
+  const scoringBlock = capIssues[0]?.message ?? scoringErrs[0]?.message;
+  design.push({ id: "scoring", label: "Scoring", tab: "design", field: "scoring", stageId: capIssues[0]?.stageId ?? scoringErrs[0]?.stageId,
+    state: scoringBlock ? "missing" : bells || perStage || (sc.pointsPerGame && sc.bestOf) ? "complete" : "warning",
+    detail: scoringBlock ? scoringBlock : perStage ? schedulableStages(def).map(({ stage }) => `${stage.name}: ${stageScoringLine(def, stage)}`).join(" · ") : bells ? "Bells — timed points" : sc.pointsPerGame && sc.bestOf
       ? `PAR ${sc.pointsPerGame}, best of ${sc.bestOf}${sc.playAllGames ? ", play all games" : ""}${sc.winCondition === "sudden_death" ? ", sudden death" : ""}`
       : "Not set — the existing default (PAR 11, best of 5) will be used",
-    ask: bells ? "How many minutes should each Bells match last?" : "What scoring should matches use — PAR 11 or 15, best of 3 or 5?" });
+    ask: scoringBlock ? scoringBlock : bells ? "When does the bell ring (Bells time cap), and how are standings decided?" : "What scoring should matches use — PAR 11 or 15, best of 3 or 5?" });
 
   // ── Players ──
   const players: ReadinessItem[] = [];
@@ -181,7 +185,7 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     if (need.dates && !e.startDate.value && !e.endDate.value && !(stage.schedule.roundDates?.length)) gaps.push("dates");
     if (need.venue && !(e.venueNames.value?.length) && !eventVenues(def).clubIds.length) gaps.push("venue");
     if (need.courts && !stageCourts(def, division, stage).count) gaps.push("courts");
-    if (need.matchMinutes && !stageMatch(def, stage).text) gaps.push("match minutes (or a Bells time on the stage)");
+    if (need.matchMinutes && !stageMatch(def, stage).text) gaps.push("match duration (minutes per court slot)");
     schedule.push({ id: `stage_${stage.id}`, label: `${def.divisions.length > 1 ? `${division.name} · ` : ""}${stage.name}`, tab: "schedule", field: `stage.${stage.id}`,
       state: gaps.length ? "missing" : "complete", detail: gaps.length ? `Needs ${gaps.join(", ")}` : "Scheduled",
       ask: gaps.length ? `For ${stage.name}: ${gaps.includes("how it's scheduled") ? "is it on fixed dates, a play-by date, players arranging their own matches, or admin-scheduled?" : `what ${gaps.join(", ")} should it use?`}` : undefined });
@@ -221,9 +225,25 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
   // ── Structure support ──
   const support: ReadinessItem[] = [];
   if (mapping.executability === "ready") support.push({ id: "exec", label: "Engine support", tab: "review", state: "complete", detail: mapping.structured ? "Every stage is created now; later stages start when the stage before them finishes" : "Every stage can run on today's engine" });
-  else if (mapping.executability === "partial") support.push({ id: "exec", label: "Engine support", tab: "design", field: "canvas", state: "warning",
+  else if (mapping.executability === "partial") support.push({ id: "exec", label: "Engine support", tab: "design", field: "canvas", state: "missing",
     detail: `${mapping.deferredStages.length} later stage(s) can't be created yet and stay in the draft only` });
-  else support.push({ id: "exec", label: "Engine support", tab: "design", field: "canvas", state: "missing", detail: mapping.unsupported[0] ?? "Structure can't be created" });
+  else support.push({ id: "exec", label: "Engine support", tab: "design", field: "stage-panel", stageId: validation.issues.find((i) => i.code === "engine_unsupported")?.stageId, state: "missing", detail: mapping.unsupported[0] ?? "Structure can't be created" });
+
+  // ── The four ready-to-create checks (all must pass) ──
+  const scheduleGaps = schedule.filter((i) => i.state === "missing" && i.id !== "schedule_maths_ref");
+  const scoringItem = design.find((i) => i.id === "scoring")!;
+  const structureItem = design.find((i) => i.id === "structure_valid")!;
+  const checks: ReadinessItem[] = [
+    { id: "check_structure", label: "Structure valid", tab: structureItem.tab, field: structureItem.field, stageId: structureItem.stageId, state: structureItem.state,
+      detail: structureItem.state === "complete" ? "Progression and competition maths work" : structureItem.detail },
+    { id: "check_engine", label: "Engine supported", tab: support[0].tab, field: support[0].field, stageId: support[0].stageId, state: support[0].state === "complete" ? "complete" : "missing",
+      detail: support[0].state === "complete" ? "Every stage can be generated and run by SquashHub" : support[0].detail },
+    { id: "check_schedule", label: "Schedule feasible", tab: sm0 ? "schedule" : scheduleGaps[0]?.tab ?? "schedule", field: sm0 ? issueField(sm0) : scheduleGaps[0]?.field, stageId: sm0?.stageId || scheduleGaps[0]?.stageId,
+      state: sm0 || scheduleGaps.length ? "missing" : "complete",
+      detail: sm0 ? sm0.message : scheduleGaps.length ? `${scheduleGaps[0].label}: ${scheduleGaps[0].detail}` : "Dates, stage order, match counts, courts and capacity fit" },
+    { id: "check_scoring", label: "Scoring complete", tab: scoringItem.tab, field: scoringItem.field, stageId: scoringItem.stageId, state: scoringItem.state === "missing" ? "missing" : "complete",
+      detail: scoringItem.state === "missing" ? scoringItem.detail : "Every stage can determine results and standings" },
+  ];
 
   const sections: ReadinessSection[] = [
     { key: "players", title: "Event & audience", items: event, state: worst(event) },
@@ -233,7 +253,9 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     { key: "invitations", title: "Invitations & messages", items: inv, state: worst(inv) },
     { key: "support", title: "Structure support", items: support, state: worst(support) },
   ];
-  const missing = sections.flatMap((s) => s.items.filter((i) => i.state === "missing" && i.id !== "schedule_maths_ref"));
+  sections.unshift({ key: "review", title: "Ready to create", items: checks, state: worst(checks) });
+  // The four checks summarise items already listed above — not counted twice.
+  const missing = sections.flatMap((s) => s.key === "review" ? [] : s.items.filter((i) => i.state === "missing" && i.id !== "schedule_maths_ref"));
   return { sections, missing, nextMissing: missing.find((m) => m.ask) ?? missing[0] ?? null, executability: mapping.executability };
 }
 

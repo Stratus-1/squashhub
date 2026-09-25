@@ -82,14 +82,17 @@ describe("Pool-v-pool league built from builder controls", () => {
   it("scoring is per stage: Diamond Singles Bells 20, Doubles Bells 30; missing cap blocks; round override", () => {
     const def = applyDiamondLeague(emptyDefinition());
     const [s1, s2, semis] = def.divisions[0].sections[0].stages;
-    expect(stageScoringLine(def, s1)).toBe("Singles — Bells — 20 min per match");
-    expect(stageScoringLine(def, s2)).toBe("Doubles — Bells — 30 min per match");
-    expect(stageDetailLines(s2, def)).toContain("Match format: Doubles — Bells — 30 min per match");
+    expect(stageScoringLine(def, s1)).toBe("Singles — Bells — bell at 20 min");
+    expect(stageScoringLine(def, s2)).toBe("Doubles — Bells — bell at 30 min");
+    expect(stageDetailLines(s2, def)).toContain("Match format: Doubles — Bells — bell at 30 min");
     expect(sessionPlan(def).sessions[0].minutes).toBe(210);
     expect(validateDefinition(def).issues.filter((i) => i.code === "scoring_cap")).toEqual([]);
     s2.scoring = { mode: "time_capped_points", timeCapMinutes: null };
     expect(validateDefinition(def).issues.some((i) => i.code === "scoring_cap" && i.level === "error")).toBe(true);
     s2.scoring = { mode: "time_capped_points", timeCapMinutes: 40 };
+    // Scoring (bell time) never drives the schedule; court-slot minutes on the games do.
+    expect(sessionPlan(def).sessions[0].minutes).toBe(210);
+    s2.tieFormat!.rubbers.forEach((r) => { r.minutes = 40; });
     expect(sessionPlan(def).sessions[0].minutes).toBe(120 + 120);
     semis.roundScoring = { "0": { mode: "standard", pointsPerGame: 11, bestOf: 5 } };
     expect(scoringText(effectiveScoring(def, semis, 0))).toBe("PAR 11 — best of 5");
@@ -156,7 +159,7 @@ describe("Pool-v-pool league built from builder controls", () => {
     expect(stageCourts(def, d, st)).toMatchObject({ source: "tournament", count: 4 });
     d.courtKeys = ["c1:1", "c1:2"];
     expect(stageCourts(def, d, st)).toMatchObject({ source: "division", count: 2 });
-    expect(stageMatch(def, st).text).toBe("6 games × 20m = 120m per tie (Bells)");
+    expect(stageMatch(def, st).text).toBe("6 games × 20m = 120m per tie");
   });
 
   it("club chooses divisions × pools; singles+doubles session and semis/finals stay", () => {

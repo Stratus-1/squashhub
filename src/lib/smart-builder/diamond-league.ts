@@ -169,6 +169,10 @@ export const DIAMOND_TIE: TieFormat = {
     ...[[1, 2], [3, 4], [5, 6]].map((p) => ({ discipline: "doubles" as const, positions: p, minutes: 30 })),
   ],
 };
+/** Stage 1 of each weekly session: 6 singles @20 min. */
+export const DIAMOND_SINGLES_TIE: TieFormat = { sameCourt: true, startTime: null, rubbers: DIAMOND_TIE.rubbers.filter((r) => r.discipline === "singles") };
+/** Stage 2, same session, straight after: 3 doubles @30 min (pool positions 1+2, 3+4, 5+6). */
+export const DIAMOND_DOUBLES_TIE: TieFormat = { sameCourt: true, startTime: null, rubbers: DIAMOND_TIE.rubbers.filter((r) => r.discipline === "doubles") };
 export const tieMinutes = (t: TieFormat) => t.rubbers.reduce((n, r) => n + r.minutes, 0);
 const toMin = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -257,25 +261,33 @@ export function applyDiamondLeague(def: TournamentDefinition, opts: { courts?: s
     ? { mode: "fixed" as const, startDate: dates[from], endDate: dates[to], roundDates: dates.slice(from, to + 1), weekday: 3 }
     : { mode: "unset" as const };
   def.divisions = [0, 1].map((di) => {
-    const s1 = stage("Pool-v-pool ties", "cross_pool_league", "singles", {
+    // One weekly SESSION (same date, same court per tie) holds two sequential stages.
+    const s1 = stage("Singles", "cross_pool_league", "singles", {
       input: { entrants: 24 }, legs: 1,
-      tieFormat: { ...DIAMOND_TIE, startTime: opts.startTime === undefined ? "17:45" : opts.startTime },
-      notes: "Each round every pool plays one other pool on its home court: 6 singles (1v1…6v6, 20 min) then 3 doubles (1+2, 3+4, 5+6, 30 min).",
+      tieFormat: { ...DIAMOND_SINGLES_TIE, startTime: opts.startTime === undefined ? "17:45" : opts.startTime },
+      notes: "Each Wednesday every pool plays one other pool on its home court: 6 singles, same positions (1v1…6v6), 20 min each.",
       schedule: fixed(0, 2),
     });
-    const s2 = stage("Semi-finals", "knockout", "singles", {
-      groups: 1, groupSize: null, input: { fromStageId: s1.id }, generation: "owner_approval", dynamic: true,
+    const s2 = stage("Doubles", "cross_pool_league", "doubles", {
+      input: { fromStageId: s1.id }, legs: 1, sameSessionAs: s1.id,
+      progression: { mode: "form_pairs", pairing: "positions", standings: "carry" },
+      tieFormat: { ...DIAMOND_DOUBLES_TIE },
+      notes: "Same evening, same court, straight after the singles: 3 doubles, pool positions 1+2, 3+4, 5+6 v the same pair, 30 min each.",
+      schedule: fixed(0, 2),
+    });
+    const s3 = stage("Semi-finals", "knockout", "singles", {
+      groups: 1, groupSize: null, input: { fromStageId: s2.id }, generation: "owner_approval", dynamic: true,
       notes: "Semi-final rules need confirmation (organiser spreadsheet).", schedule: fixed(3, 3),
     });
-    const s3 = stage("Finals", "knockout", "singles", {
-      groups: 1, groupSize: null, input: { fromStageId: s2.id }, generation: "owner_approval", dynamic: true,
+    const s4 = stage("Finals", "knockout", "singles", {
+      groups: 1, groupSize: null, input: { fromStageId: s3.id }, generation: "owner_approval", dynamic: true,
       notes: "Final rules need confirmation (organiser spreadsheet).", schedule: fixed(4, 4),
     });
     return {
       id: newId("div"), name: `Division ${di + 1}`, eligibility: "open", entry: "individual", leagueUse: null,
       poolNames: ["", "", "", ""],
       poolGroups: [{ pools: [0, 1], court: courts[di][0] }, { pools: [2, 3], court: courts[di][1] }],
-      sections: [{ id: newId("sec"), name: "Main", stages: [s1, s2, s3] }],
+      sections: [{ id: newId("sec"), name: "Main", stages: [s1, s2, s3, s4] }],
     } as unknown as Division;
   });
   const keep = def.questions.filter((q) => !q.id.startsWith("dl_"));
@@ -298,17 +310,29 @@ export function toTemplate(def: TournamentDefinition): TournamentDefinition {
   return t;
 }
 
-export const diamondTieStage = (d: Division) => d.sections.flatMap((x) => x.stages).find((s) => s.tieFormat);
+export const diamondTieStage = (d: Division) => d.sections.flatMap((x) => x.stages).find((s) => s.tieFormat && !s.sameSessionAs);
+
+/** The whole weekly session as one ordered tie: leader stage's rubbers, then each same-session stage's. */
+export function sessionTie(def: TournamentDefinition): TieFormat {
+  const d = def.divisions.find(diamondTieStage);
+  const lead = d && diamondTieStage(d);
+  if (!d || !lead?.tieFormat) return DIAMOND_TIE;
+  const stages = d.sections.flatMap((x) => x.stages);
+  const rubbers = [...lead.tieFormat.rubbers];
+  for (let cur = lead, next = stages.find((s) => s.sameSessionAs === cur.id); next; cur = next, next = stages.find((s) => s.sameSessionAs === cur.id))
+    rubbers.push(...(next.tieFormat?.rubbers ?? []));
+  return { sameCourt: true, startTime: lead.tieFormat.startTime ?? null, rubbers };
+}
 
 /** Plain chain for the builder map. */
 export function diamondChain(def: TournamentDefinition): string[] {
-  const t = def.divisions.map(diamondTieStage).find(Boolean)?.tieFormat ?? DIAMOND_TIE;
+  const t = sessionTie(def);
   const m = tieMinutes(t);
   return [
     `Registration: first ${def.admission?.capacity ?? "—"} confirmed accepted, rest wait-listed`,
     "Ladder seeding (admin can adjust) → snake into 8 pools of 6 (2 divisions × 4 pools)",
     "Wednesdays 1–3: each pool plays each other pool in its division once (4 ties per evening, one per court)",
-    `Each tie on one court: 6 singles 1v1…6v6 @20 min → 3 doubles 1+2 / 3+4 / 5+6 @30 min = ${m} min${t.startTime ? ` (${t.startTime}–${tieFinish(t, t.startTime)})` : ""}`,
+    `Each Wednesday is one session with two stages on the same court: Singles (6 × 20 min) then Doubles (1+2 / 3+4 / 5+6, 3 × 30 min) = ${m} min${t.startTime ? ` (${t.startTime}–${tieFinish(t, t.startTime)})` : ""}`,
     "Wednesday 4: semi-finals (rules need confirmation)",
     "Wednesday 5: finals / conclusion (rules need confirmation)",
   ];

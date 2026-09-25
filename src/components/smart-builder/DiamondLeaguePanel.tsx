@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
-import { DIAMOND_KEY, DIAMOND_TIE, diamondChain, diamondTieStage, poolLetter, poolName, poolRotation, rubberLabel, tieEveningCheck, tieMinutes, tieCourt, tieSlots, toTemplate } from "@/lib/smart-builder/diamond-league";
+import { DIAMOND_KEY, diamondChain, sessionTie, diamondTieStage, poolLetter, poolName, poolRotation, rubberLabel, tieEveningCheck, tieMinutes, tieCourt, tieSlots, toTemplate } from "@/lib/smart-builder/diamond-league";
 import { fromExt } from "@/lib/supabase-ext";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
@@ -12,7 +12,7 @@ const f = "h-8 bg-white/5 border-white/15 text-white text-xs";
 export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefinition; edit: Edit; clubId?: string | null }) {
   if (def.templateMeta?.key !== DIAMOND_KEY) return null;
   const open = def.questions.filter((q) => q.id.startsWith("dl_") && !q.resolved);
-  const tie = def.divisions.map(diamondTieStage).find(Boolean)?.tieFormat ?? DIAMOND_TIE;
+  const tie = sessionTie(def);
   const setStart = (v: string) => edit((x) => { for (const d of x.divisions) { const st = diamondTieStage(d); if (st?.tieFormat) st.tieFormat.startTime = v || null; } });
   const rounds = poolRotation(4);
   const saveTemplate = async () => {
@@ -37,11 +37,11 @@ export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefin
           <select className="smart-builder-select h-8 w-full rounded-md bg-white/5 border border-white/15 text-white px-2 text-xs" value={def.admission?.mode ?? "first_confirmed"} onChange={(e) => edit((x) => { x.admission = { capacity: 48, waitlist: true, ...x.admission, mode: e.target.value as "first_confirmed" | "manual" }; })}>
             <option value="first_confirmed">First confirmed, then waiting list</option><option value="manual">Admin chooses</option>
           </select></label>
-        <label className="space-y-1 text-[11px] text-white/70"><span>Tie start time (each evening)</span>
+        <label className="space-y-1 text-[11px] text-white/70"><span>Session start time (each evening)</span>
           <Input type="time" className={f} value={tie.startTime ?? ""} onChange={(e) => setStart(e.target.value)} /></label>
       </div>
       <div className="space-y-1" data-field="tie-format">
-        <div className="text-white/70">One tie = one court, one evening, in this order ({tieMinutes(tie)} min):</div>
+        <div className="text-white/70">One session per tie = one court, one evening: Singles stage, then Doubles stage ({tieMinutes(tie)} min):</div>
         <div className="flex flex-wrap gap-1">
           {tieSlots(tie, tie.startTime).map((r) => (
             <span key={r.order} className={`rounded px-1.5 py-0.5 text-[11px] ${r.discipline === "doubles" ? "bg-amber-400/15 text-amber-200" : "bg-white/10 text-white/80"}`}>

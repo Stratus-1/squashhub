@@ -15,9 +15,10 @@
 import { allStages, effectiveSchedule, type Stage, type TournamentDefinition } from "./definition";
 import { d10, inside } from "@/lib/tournaments/date-window";
 import { selectedCourtPool } from "./venues";
+import { sessionPlan, type PlannedSession } from "./sessions";
 
 export interface ScheduleIssue {
-  code: "window" | "rounds_short" | "round_order" | "round_outside" | "dependency" | "deadline_order" | "knockout_order" | "capacity" | "after_end";
+  code: "window" | "rounds_short" | "round_order" | "round_outside" | "dependency" | "deadline_order" | "knockout_order" | "capacity" | "after_end" | "session";
   message: string;
   divisionId: string;
   stageId: string;
@@ -72,6 +73,8 @@ export const rrRounds = (n: number, legs = 1) => (n % 2 === 0 ? n - 1 : n) * (le
  */
 export function requiredRounds(st: Stage, def?: TournamentDefinition): number | null {
   if (st.kind === "swiss") return st.swissRounds ?? null;
+  // Pool-v-pool ties: every pool meets every other pool once.
+  if (st.kind === "cross_pool_league") return (st.groups ?? 0) >= 2 ? rrRounds(st.groups!, (st as any).legs === 2 ? 2 : 1) : null;
   const n = unitsPerGroup(st, def);
   if (n == null || n < 2) return null;
   if (st.kind === "knockout") return Math.ceil(Math.log2(n));
@@ -102,6 +105,7 @@ export function roundDatePlan(def: TournamentDefinition): Map<string, RoundPlan>
     for (const st of allStages(def).filter((r) => r.division.id === div.id).map((r) => r.stage)) {
       if (isStep(st)) continue;
       const s = st.schedule;
+      if (st.sameSessionAs && out.has(st.sameSessionAs)) { const lp = out.get(st.sameSessionAs)!; out.set(st.id, { ...lp, dates: [...lp.dates] }); continue; }
       const need = requiredRounds(st, def);
       const weekday = s.weekday ?? def.scheduleDefaults?.weekday ?? null;
       const anchor = d10(s.startDate) ?? (prevLast ? addDays(prevLast, 1) : tw);
@@ -165,6 +169,8 @@ export interface ScheduleMaths {
   /** checked = court capacity was calculated; not_checked = some input is missing (NOT validated); none = nothing on fixed courts. */
   capacity: "checked" | "not_checked" | "none";
   capacityNote: string;
+  /** Real date/court/time blocks, each with its stages in play order. */
+  sessions: PlannedSession[];
 }
 
 /** "Go there" anchor for an issue: exact round box, stage window, or tournament dates. */
@@ -186,7 +192,7 @@ export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
   facts.push({ where: "Tournament", lines: [`Window: ${tw.start ?? "?"} → ${tw.end ?? "?"}`], result: tw.start && tw.end && tw.end >= tw.start ? "Valid" : "Not valid", ok: !!(tw.start && tw.end && tw.end >= tw.start) });
   for (const div of def.divisions) {
     const stages = allStages(def).filter((r) => r.division.id === div.id).map((r) => r.stage).filter((s) => !isStep(s));
-    let prev: { where: string; name: string; done: string | null; fixed: boolean; deadline: string | null } | null = null;
+    let prev: { id: string; where: string; name: string; done: string | null; fixed: boolean; deadline: string | null } | null = null;
     for (const st of stages) {
       const s = st.schedule;
       const where = `${def.divisions.length > 1 ? `${div.name} · ` : ""}${st.name}`;
@@ -228,7 +234,7 @@ export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
         const e = effectiveSchedule(def, st);
         const courts = selectedCourtPool(def).length, mm = e.matchMinutes.value as number | null, sm = e.sessionMinutes.value as number | null;
         if (!courts) capMissing.add("courts"); if (!mm) capMissing.add("match minutes"); if (!sm) capMissing.add("session minutes");
-        if (courts && mm && sm) {
+        if (courts && mm && sm && !st.tieFormat && !st.sameSessionAs && !sessionMembersOf(def, st)) {
           dates.slice(0, need ?? dates.length).forEach((x) => { if (x) load.set(x, (load.get(x) ?? 0) + matchesPerRound(st)); });
           cap = Math.min(cap, courts * Math.floor(sm / mm));
         }
@@ -246,7 +252,10 @@ export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
         start = own.start; done = own.end;
       }
 
-      if (prev) {
+      const sameSession = !!st.sameSessionAs && prev?.id === st.sameSessionAs;
+      if (sameSession && prev) {
+        lines.push(`Same session as ${prev.where}: played straight after it, same dates and courts`);
+      } else if (prev) {
         lines.push(`Depends on: ${prev.where}`, `${prev.name} latest required completion: ${prev.done ?? "not known"}`);
         const both = prev.fixed && s.mode === "fixed";
         const firstDate = s.mode === "fixed" ? dates.find(Boolean) ?? null : null;
@@ -263,7 +272,7 @@ export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
       const mine = out.slice(before);
       facts.push({ where, lines, ok: !mine.length,
         result: !mine.length ? "Feasible" : mine.some((m) => m.code === "dependency") ? "Starts too early" : mine.some((m) => m.code === "rounds_short") ? "Not feasible — too few dates" : "Not feasible" });
-      prev = { where, name: st.name, done, fixed: s.mode === "fixed", deadline };
+      prev = { id: st.id, where, name: st.name, done, fixed: s.mode === "fixed", deadline };
     }
   }
   if (Number.isFinite(cap)) for (const [day, n] of load) if (n > cap) {
@@ -272,11 +281,20 @@ export function scheduleMaths(def: TournamentDefinition): ScheduleMaths {
     out.push({ code: "capacity", divisionId: first?.division.id ?? "", stageId: first?.stage.id ?? "", round: ri >= 0 ? ri : undefined,
       message: `${day}: ${n} games are scheduled but the selected courts fit only ${cap} in the session.` });
   }
+  const sp = sessionPlan(def);
+  for (const i of sp.issues) out.push({ code: "session", divisionId: i.divisionId, stageId: i.stageId, message: i.message });
+  for (const x of sp.sessions) facts.push({ where: x.label, ok: x.state !== "infeasible",
+    lines: x.parts.map((p, i) => `${i + 1}. ${p.name}${p.start && p.end ? ` ${p.start}–${p.end}` : ""} · ${p.detail}${p.minutesPerCourt != null ? ` = ${p.minutesPerCourt} min` : ""}`)
+      .concat(x.minutes != null ? [`Total per court: ${x.minutes} min${x.limitMinutes ? ` (session ${x.limitMinutes} min)` : ""}`] : []),
+    result: x.state === "feasible" ? "Fits" : x.state === "infeasible" ? "Runs over the session" : "Start time or durations not set" });
   const capacity: ScheduleMaths["capacity"] = !fixedStages ? "none" : capMissing.size ? "not_checked" : "checked";
   const capacityNote = capacity === "checked" ? `Court capacity checked: up to ${cap} games per day`
     : capacity === "not_checked" ? `Court capacity not checked — needs ${[...capMissing].join(", ")}` : "No fixed-date stages — court capacity not applicable";
-  return { issues: out, facts, capacity, capacityNote };
+  return { issues: out, facts, capacity, capacityNote, sessions: sp.sessions };
 }
+
+/** True when another stage shares this stage's session. */
+function sessionMembersOf(def: TournamentDefinition, st: Stage) { return allStages(def).some((r) => r.stage.sameSessionAs === st.id); }
 
 export function scheduleMathsIssues(def: TournamentDefinition): ScheduleIssue[] {
   return scheduleMaths(def).issues;

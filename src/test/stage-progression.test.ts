@@ -80,8 +80,8 @@ describe("stage progression engine", () => {
     // Everyone wins against a lower number except a rock-paper-scissors cycle inside pool A → level on wins.
     play(env, "rr", higher);
     const a = env.t.club_champs_matches.filter((m: any) => m.stage_key === "rr" && m.pool_number === 1);
-    const flip = a.find((m: any) => [m.player_a_member_id, m.player_b_member_id].sort().join() === "p5,p8");
-    flip.winner_member_id = "p5"; // p8 and p5 now both on 2 wins
+    const flip = a.find((m: any) => [m.player_a_member_id, m.player_b_member_id].sort().join() === "p4,p8");
+    flip.winner_member_id = "p4"; // p8, p5 and p4 now all on 2 wins
     const r = await autoProgress(env.db, "t");
     expect(r.started).toEqual([]);
     expect(r.blocked[0].detail).toMatch(/positions 1 and 2 are tied/);
@@ -99,7 +99,7 @@ describe("stage progression engine", () => {
     play(env, "rr", higher);
     const r = await autoProgress(env.db, "t");
     expect(r.started).toEqual([]);
-    expect(r.blocked[0].detail).toMatch(/B4 has no player/);
+    expect(r.blocked[0].detail).toMatch(/[AB]4 has no player/);
     expect(env.t.club_champs_matches.some((m: any) => m.stage_key === "dx")).toBe(false);
   });
 

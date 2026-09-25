@@ -2067,3 +2067,5 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Open Door button no longer hidden/disabled outside the geofence; access permissions (can_open_club_door / can_operate_device) remain the gate.
 - Per-door settings: geofence radius, auto-unlock on entry, manual unlock duration (seconds, = relay on/auto-off), separate geofence auto-unlock duration (default 12 s). Main door: clubs.door_auto_unlock_seconds; registry access devices: club_devices.geofence_* / auto_unlock_*.
 - Auto-unlock fires once on entry; re-arms only after a sustained exit beyond radius + max(25 m, 30%) for 45 s (src/lib/geofence-auto-unlock.ts, tests in src/test/geofence-auto-unlock.test.ts). Edge functions accept trigger="geofence" and apply the auto duration server-side.
+
+- 2026-09-25: Door pulse invert — added output_inverted (club_devices) and shelly_door_inverted (club_secrets); inverted pulse switches the relay OFF for the unlock duration then back ON (v2 toggle_after / Gen1 timer, both directions). Nelspruit main door set inverted. Invert switch added to the IoT door editor. Deployed shelly-door-trigger + device-control.

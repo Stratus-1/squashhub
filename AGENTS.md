@@ -158,3 +158,4 @@ Supabase currently owns the dominant data and backend path. Migrate incrementall
 - Schema changes use new migrations and generated types are synchronized.
 - Tests, lint, and build have run as appropriate.
 - `ARCHITECTURE.md` is updated for changed boundaries or migration paths.
+- Reusable tournament templates live in `tournament_templates` (club-scoped) and store definitions with instance fields stripped via `toTemplate`; why: fixed logic vs per-event settings stay separate.

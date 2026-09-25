@@ -2069,3 +2069,9 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Auto-unlock fires once on entry; re-arms only after a sustained exit beyond radius + max(25 m, 30%) for 45 s (src/lib/geofence-auto-unlock.ts, tests in src/test/geofence-auto-unlock.test.ts). Edge functions accept trigger="geofence" and apply the auto duration server-side.
 
 - 2026-09-25: Door pulse invert — added output_inverted (club_devices) and shelly_door_inverted (club_secrets); inverted pulse switches the relay OFF for the unlock duration then back ON (v2 toggle_after / Gen1 timer, both directions). Nelspruit main door set inverted. Invert switch added to the IoT door editor. Deployed shelly-door-trigger + device-control.
+
+## 2026-09-25 — Diamond League (Uitsig) template in Beta Builder
+- New `src/lib/smart-builder/diamond-league.ts`: admission (cap + first-confirmed + waitlist), snake across all pools, cross-pool league rotation (A v B, A v C, A v D), position pairs with explicit unresolved pair source, crossover semis (A/B confirmed, C/D + Div 2 mirrored), home courts, evening feasibility, template strip.
+- Definition gains `cross_pool_league`, `poolNames`, `poolGroups`, `admission`, `poolSeeding`, `templateMeta`, `pairSource` (additive).
+- `tournament_templates` table (club-admin RLS). Live creation of cross_pool_league stages is still blocked with a clear message.
+- Open organiser items: points formula/tie-break, pair source, final mechanics, play-off weighting, Wed 4/5 allocation.

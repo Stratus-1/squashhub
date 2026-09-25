@@ -132,6 +132,20 @@ const StageSchema = z.object({
   /** Per-round scoring overrides (round index → scoring), e.g. a Final played best of 5. */
   roundScoring: z.record(z.lazy(() => ScoringSchema)).optional(),
   /**
+   * How results become standings for this stage (separate from match scoring). null method = not decided.
+   * raw_total = actual points scored count; result_points = winner decided, then owner-set win/draw/loss points;
+   * rubbers_won = games/rubbers won; combined = a primary measure then secondary measures.
+   */
+  standings: z.object({
+    method: z.enum(["raw_total", "result_points", "rubbers_won", "combined"]).nullable().optional(),
+    resultPoints: z.object({ win: z.number().nullable().optional(), draw: z.number().nullable().optional(), loss: z.number().nullable().optional() }).nullable().optional(),
+    combined: z.object({ primary: z.enum(["raw_total", "result_points", "rubbers_won"]).nullable().optional(), secondary: z.array(z.enum(["raw_total", "result_points", "rubbers_won"])).optional() }).nullable().optional(),
+    /** Bells stages: does the score at the bell count directly, or only decide the rubber winner? */
+    bellsScore: z.enum(["counts_directly", "decides_winner"]).nullable().optional(),
+    /** Ordered tie-breaks; empty/undefined = not decided. */
+    tieBreaks: z.array(z.enum(["head_to_head", "points_difference", "rubbers_difference", "points_scored", "rubbers_won", "games_difference", "seed", "playoff"])).optional(),
+  }).optional(),
+  /**
    * Compound fixture: one pool-v-pool (team-v-team) TIE on one court, one evening, made of
    * ordered rubbers of different disciplines and slot lengths. The tie is the scheduling unit;
    * rubbers are never scheduled independently of their tie.

@@ -5,6 +5,7 @@ import { applyDiamondLeague } from "./diamond-league";
  * rounds (swissRounds/legs, derived otherwise), schedule, and progression from the previous stage.
  * Nothing here generates games; the definition → spec → engine path is unchanged.
  */
+import { standingsLines } from "./standings";
 import { stageScoringLine, scoringText, effectiveScoring } from "./scoring";
 import { TIE_PAIRING_LABEL, gameLabel, standardRubbers } from "./ties";
 import { newStage, type Division, type Stage, type TournamentDefinition } from "./definition";
@@ -200,7 +201,7 @@ export function transitionText(prev: Stage, cur: Stage): string {
 export function stageDetailLines(s: Stage, def?: TournamentDefinition | null): string[] {
   const base = stageDetailBase(s);
   const rounds = Object.keys(s.roundScoring ?? {}).map((k) => `Round ${Number(k) + 1} scoring: ${scoringText(effectiveScoring(def, s, Number(k)))}`);
-  return [...base, `Scoring: ${stageScoringLine(def, s)}`, ...rounds];
+  return [...base, `Match format: ${stageScoringLine(def, s)}`, ...rounds, ...standingsLines(def, s)];
 }
 
 function stageDetailBase(s: Stage): string[] {

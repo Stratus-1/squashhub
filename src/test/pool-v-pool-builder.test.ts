@@ -83,7 +83,7 @@ describe("Pool-v-pool league built from builder controls", () => {
     const [s1, s2, semis] = def.divisions[0].sections[0].stages;
     expect(stageScoringLine(def, s1)).toBe("Singles — Bells — 20 min per match");
     expect(stageScoringLine(def, s2)).toBe("Doubles — Bells — 30 min per match");
-    expect(stageDetailLines(s2, def)).toContain("Scoring: Doubles — Bells — 30 min per match");
+    expect(stageDetailLines(s2, def)).toContain("Match format: Doubles — Bells — 30 min per match");
     expect(sessionPlan(def).sessions[0].minutes).toBe(210);
     expect(validateDefinition(def).issues.filter((i) => i.code === "scoring_cap")).toEqual([]);
     s2.scoring = { mode: "time_capped_points", timeCapMinutes: null };

@@ -140,6 +140,15 @@ export default function BetaTournamentOperate() {
                     </div>
                   );
                 })}
+                {deferredFor(d).map((l: any) => (
+                  <div key={l.stageKey} className="flex flex-wrap items-center gap-2 rounded border border-dashed px-3 py-2">
+                    <span className="font-medium">{l.name}</span>
+                    <span className="text-muted-foreground">
+                      To be defined later{l.plannedDate ? ` · planned for ${fmtDate(l.plannedDate)}` : ""} — set it up once the stage before it has finished
+                    </span>
+                    <Badge variant="outline" className="ml-auto">Define later</Badge>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           ))}

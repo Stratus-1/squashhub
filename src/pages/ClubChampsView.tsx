@@ -1180,7 +1180,7 @@ export default function ClubChampsView() {
         outer: for (const d of allDates) {
           const ds = format(d, "yyyy-MM-dd");
           if (pinned && ds !== pinned) continue;
-          if (!players.every((p) => canScheduleOn(p, ds))) continue;
+          if (!pinned && !players.every((p) => canScheduleOn(p, ds))) continue;
           for (const ts of timeSlots) {
             for (const cid of courtIds) {
               const key = `${ds}|${ts}|${cid}`;

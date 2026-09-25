@@ -17,9 +17,14 @@ export function useGeofenceAutoUnlock(opts: {
   fence: DoorGeofence;
   /** Auto-unlock switched on AND this member may open the door. */
   enabled: boolean;
+  /** Keep watching location even when auto-unlock is off (e.g. near-only button). */
+  watch?: boolean;
   onEnter: () => void | Promise<void>;
 }) {
-  const proximity = useDoorProximity({ ...opts.fence, enabled: opts.fence.enabled && opts.enabled });
+  const proximity = useDoorProximity({
+    ...opts.fence,
+    enabled: opts.fence.enabled && (opts.enabled || !!opts.watch),
+  });
   const fire = useRef(opts.onEnter);
   fire.current = opts.onEnter;
 

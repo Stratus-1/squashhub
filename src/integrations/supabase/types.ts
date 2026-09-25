@@ -3444,6 +3444,7 @@ export type Database = {
           auto_unlock_enabled: boolean
           auto_unlock_seconds: number
           ble_mac: string | null
+          button_near_door_only: boolean
           category: string
           club_id: string
           control_mode: string
@@ -3484,6 +3485,7 @@ export type Database = {
           auto_unlock_enabled?: boolean
           auto_unlock_seconds?: number
           ble_mac?: string | null
+          button_near_door_only?: boolean
           category: string
           club_id: string
           control_mode?: string
@@ -3524,6 +3526,7 @@ export type Database = {
           auto_unlock_enabled?: boolean
           auto_unlock_seconds?: number
           ble_mac?: string | null
+          button_near_door_only?: boolean
           category?: string
           club_id?: string
           control_mode?: string
@@ -5846,6 +5849,7 @@ export type Database = {
           door_auto_unlock_enabled: boolean
           door_auto_unlock_radius_m: number
           door_auto_unlock_seconds: number
+          door_button_near_only: boolean
           door_dashboard_role_ids: string[]
           door_geofence_enabled: boolean
           door_geofence_radius_m: number
@@ -5996,6 +6000,7 @@ export type Database = {
           door_auto_unlock_enabled?: boolean
           door_auto_unlock_radius_m?: number
           door_auto_unlock_seconds?: number
+          door_button_near_only?: boolean
           door_dashboard_role_ids?: string[]
           door_geofence_enabled?: boolean
           door_geofence_radius_m?: number
@@ -6146,6 +6151,7 @@ export type Database = {
           door_auto_unlock_enabled?: boolean
           door_auto_unlock_radius_m?: number
           door_auto_unlock_seconds?: number
+          door_button_near_only?: boolean
           door_dashboard_role_ids?: string[]
           door_geofence_enabled?: boolean
           door_geofence_radius_m?: number

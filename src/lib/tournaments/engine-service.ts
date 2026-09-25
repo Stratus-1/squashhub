@@ -7,7 +7,7 @@
  */
 import {
   IntegrityError, assertKnockoutShape, assertStageKinds, bracketOrder, canGenerateStage, contractIssues,
-  isDecided, progressionOf, disciplineOf, PAIR_FORMING, nextPow2, roundRobin, snakePools, swissRound,
+  isDecided, progressionOf, disciplineOf, PAIR_FORMING, perPoolSlots, rankPoolTally, type PoolSlot, nextPow2, roundRobin, snakePools, swissRound,
   type DivisionContract, type FixtureRow, type PlannedStage, type PoolStanding, type SwissTieBreak,
 } from "./contract";
 import {
@@ -316,6 +316,33 @@ const stageFinished = (st: PlannedStage, rows: FixtureRow[]) => {
   return true;
 };
 
+/**
+ * Resolve "top N from EACH pool" into stable slots, each from its own pool's standings only
+ * (the same rankPoolTally the play-offs use). Order: all 1st places by pool, then all 2nd places…
+ * Refuses while any source pool is unfinished — slots are never filled early.
+ */
+export function perPoolQualifiers(prev: PlannedStage, rows: FixtureRow[], top: number): Array<PoolSlot & { id: string }> {
+  if (prev.kind !== "pools") throw new IntegrityError("per_pool_source", `${prev.name} has no pools.`);
+  const mine = rows.filter((f) => f.stageId === prev.id);
+  if (!stageFinished(prev, rows)) throw new IntegrityError("prereq", `${prev.name} is not finished.`);
+  const pools = prev.pools ?? 1;
+  const tables: string[][] = [];
+  for (let i = 0; i < pools; i++) {
+    const tally = new Map<string, number>();
+    for (const f of mine.filter((x) => (x.pool ?? 1) === i + 1)) {
+      for (const u of [f.a, f.b]) if (u && !tally.has(u)) tally.set(u, 0);
+      const w = f.a && !f.b ? f.a : f.winner;
+      if (w) tally.set(w, (tally.get(w) ?? 0) + 1);
+    }
+    const ranked = rankPoolTally(tally, top, `Pool ${String.fromCharCode(65 + i)}`);
+    if (ranked.length < top) throw new IntegrityError("top_exceeds_pool", `Pool ${String.fromCharCode(65 + i)} has only ${ranked.length} — can't take top ${top}.`);
+    tables.push(ranked);
+  }
+  const out = perPoolSlots(prev, top).map((s) => ({ ...s, id: tables[s.poolIndex][s.position - 1] }));
+  if (new Set(out.map((o) => o.id)).size !== out.length) throw new IntegrityError("duplicate_slot", "A participant would fill two qualifier slots.");
+  return out;
+}
+
 export interface NextStagePlan { stage: PlannedStage; entrants: Array<{ id: string; rank: number }>; fixtures: EngineFixture[] }
 
 /**
@@ -345,7 +372,9 @@ export function nextStageFixtures(tid: string, d: SpecDivision, stageId: string,
     ranked = [...prevTable].sort((x, y) => score(y) - score(x) || prevTable.indexOf(x) - prevTable.indexOf(y));
   }
   // 2. Who continues.
-  if (p.mode === "top_n") {
+  if (p.mode === "top_n" && p.perPool) {
+    ranked = perPoolQualifiers(prev, div, p.top ?? 0).map((q) => q.id);
+  } else if (p.mode === "top_n") {
     if (!p.top || p.top > ranked.length) throw new IntegrityError("top_n", `Only ${ranked.length} can continue from ${prev.name}.`);
     ranked = ranked.slice(0, p.top);
   }

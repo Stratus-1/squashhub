@@ -4,7 +4,7 @@
  * against those ids → identity validation → insert. Legacy tournaments never come here.
  * The DB trigger `guard_structured_match_identity` enforces the same identity rules.
  */
-import { IntegrityError, assertNoReentry, contractIssues, isDecided, progressionOf, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
+import { IntegrityError, rankPoolTally, assertNoReentry, contractIssues, isDecided, progressionOf, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
 import { confirmPlayoffs, generateFromSpec, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
 import { effectiveTransition, transitionIssues } from "./transition";
@@ -299,10 +299,7 @@ export function poolStandings(divisionKey: string, stageKey: string, matches: Ar
   }
   const out: PoolStanding[] = [];
   for (const [pool, tally] of [...byPool.entries()].sort((x, y) => x[0] - y[0])) {
-    const ranked = [...tally.entries()].sort((x, y) => y[1] - x[1]);
-    if (ranked.length > perPool && ranked[perPool - 1][1] === ranked[perPool][1])
-      throw new IntegrityError("tie", `Pool ${pool}: tie on the qualifying line needs an owner decision.`);
-    ranked.forEach(([id], i) => out.push({ pool, position: i + 1, id, divisionId: divisionKey }));
+    rankPoolTally(tally, perPool, `Pool ${pool}`).forEach((id, i) => out.push({ pool, position: i + 1, id, divisionId: divisionKey }));
   }
   return out;
 }
@@ -311,7 +308,7 @@ export const toFixtureRow = (divisionKey: string, m: Record<string, any>, kind: 
   id: m.id, divisionId: divisionKey, stageId: m.stage_key, stageKind: kind, round: m.round_number,
   a: m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id,
   b: m.partner_b_member_id ? `${m.player_b_member_id}+${m.partner_b_member_id}` : m.player_b_member_id,
-  status: m.status, score: m.score, thirdPlace: m.stage_label === "3rd place" || undefined, ...({ slot: m.bracket_position } as object),
+  status: m.status, score: m.score, pool: m.pool_number ?? null, thirdPlace: m.stage_label === "3rd place" || undefined, ...({ slot: m.bracket_position } as object),
   winner: !m.winner_member_id ? null
     : [m.player_a_member_id, m.partner_a_member_id].includes(m.winner_member_id)
       ? (m.partner_a_member_id ? `${m.player_a_member_id}+${m.partner_a_member_id}` : m.player_a_member_id)

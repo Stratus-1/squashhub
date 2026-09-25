@@ -37,8 +37,31 @@ export interface Progression {
   /** Required when the discipline changes. Singles→doubles: fold = 1st+last, positions = 1+2, 3+4, manual = owner sets pairs.
    *  Doubles→singles: split = each pair's players continue individually at the pair's position. */
   pairing?: PairingRule | null;
-  /** top_n: how many continue (players or units of the previous stage). */
+  /** top_n: how many continue — overall, or from EACH pool when perPool is true. */
   top?: number | null;
+  /** top_n from a pooled stage: take the top N of each pool's own standings (never a combined ranking). */
+  perPool?: boolean;
+}
+
+/** Stable qualifier slot identity: source stage spec id + 0-based pool index + finishing position. Never a label. */
+export interface PoolSlot { sourceStageId: string; poolIndex: number; position: number }
+export function perPoolSlots(prev: PlannedStage, top: number): PoolSlot[] {
+  const pools = prev.kind === "pools" ? prev.pools ?? 1 : 1;
+  const out: PoolSlot[] = [];
+  for (let pos = 1; pos <= top; pos++) for (let i = 0; i < pools; i++) out.push({ sourceStageId: prev.id, poolIndex: i, position: pos });
+  return out;
+}
+
+/**
+ * THE pool ranking used by play-offs and by every later stage: wins, then the given tie order;
+ * a tie exactly on the qualifying line is never guessed — it blocks for an owner decision.
+ */
+export function rankPoolTally(tally: Map<string, number>, perPool: number, poolName: string, tieOrder: string[] = []): string[] {
+  const idx = (id: string) => { const i = tieOrder.indexOf(id); return i < 0 ? 1e9 : i; };
+  const ranked = [...tally.entries()].sort((x, y) => y[1] - x[1] || (tieOrder.length ? idx(x[0]) - idx(y[0]) : 0));
+  if (!tieOrder.length && perPool > 0 && ranked.length > perPool && ranked[perPool - 1][1] === ranked[perPool][1])
+    throw new IntegrityError("tie", `${poolName}: tie on the qualifying line needs an owner decision.`);
+  return ranked.map(([id]) => id);
 }
 export const PAIR_FORMING: PairingRule[] = ["fold", "positions", "manual"];
 
@@ -124,10 +147,21 @@ export function contractIssues(c: DivisionContract): ContractIssue[] {
     if (p.mode !== "qualifiers" && !p.standings) e("standings_rule", `${s.name}: choose whether points carry forward or reset.`, s.id);
     if (toPairs && (p.mode === "all_continue" || p.mode === "form_pairs") && c.expectedEntrants && c.expectedEntrants % 2 === 1 && i === 1)
       e("odd_pairs", `${s.name}: ${c.expectedEntrants} players can't all be paired — an even number is needed.`, s.id);
-    if (p.mode === "top_n") {
+    if (p.mode === "top_n" && p.perPool) {
+      const pools = prev.kind === "pools" ? prev.pools ?? 0 : 0;
+      const size = prev.poolSize ?? (c.expectedEntrants && pools ? Math.floor(c.expectedEntrants / pools) : null);
+      if (pools < 2) e("per_pool_source", `${s.name}: "top N from each pool" needs a previous stage with pools.`, s.id);
+      if (!p.top || p.top < 1) e("top_n", `${s.name}: choose how many qualify from each pool.`, s.id);
+      else {
+        if (size && p.top > size) e("top_exceeds_pool", `${s.name}: top ${p.top} from each pool, but pools have only ${size}.`, s.id);
+        if (pools * p.top < 2) e("top_n", `${s.name}: at least 2 must continue.`, s.id);
+        if (toPairs && (pools * p.top) % 2) e("odd_pairs", `${s.name}: ${pools * p.top} qualifiers can't all be paired.`, s.id);
+      }
+    } else if (p.mode === "top_n") {
       if (!p.top || p.top < 2) e("top_n", `${s.name}: choose how many continue (at least 2).`, s.id);
       else if (toPairs && p.top % 2) e("odd_pairs", `${s.name}: ${p.top} players can't all be paired — choose an even number.`, s.id);
     }
+    if (p.perPool && p.mode !== "top_n") e("per_pool_mode", `${s.name}: per-pool selection only applies to "top N from each pool".`, s.id);
     if (p.mode === "qualifiers") {
       if (!s.qualify || !s.qualify.perPool) e("playoff_qualify", `${s.name}: who qualifies is not defined.`, s.id);
       else if (s.kind === "knockout" && !s.qualify.mapping && !s.qualify.transition) e("playoff_mapping", `${s.name}: how qualifiers are mapped/seeded is not defined.`, s.id);
@@ -295,6 +329,8 @@ export interface FixtureRow {
   winner?: string | null;
   date?: string | null;
   court?: number | null;
+  /** 1-based pool number inside a pool stage (null for one field). */
+  pool?: number | null;
   /** 3rd/4th place match — losers play it, so it never counts as re-entry. */
   thirdPlace?: boolean;
   venue?: string | null;

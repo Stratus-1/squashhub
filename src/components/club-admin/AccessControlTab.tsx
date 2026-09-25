@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Club } from "@/hooks/use-club";
 import { useClubSecrets, useUpdateClubSecrets } from "@/hooks/use-club-secrets";
@@ -43,6 +44,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const [step, setStep] = useState("method");
   const { data: secrets } = useClubSecrets(clubId);
   const updateSecrets = useUpdateClubSecrets();
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     access_control_type: "none" as AccessType,
@@ -96,19 +98,6 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
     }
   }, [secrets]);
 
-  useEffect(() => {
-    setFaceEnrolmentRequired(!!(club as any)?.face_enrolment_required);
-    const c = club as any;
-    setGeofence({
-      enabled: !!c?.door_geofence_enabled,
-      lat: c?.door_latitude != null ? String(c.door_latitude) : "",
-      lng: c?.door_longitude != null ? String(c.door_longitude) : "",
-      radius: String(c?.door_geofence_radius_m ?? 150),
-      autoRadius: String(c?.door_auto_unlock_radius_m ?? 5),
-      auto: !!c?.door_auto_unlock_enabled,
-    });
-  }, [club]);
-
   const resetSecretsForm = () => {
     const s = (secrets || {}) as any;
     setForm(p => ({
@@ -142,6 +131,16 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
   const methodLock = useEditLock(resetSecretsForm);
   const deviceLock = useEditLock(resetSecretsForm);
   const locationLock = useEditLock(resetGeofence);
+
+  // Re-sync from the saved club ONLY while the location card is not being edited.
+  // Root cause of the Nelspruit failure: the club refetches when the window regains focus
+  // (e.g. after the browser's location-permission prompt), which used to wipe the pinned
+  // location and "enabled" switch back to the saved (off/empty) values before Save.
+  useEffect(() => {
+    setFaceEnrolmentRequired(!!(club as any)?.face_enrolment_required);
+    if (!locationLock.editing) resetGeofence();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [club, locationLock.editing]);
   
 
   const useMyLocation = () => {
@@ -204,26 +203,41 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
         await fromExt("clubs").update({ face_enrolment_required: false }).eq("id", clubId);
       }
 
+      toast.success("Access control settings saved");
+      onDone?.();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    }
+  };
+
+  /** Location card only: atomic — success requires the exact enabled/lat/lng to be persisted. */
+  const saveGeofence = async (onDone?: () => void) => {
+    try {
       const latNum = geofence.lat.trim() === "" ? null : Number(geofence.lat);
       const lngNum = geofence.lng.trim() === "" ? null : Number(geofence.lng);
-      if (geofence.enabled && (latNum == null || lngNum == null || Number.isNaN(latNum) || Number.isNaN(lngNum))) {
-        throw new Error("Pin the door location before enabling proximity unlock");
-      }
-      await fromExt("clubs")
+      const validPos = latNum != null && lngNum != null && Number.isFinite(latNum) && Number.isFinite(lngNum)
+        && Math.abs(latNum) <= 90 && Math.abs(lngNum) <= 180;
+      if (geofence.enabled && !validPos) throw new Error("Pin the door location before enabling proximity unlock");
+      const { data, error } = await fromExt("clubs")
         .update({
           door_geofence_enabled: geofence.enabled,
-          door_latitude: latNum,
-          door_longitude: lngNum,
-          // Phone GPS is accurate to ~10–30 m, so anything under 25 m makes the
-          // "Open Door" tile effectively impossible to reach. Keep a sane floor.
+          door_latitude: validPos ? latNum : null,
+          door_longitude: validPos ? lngNum : null,
           door_geofence_radius_m: Math.max(25, Math.min(2000, Number(geofence.radius) || 150)),
           door_auto_unlock_radius_m: Math.max(8, Math.min(500, Number(geofence.autoRadius) || 8)),
           door_auto_unlock_enabled: geofence.enabled && geofence.auto,
-
         } as any)
-        .eq("id", clubId);
-
-      toast.success("Access control settings saved");
+        .eq("id", clubId)
+        .select("door_geofence_enabled, door_latitude, door_longitude")
+        .maybeSingle();
+      if (error) throw error;
+      const row = data as any;
+      if (!row) throw new Error("Door location was not saved — you may not have permission to change club settings.");
+      if (geofence.enabled && (!row.door_geofence_enabled || row.door_latitude == null || row.door_longitude == null)) {
+        throw new Error("Door location did not save correctly. Please try again.");
+      }
+      await Promise.all(["club-by-subdomain", "club-by-subdomain-restricted", "my-club", "iot-club-door"].map((k) => queryClient.invalidateQueries({ queryKey: [k] })));
+      toast.success(geofence.enabled ? "Door location saved — geofencing is on" : "Door location settings saved");
       onDone?.();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
@@ -606,7 +620,7 @@ export function AccessControlTab({ club, clubId }: { club: Club; clubId: string 
           editing={locationLock.editing}
           onEdit={locationLock.edit}
           onCancel={locationLock.cancel}
-          onSave={() => handleSave(locationLock.done)}
+          onSave={() => saveGeofence(locationLock.done)}
           saving={updateSecrets.isPending}
           locked={!(isShelly || isFluss)}
           lockedHint="Door location only applies to smart-relay doors (Shelly or Fluss). Choose one on step 1 first."

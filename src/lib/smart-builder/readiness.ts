@@ -252,8 +252,8 @@ export function assessReadiness(def: TournamentDefinition, validation: Validatio
     { key: "schedule", title: "Schedule", items: schedule, state: worst(schedule) },
     { key: "invitations", title: "Invitations & messages", items: inv, state: worst(inv) },
     { key: "support", title: "Structure support", items: support, state: worst(support) },
-    { key: "review", title: "Ready to create", items: checks, state: worst(checks) },
   ];
+  sections.unshift({ key: "review", title: "Ready to create", items: checks, state: worst(checks) });
   // The four checks summarise items already listed above — not counted twice.
   const missing = sections.flatMap((s) => s.key === "review" ? [] : s.items.filter((i) => i.state === "missing" && i.id !== "schedule_maths_ref"));
   return { sections, missing, nextMissing: missing.find((m) => m.ask) ?? missing[0] ?? null, executability: mapping.executability };

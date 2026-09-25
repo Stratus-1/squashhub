@@ -279,8 +279,10 @@ Deno.serve(async (req) => {
 
     // Send first, then verify. Shelly Cloud limits this API to one request per
     // second, so a separate status preflight would collide with the command.
+    const inverted = secrets.shelly_door_inverted === true;
+    const expectedOutput = !inverted;
     const raw = await pulseShellyRelay({
-      inverted: secrets.shelly_door_inverted === true,
+      inverted,
       server: secrets.shelly_server_url,
       authKey: secrets.shelly_auth_key,
       deviceId,
@@ -300,7 +302,7 @@ Deno.serve(async (req) => {
     });
     // Shelly Cloud's cached status can lag by a second or two; re-check once
     // before declaring a failure so a transient lag isn't reported as offline.
-    if (verification.online === false || verification.output !== true) {
+    if (verification.online === false || verification.output !== expectedOutput) {
       await new Promise((resolve) => setTimeout(resolve, 1200));
       verification = await getDeviceStatus({
         server: secrets.shelly_server_url,
@@ -309,7 +311,7 @@ Deno.serve(async (req) => {
         channel,
       });
     }
-    if (verification.online === false || verification.output !== true) {
+    if (verification.online === false || verification.output !== expectedOutput) {
       await admin.from("access_events").insert({
         club_id,
         club_member_id: memberId,
@@ -327,7 +329,7 @@ Deno.serve(async (req) => {
       throw new Error(
         verification.online === false
           ? "Door controller went offline before the relay could switch."
-          : "Shelly Cloud accepted the request but the relay output did not switch on. Check the configured channel and the Shelly output mode.",
+          : `Shelly Cloud accepted the request but the relay output did not switch ${expectedOutput ? "on" : "off"}.`+" Check the configured channel and the Shelly output mode.",
       );
     }
 

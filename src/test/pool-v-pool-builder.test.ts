@@ -90,6 +90,9 @@ describe("Pool-v-pool league built from builder controls", () => {
     s2.scoring = { mode: "time_capped_points", timeCapMinutes: null };
     expect(validateDefinition(def).issues.some((i) => i.code === "scoring_cap" && i.level === "error")).toBe(true);
     s2.scoring = { mode: "time_capped_points", timeCapMinutes: 40 };
+    // Scoring (bell time) never drives the schedule; court-slot minutes on the games do.
+    expect(sessionPlan(def).sessions[0].minutes).toBe(210);
+    s2.tieFormat!.rubbers.forEach((r) => { r.minutes = 40; });
     expect(sessionPlan(def).sessions[0].minutes).toBe(120 + 120);
     semis.roundScoring = { "0": { mode: "standard", pointsPerGame: 11, bestOf: 5 } };
     expect(scoringText(effectiveScoring(def, semis, 0))).toBe("PAR 11 — best of 5");

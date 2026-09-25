@@ -58,6 +58,7 @@ export function makeStage(format: BuilderFormat, discipline: "singles" | "double
 
 /** A new stage starts independent: the division's entry type, round robin, one field, nothing scheduled, no transition chosen. */
 export function addStage(d: Division, format: BuilderFormat = "round_robin") {
+  if (!d.sections.length) d.sections.push({ id: `sec_${d.id}`, name: "Main", stages: [] });
   const ss = stagesOf(d);
   const s = makeStage(format, d.entry === "pairs" ? "doubles" : "singles", ss.length + 1);
   s.schedule = { mode: "unset" };

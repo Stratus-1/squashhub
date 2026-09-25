@@ -44,8 +44,7 @@ const GENDER: Record<Division["eligibility"], string> = {
 const MAPPABLE_FIRST = new Set(["knockout", "round_robin", "swiss"]);
 
 export function mapToExistingTournament(input: TournamentDefinition): ExistingMapping {
-  // Map the design as the engine will run it (exact supported translations applied).
-  const def = translateForEngine(input).def;
+  const def = input;
   const blockers = engineBlockers(input);
   const unsupported: string[] = [];
   const deferredStages: ExistingMapping["deferredStages"] = [];
@@ -72,6 +71,13 @@ export function mapToExistingTournament(input: TournamentDefinition): ExistingMa
     const [first, second, ...rest] = section.stages as (Stage | undefined)[];
     if (!first) { unsupported.push(`${label} has no stages.`); return; }
     matchTypes[key] = first.discipline;
+    if (first.kind === "cross_pool_league" && !blockers.some((b) => b.stageId === first.id)) {
+      // Explicit-matchup stages run on the structured engine only (no legacy equivalent).
+      if (first.groupSize) expected[key] = first.groups * first.groupSize;
+      leagueFormats[key] = "single_round_robin";
+      defer(label, section.stages, "explicit matchups run on the structured engine");
+      return;
+    }
     if (!MAPPABLE_FIRST.has(first.kind)) {
       unsupported.push(blockers.find((b) => b.stageId === first.id)?.detail ?? `${label}: the first stage (${first.name}) is a ${first.kind.replace(/_/g, " ")} stage, which today's engine can't run.`);
       return;

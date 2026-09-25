@@ -43,7 +43,7 @@ export function sessionMembers(def: TournamentDefinition, leader: Stage): Stage[
 }
 
 /** Per-game minutes: a stage's Bells cap wins over the slot length typed on each game. */
-const gameMins = (def: TournamentDefinition, st: Stage, r: { minutes: number }) => scoringMinutes(def, st) ?? r.minutes;
+const gameMins = (def: TournamentDefinition, st: Stage, r: { minutes?: number }) => scoringMinutes(def, st) ?? r.minutes ?? 0;
 const tieMins = (def: TournamentDefinition, st: Stage) => st.tieFormat?.rubbers.reduce((n, r) => n + gameMins(def, st, r), 0) ?? 0;
 
 /** Court minutes one stage needs in one session. */

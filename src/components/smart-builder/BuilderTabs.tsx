@@ -7,7 +7,7 @@
 import { atomically, persistStructure, specFromDefinition } from "@/lib/tournaments/structured-persist";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
-import { requiredRounds, roundNames, scheduleMaths, scheduleMathsIssues } from "@/lib/smart-builder/schedule-maths";
+import { requiredRounds, roundDatePlan, roundNames, scheduleMaths, scheduleMathsIssues } from "@/lib/smart-builder/schedule-maths";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, CircleDot, XCircle, ShieldCheck } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";

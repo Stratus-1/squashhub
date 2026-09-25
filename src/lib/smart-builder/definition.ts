@@ -384,8 +384,39 @@ export function emptyDefinition(name = "Untitled tournament"): TournamentDefinit
 /** Parse untrusted JSON (AI output / stored draft) into a Definition. */
 export function parseDefinition(raw: unknown): { ok: true; value: TournamentDefinition } | { ok: false; error: string } {
   const r = DefinitionSchema.safeParse(raw);
-  if (r.success) return { ok: true, value: r.data };
+  if (r.success) return { ok: true, value: splitMixedTieStages(r.data) };
   return { ok: false, error: r.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
+}
+
+/**
+ * Older drafts stored singles AND doubles games in one pool-v-pool stage. Split each such stage into
+ * a singles stage plus a doubles stage linked to the same session (straight after, same court),
+ * carrying over dates, pools, pairing and start time. Stages with one discipline are untouched.
+ */
+export function splitMixedTieStages(def: TournamentDefinition): TournamentDefinition {
+  for (const d of def.divisions) for (const sec of d.sections) {
+    for (let i = 0; i < sec.stages.length; i++) {
+      const st = sec.stages[i];
+      const rub = st.tieFormat?.rubbers ?? [];
+      const sing = rub.filter((r) => r.discipline === "singles"), dbl = rub.filter((r) => r.discipline === "doubles");
+      if (!sing.length || !dbl.length || st.kind !== "cross_pool_league") continue;
+      st.discipline = "singles";
+      st.tieFormat = { ...st.tieFormat!, rubbers: sing };
+      if (/pool-v-pool ties/i.test(st.name)) st.name = "Singles";
+      const next: Stage = {
+        ...JSON.parse(JSON.stringify(st)), id: newId("stage"), name: "Doubles", discipline: "doubles",
+        input: { fromStageId: st.id }, sameSessionAs: st.id,
+        progression: { mode: "form_pairs", pairing: "positions", standings: "carry" },
+        tieFormat: { ...st.tieFormat!, rubbers: dbl, startTime: null },
+        scoring: undefined, roundScoring: undefined, standings: st.standings ? { ...st.standings } : undefined,
+      };
+      sec.stages.splice(i + 1, 0, next);
+      const after = sec.stages[i + 2];
+      if (after?.input?.fromStageId === st.id) after.input = { ...after.input, fromStageId: next.id };
+      i++;
+    }
+  }
+  return def;
 }
 
 let seq = 0;

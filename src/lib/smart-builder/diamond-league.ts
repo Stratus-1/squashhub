@@ -181,6 +181,12 @@ export function tieSlots(t: TieFormat, start?: string | null) {
 }
 export const tieFinish = (t: TieFormat, start: string) => hhmm(toMin(start) + tieMinutes(t));
 
+/** Court for the k-th tie of a division's evening: its home group when both pools share one, otherwise the k-th group's court so simultaneous ties never share a court. */
+export function tieCourt(d: Pick<Division, "poolGroups">, a: number, b: number, k: number): string | null {
+  const g = d.poolGroups ?? [];
+  return g.find((x) => x.pools.includes(a) && x.pools.includes(b))?.court ?? g[k]?.court ?? null;
+}
+
 export interface Tie {
   round: number; division: number; poolA: number; poolB: number; court: string | null;
   rubbers: Array<{ order: number; discipline: "singles" | "doubles"; positions: number[]; minutes: number; start: string | null; end: string | null; a: string | null; b: string | null }>;
@@ -191,10 +197,10 @@ export interface Tie {
  */
 export function buildTies(pools: (string | null)[][][], divisions: Pick<Division, "poolGroups">[], t: TieFormat): Tie[] {
   const out: Tie[] = [];
-  pools.forEach((dp, di) => poolRotation(dp.length).forEach((pairs, r) => pairs.forEach(([pa, pb]) => {
+  pools.forEach((dp, di) => poolRotation(dp.length).forEach((pairs, r) => pairs.forEach(([pa, pb], k) => {
     const side = (pi: number, pos: number[]) => pos.every((p) => dp[pi]?.[p - 1]) ? pos.map((p) => dp[pi][p - 1]).join("+") : null;
     out.push({
-      round: r + 1, division: di, poolA: pa, poolB: pb, court: divisions[di] ? homeCourt(divisions[di], pa, pb) : null,
+      round: r + 1, division: di, poolA: pa, poolB: pb, court: divisions[di] ? tieCourt(divisions[di], pa, pb, k) : null,
       rubbers: tieSlots(t, t.startTime).map((s) => ({ ...s, a: side(pa, s.positions), b: side(pb, s.positions) })),
     });
   })));

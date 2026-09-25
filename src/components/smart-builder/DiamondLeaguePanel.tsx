@@ -2,13 +2,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { TournamentDefinition } from "@/lib/smart-builder/definition";
-import { DIAMOND_KEY, DIAMOND_TIE, diamondChain, diamondTieStage, poolLetter, poolName, poolRotation, rubberLabel, tieEveningCheck, tieMinutes, tieSlots, toTemplate } from "@/lib/smart-builder/diamond-league";
+import { DIAMOND_KEY, DIAMOND_TIE, diamondChain, diamondTieStage, poolLetter, poolName, poolRotation, rubberLabel, tieEveningCheck, tieMinutes, tieCourt, tieSlots, toTemplate } from "@/lib/smart-builder/diamond-league";
 import { fromExt } from "@/lib/supabase-ext";
 
 type Edit = (mut: (d: TournamentDefinition) => void) => void;
 const f = "h-8 bg-white/5 border-white/15 text-white text-xs";
 
-/** Diamond League specifics: dependency chain, 8 pool names, pair source, admission, home courts, open items. */
+/** Diamond League specifics: dependency chain, 8 pool names, ties, admission, home courts, open items. */
 export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefinition; edit: Edit; clubId?: string | null }) {
   if (def.templateMeta?.key !== DIAMOND_KEY) return null;
   const open = def.questions.filter((q) => q.id.startsWith("dl_") && !q.resolved);
@@ -52,7 +52,7 @@ export function DiamondLeaguePanel({ def, edit, clubId }: { def: TournamentDefin
       </div>
       <div className="space-y-1" data-field="tie-rounds">
         {rounds.map((pairs, r) => {
-          const ties = def.divisions.flatMap((d) => pairs.map(([a, b]) => ({ d, a, b, court: (d.poolGroups ?? []).find((g) => g.pools.includes(a) && g.pools.includes(b))?.court ?? null })));
+          const ties = def.divisions.flatMap((d) => pairs.map(([a, b], k) => ({ d, a, b, court: tieCourt(d, a, b, k) })));
           const chk = tieEveningCheck(ties, tie);
           return (
             <div key={r} className="text-[11px]">

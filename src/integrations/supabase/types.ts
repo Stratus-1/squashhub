@@ -3464,6 +3464,7 @@ export type Database = {
           location: string | null
           name: string
           notes: string | null
+          output_inverted: boolean
           provider: string
           pulse_ms: number
           schedule_days: number[]
@@ -3505,6 +3506,7 @@ export type Database = {
           location?: string | null
           name: string
           notes?: string | null
+          output_inverted?: boolean
           provider?: string
           pulse_ms?: number
           schedule_days?: number[]
@@ -3546,6 +3548,7 @@ export type Database = {
           location?: string | null
           name?: string
           notes?: string | null
+          output_inverted?: boolean
           provider?: string
           pulse_ms?: number
           schedule_days?: number[]
@@ -5236,6 +5239,7 @@ export type Database = {
           shelly_door_ble_mac: string | null
           shelly_door_channel: number | null
           shelly_door_device_id: string | null
+          shelly_door_inverted: boolean
           shelly_door_pulse_ms: number | null
           shelly_server_url: string | null
           smtp_host: string | null
@@ -5294,6 +5298,7 @@ export type Database = {
           shelly_door_ble_mac?: string | null
           shelly_door_channel?: number | null
           shelly_door_device_id?: string | null
+          shelly_door_inverted?: boolean
           shelly_door_pulse_ms?: number | null
           shelly_server_url?: string | null
           smtp_host?: string | null
@@ -5352,6 +5357,7 @@ export type Database = {
           shelly_door_ble_mac?: string | null
           shelly_door_channel?: number | null
           shelly_door_device_id?: string | null
+          shelly_door_inverted?: boolean
           shelly_door_pulse_ms?: number | null
           shelly_server_url?: string | null
           smtp_host?: string | null

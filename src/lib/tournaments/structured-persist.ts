@@ -7,7 +7,6 @@
 import { IntegrityError, rankPoolTally, assertNoReentry, contractIssues, isDecided, progressionOf, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
 import { confirmPlayoffs, generateFromSpec, mappedFixtures, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
-import type { PlannedStage as _PS } from "./contract";
 import { effectiveTransition, transitionIssues } from "./transition";
 import type { TournamentDefinition } from "../smart-builder/definition";
 import { engineVerdicts, translateForEngine } from "../smart-builder/engine-support";
@@ -487,6 +486,19 @@ async function startMappedStage(db: Db, tid: string, spec: TournamentSpec, d: Sp
   if (!done.length || !done.every(isDecided)) throw new IntegrityError("prereq", `${src.name} is not finished.`);
   // Every position used must be decided; a tie at any used position blocks (owner decides, never invented).
   const standings = poolStandings(d.divisionId, src.id, matches, m.poolSize);
+  const wins = new Map<string, number>();
+  for (const x of matches.filter((r) => r.stage_key === src.id && r.winner_member_id)) {
+    const a = x.partner_a_member_id ? `${x.player_a_member_id}+${x.partner_a_member_id}` : x.player_a_member_id;
+    const b = x.partner_b_member_id ? `${x.player_b_member_id}+${x.partner_b_member_id}` : x.player_b_member_id;
+    const w = String(a).split("+").includes(x.winner_member_id) ? a : b;
+    wins.set(w, (wins.get(w) ?? 0) + 1);
+  }
+  const used = new Set(m.units.flatMap((u) => u.slots.map((s) => `${s.pool + 1}:${s.position}`)));
+  for (const s of standings) {
+    const next = standings.find((o) => o.pool === s.pool && o.position === s.position + 1);
+    if (next && (used.has(`${s.pool}:${s.position}`) || used.has(`${s.pool}:${s.position + 1}`)) && (wins.get(s.id) ?? 0) === (wins.get(next.id) ?? 0))
+      throw new IntegrityError("tie", `${d.poolLabels?.[s.pool - 1] ?? `Pool ${s.pool}`}: positions ${s.position} and ${s.position + 1} are tied — the owner must decide the order before pairs/matchups are formed.`);
+  }
   const positions: string[][] = Array.from({ length: m.pools }, () => []);
   for (const s of standings) positions[s.pool - 1][s.position - 1] = s.id;
   const fixtures = mappedFixtures(tid, d, st, positions);

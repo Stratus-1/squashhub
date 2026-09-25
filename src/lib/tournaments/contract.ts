@@ -21,14 +21,26 @@ export type QualifierMapping = "cross_pool" | "reseed" | "same_pool";
 export type SwissTieBreak = "buchholz" | "sonneborn_berger" | "seed";
 
 /** How entrants move from the previous stage into this one. Stage 1 always takes the entries. */
-export type ProgressionMode = "qualifiers" | "all_continue" | "form_pairs";
+/**
+ * WHO continues (mode) is separate from HOW participants change shape (pairing) and from points (standings).
+ * - all_continue: everyone from the previous stage
+ * - top_n: the top `top` of the previous stage's table (any destination format)
+ * - qualifiers: pool/position qualifiers into a play-off via the mapping/transition path
+ * - form_pairs: legacy = all_continue + pairing (older drafts)
+ */
+export type ProgressionMode = "qualifiers" | "all_continue" | "top_n" | "form_pairs";
+export type PairingRule = "fold" | "positions" | "manual" | "split";
 export interface Progression {
   mode: ProgressionMode;
-  /** all_continue / form_pairs: whether earlier points count in this stage's table. */
+  /** whether earlier points count in this stage's table. */
   standings?: "carry" | "reset" | null;
-  /** form_pairs: fold = 1st+last, 2nd+second-last; positions = 1+2, 3+4; manual = owner sets pairs at transition. */
-  pairing?: "fold" | "positions" | "manual" | null;
+  /** Required when the discipline changes. Singles→doubles: fold = 1st+last, positions = 1+2, 3+4, manual = owner sets pairs.
+   *  Doubles→singles: split = each pair's players continue individually at the pair's position. */
+  pairing?: PairingRule | null;
+  /** top_n: how many continue (players or units of the previous stage). */
+  top?: number | null;
 }
+export const PAIR_FORMING: PairingRule[] = ["fold", "positions", "manual"];
 
 export interface PlannedStage {
   id: string;
@@ -101,16 +113,21 @@ export function contractIssues(c: DivisionContract): ContractIssue[] {
     const p = progressionOf(s);
     const dPrev = disciplineOf(c, prev), dCur = disciplineOf(c, s);
     if (!s.generation) e("playoff_generation", `${s.name}: choose automatic or owner-approved generation.`, s.id);
-    if (dPrev === "doubles" && dCur === "singles") e("doubles_to_singles", `${s.name}: a doubles stage can't feed a singles stage.`, s.id);
-    if (dPrev === "singles" && dCur === "doubles" && p.mode !== "form_pairs")
-      e("pairs_model", `${s.name}: singles players can't become doubles pairs without a pairing rule — choose "Form pairs".`, s.id);
-    if (p.mode === "form_pairs") {
-      if (!(dPrev === "singles" && dCur === "doubles")) e("form_pairs_scope", `${s.name}: forming pairs only applies from a singles stage to a doubles stage.`, s.id);
-      if (!p.pairing) e("pairing", `${s.name}: choose how pairs are formed.`, s.id);
-      if (!p.standings) e("standings_rule", `${s.name}: choose whether points carry forward or reset.`, s.id);
-      if (c.expectedEntrants && c.expectedEntrants % 2 === 1) e("odd_pairs", `${s.name}: ${c.expectedEntrants} players can't all be paired — an even number is needed.`, s.id);
+    const toPairs = dPrev === "singles" && dCur === "doubles", toSingles = dPrev === "doubles" && dCur === "singles";
+    if (toPairs && !(p.pairing && PAIR_FORMING.includes(p.pairing)))
+      e(p.pairing ? "pairing" : "pairs_model", `${s.name}: singles players can't become doubles pairs without a pairing rule — choose how pairs are formed.`, s.id);
+    if (toSingles && p.pairing !== "split")
+      e("split_model", `${s.name}: doubles pairs can't become singles players without a rule — choose "each pair's players continue individually".`, s.id);
+    if (!toPairs && !toSingles && p.pairing) e("pairing_scope", `${s.name}: a pairing rule only applies when the match type changes.`, s.id);
+    if (toPairs && p.mode === "qualifiers") e("pairs_qualifiers", `${s.name}: to form pairs from qualifiers, use "Top N continue".`, s.id);
+    if (p.mode === "form_pairs" && !toPairs) e("form_pairs_scope", `${s.name}: forming pairs only applies from a singles stage to a doubles stage.`, s.id);
+    if (p.mode !== "qualifiers" && !p.standings) e("standings_rule", `${s.name}: choose whether points carry forward or reset.`, s.id);
+    if (toPairs && (p.mode === "all_continue" || p.mode === "form_pairs") && c.expectedEntrants && c.expectedEntrants % 2 === 1 && i === 1)
+      e("odd_pairs", `${s.name}: ${c.expectedEntrants} players can't all be paired — an even number is needed.`, s.id);
+    if (p.mode === "top_n") {
+      if (!p.top || p.top < 2) e("top_n", `${s.name}: choose how many continue (at least 2).`, s.id);
+      else if (toPairs && p.top % 2) e("odd_pairs", `${s.name}: ${p.top} players can't all be paired — choose an even number.`, s.id);
     }
-    if (p.mode === "all_continue" && !p.standings) e("standings_rule", `${s.name}: choose whether points carry forward or reset.`, s.id);
     if (p.mode === "qualifiers") {
       if (!s.qualify || !s.qualify.perPool) e("playoff_qualify", `${s.name}: who qualifies is not defined.`, s.id);
       else if (s.kind === "knockout" && !s.qualify.mapping && !s.qualify.transition) e("playoff_mapping", `${s.name}: how qualifiers are mapped/seeded is not defined.`, s.id);

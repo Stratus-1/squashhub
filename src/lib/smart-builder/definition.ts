@@ -85,9 +85,12 @@ const StageSchema = z.object({
   legs: z.union([z.literal(1), z.literal(2)]).optional(),
   /** Later stages: how entrants arrive from the previous stage (separate from format and grouping). */
   progression: z.object({
-    mode: z.enum(["qualifiers", "all_continue", "form_pairs"]),
+    mode: z.enum(["qualifiers", "all_continue", "top_n", "form_pairs"]),
     standings: z.enum(["carry", "reset"]).nullable().optional(),
-    pairing: z.enum(["fold", "positions", "manual"]).nullable().optional(),
+    /** Only when the match type changes: fold / positions / manual (singles→doubles) or split (doubles→singles). */
+    pairing: z.enum(["fold", "positions", "manual", "split"]).nullable().optional(),
+    /** top_n: how many continue. */
+    top: z.number().int().min(1).nullable().optional(),
   }).nullable().optional(),
   /** Knockout: add a 3rd/4th place match. */
   thirdPlace: z.boolean().optional(),

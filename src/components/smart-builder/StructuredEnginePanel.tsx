@@ -11,6 +11,7 @@ import {
   atomically, startNextStructuredStage, toFixtureRow, confirmStructuredPlayoffs, generateStructuredTournament, rebuildStructured, withdrawStructured, insertFixtures, loadEntrants, nextKnockoutRound, persistStructure, previewStructuredPlayoffs,
 } from "@/lib/tournaments/structured-persist";
 import { progressionOf } from "@/lib/tournaments/contract";
+import { stageTable } from "@/lib/tournaments/engine-service";
 import { pairingLabel, slotLabel } from "@/lib/tournaments/transition";
 import { nextSwissRound, type PlayoffPreview, type TournamentSpec } from "@/lib/tournaments/engine-service";
 
@@ -86,9 +87,14 @@ export function StructuredEnginePanel({ champId, spec, matches, nameOf }: {
             {!exists && matches.length > 0 && progressionOf(s).mode !== "qualifiers" && (
               <Button size="sm" variant="outline" disabled={!!busy} onClick={() => {
                 const pr = progressionOf(s);
-                if (pr.mode === "form_pairs" && pr.pairing === "manual") {
-                  const prevId = d.stages.find((x) => x.order === s.order - 1)?.id;
-                  const players = [...new Set(matches.filter((m) => m.stage_key === prevId).flatMap((m) => [m.player_a_member_id, m.player_b_member_id]).filter(Boolean))] as string[];
+                if (pr.pairing === "manual") {
+                  const prevSt = d.stages.find((x) => x.order === s.order - 1);
+                  const prevId = prevSt?.id;
+                  let players = [...new Set(matches.filter((m) => m.stage_key === prevId).flatMap((m) => [m.player_a_member_id, m.player_b_member_id]).filter(Boolean))] as string[];
+                  if (pr.mode === "top_n" && pr.top && prevSt) {
+                    const rows = matches.filter((m) => m.stage_key === prevId).map((m) => toFixtureRow(d.divisionId, m, prevSt.kind));
+                    players = stageTable(prevSt.id, rows, d.entrants.map((e) => e.id)).map((x) => x.id).slice(0, pr.top);
+                  }
                   setPairing({ div: d.divisionId, stage: s.id, players, pairs: [], pick: null });
                   return;
                 }

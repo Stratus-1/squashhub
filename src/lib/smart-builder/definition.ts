@@ -145,6 +145,11 @@ const StageSchema = z.object({
     /** Evening start (HH:MM). Instance setting. */
     startTime: z.string().nullable().optional(),
   }).optional(),
+  /**
+   * Explicit "same session" link: this stage is played in the SAME session (date, courts)
+   * as the named earlier stage, straight after it. Unset = normal later-date progression.
+   */
+  sameSessionAs: z.string().nullable().optional(),
 });
 export type Stage = z.infer<typeof StageSchema>;
 

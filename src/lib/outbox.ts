@@ -244,7 +244,9 @@ export async function flushOutbox(options?: { maxAttempts?: number }) {
     }
 
     if (item.attempts >= maxAttempts) {
-      remaining.push(item);
+      // Door/light audit entries are best-effort logs: once retries are used
+      // up, drop them so they can't keep the "Sync pending" banner up forever.
+      if (item.kind !== "access_event") remaining.push(item);
       continue;
     }
 
@@ -260,9 +262,12 @@ export async function flushOutbox(options?: { maxAttempts?: number }) {
         attempts: item.attempts + 1,
         last_error: String(e?.message || e || "Unknown error"),
       };
+      const network = isLikelyNetworkError(e);
+      // A rejected (non-network) audit log entry will never succeed on retry;
+      // discard it rather than leaving it queued. Bookings/matches are kept.
+      if (item.kind !== "access_event" || network) remaining.push(updated);
       // If it looks like a network error, stop flushing further to avoid hammering.
-      remaining.push(updated);
-      if (isLikelyNetworkError(e)) {
+      if (network) {
         // push the rest unmodified
         const idx = items.indexOf(item);
         for (const rest of items.slice(idx + 1)) remaining.push(rest);

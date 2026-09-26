@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.shares_club_with(uuid) FROM PUBLIC, anon;

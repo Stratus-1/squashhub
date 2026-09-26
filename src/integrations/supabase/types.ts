@@ -17686,6 +17686,7 @@ export type Database = {
         Args: { _method: string; _tab_id: string; _token: string }
         Returns: Json
       }
+      shares_club_with: { Args: { _target_user_id: string }; Returns: boolean }
       snapshot_all_club_rankings: { Args: never; Returns: number }
       snapshot_club_rankings: {
         Args: { _club_id: string; _period?: string }

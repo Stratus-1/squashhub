@@ -21,6 +21,13 @@ export interface RubberRow {
   position: number | null;
   season_year: number | null;
   won: boolean | null;
+  /**
+   * Added to the parsed league level before scoring. Used to downweight
+   * Masters-league rubbers: Masters opposition is generally weaker than the
+   * same-numbered open league, so a Masters "1st League" counts as a lower
+   * open-league level.
+   */
+  levelOffset?: number;
 }
 
 export interface LeagueStrength {
@@ -81,9 +88,10 @@ export function computeLeagueStrength(rows: RubberRow[], latestYear: number): Le
   let wins = 0;
 
   for (const row of rows) {
-    const level = parseLeagueLevel(row.league_label);
+    const parsed = parseLeagueLevel(row.league_label);
     const position = row.position;
-    if (!level || !position || position < 1) continue;
+    if (!parsed || !position || position < 1) continue;
+    const level = parsed + (row.levelOffset ?? 0);
     const w = seasonWeight(row.season_year, latestYear);
     if (w <= 0) continue;
     weight += w;

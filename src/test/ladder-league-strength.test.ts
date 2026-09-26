@@ -9,6 +9,7 @@ import {
   type LeagueStrength,
   type RubberRow,
 } from "@/lib/ladder/league-strength";
+import { isMastersDivision, MASTERS_LEVEL_OFFSET } from "@/hooks/use-league-strength";
 
 const rubber = (over: Partial<RubberRow>): RubberRow => ({
   player_code: "NSF1",
@@ -126,5 +127,33 @@ describe("describeStrength", () => {
     expect(
       describeStrength({ score: 5, avgPosition: 2.05, avgLeague: 3.02, rubbers: 24, winRate: 0.68 })
     ).toBe("Usually #2.1 in league 3 · 68% won (24 rubbers)");
+  });
+});
+
+describe("Masters downweighting", () => {
+  it("detects numbered-team divisions as Masters", () => {
+    const masters = [
+      { home: { name: "DBV 1" }, away: { name: "FH 1" } },
+      { home: { name: "EVT 2" }, away: { name: "OM 1" } },
+    ];
+    const open = [
+      { home: { name: "DBV A" }, away: { name: "UCT A" } },
+      { home: { name: "WPCC B" }, away: { name: "VOB B" } },
+    ];
+    expect(isMastersDivision(masters)).toBe(true);
+    expect(isMastersDivision(open)).toBe(false);
+  });
+
+  it("counts a Masters 1st league weaker than the open 1st league", () => {
+    const openRows: RubberRow[] = [
+      { player_code: null, league_label: "1st League", position: 2, season_year: 2026, won: true },
+    ];
+    const mastersRows: RubberRow[] = [
+      { player_code: null, league_label: "1st League", position: 2, season_year: 2026, won: true, levelOffset: MASTERS_LEVEL_OFFSET },
+    ];
+    const openStrength = computeLeagueStrength(openRows, 2026)!;
+    const mastersStrength = computeLeagueStrength(mastersRows, 2026)!;
+    expect(mastersStrength.score).toBeGreaterThan(openStrength.score);
+    expect(mastersStrength.score - openStrength.score).toBeCloseTo(MASTERS_LEVEL_OFFSET * 4, 5);
   });
 });

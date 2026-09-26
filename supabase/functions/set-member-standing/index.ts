@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
             clubName: (club as any)?.name || 'Your club',
             rule: rule || undefined,
             reason: reason || undefined,
+            untilDate: untilText,
             effectiveDate: new Date().toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Johannesburg' }),
             contactEmail: (club as any)?.email || undefined,
           },

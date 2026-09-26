@@ -22,6 +22,7 @@ import { AgentSettingsCard } from "./AgentSettingsCard";
 type CaseRow = {
   id: string; kind: string; bug_report_id: string | null; ticket_id: string | null; club_id: string | null;
   title: string; status: MaintenanceStatus; agent_stage?: AgentStage | null; risk: string; sensitive_areas: string[]; requires_approval: boolean;
+  auto_fixed?: boolean; resolution_path?: string | null;
   last_actor_type: string; technical_result: any; released_at: string | null; closed_at: string | null;
   created_at: string; updated_at: string; clubs?: { name: string } | null;
   maintenance_case_requesters?: { id: string; user_id: string; notified_at: string | null }[];
@@ -39,6 +40,7 @@ const VIEWS: { key: string; label: string; statuses: MaintenanceStatus[] }[] = [
   { key: "new", label: "New / analysing", statuses: ["new", "analysing"] },
   { key: "needs_info", label: "Needs info", statuses: ["needs_info"] },
   { key: "in_progress", label: "In progress", statuses: ["issue_identified", "fix_in_progress", "approved"] },
+  { key: "auto_fixed", label: "Auto-fixed", statuses: [] },
   { key: "released", label: "Released", statuses: ["released", "completed"] },
   { key: "closed", label: "Failed / rejected", statuses: ["unable_to_resolve", "rejected"] },
 ];
@@ -46,6 +48,7 @@ const VIEWS: { key: string; label: string; statuses: MaintenanceStatus[] }[] = [
 // "Needs you" = human decisions only: approvals, releases, and agent stages
 // that need attention (failed tests, ready for review, agent unreachable).
 function inView(v: { key: string; statuses: MaintenanceStatus[] }, c: CaseRow) {
+  if (v.key === "auto_fixed") return !!c.auto_fixed;
   if (v.key === "needs_you" && c.agent_stage && ATTENTION_STAGES.includes(c.agent_stage) && !["released", "completed", "rejected", "unable_to_resolve"].includes(c.status)) return true;
   return v.statuses.includes(c.status);
 }
@@ -75,7 +78,7 @@ const statusLabel: Record<string, string> = {
 
 const EXEC_LABEL: Record<string, string> = {
   investigate: "Investigate (automatic)", prepare: "Prepare fix (automatic)", test: "Test (automatic)",
-  execute_live: "Live change — approval required", release: "Release — approval required",
+  execute_live: "Live change — approval required", release: "Release",
 };
 
 const ACTION_STATE_LABEL: Record<string, string> = {
@@ -339,6 +342,7 @@ function CaseDetail({ c, profilesById, busy, onOp }: {
               ) : null}
               <p className="text-[12px] whitespace-pre-wrap">{a.instruction_text}</p>
               {a.result_summary ? <p className="text-[11px] text-muted-foreground">Result: {a.result_summary}</p> : null}
+              <AutoReleaseDetails a={a} />
               {a.state === "awaiting_approval" && (
                 <div className="flex gap-1.5">
                   <Button size="sm" className="h-7 text-[11px]" disabled={busy} onClick={() => onOp({ op: "decide_action", actionId: a.id, approve: true })}>Approve action</Button>
@@ -398,6 +402,41 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div>
       <p className="text-[11px] font-medium text-muted-foreground mb-1">{title}</p>
       <div className="space-y-1.5">{children}</div>
+    </div>
+  );
+}
+
+// Why a release qualified (or not), what changed, checks, deploy, verification, rollback.
+function AutoReleaseDetails({ a }: { a: any }) {
+  const q = a.auto_release_qualification;
+  if (!q && !a.deploy_result && !a.verification) return null;
+  const crit = q?.criteria ?? {};
+  const tests = a.tests ?? {};
+  return (
+    <div className="rounded-md bg-muted/40 p-2 space-y-1 text-[11px]">
+      {q ? (
+        <p>
+          <span className={cn("font-medium", q.eligible ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300")}>
+            {q.eligible ? (a.auto_released ? "Auto-release: qualified" : "Qualified as low risk") : "Needs your approval"}
+          </span>
+          {q.eligible
+            ? ` — low risk, no protected areas, ${crit.code_files ?? "?"} file(s), ${crit.lines ?? "?"} lines, regression test included, all checks clean.`
+            : ` — ${(q.reasons ?? []).join(", ")}`}
+        </p>
+      ) : null}
+      {Array.isArray(tests.files_changed) && tests.files_changed.length ? (
+        <p className="font-mono break-all text-muted-foreground">Changed: {tests.files_changed.join(", ")}</p>
+      ) : null}
+      {tests.counts ? (
+        <p className="text-muted-foreground">
+          Tests {tests.counts.passed} passed / {tests.counts.failed} failed · build {tests.build_ok ? "ok" : "failed"} · types {tests.typecheck_ok ? "ok" : "not ok"} · lint {tests.lint_ok ? "ok" : "not ok"}
+        </p>
+      ) : null}
+      {a.deploy_result ? <p>Deploy: {a.deploy_result.ok ? "succeeded" : "failed"}{a.deploy_result.ref ? ` (${a.deploy_result.ref})` : ""}</p> : null}
+      {a.verification ? (
+        <p>Live check: {a.verification.passed ? "passed" : "failed"} — {(a.verification.checks ?? []).map((c: any) => `${c.name} ${c.ok ? "✓" : "✗"}`).join(", ")}</p>
+      ) : null}
+      {a.rollback?.done ? <p className="text-destructive">Rolled back{a.rollback.ref ? ` (${a.rollback.ref})` : ""}</p> : null}
     </div>
   );
 }

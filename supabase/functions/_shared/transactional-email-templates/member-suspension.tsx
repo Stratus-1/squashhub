@@ -8,10 +8,11 @@ interface Props {
   rule?: string
   reason?: string
   effectiveDate?: string
+  untilDate?: string
   contactEmail?: string
 }
 
-const Email = ({ memberName = 'Member', clubName = 'Your Club', rule, reason, effectiveDate, contactEmail }: Props) => (
+const Email = ({ memberName = 'Member', clubName = 'Your Club', rule, reason, effectiveDate, untilDate, contactEmail }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>{`${clubName}: notice of temporary suspension of membership`}</Preview>
@@ -27,7 +28,8 @@ const Email = ({ memberName = 'Member', clubName = 'Your Club', rule, reason, ef
             {rule
               ? `In accordance with ${rule} of the ${clubName} constitution and club rules, your membership is hereby temporarily suspended`
               : `In accordance with the ${clubName} constitution and club rules, your membership is hereby temporarily suspended`}
-            {effectiveDate ? ` with effect from ${effectiveDate}.` : ' with immediate effect.'}
+            {effectiveDate ? ` with effect from ${effectiveDate}` : ' with immediate effect'}
+            {untilDate ? `, until ${untilDate}. Your membership will be reinstated automatically on that date.` : '.'}
           </Text>
           {reason && (
             <Section style={box}>
@@ -61,6 +63,7 @@ export const template = {
     rule: 'Rule 7.3',
     reason: 'Bringing visitors onto the courts without declaring or paying the visitor fee.',
     effectiveDate: '26 September 2026',
+    untilDate: '26 October 2026',
     contactEmail: 'committee@example.com',
   },
 } satisfies TemplateEntry

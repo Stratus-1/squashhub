@@ -4521,6 +4521,7 @@ export type Database = {
           sms_opt_out: boolean
           status: Database["public"]["Enums"]["member_status"]
           suspended_at: string | null
+          suspended_until: string | null
           suspension_cleared_at: string | null
           suspension_manual: boolean
           suspension_outstanding: number | null
@@ -4575,6 +4576,7 @@ export type Database = {
           sms_opt_out?: boolean
           status?: Database["public"]["Enums"]["member_status"]
           suspended_at?: string | null
+          suspended_until?: string | null
           suspension_cleared_at?: string | null
           suspension_manual?: boolean
           suspension_outstanding?: number | null
@@ -4629,6 +4631,7 @@ export type Database = {
           sms_opt_out?: boolean
           status?: Database["public"]["Enums"]["member_status"]
           suspended_at?: string | null
+          suspended_until?: string | null
           suspension_cleared_at?: string | null
           suspension_manual?: boolean
           suspension_outstanding?: number | null
@@ -15664,6 +15667,7 @@ export type Database = {
           _reason?: string
           _rule?: string
           _status: string
+          _until?: string
         }
         Returns: Json
       }
@@ -16874,6 +16878,7 @@ export type Database = {
         Args: { _club_member_id: string; _event_id: string }
         Returns: number
       }
+      lift_expired_member_suspensions: { Args: never; Returns: number }
       list_doubles_partner_options: {
         Args: {
           p_champ_id: string

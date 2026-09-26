@@ -11,6 +11,7 @@ const Body = z.object({
   status: z.enum(['active', 'suspended', 'resigned']),
   rule: z.string().max(200).optional().nullable(),
   reason: z.string().max(2000).optional().nullable(),
+  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   send_email: z.boolean().optional().default(true),
 })
 
@@ -32,13 +33,14 @@ Deno.serve(async (req) => {
 
     const parsed = Body.safeParse(await req.json())
     if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400)
-    const { member_id, status, rule, reason, send_email } = parsed.data
+    const { member_id, status, rule, reason, until, send_email } = parsed.data
 
     const { error: rpcErr } = await userClient.rpc('admin_set_member_standing', {
-      _member_id: member_id, _status: status, _rule: rule ?? null, _reason: reason ?? null,
+      _member_id: member_id, _status: status, _rule: rule ?? null, _reason: reason ?? null, _until: status === 'suspended' ? (until ?? null) : null,
     })
     if (rpcErr) return json({ error: rpcErr.message }, 403)
 
+    const untilText = until ? new Date(until + 'T12:00:00Z').toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Johannesburg' }) : undefined
     let email: string = 'skipped'
     if (status === 'suspended' && send_email) {
       const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
@@ -58,6 +60,7 @@ Deno.serve(async (req) => {
             clubName: (club as any)?.name || 'Your club',
             rule: rule || undefined,
             reason: reason || undefined,
+            untilDate: untilText,
             effectiveDate: new Date().toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Johannesburg' }),
             contactEmail: (club as any)?.email || undefined,
           },
@@ -76,6 +79,7 @@ Deno.serve(async (req) => {
               clubName: (club as any)?.name || 'Your club',
               rule: rule || undefined,
               reason: reason || undefined,
+              untilDate: untilText,
               effectiveDate: new Date().toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Johannesburg' }),
               contactEmail: clubEmail,
             },

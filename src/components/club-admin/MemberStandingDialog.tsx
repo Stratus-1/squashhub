@@ -29,14 +29,18 @@ export function MemberStandingDialog({ memberId, memberName, hasEmail, target, o
   const [rule, setRule] = useState("");
   const [reason, setReason] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
+  const [until, setUntil] = useState("");
   const [busy, setBusy] = useState(false);
   const isSuspend = target === "suspended";
+  const tomorrow = new Date(Date.now() + 86400000);
+  const minDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
 
   const submit = async () => {
     if (isSuspend && !reason.trim()) { toast.error("Please give a reason for the suspension"); return; }
+    if (isSuspend && until && until < minDate) { toast.error("The end date must be in the future"); return; }
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("set-member-standing", {
-      body: { member_id: memberId, status: target, rule: rule.trim() || null, reason: reason.trim() || null, send_email: isSuspend && sendEmail },
+      body: { member_id: memberId, status: target, rule: rule.trim() || null, reason: reason.trim() || null, until: isSuspend && until ? until : null, send_email: isSuspend && sendEmail },
     });
     setBusy(false);
     if (error || (data as any)?.error) {
@@ -69,6 +73,15 @@ export function MemberStandingDialog({ memberId, memberName, hasEmail, target, o
               <div className="space-y-1">
                 <Label className="text-xs">Club rule / constitution clause</Label>
                 <Input value={rule} onChange={(e) => setRule(e.target.value)} placeholder="e.g. Rule 7.3" maxLength={200} />
+              </div>
+            )}
+            {isSuspend && (
+              <div className="space-y-1">
+                <Label className="text-xs">Suspended until (optional)</Label>
+                <Input type="date" value={until} min={minDate} onChange={(e) => setUntil(e.target.value)} />
+                <p className="text-[11px] text-muted-foreground">
+                  {until ? "Membership is reinstated automatically on this date." : "Leave empty to suspend until an admin reinstates the member."}
+                </p>
               </div>
             )}
             <div className="space-y-1">

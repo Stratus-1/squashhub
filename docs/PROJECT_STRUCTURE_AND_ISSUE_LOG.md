@@ -2121,3 +2121,12 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 ### 2026-09-26 — AI assistant support hand-off failed ("bugLogged is not defined")
 - Cause: `bugLogged` was used in the ai-help tool loop but never declared, so every `escalate` call threw and no support ticket was created (Susan's merge requests).
 - Fix: declared `let bugLogged = false` per request; ai-help redeployed. Susan's 5 Nelspruit merges (Bethilde, Renier, Schalk, Simone, Umar) were done manually and her requests marked completed.
+
+## 2026-09-26 — AI Maintenance Manager Phase 1
+- Additive migration: `maintenance_cases`, `maintenance_case_requesters`, `maintenance_analyses`, `maintenance_actions`, `maintenance_events`; `ai_assist_interactions.triage` column; state machine (`maintenance_case_can_transition` + BEFORE UPDATE guard), event-log trigger, authoritative bug-status sync (`sync_maintenance_bug_status`), case/requester creation triggers, backfill of open bugs, `my_ai_maintenance_statuses(uuid[])` RPC.
+- `supabase/functions/_shared/maintenance-policy.ts` (canonical) mirrored in `src/lib/ai/maintenance-policy.ts`: sensitive-area detection, risk clamp, approval policy, PII redaction, transition table, case→bug status map. Both must stay in sync.
+- New edge function `maintenance-queue` (Phase 1: Super Admin sessions only): submit_analysis, set_status, propose_action, record_result, decide_action, ask_member. Risk/approval enforced server-side; automated actors can never approve/release/complete; audit mirrored to `maintenance_events` + `audit_events`.
+- `ai-help` now records `triage` (question / safe_action / bug / feature_request / needs_info / support) on interaction outcomes; triggers auto-create/link maintenance cases and requesters (fingerprint reuse preserved — one case per bug).
+- `src/components/ai/MaintenancePanel.tsx`: "Needs you" default view + New/Needs info/In progress/Released/Closed views wired into `/admin/support`.
+- `requestStatus` accepts case status so My Requests shows "Needs more detail from you" without technical wording; `useMyAiRequests` fetches case statuses via the requester-scoped RPC.
+- Standing constraints held: no production publish; Super Admin never a bottleneck for requester-authority work; member content treated as untrusted data.

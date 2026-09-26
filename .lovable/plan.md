@@ -170,6 +170,7 @@ Every proposed action carries a `risk` value and a `sensitive_areas` list. The p
 
 ## M. Risks and concerns
 - **Misclassification:** a bug could be treated as a question, or the reverse. Mitigations: conservative defaults (unsure means `needs_info`), an unsure sensitivity means approval, and a weekly sample in the Needs you view.
+- **Authority misuse:** a requester could talk the AI into acting outside their scope. Mitigated because every action re-runs the same role/scope/permission checks the manual UI uses — the AI has no power the person lacks, and confirmation previews state the scope.
 - **Scope creep for "low risk":** mitigated by the allowlist being data plus server enforcement, not the agent's judgement.
 - **Prompt injection through member content:** mitigated by delimiting, server re-validation and no direct privileges.
 - **POPIA:** content goes to an external agent. Mitigated by redaction and short-lived links.
@@ -181,6 +182,7 @@ Every proposed action carries a `risk` value and a `sensitive_areas` list. The p
 - Bug fingerprint: many reports make one case with many requesters.
 - Policy: low-risk reversible work auto-progresses but stops at `ready_for_release`; sensitive or medium/high work requires approval; an agent cannot lower sensitivity.
 - The state machine refuses invalid transitions.
+- **Requester authority:** the assistant executes an action the requester is authorised for without escalating; it refuses the same action for a requester without authority; the audit row names both the requester and the AI acting on their behalf.
 - Bug status stays in sync with the case.
 - Requester notices contain no technical detail.
 - Redaction strips personal data.

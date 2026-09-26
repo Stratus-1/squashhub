@@ -8,6 +8,27 @@ import {
 
 const normalizeCode = (code: string) => code.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
+/**
+ * SportyHQ stores no competition label, so group divisions into competitions:
+ * in division-id order, a new competition starts when ids jump or the league
+ * level stops increasing (e.g. ...18th League then 1st League again).
+ */
+export function assignCompetitions(
+  divs: { external_division_id: string | number; division_name: string }[]
+): Map<string, string> {
+  const level = (n: string) => Number(String(n).match(/(\d+)/)?.[1] ?? NaN);
+  const sorted = [...divs].sort((a, b) => Number(a.external_division_id) - Number(b.external_division_id));
+  const out = new Map<string, string>();
+  let comp = 0, prevId = NaN, prevLevel = NaN;
+  for (const d of sorted) {
+    const id = Number(d.external_division_id), lv = level(d.division_name);
+    if (!Number.isNaN(prevId) && (id - prevId > 1 || !(lv > prevLevel))) comp++;
+    out.set(String(d.external_division_id), String(comp));
+    prevId = id; prevLevel = lv;
+  }
+  return out;
+}
+
 export interface LeagueStrengthSets {
   /** Every rubber, men's and ladies'. */
   all: Map<string, LeagueStrength | null>;

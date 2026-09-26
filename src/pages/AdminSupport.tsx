@@ -19,6 +19,7 @@ import { openExternalUrl } from "@/lib/google-calendar";
 import { useQuery } from "@tanstack/react-query";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { AiActivityPanel } from "@/components/ai/AiActivityPanel";
+import { MaintenancePanel } from "@/components/ai/MaintenancePanel";
 
 const fromAny = (table: string) => (supabase as any).from(table);
 
@@ -77,7 +78,10 @@ function statusBadge(status: string) {
 }
 
 export default function AdminSupport() {
-  const [view, setView] = useState<"inbox" | "ai">(() => (new URLSearchParams(window.location.search).get("view") === "ai" ? "ai" : "inbox"));
+  const [view, setView] = useState<"inbox" | "ai" | "maintenance">(() => {
+    const v = new URLSearchParams(window.location.search).get("view");
+    return v === "ai" ? "ai" : v === "maintenance" ? "maintenance" : "inbox";
+  });
   const { user } = useAuth();
   const { data: threads, isLoading } = useAdminSupportThreads(true);
   const send = useSendSupportMessage();
@@ -240,9 +244,24 @@ export default function AdminSupport() {
   const viewToggle = (
     <div className="px-4 pb-2 flex gap-2">
       <Button size="sm" variant={view === "inbox" ? "default" : "outline"} onClick={() => setView("inbox")}>Tickets</Button>
-      <Button size="sm" variant={view === "ai" ? "default" : "outline"} onClick={() => setView("ai")}>AI Activity (beta) — completed actions, escalations, failures</Button>
+      <Button size="sm" variant={view === "maintenance" ? "default" : "outline"} onClick={() => setView("maintenance")}>Maintenance — needs you</Button>
+      <Button size="sm" variant={view === "ai" ? "default" : "outline"} onClick={() => setView("ai")}>AI Activity (beta)</Button>
     </div>
   );
+
+  if (view === "maintenance") {
+    return (
+      <div className="bottom-nav-safe">
+        <SEO title="Maintenance" description="AI maintenance queue." path="/admin/support" noIndex />
+        <div className="px-4 pt-[max(1rem,env(safe-area-inset-top,1rem))] pb-2 flex items-center justify-between gap-3">
+          <h1 className="text-xl font-bold font-heading tracking-tight flex items-center gap-2"><LifeBuoy className="w-5 h-5 text-primary" /> Maintenance queue</h1>
+          <Button asChild variant="ghost" size="sm"><Link to="/admin">← Back</Link></Button>
+        </div>
+        {viewToggle}
+        <div className="px-4 pb-8"><MaintenancePanel /></div>
+      </div>
+    );
+  }
 
   if (view === "ai") {
     return (

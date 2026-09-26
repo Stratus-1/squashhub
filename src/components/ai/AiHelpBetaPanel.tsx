@@ -49,7 +49,7 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
   const mine = useMyAiRequests(user?.id);
   const rowsById = new Map((mine.data?.rows ?? []).map((r) => [r.id, r]));
   const retried = new Set((mine.data?.rows ?? []).map((r) => r.retry_of).filter(Boolean) as string[]);
-  const statusOf = (r: MyAiRow) => requestStatus(r, r.bug_report_id ? mine.data?.bugs[r.bug_report_id] : null, r.ticket_id ? mine.data?.tickets[r.ticket_id] : null);
+  const statusOf = (r: MyAiRow) => requestStatus(r, r.bug_report_id ? mine.data?.bugs[r.bug_report_id] : null, r.ticket_id ? mine.data?.tickets[r.ticket_id] : null, r.bug_report_id ? mine.data?.cases?.[r.bug_report_id] : null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["my-ai-requests"] });
 
   const context = { clubId, route: location.pathname, ids: pageIds(location.pathname, location.search), today: new Date().toISOString().slice(0, 10) };

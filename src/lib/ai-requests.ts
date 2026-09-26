@@ -17,12 +17,16 @@ const BUG: Record<string, string> = {
 };
 const TICKET: Record<string, string> = { open: "Open", pending: "Waiting on support", in_progress: "Being handled", resolved: "Resolved", closed: "Closed" };
 
-/** Status reflects the real underlying lifecycle, never just "the AI replied". */
+/** Status reflects the real underlying lifecycle, never just "the AI replied".
+ *  caseStatus (when known) carries the authoritative maintenance case state so
+ *  requesters see "needs more detail from you" without technical wording. */
 export function requestStatus(
   row: Pick<MyAiRow, "status" | "expires_at" | "bug_report_id" | "ticket_id">,
-  bugStatus?: string | null, ticketStatus?: string | null, now = Date.now(),
+  bugStatus?: string | null, ticketStatus?: string | null, caseStatus?: string | null, now = Date.now(),
 ): StatusInfo {
   if (row.bug_report_id) {
+    if (caseStatus === "needs_info") return { label: "Bug reported · Needs more detail from you", tone: "waiting" };
+    if (caseStatus === "awaiting_approval" || caseStatus === "ready_for_release") return { label: `Bug reported · ${BUG.fix_ready}`, tone: "bug" };
     const s = bugStatus ?? "open";
     return { label: `Bug reported · ${BUG[s] ?? s}`, tone: s === "fixed" ? "done" : "bug" };
   }

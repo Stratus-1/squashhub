@@ -182,6 +182,7 @@ export type Database = {
           status: string
           ticket_id: string | null
           transcript_used: boolean
+          triage: string | null
           updated_at: string
           user_id: string
         }
@@ -217,6 +218,7 @@ export type Database = {
           status?: string
           ticket_id?: string | null
           transcript_used?: boolean
+          triage?: string | null
           updated_at?: string
           user_id: string
         }
@@ -252,6 +254,7 @@ export type Database = {
           status?: string
           ticket_id?: string | null
           transcript_used?: boolean
+          triage?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -8957,6 +8960,314 @@ export type Database = {
         }
         Relationships: []
       }
+      maintenance_actions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          auto_allowed: boolean
+          case_id: string
+          created_at: string
+          external_ref: string | null
+          id: string
+          instruction_text: string
+          kind: string
+          rejection_reason: string | null
+          result_summary: string | null
+          risk: string
+          sensitive_areas: string[]
+          state: string
+          target: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          auto_allowed?: boolean
+          case_id: string
+          created_at?: string
+          external_ref?: string | null
+          id?: string
+          instruction_text: string
+          kind: string
+          rejection_reason?: string | null
+          result_summary?: string | null
+          risk?: string
+          sensitive_areas?: string[]
+          state?: string
+          target?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          auto_allowed?: boolean
+          case_id?: string
+          created_at?: string
+          external_ref?: string | null
+          id?: string
+          instruction_text?: string
+          kind?: string
+          rejection_reason?: string | null
+          result_summary?: string | null
+          risk?: string
+          sensitive_areas?: string[]
+          state?: string
+          target?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_actions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_analyses: {
+        Row: {
+          actor_label: string | null
+          actor_type: string
+          affected_module: string | null
+          case_id: string
+          classification: string | null
+          code_change_needed: boolean | null
+          created_at: string
+          db_change_needed: boolean | null
+          id: string
+          info_request: string | null
+          more_info_needed: boolean
+          probable_cause: string | null
+          proposed_action: string | null
+          risk: string | null
+          summary: string
+        }
+        Insert: {
+          actor_label?: string | null
+          actor_type?: string
+          affected_module?: string | null
+          case_id: string
+          classification?: string | null
+          code_change_needed?: boolean | null
+          created_at?: string
+          db_change_needed?: boolean | null
+          id?: string
+          info_request?: string | null
+          more_info_needed?: boolean
+          probable_cause?: string | null
+          proposed_action?: string | null
+          risk?: string | null
+          summary: string
+        }
+        Update: {
+          actor_label?: string | null
+          actor_type?: string
+          affected_module?: string | null
+          case_id?: string
+          classification?: string | null
+          code_change_needed?: boolean | null
+          created_at?: string
+          db_change_needed?: boolean | null
+          id?: string
+          info_request?: string | null
+          more_info_needed?: boolean
+          probable_cause?: string | null
+          proposed_action?: string | null
+          risk?: string | null
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_analyses_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_case_requesters: {
+        Row: {
+          case_id: string
+          created_at: string
+          id: string
+          interaction_id: string | null
+          notified_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          id?: string
+          interaction_id?: string | null
+          notified_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          id?: string
+          interaction_id?: string | null
+          notified_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_case_requesters_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_case_requesters_interaction_id_fkey"
+            columns: ["interaction_id"]
+            isOneToOne: false
+            referencedRelation: "ai_assist_interactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_cases: {
+        Row: {
+          bug_report_id: string | null
+          closed_at: string | null
+          club_id: string | null
+          created_at: string
+          current_analysis_id: string | null
+          id: string
+          kind: string
+          last_actor_type: string
+          org_id: string | null
+          released_at: string | null
+          requires_approval: boolean
+          risk: string
+          sensitive_areas: string[]
+          status: string
+          technical_result: Json
+          ticket_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bug_report_id?: string | null
+          closed_at?: string | null
+          club_id?: string | null
+          created_at?: string
+          current_analysis_id?: string | null
+          id?: string
+          kind: string
+          last_actor_type?: string
+          org_id?: string | null
+          released_at?: string | null
+          requires_approval?: boolean
+          risk?: string
+          sensitive_areas?: string[]
+          status?: string
+          technical_result?: Json
+          ticket_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          bug_report_id?: string | null
+          closed_at?: string | null
+          club_id?: string | null
+          created_at?: string
+          current_analysis_id?: string | null
+          id?: string
+          kind?: string
+          last_actor_type?: string
+          org_id?: string | null
+          released_at?: string | null
+          requires_approval?: boolean
+          risk?: string
+          sensitive_areas?: string[]
+          status?: string
+          technical_result?: Json
+          ticket_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_cases_bug_report_id_fkey"
+            columns: ["bug_report_id"]
+            isOneToOne: true
+            referencedRelation: "ai_bug_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_cases_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_cases_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_cases_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "support_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_events: {
+        Row: {
+          action_id: string | null
+          actor_label: string | null
+          actor_type: string
+          case_id: string
+          created_at: string
+          from_status: string | null
+          id: string
+          note: string | null
+          to_status: string | null
+        }
+        Insert: {
+          action_id?: string | null
+          actor_label?: string | null
+          actor_type: string
+          case_id: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          action_id?: string | null
+          actor_label?: string | null
+          actor_type?: string
+          case_id?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_correction_requests: {
         Row: {
           created_at: string
@@ -16988,6 +17299,10 @@ export type Database = {
           masked_name: string
         }[]
       }
+      maintenance_case_can_transition: {
+        Args: { _from: string; _to: string }
+        Returns: boolean
+      }
       make_club_slug: { Args: { _name: string }; Returns: string }
       make_org_slug: {
         Args: { _abbrev?: string; _name: string }
@@ -17212,6 +17527,13 @@ export type Database = {
           id: string
           status: string
           verification: string
+        }[]
+      }
+      my_ai_maintenance_statuses: {
+        Args: { _bug_ids: string[] }
+        Returns: {
+          bug_report_id: string
+          status: string
         }[]
       }
       new_invite_token: { Args: never; Returns: string }

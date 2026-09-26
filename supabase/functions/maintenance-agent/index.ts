@@ -115,10 +115,12 @@ Deno.serve(async (req) => {
   // Kill switch: nothing else works while dispatch is off or Stage 0 lock is on.
   if (!s || s.stage_lock || s.dispatch_mode === "off") return json({ error: "Dispatch is off", reason: "dispatch_off" }, 503);
 
+  // maintenance_events has no payload column: encode type + compact JSON in the note (never secrets).
   const event = (caseId: string, eventType: string, note: string | null, payload: Record<string, unknown> = {}) =>
     admin.from("maintenance_events").insert({
-      case_id: caseId, event_type: eventType, actor_type: "agent", actor_label: `agent:${"agent" in body ? body.agent : "unknown"}`,
-      note, payload,
+      case_id: caseId, actor_type: "agent", actor_label: `agent:${"agent" in body ? body.agent : "unknown"}`,
+      action_id: typeof payload.action_id === "string" ? payload.action_id : null,
+      note: `${eventType}${note ? `: ${note}` : ""} ${JSON.stringify(payload).slice(0, 1500)}`,
     });
 
   if (body.op === "next") {
@@ -152,14 +154,14 @@ Deno.serve(async (req) => {
     }
     case "packet": {
       const [{ data: bug }, { data: reqs }] = await Promise.all([
-        c.bug_report_id ? admin.from("ai_bug_reports").select("title, description, steps, category").eq("id", c.bug_report_id).maybeSingle() : Promise.resolve({ data: null }),
+        c.bug_report_id ? admin.from("ai_bug_reports").select("title, feature, screen, actual_behaviour, expected_behaviour, reproduction").eq("id", c.bug_report_id).maybeSingle() : Promise.resolve({ data: null }),
         admin.from("maintenance_case_requesters").select("scope_snapshot").eq("case_id", c.id),
       ]);
       const b = bug as Record<string, string | null> | null;
       const packet = buildAgentPacket({
         caseId: c.id, title: c.title, kind: c.kind, status: c.status, risk: c.risk as Risk,
         sensitiveAreas: c.sensitive_areas ?? [], tier: agentTier({ risk: c.risk as Risk, sensitiveAreas: c.sensitive_areas ?? [] }),
-        memberTexts: [b?.title, b?.description, b?.steps],
+        memberTexts: [b?.title, b?.actual_behaviour, b?.expected_behaviour, b?.reproduction],
         requesterScopes: (reqs ?? []).map((r) => r.scope_snapshot),
       });
       const packetJson = JSON.stringify(packet);
@@ -173,7 +175,7 @@ Deno.serve(async (req) => {
       const { data: a } = await admin.from("maintenance_analyses").insert({
         case_id: c.id, summary: body.summary, probable_cause: body.probableCause ?? null,
         affected_module: body.affectedModule ?? null, risk, actor_type: "agent",
-        code_change_needed: body.codeChangeNeeded ?? null, more_info_needed: body.moreInfoNeeded ?? null,
+        code_change_needed: body.codeChangeNeeded ?? null, more_info_needed: body.moreInfoNeeded ?? false, actor_label: `agent:${body.agent}`,
       }).select("id").maybeSingle();
       const merged = [...new Set([...(c.sensitive_areas ?? []), ...sensitive])];
       await admin.from("maintenance_cases").update({

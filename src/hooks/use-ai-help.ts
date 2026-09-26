@@ -172,16 +172,19 @@ export function useMyAiRequests(userId: string | undefined, enabled = true) {
       const rows = (data ?? []) as import("@/lib/ai-requests").MyAiRow[];
       const bugIds = [...new Set(rows.map((r) => r.bug_report_id).filter(Boolean))] as string[];
       const ticketIds = [...new Set(rows.map((r) => r.ticket_id).filter(Boolean))] as string[];
-      const bugs: Record<string, string> = {}; const tickets: Record<string, string> = {};
+      const bugs: Record<string, string> = {}; const tickets: Record<string, string> = {}; const cases: Record<string, string> = {};
       if (bugIds.length) {
         const { data: b } = await (supabase.rpc as any)("my_ai_bug_statuses", { _ids: bugIds });
         for (const x of (b ?? []) as { id: string; status: string }[]) bugs[x.id] = x.status;
+        // Authoritative maintenance case status (requester-scoped RPC).
+        const { data: m } = await (supabase.rpc as any)("my_ai_maintenance_statuses", { _bug_ids: bugIds }).catch(() => ({ data: null }));
+        for (const x of (m ?? []) as { bug_report_id: string; status: string }[]) cases[x.bug_report_id] = x.status;
       }
       if (ticketIds.length) {
         const { data: t } = await fromExt("support_threads").select("id,status").in("id", ticketIds).eq("user_id", userId!);
         for (const x of (t ?? []) as { id: string; status: string }[]) tickets[x.id] = x.status;
       }
-      return { rows, bugs, tickets };
+      return { rows, bugs, tickets, cases };
     },
   });
 }

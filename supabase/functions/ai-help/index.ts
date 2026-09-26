@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
         await admin.from("ai_assist_interactions").update({ status: reason.startsWith("[backend_failure]") ? "failed" : "escalated", escalation_reason: reason, ticket_id: t.id }).eq("id", extra.interactionId);
       } else {
         await admin.from("ai_assist_interactions").insert({
-          user_id: userId, club_id: clubId, member_id: member?.id ?? null, role, kind: "escalation", request_text: reqText,
+          user_id: userId, club_id: clubId, member_id: member?.id ?? null, role, kind: "escalation", request_text: reqText, triage: "support",
           transcript_used: !!b.transcriptUsed, attachments, context, interpretation: extra.interpretation ?? null,
           action_args: (extra.proposed as any) ?? null, status: "escalated", escalation_reason: reason, ticket_id: t.id,
         });
@@ -353,7 +353,7 @@ Deno.serve(async (req) => {
                 // shows the real reason, tell the user, and do NOT open a ticket.
                 const denied = pv.code === "permission_denied";
                 const { data: row } = await admin.from("ai_assist_interactions").insert({
-                  ...base, kind: "action", action_name: args.name, action_args: aArgs, interpretation: pv.reason,
+                  ...base, kind: "action", action_name: args.name, action_args: aArgs, interpretation: pv.reason, triage: "needs_info",
                   status: denied ? "denied" : "needs_clarification", escalation_reason: `[${pv.code}] ${pv.reason}`,
                 }).select("id").single();
                 if (row && !outcome.interactionId) outcome = { ...outcome, interactionId: row.id };
@@ -362,7 +362,7 @@ Deno.serve(async (req) => {
               else {
                 const preview = { summary: pv.summary, changes: pv.changes, affected: pv.affected, consequences: pv.consequences, unchanged: pv.unchanged, reversible: pv.reversible, request: question };
                 const { data: row, error } = await admin.from("ai_assist_interactions").insert({
-                  ...base, kind: "action", interpretation: pv.summary, action_name: args.name, action_args: pv.resolved, preview, before_data: pv.before ?? null,
+                  ...base, kind: "action", interpretation: pv.summary, action_name: args.name, action_args: pv.resolved, preview, before_data: pv.before ?? null, triage: "safe_action",
                   status: "proposed", expires_at: new Date(Date.now() + PREVIEW_TTL_MS).toISOString(),
                 }).select("id").single();
                 if (error) throw error;
@@ -382,9 +382,9 @@ Deno.serve(async (req) => {
             const bug = await recordBug(admin, { clubId, userId, role, route: context.route, canVerify: isAdmin, bug: { ...(args as BugInput), related_ids: rid } });
             const reason = `[bug_reported] ${args.title}${bug.duplicate ? ` (occurrence ${bug.occurrences} of an existing open bug)` : ""}`;
             if (outcome.interactionId) {
-              await admin.from("ai_assist_interactions").update({ status: "bug_reported", escalation_reason: reason, bug_report_id: bug.id }).eq("id", outcome.interactionId);
+              await admin.from("ai_assist_interactions").update({ status: "bug_reported", escalation_reason: reason, bug_report_id: bug.id, triage: "bug" }).eq("id", outcome.interactionId);
             } else {
-              const { data: ir } = await admin.from("ai_assist_interactions").insert({ ...base, kind: "bug_report", status: "bug_reported", interpretation: args.evidence, escalation_reason: reason, bug_report_id: bug.id, result: { tools: toolLog } }).select("id").single();
+              const { data: ir } = await admin.from("ai_assist_interactions").insert({ ...base, kind: "bug_report", status: "bug_reported", triage: "bug", interpretation: args.evidence, escalation_reason: reason, bug_report_id: bug.id, result: { tools: toolLog } }).select("id").single();
               outcome = { ...outcome, interactionId: ir?.id };
             }
             await admin.from("audit_events").insert({ club_id: clubId, actor_user_id: userId, entity_type: "ai_bug_report", entity_id: bug.id, action: bug.duplicate ? "ai_bug_occurrence" : "ai_bug_reported", reason: args.title, after_data: { feature: args.feature, related_ids: rid, verified: args.verified && isAdmin } });
@@ -416,7 +416,8 @@ Deno.serve(async (req) => {
     if (!answer) answer = outcome.preview ? "Here's exactly what I'd change. Nothing happens until you confirm." : outcome.bugId ? "I've logged this as a SquashHub bug for the development team, with the evidence I found. No results were changed." : outcome.ticketId ? "I've passed this to support with the details I found." : "Sorry — I couldn't complete that.";
 
     if (!outcome.interactionId && !outcome.ticketId && !outcome.bugId) {
-      await admin.from("ai_assist_interactions").insert({ ...base, kind: "question", status: "answered", interpretation: toolLog.map((t) => t.tool).join(", ") || null, result: { answer, tools: toolLog } });
+      const triage = outcome.bugId ? "bug" : outcome.ticketId ? "support" : "question";
+      await admin.from("ai_assist_interactions").insert({ ...base, kind: "question", triage, status: "answered", interpretation: toolLog.map((t) => t.tool).join(", ") || null, result: { answer, tools: toolLog } });
     }
     if (b.clientRequestId) {
       await admin.from("ai_assist_interactions").update({ assistant_answer: answer.slice(0, 8000) })

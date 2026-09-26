@@ -380,7 +380,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
         <div className="border-t border-border pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-medium text-muted-foreground shrink-0">Balance owed by the member:</span>
-            <MemberPaymentStatus fees={fees} glBilled={glBilled} glPaid={glPaid} onOpenStatement={() => navigate(`?tab=finance&statement=${m.id}`)} />
+            <MemberPaymentStatus fees={fees} glBilled={glBilled} glPaid={glPaid} onOpenStatement={() => { const q = new URLSearchParams(window.location.search); q.set("tab", "finance"); q.set("statement", m.id); navigate(`?${q.toString()}`); }} />
           </div>
         </div>
       )}

@@ -327,6 +327,7 @@ Deno.serve(async (req) => {
       answer = output.filter((o) => o.type === "message").flatMap((o) => o.content ?? []).filter((p: any) => p.type === "output_text").map((p: any) => p.text).join("").trim();
       if (!calls.length) break;
       let stop = false;
+      let bugLogged = false;
       for (const call of calls) {
         let args: any = {}; try { args = JSON.parse(call.arguments || "{}"); } catch { /* keep empty */ }
         let out: unknown;

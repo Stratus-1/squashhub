@@ -88,7 +88,7 @@ export function MaintenancePanel() {
     queryFn: async () => {
       const { data, error } = await fromAny("profiles").select("id,name,email").in("id", requesterIds);
       if (error) throw error;
-      return new Map((data ?? []).map((p: any) => [p.id, p]));
+      return new Map<string, any>((data ?? []).map((p: any) => [p.id as string, p]));
     },
     enabled: requesterIds.length > 0,
   });

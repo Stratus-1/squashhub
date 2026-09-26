@@ -45,9 +45,22 @@ Deno.serve(async (req) => {
     };
 
     if (action === "check") {
-      if (!tail && !nameParts(name).last) return json({ level: "none" });
-      const level = classifyMatch({ name, phone }, await candidates(true));
-      return json({ level });
+      if (!tail && !nameParts(name).last) return json({ level: "none", has_login: false });
+      let list = await candidates(true);
+      // Signed-in caller (e.g. Google user joining a club): their own records are not duplicates.
+      const auth = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+      if (auth) {
+        const { data } = await admin.auth.getUser(auth).catch(() => ({ data: null } as any));
+        const me = data?.user?.id;
+        if (me) list = list.filter((c) => c.user_id !== me);
+      }
+      // Claim flows (NSA/league number, existing member) link an existing record:
+      // only another LOGIN counts as a duplicate there.
+      if (body?.claimed_only) list = list.filter((c) => !!c.user_id);
+      const level = classifyMatch({ name, phone }, list);
+      const strong = level === "exact" || level === "phone";
+      const has_login = strong && revealableAccounts(phone, list).some((c) => !!c.user_id);
+      return json({ level, has_login });
     }
 
     if (action === "send_code") {

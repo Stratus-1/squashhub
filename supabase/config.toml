@@ -95,3 +95,6 @@ verify_jwt = true
 
 [functions.notify-unaffiliated]
 verify_jwt = false
+
+[functions.set-member-standing]
+verify_jwt = false

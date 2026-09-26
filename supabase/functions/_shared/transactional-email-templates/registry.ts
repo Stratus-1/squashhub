@@ -27,6 +27,7 @@ import { template as associationInvoice } from './association-invoice.tsx'
 import { template as subscriptionInvoiceReminder } from './subscription-invoice-reminder.tsx'
 import { template as familyMemberInvite } from './family-member-invite.tsx'
 import { template as chooseYourClub } from './choose-your-club.tsx'
+import { template as memberSuspension } from './member-suspension.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-club-registered': newClubRegistered,
@@ -36,6 +37,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'membership-renewal-invoice': membershipRenewalInvoice,
   'subscription-invoice': subscriptionInvoice,
   'arrears-warning': arrearsWarning,
+  'member-suspension': memberSuspension,
   'pending-topup-approval': pendingTopupApproval,
   'tournament-entry-confirmation': tournamentEntryConfirmation,
   'tournament-entry-import-summary': tournamentEntryImportSummary,

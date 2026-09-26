@@ -121,3 +121,4 @@
 - [ ] Audit step 6: full Diamond League browser run
 
 - [x] Diamond League (Uitsig) (builder+template done; live game creation for cross-pool stages pending) Beta Builder template: pair source (seed vs singles re-rank) UNRESOLVED/configurable; A+B, C+D crossover mirrored; 5 Wednesdays from 7 Oct; 8 named pools; open; 48 cap + waitlist; scoring/final/W4-W5 unresolved
+- [x] Send confirmation email to Hermanus Squash Test (jakkies@gmail.com) that he is approved + admin

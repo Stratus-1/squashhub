@@ -102,12 +102,16 @@ export function useLeagueStrength(
         if (byName.size) {
           const { data: divs } = await supabase
             .from("external_league_divisions" as any)
-            .select("division_name, season_year, fixtures, source")
+            .select("division_name, season_year, fixtures, source, external_division_id")
             .eq("source", "sportyhq");
-          const extRows = new Map<string, RubberRow[]>();
+          const compByDiv = assignCompetitions((divs || []) as any[]);
+          // member -> competition -> rows. Competitions (e.g. Men / Ladies /
+          // Masters) are never merged: "1st League" in one is not the other.
+          const extRows = new Map<string, Map<string, RubberRow[]>>();
           let extLatest = 0;
           for (const d of (divs || []) as any[]) {
             if (d.season_year > extLatest) extLatest = d.season_year;
+            const comp = compByDiv.get(String(d.external_division_id)) ?? "0";
             for (const f of (d.fixtures || []) as any[]) {
               for (const r of (f.rubbers || []) as any[]) {
                 const hg = Number(r.home_games), ag = Number(r.away_games);
@@ -119,14 +123,18 @@ export function useLeagueStrength(
                   if (!m) continue;
                   const won = side === "home" ? hg > ag : ag > hg;
                   const row = { player_code: null, league_label: d.division_name, position: Number(r.order) || null, season_year: d.season_year, won } as RubberRow;
-                  const list = extRows.get(m.id);
-                  if (list) list.push(row); else extRows.set(m.id, [row]);
+                  let byComp = extRows.get(m.id);
+                  if (!byComp) extRows.set(m.id, (byComp = new Map()));
+                  const list = byComp.get(comp);
+                  if (list) list.push(row); else byComp.set(comp, [row]);
                 }
               }
             }
           }
           const yr = extLatest || latestYear;
-          for (const [memberId, memberRows] of extRows) {
+          for (const [memberId, byComp] of extRows) {
+            // Use the competition the member plays most in; never blend.
+            const memberRows = [...byComp.values()].sort((a, b) => b.length - a.length)[0];
             const strength = computeLeagueStrength(memberRows, yr);
             if (!strength) continue;
             all.set(memberId, strength);

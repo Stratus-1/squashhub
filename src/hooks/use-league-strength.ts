@@ -10,7 +10,7 @@ const normalizeCode = (code: string) => code.toUpperCase().replace(/[^A-Z0-9]/g,
 
 /**
  * SportyHQ stores no competition label, so group divisions into competitions:
- * in division-id order, a new competition starts when ids jump or the league
+ * in division-id order, a new competition starts when the league
  * level stops increasing (e.g. ...18th League then 1st League again).
  */
 export function assignCompetitions(
@@ -22,7 +22,7 @@ export function assignCompetitions(
   let comp = 0, prevId = NaN, prevLevel = NaN;
   for (const d of sorted) {
     const id = Number(d.external_division_id), lv = level(d.division_name);
-    if (!Number.isNaN(prevId) && (id - prevId > 1 || !(lv > prevLevel))) comp++;
+    if (!Number.isNaN(prevId) && !(lv > prevLevel)) comp++;
     out.set(String(d.external_division_id), String(comp));
     prevId = id; prevLevel = lv;
   }

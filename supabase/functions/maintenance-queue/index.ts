@@ -65,6 +65,16 @@ const Body = z.discriminatedUnion("op", [
     approve: z.boolean(),
     reason: z.string().max(2000).optional(),
   }),
+  z.object({ op: z.literal("get_agent_settings") }),
+  z.object({
+    op: z.literal("set_agent_settings"),
+    dispatchMode: z.enum(["off", "shadow", "pilot"]).optional(),
+    lovableInstructionsEnabled: z.boolean().optional(),
+    pilotAllowlist: z.array(z.string().min(1).max(80)).max(50).optional(),
+    maxDispatchesPerDay: z.number().int().min(0).max(200).optional(),
+    maxActiveCases: z.number().int().min(0).max(20).optional(),
+    maxInstructionsPerDay: z.number().int().min(0).max(100).optional(),
+  }),
   z.object({
     op: z.literal("ask_member"),
     caseId: uuid,
@@ -268,6 +278,43 @@ Deno.serve(async (req) => {
           await admin.from("maintenance_cases").update({ status: "approved", last_actor_type: actorType }).eq("id", c.id);
         }
         return json({ ok: true });
+      }
+
+      case "get_agent_settings": {
+        const { data } = await admin.from("maintenance_agent_settings").select("*").eq("id", true).maybeSingle();
+        const { data: dispatches } = await admin.from("maintenance_dispatches").select("state").in("state", ["pending", "delivered", "claimed", "dead"]);
+        const counts: Record<string, number> = {};
+        for (const d of dispatches ?? []) counts[d.state] = (counts[d.state] ?? 0) + 1;
+        return json({
+          settings: data,
+          dispatch_counts: counts,
+          agent_secret_configured: !!Deno.env.get("MAINTENANCE_AGENT_SECRET"),
+        });
+      }
+
+      case "set_agent_settings": {
+        // Kill switch: turning dispatch OFF is always allowed and also disables
+        // Lovable instructions. Turning anything ON is refused by the database
+        // while the Stage 0 lock is set.
+        const patch: Record<string, unknown> = { updated_by: userId };
+        if (body.dispatchMode !== undefined) patch.dispatch_mode = body.dispatchMode;
+        if (body.dispatchMode === "off") patch.lovable_instructions_enabled = false;
+        if (body.lovableInstructionsEnabled !== undefined && body.dispatchMode !== "off") patch.lovable_instructions_enabled = body.lovableInstructionsEnabled;
+        if (body.pilotAllowlist) patch.pilot_allowlist = body.pilotAllowlist;
+        if (body.maxDispatchesPerDay !== undefined) patch.max_dispatches_per_day = body.maxDispatchesPerDay;
+        if (body.maxActiveCases !== undefined) patch.max_active_cases = body.maxActiveCases;
+        if (body.maxInstructionsPerDay !== undefined) patch.max_instructions_per_day = body.maxInstructionsPerDay;
+        const { data, error } = await admin.from("maintenance_agent_settings").update(patch).eq("id", true).select("*").maybeSingle();
+        if (error) return json({ error: error.message }, 409);
+        if (body.dispatchMode === "off") {
+          await admin.from("maintenance_dispatches").update({ state: "cancelled", last_error: "kill switch" }).in("state", ["pending", "delivered"]);
+        }
+        await admin.from("audit_events").insert({
+          club_id: null, actor_user_id: userId, entity_type: "maintenance_agent_settings", entity_id: null,
+          action: "maintenance_agent_settings_updated",
+          reason: JSON.stringify({ dispatch_mode: data?.dispatch_mode, lovable: data?.lovable_instructions_enabled }).slice(0, 500),
+        });
+        return json({ settings: data });
       }
 
       case "ask_member": {

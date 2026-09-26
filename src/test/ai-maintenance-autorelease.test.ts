@@ -62,7 +62,7 @@ describe("auto-release allowlist — denied / escalated (fail closed)", () => {
     ["too many lines", (i) => { i.change.linesChanged = 500; }, "too_many_lines"],
     ["lines unknown", (i) => { i.change.linesChanged = null; }, "lines_changed_unknown"],
     ["no regression test", (i) => { i.change.filesChanged = ["src/components/club-admin/MembersTab.tsx"]; }, "no_regression_test"],
-    ["protected diff summary", (i) => { i.change.summary = "Adjust billing rounding"; }, "protected_change:payments_billing"],
+    ["protected diff summary", (i) => { i.change.summary = "Adjust billing total"; }, "protected_change:payments_billing"],
     ["tests failed", (i) => { i.checks.failed = 2; i.checks.testsPassed = false; }, "tests_failed_or_unknown"],
     ["tests unknown", (i) => { i.checks.failed = null; }, "tests_failed_or_unknown"],
     ["build broken", (i) => { i.checks.buildOk = false; }, "build_not_ok"],

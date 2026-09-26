@@ -160,6 +160,7 @@ export function useLeagueStrength(
           for (const d of (divs || []) as any[]) {
             if (d.season_year > extLatest) extLatest = d.season_year;
             const comp = compByDiv.get(String(d.external_division_id)) ?? "0";
+            const masters = isMastersDivision(d.fixtures || []);
             for (const f of (d.fixtures || []) as any[]) {
               for (const r of (f.rubbers || []) as any[]) {
                 const hg = Number(r.home_games), ag = Number(r.away_games);
@@ -170,7 +171,7 @@ export function useLeagueStrength(
                   const m = byName.get(normName(names[0]));
                   if (!m) continue;
                   const won = side === "home" ? hg > ag : ag > hg;
-                  const row = { player_code: null, league_label: d.division_name, position: Number(r.order) || null, season_year: d.season_year, won } as RubberRow;
+                  const row = { player_code: null, league_label: d.division_name, position: Number(r.order) || null, season_year: d.season_year, won, levelOffset: masters ? MASTERS_LEVEL_OFFSET : 0 } as RubberRow;
                   let byComp = extRows.get(m.id);
                   if (!byComp) extRows.set(m.id, (byComp = new Map()));
                   const list = byComp.get(comp);

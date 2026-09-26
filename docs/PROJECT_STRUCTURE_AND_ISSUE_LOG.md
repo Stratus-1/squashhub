@@ -1,3 +1,9 @@
+## 2026-09-26 — Ladder refinement repeatedly proposed already-reviewed changes
+
+- **Cause:** Refine prepares both separate ladders, but saving the first ladder refreshed the shared member query and cleared the other ladder's unsaved proposal. The next Refine therefore proposed the unsaved ladder again. The displayed evidence also used combined men's and ladies' history while each ladder was sorted from its own category, making valid ordering decisions look contradictory.
+- **Fix:** Pending proposals now survive a refresh of the other ladder, the guidance explicitly says each ladder must be saved, and ladies' rows display the same ladies-only evidence used to rank them (men's rows already did this).
+- **Guard:** A ladder's visible evidence and sort input must use the same competition category; refreshing one saved ladder must never discard another ladder's pending proposal.
+
 ## 2026-09-24 — Tournament engine contract and integrity guards
 
 - **Weakness:** Structure was partly inferred at runtime (stage type from rows, playoff mapping from settings, round count from roster), so a settings change or rebuild could reshape a live draw (Nelspruit Family Doubles).

@@ -1,5 +1,11 @@
 # Roadmap
 
+## Ladder refinement consistency (26 Sep 2026)
+- [x] Trace repeated Uitsig refinement proposals and saved ladder state
+- [x] Keep the other ladder's proposal when one ladder is saved
+- [x] Show gender-specific league evidence matching the ranking calculation
+- [x] Add regression coverage for proposal preservation across refreshes
+
 ## Tournament Beta display and Bells scoring (24 Sep 2026)
 - [x] Make native dropdown options readable throughout Tournament Beta
 - [x] Make Schedule defaults and stage overview legible at Riverside-sized widths

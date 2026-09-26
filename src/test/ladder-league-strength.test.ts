@@ -4,6 +4,7 @@ import {
   seasonWeight,
   computeLeagueStrength,
   refineOrderFromLeagueStats,
+  reconcilePendingOrder,
   describeStrength,
   type LeagueStrength,
   type RubberRow,
@@ -97,6 +98,25 @@ describe("refineOrderFromLeagueStats", () => {
     const result = refineOrderFromLeagueStats(current, new Map());
     expect(result.order.map((m) => m.id)).toEqual(["a", "b"]);
     expect(result.moved).toBe(0);
+  });
+});
+
+describe("reconcilePendingOrder", () => {
+  const member = (id: string, name = id) => ({ id, name });
+
+  it("preserves an unsaved proposal when member rows refresh", () => {
+    const pending = [member("b", "Old B"), member("a", "Old A")];
+    const fresh = [member("a", "Fresh A"), member("b", "Fresh B")];
+    expect(reconcilePendingOrder(pending, fresh)?.map((m) => `${m.id}:${m.name}`)).toEqual([
+      "b:Fresh B",
+      "a:Fresh A",
+    ]);
+  });
+
+  it("drops removed members and appends newly added members", () => {
+    const pending = [member("b"), member("removed"), member("a")];
+    const fresh = [member("a"), member("new"), member("b")];
+    expect(reconcilePendingOrder(pending, fresh)?.map((m) => m.id)).toEqual(["b", "a", "new"]);
   });
 });
 

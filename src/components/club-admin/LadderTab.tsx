@@ -35,7 +35,7 @@ import { SportyHqRatingBadge } from "@/components/SportyHqRatingBadge";
 import { useSportyHqRatings, type SportyHqRating } from "@/hooks/use-sportyhq-ratings";
 import { useAssociationNumbers } from "@/hooks/use-association-numbers";
 import { useLeagueStrength } from "@/hooks/use-league-strength";
-import { refineOrderFromLeagueStats, describeStrength, type LeagueStrength } from "@/lib/ladder/league-strength";
+import { refineOrderFromLeagueStats, describeStrength, reconcilePendingOrder, type LeagueStrength } from "@/lib/ladder/league-strength";
 import { useCrossGenderLeagueSetting, useCrossGenderPlayers } from "@/hooks/use-cross-gender-league";
 import {
   crossGenderStrengthKey,
@@ -657,10 +657,12 @@ export function LadderTab({ clubId }: { clubId: string }) {
   );
 
   useEffect(() => {
-    setMenOrder(null);
-    setLadiesOrder(null);
-    setMixedOrder(null);
-  }, [members]);
+    // Saving one ladder refreshes all member rows. Keep the other ladder's
+    // pending proposal instead of silently discarding it.
+    setMenOrder((pending) => reconcilePendingOrder(pending, menMembers));
+    setLadiesOrder((pending) => reconcilePendingOrder(pending, ladiesMembers));
+    setMixedOrder((pending) => reconcilePendingOrder(pending, mixedMembersList));
+  }, [members, menMembers, ladiesMembers, mixedMembersList]);
 
   const handleSave = useCallback(
     async (ordered: LadderMember[], genderFilter: string) => {
@@ -805,8 +807,8 @@ export function LadderTab({ clubId }: { clubId: string }) {
           <p className="text-xs text-muted-foreground">
             Uses each member's regional league record — the league they play in, the position they
             usually play in their team and how often they win — to suggest a more accurate order.
-            Members without league history stay exactly where they are. Nothing is saved until you
-            press Save on a ladder.
+            Members without league history stay exactly where they are. Refine prepares both ladders;
+            save the Ladies' and Men's ladders separately when both show changes.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             {strengthLoading
@@ -859,7 +861,7 @@ export function LadderTab({ clubId }: { clubId: string }) {
             affiliationsByMember={affiliationsByMember}
             sportyHqRatings={sportyHqRatings}
             associationNumbers={associationNumbers}
-            leagueStrength={leagueStrength}
+            leagueStrength={strengthSets?.ladies ?? leagueStrength}
             onAllocated={handleAllocated}
           />
         </div>

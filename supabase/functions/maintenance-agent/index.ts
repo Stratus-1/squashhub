@@ -1,11 +1,12 @@
 // AI Maintenance Manager — Phase 2 signed interface for the authorised external
-// maintenance agent. Stage 0: fully built but INERT — every operation except
+// maintenance agent. Inert while dispatch is off / the Stage 0 lock is on.
 // `ping` refuses while dispatch is off / the Stage 0 lock is on.
 //
 // Auth: HMAC-SHA256 over METHOD\nPATH\nTIMESTAMP\nNONCE\nSHA256(body) with
 // MAINTENANCE_AGENT_SECRET (or MAINTENANCE_AGENT_SECRET_NEXT during rotation).
 // Headers: x-sh-timestamp, x-sh-nonce, x-sh-signature. Nonces are single-use.
-// The agent can never approve, release, complete, publish or deploy.
+// The agent can never approve. It may publish only a server-qualified low-risk
+// fix (qualify_release), and closes it only after verified deploy (DB-guarded).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
@@ -17,11 +18,13 @@ import {
   canTransition,
   correlationTag,
   detectSensitiveAreas,
+  evaluateAutoRelease,
   executionRequiresApproval,
   finaliseRisk,
   guardInstruction,
   maxRisk,
   sha256Hex,
+  verificationPassed,
   verifyAgentRequest,
   type AgentSettings,
   type MaintenanceStatus,
@@ -65,8 +68,24 @@ const Body = z.discriminatedUnion("op", [
     op: z.literal("result"), agent: agentId, dispatchId: uuid, actionId: uuid,
     summary: z.string().max(4000), testsPassed: z.boolean(),
     testCounts: z.object({ passed: z.number().int().min(0), failed: z.number().int().min(0) }).optional(),
-    buildOk: z.boolean().optional(), commitSha: z.string().regex(/^[a-f0-9]{7,40}$/).optional(),
+    buildOk: z.boolean().optional(), typecheckOk: z.boolean().optional(), lintOk: z.boolean().optional(),
+    commitSha: z.string().regex(/^[a-f0-9]{7,40}$/).optional(),
     filesChanged: z.array(z.string().max(300)).max(200).optional(),
+    linesChanged: z.number().int().min(0).optional(),
+  }),
+  // Server decides whether the prepared fix qualifies for automatic release.
+  z.object({
+    op: z.literal("qualify_release"), agent: agentId, dispatchId: uuid, actionId: uuid,
+    reproducible: z.boolean(), verificationChecks: z.array(z.string().min(1).max(300)).max(20),
+  }),
+  z.object({
+    op: z.literal("deploy_result"), agent: agentId, dispatchId: uuid, actionId: uuid,
+    ok: z.boolean(), deploymentRef: z.string().max(300).optional(), detail: z.string().max(2000).optional(),
+  }),
+  z.object({
+    op: z.literal("verify"), agent: agentId, dispatchId: uuid, actionId: uuid,
+    checks: z.array(z.object({ name: z.string().min(1).max(300), ok: z.boolean(), detail: z.string().max(1000).optional() })).max(20),
+    rolledBack: z.boolean().optional(), rollbackRef: z.string().max(300).optional(),
   }),
 ]);
 
@@ -223,7 +242,8 @@ Deno.serve(async (req) => {
     case "handoff": {
       const { data: act } = await admin.from("maintenance_actions").select("*").eq("id", body.actionId).eq("case_id", c.id).maybeSingle();
       if (!act) return json({ error: "Action not found" }, 404);
-      const send = canSendLovableInstruction(s, act.execution_class, act.approved_by);
+      const autoQ = act.auto_released ? { eligible: act.auto_release_qualification?.eligible === true, risk: c.risk as Risk, sensitiveAreas: c.sensitive_areas ?? [] } : null;
+      const send = canSendLovableInstruction(s, act.execution_class, act.approved_by, autoQ);
       if (!send.allowed) return json({ error: "Not allowed", reason: send.reason }, 403);
       const today = new Date(); today.setUTCHours(0, 0, 0, 0);
       const { count } = await admin.from("maintenance_actions").select("id", { count: "exact", head: true })
@@ -231,23 +251,124 @@ Deno.serve(async (req) => {
       if ((count ?? 0) >= (s.max_instructions_per_day ?? 10)) return json({ error: "Daily instruction limit reached" }, 429);
       const expected = await sha256Hex(act.instruction_text);
       if (expected !== body.sentHash) return json({ error: "Sent text does not match the stored instruction" }, 409);
-      await admin.from("maintenance_actions").update({ external_ref: body.lovableRef, sent_hash: body.sentHash, sent_at: new Date().toISOString(), state: "in_progress" }).eq("id", act.id);
-      await admin.from("maintenance_cases").update({ agent_stage: "sent_to_lovable", last_actor_type: "agent" }).eq("id", c.id);
-      await event(c.id, "lovable_handoff", null, { action_id: act.id, lovable_ref: body.lovableRef, sent_hash: body.sentHash });
+      const { error: upErr } = await admin.from("maintenance_actions").update({ external_ref: body.lovableRef, sent_hash: body.sentHash, sent_at: new Date().toISOString(), state: "in_progress" }).eq("id", act.id);
+      if (upErr) return json({ error: upErr.message }, 409);
+      await admin.from("maintenance_cases").update({ agent_stage: act.auto_released ? "auto_releasing" : "sent_to_lovable", last_actor_type: "agent" }).eq("id", c.id);
+      await event(c.id, "lovable_handoff", null, { action_id: act.id, lovable_ref: body.lovableRef, sent_hash: body.sentHash, auto_release: !!act.auto_released });
       return json({ ok: true });
     }
     case "result": {
-      const tests = { passed: body.testsPassed, counts: body.testCounts ?? null, build_ok: body.buildOk ?? null, files_changed: body.filesChanged ?? [] };
+      const tests = {
+        passed: body.testsPassed, counts: body.testCounts ?? null, build_ok: body.buildOk ?? null,
+        typecheck_ok: body.typecheckOk ?? null, lint_ok: body.lintOk ?? null,
+        files_changed: body.filesChanged ?? [], lines_changed: body.linesChanged ?? null,
+      };
       await admin.from("maintenance_actions").update({
         result_summary: body.summary, tests, commit_sha: body.commitSha ?? null, state: "result_received",
       }).eq("id", body.actionId).eq("case_id", c.id);
       await admin.from("maintenance_cases").update({
-        agent_stage: body.testsPassed && body.buildOk !== false ? "ready_for_review" : "tests_failed",
-        technical_result: { ...(c.technical_result ?? {}), last_action_id: body.actionId, ...tests, commit_sha: body.commitSha ?? null },
+        agent_stage: body.testsPassed && body.buildOk !== false ? "tests_passed" : "tests_failed",
+        technical_result: { ...(c.technical_result ?? {}), last_action_id: body.actionId, summary: body.summary, ...tests, commit_sha: body.commitSha ?? null },
         last_actor_type: "agent",
       }).eq("id", c.id);
       await event(c.id, "agent_result", null, { action_id: body.actionId, tests_passed: body.testsPassed, commit_sha: body.commitSha ?? null });
       return json({ ok: true });
+    }
+    case "qualify_release": {
+      const [{ data: act }, { data: an }] = await Promise.all([
+        admin.from("maintenance_actions").select("*").eq("id", body.actionId).eq("case_id", c.id).maybeSingle(),
+        c.current_analysis_id ? admin.from("maintenance_analyses").select("*").eq("id", c.current_analysis_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      if (!act || act.state !== "result_received") return json({ error: "Prepared fix with results not found" }, 409);
+      const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+      const { count: releasesToday } = await admin.from("maintenance_actions").select("id", { count: "exact", head: true })
+        .eq("auto_released", true).gte("created_at", today.toISOString());
+      const { data: reqs } = await admin.from("maintenance_case_requesters").select("scope_snapshot").eq("case_id", c.id);
+      const exceeds = (reqs ?? []).some((r) => (r.scope_snapshot as Record<string, unknown> | null)?.exceeds_scope === true);
+      const t = (act.tests ?? {}) as Record<string, any>;
+      const q = evaluateAutoRelease({
+        settings: s, autoReleasesToday: releasesToday ?? 0,
+        case: { kind: c.kind, risk: c.risk as Risk, sensitiveAreas: c.sensitive_areas ?? [], exceedsRequesterScope: exceeds, reproducible: body.reproducible },
+        analysis: an ? { risk: an.risk, codeChangeNeeded: an.code_change_needed, moreInfoNeeded: an.more_info_needed, summary: an.summary } : null,
+        change: { filesChanged: t.files_changed, linesChanged: t.lines_changed, summary: act.result_summary },
+        checks: { testsPassed: t.passed, passed: t.counts?.passed, failed: t.counts?.failed, buildOk: t.build_ok, typecheckOk: t.typecheck_ok, lintOk: t.lint_ok },
+        verificationChecks: body.verificationChecks, commitSha: act.commit_sha,
+      });
+      const qualification = { ...q, evaluated_at: new Date().toISOString(), source_action_id: act.id };
+      await admin.from("maintenance_actions").update({ auto_release_qualification: qualification }).eq("id", act.id);
+      // Move the case into ready_for_release (agent may do this; release itself is DB-guarded).
+      let status = c.status as MaintenanceStatus;
+      for (const next of ["fix_in_progress", "ready_for_release"] as MaintenanceStatus[]) {
+        if (status !== next && canTransition(status, next)) {
+          const { error } = await admin.from("maintenance_cases").update({ status: next, last_actor_type: "agent" }).eq("id", c.id);
+          if (!error) status = next;
+        }
+      }
+      const instruction = `Publish the verified fix at commit ${act.commit_sha ?? "unknown"} for maintenance case ${c.id.slice(0, 8)}. Do not change any code. After publishing, run the post-deploy checks: ${body.verificationChecks.join("; ")}.`;
+      const { data: rel, error: relErr } = await admin.from("maintenance_actions").insert({
+        case_id: c.id, kind: "lovable_instruction", target: "lovable", execution_class: "release",
+        instruction_text: instruction, risk: c.risk, sensitive_areas: c.sensitive_areas ?? [],
+        auto_allowed: q.eligible, auto_released: q.eligible, auto_release_qualification: qualification,
+        commit_sha: act.commit_sha, state: q.eligible ? "draft" : "awaiting_approval",
+      }).select("id").maybeSingle();
+      if (relErr || !rel) {
+        // DB refused automatic release — fail closed and escalate.
+        await admin.from("maintenance_cases").update({ agent_stage: "escalated", requires_approval: true, last_actor_type: "agent" }).eq("id", c.id);
+        await event(c.id, "auto_release_refused", relErr?.message ?? null, { reasons: q.reasons });
+        return json({ eligible: false, reasons: [...q.reasons, "database_refused"] });
+      }
+      const tag = correlationTag(c.id, rel.id);
+      await admin.from("maintenance_actions").update({ correlation_tag: tag, instruction_text: `${tag} ${instruction}` }).eq("id", rel.id);
+      await admin.from("maintenance_cases").update({
+        agent_stage: q.eligible ? "auto_release_qualified" : "escalated",
+        requires_approval: !q.eligible || c.requires_approval,
+        technical_result: { ...(c.technical_result ?? {}), auto_release: { eligible: q.eligible, reasons: q.reasons } },
+        last_actor_type: "agent",
+      }).eq("id", c.id);
+      await event(c.id, q.eligible ? "auto_release_qualified" : "auto_release_denied", null, { action_id: rel.id, reasons: q.reasons });
+      return json({ eligible: q.eligible, reasons: q.reasons, releaseActionId: rel.id, instruction: `${tag} ${instruction}`, correlationTag: tag });
+    }
+    case "deploy_result": {
+      const { data: act } = await admin.from("maintenance_actions").select("*").eq("id", body.actionId).eq("case_id", c.id).maybeSingle();
+      if (!act || act.execution_class !== "release" || act.state !== "in_progress") return json({ error: "Release in progress not found" }, 409);
+      await admin.from("maintenance_actions").update({ deploy_result: { ok: body.ok, ref: body.deploymentRef ?? null, detail: body.detail ?? null, at: new Date().toISOString() } }).eq("id", act.id);
+      if (body.ok && act.auto_released) {
+        const { error } = await admin.from("maintenance_cases").update({ status: "released", agent_stage: "verifying", last_actor_type: "agent" }).eq("id", c.id);
+        if (error) {
+          await admin.from("maintenance_cases").update({ agent_stage: "escalated", requires_approval: true, last_actor_type: "agent" }).eq("id", c.id);
+          await event(c.id, "auto_release_blocked", error.message, { action_id: act.id });
+          return json({ error: "Release blocked", reason: error.message }, 409);
+        }
+      } else if (!body.ok) {
+        await admin.from("maintenance_cases").update({ agent_stage: "escalated", requires_approval: true, last_actor_type: "agent" }).eq("id", c.id);
+      }
+      await event(c.id, "deploy_result", body.detail ?? null, { action_id: act.id, ok: body.ok, ref: body.deploymentRef ?? null });
+      return json({ ok: true });
+    }
+    case "verify": {
+      const { data: act } = await admin.from("maintenance_actions").select("*").eq("id", body.actionId).eq("case_id", c.id).maybeSingle();
+      if (!act || act.execution_class !== "release" || act.deploy_result?.ok !== true) return json({ error: "Deployed release not found" }, 409);
+      const passed = verificationPassed(body.checks);
+      await admin.from("maintenance_actions").update({
+        verification: { passed, checks: body.checks, at: new Date().toISOString() },
+        rollback: body.rolledBack ? { done: true, ref: body.rollbackRef ?? null, at: new Date().toISOString() } : null,
+        state: passed ? "done" : "result_received",
+      }).eq("id", act.id);
+      if (passed && act.auto_released) {
+        const { error } = await admin.from("maintenance_cases").update({ status: "completed", last_actor_type: "agent" }).eq("id", c.id);
+        if (!error) {
+          await admin.from("maintenance_cases").update({ agent_stage: "auto_released", auto_fixed: true, resolution_path: "auto_release", last_actor_type: "agent" }).eq("id", c.id);
+          await admin.from("maintenance_dispatches").update({ state: "completed" }).eq("id", d.id);
+        } else {
+          await admin.from("maintenance_cases").update({ agent_stage: "escalated", requires_approval: true, last_actor_type: "agent" }).eq("id", c.id);
+        }
+      } else if (!passed) {
+        const patch: Record<string, unknown> = { agent_stage: body.rolledBack ? "rolled_back" : "escalated", requires_approval: true, last_actor_type: "agent" };
+        if (c.status === "released") patch.status = "issue_identified";
+        await admin.from("maintenance_cases").update(patch).eq("id", c.id);
+      }
+      await event(c.id, passed ? "verification_passed" : "verification_failed", null, { action_id: act.id, checks: body.checks.length, rolled_back: !!body.rolledBack });
+      return json({ ok: true, passed });
     }
   }
   return json({ error: "Unknown op" }, 400);

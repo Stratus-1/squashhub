@@ -2136,3 +2136,8 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Rule: investigate/prepare/test automatic at any risk; execute_live/release always need a named approver (DB trigger + policy).
 - New signed (HMAC, 5-min skew, single-use nonce) `maintenance-agent` function; refuses all but `ping` while off. Kill switch in Maintenance UI.
 - Member balance on Members list now shows single outstanding balance and opens the Member Statement (fixed a replace that silently failed).
+
+### 2026-09-26 — AI Maintenance: low-risk auto-release lane
+- Corrected Phase 2 so clear low-risk bugs can be fixed AND released automatically (no Super Admin approval) when objective gates pass: `evaluateAutoRelease` in `maintenance-policy.ts` (≤5 code files, ≤200 lines, allowlisted `src/` paths only, no protected paths/areas, regression test, tests/build/typecheck/lint clean, commit ref, post-deploy check, reproduced, within requester scope, daily cap).
+- New agent ops `qualify_release`, `deploy_result`, `verify`; DB guard `maintenance_auto_release_ok` lets automated actors release/complete only with a qualified, deployed, verified low-risk release; circuit breaker trigger disables auto-release after 2 failed auto-releases in 7 days.
+- Third switch `auto_release_enabled` (default OFF, blocked by stage lock). UI: "Auto-fixed" view + qualification/tests/deploy/verification/rollback details.

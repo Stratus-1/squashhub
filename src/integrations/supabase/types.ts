@@ -8965,10 +8965,13 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           auto_allowed: boolean
+          auto_release_qualification: Json | null
+          auto_released: boolean
           case_id: string
           commit_sha: string | null
           correlation_tag: string | null
           created_at: string
+          deploy_result: Json | null
           execution_class: string
           external_ref: string | null
           id: string
@@ -8977,6 +8980,7 @@ export type Database = {
           rejection_reason: string | null
           result_summary: string | null
           risk: string
+          rollback: Json | null
           sensitive_areas: string[]
           sent_at: string | null
           sent_hash: string | null
@@ -8984,15 +8988,19 @@ export type Database = {
           target: string
           tests: Json
           updated_at: string
+          verification: Json | null
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
           auto_allowed?: boolean
+          auto_release_qualification?: Json | null
+          auto_released?: boolean
           case_id: string
           commit_sha?: string | null
           correlation_tag?: string | null
           created_at?: string
+          deploy_result?: Json | null
           execution_class?: string
           external_ref?: string | null
           id?: string
@@ -9001,6 +9009,7 @@ export type Database = {
           rejection_reason?: string | null
           result_summary?: string | null
           risk?: string
+          rollback?: Json | null
           sensitive_areas?: string[]
           sent_at?: string | null
           sent_hash?: string | null
@@ -9008,15 +9017,19 @@ export type Database = {
           target?: string
           tests?: Json
           updated_at?: string
+          verification?: Json | null
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
           auto_allowed?: boolean
+          auto_release_qualification?: Json | null
+          auto_released?: boolean
           case_id?: string
           commit_sha?: string | null
           correlation_tag?: string | null
           created_at?: string
+          deploy_result?: Json | null
           execution_class?: string
           external_ref?: string | null
           id?: string
@@ -9025,6 +9038,7 @@ export type Database = {
           rejection_reason?: string | null
           result_summary?: string | null
           risk?: string
+          rollback?: Json | null
           sensitive_areas?: string[]
           sent_at?: string | null
           sent_hash?: string | null
@@ -9032,6 +9046,7 @@ export type Database = {
           target?: string
           tests?: Json
           updated_at?: string
+          verification?: Json | null
         }
         Relationships: [
           {
@@ -9060,10 +9075,16 @@ export type Database = {
       }
       maintenance_agent_settings: {
         Row: {
+          auto_release_circuit_open: boolean
+          auto_release_circuit_opened_at: string | null
+          auto_release_circuit_reason: string | null
+          auto_release_enabled: boolean
+          auto_release_failure_threshold: number
           dispatch_mode: string
           id: boolean
           lovable_instructions_enabled: boolean
           max_active_cases: number
+          max_auto_releases_per_day: number
           max_dispatches_per_day: number
           max_instructions_per_day: number
           pilot_allowlist: string[]
@@ -9072,10 +9093,16 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          auto_release_circuit_open?: boolean
+          auto_release_circuit_opened_at?: string | null
+          auto_release_circuit_reason?: string | null
+          auto_release_enabled?: boolean
+          auto_release_failure_threshold?: number
           dispatch_mode?: string
           id?: boolean
           lovable_instructions_enabled?: boolean
           max_active_cases?: number
+          max_auto_releases_per_day?: number
           max_dispatches_per_day?: number
           max_instructions_per_day?: number
           pilot_allowlist?: string[]
@@ -9084,10 +9111,16 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          auto_release_circuit_open?: boolean
+          auto_release_circuit_opened_at?: string | null
+          auto_release_circuit_reason?: string | null
+          auto_release_enabled?: boolean
+          auto_release_failure_threshold?: number
           dispatch_mode?: string
           id?: boolean
           lovable_instructions_enabled?: boolean
           max_active_cases?: number
+          max_auto_releases_per_day?: number
           max_dispatches_per_day?: number
           max_instructions_per_day?: number
           pilot_allowlist?: string[]
@@ -9210,6 +9243,7 @@ export type Database = {
       maintenance_cases: {
         Row: {
           agent_stage: string | null
+          auto_fixed: boolean
           bug_report_id: string | null
           closed_at: string | null
           club_id: string | null
@@ -9221,6 +9255,7 @@ export type Database = {
           org_id: string | null
           released_at: string | null
           requires_approval: boolean
+          resolution_path: string | null
           risk: string
           sensitive_areas: string[]
           status: string
@@ -9231,6 +9266,7 @@ export type Database = {
         }
         Insert: {
           agent_stage?: string | null
+          auto_fixed?: boolean
           bug_report_id?: string | null
           closed_at?: string | null
           club_id?: string | null
@@ -9242,6 +9278,7 @@ export type Database = {
           org_id?: string | null
           released_at?: string | null
           requires_approval?: boolean
+          resolution_path?: string | null
           risk?: string
           sensitive_areas?: string[]
           status?: string
@@ -9252,6 +9289,7 @@ export type Database = {
         }
         Update: {
           agent_stage?: string | null
+          auto_fixed?: boolean
           bug_report_id?: string | null
           closed_at?: string | null
           club_id?: string | null
@@ -9263,6 +9301,7 @@ export type Database = {
           org_id?: string | null
           released_at?: string | null
           requires_approval?: boolean
+          resolution_path?: string | null
           risk?: string
           sensitive_areas?: string[]
           status?: string
@@ -17432,6 +17471,10 @@ export type Database = {
           id: string
           masked_name: string
         }[]
+      }
+      maintenance_auto_release_ok: {
+        Args: { _case_id: string; _need_verified: boolean }
+        Returns: boolean
       }
       maintenance_case_can_transition: {
         Args: { _from: string; _to: string }

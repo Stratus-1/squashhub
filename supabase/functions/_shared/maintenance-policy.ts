@@ -121,20 +121,25 @@ export function caseToBugStatus(caseStatus: MaintenanceStatus): string | null {
 // Investigation permission is NOT execution authority.
 //   investigate / prepare / test  → may proceed automatically under safeguards,
 //                                    at any risk level (non-production only).
-//   execute_live / release        → ALWAYS require a named human approval.
+//   release                       → automatic ONLY for a server-qualified
+//                                    low-risk fix (evaluateAutoRelease); else human.
+//   execute_live                  → ALWAYS human. Requester-authorised operational
+//                                    corrections run through AI Assistance, not here.
 export type ExecutionClass = "investigate" | "prepare" | "test" | "execute_live" | "release";
 export const AUTOMATIC_EXECUTION_CLASSES: ExecutionClass[] = ["investigate", "prepare", "test"];
 
-export function executionRequiresApproval(cls: ExecutionClass, _risk: Risk, _sensitiveAreas: string[]): boolean {
-  // Risk and sensitivity never gate investigation/preparation/testing; they
-  // only matter once a live change or release is requested — and those always
-  // need approval in Phase 2.
-  return !AUTOMATIC_EXECUTION_CLASSES.includes(cls);
+export function executionRequiresApproval(
+  cls: ExecutionClass, risk: Risk, sensitiveAreas: string[],
+  autoRelease?: { eligible: boolean } | null,
+): boolean {
+  if (AUTOMATIC_EXECUTION_CLASSES.includes(cls)) return false;
+  if (cls === "release" && autoRelease?.eligible === true && risk === "low" && sensitiveAreas.length === 0) return false;
+  return true;
 }
 
-// Autonomy tiers. A = AI Assistance (no case). B = low-risk dev work.
-// C = sensitive/medium/high (auto investigate+prepare+test; approval before live
-// change/release). D = needs authority above the requester → route upward.
+// Autonomy tiers. A = AI Assistance (no case). B = low-risk dev work (may
+// auto-release if it qualifies). C = sensitive/medium/high (auto investigate+
+// prepare+test; approval before live change/release). D = above requester scope.
 export type AgentTier = "A" | "B" | "C" | "D";
 
 export function agentTier(input: {
@@ -153,6 +158,7 @@ export const AGENT_STAGES = [
   "queued_for_agent", "agent_investigating", "sent_to_lovable", "lovable_working",
   "tests_passed", "tests_failed", "ready_for_review", "approved", "released",
   "unable_to_resolve", "agent_unreachable",
+  "auto_release_qualified", "auto_releasing", "verifying", "auto_released", "rolled_back", "escalated",
 ] as const;
 export type AgentStage = typeof AGENT_STAGES[number];
 
@@ -168,15 +174,22 @@ export const AGENT_STAGE_LABELS: Record<AgentStage, string> = {
   released: "Released",
   unable_to_resolve: "Unable to resolve",
   agent_unreachable: "Agent unreachable",
+  auto_release_qualified: "Qualified for auto-release",
+  auto_releasing: "Auto-releasing",
+  verifying: "Verifying live",
+  auto_released: "Auto-fixed",
+  rolled_back: "Rolled back",
+  escalated: "Escalated to you",
 };
 
-// Stages an automated actor may set. approved/released are human-only.
+// Stages the agent may set via `progress`. approved/released are human-only;
+// auto-release stages are set only by the server's qualification/verify ops.
 export const AGENT_SETTABLE_STAGES: AgentStage[] = AGENT_STAGES.filter(
-  (s) => s !== "approved" && s !== "released",
+  (s) => !["approved", "released", "auto_release_qualified", "auto_releasing", "verifying", "auto_released", "rolled_back", "escalated"].includes(s),
 ) as AgentStage[];
 
 // Stages that genuinely need Willem's attention (everything else is quiet).
-export const ATTENTION_STAGES: AgentStage[] = ["tests_failed", "ready_for_review", "agent_unreachable"];
+export const ATTENTION_STAGES: AgentStage[] = ["tests_failed", "ready_for_review", "agent_unreachable", "rolled_back", "escalated"];
 
 export type DispatchMode = "off" | "shadow" | "pilot";
 export interface AgentSettings {
@@ -184,6 +197,9 @@ export interface AgentSettings {
   lovable_instructions_enabled: boolean;
   stage_lock: boolean;
   pilot_allowlist: string[];
+  auto_release_enabled?: boolean;
+  auto_release_circuit_open?: boolean;
+  max_auto_releases_per_day?: number;
 }
 
 // Kill switch + eligibility. Never dispatches while off or locked.
@@ -197,17 +213,120 @@ export function isDispatchEligible(
   return true;
 }
 
+// Is the low-risk auto-release switch live (all three switches + breaker)?
+export function autoReleaseSwitchOn(s: AgentSettings | null | undefined): boolean {
+  return !!s && !s.stage_lock && s.dispatch_mode === "pilot" && s.lovable_instructions_enabled
+    && s.auto_release_enabled === true && s.auto_release_circuit_open !== true;
+}
+
 // Whether the agent may send a Lovable instruction automatically.
 export function canSendLovableInstruction(
   s: AgentSettings | null | undefined,
   cls: ExecutionClass,
   approvedBy?: string | null,
+  autoRelease?: { eligible: boolean; risk: Risk; sensitiveAreas: string[] } | null,
 ): { allowed: boolean; reason?: string } {
   if (!s || s.stage_lock || s.dispatch_mode === "off") return { allowed: false, reason: "dispatch_off" };
   if (s.dispatch_mode === "shadow") return { allowed: false, reason: "shadow_mode_draft_only" };
   if (!s.lovable_instructions_enabled) return { allowed: false, reason: "lovable_instructions_disabled" };
-  if (executionRequiresApproval(cls, "low", []) && !approvedBy) return { allowed: false, reason: "approval_required" };
-  return { allowed: true };
+  if (approvedBy) return { allowed: true };
+  if (AUTOMATIC_EXECUTION_CLASSES.includes(cls)) return { allowed: true };
+  if (cls === "release" && autoRelease?.eligible) {
+    if (!autoReleaseSwitchOn(s)) return { allowed: false, reason: s.auto_release_circuit_open ? "auto_release_circuit_open" : "auto_release_off" };
+    if (executionRequiresApproval(cls, autoRelease.risk, autoRelease.sensitiveAreas, autoRelease)) return { allowed: false, reason: "approval_required" };
+    return { allowed: true };
+  }
+  return { allowed: false, reason: "approval_required" };
+}
+
+// ─── Auto-release allowlist: objective criteria, never an LLM confidence score ──
+export const AUTO_RELEASE_MAX_FILES = 5;
+export const AUTO_RELEASE_MAX_LINES = 200;
+export const AUTO_RELEASE_ALLOWED_PREFIXES = ["src/components/", "src/pages/", "src/hooks/", "src/lib/", "src/test/"];
+const PROTECTED_PATHS: [RegExp, string][] = [
+  [/^supabase\//, "backend_or_schema"],
+  [/^src\/integrations\//, "integration_client"],
+  [/^(android|ios|public|remotion)\//, "native_or_public_asset"],
+  [/(^|\/)(package(-lock)?\.json|bun\.lockb?|vite\.config|capacitor\.config|index\.html|\.env)/, "build_config"],
+  [/payment|billing|payfast|stitch|yoco|invoice|ledger|finance|fee|mandate|bar-?tab|pos/i, "payments_billing"],
+  [/auth|permission|role|security|rls|secret|password|otp|captcha/i, "permissions_security_roles"],
+  [/tournament|league|ladder|ranking|rating|standing|result|fixture|smart-builder|progression|score/i, "results_structures"],
+  [/federation|organisation|organization|association|hierarchy|people-spine/i, "organisation_hierarchy"],
+  [/migration|schema/i, "schema_migration"],
+  [/merge|dedupe|delete|purge/i, "member_deletion_merge"],
+];
+const isTestFile = (f: string) => f.startsWith("src/test/") || /\.test\.tsx?$/.test(f);
+
+export interface AutoReleaseInput {
+  settings: AgentSettings | null | undefined;
+  autoReleasesToday: number;
+  case: { kind: string; risk: Risk; sensitiveAreas: string[]; exceedsRequesterScope?: boolean; reproducible?: boolean | null };
+  analysis: { risk?: Risk | null; codeChangeNeeded?: boolean | null; moreInfoNeeded?: boolean | null; summary?: string | null } | null;
+  change: { filesChanged?: string[] | null; linesChanged?: number | null; summary?: string | null };
+  checks: { testsPassed?: boolean | null; passed?: number | null; failed?: number | null; buildOk?: boolean | null; typecheckOk?: boolean | null; lintOk?: boolean | null };
+  verificationChecks?: string[] | null;
+  commitSha?: string | null;
+}
+
+// Fail closed: every unknown/missing value is a reason to deny.
+export function evaluateAutoRelease(i: AutoReleaseInput): { eligible: boolean; reasons: string[]; criteria: Record<string, unknown> } {
+  const r: string[] = [];
+  const files = i.change.filesChanged ?? [];
+  if (!autoReleaseSwitchOn(i.settings)) r.push(i.settings?.auto_release_circuit_open ? "circuit_open" : "auto_release_switch_off");
+  if (i.autoReleasesToday >= (i.settings?.max_auto_releases_per_day ?? 0)) r.push("daily_auto_release_limit");
+  if (i.case.kind !== "bug") r.push("not_a_bug");
+  if (i.case.exceedsRequesterScope) r.push("exceeds_requester_scope");
+  if (i.case.reproducible !== true) r.push("not_reproduced");
+  if (i.case.risk !== "low") r.push("case_risk_not_low");
+  if (i.case.sensitiveAreas.length) r.push("protected_area:" + i.case.sensitiveAreas.join(","));
+  if (!i.analysis) r.push("no_analysis");
+  else {
+    if (i.analysis.risk !== "low") r.push("analysis_risk_not_low");
+    if (i.analysis.codeChangeNeeded !== true) r.push("code_change_not_confirmed");
+    if (i.analysis.moreInfoNeeded) r.push("more_info_needed");
+  }
+  if (files.length === 0) r.push("no_files_reported");
+  const code = files.filter((f) => !isTestFile(f));
+  const tests = files.filter(isTestFile);
+  if (code.length === 0) r.push("no_code_change");
+  if (code.length > AUTO_RELEASE_MAX_FILES) r.push("too_many_files");
+  if (i.change.linesChanged == null) r.push("lines_changed_unknown");
+  else if (i.change.linesChanged > AUTO_RELEASE_MAX_LINES) r.push("too_many_lines");
+  if (tests.length === 0) r.push("no_regression_test");
+  for (const f of files) {
+    if (f.includes("..") || !AUTO_RELEASE_ALLOWED_PREFIXES.some((p) => f.startsWith(p))) r.push("outside_allowlist:" + f);
+    else if (!isTestFile(f)) for (const [re, area] of PROTECTED_PATHS) if (re.test(f)) { r.push(`protected_path:${area}:${f}`); break; }
+  }
+  const diffSensitive = detectSensitiveAreas(i.change.summary, i.analysis?.summary);
+  if (diffSensitive.length) r.push("protected_change:" + diffSensitive.join(","));
+  if (i.checks.testsPassed !== true) r.push("tests_not_passed");
+  if (!i.checks.passed || i.checks.passed < 1) r.push("no_tests_ran");
+  if (i.checks.failed !== 0) r.push("tests_failed_or_unknown");
+  if (i.checks.buildOk !== true) r.push("build_not_ok");
+  if (i.checks.typecheckOk !== true) r.push("typecheck_not_ok");
+  if (i.checks.lintOk !== true) r.push("lint_not_ok");
+  if (!i.verificationChecks || i.verificationChecks.length === 0) r.push("no_post_deploy_check");
+  if (!i.commitSha) r.push("no_commit_reference");
+  const reasons = [...new Set(r)];
+  return {
+    eligible: reasons.length === 0,
+    reasons,
+    criteria: {
+      version: 1, max_files: AUTO_RELEASE_MAX_FILES, max_lines: AUTO_RELEASE_MAX_LINES,
+      files: files.length, code_files: code.length, test_files: tests.length, lines: i.change.linesChanged ?? null,
+      checks: i.checks, verification_checks: i.verificationChecks ?? [], commit_sha: i.commitSha ?? null,
+    },
+  };
+}
+
+// Post-deploy verification passes only when at least one check ran and all passed.
+export function verificationPassed(checks: { name: string; ok: boolean }[] | null | undefined): boolean {
+  return !!checks && checks.length > 0 && checks.every((c) => c.ok === true);
+}
+
+// Circuit breaker (mirrors public.maintenance_auto_release_circuit).
+export function shouldOpenCircuit(recentFailures: number, threshold: number): boolean {
+  return recentFailures >= Math.max(1, threshold);
 }
 
 // Retry schedule (minutes) for undelivered dispatches; null → dead.
@@ -285,8 +404,9 @@ export function buildAgentPacket(input: {
     },
     rules: {
       automatic: AUTOMATIC_EXECUTION_CLASSES,
-      approval_required_for: ["execute_live", "release"],
-      never: ["publish", "deploy", "approve", "release", "complete"],
+      approval_required_for: ["execute_live", "release_unless_server_qualified"],
+      auto_release: "Only after op qualify_release returns eligible=true; then publish, report deploy_result, and verify.",
+      never: ["approve", "publish_unqualified", "deploy_unqualified", "release_unqualified", "complete_unverified", "operational_data_change"],
     },
     requester_scopes: input.requesterScopes ?? [],
     untrusted_member_content: input.memberTexts.filter(Boolean).map((t) => redactPii(String(t)).slice(0, 4000)),

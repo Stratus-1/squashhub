@@ -2141,3 +2141,10 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Corrected Phase 2 so clear low-risk bugs can be fixed AND released automatically (no Super Admin approval) when objective gates pass: `evaluateAutoRelease` in `maintenance-policy.ts` (≤5 code files, ≤200 lines, allowlisted `src/` paths only, no protected paths/areas, regression test, tests/build/typecheck/lint clean, commit ref, post-deploy check, reproduced, within requester scope, daily cap).
 - New agent ops `qualify_release`, `deploy_result`, `verify`; DB guard `maintenance_auto_release_ok` lets automated actors release/complete only with a qualified, deployed, verified low-risk release; circuit breaker trigger disables auto-release after 2 failed auto-releases in 7 days.
 - Third switch `auto_release_enabled` (default OFF, blocked by stage lock). UI: "Auto-fixed" view + qualification/tests/deploy/verification/rollback details.
+
+## 2026-09-26 — Nelspruit opening balances posted
+- Source: old-system "Customer Balances – Days Outstanding" report dated 26/09/2026.
+- Treatment: Dr Debtors (per member) / Cr Opening Balance Equity (not membership income — the income was earned in the old books). Positive balances are unpaid `club_member_fee_payments` rows with `fee_type='opening_balance'` (payable in-app); credits are direct journal pairs "Opening credit balance".
+- 42 members posted (R50,051.06 net). Excluded non-members: Tuck Shop Sales, Squash Rush, Du Toit-Smuts Prokureurs. 17 report names had no SquashHub member and were not posted.
+- Removed duplicates: Lucas Esterhuizen R150 overpayment (already in old books), Rachel Gates doubled R60 Yoco ledger entry. Kept Family Doubles payments, Vian Crafford R260 credit, visitor fee.
+- Note: `fee_type='opening_balance'` is also used at St John's — always scope updates by club.

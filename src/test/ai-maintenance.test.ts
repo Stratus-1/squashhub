@@ -46,7 +46,7 @@ describe("maintenance policy", () => {
     expect(finaliseRisk("low", "high")).toBe("high");
     expect(finaliseRisk(undefined, "critical")).toBe("high");
     expect(finaliseRisk("high", "low")).toBe("high");
-t  });
+  });
 });
 
 describe("case state machine mirror", () => {
@@ -62,7 +62,7 @@ describe("case state machine mirror", () => {
     expect(canTransition("completed", "new")).toBe(false);
     expect(canTransition("new", "released")).toBe(false);
     expect(canTransition("analysing", "awaiting_approval")).toBe(false);
-t  });
+  });
 
   it("blocks automated actors on human-only statuses", () => {
     for (const s of HUMAN_ONLY_STATUSES) {

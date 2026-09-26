@@ -2111,3 +2111,5 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - SportyHQ (Western Province) has three unlabeled competitions; numbered-team divisions (DBV 1, FH 2) are Masters, lettered (DBV A) are open Men/Ladies.
 - `isMastersDivision` in `src/hooks/use-league-strength.ts` detects numbered-team divisions; Masters rubbers get `levelOffset = MASTERS_LEVEL_OFFSET (2)` so a Masters 1st League counts ~2 open-league levels weaker in `computeLeagueStrength` (`src/lib/ladder/league-strength.ts`).
 - Tests added in `src/test/ladder-league-strength.test.ts` (14 passing).
+
+- 2026-09-26: Visitor fees were recorded but never posted to the GL, so they did not show on My Account statements. Journal trigger now posts "Visitor fee –" / "Visitor court fee –" system charges (debtors / visitor_income); missing ones backfilled.

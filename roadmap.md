@@ -122,3 +122,8 @@
 
 - [x] Diamond League (Uitsig) (builder+template done; live game creation for cross-pool stages pending) Beta Builder template: pair source (seed vs singles re-rank) UNRESOLVED/configurable; A+B, C+D crossover mirrored; 5 Wednesdays from 7 Oct; 8 named pools; open; 48 cap + waitlist; scoring/final/W4-W5 unresolved
 - [x] Send confirmation email to Hermanus Squash Test (jakkies@gmail.com) that he is approved + admin
+
+## Duplicate-registration safeguard (26 Sep 2026)
+- [x] National people/member search by name + SA cell before every self-registration; phone-verified (SMS code) recovery; no auto-merge
+- [ ] Live SMS code round-trip on a real test number (needs a number the owner controls)
+- [ ] AI Maintenance Manager Phase 1 (plan drafted; awaiting approval)

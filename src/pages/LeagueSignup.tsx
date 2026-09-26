@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useDuplicateGuard } from "@/components/auth/DuplicateAccountGuard";
 import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
@@ -140,9 +141,13 @@ export default function LeagueSignup() {
     return true;
   }, [hit, email, password, accept, isCaptain, nsaUser, nsaPass]);
 
+  const dup = useDuplicateGuard({ onUseEmail: (e) => setEmail(e) });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit || !hit) return;
+    // Claims the NSA record; only a different existing login counts as a duplicate.
+    if (!hit.already_claimed && phone.trim() && !(await dup.guard({ phone, claimedOnly: true }))) return;
     setSubmitting(true);
     try {
       const wantsCaptain = hit.already_claimed || isCaptain;
@@ -203,6 +208,7 @@ export default function LeagueSignup() {
 
   return (
     <div className="min-h-screen relative bg-gradient-to-b from-background to-primary/5 p-4 md:p-8 pb-24">
+      {dup.dialog}
       <BackToHomeLink />
       <SEO
         title="Free signup for NSA league players | SquashHub"

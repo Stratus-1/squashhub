@@ -22,6 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
+import { useDuplicateGuard } from "@/components/auth/DuplicateAccountGuard";
 import { VisitorPassCard } from "@/components/VisitorPassCard";
 import { useMyVisitorPass, useVisitorPassOptions } from "@/hooks/use-visitor-pass";
 import {
@@ -29,12 +30,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type DuplicateHint = {
-  masked_name: string;
-  masked_email: string | null;
-  match_kind: string;
-  is_claimed: boolean;
-};
 
 
 export default function ClubAuth() {
@@ -91,20 +86,13 @@ export default function ClubAuth() {
   const [newConfirm, setNewConfirm] = useState("");
   const [newAcceptTerms, setNewAcceptTerms] = useState(false);
 
-  // "Are you not already a member?" prompt shown when the club roster already
-  // holds someone with the same email, phone, or first+last name.
-  const [dupHits, setDupHits] = useState<DuplicateHint[] | null>(null);
-  const dupResolver = useRef<((proceed: boolean) => void) | null>(null);
-  const askDuplicate = (hits: DuplicateHint[]) =>
-    new Promise<boolean>((resolve) => {
-      dupResolver.current = resolve;
-      setDupHits(hits);
-    });
-  const answerDuplicate = (proceed: boolean) => {
-    setDupHits(null);
-    dupResolver.current?.(proceed);
-    dupResolver.current = null;
-  };
+  // Platform-wide duplicate-registration safeguard (national people search +
+  // phone-verified recovery). Runs before every self-registration path.
+  const dup = useDuplicateGuard({
+    onUseEmail: (email) => { setLoginEmail(email); setActiveTab("login"); },
+    onExistingMember: () => setActiveTab("existing"),
+    resetPassword,
+  });
 
   // Visitor form
   const [visitorFirstName, setVisitorFirstName] = useState("");
@@ -503,6 +491,8 @@ export default function ClubAuth() {
     if (leaguePassword !== leagueConfirm) { toast.error("Passwords do not match"); return; }
     if (!leagueAcceptTerms) { toast.error("Please accept the Terms of Use and Privacy Policy"); return; }
     if (!club?.id) { toast.error("Club not loaded — please refresh"); return; }
+    // Claims an existing record, so only another existing LOGIN is a duplicate.
+    if (!(await dup.guard({ phone, claimedOnly: true }))) return;
 
     setLoading(true);
 
@@ -702,24 +692,7 @@ export default function ClubAuth() {
     // (federation/SportyHQ data) and people forget which email they signed up
     // with, so match on email, phone and first+last name, then ask the person
     // to confirm they are not already on the roster.
-    if (club?.id) {
-      try {
-        const { data: matches } = await (supabase as any).rpc("check_member_duplicate_hint", {
-          _club_id: club.id,
-          _name: name,
-          _email: email,
-          _phone: phone || "",
-        });
-        const hits = (matches || []) as DuplicateHint[];
-        if (hits.length > 0) {
-          const proceed = await askDuplicate(hits);
-          if (!proceed) return;
-        }
-      } catch (e) {
-        console.warn("dup check failed", e);
-      }
-    }
-
+    if (!(await dup.guard({ name, phone }))) return;
 
     setLoading(true);
     const nowIso = new Date().toISOString();
@@ -763,6 +736,7 @@ export default function ClubAuth() {
     if (askVisitorHomeClub && (!homeClub || homeClub.length < 2)) { toast.error("Please enter your home club name"); return; }
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
     if (!club?.id) { toast.error("Club not found"); return; }
+    if (!(await dup.guard({ name: `${firstName} ${lastName}`, phone }))) return;
 
     setLoading(true);
     try {
@@ -818,6 +792,7 @@ export default function ClubAuth() {
     if (!lastName) { toast.error("Please enter your last name before continuing with Google"); return; }
     if (askVisitorHomeClub && !homeClub) { toast.error("Please select your home club before continuing with Google"); return; }
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) { toast.error("Please enter a valid phone number"); return; }
+    if (!(await dup.guard({ name: `${firstName} ${lastName}`, phone }))) return;
 
     // Persist details across the Google OAuth round-trip so we can auto-create
     // the visitor row as soon as the user returns from Google.
@@ -1900,48 +1875,7 @@ export default function ClubAuth() {
         <PoweredBySquashHub />
       </motion.div>
 
-      <AlertDialog open={!!dupHits} onOpenChange={(o) => { if (!o) answerDuplicate(false); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you already a member here?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2 text-sm">
-                <p>
-                  {club?.name || "This club"} already has a record that looks like you:
-                </p>
-                <ul className="space-y-1">
-                  {(dupHits || []).map((h, i) => (
-                    <li key={i} className="rounded border p-2">
-                      <span className="font-medium">{h.masked_name}</span>
-                      {h.masked_email ? <> — signed up with <span className="font-medium">{h.masked_email}</span></> : null}
-                      <span className="block text-xs text-muted-foreground">
-                        {h.match_kind === "email"
-                          ? "Same email address"
-                          : h.match_kind === "phone"
-                            ? "Same phone number"
-                            : "Same first and last name"}
-                        {h.is_claimed ? " • already has a login" : " • no login yet"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p>
-                  If that is you, please sign in with that email instead (or use “Forgot password”) so your
-                  history, member number and fees stay on one account.
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { answerDuplicate(false); setActiveTab("login"); }}>
-              That's me — take me to sign in
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => answerDuplicate(true)}>
-              No, I'm a different person — continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {dup.dialog}
     </div>
   );
 }

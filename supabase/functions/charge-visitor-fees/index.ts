@@ -17,9 +17,11 @@ Deno.serve(async (req) => {
   )
 
   try {
+    // Booking dates/times are stored in club-local time (Africa/Johannesburg).
     const now = new Date()
-    const today = now.toISOString().slice(0, 10)
-    const nowTime = now.toISOString().slice(11, 19) // HH:MM:SS UTC
+    const saNow = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+    const today = saNow.toISOString().slice(0, 10)
+    const nowTime = saNow.toISOString().slice(11, 19) // HH:MM:SS local
 
     const { data: bookings, error } = await supabaseAdmin
       .from('bookings')

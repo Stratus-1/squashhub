@@ -74,6 +74,9 @@ const Body = z.discriminatedUnion("op", [
     maxDispatchesPerDay: z.number().int().min(0).max(200).optional(),
     maxActiveCases: z.number().int().min(0).max(20).optional(),
     maxInstructionsPerDay: z.number().int().min(0).max(100).optional(),
+    autoReleaseEnabled: z.boolean().optional(),
+    maxAutoReleasesPerDay: z.number().int().min(0).max(20).optional(),
+    resetCircuit: z.boolean().optional(),
   }),
   z.object({
     op: z.literal("ask_member"),
@@ -298,8 +301,12 @@ Deno.serve(async (req) => {
         // while the Stage 0 lock is set.
         const patch: Record<string, unknown> = { updated_by: userId };
         if (body.dispatchMode !== undefined) patch.dispatch_mode = body.dispatchMode;
-        if (body.dispatchMode === "off") patch.lovable_instructions_enabled = false;
+        if (body.dispatchMode === "off") { patch.lovable_instructions_enabled = false; patch.auto_release_enabled = false; }
         if (body.lovableInstructionsEnabled !== undefined && body.dispatchMode !== "off") patch.lovable_instructions_enabled = body.lovableInstructionsEnabled;
+        if (body.lovableInstructionsEnabled === false || (body.dispatchMode && body.dispatchMode !== "pilot")) patch.auto_release_enabled = false;
+        if (body.autoReleaseEnabled !== undefined && patch.auto_release_enabled === undefined) patch.auto_release_enabled = body.autoReleaseEnabled;
+        if (body.resetCircuit) { patch.auto_release_circuit_open = false; patch.auto_release_circuit_reason = null; patch.auto_release_circuit_opened_at = null; }
+        if (body.maxAutoReleasesPerDay !== undefined) patch.max_auto_releases_per_day = body.maxAutoReleasesPerDay;
         if (body.pilotAllowlist) patch.pilot_allowlist = body.pilotAllowlist;
         if (body.maxDispatchesPerDay !== undefined) patch.max_dispatches_per_day = body.maxDispatchesPerDay;
         if (body.maxActiveCases !== undefined) patch.max_active_cases = body.maxActiveCases;
@@ -312,7 +319,7 @@ Deno.serve(async (req) => {
         await admin.from("audit_events").insert({
           club_id: null, actor_user_id: userId, entity_type: "maintenance_agent_settings", entity_id: null,
           action: "maintenance_agent_settings_updated",
-          reason: JSON.stringify({ dispatch_mode: data?.dispatch_mode, lovable: data?.lovable_instructions_enabled }).slice(0, 500),
+          reason: JSON.stringify({ dispatch_mode: data?.dispatch_mode, lovable: data?.lovable_instructions_enabled, auto_release: data?.auto_release_enabled, circuit_open: data?.auto_release_circuit_open }).slice(0, 500),
         });
         return json({ settings: data });
       }

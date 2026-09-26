@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
 
     const { data: me } = await admin.from("profiles").select("name, email").eq("id", userId).maybeSingle();
     const actorLabel = (me?.name ?? me?.email ?? "Super Admin").toString();
-    const actorType = "super_admin" as const嫌;
+    const actorType = "super_admin" as const;
 
     const loadCase = async (id: string) => {
       const { data, error } = await admin.from("maintenance_cases").select("*").eq("id", id).maybeSingle();

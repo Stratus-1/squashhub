@@ -379,8 +379,8 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
       {(fees.length > 0 || (glBilled ?? 0) > 0) && (
         <div className="border-t border-border pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] font-medium text-muted-foreground shrink-0">Fees payable by the member:</span>
-            <MemberPaymentStatus fees={fees} glBilled={glBilled} glPaid={glPaid} />
+            <span className="text-[10px] font-medium text-muted-foreground shrink-0">Balance owed by the member:</span>
+            <MemberPaymentStatus fees={fees} glBilled={glBilled} glPaid={glPaid} onOpenStatement={() => navigate(`?tab=finance&statement=${m.id}`)} />
           </div>
         </div>
       )}

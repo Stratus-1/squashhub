@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useDuplicateGuard } from "@/components/auth/DuplicateAccountGuard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,12 +70,17 @@ export function NoClubAccess() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
+  // Same platform-wide duplicate safeguard as every other registration path.
+  const dup = useDuplicateGuard({ onUseEmail: () => supabase.auth.signOut() });
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!club?.id) { toast.error("Club not found"); return; }
     if (firstName.trim().length < 2) { toast.error("Please enter your first name"); return; }
     if (lastName.trim().length < 2) { toast.error("Please enter your last name"); return; }
     if (homeClub.trim().length < 2) { toast.error("Please enter your home club"); return; }
+
+    if (!(await dup.guard({ name: `${firstName.trim()} ${lastName.trim()}`, phone }))) return;
 
     setLoading(true);
     try {

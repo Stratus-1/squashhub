@@ -491,6 +491,8 @@ export default function ClubAuth() {
     if (leaguePassword !== leagueConfirm) { toast.error("Passwords do not match"); return; }
     if (!leagueAcceptTerms) { toast.error("Please accept the Terms of Use and Privacy Policy"); return; }
     if (!club?.id) { toast.error("Club not loaded — please refresh"); return; }
+    // Claims an existing record, so only another existing LOGIN is a duplicate.
+    if (!(await dup.guard({ phone, claimedOnly: true }))) return;
 
     setLoading(true);
 

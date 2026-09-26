@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useDuplicateGuard } from "@/components/auth/DuplicateAccountGuard";
 import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
@@ -140,9 +141,13 @@ export default function LeagueSignup() {
     return true;
   }, [hit, email, password, accept, isCaptain, nsaUser, nsaPass]);
 
+  const dup = useDuplicateGuard({ onUseEmail: (e) => setEmail(e) });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit || !hit) return;
+    // Claims the NSA record; only a different existing login counts as a duplicate.
+    if (!hit.already_claimed && phone.trim() && !(await dup.guard({ phone, claimedOnly: true }))) return;
     setSubmitting(true);
     try {
       const wantsCaptain = hit.already_claimed || isCaptain;

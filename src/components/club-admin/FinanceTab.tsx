@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
 import { postJournal } from "@/lib/post-journal";
 import { CheckCircle2, XCircle, Clock, Wallet, BookOpen, Plus, ListTree, Send, AlertTriangle, Trash2, Undo2, Receipt, MoreHorizontal, Search, ArrowLeft, CalendarDays, FileText, Layers, BarChart3, ChevronRight, Building2, Banknote, Landmark } from "lucide-react";
@@ -162,6 +163,16 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [statementMemberId, setStatementMemberId] = useState<string>("");
   const [statementOpen, setStatementOpen] = useState(false);
   const [statementSearch, setStatementSearch] = useState("");
+  const [financeParams, setFinanceParams] = useSearchParams();
+  useEffect(() => {
+    const id = financeParams.get("statement");
+    if (!id) return;
+    setStatementMemberId(id);
+    setStatementOpen(true);
+    const next = new URLSearchParams(financeParams);
+    next.delete("statement");
+    setFinanceParams(next, { replace: true });
+  }, [financeParams, setFinanceParams]);
   const [balancesOpen, setBalancesOpen] = useState(false);
   const [balancesFilter, setBalancesFilter] = useState<"outstanding" | "credit" | "all">("outstanding");
   const [balancesSearch, setBalancesSearch] = useState("");

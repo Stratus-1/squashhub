@@ -158,7 +158,7 @@ Supabase currently owns the dominant data and backend path. Migrate incrementall
 - Schema changes use new migrations and generated types are synchronized.
 - Tests, lint, and build have run as appropriate.
 - `ARCHITECTURE.md` is updated for changed boundaries or migration paths.
-- Reusable tournament templates live in `tournament_templates` (club-scoped) and store definitions with instance fields stripped via `toTemplate`; why: fixed logic vs per-event settings stay separate.
+- Ladder refinement preserves unsaved sibling proposals and displays the category used to sort; why: saves must be repeatable and evidence truthful.
 - Sessions (date/court/time blocks) are separate from stages: a stage joins an earlier stage's session only via explicit `Stage.sameSessionAs`; `sessionPlan` adds sequential durations; compound ties stay `Stage.tieFormat` rubbers; why: several stages can share one evening without being flagged as overlapping.
 - Pool-v-pool league stages keep pool rotation (`legs`) and in-tie pairing (`tieFormat.pairing`: position/crossover/custom) as separate fields, one discipline per stage; rules live in `src/lib/smart-builder/ties.ts`; why: pairing must never be inferred from 'round robin'.
 - Match scoring resolves tournament → stage (`Stage.scoring`) → round (`Stage.roundScoring`) in `src/lib/smart-builder/scoring.ts`; a Bells cap drives schedule minutes and missing caps block Create; why: stages in one session can use different scoring.

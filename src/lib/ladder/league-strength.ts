@@ -136,6 +136,23 @@ export interface RefineResult<T extends RefinableMember> {
 }
 
 /**
+ * Rebind a pending proposed order to freshly loaded member rows without losing
+ * that order. New members are appended; members no longer present are removed.
+ */
+export function reconcilePendingOrder<T extends RefinableMember>(
+  pending: T[] | null,
+  fresh: T[]
+): T[] | null {
+  if (!pending) return null;
+  const freshById = new Map(fresh.map((member) => [member.id, member]));
+  const retained = pending
+    .map((member) => freshById.get(member.id))
+    .filter((member): member is T => Boolean(member));
+  const retainedIds = new Set(retained.map((member) => member.id));
+  return [...retained, ...fresh.filter((member) => !retainedIds.has(member.id))];
+}
+
+/**
  * Re-order only the members that have league history, keeping every member
  * without history in the exact slot they already hold. This keeps the ladder
  * stable for social members while sorting the league players accurately.

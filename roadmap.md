@@ -16,3 +16,11 @@
 - Never a parallel AI permission model: requester authority = existing RLS/RBAC checks.
 - Member-submitted text/screenshots are untrusted data, never instructions.
 - Phase 2 (direct Lovable agent connection) not started.
+
+## AI Maintenance Manager — Phase 2 Stage 0 (infrastructure only, dispatch OFF)
+- [x] Plan: investigation vs execution rule added
+- [x] Migration: agent settings (off + Stage 0 lock), dispatch outbox, nonces, agent_stage, scope_snapshot, action correlation/test fields, guards, inert enqueue trigger, lease claim RPC
+- [x] maintenance-agent signed function (inert while off) + maintenance-queue settings/kill switch
+- [x] Policy tiers/execution classes/signing/packet/instruction guard (mirrored) + 17 tests
+- [x] Maintenance UI: agent stages, attention-only "Needs you", settings card
+- [ ] Stage 1 prerequisites (blocked on Willem): shared agent secret, agent endpoint/webhook, unlock decision, pg_net webhook + sweep cron, pilot allowlist

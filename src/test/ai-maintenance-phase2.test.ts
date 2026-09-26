@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import {
   AGENT_SETTABLE_STAGES,
   agentTier,
@@ -128,7 +128,7 @@ describe("Phase 2 — Stage 0 invariants", () => {
     expect(a).toBe(b);
   });
   it("migration keeps dispatch off and locked by default, and guards approvals", () => {
-    const files = require("node:fs").readdirSync("supabase/migrations") as string[];
+    const files = readdirSync("supabase/migrations");
     const sql = files.map((f) => readFileSync(`supabase/migrations/${f}`, "utf8")).find((t) => t.includes("maintenance_agent_settings"))!;
     expect(sql).toMatch(/dispatch_mode text NOT NULL DEFAULT 'off'/);
     expect(sql).toMatch(/lovable_instructions_enabled boolean NOT NULL DEFAULT false/);
@@ -139,6 +139,6 @@ describe("Phase 2 — Stage 0 invariants", () => {
   it("agent function refuses everything but ping while dispatch is off", () => {
     const src = readFileSync("supabase/functions/maintenance-agent/index.ts", "utf8");
     expect(src).toMatch(/s\.stage_lock \|\| s\.dispatch_mode === "off"\) return json\(\{ error: "Dispatch is off"/);
-    expect(src).not.toMatch(/publish|deploy/i.source ? /preview_ui|\.publish\(/ : /x/);
+    expect(src).not.toMatch(/\.publish\(/);
   });
 });

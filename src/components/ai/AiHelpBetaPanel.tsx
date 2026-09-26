@@ -58,7 +58,7 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
   const push = (t: Turn) => setTurns((v) => [...v, t]);
   const patch = (i: number, p: Partial<Turn>) => setTurns((v) => v.map((t, j) => (j === i ? { ...t, ...p } : t)));
 
-  const onFiles = async (files: FileList | null) => {
+  const onFiles = async (files: FileList | File[] | null) => {
     if (!files || !user?.id) return;
     setUploading(true);
     try {
@@ -250,7 +250,11 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-        placeholder="Type, or tap the mic and speak…"
+        onPaste={(e) => {
+          const imgs = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+          if (imgs.length) { e.preventDefault(); void onFiles(imgs); }
+        }}
+        placeholder="Type, paste a screenshot, or tap the mic and speak…"
         rows={3}
         className="text-[13px]"
       />

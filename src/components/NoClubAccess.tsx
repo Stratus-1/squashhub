@@ -113,6 +113,7 @@ export function NoClubAccess() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
+      {dup.dialog}
       <Card className="max-w-md w-full p-6 space-y-4">
         <div className="flex items-center gap-2 text-amber-600">
           <ShieldAlert className="w-5 h-5" />

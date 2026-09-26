@@ -208,6 +208,7 @@ export default function LeagueSignup() {
 
   return (
     <div className="min-h-screen relative bg-gradient-to-b from-background to-primary/5 p-4 md:p-8 pb-24">
+      {dup.dialog}
       <BackToHomeLink />
       <SEO
         title="Free signup for NSA league players | SquashHub"

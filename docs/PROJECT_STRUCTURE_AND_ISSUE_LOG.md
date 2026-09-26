@@ -2113,3 +2113,7 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Tests added in `src/test/ladder-league-strength.test.ts` (14 passing).
 
 - 2026-09-26: Visitor fees were recorded but never posted to the GL, so they did not show on My Account statements. Journal trigger now posts "Visitor fee –" / "Visitor court fee –" system charges (debtors / visitor_income); missing ones backfilled.
+
+### 2026-09-26 — Duplicate registrations (forgotten email)
+- Before: `check_member_duplicate_hint` only searched the current club's roster, only on "New member" sign-up, showed partial emails before any verification, and let people click past it. Visitors, visitor + Google, the league-number sign-up, /league and the join-a-club screen had no check, and the national `people` records were never searched.
+- Fix: the `account-recovery` backend function plus a `person_match_candidates` search that only the backend can run. It searches every club and national player record. Same name + same cell (last 9 digits) means recover the existing account. Same cell only is a strong match, but families may continue. Same name only is a soft notice and never blocks. Emails are shown only after an SMS code to the number on file (hashed, 10 min, 5 attempts, rate-limited). Nothing is merged automatically. All paths use `useDuplicateGuard`. Tests: src/test/duplicate-person.test.ts.

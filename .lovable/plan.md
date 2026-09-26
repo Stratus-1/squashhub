@@ -14,18 +14,41 @@ Phase 1 only extends what exists today. The current assistant (ask / propose / c
 - **Lovable:** the project is already driven through Lovable's supported agent interface. This is confirmed and is the Phase 2 channel.
 
 ## B. Classify first, escalate second
-The existing `ai-help` loop already decides on each turn. Phase 1 makes that decision explicit and records it as a new `triage` value on the interaction:
+The existing `ai-help` loop already decides on each turn. Phase 1 makes that decision explicit and records it as a new `triage` value on the interaction.
 
+### Requester-authority rule (core principle)
+**AI Assistance inherits the requester's existing SquashHub permissions and organisational scope. It never elevates them.**
+
+`effective_AI_permissions = requester's existing permissions and scope`
+
+- A correction is not routed upward merely because AI performs it. If the requester already has authority to make that correction manually, the assistant may investigate and — after the normal confirmation where appropriate — perform it on their behalf, within the same scope and existing safeguards. Example: a club admin managing their club's tournament asks for a participant correction. If that admin could do it in the normal UI, the assistant's existing propose → Confirm flow does it. It does not wait for Super Admin.
+- Existing authorisation stays the single source of truth: the same role, `club_permissions` slug, scope and RLS checks that the manual UI uses. **No parallel AI permission model** that could drift.
+- The AI never elevates the requester:
+  - club admin → limited to their authorised club(s) and functions
+  - association/regional admin → limited to their association scope
+  - federation admin → limited to federation permissions
+  - member → limited to member-authorised actions
+  - Super Admin → retains system-wide powers
+- Audit records both the human requester and that AI executed the action on their behalf.
+
+### Decision routing
+1. Question or guidance → answer directly.
+2. Correctable operational / data / configuration issue **and** the requester already has permission → propose/execute through the existing safe action + confirm flow on their behalf. No Super Admin escalation solely because AI performed it.
+3. Action exceeds the requester's permission or scope → escalate to the appropriate authorised admin level (club or association or federation admin), not automatically Super Admin.
+4. Genuine software defect → maintenance case and the development workflow.
+5. Sensitive, system-wide, destructive, security/role change, schema migration, or cross-organisation → the appropriate approval gate, with Super Admin where required.
+
+### Triage table
 | Triage | Handling | Maintenance case? |
 |---|---|---|
 | `question` (how-to, misunderstanding, guidance) | Answered in the assistant as today | No |
-| `safe_action` (config/data fixable by an existing catalogue action) | Existing propose → Confirm flow | No, unless it fails |
+| `safe_action` (correction the requester is already authorised to make, or a config/data fix in the existing catalogue) | Existing propose → Confirm flow, under the requester's own permissions | No, unless it fails |
 | `bug` (behaviour contradicts how SquashHub should work, reproduced or verified from live data) | `report_bug` → fingerprint de-duplication | Yes: one case per fingerprint |
 | `feature_request` | Recorded, member told it's logged | Yes, kind `feature`, never auto-worked |
 | `needs_info` (ambiguous) | Assistant asks the member | Only if it later becomes a bug |
-| `support` (needs a person, e.g. merges, removals) | Ticket as today | Yes, kind `support_task`, sensitive |
+| `support` (needs a person, e.g. merges, removals — or action exceeds requester scope) | Ticket routed to the appropriate admin level | Yes, kind `support_task`, sensitive |
 
-Example: Susan asks how to suspend a member, so she gets an answer and no case opens. Susan reports that the winners are wrong and live data confirms it, so a bug is logged and a case is opened or linked.
+Example: Susan asks how to suspend a member, so she gets an answer and no case opens. A club admin asks to replace a player in their own tournament, and the assistant does it under that admin's authority after confirmation. Susan reports that the winners are wrong and live data confirms it, so a bug is logged and a case is opened or linked.
 
 ## C. Architecture
 ```text
@@ -147,6 +170,7 @@ Every proposed action carries a `risk` value and a `sensitive_areas` list. The p
 
 ## M. Risks and concerns
 - **Misclassification:** a bug could be treated as a question, or the reverse. Mitigations: conservative defaults (unsure means `needs_info`), an unsure sensitivity means approval, and a weekly sample in the Needs you view.
+- **Authority misuse:** a requester could talk the AI into acting outside their scope. Mitigated because every action re-runs the same role/scope/permission checks the manual UI uses — the AI has no power the person lacks, and confirmation previews state the scope.
 - **Scope creep for "low risk":** mitigated by the allowlist being data plus server enforcement, not the agent's judgement.
 - **Prompt injection through member content:** mitigated by delimiting, server re-validation and no direct privileges.
 - **POPIA:** content goes to an external agent. Mitigated by redaction and short-lived links.
@@ -158,6 +182,7 @@ Every proposed action carries a `risk` value and a `sensitive_areas` list. The p
 - Bug fingerprint: many reports make one case with many requesters.
 - Policy: low-risk reversible work auto-progresses but stops at `ready_for_release`; sensitive or medium/high work requires approval; an agent cannot lower sensitivity.
 - The state machine refuses invalid transitions.
+- **Requester authority:** the assistant executes an action the requester is authorised for without escalating; it refuses the same action for a requester without authority; the audit row names both the requester and the AI acting on their behalf.
 - Bug status stays in sync with the case.
 - Requester notices contain no technical detail.
 - Redaction strips personal data.

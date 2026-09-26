@@ -8966,7 +8966,10 @@ export type Database = {
           approved_by: string | null
           auto_allowed: boolean
           case_id: string
+          commit_sha: string | null
+          correlation_tag: string | null
           created_at: string
+          execution_class: string
           external_ref: string | null
           id: string
           instruction_text: string
@@ -8975,8 +8978,11 @@ export type Database = {
           result_summary: string | null
           risk: string
           sensitive_areas: string[]
+          sent_at: string | null
+          sent_hash: string | null
           state: string
           target: string
+          tests: Json
           updated_at: string
         }
         Insert: {
@@ -8984,7 +8990,10 @@ export type Database = {
           approved_by?: string | null
           auto_allowed?: boolean
           case_id: string
+          commit_sha?: string | null
+          correlation_tag?: string | null
           created_at?: string
+          execution_class?: string
           external_ref?: string | null
           id?: string
           instruction_text: string
@@ -8993,8 +9002,11 @@ export type Database = {
           result_summary?: string | null
           risk?: string
           sensitive_areas?: string[]
+          sent_at?: string | null
+          sent_hash?: string | null
           state?: string
           target?: string
+          tests?: Json
           updated_at?: string
         }
         Update: {
@@ -9002,7 +9014,10 @@ export type Database = {
           approved_by?: string | null
           auto_allowed?: boolean
           case_id?: string
+          commit_sha?: string | null
+          correlation_tag?: string | null
           created_at?: string
+          execution_class?: string
           external_ref?: string | null
           id?: string
           instruction_text?: string
@@ -9011,8 +9026,11 @@ export type Database = {
           result_summary?: string | null
           risk?: string
           sensitive_areas?: string[]
+          sent_at?: string | null
+          sent_hash?: string | null
           state?: string
           target?: string
+          tests?: Json
           updated_at?: string
         }
         Relationships: [
@@ -9024,6 +9042,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      maintenance_agent_nonces: {
+        Row: {
+          nonce: string
+          seen_at: string
+        }
+        Insert: {
+          nonce: string
+          seen_at?: string
+        }
+        Update: {
+          nonce?: string
+          seen_at?: string
+        }
+        Relationships: []
+      }
+      maintenance_agent_settings: {
+        Row: {
+          dispatch_mode: string
+          id: boolean
+          lovable_instructions_enabled: boolean
+          max_active_cases: number
+          max_dispatches_per_day: number
+          max_instructions_per_day: number
+          pilot_allowlist: string[]
+          stage_lock: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          dispatch_mode?: string
+          id?: boolean
+          lovable_instructions_enabled?: boolean
+          max_active_cases?: number
+          max_dispatches_per_day?: number
+          max_instructions_per_day?: number
+          pilot_allowlist?: string[]
+          stage_lock?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          dispatch_mode?: string
+          id?: boolean
+          lovable_instructions_enabled?: boolean
+          max_active_cases?: number
+          max_dispatches_per_day?: number
+          max_instructions_per_day?: number
+          pilot_allowlist?: string[]
+          stage_lock?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       maintenance_analyses: {
         Row: {
@@ -9094,6 +9166,7 @@ export type Database = {
           id: string
           interaction_id: string | null
           notified_at: string | null
+          scope_snapshot: Json
           updated_at: string
           user_id: string
         }
@@ -9103,6 +9176,7 @@ export type Database = {
           id?: string
           interaction_id?: string | null
           notified_at?: string | null
+          scope_snapshot?: Json
           updated_at?: string
           user_id: string
         }
@@ -9112,6 +9186,7 @@ export type Database = {
           id?: string
           interaction_id?: string | null
           notified_at?: string | null
+          scope_snapshot?: Json
           updated_at?: string
           user_id?: string
         }
@@ -9134,6 +9209,7 @@ export type Database = {
       }
       maintenance_cases: {
         Row: {
+          agent_stage: string | null
           bug_report_id: string | null
           closed_at: string | null
           club_id: string | null
@@ -9154,6 +9230,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agent_stage?: string | null
           bug_report_id?: string | null
           closed_at?: string | null
           club_id?: string | null
@@ -9174,6 +9251,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agent_stage?: string | null
           bug_report_id?: string | null
           closed_at?: string | null
           club_id?: string | null
@@ -9220,6 +9298,62 @@ export type Database = {
             columns: ["ticket_id"]
             isOneToOne: true
             referencedRelation: "support_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_dispatches: {
+        Row: {
+          attempt: number
+          case_id: string
+          claimed_by: string | null
+          created_at: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          lease_expires_at: string | null
+          next_attempt_at: string
+          packet: Json | null
+          packet_hash: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          attempt?: number
+          case_id: string
+          claimed_by?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          lease_expires_at?: string | null
+          next_attempt_at?: string
+          packet?: Json | null
+          packet_hash?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt?: number
+          case_id?: string
+          claimed_by?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          lease_expires_at?: string | null
+          next_attempt_at?: string
+          packet?: Json | null
+          packet_hash?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_dispatches_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_cases"
             referencedColumns: ["id"]
           },
         ]
@@ -17302,6 +17436,30 @@ export type Database = {
       maintenance_case_can_transition: {
         Args: { _from: string; _to: string }
         Returns: boolean
+      }
+      maintenance_claim_dispatch: {
+        Args: { _agent: string; _dispatch_id: string; _lease_minutes?: number }
+        Returns: {
+          attempt: number
+          case_id: string
+          claimed_by: string | null
+          created_at: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          lease_expires_at: string | null
+          next_attempt_at: string
+          packet: Json | null
+          packet_hash: string | null
+          state: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "maintenance_dispatches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       make_club_slug: { Args: { _name: string }; Returns: string }
       make_org_slug: {

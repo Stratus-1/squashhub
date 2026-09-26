@@ -48,13 +48,17 @@ agent ─► pulls redacted case packet ─► claims lease ─► works ─► 
 - **Fallback sweep:** runs every 5 minutes. It re-sends pending or expired rows with exponential backoff (1, 5, 15, 60 minutes). After 5 attempts the row becomes `dead` and the case is flagged "Agent unreachable". If the agent cannot take webhooks, it can instead poll `agent/next`, which uses the same lease rules.
 - **Lease:** the agent calls `claim`, which grants a 30-minute lease renewable by heartbeat. An expired lease returns the case to the queue. A second claim is refused, so the same case is never worked twice.
 
-## 4. Autonomy tiers (enforced on the server, never by the agent)
+## 4. Investigation vs execution (final rule)
+
+INVESTIGATE / DIAGNOSE / PREPARE / TEST may proceed automatically under safeguards at every risk level, including sensitive cases (redacted packet, code inspection, non-production code changes, tests/build). EXECUTE SENSITIVE LIVE CHANGE / PUBLISH / RELEASE always requires the appropriate approval: live/destructive data, payments/billing, rankings, results/structures, member merge/deletion, roles/security, organisation hierarchy, production schema/migrations, production secrets/config, cross-organisation history, publish/deploy/release, or anything beyond requester authority. Encoded as `execution_class` (investigate/prepare/test vs execute_live/release).
+
+## 4b. Autonomy tiers (enforced on the server, never by the agent)
 
 | Tier | Which cases | What happens |
 |---|---|---|
 | A | Question, or a fix one of AI Assistance's existing safe actions can make | Handled by AI Assistance under the requester's own permissions. No case is created. Unchanged from Phase 1 |
 | B | Low risk, no sensitive areas, allowlisted case type | The agent may investigate, instruct Lovable, change code and run tests automatically. The case stops at ready_for_release. No autonomous publish |
-| C | Medium or high risk, or any sensitive area (payments, merges/deletions, rankings, results/structures, permissions/roles, organisation hierarchy, schema/migrations, destructive work, anything affecting several organisations or history) | The agent may investigate and draft. Before any Lovable instruction the action waits in awaiting_approval, and it always needs approval again before release |
+| C | Medium or high risk, or any sensitive area — investigation, preparation and testing still run automatically; approval only gates live change/release (payments, merges/deletions, rankings, results/structures, permissions/roles, organisation hierarchy, schema/migrations, destructive work, anything affecting several organisations or history) | The agent may investigate and draft. Before any Lovable instruction the action waits in awaiting_approval, and it always needs approval again before release |
 | D | Needs more authority than the requester has | Sent to the right admin level (club, association, federation, or Super Admin), using existing role checks. The agent cannot raise anyone's permissions |
 
 Tier C also covers any Lovable instruction whose text mentions migrations, RLS, edge-function secrets or payments. `detectSensitiveAreas` catches these again when the instruction is submitted.

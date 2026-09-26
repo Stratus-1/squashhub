@@ -2130,3 +2130,9 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - `src/components/ai/MaintenancePanel.tsx`: "Needs you" default view + New/Needs info/In progress/Released/Closed views wired into `/admin/support`.
 - `requestStatus` accepts case status so My Requests shows "Needs more detail from you" without technical wording; `useMyAiRequests` fetches case statuses via the requester-scoped RPC.
 - Standing constraints held: no production publish; Super Admin never a bottleneck for requester-authority work; member content treated as untrusted data.
+
+## 2026-09-26 — AI Maintenance Manager Phase 2 Stage 0
+- Added inert direct-agent infrastructure: `maintenance_agent_settings` (dispatch off, `stage_lock` true — DB refuses enabling), `maintenance_dispatches` outbox (one active per case, lease via `maintenance_claim_dispatch`), `maintenance_agent_nonces`, `maintenance_cases.agent_stage`, action `execution_class`/correlation/sent hash/commit/tests.
+- Rule: investigate/prepare/test automatic at any risk; execute_live/release always need a named approver (DB trigger + policy).
+- New signed (HMAC, 5-min skew, single-use nonce) `maintenance-agent` function; refuses all but `ping` while off. Kill switch in Maintenance UI.
+- Member balance on Members list now shows single outstanding balance and opens the Member Statement (fixed a replace that silently failed).

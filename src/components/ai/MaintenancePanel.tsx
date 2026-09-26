@@ -16,11 +16,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { canTransition, SENSITIVE_LABELS, type MaintenanceStatus } from "@/lib/ai/maintenance-policy";
+import { AGENT_STAGE_LABELS, ATTENTION_STAGES, canTransition, SENSITIVE_LABELS, type AgentStage, type MaintenanceStatus } from "@/lib/ai/maintenance-policy";
+import { AgentSettingsCard } from "./AgentSettingsCard";
 
 type CaseRow = {
   id: string; kind: string; bug_report_id: string | null; ticket_id: string | null; club_id: string | null;
-  title: string; status: MaintenanceStatus; risk: string; sensitive_areas: string[]; requires_approval: boolean;
+  title: string; status: MaintenanceStatus; agent_stage?: AgentStage | null; risk: string; sensitive_areas: string[]; requires_approval: boolean;
   last_actor_type: string; technical_result: any; released_at: string | null; closed_at: string | null;
   created_at: string; updated_at: string; clubs?: { name: string } | null;
   maintenance_case_requesters?: { id: string; user_id: string; notified_at: string | null }[];
@@ -42,6 +43,23 @@ const VIEWS: { key: string; label: string; statuses: MaintenanceStatus[] }[] = [
   { key: "closed", label: "Failed / rejected", statuses: ["unable_to_resolve", "rejected"] },
 ];
 
+// "Needs you" = human decisions only: approvals, releases, and agent stages
+// that need attention (failed tests, ready for review, agent unreachable).
+function inView(v: { key: string; statuses: MaintenanceStatus[] }, c: CaseRow) {
+  if (v.key === "needs_you" && c.agent_stage && ATTENTION_STAGES.includes(c.agent_stage) && !["released", "completed", "rejected", "unable_to_resolve"].includes(c.status)) return true;
+  return v.statuses.includes(c.status);
+}
+
+function AgentStageBadge({ stage }: { stage?: AgentStage | null }) {
+  if (!stage) return null;
+  const attention = ATTENTION_STAGES.includes(stage);
+  return (
+    <Badge variant="secondary" className={cn("text-[10px]", attention ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25" : "bg-primary/10 text-primary border border-primary/20")}>
+      {AGENT_STAGE_LABELS[stage]}
+    </Badge>
+  );
+}
+
 const riskBadge: Record<string, string> = {
   low: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20",
   medium: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25",
@@ -53,6 +71,11 @@ const statusLabel: Record<string, string> = {
   fix_in_progress: "Fix in progress", awaiting_approval: "Awaiting approval", approved: "Approved",
   ready_for_release: "Ready for release", released: "Released", completed: "Completed",
   unable_to_resolve: "Unable to resolve", rejected: "Rejected",
+};
+
+const EXEC_LABEL: Record<string, string> = {
+  investigate: "Investigate (automatic)", prepare: "Prepare fix (automatic)", test: "Test (automatic)",
+  execute_live: "Live change — approval required", release: "Release — approval required",
 };
 
 const ACTION_STATE_LABEL: Record<string, string> = {
@@ -96,7 +119,7 @@ export function MaintenancePanel() {
   const filtered = useMemo(() => {
     const cfg = VIEWS.find((v) => v.key === view)!;
     return (cases ?? []).filter((c) =>
-      cfg.statuses.includes(c.status) &&
+      inView(cfg, c) &&
       (riskFilter === "all" || c.risk === riskFilter) &&
       (kindFilter === "all" || c.kind === kindFilter));
   }, [cases, view, riskFilter, kindFilter]);
@@ -124,11 +147,13 @@ export function MaintenancePanel() {
 
   const counts = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const v of VIEWS) m[v.key] = (cases ?? []).filter((c) => v.statuses.includes(c.status)).length;
+    for (const v of VIEWS) m[v.key] = (cases ?? []).filter((c) => inView(v, c)).length;
     return m;
   }, [cases]);
 
   return (
+    <div className="space-y-3">
+    <AgentSettingsCard />
     <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-3">
       <Card className="border-border/60">
         <CardContent className="p-2 space-y-2">
@@ -171,6 +196,7 @@ export function MaintenancePanel() {
                 <p className="text-[13px] font-medium leading-snug line-clamp-2">{c.title}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-1">
                   <Badge variant="secondary" className={cn("text-[10px]", riskBadge[c.risk])}>{c.risk}</Badge>
+                  <AgentStageBadge stage={c.agent_stage} />
                   {c.sensitive_areas?.length ? (
                     <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive border border-destructive/20"><ShieldAlert className="w-3 h-3 mr-1" />sensitive</Badge>
                   ) : null}
@@ -184,6 +210,7 @@ export function MaintenancePanel() {
 
       <CaseDetail c={selected} profilesById={profilesById} busy={op.isPending}
         onOp={(body) => op.mutate(body)} />
+    </div>
     </div>
   );
 }
@@ -218,6 +245,7 @@ function CaseDetail({ c, profilesById, busy, onOp }: {
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <Badge variant="secondary" className="text-[10px] capitalize">{c.kind.replace("_", " ")}</Badge>
             <Badge variant="secondary" className={cn("text-[10px]", riskBadge[c.risk])}>{c.risk} risk</Badge>
+            <AgentStageBadge stage={c.agent_stage} />
             {c.requires_approval && (
               <Badge variant="secondary" className="text-[10px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25">needs approval</Badge>
             )}
@@ -298,7 +326,17 @@ function CaseDetail({ c, profilesById, busy, onOp }: {
                 <Badge variant="secondary" className="text-[10px] capitalize">{a.kind.replace("_", " ")} → {a.target}</Badge>
                 <Badge variant="secondary" className={cn("text-[10px]", riskBadge[a.risk])}>{a.risk}</Badge>
                 <Badge variant="secondary" className="text-[10px]">{ACTION_STATE_LABEL[a.state] ?? a.state}</Badge>
+                {a.execution_class ? (
+                  <Badge variant="secondary" className={cn("text-[10px]", ["execute_live", "release"].includes(a.execution_class) ? "bg-destructive/10 text-destructive border border-destructive/20" : "")}>
+                    {EXEC_LABEL[a.execution_class] ?? a.execution_class}
+                  </Badge>
+                ) : null}
               </div>
+              {(a.correlation_tag || a.external_ref || a.commit_sha) ? (
+                <p className="text-[10px] text-muted-foreground font-mono break-all">
+                  {a.correlation_tag}{a.external_ref ? ` · Lovable ${a.external_ref}` : ""}{a.commit_sha ? ` · commit ${String(a.commit_sha).slice(0, 10)}` : ""}
+                </p>
+              ) : null}
               <p className="text-[12px] whitespace-pre-wrap">{a.instruction_text}</p>
               {a.result_summary ? <p className="text-[11px] text-muted-foreground">Result: {a.result_summary}</p> : null}
               {a.state === "awaiting_approval" && (

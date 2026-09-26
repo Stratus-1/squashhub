@@ -15658,6 +15658,15 @@ export type Database = {
         Args: { p_club_id: string; p_member_ids: string[] }
         Returns: undefined
       }
+      admin_set_member_standing: {
+        Args: {
+          _member_id: string
+          _reason?: string
+          _rule?: string
+          _status: string
+        }
+        Returns: Json
+      }
       age_group_for_age: { Args: { _age: number }; Returns: string }
       ai_apply_champ_repair: {
         Args: { p_champ: string; p_changes: Json }
@@ -16945,6 +16954,10 @@ export type Database = {
       make_org_slug: {
         Args: { _abbrev?: string; _name: string }
         Returns: string
+      }
+      member_access_blocked: {
+        Args: { _club_id: string; _member_id?: string; _user_id: string }
+        Returns: boolean
       }
       member_competition_status: {
         Args: { _club_member_ids: string[] }

@@ -9,6 +9,7 @@ import {
   type LeagueStrength,
   type RubberRow,
 } from "@/lib/ladder/league-strength";
+import { isMastersDivision, MASTERS_LEVEL_OFFSET } from "@/hooks/use-league-strength";
 
 const rubber = (over: Partial<RubberRow>): RubberRow => ({
   player_code: "NSF1",

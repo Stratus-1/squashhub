@@ -7,9 +7,9 @@
 - [x] ai-help: triage recorded on every interaction outcome
 - [x] MaintenancePanel wired into /admin/support ("Maintenance — needs you" view)
 - [x] My Requests: case status drives "needs more detail from you" wording
-- [ ] Deploy maintenance-queue + updated ai-help edge functions
-- [ ] Run tests + verify build clean
-- [ ] Append fix to docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md
+- [x] Deploy maintenance-queue + updated ai-help edge functions
+- [x] Run tests + verify build clean (1370 tests pass, build OK)
+- [x] Append fix to docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md
 
 ## Standing constraints (this work)
 - No production publish/deploy of the app; publish only when Willem asks.

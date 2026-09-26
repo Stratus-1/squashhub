@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { PendingApplicationsPanel } from "./PendingApplicationsPanel";
 import { AffiliateMemberDialog } from "./AffiliateMemberDialog";
 import { CompetitionStatusDialog } from "./CompetitionStatusDialog";
+import { MemberStandingDialog, type MemberStanding } from "./MemberStandingDialog";
 import { useCompetitionStatus } from "@/hooks/use-competition-status";
 import { CompetitionStatusBadges } from "@/components/CompetitionStatusBadges";
 
@@ -251,9 +252,9 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="text-xs">
-            <DropdownMenuItem onClick={() => onChangeStatus(m, "active")}>Active</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onChangeStatus(m, "suspended")}>Suspended</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onChangeStatus(m, "resigned")}>Resigned</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onChangeStatus(m, "active")}>{status === "active" ? "Active" : "Reinstate…"}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onChangeStatus(m, "suspended")}>Suspend…</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onChangeStatus(m, "resigned")}>Resign…</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <Badge variant={isAdmin ? "secondary" : "outline"} className="text-[9px] px-1 py-0 shrink-0">{m.role}</Badge>
@@ -419,6 +420,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const [editMember, setEditMember] = useState<ClubMember | null>(null);
   const [affiliateMember, setAffiliateMember] = useState<ClubMember | null>(null);
   const [statusMember, setStatusMember] = useState<ClubMember | null>(null);
+  const [standingChange, setStandingChange] = useState<{ member: ClubMember; status: MemberStanding } | null>(null);
 
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -661,12 +663,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
   );
 
   const handleChangeStatus = async (member: ClubMember, status: "active" | "suspended" | "resigned") => {
-    if ((member as any).status === status) return;
-    const { error } = await fromExt("club_members").update({ status }).eq("id", member.id);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`${member.name || "Member"} marked ${status}`);
-    qc.invalidateQueries({ queryKey: ["club-members", clubId] });
-    qc.invalidateQueries({ queryKey: ["club-stats", clubId] });
+    if (((member as any).status || "active") === status) return;
+    setStandingChange({ member, status });
   };
 
   // Resolve delegate titles from club data
@@ -1100,6 +1098,19 @@ export function MembersTab({ clubId }: { clubId: string }) {
           memberId={affiliateMember.id}
           memberName={affiliateMember.name || affiliateMember.profiles?.name || "Member"}
           onClose={() => setAffiliateMember(null)}
+        />
+      )}
+      {standingChange && (
+        <MemberStandingDialog
+          memberId={standingChange.member.id}
+          memberName={standingChange.member.name || standingChange.member.profiles?.name || "Member"}
+          hasEmail={!!((standingChange.member as any).email)}
+          target={standingChange.status}
+          onClose={() => setStandingChange(null)}
+          onDone={() => {
+            qc.invalidateQueries({ queryKey: ["club-members", clubId] });
+            qc.invalidateQueries({ queryKey: ["club-stats", clubId] });
+          }}
         />
       )}
       {statusMember && (

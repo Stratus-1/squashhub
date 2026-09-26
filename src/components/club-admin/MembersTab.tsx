@@ -155,34 +155,36 @@ function computeClubPayableFees(
     .map(p => ({ fee_type: p.fee_type, fee_label: p.fee_label, amount: p.amount, existing: p }));
 }
 
-function MemberPaymentStatus({ fees, glBilled, glPaid }: {
+function MemberPaymentStatus({ fees, glBilled, glPaid, onOpenStatement }: {
   fees: ExpectedFee[];
   /** Actual debtors billed for this member (sum of debit on debtors GL). */
   glBilled?: number;
   /** Actual payments received against debtors (sum of credit on debtors GL). */
   glPaid?: number;
+  /** When provided, the balance becomes a link to the member statement. */
+  onOpenStatement?: () => void;
 }) {
   const { format } = useClubCurrency();
   if (fees.length === 0 && !glBilled) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
   const feeTotal = fees.reduce((s, f) => s + f.amount, 0);
   // Prefer real GL numbers so this matches the Member Statement exactly.
-  // Fall back to fee-row totals if no GL activity yet.
   const total = glBilled && glBilled > 0 ? glBilled : feeTotal;
   const paid = typeof glPaid === "number" ? glPaid : 0;
-  const outstanding = total - paid;
-  const allPaid = outstanding <= 0.01;
+  const balance = total - paid; // positive = owes club, negative = in credit
+  const settled = Math.abs(balance) <= 0.01;
+  const tone = settled ? "text-muted-foreground" : balance > 0 ? "text-destructive" : "text-green-600";
+  const label = settled ? format(0, 0) : balance > 0 ? format(balance, 0) : `${format(-balance, 0)} CR`;
+  const cls = `text-[10px] font-semibold ml-auto tabular-nums ${tone}`;
+  if (!onOpenStatement) return <span className={cls}>{label}</span>;
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {fees.map((f, i) => (
-        <div key={i} className="flex items-center gap-1 text-[10px]">
-          <span className="truncate max-w-[140px]">{f.fee_label}</span>
-          <span className="text-muted-foreground">{format(f.amount)}</span>
-        </div>
-      ))}
-      <span className={`text-[10px] font-semibold ml-auto tabular-nums ${allPaid ? "text-green-600" : "text-destructive"}`}>
-        {format(paid, 0)} / {format(total, 0)}
-      </span>
-    </div>
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onOpenStatement(); }}
+      className={`${cls} underline decoration-dotted underline-offset-2 hover:opacity-80`}
+      title="View member statement"
+    >
+      {label}
+    </button>
   );
 }
 

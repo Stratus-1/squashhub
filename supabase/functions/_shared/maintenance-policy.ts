@@ -115,7 +115,7 @@ export function caseToBugStatus(caseStatus: MaintenanceStatus): string | null {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Phase 2 — direct agent connection (Stage 0: infrastructure only, dispatch OFF)
+// Phase 2 — direct agent connection (dispatch, instructions and auto-release gated by settings; OFF by default)
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Investigation permission is NOT execution authority.

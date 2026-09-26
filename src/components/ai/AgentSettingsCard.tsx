@@ -1,5 +1,5 @@
 // Phase 2 — maintenance agent dispatch settings + kill switch (Super Admin).
-// Stage 0: dispatch is OFF and locked in the database; "Turn off" always works.
+// Dispatch, Lovable instructions and auto-release stay OFF while the database stage lock is on; "Turn off" always works.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Bot, Lock, Power } from "lucide-react";

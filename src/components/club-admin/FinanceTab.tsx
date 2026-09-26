@@ -164,11 +164,14 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
   const [statementOpen, setStatementOpen] = useState(false);
   const [statementSearch, setStatementSearch] = useState("");
   const [financeParams, setFinanceParams] = useSearchParams();
+  const statementFromLinkRef = useRef(false);
   useEffect(() => {
     const id = financeParams.get("statement");
     if (!id) return;
     setStatementMemberId(id);
     setStatementOpen(true);
+    setMemberDropdownOpen(false);
+    statementFromLinkRef.current = true;
     const next = new URLSearchParams(financeParams);
     next.delete("statement");
     setFinanceParams(next, { replace: true });
@@ -1443,7 +1446,10 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
         if (o) queryClient.invalidateQueries({ queryKey: ["club-journal-entries", clubId] });
       }}>
 
-        <DialogContent className="w-[95vw] max-w-5xl min-h-[80vh] max-h-[95vh] flex flex-col p-0">
+        <DialogContent
+          className="w-[95vw] max-w-5xl min-h-[80vh] max-h-[95vh] flex flex-col p-0"
+          onOpenAutoFocus={(e) => { if (statementFromLinkRef.current) { e.preventDefault(); statementFromLinkRef.current = false; } }}
+        >
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" /> {Party} Statement

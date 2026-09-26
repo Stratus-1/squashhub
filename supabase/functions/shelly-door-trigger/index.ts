@@ -234,6 +234,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Suspended / resigned members lose door access on every path (incl. the
+    // native bridge). Admins/access managers are exempt.
+    {
+      const { data: isAdmin } = userId
+        ? await admin.rpc("is_club_admin", { _user_id: userId, _club_id: club_id })
+        : { data: false } as any;
+      if (!isAdmin) {
+        const { data: blocked } = await admin.rpc("member_access_blocked", {
+          _user_id: userId,
+          _club_id: club_id,
+          _member_id: memberId,
+        });
+        if (blocked) {
+          return new Response(JSON.stringify({ error: "Your membership is suspended — door access is disabled. Please contact the club committee." }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
     const { data: secrets, error: secErr } = await admin
       .from("club_secrets")
       .select(

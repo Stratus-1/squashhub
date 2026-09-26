@@ -63,6 +63,24 @@ Deno.serve(async (req) => {
           },
         })
         email = res.ok ? (res.sent ? 'sent' : 'suppressed') : 'failed'
+        // Copy the club's own email address so the committee has the letter on file.
+        const clubEmail = (club as any)?.email?.trim()
+        if (clubEmail && clubEmail.toLowerCase() !== m.email.toLowerCase()) {
+          await sendAppEmail({
+            templateName: 'member-suspension',
+            recipientEmail: clubEmail,
+            clubId: m.club_id,
+            idempotencyKey: `member-suspension-club-${member_id}-${m.suspended_at ?? Date.now()}`,
+            templateData: {
+              memberName: m.name || 'Member',
+              clubName: (club as any)?.name || 'Your club',
+              rule: rule || undefined,
+              reason: reason || undefined,
+              effectiveDate: new Date().toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Johannesburg' }),
+              contactEmail: clubEmail,
+            },
+          }).catch((e) => console.error('club copy failed', (e as Error).message))
+        }
       }
     }
     return json({ ok: true, email })

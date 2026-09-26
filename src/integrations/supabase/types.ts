@@ -116,6 +116,39 @@ export type Database = {
           },
         ]
       }
+      account_recovery_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          phone_tail: string
+          requester_ip: string | null
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone_tail: string
+          requester_ip?: string | null
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone_tail?: string
+          requester_ip?: string | null
+        }
+        Relationships: []
+      }
       ai_assist_interactions: {
         Row: {
           action_args: Json | null
@@ -17230,6 +17263,18 @@ export type Database = {
       }
       person_age: { Args: { _person_id: string }; Returns: number }
       person_age_group: { Args: { _person_id: string }; Returns: string }
+      person_match_candidates: {
+        Args: { _first: string; _last: string; _phone_tail: string }
+        Returns: {
+          club_id: string
+          email: string
+          id: string
+          name: string
+          phone: string
+          source: string
+          user_id: string
+        }[]
+      }
       platform_attach_user_to_club: {
         Args: { p_club_id: string; p_user_id: string }
         Returns: string

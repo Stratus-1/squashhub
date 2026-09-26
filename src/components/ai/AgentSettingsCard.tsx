@@ -17,6 +17,10 @@ type Settings = {
   max_dispatches_per_day: number;
   max_active_cases: number;
   max_instructions_per_day: number;
+  auto_release_enabled: boolean;
+  auto_release_circuit_open: boolean;
+  auto_release_circuit_reason: string | null;
+  max_auto_releases_per_day: number;
   updated_at: string;
 };
 
@@ -60,15 +64,21 @@ export function AgentSettingsCard() {
               Dispatch: {s ? MODE_LABEL[s.dispatch_mode] : "Off"}
             </Badge>
             <Badge variant="secondary" className="text-[10px]">Lovable instructions: {s?.lovable_instructions_enabled ? "On" : "Off"}</Badge>
+            <Badge variant="secondary" className="text-[10px]">Low-risk auto-release: {s?.auto_release_enabled ? "On" : "Off"}</Badge>
+            {s?.auto_release_circuit_open && (
+              <Badge variant="secondary" className="text-[10px] bg-destructive/10 text-destructive border border-destructive/20">
+                Auto-release paused: {s.auto_release_circuit_reason ?? "repeated failures"}
+              </Badge>
+            )}
             {s?.stage_lock && (
               <Badge variant="secondary" className="text-[10px]"><Lock className="w-3 h-3 mr-1" />Stage 0 lock</Badge>
             )}
             <Badge variant="secondary" className="text-[10px]">Agent key: {data?.agent_secret_configured ? "configured" : "not set"}</Badge>
             <span className="text-[11px] text-muted-foreground">
-              Queued {counts.pending ?? 0} · Working {counts.claimed ?? 0} · Unreachable {counts.dead ?? 0} · Limits {s?.max_dispatches_per_day ?? 0}/day, {s?.max_active_cases ?? 0} active, {s?.max_instructions_per_day ?? 0} instructions/day
+              Queued {counts.pending ?? 0} · Working {counts.claimed ?? 0} · Unreachable {counts.dead ?? 0} · Limits {s?.max_dispatches_per_day ?? 0}/day, {s?.max_active_cases ?? 0} active, {s?.max_instructions_per_day ?? 0} instructions/day, {s?.max_auto_releases_per_day ?? 0} auto-releases/day
             </span>
             <span className="text-[11px] text-muted-foreground w-full">
-              Investigating, preparing and testing fixes can run automatically. Live data changes, publishing and releases always wait for your approval. Normal AI Assistance is not affected by this switch.
+              Three separate switches: agent dispatch, Lovable instructions, and low-risk auto-release. Clear, small, low-risk bugs that pass every release check are fixed and published without you; anything protected, uncertain or failing waits for your approval. Two failed automatic releases in 7 days pause auto-release automatically. Normal AI Assistance is not affected.
             </span>
             <Button size="sm" variant={on ? "destructive" : "outline"} className="h-7 text-[11px] ml-auto" disabled={!on || killSwitch.isPending}
               onClick={() => killSwitch.mutate()}>

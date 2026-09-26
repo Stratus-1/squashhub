@@ -1,11 +1,12 @@
 // AI Maintenance Manager — Phase 2 signed interface for the authorised external
-// maintenance agent. Stage 0: fully built but INERT — every operation except
+// maintenance agent. Inert while dispatch is off / the Stage 0 lock is on.
 // `ping` refuses while dispatch is off / the Stage 0 lock is on.
 //
 // Auth: HMAC-SHA256 over METHOD\nPATH\nTIMESTAMP\nNONCE\nSHA256(body) with
 // MAINTENANCE_AGENT_SECRET (or MAINTENANCE_AGENT_SECRET_NEXT during rotation).
 // Headers: x-sh-timestamp, x-sh-nonce, x-sh-signature. Nonces are single-use.
-// The agent can never approve, release, complete, publish or deploy.
+// The agent can never approve. It may publish only a server-qualified low-risk
+// fix (qualify_release), and closes it only after verified deploy (DB-guarded).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";

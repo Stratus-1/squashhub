@@ -29,6 +29,33 @@ export function assignCompetitions(
   return out;
 }
 
+/**
+ * Masters-league rubbers count as this many league levels weaker than the
+ * same-numbered open league (Masters opposition is generally weaker).
+ */
+export const MASTERS_LEVEL_OFFSET = 2;
+
+/**
+ * Masters divisions use numbered teams ("DBV 1", "FH 2") where open-league
+ * divisions use letters ("DBV A"). Detect from fixture team names.
+ */
+export function isMastersDivision(fixtures: any[]): boolean {
+  let numbered = 0;
+  let lettered = 0;
+  for (const f of fixtures ?? []) {
+    for (const side of ["home", "away"] as const) {
+      const name = String(f?.[side]?.name ?? "").trim();
+      if (!name) continue;
+      const suffix = name.match(/([A-Za-z]+|\d+)$/)?.[1];
+      if (!suffix) continue;
+      if (/^\d+$/.test(suffix)) numbered++;
+      else if (/^[A-Za-z]$/.test(suffix)) lettered++;
+    }
+    if (numbered + lettered >= 8) break;
+  }
+  return numbered > 0 && numbered > lettered;
+}
+
 export interface LeagueStrengthSets {
   /** Every rubber, men's and ladies'. */
   all: Map<string, LeagueStrength | null>;

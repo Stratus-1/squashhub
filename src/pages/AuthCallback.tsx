@@ -189,7 +189,13 @@ export default function AuthCallback() {
             });
             navigate(`/?club=${encodeURIComponent(memberRedirectClub)}`, { replace: true });
           } else {
-            navigate("/", { replace: true });
+            // Safety net: an account with no club context must pick its club
+            // before continuing — never leave a club-less registration.
+            const { count } = await supabase
+              .from("club_members")
+              .select("id", { count: "exact", head: true })
+              .eq("user_id", user.id);
+            navigate(count ? "/" : "/register-club", { replace: true });
           }
         } else {
           navigate("/auth", { replace: true });

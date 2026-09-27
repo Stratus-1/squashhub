@@ -41,6 +41,7 @@ interface MemberHit {
 }
 
 import { BAR_CATEGORY_EMOJI as CATEGORY_ICONS } from "@/lib/bar-categories";
+import { onMenu, type InventoryItem } from "@/lib/bar-inventory";
 
 interface Props {
   open: boolean;
@@ -67,7 +68,12 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
   const [busy, setBusy] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
 
-  const inStock = useMemo(() => items.filter((i) => i.stock_qty > 0), [items]);
+  // Only items currently sellable: in stock, not archived/hidden, specials inside their window.
+  const inStock = useMemo(
+    () => items.filter((i) => onMenu(i as unknown as InventoryItem)).sort((a: any, b: any) =>
+      Number(b.item_kind === "special") - Number(a.item_kind === "special")),
+    [items],
+  );
 
   const cartLines = Object.entries(cart)
     .filter(([, q]) => q > 0)

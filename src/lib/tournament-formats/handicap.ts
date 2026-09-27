@@ -24,6 +24,7 @@
  */
 
 import { fromExt } from "@/lib/supabase-ext";
+import { loadLeagueAverageScores, leagueAverageHandicap } from "./league-average-handicap";
 
 export type PlayerRank = {
   member_id: string;
@@ -454,7 +455,7 @@ export async function loadClubLadderPositions(
   return out;
 }
 
-export type HandicapMode = "none" | "league_rank" | "club_ladder" | "ladder_history";
+export type HandicapMode = "none" | "league_rank" | "club_ladder" | "ladder_history" | "league_average";
 
 /**
  * Ladder + recent history override.
@@ -775,6 +776,13 @@ export async function applyHandicapsToChamp(
 
   if (opts.scoreByMember && opts.scoreByMember.size > 0) {
     scoreByMember = opts.scoreByMember;
+  } else if (mode === "league_average") {
+    const roster = new Set<string>();
+    (matches as any[]).forEach((m) => {
+      if (m.player_a_member_id) roster.add(m.player_a_member_id);
+      if (m.player_b_member_id) roster.add(m.player_b_member_id);
+    });
+    scoreByMember = await loadLeagueAverageScores(Array.from(roster));
   } else if (mode === "club_ladder") {
     scoreByMember = await loadClubLadderPositions(clubId);
   } else if (mode === "ladder_history") {
@@ -804,7 +812,12 @@ export async function applyHandicapsToChamp(
     const sb = scoreByMember.get(m.player_b_member_id);
     let handicap_a = 0;
     let handicap_b = 0;
-    if (sa != null && sb != null && sa !== sb) {
+    if (mode === "league_average" && !opts.scoreByMember) {
+      // Fractional averages: multiplier first, then round to nearest.
+      const r = leagueAverageHandicap(sa, sb, Number(opts.multiplier) || 1);
+      handicap_a = r.handicap_a;
+      handicap_b = r.handicap_b;
+    } else if (sa != null && sb != null && sa !== sb) {
       const rawDiff = Math.abs(sa - sb);
       const diff = Math.floor((rawDiff * multiplier) / divider);
       if (diff > 0) {

@@ -1356,8 +1356,8 @@ export default function Tournaments() {
       .map((m) => {
         const champ = champById.get(m.champ_id);
         const isDoubles = champ?.match_type === "doubles";
-        const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles);
-        const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles);
+        const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a);
+        const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b);
 
         const date = m.scheduled_date ? format(new Date(m.scheduled_date), "EEE dd MMM") : "TBD";
         const time = m.scheduled_time?.slice(0, 5) || "";
@@ -1433,8 +1433,8 @@ export default function Tournaments() {
     matches.forEach((m) => {
       const champ = champById.get(m.champ_id);
       const isDoubles = champ?.match_type === "doubles";
-      const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles);
-      const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles);
+      const teamA = sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a);
+      const teamB = sideLabel(m.player_b, m.partner_b, m.placeholder_b, isDoubles) + hcLabel(m.handicap_b);
 
       lines.push([
         m.scheduled_date || "",

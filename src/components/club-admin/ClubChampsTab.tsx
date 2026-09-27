@@ -136,7 +136,7 @@ import {
 import { LeagueSourceTree } from "./tournament/LeagueSourceTree";
 
 
-import { applyHandicapsToChamp, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
+import { applyHandicapsToChamp, loadHandicapScores, pairHandicap, findReservesMissingShadowRank, buildScoreMapFromGroups, isCrossLeagueTournament, type MissingShadowRank, type DivisionSizes } from "@/lib/tournament-formats/handicap";
 import { ShadowRankPromptDialog } from "./ShadowRankPromptDialog";
 import { ChampSchedulePreview } from "./ChampSchedulePreview";
 import { DrawLockCard } from "@/components/tournaments/DrawLockCard";
@@ -7547,6 +7547,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     },
   });
 
+  /** Pre-build handicap preview: same scores and maths used when the schedule is saved. */
+  const previewHandicapMemberKey = useMemo(() => {
+    if (matchType !== "singles" || handicapMode === "none" || !schedulePreview) return "";
+    const ids = new Set<string>();
+    (schedulePreview.allMatches as any[]).forEach((m) => {
+      if (m.entityA) ids.add(m.entityA);
+      if (m.entityB) ids.add(m.entityB);
+    });
+    return Array.from(ids).sort().join(",");
+  }, [matchType, handicapMode, schedulePreview]);
+  const { data: previewHandicapScores } = useQuery({
+    queryKey: ["preview-handicap-scores", clubId, handicapMode, groupRankScope, previewHandicapMemberKey,
+      handicapMode === "group_order" ? (groups as ClubMember[][]).map((g) => g.map((m) => m.id).join(",")).join("|") : ""],
+    enabled: !!previewHandicapMemberKey && !!clubId,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      if (handicapMode === "group_order") {
+        return buildScoreMapFromGroups((groups as ClubMember[][]).map((g) => g.map((m) => m.id)), groupRankScope);
+      }
+      return loadHandicapScores(clubId!, previewHandicapMemberKey.split(","), handicapMode as any);
+    },
+  });
+  const previewHandicap = (a: string, b: string) => {
+    if (!previewHandicapScores) return null;
+    return pairHandicap(previewHandicapScores.get(a), previewHandicapScores.get(b), {
+      mode: handicapMode === "group_order" ? "league_rank" : (handicapMode as any),
+      divider: handicapDivider,
+      multiplier: handicapMultiplier,
+      precomputed: handicapMode === "group_order",
+    });
+  };
+
   /** Accepted entrants who belong to no source league — need a division by hand. */
   const acceptedNeedingDivision = useMemo(() => {
     const inAnyLeague = new Set<string>();
@@ -13702,9 +13734,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 </>
                               ) : (
                                 <>
-                                  <span className="font-medium">{getEntityLabel(m.entityA)}</span>
-                                  <span className="text-muted-foreground">vs</span>
-                                  <span className="font-medium">{getEntityLabel(m.entityB)}</span>
+                                  {(() => {
+                                    const hc = previewHandicap(m.entityA, m.entityB);
+                                    const tag = (n?: number) => n ? <span className="ml-1 text-amber-700 dark:text-amber-400 font-semibold">({n})</span> : null;
+                                    return (
+                                      <>
+                                        <span className="font-medium">{getEntityLabel(m.entityA)}{tag(hc?.handicap_a)}</span>
+                                        <span className="text-muted-foreground">vs</span>
+                                        <span className="font-medium">{getEntityLabel(m.entityB)}{tag(hc?.handicap_b)}</span>
+                                      </>
+                                    );
+                                  })()}
                                 </>
                               )}
                               {m.courtId && !bye && <Badge variant="outline" className="ml-auto text-[10px]">{getCourtName(m.courtId)}</Badge>}

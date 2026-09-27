@@ -52,10 +52,13 @@ export function LineupSwapDialog({
   associationId, fixtureDate,
   allowMultiFixturePerNight = false,
   subRules,
+  pairPlayers,
   onSelect, onClear,
 }: Props) {
   const [search, setSearch] = useState("");
   const [pending, setPending] = useState<SwapCandidate | null>(null);
+  const [outHalf, setOutHalf] = useState<0 | 1 | null>(null);
+  const effectiveCurrentName = pairPlayers && outHalf != null ? pairPlayers[outHalf] : currentName;
 
   const { data: candidates, isLoading } = useQuery({
     queryKey: ["lineup-swap-candidates", teamCode, associationId, fixtureDate, allowMultiFixturePerNight, subRules],

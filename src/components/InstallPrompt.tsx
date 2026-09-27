@@ -52,6 +52,19 @@ export function InstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(() => getInstallPromptEvent());
   const [iosSheet, setIosSheet] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const check = () =>
+      setModalOpen(
+        !!document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]'),
+      );
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-state"] });
+    return () => obs.disconnect();
+  }, []);
 
   const blockedRoute = BLOCKED_PATH_PREFIXES.some((p) => pathname.startsWith(p));
   const ua = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
@@ -140,7 +153,9 @@ export function InstallPrompt() {
   });
 
   const showIos = iosSheet && !blockedRoute && !detectStandalone();
-  const visible = !dismissed && (showNative || showIos);
+  // A full-screen pop-up (e.g. member onboarding) blocks taps on everything
+  // outside it, which made this banner impossible to press or close.
+  const visible = !dismissed && !modalOpen && (showNative || showIos);
   if (!visible) return null;
 
   const desktop = platform === "desktop";

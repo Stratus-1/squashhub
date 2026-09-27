@@ -742,6 +742,42 @@ export async function isCrossLeagueTournament(
  * Skips matches whose `handicap_locked` is true. Returns the number of
  * matches updated.
  */
+/** Per-member rank score for a handicap mode (lower = stronger). */
+export async function loadHandicapScores(
+  clubId: string,
+  memberIds: string[],
+  mode: HandicapMode,
+): Promise<Map<string, number>> {
+  if (mode === "league_average") return loadLeagueAverageScores(memberIds);
+  if (mode === "club_ladder") return loadClubLadderPositions(clubId);
+  if (mode === "ladder_history") return loadHistoryAdjustedLadderScores(clubId, memberIds);
+  const out = new Map<string, number>();
+  const ctx = await loadClubLadderContext(clubId);
+  if (!ctx) return out;
+  ctx.rankByMember.forEach((v, k) => {
+    const off = ctx.offsets[v.division];
+    if (off != null) out.set(k, off + v.player_rank);
+  });
+  return out;
+}
+
+/** Starting handicap for one pairing — shared by the pre-build preview and the saved fixtures. */
+export function pairHandicap(
+  sa: number | null | undefined,
+  sb: number | null | undefined,
+  opts: { mode: HandicapMode; divider?: number; multiplier?: number; precomputed?: boolean },
+): { handicap_a: number; handicap_b: number } {
+  if (opts.mode === "league_average" && !opts.precomputed) {
+    return leagueAverageHandicap(sa, sb, Number(opts.multiplier) || 1);
+  }
+  if (sa == null || sb == null || sa === sb) return { handicap_a: 0, handicap_b: 0 };
+  const divider = Math.max(1, Number(opts.divider) || 1);
+  const multiplier = Math.max(1, Number(opts.multiplier) || 1);
+  const diff = Math.floor((Math.abs(sa - sb) * multiplier) / divider);
+  if (diff <= 0) return { handicap_a: 0, handicap_b: 0 };
+  return sa < sb ? { handicap_a: -diff, handicap_b: 0 } : { handicap_a: 0, handicap_b: -diff };
+}
+
 export async function applyHandicapsToChamp(
   champId: string,
   clubId: string,
@@ -759,49 +795,21 @@ export async function applyHandicapsToChamp(
   } = {},
 ): Promise<number> {
   const mode: HandicapMode = opts.mode ?? "league_rank";
-  const divider = Math.max(1, Number(opts.divider) || 1);
-  const multiplier = Math.max(1, Number(opts.multiplier) || 1);
 
-  // Resolve a per-member "rank score" map. For league_rank we use the
-  // global index (offset + player_rank); for club_ladder we use the
-  // ladder_position directly. Both let us compute gap = |a - b|.
-  let scoreByMember = new Map<string, number>();
-
-  // For history mode we need the match roster up front so the loader
-  // can scope its history query and residual math to actual participants.
   const { data: matches } = await fromExt("club_champs_matches")
     .select("id, player_a_member_id, player_b_member_id, status, handicap_a, handicap_b, handicap_locked, is_bye")
     .eq("champ_id", champId);
   if (!matches || matches.length === 0) return 0;
 
-  if (opts.scoreByMember && opts.scoreByMember.size > 0) {
-    scoreByMember = opts.scoreByMember;
-  } else if (mode === "league_average") {
-    const roster = new Set<string>();
-    (matches as any[]).forEach((m) => {
-      if (m.player_a_member_id) roster.add(m.player_a_member_id);
-      if (m.player_b_member_id) roster.add(m.player_b_member_id);
-    });
-    scoreByMember = await loadLeagueAverageScores(Array.from(roster));
-  } else if (mode === "club_ladder") {
-    scoreByMember = await loadClubLadderPositions(clubId);
-  } else if (mode === "ladder_history") {
-    const roster = new Set<string>();
-    (matches as any[]).forEach((m) => {
-      if (m.player_a_member_id) roster.add(m.player_a_member_id);
-      if (m.player_b_member_id) roster.add(m.player_b_member_id);
-    });
-    scoreByMember = await loadHistoryAdjustedLadderScores(clubId, Array.from(roster));
-  } else {
-    const ctx = await loadClubLadderContext(clubId);
-    if (!ctx) return 0;
-    const { offsets, rankByMember } = ctx;
-    rankByMember.forEach((v, k) => {
-      const off = offsets[v.division];
-      if (off != null) scoreByMember.set(k, off + v.player_rank);
-    });
-  }
-
+  const roster = new Set<string>();
+  (matches as any[]).forEach((m) => {
+    if (m.player_a_member_id) roster.add(m.player_a_member_id);
+    if (m.player_b_member_id) roster.add(m.player_b_member_id);
+  });
+  const scoreByMember =
+    opts.scoreByMember && opts.scoreByMember.size > 0
+      ? opts.scoreByMember
+      : await loadHandicapScores(clubId, Array.from(roster), mode);
 
   let updated = 0;
   for (const m of matches as any[]) {
@@ -810,21 +818,12 @@ export async function applyHandicapsToChamp(
     if (m.status === "completed") continue;
     const sa = scoreByMember.get(m.player_a_member_id);
     const sb = scoreByMember.get(m.player_b_member_id);
-    let handicap_a = 0;
-    let handicap_b = 0;
-    if (mode === "league_average" && !opts.scoreByMember) {
-      // Fractional averages: multiplier first, then round to nearest.
-      const r = leagueAverageHandicap(sa, sb, Number(opts.multiplier) || 1);
-      handicap_a = r.handicap_a;
-      handicap_b = r.handicap_b;
-    } else if (sa != null && sb != null && sa !== sb) {
-      const rawDiff = Math.abs(sa - sb);
-      const diff = Math.floor((rawDiff * multiplier) / divider);
-      if (diff > 0) {
-        if (sa < sb) handicap_a = -diff;
-        else handicap_b = -diff;
-      }
-    }
+    const { handicap_a, handicap_b } = pairHandicap(sa, sb, {
+      mode,
+      divider: opts.divider,
+      multiplier: opts.multiplier,
+      precomputed: !!(opts.scoreByMember && opts.scoreByMember.size > 0),
+    });
     if (handicap_a === (m.handicap_a ?? 0) && handicap_b === (m.handicap_b ?? 0)) continue;
     await fromExt("club_champs_matches")
       .update({ handicap_a, handicap_b })

@@ -1,55 +1,25 @@
-# Nelspruit opening balances (as at 26 Sep 2026)
+# Tournament fees and payments belong to the host club
 
-## Accounting treatment (recommendation)
+## What went wrong (Louna Stevens)
+- Louna entered Nelspruit's "Family Doubles". The R150 entry fee was put on her **White River** account, because fees are always charged to the player's home-club membership.
+- Seeing R150 owing, she used "Top up via EFT" twice (R150 each, 15 seconds apart, no reference). A top-up always goes to the club she's signed into, so both pending payments landed at **White River**.
+- The same thing can happen to every player who enters another club's or association's tournament (e.g. the CSIR Bells and NA Open entrants from other clubs).
 
-These amounts are money members already owed under the old system. The income was earned before SquashHub, so it should **not** be credited to Membership Income again — that would inflate this year's income by ~R90k of old fees.
+## Fix for the future
+1. **Charge entry fees to the host.** When a player from another club enters, the fee is billed on the host club's books. If the player has no record at the host club, a visitor record is created there automatically, linked to the same national person (no duplicate person).
+2. **Pay the fee directly, not via a top-up.** The tournament entry shows "Pay entry fee" (card or EFT). The EFT goes into the **host club's** Pending Payments, linked to that exact fee, with the tournament name and an automatic reference.
+3. **Guard on top-ups.** If a player tries a plain top-up while their only amount owing is another club's tournament fee, we tell them to pay it from the tournament instead.
+4. **No double top-ups.** A second identical EFT request within a minute is blocked.
+5. **Assistant answer.** The assistant can now read pending payments and say which club and fee they belong to, instead of only handing over to support.
 
-Correct entry, per member, one journal batch dated 26/09/2026:
-
-```text
-Dr  Debtors (Accounts Receivable)   – member's outstanding amount   (tagged to the member)
-  Cr  Opening Balance Equity          – same amount
-```
-
-- Members in credit (e.g. Eunice -R550, Johann -R664, William Mitchell -R1,000, Lucas -R5) are posted the other way (Cr Debtors / Dr Opening Balance Equity) and show as "CR" on their account.
-- Total Debtors after posting = sum of member lines in the report, i.e. the club's opening accounts receivable.
-- Each member also gets one visible line on their statement: "Opening outstanding balance (as at 26/09/2026)" so the member card and statement agree with the ledger.
-
-If you would rather see it as Membership Income anyway, I can do that, but I advise against it.
-
-## Clean-up before posting (Nelspruit only)
-
-Remove old/test transactions that are causing wrong negative balances — mostly duplicate "Club Membership pro-rated" and "Registration Fee" charges and old imported wallet rows (e.g. Francois Vosloo, Shamiso & Malvern Tavarwisa, Taylor Gower, James Paterson, Mia Briel, Ane van Wyk, Janco Duvenage, Gerhard Coetzer, Mike Brueton, Mimi-Mari du Plessis, Rentia Breuton, Karen Musica, Armandt Visser), plus their matching unpaid fee rows and ledger lines, so no orphan entries remain.
-
-**Kept untouched:**
-- All Family Doubles / FUN-Raiser Stitch, Yoco and EFT payments and entry fees.
-- Riaan's credit (R260 — confirm below).
-- The extra visitor fee (R50 on Visitor income).
-- Honesty bar sales and top-ups after go-live.
-- Any previous opening-balance entries are replaced, not doubled.
-
-Before deleting anything I'll save a full backup of every removed row so it can be restored.
-
-## Matching report names to members
-
-Match each report name to a Nelspruit member (e.g. "Umar Akojee" → Umar Akoojee, "Reinhard Grobler." → Reinhard Grobler). Any name I can't match confidently is listed for you, not guessed.
-
-## Rows that are not members (need your decision)
-
-- **TUCK SHOP SALES  -R90,754.70** — this is the old bar cash account, not a person. I plan to leave it out.
-- **Squash Rush R6,060** and **Du Toit - Smuts Prokureurs R7,500** — businesses (sponsor/supplier?). Leave out, or create them as non-member debtors?
-
-Note: the report's grand total (-R188.64) includes the tuck shop line; member-only total is roughly +R90,566.
-
-## Checks after posting
-
-- Every member's balance on the members list equals the report.
-- Debtors in the ledger = member total; ledger stays balanced.
-- Family Doubles payments, Riaan's credit and the visitor fee still show.
-- A short reconciliation list sent back to you. Nothing published.
+## Louna's existing records
+- Move the R150 Family Doubles fee from White River to Nelspruit (fee plus its book entries, balanced).
+- Move **one** R150 pending EFT to Nelspruit's Pending Payments, linked to that fee. Cancel the second as a duplicate (kept on record, not deleted).
+- Only Louna is corrected now. Other players already charged at their home club stay as they are unless you ask.
 
 ## Technical details
-
-- Deletions scoped to `club_id` = Nelspruit, only rows dated before go-live and not matching the keep-list (tournament_entry, Stitch/Yoco/EFT top-ups linked to the FUN-Raiser, visitor_income, Riaan's credit).
-- Backup to a private table/JSON before delete.
-- Posting via the balanced `post_journal` RPC (debtors with member_id / opening_balance_equity) plus one `club_member_fee_payments` row "Opening outstanding balance" (unpaid) or a wallet credit for members in credit.
+- `ensure_tournament_entry_fee`: resolve the host club from `club_champs.club_id`; if the registrant's `club_members.club_id` differs, find or create a visitor `club_members` row at the host (matched by `person_id`/`user_id`) and bill that row. Association-hosted events (NA Open) keep the current behaviour until an association ledger exists.
+- New `member_credit_transactions.fee_payment_id` link; the EFT pay-fee path writes `club_id` = host club.
+- Pending top-up dedupe (same member, amount, method within 60s) enforced in the database.
+- Journal corrections through balanced reversing entries, with a backup and an audit log entry.
+- Tests: fee billed to host, visitor record reused (not duplicated), EFT lands at host, duplicate blocked, home-club members unaffected.

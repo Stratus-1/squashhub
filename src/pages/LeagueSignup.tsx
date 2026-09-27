@@ -248,18 +248,6 @@ export default function LeagueSignup() {
         </div>
 
         <Card className="p-5 md:p-6 space-y-5">
-          <div className="space-y-4">
-            {!hideGoogleAuth ? (
-              <>
-                <GoogleSignInButton label="Continue with Google" preserveClub={false} />
-                <GoogleAuthDivider />
-              </>
-            ) : (
-              <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
-                Local development auth is set to email/password only. Use the form below to continue.
-              </div>
-            )}
-          </div>
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Step 1 — find */}
             <div className="space-y-3">

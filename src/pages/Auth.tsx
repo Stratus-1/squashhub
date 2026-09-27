@@ -114,18 +114,9 @@ export default function Auth() {
         </div>
 
         <Card className="p-6">
-          <div className="space-y-4">
-            {!hideGoogleAuth ? (
-              <>
-                <GoogleSignInButton />
-                <GoogleAuthDivider />
-              </>
-            ) : (
-              <div className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground leading-relaxed">
-                Local development auth is set to email/password only. Use the form below to sign in to the relevant club.
-              </div>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Signing up or using Google? Find your club first via <Link to="/register-club" className="text-primary underline">Register</Link> so your account is linked to the right club.
+          </p>
           <form onSubmit={handleLogin} className="space-y-4 mt-4">
             <div>
               <Label htmlFor="login-email">Email</Label>

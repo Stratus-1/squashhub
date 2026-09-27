@@ -3,6 +3,8 @@ import {
   computeLeagueStandings,
   leagueAverageHandicap,
   leagueSizes,
+  leaguePositionLabel,
+  type LeagueStanding,
 } from "@/lib/tournament-formats/league-average-handicap";
 
 const league = (label: string, n = 4) =>
@@ -38,5 +40,22 @@ describe("league average handicap", () => {
 
   it("no data means no handicap", () => {
     expect(leagueAverageHandicap(null, 10)).toEqual({ handicap_a: 0, handicap_b: 0 });
+  });
+
+  it("keeps displayed division and average tied to the handicap index", () => {
+    const rows = [
+      ...Array(9).fill({ player_code: "M", league_label: "6th", category: "Mens", position: 3 }),
+      { player_code: "M", league_label: "6th", category: "Mens", position: 4 },
+      ...Array(5).fill({ player_code: "W", league_label: "7th", category: "Mens", position: 4 }),
+    ];
+    const standings = computeLeagueStandings(rows, sizes);
+    const marius: LeagueStanding | undefined = standings.get("M");
+    const willem: LeagueStanding | undefined = standings.get("W");
+    expect(marius).toMatchObject({ division: 6, avgPosition: 3.1, rubbers: 10 });
+    expect(willem).toMatchObject({ division: 7, avgPosition: 4, rubbers: 5 });
+    if (!marius || !willem) throw new Error("Expected both regional league standings");
+    expect(leaguePositionLabel(marius)).toBe("6th League · avg 3.1 (10 games) · index 23.1 · Mens");
+    expect(leaguePositionLabel(willem)).toBe("7th League · avg 4.0 (5 games) · index 28.0 · Mens");
+    expect(leagueAverageHandicap(marius?.index, willem?.index)).toEqual({ handicap_a: -5, handicap_b: 0 });
   });
 });

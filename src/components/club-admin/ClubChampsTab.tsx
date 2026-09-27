@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
-import { loadLeagueAverageScores } from "@/lib/tournament-formats/league-average-handicap";
+import { leaguePositionLabel, loadLeagueAverageScores, loadLeagueAverageStandings } from "@/lib/tournament-formats/league-average-handicap";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import {
@@ -643,7 +643,7 @@ function SortableRow({ id, children }: { id: string; children: React.ReactNode }
     opacity: isDragging ? 0.5 : 1,
   };
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2 py-1">
+    <div ref={setNodeRef} style={style} className="flex flex-wrap items-center gap-2 py-1">
       <button
         type="button"
         className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground"
@@ -7523,6 +7523,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         .join(","),
     [inviteeRows, paymentRequired, entryFeeAmount],
   );
+  const handicapMemberIdsKey = useMemo(
+    () => selectedPlayers.map((p: any) => String(p.id)).filter((id) => !id.startsWith("visitor-")).sort().join(","),
+    [selectedPlayers],
+  );
+  const handicapSeason = new Date().getFullYear();
+  const { data: handicapStandings, isLoading: handicapStandingsLoading, isError: handicapStandingsError } = useQuery({
+    queryKey: ["tournament-league-average-standings", handicapMemberIdsKey, handicapSeason],
+    enabled: showWizard && !isDoubles && handicapMode === "league_average" && !!handicapMemberIdsKey,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => loadLeagueAverageStandings(handicapMemberIdsKey.split(","), handicapSeason),
+  });
   const { data: regionalLeagueMemberIds = new Set<string>() } = useQuery({
     queryKey: ["regional-league-standing-members", participatingMemberIdsKey],
     enabled: scopeIsWide && participatingMemberIdsKey.length > 0,
@@ -12741,6 +12752,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                   {" "}Subs slot in wherever you drop them.</>
               )}
             </p>
+            {!isDoubles && handicapMode === "league_average" && (
+              <p className="text-xs text-muted-foreground">
+                The handicap index adds the positions in stronger regional leagues to each player's average. The stronger player starts on minus the rounded index gap × {handicapMultiplier}. No results means no calculated handicap.
+              </p>
+            )}
             <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCrossLeagueDragEnd}>
               <div className="space-y-4">
                 {(() => {
@@ -12956,7 +12972,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                       {pools > 1 && (
                                         <span className="text-[10px] text-muted-foreground w-5 shrink-0 tabular-nums" title="Seed within this division">{seed}.</span>
                                       )}
-                                      <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                                       <span className="flex-[1_1_calc(100%-2rem)] sm:flex-1 min-w-0 text-sm font-medium">
+                                         <span className="block break-words">{p.name || p.profiles?.name}</span>
+                                         {handicapMode === "league_average" && (() => {
+                                           const standing = handicapStandings?.get(p.id);
+                                           return <span className="block text-[11px] leading-snug font-normal text-muted-foreground">
+                                             {standing
+                                               ? leaguePositionLabel(standing)
+                                               : handicapStandingsLoading ? "Loading regional league average…" : handicapStandingsError ? "Regional league average unavailable" : "No regional league results this season"}
+                                           </span>;
+                                         })()}
+                                       </span>
                                       {!memberFitsLeague(p, (groupAssignments.get(p.id) ?? 0) + 1) && (
                                         <Badge variant="destructive" className="text-[10px]" title="This player does not match the category set for this league">
                                           {GENDER_LABELS[genderForLeague((groupAssignments.get(p.id) ?? 0) + 1)]}?
@@ -13045,8 +13071,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                         const p: any = (selectedPlayers as any[]).find((x) => x.id === id);
                         if (!p) return null;
                         return (
-                          <div key={id} className="flex items-center gap-2 rounded border bg-background/60 px-2 py-1.5">
-                            <span className="flex-1 text-sm font-medium">{p.name || p.profiles?.name}</span>
+                           <div key={id} className="flex flex-wrap items-center gap-2 rounded border bg-background/60 px-2 py-1.5">
+                             <span className="flex-[1_1_100%] sm:flex-1 min-w-0 text-sm font-medium">
+                               <span className="block break-words">{p.name || p.profiles?.name}</span>
+                               {handicapMode === "league_average" && (() => {
+                                 const standing = handicapStandings?.get(p.id);
+                                 return <span className="block text-[11px] leading-snug font-normal text-muted-foreground">
+                                   {standing
+                                     ? leaguePositionLabel(standing)
+                                     : handicapStandingsLoading ? "Loading regional league average…" : handicapStandingsError ? "Regional league average unavailable" : "No regional league results this season"}
+                                 </span>;
+                               })()}
+                             </span>
                             {p.ladder_position ? (
                               <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>
                             ) : (

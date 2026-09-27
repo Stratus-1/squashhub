@@ -258,6 +258,7 @@ export default function Ladder() {
         .select("id, name, ranking_points, ladder_position, avatar_url")
         .eq("club_id", clubId!)
         .neq("role", "visitor")
+        .neq("status", "resigned")
         // Ranking points are for true members on the club ladder only —
         // visitors and league-only guests never appear on the leaderboard.
         .not("ladder_position", "is", null)

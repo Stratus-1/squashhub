@@ -643,7 +643,9 @@ export function useLadder(clubId?: string) {
       let query = supabase
         .from("club_members")
         .select("id, name, email, user_id, gender, skill_level, plays_league, ladder_position, cross_gender_ladder_position, avatar_url, role")
-        .neq("role", "visitor");
+        .neq("role", "visitor")
+        // Resigned members keep their history but never appear on the ladder.
+        .neq("status", "resigned");
       if (clubId) {
         query = query.eq("club_id", clubId);
       }

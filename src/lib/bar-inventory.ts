@@ -184,8 +184,8 @@ export function isValidNow(i: InventoryItem, at: Date = new Date()): boolean {
   if (s && e && s !== e) { // equal start/end = no time restriction (all day)
     if (s <= e) { if (time < s || time >= e) return false; }
     else if (time < s && time >= e) return false; // overnight window
-  } else if (s && time < s) return false;
-  else if (e && time >= e) return false;
+  } else if (s && !e && time < s) return false;
+  else if (e && !s && time >= e) return false;
   return true;
 }
 

@@ -351,13 +351,28 @@ export default function HonestyBar() {
           </TabsList>
 
           <TabsContent value="shop" className="space-y-4 mt-4">
+            {/* Bar / Shop division switch */}
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+              {(["bar", "shop"] as BarDivision[]).map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDivision(d)}
+                  className={`flex items-center justify-center gap-1.5 rounded-md py-2 text-xs font-semibold transition-colors ${
+                    division === d ? "bg-background shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  {d === "bar" ? <Beer className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
+                  {d === "bar" ? "Bar" : "Shop"}
+                </button>
+              ))}
+            </div>
             {/* Item catalog */}
             {groupedByCategory.map(group => {
-              const Icon = group.icon;
               return (
                 <div key={group.value}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-base">{BAR_CATEGORY_EMOJI[group.value] || "📦"}</span>
                     <h3 className="text-sm font-semibold">{group.label}</h3>
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
@@ -373,7 +388,7 @@ export default function HonestyBar() {
                             {item.image_url ? (
                               <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                             ) : (
-                              <span className="text-2xl">{CATEGORY_ICONS[item.category] || "📦"}</span>
+                              <span className="text-2xl">{BAR_CATEGORY_EMOJI[item.category] || "📦"}</span>
                             )}
                           </div>
                           <p className="text-[11px] font-medium leading-tight text-center truncate w-full">{item.name}</p>

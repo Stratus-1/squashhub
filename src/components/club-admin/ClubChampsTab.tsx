@@ -12976,8 +12976,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 <div className="space-y-1">
                                   {block.rows.map(({ item: p, seed }) => (
                                     <SortableRow key={p.id} id={p.id}>
-                                      {pools > 1 && (
-                                        <span className="text-[10px] text-muted-foreground w-5 shrink-0 tabular-nums" title="Seed within this division">{seed}.</span>
+                                       {(pools > 1 || handicapMode === "league_average") && (
+                                         <span className="text-[10px] text-muted-foreground w-5 shrink-0 tabular-nums" title="Position within this league">{seed}.</span>
                                       )}
                                        <span className="flex-[1_1_calc(100%-2rem)] sm:flex-1 min-w-0 text-sm font-medium">
                                          <span className="block break-words">{p.name || p.profiles?.name}</span>

@@ -26,6 +26,7 @@ import { divisionPools } from "@/lib/tournaments/active-draw";
 
 import { getTournamentFormat } from "@/lib/tournament-formats";
 import { getGroupLabel } from "@/lib/tournament-formats/group-labels";
+import { loadLeagueAverageStandings } from "@/lib/tournament-formats/league-average-handicap";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
 import { NoShowInjuredDialog } from "@/components/tournaments/NoShowInjuredDialog";
 import { KnockoutCard } from "@/components/tournaments/KnockoutCard";
@@ -351,6 +352,20 @@ export default function ClubChampsView() {
     [displayEntries, provisionalEntries],
   );
 
+  // Use the same regional league index as Allocate players for tied standings.
+  // Tournament results still decide the table once matches have been played.
+  const averageMemberIds = useMemo(
+    () => [...new Set(standingsEntries.map((e: any) => String(e.club_member_id || "")).filter(Boolean))].sort().join(","),
+    [standingsEntries],
+  );
+  const averageSeason = new Date().getFullYear();
+  const { data: averageStandings } = useQuery({
+    queryKey: ["tournament-league-average-standings", averageMemberIds, averageSeason],
+    queryFn: () => loadLeagueAverageStandings(averageMemberIds.split(","), averageSeason),
+    enabled: (champ as any)?.handicap_mode === "league_average" && champ?.match_type === "singles" && !!averageMemberIds,
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Real league ranks (player_rank from member_league_registrations) for the source leagues.
   // Used to order players within each league group by their actual league position
   // (e.g. Terence = #1 in 7th League) instead of the entry insertion order.
@@ -655,12 +670,18 @@ export default function ClubChampsView() {
     });
 
     // Strategy-driven ranking. When stats are equal (e.g. before any games are
-    // played) the club ladder is the visible order everyone recognises, so it
-    // is the first fallback — a #39 must never sit above a #15. Only then the
-    // league position, then entry order.
+    // played) use the regional average index for league-average handicap events,
+    // just as Allocate players does. Other tournaments still use club ladder.
     return rows.sort((a: any, b: any) => {
       const primary = tournamentFormat.rankStandings(a, b);
       if (primary !== 0) return primary;
+      if ((champ as any)?.handicap_mode === "league_average" && !isDoubles) {
+        const aa = averageStandings?.get(a.club_member_id)?.index ?? Number.MAX_SAFE_INTEGER;
+        const ab = averageStandings?.get(b.club_member_id)?.index ?? Number.MAX_SAFE_INTEGER;
+        if (aa !== ab) return aa - ab;
+        // Unknown averages stay at the bottom, not ranked by the host club ladder.
+        return (a.order_index ?? 0) - (b.order_index ?? 0);
+      }
       const la = a.clubLadderRank ?? Number.MAX_SAFE_INTEGER;
       const lb = b.clubLadderRank ?? Number.MAX_SAFE_INTEGER;
       if (la !== lb) return la - lb;

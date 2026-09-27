@@ -3868,6 +3868,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),
     [allSelectablePlayers, selectedPlayerIds]
   );
+  const handicapMemberIdsKey = useMemo(
+    () => selectedPlayers.map((p: any) => String(p.id)).filter((id) => !id.startsWith("visitor-")).sort().join(","),
+    [selectedPlayers],
+  );
+  const handicapSeason = new Date().getFullYear();
+  const { data: handicapStandings, isLoading: handicapStandingsLoading, isError: handicapStandingsError } = useQuery({
+    queryKey: ["tournament-league-average-standings", handicapMemberIdsKey, handicapSeason],
+    enabled: showWizard && !isDoubles && handicapMode === "league_average" && !!handicapMemberIdsKey,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => loadLeagueAverageStandings(handicapMemberIdsKey.split(","), handicapSeason),
+  });
 
   /**
    * Keep league allocations seeded automatically.
@@ -4094,14 +4105,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         g[extra].push(p);
       });
     });
-    // Seed order per division: the chosen seeding source (club ladder by
-    // default; club rating / regional / national ranking when selected),
-    // unranked last, unless the organiser deliberately reordered by hand.
+    // League-average handicap uses the same regional index displayed next to
+    // each entrant and used to calculate their starting points. Never fall
+    // back to the host club ladder for a player without regional results.
+    // Deliberate organiser reordering and later-stage progression still win.
     const sorted = g.map((list, gi) =>
       sortDivisionEntrants(list as any, {
         manual: manualSeedGroups.has(gi),
         manualOrder: playerOrder,
-        rankOf: seedRankOf,
+        rankOf: handicapMode === "league_average"
+          ? (p) => handicapStandings?.get(p.id)?.index ?? null
+          : seedRankOf,
       }) as ClubMember[],
     );
     // Staged events (Diamond League): a division played AFTER another is not
@@ -4120,7 +4134,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       );
     }
     return sorted;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor, seedRankOf]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor, seedRankOf, handicapMode, handicapStandings]);
 
   /**
    * Staged events field the SAME players again in the next stage, so every
@@ -7523,17 +7537,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         .join(","),
     [inviteeRows, paymentRequired, entryFeeAmount],
   );
-  const handicapMemberIdsKey = useMemo(
-    () => selectedPlayers.map((p: any) => String(p.id)).filter((id) => !id.startsWith("visitor-")).sort().join(","),
-    [selectedPlayers],
-  );
-  const handicapSeason = new Date().getFullYear();
-  const { data: handicapStandings, isLoading: handicapStandingsLoading, isError: handicapStandingsError } = useQuery({
-    queryKey: ["tournament-league-average-standings", handicapMemberIdsKey, handicapSeason],
-    enabled: showWizard && !isDoubles && handicapMode === "league_average" && !!handicapMemberIdsKey,
-    staleTime: 5 * 60 * 1000,
-    queryFn: () => loadLeagueAverageStandings(handicapMemberIdsKey.split(","), handicapSeason),
-  });
   const { data: regionalLeagueMemberIds = new Set<string>() } = useQuery({
     queryKey: ["regional-league-standing-members", participatingMemberIdsKey],
     enabled: scopeIsWide && participatingMemberIdsKey.length > 0,
@@ -12619,8 +12622,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               );
             })()}
 
-            {/* How the automatic split fills the pools. Manual drags always win. */}
-            <div className="mt-3 rounded-md border bg-muted/30 p-2 space-y-2">
+            {/* Pool split only applies when a division actually has multiple pools. */}
+            {Array.from({ length: numGroups }, (_, gi) => poolsForDivision(gi + 1)).some((count) => count > 1) && handicapMode !== "league_average" && <div className="mt-3 rounded-md border bg-muted/30 p-2 space-y-2">
               <div className="text-xs font-medium">Pool allocation</div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {([
@@ -12656,7 +12659,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               <p className="text-[11px] text-muted-foreground">
                 Applies to every league that runs more than one pool. Players you drag by hand keep their spot.
               </p>
-            </div>
+            </div>}
 
             {/* Category mismatches — e.g. female players sitting in a league
                 set to Men's. Offer a one-click move into a matching league
@@ -12743,7 +12746,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             </div>
             <Separator />
             <p className="text-xs text-muted-foreground">
-              {isDoubles ? "Pairs" : "Players"} are auto-distributed by order. Drag a row into another league to move it, drag within a league to reorder, or use the dropdown.
+              {handicapMode === "league_average" && !isDoubles
+                ? "Players are ordered within their registered leagues by regional league average. Drag to change an order or league, or use the dropdown."
+                : `${isDoubles ? "Pairs" : "Players"} are auto-distributed by order. Drag a row into another league to move it, drag within a league to reorder, or use the dropdown.`}
               {!isDoubles && (handicapMode === "league_rank" || handicapMode === "group_order") && (
                 <> <span className="text-primary font-medium">Sort strongest → weakest within each league — {handicapMode === "group_order" ? "this order is the handicap ranking" : "this order determines handicaps"}</span>
                   {handicapMode === "group_order" && groups.length > 1 && groupRankScope === "parallel"
@@ -12754,7 +12759,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             </p>
             {!isDoubles && handicapMode === "league_average" && (
               <p className="text-xs text-muted-foreground">
-                The handicap index adds the positions in stronger regional leagues to each player's average. The stronger player starts on minus the rounded index gap × {handicapMultiplier}. No results means no calculated handicap.
+                  League position is based on this season’s games. Players with the same average keep separate places in the order. The handicap index adds the positions in stronger regional leagues to each player's average; the stronger player starts on minus the rounded index gap × {handicapMultiplier}. No results means no calculated handicap.
               </p>
             )}
             <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCrossLeagueDragEnd}>
@@ -12882,7 +12887,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     })
                                   }
                                 >
-                                  {pools > 1 ? "Rebalance pools by seed" : "Reset to ladder order"}
+                                  {pools > 1 ? "Rebalance pools by seed" : handicapMode === "league_average" ? "Reset to league average order" : "Reset to ladder order"}
                                 </Button>
                               </>
                             ) : (
@@ -12895,14 +12900,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                   <Badge variant="outline" className="text-[10px]">
                                      {src && seedSourceFor(gi + 1) === "previous"
                                        ? `Seeded by ${srcLabel} results`
-                                       : `Seeded by ${seedingSourceLabel}`}
+                                        : handicapMode === "league_average" ? "Ordered by regional league average" : `Seeded by ${seedingSourceLabel}`}
                                   </Badge>
                                 );
                               })()
                             )}
-                            {g.some((p) => isUnranked(p as any)) && (
+                            {(handicapMode === "league_average" ? !handicapStandingsLoading && !handicapStandingsError && g.some((p) => !handicapStandings?.has(p.id)) : g.some((p) => isUnranked(p as any))) && (
                               <Badge variant="secondary" className="text-[10px]">
-                                {g.filter((p) => isUnranked(p as any)).length} unranked
+                                {handicapMode === "league_average" ? `${g.filter((p) => !handicapStandings?.has(p.id)).length} without league results` : `${g.filter((p) => isUnranked(p as any)).length} unranked`}
                               </Badge>
                             )}
                             {isKnockoutDivision(gi + 1) && g.length > 1 && (
@@ -12947,7 +12952,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             <p className="text-[10px] text-muted-foreground mb-2 leading-snug">
                               Seed order:{" "}
                               {seedPreview(g as any)
-                                .map((s) => `${s.seed}. ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`)
+                                .map((s) => handicapMode === "league_average"
+                                  ? `${s.seed}. ${s.name}${handicapStandings?.get(s.id) ? ` (avg ${handicapStandings.get(s.id)?.avgPosition.toFixed(1)})` : " (no league results)"}`
+                                  : `${s.seed}. ${s.name}${s.ladderPosition ? ` (#${s.ladderPosition})` : " (unranked)"}`)
                                 .join("  ·  ")}
                             </p>
                           )}
@@ -12969,8 +12976,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 <div className="space-y-1">
                                   {block.rows.map(({ item: p, seed }) => (
                                     <SortableRow key={p.id} id={p.id}>
-                                      {pools > 1 && (
-                                        <span className="text-[10px] text-muted-foreground w-5 shrink-0 tabular-nums" title="Seed within this division">{seed}.</span>
+                                       {(pools > 1 || handicapMode === "league_average") && (
+                                         <span className="text-[10px] text-muted-foreground w-5 shrink-0 tabular-nums" title="Position within this league">{seed}.</span>
                                       )}
                                        <span className="flex-[1_1_calc(100%-2rem)] sm:flex-1 min-w-0 text-sm font-medium">
                                          <span className="block break-words">{p.name || p.profiles?.name}</span>
@@ -12988,7 +12995,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           {GENDER_LABELS[genderForLeague((groupAssignments.get(p.id) ?? 0) + 1)]}?
                                         </Badge>
                                       )}
-                                      {p.ladder_position ? (
+                                       {handicapMode === "league_average" ? null : p.ladder_position ? (
                                         <Badge variant="secondary" className="text-[10px]" title="Club ladder position — the seeding rank">#{p.ladder_position}</Badge>
                                       ) : (
                                         <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40" title="No club ladder position — seeded after every ranked entrant">No ladder rank</Badge>
@@ -13083,7 +13090,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                  </span>;
                                })()}
                              </span>
-                            {p.ladder_position ? (
+                             {handicapMode === "league_average" ? null : p.ladder_position ? (
                               <Badge variant="secondary" className="text-[10px]">#{p.ladder_position}</Badge>
                             ) : (
                               <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40">No ladder rank</Badge>

@@ -6,6 +6,7 @@ import {
   leaguePositionLabel,
   type LeagueStanding,
 } from "@/lib/tournament-formats/league-average-handicap";
+import { sortDivisionEntrants } from "@/lib/tournaments/seeding";
 
 const league = (label: string, n = 4) =>
   Array.from({ length: n }, (_, i) => ({ player_code: "x", league_label: label, category: "Mens", position: i + 1 }));
@@ -57,5 +58,25 @@ describe("league average handicap", () => {
     expect(leaguePositionLabel(marius)).toBe("6th League · avg 3.1 (10 games) · index 23.1 · Mens");
     expect(leaguePositionLabel(willem)).toBe("7th League · avg 4.0 (5 games) · index 28.0 · Mens");
     expect(leagueAverageHandicap(marius?.index, willem?.index)).toEqual({ handicap_a: -5, handicap_b: 0 });
+  });
+
+  it("orders 6th League before 7th League and within each by actual average, never host ladder", () => {
+    const rows = [
+      ...Array(10).fill({ player_code: "six-three", league_label: "6th", category: "Mens", position: 3 }),
+      ...Array(10).fill({ player_code: "six-two", league_label: "6th", category: "Mens", position: 2 }),
+      ...Array(10).fill({ player_code: "seven-one", league_label: "7th", category: "Mens", position: 1 }),
+    ];
+    const standings = computeLeagueStandings(rows, sizes);
+    const players = [
+      { id: "seven-one", ladder_position: 1 },
+      { id: "missing", ladder_position: 2 },
+      { id: "six-three", ladder_position: 3 },
+      { id: "six-two", ladder_position: 80 },
+    ];
+    const rankOf = (p: { id: string }) => standings.get(p.id)?.index ?? null;
+    expect(sortDivisionEntrants(players, { rankOf }).map((p) => p.id))
+      .toEqual(["six-two", "six-three", "seven-one", "missing"]);
+    expect(sortDivisionEntrants(players, { rankOf, manual: true, manualOrder: ["seven-one", "six-two"] }).map((p) => p.id))
+      .toEqual(["seven-one", "six-two", "six-three", "missing"]);
   });
 });

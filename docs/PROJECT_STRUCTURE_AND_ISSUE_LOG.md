@@ -2169,3 +2169,6 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 
 ### 2026-09-27 — Show regional league averages when allocating handicap players
 - For singles tournaments using league-average handicap, Allocate players shows each entrant's most-played regional league, average position, games, category and exact cross-league index used for handicap. The same loader supplies fixture scores and display; missing results are marked explicitly. Cross-club players use their own member ID and regional affiliation, not the host club ladder.
+
+### 2026-09-27 — Regional league average controls allocation order
+- For singles events with league-average handicap, Allocate players orders entrants within each tournament league by the same regional index used for handicaps (6th League averages ahead of 7th League averages). Missing results sort last without a club-ladder fallback; manual drags and later-stage progression remain authoritative. The inapplicable pool-allocation selector and club-ladder badges are hidden in this mode, leaving other tournament modes unchanged.

@@ -165,10 +165,11 @@ function MemberPaymentStatus({ fees, glBilled, glPaid, onOpenStatement }: {
   onOpenStatement?: () => void;
 }) {
   const { format } = useClubCurrency();
-  if (fees.length === 0 && !glBilled) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
+  const hasGl = (glBilled ?? 0) > 0 || (glPaid ?? 0) > 0;
+  if (fees.length === 0 && !hasGl) return <span className="text-[10px] text-muted-foreground italic">No fees</span>;
   const feeTotal = fees.reduce((s, f) => s + f.amount, 0);
   // Prefer real GL numbers so this matches the Member Statement exactly.
-  const total = glBilled && glBilled > 0 ? glBilled : feeTotal;
+  const total = hasGl ? (glBilled ?? 0) : feeTotal;
   const paid = typeof glPaid === "number" ? glPaid : 0;
   const balance = total - paid; // positive = owes club, negative = in credit
   const settled = Math.abs(balance) <= 0.01;
@@ -376,7 +377,7 @@ function MemberCard({ member: m, fees, payableFees, glBilled, glPaid, delegateTi
 
 
       {/* Row 3: Fees receivable from member — totals reflect the GL / member statement */}
-      {(fees.length > 0 || (glBilled ?? 0) > 0) && (
+      {(fees.length > 0 || (glBilled ?? 0) > 0 || (glPaid ?? 0) > 0) && (
         <div className="border-t border-border pt-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-medium text-muted-foreground shrink-0">Balance owed by the member:</span>
@@ -942,7 +943,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
   let totalPaid = 0;
   for (const m of members) {
     const gl = glByMember.get(m.id);
-    if (gl && gl.billed > 0) {
+    if (gl && (gl.billed > 0 || gl.paid > 0)) {
       totalExpected += gl.billed;
       totalPaid += gl.paid;
     } else {

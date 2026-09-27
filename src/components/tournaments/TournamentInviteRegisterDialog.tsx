@@ -261,7 +261,7 @@ export function TournamentInviteRegisterDialog({
       if (res?.charged === false) {
         toast.info("No entry fee is payable for this tournament.");
       } else {
-        toast.success(`${money(entryFeeCents)} was added to your member account. You can settle it later in My Account.`);
+        toast.success(`${money(entryFeeCents)} was added to your account at the club hosting this tournament.`);
       }
       qc.invalidateQueries({ queryKey: ["member-fees"] });
       qc.invalidateQueries({ queryKey: ["member-account"] });

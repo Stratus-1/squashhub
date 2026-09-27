@@ -401,7 +401,13 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
           .eq("paid", false)
           .order("created_at", { ascending: true });
         const descStr = (tx.description || "") as string;
-        let feesToMark = (unpaidFees || []).filter((f: any) => descStr.includes(f.fee_label));
+        // A payment linked to an exact fee settles that fee first.
+        let feesToMark = tx.fee_payment_id
+          ? (unpaidFees || []).filter((f: any) => f.id === tx.fee_payment_id)
+          : [];
+        if (feesToMark.length === 0) {
+          feesToMark = (unpaidFees || []).filter((f: any) => descStr.includes(f.fee_label));
+        }
 
         // Top-up confirmations have no fee label in the description — auto-settle
         // outstanding fees (oldest first) up to the confirmed amount, mirroring the

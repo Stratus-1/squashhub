@@ -1,3 +1,5 @@
+import { countOriginalPairs, pairKey, pairsEffectiveOn, splitPairLabel } from "@/lib/leagues/original-pair-bonus";
+import { checkDoublesSub } from "@/lib/leagues/doubles-sub-eligibility";
 import { useState, useMemo, useRef, useCallback, useEffect, type CSSProperties, type ReactNode } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -603,7 +605,7 @@ export default function LeagueGameDetail() {
   // A doubles league plays RUBBERS (pairs), not one row per player. The
   // scorecard must render one row per rubber and show both partner names.
   const { data: doublesInfo } = useQuery({
-    queryKey: ["league-fixture-doubles", fixture?.home_team_code, fixture?.away_team_code],
+    queryKey: ["league-fixture-doubles", fixture?.home_team_code, fixture?.away_team_code, (fixture as any)?.fixture_date],
     enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
     queryFn: async () => {
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
@@ -654,18 +656,52 @@ export default function LeagueGameDetail() {
 
 
 
-      const { data: pairs } = await (supabase as any)
+      // Pairs official on the fixture date (admin edits start a new official
+      // pair from their date; earlier fixtures keep the earlier pair).
+      const fixtureDate: string | null = (fixture as any)?.fixture_date ?? null;
+      const assocId = (leagues as any[])[0]?.association_id ?? null;
+
+      // Bye teams: same-association teams with no fixture on this date.
+      let byeLeagueIds: string[] = [];
+      let byeCodeById = new Map<string, string>();
+      if (assocId && fixtureDate) {
+        const { data: assocTeams } = await (supabase as any)
+          .from("leagues").select("id, code").eq("association_id", assocId).is("archived_at", null);
+        const { data: dayFx } = await (supabase as any)
+          .from("platform_league_fixtures").select("home_team_code, away_team_code").eq("fixture_date", fixtureDate);
+        const playing = new Set<string>();
+        for (const f of (dayFx || []) as any[]) {
+          playing.add(String(f.home_team_code || "").toUpperCase());
+          playing.add(String(f.away_team_code || "").toUpperCase());
+        }
+        for (const t of (assocTeams || []) as any[]) {
+          const c = String(t.code || "").toUpperCase();
+          if (c && !playing.has(c)) { byeLeagueIds.push(t.id); byeCodeById.set(t.id, c); }
+        }
+      }
+
+      const { data: allPairs } = await (supabase as any)
         .from("league_team_pairs")
-        .select("league_id, pair_label, pair_order, player_one_member_id, player_two_member_id, is_active")
-        .in("league_id", leagueIds)
-        .eq("is_active", true)
+        .select("league_id, pair_label, pair_order, player_one_member_id, player_two_member_id, is_active, effective_from, effective_to")
+        .in("league_id", [...leagueIds, ...byeLeagueIds])
         .order("pair_order", { ascending: true });
+      const pairs = pairsEffectiveOn(
+        ((allPairs || []) as any[]).map((p) => ({ ...p, one: p.player_one_member_id, two: p.player_two_member_id })),
+        fixtureDate,
+      );
+
+      // League reserve team (reserve_mode = per_league).
+      const { data: reserveRows } = assocId
+        ? await (supabase as any).from("league_reserve_players")
+            .select("member_id, rank").eq("association_id", assocId).eq("is_active", true)
+        : { data: [] };
 
       const memberIds = new Set<string>();
-      for (const p of (pairs || []) as any[]) {
+      for (const p of pairs as any[]) {
         if (p.player_one_member_id) memberIds.add(p.player_one_member_id);
         if (p.player_two_member_id) memberIds.add(p.player_two_member_id);
       }
+      for (const r of (reserveRows || []) as any[]) memberIds.add(r.member_id);
       const nameById = new Map<string, string>();
       if (memberIds.size) {
         const { data: members } = await supabase
@@ -674,16 +710,34 @@ export default function LeagueGameDetail() {
       }
 
       const pairsByCode: Record<string, Array<{ code: string; name: string }>> = {};
-      for (const p of (pairs || []) as any[]) {
-        const key = codeByLeagueId.get(p.league_id);
-        if (!key) continue;
+      const pairKeysByCode: Record<string, string[]> = {};
+      const byeRankByName: Record<string, number> = {};
+      const byeOrderCount = new Map<string, number>();
+      for (const p of pairs as any[]) {
         const one = nameById.get(p.player_one_member_id) || "";
         const two = nameById.get(p.player_two_member_id) || "";
+        const byeCode = byeCodeById.get(p.league_id);
+        if (byeCode) {
+          const n = (byeOrderCount.get(byeCode) || 0) + 1;
+          byeOrderCount.set(byeCode, n);
+          const rank = Number(p.pair_order) || n;
+          if (one) byeRankByName[normalizePlayerName(one)] = rank;
+          if (two) byeRankByName[normalizePlayerName(two)] = rank;
+          if (!leagueIds.includes(p.league_id)) continue;
+        }
+        const key = codeByLeagueId.get(p.league_id);
+        if (!key) continue;
         const label = [one, two].filter(Boolean).join(" & ") || p.pair_label || "";
         if (!label) continue;
         (pairsByCode[key] ||= []).push({ code: "", name: label });
+        if (one && two) (pairKeysByCode[key] ||= []).push(pairKey(one, two));
       }
-      return { isDoubles: true, rubbers, pairsByCode };
+      const reserveRankByName: Record<string, number> = {};
+      for (const r of (reserveRows || []) as any[]) {
+        const n = nameById.get(r.member_id);
+        if (n) reserveRankByName[normalizePlayerName(n)] = Number(r.rank) || 1;
+      }
+      return { isDoubles: true, rubbers, pairsByCode, pairKeysByCode, byeRankByName, reserveRankByName };
     },
   });
   const doublesRubbers = doublesInfo?.isDoubles ? doublesInfo.rubbers : 0;
@@ -1979,8 +2033,20 @@ export default function LeagueGameDetail() {
     const awayPermanentSquadNames = (savedSquad?.away?.names && savedSquad.away.names.length > 0)
       ? savedSquad.away.names.map(normalizePlayerName).filter(Boolean)
       : fallbackOriginalNames(awayTeamCode);
-    const homeOriginalCountRaw = countEligibleOriginalPlayers(positions, "home", homePermanentSquad, homePermanentSquadNames);
-    const awayOriginalCountRaw = countEligibleOriginalPlayers(positions, "away", awayPermanentSquad, awayPermanentSquadNames);
+    // DOUBLES: bonus per original pair (both players together), using the
+    // pairs official on the fixture date — frozen into the snapshot on first save.
+    const isDoublesCard = !!doublesInfo?.isDoubles;
+    const liveKeys = (doublesInfo as any)?.pairKeysByCode || {};
+    const homePairKeys: string[] = (savedSquad as any)?.home?.pairs?.length
+      ? (savedSquad as any).home.pairs : (liveKeys[homeTeamCode.toUpperCase()] || []);
+    const awayPairKeys: string[] = (savedSquad as any)?.away?.pairs?.length
+      ? (savedSquad as any).away.pairs : (liveKeys[awayTeamCode.toUpperCase()] || []);
+    const homeOriginalCountRaw = isDoublesCard
+      ? countOriginalPairs(positions.map((p) => p.homeName), homePairKeys)
+      : countEligibleOriginalPlayers(positions, "home", homePermanentSquad, homePermanentSquadNames);
+    const awayOriginalCountRaw = isDoublesCard
+      ? countOriginalPairs(positions.map((p) => p.awayName), awayPairKeys)
+      : countEligibleOriginalPlayers(positions, "away", awayPermanentSquad, awayPermanentSquadNames);
     // Admin manual delta (e.g. recorded player didn't actually play; an unlisted sub stepped in).
     const homeOriginalCount = Math.max(0, homeOriginalCountRaw + (originalCountAdj.home || 0));
     const awayOriginalCount = Math.max(0, awayOriginalCountRaw + (originalCountAdj.away || 0));
@@ -2011,10 +2077,12 @@ export default function LeagueGameDetail() {
       _awayPermanentSquadCodes: awayPermanentSquad,
       _homePermanentSquadNames: homePermanentSquadNames,
       _awayPermanentSquadNames: awayPermanentSquadNames,
+      _homePairKeys: isDoublesCard ? homePairKeys : [],
+      _awayPairKeys: isDoublesCard ? awayPairKeys : [],
       _hadSavedSquad: !!(savedSquad?.home?.codes?.length || savedSquad?.away?.codes?.length
         || savedSquad?.home?.names?.length || savedSquad?.away?.names?.length),
     };
-  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot, existingResult, originalCountAdj]);
+  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot, existingResult, originalCountAdj, doublesInfo]);
 
   // ---- Submit ----
   const handleSubmit = async () => {
@@ -2034,6 +2102,16 @@ export default function LeagueGameDetail() {
     const _todayStr = format(new Date(), "yyyy-MM-dd");
     const isFixtureSameDayOrPast = !!_fxDateStr && _fxDateStr <= _todayStr;
     const wouldFinalize = !!(adminOverride || (isClubAdmin && isFixtureSameDayOrPast) || (homeSig && awaySig));
+    if (wouldFinalize && !adminOverride) {
+      // Doubles sub rules: block a final result with a sub the league doesn't allow.
+      for (let i = 0; i < positions.length; i++) {
+        const issue = doublesSubIssue(i, "home") || doublesSubIssue(i, "away");
+        if (issue) {
+          toast.error(`Pair ${i + 1}: ${issue}`);
+          return;
+        }
+      }
+    }
     if (wouldFinalize) {
       // GUARD 1: never submit a final result with zero games played and no
       // forfeits recorded. A bonus/penalty-only submission posts phantom
@@ -2084,7 +2162,7 @@ export default function LeagueGameDetail() {
       const computedHasAny =
         computedHomeCodes.length || computedAwayCodes.length ||
         computedHomeNames.length || computedAwayNames.length;
-      const permanentSquadSnapshot = hasExistingSavedSquad
+      let permanentSquadSnapshot: any = hasExistingSavedSquad
         ? existingSavedSquad!
         : (computedHasAny
             ? {
@@ -2092,6 +2170,17 @@ export default function LeagueGameDetail() {
                 away: { codes: computedAwayCodes, names: computedAwayNames },
               }
             : undefined);
+      // Doubles: freeze the original pairs (official on the fixture date) once.
+      const hp = ((summary as any)._homePairKeys as string[]) || [];
+      const ap = ((summary as any)._awayPairKeys as string[]) || [];
+      const frozenHasPairs = !!((existingSavedSquad as any)?.home?.pairs?.length || (existingSavedSquad as any)?.away?.pairs?.length);
+      if (!frozenHasPairs && (hp.length || ap.length)) {
+        permanentSquadSnapshot = {
+          ...(permanentSquadSnapshot || {}),
+          home: { ...(permanentSquadSnapshot?.home || {}), pairs: hp },
+          away: { ...(permanentSquadSnapshot?.away || {}), pairs: ap },
+        };
+      }
       // Final submit: per-position scores are already live-saved via persistPositionScores.
       // Only re-assert player setup + forfeit state here — NEVER overwrite game_scores
       // or winner from local state (could clobber another captain's live progress).
@@ -2590,7 +2679,13 @@ export default function LeagueGameDetail() {
   const isSubstituted = (code: string | null | undefined, idx: number, side: "home" | "away") => {
     // SUB indicator only applies when the league has the original-player bonus rule.
     // Without that rule (e.g. NSA), substitutions are unrestricted and irrelevant.
-    if (!leagueRules?.original_player_bonus_enabled) return false;
+    if (!leagueRules?.original_player_bonus_enabled && !doublesInfo?.isDoubles) return false;
+    if (doublesInfo?.isDoubles) {
+      const label = side === "home" ? positions[idx]?.homeName : positions[idx]?.awayName;
+      if (!splitPairLabel(label)) return false;
+      const keys = side === "home" ? (summary as any)._homePairKeys : (summary as any)._awayPairKeys;
+      return countOriginalPairs([label], keys || []) === 0;
+    }
     const cur = normalizePlayerCode(code);
     const pos = positions[idx];
     const curName = normalizePlayerName(side === "home" ? pos?.homeName : pos?.awayName);
@@ -2602,6 +2697,34 @@ export default function LeagueGameDetail() {
     if (cur && squadCodes.has(cur)) return false;
     if (curName && squadNames.has(curName)) return false;
     return true;
+  };
+
+  // Doubles sub rule check: returns a reason when a sub in this rubber is not
+  // allowed (wrong source or wrong rank), otherwise null.
+  const doublesSubIssue = (idx: number, side: "home" | "away"): string | null => {
+    if (!doublesInfo?.isDoubles || !leagueRules?.enforce_sub_rules) return null;
+    const label = side === "home" ? positions[idx]?.homeName : positions[idx]?.awayName;
+    const split = splitPairLabel(label);
+    if (!split) return null;
+    const keys: string[] = (side === "home" ? (summary as any)._homePairKeys : (summary as any)._awayPairKeys) || [];
+    const originals = new Set(keys.flatMap((k) => k.split("|")));
+    const rules = {
+      enforce: true,
+      fromReserves: (leagueRules as any).sub_from_reserves ?? true,
+      fromByeTeam: !!(leagueRules as any).sub_from_bye_team,
+      rankRule: ((leagueRules as any).sub_rank_rule ?? "any") as any,
+    };
+    const info: any = doublesInfo as any;
+    for (const n of split) {
+      if (originals.has(n)) continue;
+      const key = normalizePlayerName(n);
+      const r = checkDoublesSub(rules, {
+        reserveRank: info.reserveRankByName?.[key] ?? null,
+        byeRank: info.byeRankByName?.[key] ?? null,
+      }, idx + 1);
+      if (r.ok === false) return `${n}: ${r.reason}`;
+    }
+    return null;
   };
 
   return (
@@ -2950,6 +3073,9 @@ export default function LeagueGameDetail() {
                               {isCaptainCode(pos.homeCode, "home") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold" title="Team captain">C</Badge>
                               )}
+                              {doublesSubIssue(idx, "home") && (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4" title={doublesSubIssue(idx, "home") || ""}>Sub not allowed</Badge>
+                              )}
                               {isSubstituted(pos.homeCode, idx, "home") && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold" title="Substitute (replaced original player)">SUB</Badge>
                               )}
@@ -3041,6 +3167,9 @@ export default function LeagueGameDetail() {
                               <span className={cn("truncate transition-colors", homeNameTint)}>{pos.homeName || "—"}</span>
                               {isCaptainCode(pos.homeCode, "home") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold shrink-0" title="Team captain">C</Badge>
+                              )}
+                              {doublesSubIssue(idx, "home") && (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4" title={doublesSubIssue(idx, "home") || ""}>Sub not allowed</Badge>
                               )}
                               {isSubstituted(pos.homeCode, idx, "home") && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold shrink-0" title="Substitute (replaced original player)">SUB</Badge>
@@ -3143,6 +3272,9 @@ export default function LeagueGameDetail() {
                               {isCaptainCode(pos.awayCode, "away") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold" title="Team captain">C</Badge>
                               )}
+                              {doublesSubIssue(idx, "away") && (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4" title={doublesSubIssue(idx, "away") || ""}>Sub not allowed</Badge>
+                              )}
                               {isSubstituted(pos.awayCode, idx, "away") && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold" title="Substitute (replaced original player)">SUB</Badge>
                               )}
@@ -3234,6 +3366,9 @@ export default function LeagueGameDetail() {
                               <span className={cn("truncate transition-colors", awayNameTint)}>{pos.awayName || "—"}</span>
                               {isCaptainCode(pos.awayCode, "away") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold shrink-0" title="Team captain">C</Badge>
+                              )}
+                              {doublesSubIssue(idx, "away") && (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4" title={doublesSubIssue(idx, "away") || ""}>Sub not allowed</Badge>
                               )}
                               {isSubstituted(pos.awayCode, idx, "away") && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold shrink-0" title="Substitute (replaced original player)">SUB</Badge>

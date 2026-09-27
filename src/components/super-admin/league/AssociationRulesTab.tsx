@@ -247,7 +247,7 @@ export default function AssociationRulesTab({ associationId, readOnly = false }:
           <div className="md:col-span-2 border-t pt-3 mt-1">
             <ToggleRow
               label="Original-player bonus (NIL rule)"
-              hint="When on, the team earns extra points for each originally-allocated player who actually plays. Reserves/subs do NOT earn this bonus."
+              hint="Singles: extra points for each originally-allocated player who plays. Doubles: extra points for each original pair that plays together — a pair with a sub earns nothing. A pair saved by an admin in Doubles pairs is the original pair from that date. Reserves/subs never earn this bonus."
               value={!!form.original_player_bonus_enabled}
               onChange={(v) => set("original_player_bonus_enabled", v)}
             />
@@ -366,6 +366,51 @@ export default function AssociationRulesTab({ associationId, readOnly = false }:
             value={!!form.allow_multi_fixture_per_night}
             onChange={(v) => set("allow_multi_fixture_per_night", v)}
           />
+          <div className="grid gap-4 md:grid-cols-2 border-t border-border pt-4">
+            <div className="space-y-1.5">
+              <Label>Reserves</Label>
+              <Select
+                value={form.reserve_mode ?? "per_team"}
+                onValueChange={(v) => set("reserve_mode", v as any)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="per_team">Per team</SelectItem>
+                  <SelectItem value="per_league">Per league (one reserve team, ranked)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Per league: reserves are set up in the Doubles pairs window with a rank each.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Doubles sub rank rule</Label>
+              <Select
+                value={form.sub_rank_rule ?? "any"}
+                onValueChange={(v) => set("sub_rank_rule", v as any)}
+                disabled={!form.enforce_sub_rules}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any rank</SelectItem>
+                  <SelectItem value="same">Same rank only (pair 2 slot = rank 2)</SelectItem>
+                  <SelectItem value="same_or_lower">Same rank or lower (never a stronger player)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <ToggleRow
+            label="Doubles subs may come from the reserve team"
+            hint="Reserves play at their reserve rank."
+            value={form.sub_from_reserves ?? true}
+            onChange={(v) => set("sub_from_reserves", v)}
+          />
+          <ToggleRow
+            label="Doubles subs may come from a team on bye"
+            hint="With an odd number of teams one team sits out each week. Its players may sub at the pair number they play in their own team."
+            value={!!form.sub_from_bye_team}
+            onChange={(v) => set("sub_from_bye_team", v)}
+          />
+
+
 
         </CardContent>
       </Card>

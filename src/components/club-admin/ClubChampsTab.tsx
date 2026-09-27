@@ -7564,7 +7564,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         name: memberNameById.get(r.club_member_id) || "Unknown member",
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [inviteeRows, registrationsByLeague, memberNameById, paymentRequired, entryFeeAmount]);
+  }, [inviteeRows, registrationsByLeague, memberNameById, paymentRequired, entryFeeAmount, scopeIsWide, scopeLeagueMembersByLeague, regionalLeagueMemberIds]);
 
 
   // First real invitee on the list — used for "send a test as an invited player"

@@ -2172,3 +2172,8 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 
 ### 2026-09-27 — Regional league average controls allocation order
 - For singles events with league-average handicap, Allocate players orders entrants within each tournament league by the same regional index used for handicaps (6th League averages ahead of 7th League averages). Missing results sort last without a club-ladder fallback; manual drags and later-stage progression remain authoritative. The inapplicable pool-allocation selector and club-ladder badges are hidden in this mode, leaving other tournament modes unchanged.
+
+## 2026-09-27 — "Join Your Club" search hid NSA-seeded clubs
+- Symptom: searching "Uitsig" on squashhub.co.za/register-club returned "No clubs matched".
+- Cause: `search_registerable_clubs` filtered `tenant_type = 'club'` only; 15 NSA-imported clubs (Uitsig, CSIR, Irene, Centurion, etc.) are `nsa_seeded` and were excluded.
+- Fix: function now includes `nsa_seeded` in the tenant_type filter. Verified: `search_registerable_clubs('uitsig')` returns Uitsig Squash Club. Live immediately (DB function, no publish needed).

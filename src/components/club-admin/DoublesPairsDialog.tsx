@@ -148,6 +148,19 @@ export function DoublesPairsDialog({
     return (id: string) => m.get(id) ?? "Unknown";
   }, [roster]);
 
+  // Pairs filtered by the search box: match either player's name (or pair
+  // number) so admins can find a pair quickly in long team lists.
+  const filteredPairs = useMemo(() => {
+    const q = pairSearch.trim().toLowerCase();
+    if (!q) return pairs;
+    return (pairs as any[]).filter((pair) => {
+      const one = nameOf(pair.player_one_member_id).toLowerCase();
+      const two = nameOf(pair.player_two_member_id).toLowerCase();
+      return one.includes(q) || two.includes(q) || `pair ${pair.pair_order ?? ""}`.includes(q);
+    });
+  }, [pairs, pairSearch, nameOf]);
+
+
   // A player may only appear in ONE active pair per team/season. Anyone
   // already paired is removed from the dropdowns and blocked again in the
   // mutation as a safety net (stale lists, double-clicks).

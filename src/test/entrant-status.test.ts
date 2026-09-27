@@ -128,3 +128,28 @@ describe("wording when no payment is required", () => {
     expect(entrantStatusLabel({ status: "waived", paid_at: "x" }, paid)).toBe("Entered — fee waived");
   });
 });
+
+describe("separate registration and fee status", () => {
+  it("free tournament: registered with no fee, never 'paid'", () => {
+    const r = { status: "paid", confirmed_at: "x", registration_status: "registered", fee_status: "not_required", registration_source: "player" };
+    expect(isParticipatingEntrant(r, free)).toBe(true);
+    expect(entrantStatusLabel(r, free)).toBe("Registered");
+  });
+  it("organiser-placed player counts as registered", () => {
+    const r = { status: "invited", registration_status: "registered", fee_status: "not_required", registration_source: "organiser" };
+    expect(isParticipatingEntrant(r, free)).toBe(true);
+    expect(entrantStatusLabel(r, free)).toBe("Registered by organiser");
+  });
+  it("fee required and unpaid: accepted but not registered", () => {
+    const r = { status: "pending_payment", confirmed_at: "x", registration_status: "invited", fee_status: "due" };
+    expect(classifyEntrant(r, paid)).toBe("accepted");
+    expect(isParticipatingEntrant(r, paid)).toBe(false);
+  });
+  it("fee required and paid: registered with fee paid", () => {
+    const r = { status: "paid", paid_at: "x", registration_status: "registered", fee_status: "paid", registration_source: "player" };
+    expect(entrantStatusLabel(r, paid)).toBe("Registered · Fee paid");
+  });
+  it("declined wins", () => {
+    expect(classifyEntrant({ registration_status: "declined", fee_status: "paid" }, paid)).toBe("declined");
+  });
+});

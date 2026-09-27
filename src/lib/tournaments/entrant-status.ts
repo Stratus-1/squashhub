@@ -37,7 +37,23 @@ export interface EntrantRowLike {
   invited_at?: string | null;
   invited_by_admin?: boolean | null;
   club_member_id?: string | null;
+  /** Authoritative (DB-derived): invited | registered | declined. */
+  registration_status?: string | null;
+  /** Authoritative (DB-derived): not_required | due | pending | paid | waived. */
+  fee_status?: string | null;
+  /** player | organiser */
+  registration_source?: string | null;
 }
+
+export type FeeStatus = "not_required" | "due" | "pending" | "paid" | "waived";
+
+export const FEE_STATUS_LABEL: Record<FeeStatus, string> = {
+  not_required: "No fee",
+  due: "Fee due",
+  pending: "Payment pending",
+  paid: "Fee paid",
+  waived: "Fee waived",
+};
 
 export interface EntrantContext {
   /** Tournament charges an entry fee AND payment is required before entry counts. */
@@ -63,6 +79,16 @@ export function hasAccepted(row: EntrantRowLike): boolean {
 }
 
 export function classifyEntrant(row: EntrantRowLike, ctx: EntrantContext = {}): EntrantCategory {
+  const reg = normalizeEntrantStatus(row.registration_status);
+  if (reg) {
+    // Registration and fee are separate: registration answers "is this player in?".
+    if (reg === "declined") return "declined";
+    if (reg === "registered") return "registered";
+    const fee = normalizeEntrantStatus(row.fee_status);
+    if (row.confirmed_at) return "accepted";
+    if (fee === "pending") return "payment_pending";
+    return "pending_invite";
+  }
   const s = normalizeEntrantStatus(row.status);
   if (DECLINED_STATUSES.has(s)) return "declined";
   if (hasPaid(row)) return "registered";
@@ -114,6 +140,12 @@ export const ENTRANT_CATEGORY_VARIANT: Record<
 export function entrantStatusLabel(row: EntrantRowLike, ctx: EntrantContext = {}): string {
   const category = classifyEntrant(row, ctx);
   if (category !== "registered") return ENTRANT_CATEGORY_LABEL[category];
+  const fee = normalizeEntrantStatus(row.fee_status);
+  if (fee) {
+    const who = row.registration_source === "organiser" ? "Registered by organiser" : "Registered";
+    if (fee === "not_required") return who;
+    return `${who} · ${FEE_STATUS_LABEL[fee as FeeStatus] ?? fee}`;
+  }
   if (isAdminSelected(row)) return "Selected";
   if (!ctx.paymentRequired) return "Entered";
   if (normalizeEntrantStatus(row.status) === "waived") return "Entered — fee waived";

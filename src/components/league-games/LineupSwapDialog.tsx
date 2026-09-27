@@ -159,7 +159,9 @@ export function LineupSwapDialog({
           associationTeamLeagueIdToCode.set(l.id, l.code);
         }
         const t = tierOf(l);
-        if (!targetTier || t !== targetTier) continue;
+        // Equal-strength leagues (no 1st/2nd/3rd tiers, e.g. club doubles leagues):
+        // every team and every reserves pool counts as the same tier.
+        if (targetTier ? t !== targetTier : t != null) continue;
         if (/reserves?/i.test(l.name)) {
           sameTierReserveLeagueIds.push(l.id);
         } else if (l.id !== teamLeagueId) {
@@ -211,7 +213,25 @@ export function LineupSwapDialog({
         .select("club_member_id, league_id, league_association_number, ssa_number, player_rank, is_reserve")
         .in("league_id", candidateLeagueIds);
 
-      const filteredRegs = ((regs || []) as any[]).filter((r) => {
+      // Doubles leagues keep team players as current pairs, not registrations.
+      const allRegs = [...((regs || []) as any[])];
+      if (eligibleTeamLeagueIds.length > 0) {
+        const { data: pairs } = await (supabase as any)
+          .from("league_team_pairs")
+          .select("league_id, player_one_member_id, player_two_member_id, pair_order")
+          .in("league_id", eligibleTeamLeagueIds)
+          .is("effective_to", null);
+        const seen = new Set(allRegs.map((r) => `${r.league_id}:${r.club_member_id}`));
+        for (const p of (pairs || []) as any[]) {
+          for (const mid of [p.player_one_member_id, p.player_two_member_id]) {
+            if (!mid || seen.has(`${p.league_id}:${mid}`)) continue;
+            seen.add(`${p.league_id}:${mid}`);
+            allRegs.push({ club_member_id: mid, league_id: p.league_id, player_rank: p.pair_order ?? null, is_reserve: false });
+          }
+        }
+      }
+
+      const filteredRegs = allRegs.filter((r) => {
         if (reserveLeagueIdSet.has(r.league_id)) return true; // include all reserve-league rows
         return r.is_reserve !== true; // eligible same-tier squad players
       });
@@ -255,7 +275,7 @@ export function LineupSwapDialog({
         const sourceLeagueNumber = sourceLeague
           ? parseLeagueNumber(tierOf(sourceLeague) ?? sourceLeague.name, sourceLeague.code)
           : null;
-        if (targetLeagueNumber != null) {
+        if (targetTier && targetLeagueNumber != null) {
           const eligibility = checkSubEligibility(
             subRules,
             { homeLeagueNumber: sourceLeagueNumber, homePosition: info.rank ?? null, gender: null },

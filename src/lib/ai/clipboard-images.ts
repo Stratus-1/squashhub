@@ -32,7 +32,7 @@ export function imageFilesFromClipboard(payload?: ClipboardPayload | null): File
 
   Array.from(payload.files ?? []).forEach(add);
   Array.from(payload.items ?? []).forEach((item) => {
-    if (item.kind === "file" && item.type.startsWith("image/")) add(item.getAsFile());
+    if (item.kind === "file") add(item.getAsFile());
   });
 
   return images;

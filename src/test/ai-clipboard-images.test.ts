@@ -16,6 +16,13 @@ describe("imageFilesFromClipboard", () => {
     })).toEqual([image]);
   });
 
+  it("accepts mobile file items whose item MIME type is blank", () => {
+    expect(imageFilesFromClipboard({
+      files: [],
+      items: [{ kind: "file", type: "", getAsFile: () => image }],
+    })).toEqual([image]);
+  });
+
   it("deduplicates the same image exposed through files and items", () => {
     expect(imageFilesFromClipboard({
       files: [image],

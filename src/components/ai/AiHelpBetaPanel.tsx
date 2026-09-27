@@ -88,11 +88,11 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
     // Keep normal text paste native. Some mobile keyboards emit an empty paste
     // payload for images, so ask the Clipboard API while the paste gesture is live.
     if (event.clipboardData.getData("text/plain")) return;
+    event.preventDefault();
 
     try {
       const fallbackImages = await readClipboardImages();
       if (fallbackImages.length > 0) {
-        event.preventDefault();
         await onFiles(fallbackImages);
       } else {
         setVoiceMsg("This browser didn't share the pasted image. Tap the photo button to attach it.");

@@ -1,3 +1,5 @@
+import { countOriginalPairs, pairKey, pairsEffectiveOn, splitPairLabel } from "@/lib/leagues/original-pair-bonus";
+import { checkDoublesSub } from "@/lib/leagues/doubles-sub-eligibility";
 import { useState, useMemo, useRef, useCallback, useEffect, type CSSProperties, type ReactNode } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -2031,8 +2033,20 @@ export default function LeagueGameDetail() {
     const awayPermanentSquadNames = (savedSquad?.away?.names && savedSquad.away.names.length > 0)
       ? savedSquad.away.names.map(normalizePlayerName).filter(Boolean)
       : fallbackOriginalNames(awayTeamCode);
-    const homeOriginalCountRaw = countEligibleOriginalPlayers(positions, "home", homePermanentSquad, homePermanentSquadNames);
-    const awayOriginalCountRaw = countEligibleOriginalPlayers(positions, "away", awayPermanentSquad, awayPermanentSquadNames);
+    // DOUBLES: bonus per original pair (both players together), using the
+    // pairs official on the fixture date — frozen into the snapshot on first save.
+    const isDoublesCard = !!doublesInfo?.isDoubles;
+    const liveKeys = (doublesInfo as any)?.pairKeysByCode || {};
+    const homePairKeys: string[] = (savedSquad as any)?.home?.pairs?.length
+      ? (savedSquad as any).home.pairs : (liveKeys[homeTeamCode.toUpperCase()] || []);
+    const awayPairKeys: string[] = (savedSquad as any)?.away?.pairs?.length
+      ? (savedSquad as any).away.pairs : (liveKeys[awayTeamCode.toUpperCase()] || []);
+    const homeOriginalCountRaw = isDoublesCard
+      ? countOriginalPairs(positions.map((p) => p.homeName), homePairKeys)
+      : countEligibleOriginalPlayers(positions, "home", homePermanentSquad, homePermanentSquadNames);
+    const awayOriginalCountRaw = isDoublesCard
+      ? countOriginalPairs(positions.map((p) => p.awayName), awayPairKeys)
+      : countEligibleOriginalPlayers(positions, "away", awayPermanentSquad, awayPermanentSquadNames);
     // Admin manual delta (e.g. recorded player didn't actually play; an unlisted sub stepped in).
     const homeOriginalCount = Math.max(0, homeOriginalCountRaw + (originalCountAdj.home || 0));
     const awayOriginalCount = Math.max(0, awayOriginalCountRaw + (originalCountAdj.away || 0));
@@ -2063,10 +2077,12 @@ export default function LeagueGameDetail() {
       _awayPermanentSquadCodes: awayPermanentSquad,
       _homePermanentSquadNames: homePermanentSquadNames,
       _awayPermanentSquadNames: awayPermanentSquadNames,
+      _homePairKeys: isDoublesCard ? homePairKeys : [],
+      _awayPairKeys: isDoublesCard ? awayPairKeys : [],
       _hadSavedSquad: !!(savedSquad?.home?.codes?.length || savedSquad?.away?.codes?.length
         || savedSquad?.home?.names?.length || savedSquad?.away?.names?.length),
     };
-  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot, existingResult, originalCountAdj]);
+  }, [positions, leagueRules, prefillLineup, fixture, originalLineupSnapshot, existingResult, originalCountAdj, doublesInfo]);
 
   // ---- Submit ----
   const handleSubmit = async () => {

@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
+import { loadLeagueAverageScores } from "@/lib/tournament-formats/league-average-handicap";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import {

@@ -1,3 +1,7 @@
+## 2026-09-27 — Tournament standings tied rows use regional average order
+
+- In singles tournaments with league-average handicap, tied standings rows (including before games) now use the same regional league index as Allocate players, with missing results last. Played results retain their standings priority; other tournament modes keep their existing ladder fallback. No draw, scores, or saved player order changed.
+
 ## 2026-09-26 — Ladder refinement repeatedly proposed already-reviewed changes
 
 - **Cause:** Refine prepares both separate ladders, but saving the first ladder refreshed the shared member query and cleared the other ladder's unsaved proposal. The next Refine therefore proposed the unsaved ladder again. The displayed evidence also used combined men's and ladies' history while each ladder was sorted from its own category, making valid ordering decisions look contradictory.

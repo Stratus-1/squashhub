@@ -2231,3 +2231,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-09-28 — Bar menu: category shortcuts + specials visibility
 - HonestyBar.tsx: sticky horizontally-scrollable category chip row above the catalogue; each chip smooth-scrolls to its section (`bar-cat-<value>` anchors, scroll-mt-14).
 - Specials were hidden from the Buy menu: (1) `onMenu` required stock_qty > 0 — specials hold no stock, now exempt like made_to_order; (2) a special with equal valid_start_time/valid_end_time (e.g. 00:43–00:43) was never valid — equal times now mean "all day" in both `isValidNow` (bar-inventory.ts) and DB `bar_item_valid_now`; (3) `resolve_qr_short_code` QR menu now includes specials at zero stock. Verified at 384px: Specials section + chips render, chip tap scrolls to section.
+
+## 2026-09-28 — Riverside food items moved to Restaurant category
+- 12 prepared-food items (Beef curry and rice, Boerie Roll, Chicken Curry Rice, Chicken Pasta, Curry and Rice, NMSA Sunday Lunch, Prego Roll and Chips, Rib Burgers, Schawarmas, Toasted Sandwich, Vetkoek Mince, Vetkoek Plain) moved from custom_food to category `restaurant` with item_kind `made_to_order` (no stock, always on menu).
+- CH Bites/Dry Wors left as stocked snack (has real stock of 8).
+- Migration widened `bar_items_kind_chk` to include `made_to_order` (was blocking the update).

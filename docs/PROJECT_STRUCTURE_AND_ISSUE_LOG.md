@@ -2215,3 +2215,9 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-09-28 — Mobile bar Single / Double prices overlap
 - The three-column phone catalogue squeezed two spirit selling options into side-by-side buttons, overflowing their cards and obscuring prices.
 - The signed-in bar catalogue now uses two columns on phones; selling options stack vertically with separate labels and prices, and longer product names can wrap. Sales, pricing, and inventory remain unchanged. Preview-only.
+
+## 2026-09-27 — Add Special component picker: bar-only filtering + search
+- Susan (Riverside) reported the special component picker listing shop products (Wilson racquets, Asics shoes) and being unsearchable on mobile.
+- `HonestyBarTab.tsx`: `componentChoices` and `stockItems` now filter to items in the same division as the special being built (Spirits/Bar → bar items only; shop items excluded). `stockItems` is only used by the option "Sells from product" picker, so bar options can no longer attach to shop stock either.
+- New `src/components/club-admin/bar/ComponentPicker.tsx`: cmdk Popover+Command searchable combobox, type-to-filter, grouped by category with emoji + label; replaces the native Select in the components row (249 items were unusable on mobile).
+- Verified in preview at 384px: no shop items in the list, "klip" filters to Klipdrift/KWV options, selecting "Klipdrift Premium · Single" shows the tot hint; build OK. Preview-only, unpublished.

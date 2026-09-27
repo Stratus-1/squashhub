@@ -23,6 +23,7 @@ import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import type { BarDivision } from "@/lib/bar-categories";
+import { validitySummary } from "@/lib/bar-inventory";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";

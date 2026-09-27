@@ -11,6 +11,8 @@ import { Loader2, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubMembers } from "@/hooks/use-club";
+import { useAssociationRules } from "@/hooks/use-association-rules";
+import { supabase } from "@/integrations/supabase/client";
 
 type Gender = "men" | "ladies" | "mixed" | "open";
 
@@ -25,6 +27,8 @@ function isFemaleGender(g?: string | null) { return (g || "").toLowerCase().star
 export function AddReservesDialog({
   clubId,
   associationId,
+  isClubLeague = false,
+  seasonId = null,
   gender,
   groupLeagues,
   open,
@@ -32,6 +36,10 @@ export function AddReservesDialog({
 }: {
   clubId: string;
   associationId: string | null;
+  /** Club leagues don't need an association opt-in — every club member may play. */
+  isClubLeague?: boolean;
+  /** Current season, used when the league keeps ONE reserve team (per league). */
+  seasonId?: string | null;
   gender: Gender;
   /** All league rows (teams + existing reserves row) for this association+gender group */
   groupLeagues: Array<{ id: string; name: string; code?: string | null; association_id?: string | null }>;
@@ -43,6 +51,24 @@ export function AddReservesDialog({
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
+  const { data: rules } = useAssociationRules(associationId);
+  const perLeague = rules?.reserve_mode === "per_league";
+
+  // League reserve team (per-league mode) — already on it are excluded.
+  const reservesKey = ["league-reserves", associationId, seasonId ?? null];
+  const { data: leagueReserves = [] } = useQuery({
+    queryKey: reservesKey,
+    enabled: open && perLeague && !!associationId,
+    queryFn: async () => {
+      let q = (supabase as any).from("league_reserve_players")
+        .select("id, member_id, rank").eq("association_id", associationId).eq("is_active", true);
+      q = seasonId ? q.eq("season_id", seasonId) : q.is("season_id", null);
+      const { data, error } = await q.order("rank");
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; member_id: string; rank: number }>;
+    },
+  });
 
   // Detect league number from group (most groups share one league number, e.g. "1st")
   const leagueNumber = useMemo(() => {
@@ -90,13 +116,17 @@ export function AddReservesDialog({
   const affSet = useMemo(() => new Set(affiliated), [affiliated]);
   const inGroupSet = useMemo(() => new Set(alreadyInGroup), [alreadyInGroup]);
 
-  const eligible = useMemo(() => {
+  const leagueReserveSet = useMemo(() => new Set(leagueReserves.map((r) => r.member_id)), [leagueReserves]);
+
+  const all = useMemo(() => {
     const f = filter.trim().toLowerCase();
     return members
+      .filter((m: any) => m.status !== "resigned" && m.status !== "suspended")
       .map((m: any) => {
         let blocked: string | null = null;
-        if (associationId && !affSet.has(m.id)) blocked = "not opted into this association";
-        else if (inGroupSet.has(m.id)) blocked = "already in this league group";
+        if (associationId && !isClubLeague && !affSet.has(m.id)) blocked = "not opted into this association";
+        else if (perLeague && leagueReserveSet.has(m.id)) blocked = "already on the reserve team";
+        else if (!perLeague && inGroupSet.has(m.id)) blocked = "already in this league group";
         else if (gender === "men" && !isMaleGender(m.gender)) blocked = "not a male member";
         else if (gender === "ladies" && !isFemaleGender(m.gender)) blocked = "not a female member";
         // NOTE: sub-direction / movement-cap rules are NOT applied here. Being added
@@ -109,14 +139,14 @@ export function AddReservesDialog({
         return true;
       })
       .sort((a: any, b: any) => {
-        // Eligible first, then by ladder
-        if (!!a._blocked !== !!b._blocked) return a._blocked ? 1 : -1;
         const ap = a.ladder_position ?? Number.POSITIVE_INFINITY;
         const bp = b.ladder_position ?? Number.POSITIVE_INFINITY;
         if (ap !== bp) return ap - bp;
         return (a.name || "").localeCompare(b.name || "");
       });
-  }, [members, associationId, affSet, inGroupSet, gender, filter]);
+  }, [members, associationId, isClubLeague, perLeague, leagueReserveSet, affSet, inGroupSet, gender, filter]);
+  const blockedCount = all.filter((m: any) => m._blocked).length;
+  const eligible = showBlocked ? all : all.filter((m: any) => !m._blocked);
 
   const toggle = (id: string) => {
     setPicked(prev => {
@@ -130,6 +160,22 @@ export function AddReservesDialog({
     if (picked.size === 0) { toast.error("Pick at least one member"); return; }
     setSaving(true);
     try {
+      if (perLeague) {
+        const start = Math.max(0, ...leagueReserves.map((r) => r.rank || 0));
+        const ids = Array.from(picked);
+        const rows = ids.map((memberId: string, idx: number) => ({
+          club_id: clubId, association_id: associationId, season_id: seasonId ?? null,
+          member_id: memberId, rank: start + idx + 1,
+        }));
+        const { data, error } = await (supabase as any).from("league_reserve_players").insert(rows).select("id");
+        if (error) throw error;
+        if (!data?.length) throw new Error("Only club admins can change the reserve team.");
+        toast.success(`Added ${rows.length} to the reserve team`);
+        qc.invalidateQueries({ queryKey: reservesKey });
+        setPicked(new Set());
+        onOpenChange(false);
+        return;
+      }
       let reservesLeagueId = existingReservesLeague?.id ?? null;
 
       // Create the reserves league row on the fly if it doesn't exist
@@ -192,12 +238,16 @@ export function AddReservesDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-4 h-4" />
-            Add Reserve Players — {genderLabel} {leagueNumber}
+            {perLeague ? "Add to league reserve team" : `Add Reserve Players — ${genderLabel} ${leagueNumber}`}
           </DialogTitle>
           <DialogDescription>
-            Pick members to add as reserves. They go into the{" "}
-            <strong>{existingReservesLeague?.name ?? `${genderLabel} ${leagueNumber} Reserves`}</strong>{" "}
-            row{existingReservesLeague ? "" : " (will be created)"}. Members already in this league group are hidden.
+            {perLeague ? (
+              <>This league keeps <strong>one reserve team</strong> (set in Rules). Reserves are added in ladder order; change their rank in the Doubles pairs window.</>
+            ) : (
+              <>Pick members to add as reserves. They go into the{" "}
+              <strong>{existingReservesLeague?.name ?? `${genderLabel} ${leagueNumber} Reserves`}</strong>{" "}
+              row{existingReservesLeague ? "" : " (will be created)"}.</>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -211,8 +261,13 @@ export function AddReservesDialog({
               className="pl-7 h-8 text-sm"
             />
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            {eligible.length} eligible • {picked.size} selected
+          <p className="text-[11px] text-muted-foreground flex items-center gap-2">
+            <span>{all.length - blockedCount} eligible • {picked.size} selected</span>
+            {blockedCount > 0 && (
+              <button type="button" className="underline ml-auto" onClick={() => setShowBlocked((v) => !v)}>
+                {showBlocked ? "Hide" : "Show"} {blockedCount} not eligible
+              </button>
+            )}
           </p>
 
           <Card className="max-h-[40vh] overflow-y-auto p-1.5 space-y-0.5">

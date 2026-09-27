@@ -506,16 +506,21 @@ export function LeaguesTab({ clubId }: { clubId: string }) {
         />
       )}
 
-      {reservesGroup && (
-        <AddReservesDialog
-          clubId={clubId}
-          associationId={reservesGroup.associationId}
-          gender={reservesGroup.gender}
-          groupLeagues={reservesGroup.leagues}
-          open={!!reservesGroup}
-          onOpenChange={(o) => !o && setReservesGroup(null)}
-        />
-      )}
+      {reservesGroup && (() => {
+        const ra = associations.find((a: any) => a.id === reservesGroup.associationId) as any;
+        return (
+          <AddReservesDialog
+            clubId={clubId}
+            associationId={reservesGroup.associationId}
+            isClubLeague={ra ? isClubLeagueScope(ra.scope) : false}
+            seasonId={ra?.current_season_id ?? null}
+            gender={reservesGroup.gender}
+            groupLeagues={reservesGroup.leagues}
+            open={!!reservesGroup}
+            onOpenChange={(o) => !o && setReservesGroup(null)}
+          />
+        );
+      })()}
 
       <LeagueDialog
         clubId={clubId}

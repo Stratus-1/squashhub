@@ -175,7 +175,8 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
       </div>
       <div className="flex flex-col gap-1 max-h-[60vh] overflow-y-auto">
         {mine.isLoading && <p className="text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</p>}
-        {!mine.isLoading && conversations.length === 0 && <p className="text-muted-foreground">You haven't asked the assistant anything yet.</p>}
+        {mine.isError && <p className="text-destructive">Couldn't load your requests. <button className="underline" onClick={() => void mine.refetch()}>Try again</button></p>}
+        {!mine.isLoading && !mine.isError && conversations.length === 0 && <p className="text-muted-foreground">You haven't asked the assistant anything yet.</p>}
         {conversations.map((c) => {
           const st = statusOf(c.latest);
           return (

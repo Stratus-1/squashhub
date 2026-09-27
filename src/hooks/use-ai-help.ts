@@ -177,7 +177,9 @@ export function useMyAiRequests(userId: string | undefined, enabled = true) {
         const { data: b } = await (supabase.rpc as any)("my_ai_bug_statuses", { _ids: bugIds });
         for (const x of (b ?? []) as { id: string; status: string }[]) bugs[x.id] = x.status;
         // Authoritative maintenance case status (requester-scoped RPC).
-        const { data: m } = await (supabase.rpc as any)("my_ai_maintenance_statuses", { _bug_ids: bugIds }).catch(() => ({ data: null }));
+        // The request builder has no .catch(); a missing status must never hide the list.
+        let m: unknown = null;
+        try { ({ data: m } = await (supabase.rpc as any)("my_ai_maintenance_statuses", { _bug_ids: bugIds })); } catch { m = null; }
         for (const x of (m ?? []) as { bug_report_id: string; status: string }[]) cases[x.bug_report_id] = x.status;
       }
       if (ticketIds.length) {

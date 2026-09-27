@@ -435,7 +435,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
   const [components, setComponents] = useState<ComponentLine[]>([]);
   const items = allItems.filter(i => showArchived || !i.archived_at);
   const liveItems = allItems.filter(i => !i.archived_at);
-  const stockItems = liveItems.filter(i => (i.item_kind || "stock") === "stock");
+  const stockItems = liveItems.filter(i => (i.item_kind || "stock") === "stock" && (i.division || "bar") === (form.division || "bar"));
   const formCategories = categoriesForDivision(customCategories, form.division);
   const yieldN = Math.max(1, parseInt(form.unit_yield) || 1);
 

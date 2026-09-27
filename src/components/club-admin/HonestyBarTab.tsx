@@ -35,6 +35,8 @@ import {
 } from "@/lib/bar-inventory";
 import { CategoryManagerDialog } from "./bar/CategoryManagerDialog";
 import { ImportItemsDialog } from "./bar/ImportItemsDialog";
+import { ComponentPicker } from "./bar/ComponentPicker";
+import { categoryLabel } from "@/lib/bar-categories";
 
 interface BarItem {
   id: string;
@@ -433,7 +435,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
   const [components, setComponents] = useState<ComponentLine[]>([]);
   const items = allItems.filter(i => showArchived || !i.archived_at);
   const liveItems = allItems.filter(i => !i.archived_at);
-  const stockItems = liveItems.filter(i => (i.item_kind || "stock") === "stock");
+  const stockItems = liveItems.filter(i => (i.item_kind || "stock") === "stock" && (i.division || "bar") === (form.division || "bar"));
   const formCategories = categoriesForDivision(customCategories, form.division);
   const yieldN = Math.max(1, parseInt(form.unit_yield) || 1);
 
@@ -568,7 +570,10 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
   };
 
   const byId = new Map(allItems.map(i => [i.id, i as unknown as InventoryItem]));
-  const componentChoices = liveItems.filter(i => (i.item_kind || "stock") !== "special" && i.id !== editItem?.id);
+  // Special components come from the same division as the special — a Spirits
+  // (bar) special must never offer shop products like racquets or shoes.
+  const componentChoices = liveItems.filter(i => (i.item_kind || "stock") !== "special" && i.id !== editItem?.id
+    && (i.division || "bar") === (form.division || "bar"));
   const specials = items.filter(i => i.item_kind === "special");
 
   /** Plain-language description of what one sale of a special consumes for a component line. */
@@ -769,10 +774,14 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
           {components.map((c, idx) => (
             <div key={idx} className="space-y-0.5">
             <div className="grid grid-cols-[1fr_70px_32px] gap-2">
-              <Select value={c.component_item_id} onValueChange={v => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, component_item_id: v } : x))}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Product or option" /></SelectTrigger>
-                <SelectContent>{componentChoices.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <ComponentPicker
+                items={componentChoices}
+                value={c.component_item_id}
+                onChange={v => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, component_item_id: v } : x))}
+                placeholder="Product or option"
+                categoryLabel={v => categoryLabel(customCategories, v)}
+                categoryEmoji={v => BAR_CATEGORY_EMOJI[v || ""] || "📦"}
+              />
               <Input type="number" min={1} className="h-8 text-xs" aria-label="Quantity per sale" value={c.quantity} onChange={e => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, quantity: e.target.value } : x))} />
               <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Remove component" onClick={() => setComponents(prev => prev.filter((_, i) => i !== idx))}><X className="w-3 h-3" /></Button>
             </div>

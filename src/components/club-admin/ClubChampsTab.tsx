@@ -12369,8 +12369,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             {acceptedNeedingDivision.length > 0 && (
               <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
                 <span className="font-semibold">Accepted — needs division assignment ({acceptedNeedingDivision.length}):</span>{" "}
-                {acceptedNeedingDivision.map((p) => p.name).join(", ")}. They accepted the invitation but play in none of
-                the source leagues — place them into a division manually.
+                {acceptedNeedingDivision.map((p) => p.name).join(", ")}. They accepted the invitation but have no team in the source leagues and no regional league (NSA) results this season —
+                place them into a division manually.
               </div>
             )}
           </CardHeader>

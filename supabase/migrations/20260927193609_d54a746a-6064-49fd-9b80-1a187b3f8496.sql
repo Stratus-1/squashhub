@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.sync_league_name_to_bookings() FROM PUBLIC, anon, authenticated;

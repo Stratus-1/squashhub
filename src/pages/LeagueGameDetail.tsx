@@ -2722,7 +2722,7 @@ export default function LeagueGameDetail() {
         reserveRank: info.reserveRankByName?.[key] ?? null,
         byeRank: info.byeRankByName?.[key] ?? null,
       }, idx + 1);
-      if (!r.ok) return `${n}: ${r.reason}`;
+      if (r.ok === false) return `${n}: ${r.reason}`;
     }
     return null;
   };

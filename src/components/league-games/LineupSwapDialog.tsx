@@ -40,7 +40,9 @@ interface Props {
   /** Allow registered players from another same-tier team to sub in this fixture. */
   allowMultiFixturePerNight?: boolean;
   subRules?: SubRules | null;
-  onSelect: (c: SwapCandidate) => void;
+  /** Doubles: the two players of the pair at this position — picker first asks which one is out */
+  pairPlayers?: [string, string] | null;
+  onSelect: (c: SwapCandidate, half?: 0 | 1) => void;
   onClear?: () => void;
 }
 

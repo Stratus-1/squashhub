@@ -32,6 +32,11 @@ export interface LeagueRules {
   max_position_movement_per_week: number | null;
   sub_direction: "any" | "lower_or_equal_only" | "higher_or_equal_only";
   cross_gender_subs_allowed: boolean;
+  // Doubles reserves/subs (added 2026-09-27)
+  reserve_mode?: "per_team" | "per_league";
+  sub_from_reserves?: boolean;
+  sub_from_bye_team?: boolean;
+  sub_rank_rule?: "any" | "same" | "same_or_lower";
   // Original-player bonus (NIL): +N points per originally-allocated player who actually plays
   original_player_bonus_enabled: boolean;
   original_player_bonus_value: number;

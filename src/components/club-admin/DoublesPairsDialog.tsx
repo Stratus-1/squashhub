@@ -237,15 +237,19 @@ export function DoublesPairsDialog({
     onError: (e: any) => toast.error(e.message),
   });
 
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Removing a pair closes it from today (history kept, so fixtures already
+  // played keep counting it as the original pair on their date).
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { data: deleted, error } = await (supabase as any)
+      const { data: closed, error } = await (supabase as any)
         .from("league_team_pairs")
-        .delete()
+        .update({ is_active: false, effective_to: today })
         .eq("id", id)
         .select("id");
       if (error) throw error;
-      if (!deleted || deleted.length === 0) throw new Error("Pair could not be removed — your account may not have access to this club's pairs.");
+      if (!closed || closed.length === 0) throw new Error("Pair could not be removed — your account may not have access to this club's pairs.");
     },
 
     onSuccess: () => {
@@ -257,9 +261,10 @@ export function DoublesPairsDialog({
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Replace one player of an existing pair (e.g. injury). Past results keep
-  // the frozen player snapshot — only future fixture selection uses the new
-  // pairing.
+  // Replace one player of an existing pair. This is an OFFICIAL change: the
+  // old pair is closed today and a new pair starts today, so the new player
+  // counts as an original player (earns the original-pair bonus) from now on,
+  // while fixtures before today keep the old pair.
   const replacePlayer = useMutation({
     mutationFn: async () => {
       const pair = pairs.find((p: any) => p.id === editPairId);
@@ -274,16 +279,44 @@ export function DoublesPairsDialog({
       const genders = [one, two].map((id) => roster.find((r) => r.id === id)?.gender);
       const check = validatePairComposition(genders, category, { requireMixedPair });
       if (!check.valid) throw new Error(check.reason!);
-      const { data: updated, error } = await (supabase as any)
+      const sameDay = (pair.effective_from || "") >= today;
+      if (sameDay) {
+        // Pair was created today — just correct it, no history needed.
+        const { data: updated, error } = await (supabase as any)
+          .from("league_team_pairs")
+          .update({ player_one_member_id: one, player_two_member_id: two })
+          .eq("id", pair.id)
+          .select("id");
+        if (error) throw error;
+        if (!updated?.length) throw new Error("Pair could not be updated — your account may not have access to this club's pairs.");
+        return;
+      }
+      const { data: closed, error: closeErr } = await (supabase as any)
         .from("league_team_pairs")
-        .update({ player_one_member_id: one, player_two_member_id: two })
+        .update({ is_active: false, effective_to: today })
         .eq("id", pair.id)
         .select("id");
-      if (error) throw error;
-      if (!updated || updated.length === 0) throw new Error("Pair could not be updated — your account may not have access to this club's pairs.");
+      if (closeErr) throw closeErr;
+      if (!closed?.length) throw new Error("Pair could not be updated — your account may not have access to this club's pairs.");
+      const { error: insErr } = await (supabase as any).from("league_team_pairs").insert({
+        club_id: pair.club_id,
+        league_id: pair.league_id,
+        season_id: pair.season_id,
+        player_one_member_id: one,
+        player_two_member_id: two,
+        pair_order: pair.pair_order,
+        pair_label: pair.pair_label,
+        effective_from: today,
+      });
+      if (insErr) {
+        // Roll back the close so the team never loses its pair.
+        await (supabase as any).from("league_team_pairs")
+          .update({ is_active: true, effective_to: null }).eq("id", pair.id);
+        throw insErr;
+      }
     },
     onSuccess: () => {
-      toast.success("Pair updated");
+      toast.success("Pair updated — the new pair is official from today");
       setEditPairId(null);
       setEditPlayer("");
       qc.invalidateQueries({ queryKey: ["doubles-pairs", activeTeam, activeSeasonId] });
@@ -291,6 +324,47 @@ export function DoublesPairsDialog({
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  // ---- League reserve team (only when reserves are "per league") ----
+  const { data: rules } = useAssociationRules(associationId);
+  const perLeagueReserves = rules?.reserve_mode === "per_league";
+  const [resMember, setResMember] = useState("");
+  const [resRank, setResRank] = useState("1");
+  const reservesKey = ["league-reserves", associationId, seasonId ?? null];
+  const { data: reserves = [] } = useQuery({
+    queryKey: reservesKey,
+    enabled: open && perLeagueReserves,
+    queryFn: async () => {
+      let q = (supabase as any).from("league_reserve_players")
+        .select("id, member_id, rank").eq("association_id", associationId).eq("is_active", true);
+      q = seasonId ? q.eq("season_id", seasonId) : q.is("season_id", null);
+      const { data, error } = await q.order("rank");
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; member_id: string; rank: number }>;
+    },
+  });
+  const addReserve = useMutation({
+    mutationFn: async () => {
+      if (!resMember) throw new Error("Choose a player.");
+      const { data, error } = await (supabase as any).from("league_reserve_players").insert({
+        club_id: clubId, association_id: associationId, season_id: seasonId ?? null,
+        member_id: resMember, rank: Number(resRank) || 1,
+      }).select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("Only club admins can change the reserve team.");
+    },
+    onSuccess: () => { setResMember(""); qc.invalidateQueries({ queryKey: reservesKey }); toast.success("Reserve added"); },
+    onError: (e: any) => toast.error(e.message?.includes("duplicate") ? "Already on the reserve team." : e.message),
+  });
+  const removeReserve = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("league_reserve_players").update({ is_active: false }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: reservesKey }),
+    onError: (e: any) => toast.error(e.message),
+  });
+  const reserveIds = new Set(reserves.map((r) => r.member_id));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -11,6 +11,8 @@ import { Loader2, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubMembers } from "@/hooks/use-club";
+import { useAssociationRules } from "@/hooks/use-association-rules";
+import { supabase } from "@/integrations/supabase/client";
 
 type Gender = "men" | "ladies" | "mixed" | "open";
 
@@ -25,6 +27,8 @@ function isFemaleGender(g?: string | null) { return (g || "").toLowerCase().star
 export function AddReservesDialog({
   clubId,
   associationId,
+  isClubLeague = false,
+  seasonId = null,
   gender,
   groupLeagues,
   open,
@@ -32,6 +36,10 @@ export function AddReservesDialog({
 }: {
   clubId: string;
   associationId: string | null;
+  /** Club leagues don't need an association opt-in — every club member may play. */
+  isClubLeague?: boolean;
+  /** Current season, used when the league keeps ONE reserve team (per league). */
+  seasonId?: string | null;
   gender: Gender;
   /** All league rows (teams + existing reserves row) for this association+gender group */
   groupLeagues: Array<{ id: string; name: string; code?: string | null; association_id?: string | null }>;
@@ -43,6 +51,24 @@ export function AddReservesDialog({
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
+  const { data: rules } = useAssociationRules(associationId);
+  const perLeague = rules?.reserve_mode === "per_league";
+
+  // League reserve team (per-league mode) — already on it are excluded.
+  const reservesKey = ["league-reserves", associationId, seasonId ?? null];
+  const { data: leagueReserves = [] } = useQuery({
+    queryKey: reservesKey,
+    enabled: open && perLeague && !!associationId,
+    queryFn: async () => {
+      let q = (supabase as any).from("league_reserve_players")
+        .select("id, member_id, rank").eq("association_id", associationId).eq("is_active", true);
+      q = seasonId ? q.eq("season_id", seasonId) : q.is("season_id", null);
+      const { data, error } = await q.order("rank");
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; member_id: string; rank: number }>;
+    },
+  });
 
   // Detect league number from group (most groups share one league number, e.g. "1st")
   const leagueNumber = useMemo(() => {

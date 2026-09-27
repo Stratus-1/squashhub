@@ -24,32 +24,23 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useClubCurrency } from "@/hooks/use-currency";
+import {
+  BAR_CATEGORY_EMOJI,
+  categoriesForDivision,
+  useBarCategories,
+  type BarDivision,
+} from "@/lib/bar-categories";
 
 interface BarItem {
   id: string;
   name: string;
   price: number;
   category: string;
+  division?: string;
   active: boolean;
   image_url?: string | null;
   stock_qty: number;
 }
-
-const CATEGORY_ICONS: Record<string, string> = {
-  soft_drinks: "🥤",
-  water: "💧",
-  energy: "⚡",
-  beer_cider: "🍺",
-  wine: "🍷",
-  spirits: "🥃",
-  hot_drinks: "☕",
-  snacks: "🍿",
-  meals: "🥪",
-  other: "📦",
-  // legacy values (existing items)
-  drinks: "🥤",
-  alcohol: "🍺",
-};
 
 interface BarTabEntry {
   id: string;
@@ -61,19 +52,6 @@ interface BarTabEntry {
   created_at: string;
   bar_items?: { name: string; category: string };
 }
-
-const CATEGORIES = [
-  { value: "soft_drinks", label: "Soft Drinks", icon: Beer },
-  { value: "water", label: "Water", icon: Beer },
-  { value: "energy", label: "Energy & Sports", icon: Beer },
-  { value: "beer_cider", label: "Beer & Cider", icon: Beer },
-  { value: "wine", label: "Wine", icon: Wine },
-  { value: "spirits", label: "Spirits", icon: Wine },
-  { value: "hot_drinks", label: "Hot Drinks", icon: Coffee },
-  { value: "snacks", label: "Snacks", icon: Coffee },
-  { value: "meals", label: "Light Meals", icon: Coffee },
-  { value: "other", label: "Other", icon: Package },
-];
 
 export default function HonestyBar() {
   const qc = useQueryClient();

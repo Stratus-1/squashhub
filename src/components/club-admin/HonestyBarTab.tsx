@@ -22,6 +22,15 @@ import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
+import {
+  BAR_CATEGORY_EMOJI,
+  BAR_DIVISIONS,
+  categoriesForDivision,
+  categoryLabel,
+  categoryValueFromLabel,
+  useBarCategories,
+  type BarDivision,
+} from "@/lib/bar-categories";
 
 interface BarItem {
   id: string;

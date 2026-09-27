@@ -162,7 +162,7 @@ export function AddReservesDialog({
     try {
       if (perLeague) {
         const start = Math.max(0, ...leagueReserves.map((r) => r.rank || 0));
-        const ids = eligible.filter((m: any) => picked.has(m.id)).map((m: any) => m.id);
+        const ids = Array.from(picked);
         const rows = ids.map((memberId: string, idx: number) => ({
           club_id: clubId, association_id: associationId, season_id: seasonId ?? null,
           member_id: memberId, rank: start + idx + 1,

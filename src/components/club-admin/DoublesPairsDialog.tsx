@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { Pencil, Trash2, Users } from "lucide-react";
 import { validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
-import { pairDisplayName } from "@/lib/leagues/format";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 
 /**
@@ -514,10 +513,25 @@ export function DoublesPairsDialog({
                     <div className="min-w-0">
                       <Badge variant="outline" className="h-5 text-[10px] mr-2">Pair {i + 1}</Badge>
                       <span className="text-sm">
-                        {pairDisplayName(
-                          nameOf(pair.player_one_member_id),
-                          nameOf(pair.player_two_member_id),
-                        )}
+                        {[
+                          { id: pair.player_one_member_id as string, name: nameOf(pair.player_one_member_id) },
+                          { id: pair.player_two_member_id as string, name: nameOf(pair.player_two_member_id) },
+                        ].map((player, idx) => (
+                          <span key={player.id}>
+                            {idx > 0 && " & "}
+                            {player.name}
+                            {player.id === captainId && (
+                              <Badge
+                                variant="outline"
+                                className="ml-1 h-4 px-1 text-[9px] font-bold align-middle"
+                                title="Team captain"
+                                aria-label="Team captain"
+                              >
+                                C
+                              </Badge>
+                            )}
+                          </span>
+                        ))}
                       </span>
                     </div>
                     <div className="flex items-center">

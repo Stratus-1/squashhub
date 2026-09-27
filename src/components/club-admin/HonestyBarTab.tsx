@@ -34,6 +34,7 @@ import {
   type InventoryItem, type SpecialComponent,
 } from "@/lib/bar-inventory";
 import { CategoryManagerDialog } from "./bar/CategoryManagerDialog";
+import { ImportItemsDialog } from "./bar/ImportItemsDialog";
 
 interface BarItem {
   id: string;
@@ -425,6 +426,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
   const [showArchived, setShowArchived] = useState(false);
   const [barcodeScanOpen, setBarcodeScanOpen] = useState(false);
   const [catManagerOpen, setCatManagerOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const { data: customCategories = [] } = useBarCategories(clubId);
   const { divisions } = useBarDivisions(clubId);
   const [form, setForm] = useState(emptyForm());
@@ -842,6 +844,11 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
             </Button>
           )}
           {!adding && !editItem && (
+            <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="w-3.5 h-3.5 mr-1" />Import Items
+            </Button>
+          )}
+          {!adding && !editItem && (
             <Button size="sm" onClick={() => {
               resetForm();
               setForm(p => ({ ...p, item_kind: "special" }));
@@ -856,6 +863,8 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Switch checked={showArchived} onCheckedChange={setShowArchived} className="scale-75" /> Show archived items
       </div>
+
+      <ImportItemsDialog clubId={clubId} open={importOpen} onOpenChange={setImportOpen} existing={allItems as any} />
 
       <CategoryManagerDialog
         clubId={clubId}

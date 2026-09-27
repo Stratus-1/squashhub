@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, Loader2, Upload } from "lucide-react";
 import { fromExt } from "@/lib/supabase-ext";
+import { supabase } from "@/integrations/supabase/client";
 import { useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 import {
   IMPORT_FIELDS, TEMPLATE_CSV, autoMap, parseCsv, planImport,
@@ -149,9 +150,7 @@ export function ImportItemsDialog({ clubId, open, onOpenChange, existing }: {
             await upsertOption(id!, p.name, `Glass (${p.servingMl}ml)`, Math.round(p.servingMl), p.servingPrice, p);
           const existingAvg = existing.find(e => e.id === id)?.avg_unit_cost;
           if (costing && p.cost != null && (p.action === "create" || existingAvg == null)) {
-            const { error } = await fromExt("bar_items").select("id").limit(0); void error;
-            const { error: cErr } = await (await import("@/integrations/supabase/client")).supabase
-              .rpc("bar_set_average_cost" as any, { _item: id, _cost_per_purchase_unit: p.cost, _note: "Opening cost from item import" });
+            const { error: cErr } = await supabase.rpc("bar_set_average_cost" as any, { _item: id, _cost_per_purchase_unit: p.cost, _note: "Opening cost from item import" });
             if (cErr) throw new Error(`saved, but opening cost not set: ${cErr.message}`);
           }
           p.action === "create" ? res.created++ : res.updated++;

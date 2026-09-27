@@ -2207,3 +2207,7 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 
 ## 2026-09-27 — Optional weighted-average bar costing
 Added per-club costing switch, average cost per stock unit, cost snapshots on every stock movement, audited cost adjustment, cost-of-sales report and admin "Costing & margins" step. Off for all clubs; verified in a rolled-back Riverside transaction.
+
+## 2026-09-27 — Nelspruit opening balances: five member credits posted in wrong direction
+- Issue: Johann Rademeyer (664), Eunice Combrink (550), Duard Combrink (435), William Mitchell (1100), JP Lategan (90) were posted as debtors debits (members owe club) in journal_ref 6b76f433-c60a-4a47-b785-721d5d7c455a, but these were member credit top-ups (club owes members).
+- Fix: swapped debit/credit on all 10 rows of that journal (debtors + opening_balance_equity sides) and renamed debtors description to "Opening balance – member credit brought forward". Amounts unchanged. Data-only fix, no publish.

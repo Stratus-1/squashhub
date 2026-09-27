@@ -345,10 +345,11 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
               <span className="text-right w-16 tabular-nums text-muted-foreground">{r.y > 1 ? `${r.current_qty}+${(r.current_units ?? 0) % r.y}` : r.current_qty}</span>
               <span className="w-24 text-right">
                 {take && !finalised ? (
+                  <>
                   <Input
                     inputMode="numeric"
                     className="h-7 text-right text-xs"
-                    value={counts[r.bar_item_id] ?? (r.counted !== null ? String(r.counted) : "")}
+                    value={counts[r.bar_item_id] ?? String(takeLines.find((t) => t.bar_item_id === r.bar_item_id)?.counted_qty ?? "")}
                     onChange={(e) =>
                       setCounts((c) => ({ ...c, [r.bar_item_id]: e.target.value.replace(/[^0-9]/g, "") }))
                     }
@@ -367,6 +368,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
                       }}
                     />
                   )}
+                  </>
                 ) : (
                   <span className="tabular-nums">{r.counted ?? "—"}</span>
                 )}

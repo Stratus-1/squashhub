@@ -2079,7 +2079,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   //  - league_rank  → club admin's league team setup (DB player_rank + division)
   //  - group_order  → drag order on the tournament Leagues step
   //  - club_ladder  → club_members.ladder_position
-  const [handicapMode, setHandicapMode] = useState<"none" | "league_rank" | "group_order" | "club_ladder" | "ladder_history">("none");
+  const [handicapMode, setHandicapMode] = useState<"none" | "league_rank" | "group_order" | "club_ladder" | "ladder_history" | "league_average">("none");
   // When group_order + multiple leagues: how to rank across leagues.
   //  - continuous: League 1 supersedes League 2 (global 1..N across all)
   //  - parallel:   each league is 1..N independently (even strength)
@@ -11330,6 +11330,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                       onChange={() => setHandicapMode("ladder_history")}
                     />
                     By ladder + recent form (90d)
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="handicap-mode"
+                      checked={handicapMode === "league_average"}
+                      onChange={() => setHandicapMode("league_average")}
+                    />
+                    By average playing position in regional league (e.g. NSA)
                   </label>
                 </div>
                 {handicapMode === "group_order" && Array.isArray(groups) && groups.length > 1 && (

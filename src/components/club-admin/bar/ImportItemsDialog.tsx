@@ -55,9 +55,9 @@ export function ImportItemsDialog({ clubId, open, onOpenChange, existing }: {
     try {
       let table: string[][];
       if (/\.xlsx$/i.test(f.name)) {
-        const { default: readXlsx } = await import("read-excel-file");
-        const data = await readXlsx(f);
-        table = data.map(r => r.map(c => (c == null ? "" : String(c).trim()))).filter(r => r.some(Boolean));
+        const { readSheet } = await import("read-excel-file/browser");
+        const data = await readSheet(f);
+        table = (data as unknown[][]).map(r => r.map(c => (c == null ? "" : String(c).trim()))).filter(r => r.some(Boolean));
       } else if (/\.(csv|txt)$/i.test(f.name)) {
         table = parseCsv(await f.text());
       } else return toast.error("Use a CSV or Excel (.xlsx) file");

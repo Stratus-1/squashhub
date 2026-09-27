@@ -291,6 +291,8 @@ export function DoublesPairsDialog({
                 setTeamId(value);
                 setP1("");
                 setP2("");
+                setPairSearch("");
+                setEditPairId(null);
               }}
               disabled={teamsLoading || teams.length === 0}
             >

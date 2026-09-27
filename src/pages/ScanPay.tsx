@@ -580,7 +580,7 @@ export default function ScanPay() {
       </div>
 
 
-      <main className={`px-4 py-4 max-w-md mx-auto space-y-4 ${!done && !checkingOut && count > 0 ? (tab ? "pb-40" : "pb-28") : ""}`}>
+      <main className={`px-4 py-4 max-w-md mx-auto space-y-4 ${!done && !checkingOut && count > 0 ? (tab ? "pb-56" : "pb-44") : "pb-24"}`}>
 
         {verifying && !done && (
           <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
@@ -988,7 +988,7 @@ export default function ScanPay() {
 
       {/* Sticky cart bar — always visible while items are selected */}
       {!done && !checkingOut && count > 0 && (
-        <div className="fixed bottom-0 inset-x-0 border-t bg-background/95 backdrop-blur px-4 py-3 z-40">
+        <div className="fixed inset-x-0 border-t bg-background/95 backdrop-blur px-4 py-3 z-40 bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] md:bottom-0">
           <div className="max-w-md mx-auto space-y-2">
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">

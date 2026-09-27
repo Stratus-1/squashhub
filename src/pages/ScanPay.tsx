@@ -852,8 +852,14 @@ export default function ScanPay() {
                             <span className="text-2xl">📦</span>
                           )}
                         </div>
+                        {m.item_kind === "special" && (
+                          <Badge className="text-[9px] px-1.5 py-0">⭐ Special</Badge>
+                        )}
                         <p className="text-[11px] font-medium text-center leading-tight break-words">{m.name}</p>
                         <p className="text-[11px] text-muted-foreground">{formatMoney(Number(m.price), currency)}</p>
+                        {m.item_kind === "special" && validitySummary(m as any) !== "Always" && (
+                          <p className="text-[10px] text-center leading-tight text-primary">{validitySummary(m as any)}</p>
+                        )}
                         {out && <Badge variant="destructive" className="text-[10px]">Out of stock</Badge>}
                         {qty > 0 && (
                           <>

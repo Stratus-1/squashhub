@@ -367,7 +367,7 @@ export function LineupSwapDialog({
             <div className="border rounded-md p-3 text-xs space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Out</span>
-                <span className="font-medium">{currentName || "—"}</span>
+                <span className="font-medium">{effectiveCurrentName || "—"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">In</span>

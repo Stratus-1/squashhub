@@ -181,7 +181,7 @@ export function isValidNow(i: InventoryItem, at: Date = new Date()): boolean {
   if (i.valid_to && date > i.valid_to) return false;
   if (i.valid_days && i.valid_days.length > 0 && !i.valid_days.includes(dow)) return false;
   const s = t(i.valid_start_time), e = t(i.valid_end_time);
-  if (s && e) {
+  if (s && e && s !== e) { // equal start/end = no time restriction (all day)
     if (s <= e) { if (time < s || time >= e) return false; }
     else if (time < s && time >= e) return false; // overnight window
   } else if (s && time < s) return false;

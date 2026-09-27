@@ -593,6 +593,7 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           if (pairErr) throw pairErr;
         }
       }
+      } // end !keepSavedRoster
 
 
       // Track who got allocated this session

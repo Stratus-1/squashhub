@@ -321,12 +321,12 @@ export function LineupSwapDialog({
   }, [candidates, inUseCodes, search]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) setPending(null); onOpenChange(o); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
             <ArrowLeftRight className="w-4 h-4" />
-            Swap player · {teamCode} · {side === "home" ? "Home" : "Visitors"} #{position}
+            {pending ? "Confirm replacement" : `Swap player · ${teamCode} · ${side === "home" ? "Home" : "Visitors"} #${position}`}
           </DialogTitle>
           <DialogDescription className="text-xs">
             Currently: <span className="font-medium text-foreground">{currentName || "—"}</span>

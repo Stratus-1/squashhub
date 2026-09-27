@@ -12,7 +12,6 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { HCaptcha, verifyCaptchaToken, type HCaptchaHandle } from "@/components/HCaptcha";
 import shLogo from "@/assets/sh-logo.png";
-import { GoogleSignInButton, GoogleAuthDivider, isGoogleAuthDisabled } from "@/components/GoogleSignInButton";
 
 export default function Auth() {
   const { signIn, resetPassword } = useAuth();
@@ -28,7 +27,6 @@ export default function Auth() {
   // Reset form
   const [resetEmail, setResetEmail] = useState("");
 
-  const hideGoogleAuth = isGoogleAuthDisabled();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -464,6 +464,9 @@ export function DoublesPairsDialog({
             {!pairs.length && (
               <p className="text-xs text-muted-foreground">No pairs yet for this team.</p>
             )}
+            {pairs.length > 0 && !filteredPairs.length && (
+              <p className="text-xs text-muted-foreground">No pairs match "{pairSearch.trim()}".</p>
+            )}
           </div>
         </div>
       </DialogContent>

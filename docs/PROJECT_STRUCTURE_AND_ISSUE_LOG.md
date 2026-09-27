@@ -2195,3 +2195,8 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Doubles OPB is per original pair (both players together), pairs resolved on the fixture date via `league_team_pairs.effective_from/effective_to`, frozen into `permanentSquadSnapshot.{home,away}.pairs` on first save (`src/lib/leagues/original-pair-bonus.ts`).
 - Admin pair edits close the old row and open a new one dated today → new player is original from then on; past fixtures keep the old pair. Pair removal is a soft close.
 - `league_rules.reserve_mode` (per_team|per_league), `sub_from_reserves`, `sub_from_bye_team`, `sub_rank_rule` (any|same|same_or_lower); league reserve team in `league_reserve_players` with rank. Scorecard shows "Sub not allowed" and blocks final submit (`src/lib/leagues/doubles-sub-eligibility.ts`).
+
+## 2026-09-27 — Configurable bar/shop inventory (Riverside pilot)
+- Added club-configurable divisions/categories, variants, bottle-to-tot selling options (yield default 30, per product), specials/combos with date/day/time windows, stock movement ledger, open-bottle stock takes.
+- Ordinary items keep the existing policy (sale never blocked, stock floors at 0); specials are blocked unless valid now and every component has enough stock, and deduct all components atomically.
+- Riverside: previous 23 test items archived (not deleted, history kept); pilot dataset seeded. No other club's data changed.

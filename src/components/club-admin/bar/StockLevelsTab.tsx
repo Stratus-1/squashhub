@@ -29,12 +29,19 @@ interface Level {
   price: number;
   current_qty: number;
   qty_on_date: number;
+  unit_yield?: number;
+  units_on_date?: number;
+  open_units_on_date?: number;
+  current_units?: number;
+  unit_label?: string | null;
 }
 
 interface TakeLine {
   bar_item_id: string;
   expected_qty: number;
   counted_qty: number | null;
+  expected_units?: number | null;
+  counted_open_units?: number | null;
 }
 
 const today = () => format(new Date(), "yyyy-MM-dd");
@@ -49,6 +56,8 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
   const { format: money } = useClubCurrency();
   const [date, setDate] = useState(today());
   const [counts, setCounts] = useState<Record<string, string>>({});
+  // Open-bottle remainder (tots) for items sold by measure.
+  const [opens, setOpens] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -70,7 +79,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bar_stock_takes" as any)
-        .select("*, lines:bar_stock_take_lines(bar_item_id, expected_qty, counted_qty)")
+        .select("*, lines:bar_stock_take_lines(bar_item_id, expected_qty, counted_qty, expected_units, counted_open_units)")
         .eq("club_id", clubId)
         .eq("take_date", date)
         .order("created_at", { ascending: false })
@@ -85,21 +94,30 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
     takeLines.find((l) => l.bar_item_id === id)?.expected_qty ??
     levels.find((l) => l.bar_item_id === id)?.qty_on_date ?? 0;
 
+  // Everything is compared in whole units; items sold by measure include the open-bottle fraction.
   const rows = useMemo(
     () =>
       levels.map((l) => {
-        const saved = takeLines.find((t) => t.bar_item_id === l.bar_item_id)?.counted_qty ?? null;
+        const y = Math.max(1, l.unit_yield || 1);
+        const line = takeLines.find((t) => t.bar_item_id === l.bar_item_id);
+        const saved = line?.counted_qty ?? null;
         const typed = counts[l.bar_item_id];
-        const counted = typed !== undefined && typed !== "" ? Number(typed) : saved;
-        const expected = expectedFor(l.bar_item_id);
+        const whole = typed !== undefined && typed !== "" ? Number(typed) : saved;
+        const openTyped = opens[l.bar_item_id];
+        const open = y > 1 ? (openTyped !== undefined && openTyped !== "" ? Number(openTyped) : line?.counted_open_units ?? 0) : 0;
+        const expUnits = line?.expected_units ?? l.units_on_date ?? expectedFor(l.bar_item_id) * y;
+        const expected = Math.round((expUnits / y) * 100) / 100;
+        const counted = whole === null || Number.isNaN(whole as number) ? null : Math.round((((whole as number) * y + open) / y) * 100) / 100;
         return {
           ...l,
+          y,
+          open,
           expected,
-          counted: counted === null || Number.isNaN(counted as number) ? null : (counted as number),
-          variance: counted === null || Number.isNaN(counted as number) ? null : (counted as number) - expected,
+          counted,
+          variance: counted === null ? null : Math.round((counted - expected) * 100) / 100,
         };
       }),
-    [levels, takeLines, counts],
+    [levels, takeLines, counts, opens],
   );
 
   const counted = rows.filter((r) => r.counted !== null);
@@ -126,16 +144,22 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
     setBusy(true);
     try {
       const lines = rows
-        .filter((r) => counts[r.bar_item_id] !== undefined)
-        .map((r) => ({
-          bar_item_id: r.bar_item_id,
-          counted_qty: counts[r.bar_item_id] === "" ? null : Number(counts[r.bar_item_id]),
-        }));
+        .filter((r) => counts[r.bar_item_id] !== undefined || opens[r.bar_item_id] !== undefined)
+        .map((r) => {
+          const saved = takeLines.find((t) => t.bar_item_id === r.bar_item_id)?.counted_qty ?? null;
+          const whole = counts[r.bar_item_id] !== undefined ? (counts[r.bar_item_id] === "" ? null : Number(counts[r.bar_item_id])) : saved;
+          return {
+            bar_item_id: r.bar_item_id,
+            counted_qty: whole,
+            counted_open_units: r.y > 1 ? r.open : null,
+          };
+        });
       const { error } = await supabase.rpc("bar_stock_take_save", {
         _take_id: take.id, _lines: lines, _notes: notes || null,
       } as any);
       if (error) throw error;
       setCounts({});
+      setOpens({});
       await refetchTake();
       toast.success("Counted quantities saved");
     } catch (e: any) {
@@ -149,7 +173,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
     if (!take?.id) return;
     setBusy(true);
     try {
-      if (Object.keys(counts).length) await saveCounts();
+      if (Object.keys(counts).length || Object.keys(opens).length) await saveCounts();
       const { error } = await supabase.rpc("bar_stock_take_finalise", {
         _take_id: take.id, _adjust: adjust,
       } as any);
@@ -263,7 +287,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
             <Upload className="w-3.5 h-3.5 mr-1" /> Upload completed sheet
           </Button>
           <div className="flex-1" />
-          <Button size="sm" variant="secondary" disabled={busy || !Object.keys(counts).length} onClick={saveCounts}>
+          <Button size="sm" variant="secondary" disabled={busy || !(Object.keys(counts).length || Object.keys(opens).length)} onClick={saveCounts}>
             Save counts
           </Button>
           <Button size="sm" disabled={busy || counted.length === 0} onClick={() => finalise(true)}>
@@ -289,7 +313,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
           <div className="text-xs grid gap-1">
             {deviations.map((r) => (
               <div key={r.bar_item_id} className="flex justify-between gap-2">
-                <span className="truncate">{r.name}</span>
+                <span className="truncate">{r.name}{r.y > 1 ? ` (${r.unit_label || "tot"}s: ${r.y}/bottle)` : ""}</span>
                 <span className={(r.variance ?? 0) < 0 ? "text-destructive" : "text-emerald-600"}>
                   expected {r.expected} · counted {r.counted} · {(r.variance ?? 0) > 0 ? "+" : ""}{r.variance}
                 </span>
@@ -316,19 +340,35 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
         ) : (
           rows.map((r) => (
             <div key={r.bar_item_id} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-1.5 text-xs items-center border-b last:border-0">
-              <span className="truncate">{r.name}</span>
+              <span className="truncate">{r.name}{r.y > 1 ? ` (${r.unit_label || "tot"}s: ${r.y}/bottle)` : ""}</span>
               <span className="text-right w-16 tabular-nums">{r.expected}</span>
-              <span className="text-right w-16 tabular-nums text-muted-foreground">{r.current_qty}</span>
+              <span className="text-right w-16 tabular-nums text-muted-foreground">{r.y > 1 ? `${r.current_qty}+${(r.current_units ?? 0) % r.y}` : r.current_qty}</span>
               <span className="w-24 text-right">
                 {take && !finalised ? (
+                  <>
                   <Input
                     inputMode="numeric"
                     className="h-7 text-right text-xs"
-                    value={counts[r.bar_item_id] ?? (r.counted !== null ? String(r.counted) : "")}
+                    value={counts[r.bar_item_id] ?? String(takeLines.find((t) => t.bar_item_id === r.bar_item_id)?.counted_qty ?? "")}
                     onChange={(e) =>
                       setCounts((c) => ({ ...c, [r.bar_item_id]: e.target.value.replace(/[^0-9]/g, "") }))
                     }
+                    aria-label={r.y > 1 ? "Full bottles" : "Counted"}
                   />
+                  {r.y > 1 && (
+                    <Input
+                      inputMode="numeric"
+                      className="h-7 text-right text-xs mt-1"
+                      placeholder={`+ open (0–${r.y - 1})`}
+                      aria-label="Tots left in open bottle"
+                      value={opens[r.bar_item_id] ?? (r.open ? String(r.open) : "")}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^0-9]/g, "");
+                        setOpens((o) => ({ ...o, [r.bar_item_id]: v === "" ? "" : String(Math.min(r.y - 1, Number(v))) }));
+                      }}
+                    />
+                  )}
+                  </>
                 ) : (
                   <span className="tabular-nums">{r.counted ?? "—"}</span>
                 )}

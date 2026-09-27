@@ -1058,58 +1058,222 @@ export type Database = {
       bar_items: {
         Row: {
           active: boolean
+          archived_at: string | null
           barcode: string | null
           category: string
           club_id: string
+          consume_units: number
           cost_price: number
           created_at: string
           division: string
           id: string
           image_url: string | null
+          item_kind: string
           low_stock_threshold: number
           name: string
           price: number
+          product_group: string | null
+          sellable: boolean
           sort_order: number
+          stock_parent_id: string | null
           stock_qty: number
+          stock_unit_label: string | null
+          stock_units: number
+          unit_label: string | null
+          unit_yield: number
           updated_at: string
+          valid_days: number[] | null
+          valid_end_time: string | null
+          valid_from: string | null
+          valid_start_time: string | null
+          valid_to: string | null
+          variant_label: string | null
         }
         Insert: {
           active?: boolean
+          archived_at?: string | null
           barcode?: string | null
           category?: string
           club_id: string
+          consume_units?: number
           cost_price?: number
           created_at?: string
           division?: string
           id?: string
           image_url?: string | null
+          item_kind?: string
           low_stock_threshold?: number
           name: string
           price?: number
+          product_group?: string | null
+          sellable?: boolean
           sort_order?: number
+          stock_parent_id?: string | null
           stock_qty?: number
+          stock_unit_label?: string | null
+          stock_units?: number
+          unit_label?: string | null
+          unit_yield?: number
           updated_at?: string
+          valid_days?: number[] | null
+          valid_end_time?: string | null
+          valid_from?: string | null
+          valid_start_time?: string | null
+          valid_to?: string | null
+          variant_label?: string | null
         }
         Update: {
           active?: boolean
+          archived_at?: string | null
           barcode?: string | null
           category?: string
           club_id?: string
+          consume_units?: number
           cost_price?: number
           created_at?: string
           division?: string
           id?: string
           image_url?: string | null
+          item_kind?: string
           low_stock_threshold?: number
           name?: string
           price?: number
+          product_group?: string | null
+          sellable?: boolean
           sort_order?: number
+          stock_parent_id?: string | null
           stock_qty?: number
+          stock_unit_label?: string | null
+          stock_units?: number
+          unit_label?: string | null
+          unit_yield?: number
           updated_at?: string
+          valid_days?: number[] | null
+          valid_end_time?: string | null
+          valid_from?: string | null
+          valid_start_time?: string | null
+          valid_to?: string | null
+          variant_label?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "bar_items_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_items_stock_parent_id_fkey"
+            columns: ["stock_parent_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_special_components: {
+        Row: {
+          club_id: string
+          component_item_id: string
+          created_at: string
+          id: string
+          quantity: number
+          special_item_id: string
+        }
+        Insert: {
+          club_id: string
+          component_item_id: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          special_item_id: string
+        }
+        Update: {
+          club_id?: string
+          component_item_id?: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          special_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_special_components_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_special_components_component_item_id_fkey"
+            columns: ["component_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_special_components_special_item_id_fkey"
+            columns: ["special_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bar_stock_movements: {
+        Row: {
+          bar_item_id: string
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string
+          requested_delta: number
+          sold_item_id: string | null
+          source_id: string | null
+          source_table: string | null
+          units_after: number
+          units_delta: number
+        }
+        Insert: {
+          bar_item_id: string
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason: string
+          requested_delta: number
+          sold_item_id?: string | null
+          source_id?: string | null
+          source_table?: string | null
+          units_after: number
+          units_delta: number
+        }
+        Update: {
+          bar_item_id?: string
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string
+          requested_delta?: number
+          sold_item_id?: string | null
+          source_id?: string | null
+          source_table?: string | null
+          units_after?: number
+          units_delta?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bar_stock_movements_bar_item_id_fkey"
+            columns: ["bar_item_id"]
+            isOneToOne: false
+            referencedRelation: "bar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bar_stock_movements_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
@@ -1190,32 +1354,41 @@ export type Database = {
       bar_stock_take_lines: {
         Row: {
           bar_item_id: string
+          counted_open_units: number | null
           counted_qty: number | null
           created_at: string
           expected_qty: number
+          expected_units: number | null
           id: string
           stock_take_id: string
           unit_cost: number
+          unit_yield: number
           updated_at: string
         }
         Insert: {
           bar_item_id: string
+          counted_open_units?: number | null
           counted_qty?: number | null
           created_at?: string
           expected_qty?: number
+          expected_units?: number | null
           id?: string
           stock_take_id: string
           unit_cost?: number
+          unit_yield?: number
           updated_at?: string
         }
         Update: {
           bar_item_id?: string
+          counted_open_units?: number | null
           counted_qty?: number | null
           created_at?: string
           expected_qty?: number
+          expected_units?: number | null
           id?: string
           stock_take_id?: string
           unit_cost?: number
+          unit_yield?: number
           updated_at?: string
         }
         Relationships: [
@@ -2658,6 +2831,7 @@ export type Database = {
       }
       club_bar_categories: {
         Row: {
+          archived_at: string | null
           club_id: string
           created_at: string
           division: string
@@ -2668,6 +2842,7 @@ export type Database = {
           value: string
         }
         Insert: {
+          archived_at?: string | null
           club_id: string
           created_at?: string
           division?: string
@@ -2678,6 +2853,7 @@ export type Database = {
           value: string
         }
         Update: {
+          archived_at?: string | null
           club_id?: string
           created_at?: string
           division?: string
@@ -2690,6 +2866,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "club_bar_categories_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_bar_divisions: {
+        Row: {
+          archived_at: string | null
+          club_id: string
+          created_at: string
+          id: string
+          key: string
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          club_id: string
+          created_at?: string
+          id?: string
+          key: string
+          label: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          club_id?: string
+          created_at?: string
+          id?: string
+          key?: string
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_bar_divisions_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
@@ -16543,6 +16760,17 @@ export type Database = {
         Args: { _code: string; _pin: string }
         Returns: Json
       }
+      bar_item_on_menu: {
+        Args: { _item: Database["public"]["Tables"]["bar_items"]["Row"] }
+        Returns: boolean
+      }
+      bar_item_valid_now: {
+        Args: {
+          _at?: string
+          _item: Database["public"]["Tables"]["bar_items"]["Row"]
+        }
+        Returns: boolean
+      }
       bar_open_tabs: { Args: { _club_id: string }; Returns: Json }
       bar_qr_charge_guest_tab_member: {
         Args: {
@@ -16570,6 +16798,10 @@ export type Database = {
           id: string
         }[]
       }
+      bar_refresh_dependents: {
+        Args: { _stock_id: string }
+        Returns: undefined
+      }
       bar_resolve_member_by_number: {
         Args: { _club_id: string; _number: string }
         Returns: {
@@ -16589,9 +16821,22 @@ export type Database = {
           phone_hint: string
         }[]
       }
+      bar_special_available: { Args: { _special: string }; Returns: number }
       bar_staff_can_serve: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
+      }
+      bar_stock_apply: {
+        Args: {
+          _clamp?: boolean
+          _delta: number
+          _item: string
+          _reason: string
+          _sold_item?: string
+          _source_id?: string
+          _source_table?: string
+        }
+        Returns: number
       }
       bar_stock_levels_on: {
         Args: { _club_id: string; _date: string }
@@ -16608,6 +16853,10 @@ export type Database = {
       bar_stock_take_start: {
         Args: { _club_id: string; _date: string }
         Returns: string
+      }
+      bar_units_per_sale: {
+        Args: { _item: Database["public"]["Tables"]["bar_items"]["Row"] }
+        Returns: number
       }
       bill_wifi_monthly: { Args: never; Returns: Json }
       booking_notice_data: {

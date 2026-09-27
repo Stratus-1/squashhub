@@ -439,6 +439,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
       name: item.name,
       price: String(item.price),
       category: item.category,
+      division: (item.division === "shop" ? "shop" : "bar") as BarDivision,
       image_url: item.image_url || "",
       low_stock_threshold: String(item.low_stock_threshold),
       cost_price: item.cost_price ? String(item.cost_price) : "",
@@ -454,6 +455,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
       name: form.name.trim(),
       price: parseFloat(form.price),
       category: form.category,
+      division: form.division,
       sort_order: items.length,
       image_url: form.image_url.trim() || null,
       low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
@@ -476,6 +478,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
       name: form.name.trim(),
       price: parseFloat(form.price),
       category: form.category,
+      division: form.division,
       image_url: form.image_url.trim() || null,
       low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
       cost_price: parseFloat(form.cost_price) || 0,
@@ -504,9 +507,6 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
     else qc.invalidateQueries({ queryKey: ["bar-items"] });
   };
 
-  const CATEGORY_EMOJI: Record<string, string> = {
-    soft_drinks: "🥤", water: "💧", energy: "⚡", beer_cider: "🍺", wine: "🍷", spirits: "🥃", hot_drinks: "☕", snacks: "🍿", meals: "🥪", other: "📦", drinks: "🥤", alcohol: "🍺",
-  };
 
   const itemForm = (
     <div className="rounded-lg border p-3 space-y-3">

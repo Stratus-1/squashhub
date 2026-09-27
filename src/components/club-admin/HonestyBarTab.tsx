@@ -676,7 +676,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
 
       <div className="space-y-2">
         {items.map(item => {
-          const cat = CATEGORIES.find(c => c.value === item.category);
+          const catLabel = categoryLabel(customCategories, item.category);
           const isLowStock = item.stock_qty > 0 && item.stock_qty <= item.low_stock_threshold;
           const isOutOfStock = item.stock_qty <= 0;
           return (
@@ -685,7 +685,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
                 {item.image_url ? (
                   <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-sm">{CATEGORY_EMOJI[item.category] || "📦"}</span>
+                  <span className="text-sm">{BAR_CATEGORY_EMOJI[item.category] || "📦"}</span>
                 )}
               </div>
               <div className="flex-1 min-w-0">

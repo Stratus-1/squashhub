@@ -9920,6 +9920,7 @@ export type Database = {
           confirmed_by: string | null
           created_at: string
           description: string | null
+          fee_payment_id: string | null
           id: string
           method: string | null
           proof_url: string | null
@@ -9936,6 +9937,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           description?: string | null
+          fee_payment_id?: string | null
           id?: string
           method?: string | null
           proof_url?: string | null
@@ -9952,6 +9954,7 @@ export type Database = {
           confirmed_by?: string | null
           created_at?: string
           description?: string | null
+          fee_payment_id?: string | null
           id?: string
           method?: string | null
           proof_url?: string | null
@@ -9966,6 +9969,13 @@ export type Database = {
             columns: ["club_member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_credit_transactions_fee_payment_id_fkey"
+            columns: ["fee_payment_id"]
+            isOneToOne: false
+            referencedRelation: "club_member_fee_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -18025,6 +18035,10 @@ export type Database = {
       request_wifi_access: { Args: { _club_member_id: string }; Returns: Json }
       reset_club_finances: { Args: { p_club_id: string }; Returns: Json }
       reset_event_invites: { Args: { _event_id: string }; Returns: number }
+      resolve_host_billing_member: {
+        Args: { p_club_member_id: string; p_host_club_id: string }
+        Returns: string
+      }
       resolve_invite_short_code: { Args: { p_code: string }; Returns: string }
       resolve_qr_short_code: { Args: { _code: string }; Returns: Json }
       respond_doubles_pair: {

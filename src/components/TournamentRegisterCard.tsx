@@ -88,7 +88,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
       if (res?.charged === false) {
         toast.info("No entry fee is payable for this tournament.");
       } else {
-        toast.success(`${money(entryFee)} was added to your member account. You can settle it later in My Account.`);
+        toast.success(`${money(entryFee)} was added to your account at the club hosting this tournament.`);
       }
       qc.invalidateQueries({ queryKey: ["my-champ-reg", champ.id, memberId] });
       qc.invalidateQueries({ queryKey: ["member-fees"] });

@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.member_credit_transactions_block_duplicate_pending() FROM PUBLIC, anon, authenticated;

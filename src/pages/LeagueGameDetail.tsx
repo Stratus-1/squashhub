@@ -2152,7 +2152,7 @@ export default function LeagueGameDetail() {
       const computedHasAny =
         computedHomeCodes.length || computedAwayCodes.length ||
         computedHomeNames.length || computedAwayNames.length;
-      const permanentSquadSnapshot = hasExistingSavedSquad
+      let permanentSquadSnapshot: any = hasExistingSavedSquad
         ? existingSavedSquad!
         : (computedHasAny
             ? {
@@ -2160,6 +2160,17 @@ export default function LeagueGameDetail() {
                 away: { codes: computedAwayCodes, names: computedAwayNames },
               }
             : undefined);
+      // Doubles: freeze the original pairs (official on the fixture date) once.
+      const hp = ((summary as any)._homePairKeys as string[]) || [];
+      const ap = ((summary as any)._awayPairKeys as string[]) || [];
+      const frozenHasPairs = !!((existingSavedSquad as any)?.home?.pairs?.length || (existingSavedSquad as any)?.away?.pairs?.length);
+      if (!frozenHasPairs && (hp.length || ap.length)) {
+        permanentSquadSnapshot = {
+          ...(permanentSquadSnapshot || {}),
+          home: { ...(permanentSquadSnapshot?.home || {}), pairs: hp },
+          away: { ...(permanentSquadSnapshot?.away || {}), pairs: ap },
+        };
+      }
       // Final submit: per-position scores are already live-saved via persistPositionScores.
       // Only re-assert player setup + forfeit state here — NEVER overwrite game_scores
       // or winner from local state (could clobber another captain's live progress).

@@ -24,13 +24,15 @@ import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
 import {
   BAR_CATEGORY_EMOJI,
-  BAR_DIVISIONS,
   categoriesForDivision,
-  categoryLabel,
-  categoryValueFromLabel,
   useBarCategories,
-  type BarDivision,
+  useBarDivisions,
 } from "@/lib/bar-categories";
+import {
+  DEFAULT_TOTS_PER_BOTTLE, WEEKDAYS, formatStock, splitUnits, validitySummary,
+  type InventoryItem, type SpecialComponent,
+} from "@/lib/bar-inventory";
+import { CategoryManagerDialog } from "./bar/CategoryManagerDialog";
 
 interface BarItem {
   id: string;
@@ -46,6 +48,22 @@ interface BarItem {
   low_stock_threshold: number;
   cost_price: number;
   barcode?: string | null;
+  item_kind?: "stock" | "option" | "special" | null;
+  stock_parent_id?: string | null;
+  consume_units?: number | null;
+  unit_yield?: number | null;
+  unit_label?: string | null;
+  stock_unit_label?: string | null;
+  stock_units?: number | null;
+  sellable?: boolean | null;
+  product_group?: string | null;
+  variant_label?: string | null;
+  archived_at?: string | null;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  valid_days?: number[] | null;
+  valid_start_time?: string | null;
+  valid_end_time?: string | null;
 }
 
 interface BarTabEntry {
@@ -383,122 +401,153 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 }
 
 
-/* ─── Item Manager with edit support ─── */
-function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; items: BarItem[]; loading: boolean; onQrLabels?: (itemId?: string) => void }) {
+/* ─── Item Manager: products, variants, selling options, specials ─── */
+type ItemKind = "stock" | "option" | "special";
+interface ComponentLine { component_item_id: string; quantity: string }
+
+const emptyForm = (division = "bar", category = "") => ({
+  name: "", price: "", category, division, image_url: "", low_stock_threshold: "5", cost_price: "",
+  opening_stock: "0", open_units: "0", barcode: "",
+  item_kind: "stock" as ItemKind, unit_yield: "1", unit_label: "tot", stock_unit_label: "bottle", sellable: true,
+  product_group: "", variant_label: "", stock_parent_id: "", consume_units: "1",
+  valid_from: "", valid_to: "", valid_days: [] as number[], valid_start_time: "", valid_end_time: "",
+});
+
+function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId: string; items: BarItem[]; loading: boolean; onQrLabels?: (itemId?: string) => void }) {
   const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", category: "soft_drinks", division: "bar" as BarDivision, image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
+  const [showArchived, setShowArchived] = useState(false);
   const [barcodeScanOpen, setBarcodeScanOpen] = useState(false);
   const [catManagerOpen, setCatManagerOpen] = useState(false);
-  const [newCatLabel, setNewCatLabel] = useState("");
-  const [newCatDivision, setNewCatDivision] = useState<BarDivision>("bar");
   const { data: customCategories = [] } = useBarCategories(clubId);
+  const { divisions } = useBarDivisions(clubId);
+  const [form, setForm] = useState(emptyForm());
+  const [components, setComponents] = useState<ComponentLine[]>([]);
+  const items = allItems.filter(i => showArchived || !i.archived_at);
+  const liveItems = allItems.filter(i => !i.archived_at);
+  const stockItems = liveItems.filter(i => (i.item_kind || "stock") === "stock");
   const formCategories = categoriesForDivision(customCategories, form.division);
+  const yieldN = Math.max(1, parseInt(form.unit_yield) || 1);
 
-  const resetForm = () => setForm({ name: "", price: "", category: "soft_drinks", division: "bar", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
+  const { data: allComponents = [] } = useQuery({
+    queryKey: ["bar-special-components", clubId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("bar_special_components").select("special_item_id, component_item_id, quantity").eq("club_id", clubId);
+      if (error) throw error;
+      return data as SpecialComponent[];
+    },
+  });
 
-  const handleAddCategory = async () => {
-    const label = newCatLabel.trim();
-    if (!label) return;
-    const value = categoryValueFromLabel(label);
-    const { error } = await fromExt("club_bar_categories").insert({
-      club_id: clubId,
-      division: newCatDivision,
-      label,
-      value,
-      sort_order: customCategories.length,
-    });
-    if (error) {
-      toast.error(error.message.includes("duplicate") ? "That category already exists" : error.message);
-    } else {
-      toast.success(`Category "${label}" added`);
-      setNewCatLabel("");
-      qc.invalidateQueries({ queryKey: ["club-bar-categories", clubId] });
-    }
-  };
-
-  const handleDeleteCategory = async (id: string, value: string) => {
-    const inUse = items.some(i => i.category === value);
-    if (inUse) {
-      toast.error("Some items still use this category — move them to another category first.");
-      return;
-    }
-    const { error } = await fromExt("club_bar_categories").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Category removed");
-      qc.invalidateQueries({ queryKey: ["club-bar-categories", clubId] });
-    }
+  const resetForm = () => {
+    const div = divisions[0]?.key || "bar";
+    setForm(emptyForm(div, categoriesForDivision(customCategories, div)[0]?.value || "other"));
+    setComponents([]);
   };
 
   const openEdit = (item: BarItem) => {
     setEditItem(item);
+    const y = Math.max(1, item.unit_yield || 1);
+    const { whole, open } = splitUnits(item.stock_units ?? item.stock_qty, y);
     setForm({
-      name: item.name,
-      price: String(item.price),
-      category: item.category,
-      division: (item.division === "shop" ? "shop" : "bar") as BarDivision,
-      image_url: item.image_url || "",
-      low_stock_threshold: String(item.low_stock_threshold),
-      cost_price: item.cost_price ? String(item.cost_price) : "",
-      opening_stock: String(item.stock_qty ?? 0),
-      barcode: item.barcode ?? "",
+      ...emptyForm(item.division || "bar", item.category),
+      name: item.name, price: String(item.price), image_url: item.image_url || "",
+      low_stock_threshold: String(item.low_stock_threshold), cost_price: item.cost_price ? String(item.cost_price) : "",
+      opening_stock: String(whole), open_units: String(open), barcode: item.barcode ?? "",
+      item_kind: (item.item_kind || "stock") as ItemKind, unit_yield: String(y),
+      unit_label: item.unit_label || "tot", stock_unit_label: item.stock_unit_label || "bottle",
+      sellable: item.sellable !== false, product_group: item.product_group || "", variant_label: item.variant_label || "",
+      stock_parent_id: item.stock_parent_id || "", consume_units: String(item.consume_units || 1),
+      valid_from: item.valid_from || "", valid_to: item.valid_to || "", valid_days: item.valid_days || [],
+      valid_start_time: (item.valid_start_time || "").slice(0, 5), valid_end_time: (item.valid_end_time || "").slice(0, 5),
     });
+    setComponents(allComponents.filter(c => c.special_item_id === item.id)
+      .map(c => ({ component_item_id: c.component_item_id, quantity: String(c.quantity) })));
   };
 
-  const handleAdd = async () => {
-    if (!form.name.trim() || !form.price) return;
-    const { error } = await fromExt("bar_items").insert({
-      club_id: clubId,
-      name: form.name.trim(),
-      price: parseFloat(form.price),
-      category: form.category,
-      division: form.division,
-      sort_order: items.length,
-      image_url: form.image_url.trim() || null,
-      low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
-      cost_price: parseFloat(form.cost_price) || 0,
-      stock_qty: parseInt(form.opening_stock) || 0,
-      barcode: form.barcode.trim() || null,
-    });
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Item added");
-      resetForm();
-      setAdding(false);
-      qc.invalidateQueries({ queryKey: ["bar-items"] });
+  const buildPayload = () => {
+    const base: Record<string, unknown> = {
+      name: form.name.trim(), price: parseFloat(form.price) || 0, category: form.category, division: form.division,
+      image_url: form.image_url.trim() || null, low_stock_threshold: parseInt(form.low_stock_threshold) || 0,
+      cost_price: parseFloat(form.cost_price) || 0, barcode: form.barcode.trim() || null,
+      item_kind: form.item_kind, product_group: form.product_group.trim() || null, variant_label: form.variant_label.trim() || null,
+      stock_parent_id: null, consume_units: 1, unit_yield: 1, sellable: true,
+      valid_from: null, valid_to: null, valid_days: null, valid_start_time: null, valid_end_time: null,
+    };
+    if (form.item_kind === "stock") {
+      Object.assign(base, {
+        unit_yield: yieldN, sellable: form.sellable,
+        unit_label: yieldN > 1 ? form.unit_label.trim() || "tot" : null,
+        stock_unit_label: yieldN > 1 ? form.stock_unit_label.trim() || "bottle" : null,
+        stock_units: (parseInt(form.opening_stock) || 0) * yieldN + (yieldN > 1 ? Math.min(yieldN - 1, parseInt(form.open_units) || 0) : 0),
+      });
+    } else if (form.item_kind === "option") {
+      Object.assign(base, { stock_parent_id: form.stock_parent_id || null, consume_units: Math.max(1, parseInt(form.consume_units) || 1) });
+    } else {
+      Object.assign(base, {
+        valid_from: form.valid_from || null, valid_to: form.valid_to || null,
+        valid_days: form.valid_days.length ? form.valid_days : null,
+        valid_start_time: form.valid_start_time || null, valid_end_time: form.valid_end_time || null,
+      });
+    }
+    return base;
+  };
+
+  const saveComponents = async (specialId: string) => {
+    const wanted = components.filter(c => c.component_item_id && parseInt(c.quantity) > 0);
+    const { error: delErr } = await fromExt("bar_special_components").delete().eq("special_item_id", specialId);
+    if (delErr) throw delErr;
+    if (wanted.length) {
+      const merged = new Map<string, number>();
+      wanted.forEach(c => merged.set(c.component_item_id, (merged.get(c.component_item_id) || 0) + parseInt(c.quantity)));
+      const { error } = await fromExt("bar_special_components").insert(
+        [...merged].map(([component_item_id, quantity]) => ({ club_id: clubId, special_item_id: specialId, component_item_id, quantity })),
+      );
+      if (error) throw error;
     }
   };
 
-  const handleUpdate = async () => {
-    if (!editItem || !form.name.trim() || !form.price) return;
-    const { error } = await fromExt("bar_items").update({
-      name: form.name.trim(),
-      price: parseFloat(form.price),
-      category: form.category,
-      division: form.division,
-      image_url: form.image_url.trim() || null,
-      low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
-      cost_price: parseFloat(form.cost_price) || 0,
-      stock_qty: parseInt(form.opening_stock) || 0,
-      barcode: form.barcode.trim() || null,
-    }).eq("id", editItem.id);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Item updated");
-      setEditItem(null);
-      resetForm();
+  const handleSave = async () => {
+    if (!form.name.trim()) return toast.error("Give the item a name");
+    if (form.item_kind !== "stock" || form.sellable) { if (!form.price) return toast.error("Enter a selling price"); }
+    if (form.item_kind === "option" && !form.stock_parent_id) return toast.error("Choose the stock product this option sells from");
+    if (form.item_kind === "special" && !components.some(c => c.component_item_id && parseInt(c.quantity) > 0))
+      return toast.error("Add at least one component to the special");
+    try {
+      const payload = buildPayload();
+      let id = editItem?.id;
+      if (editItem) {
+        const { error } = await fromExt("bar_items").update(payload).eq("id", editItem.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await fromExt("bar_items").insert({ ...payload, club_id: clubId, sort_order: allItems.length }).select("id").single();
+        if (error) throw error;
+        id = (data as any).id;
+      }
+      if (form.item_kind === "special" && id) await saveComponents(id);
+      toast.success(editItem ? "Item updated" : "Item added");
+      setAdding(false); setEditItem(null); resetForm();
       qc.invalidateQueries({ queryKey: ["bar-items"] });
+      qc.invalidateQueries({ queryKey: ["bar-special-components", clubId] });
+    } catch (e: any) {
+      toast.error(e?.message || "Could not save item");
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Remove this bar item?")) return;
-    const { error } = await fromExt("bar_items").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Item removed"); qc.invalidateQueries({ queryKey: ["bar-items"] }); }
+  /** Items with sales or purchase history can't be deleted — archive them instead. */
+  const handleDelete = async (item: BarItem) => {
+    if (!confirm(`Remove "${item.name}"? Items with sales history are archived instead so records stay intact.`)) return;
+    const { error } = await fromExt("bar_items").delete().eq("id", item.id);
+    if (!error) { toast.success("Item removed"); qc.invalidateQueries({ queryKey: ["bar-items"] }); return; }
+    const { error: e2 } = await fromExt("bar_items").update({ archived_at: new Date().toISOString(), active: false }).eq("id", item.id);
+    if (e2) toast.error(e2.message);
+    else { toast.success("Item archived — its sales history is kept"); qc.invalidateQueries({ queryKey: ["bar-items"] }); }
+  };
+
+  const handleRestore = async (item: BarItem) => {
+    const { error } = await fromExt("bar_items").update({ archived_at: null, active: true }).eq("id", item.id);
+    if (error) toast.error(error.message); else qc.invalidateQueries({ queryKey: ["bar-items"] });
   };
 
   const handleToggleActive = async (id: string, active: boolean) => {
@@ -507,153 +556,227 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
     else qc.invalidateQueries({ queryKey: ["bar-items"] });
   };
 
+  const byId = new Map(allItems.map(i => [i.id, i as unknown as InventoryItem]));
+  const componentChoices = liveItems.filter(i => (i.item_kind || "stock") !== "special" && i.id !== editItem?.id);
 
   const itemForm = (
-    <div className="rounded-lg border p-3 space-y-3">
-      <div className="rounded-md bg-muted/50 border p-2.5 flex items-start gap-2">
-        <ScanBarcode className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
-        <p className="text-xs text-muted-foreground leading-snug">
-          You can scan the barcode printed on each product when adding or editing an item. Tap the camera icon next to the barcode field, or type the number in manually.
-        </p>
+    <div className="space-y-3">
+      <div>
+        <Label className="text-xs">What is this?</Label>
+        <Select value={form.item_kind} onValueChange={v => setForm(p => ({ ...p, item_kind: v as ItemKind }))} disabled={!!editItem}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="stock">Product — holds stock (beer, Buddy, balls, shoes, a spirit bottle)</SelectItem>
+            <SelectItem value="option">Selling option — sold from a product's stock (Single / Double tot)</SelectItem>
+            <SelectItem value="special">Special / combo — a bundle of products at one price</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <Label className="text-xs">Item name</Label>
-          <Input
-            value={form.name}
-            onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-            placeholder="e.g. Castle Lager"
-          />
+          <Label className="text-xs">Name</Label>
+          <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+            placeholder={form.item_kind === "special" ? "e.g. Friday Night Special" : form.item_kind === "option" ? "e.g. Klipdrift · Double" : "e.g. Castle Lite"} />
         </div>
         <div>
-          <Label className="text-xs">Sell Price (R)</Label>
-          <Input
-            type="number" min={0} step={0.5}
-            value={form.price}
-            onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
-            placeholder="0.00"
-          />
-        </div>
-        <div>
-          <Label className="text-xs">Product barcode (optional)</Label>
-          <div className="flex gap-1.5">
-            <Input
-              value={form.barcode}
-              onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))}
-              placeholder="e.g. 6001234567890"
-              inputMode="numeric"
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              title="Scan barcode with camera"
-              onClick={() => setBarcodeScanOpen(true)}
-            >
-              <ScanBarcode className="w-4 h-4" />
-            </Button>
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-1">Scan or type the barcode printed on the product — enables scan-to-add at the counter.</p>
-        </div>
-        <div>
-          <Label className="text-xs">Cost Price (R)</Label>
-          <Input
-            type="number" min={0} step={0.01}
-            value={form.cost_price}
-            onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))}
-            placeholder="0.00"
-          />
-        </div>
-        <div>
-          <Label className="text-xs">Min Stock Level</Label>
-          <Input
-            type="number" min={0}
-            value={form.low_stock_threshold}
-            onChange={e => setForm(p => ({ ...p, low_stock_threshold: e.target.value }))}
-            placeholder="5"
-          />
-        </div>
-        <div>
-          <Label className="text-xs">{editItem ? "Current Stock Level" : "Opening Stock"}</Label>
-          <Input
-            type="number" min={0}
-            value={form.opening_stock}
-            onChange={e => setForm(p => ({ ...p, opening_stock: e.target.value }))}
-            placeholder="0"
-          />
+          <Label className="text-xs">Sell price (R){form.item_kind === "stock" && !form.sellable ? " — not sold directly" : ""}</Label>
+          <Input type="number" min={0} step={0.5} value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} placeholder="0.00" />
         </div>
         <div>
           <Label className="text-xs">Division</Label>
-          <Select
-            value={form.division}
-            onValueChange={v => {
-              const div = v as BarDivision;
-              setForm(p => {
-                const cats = categoriesForDivision(customCategories, div);
-                const stillValid = cats.some(c => c.value === p.category);
-                return { ...p, division: div, category: stillValid ? p.category : cats[0]?.value || "other" };
-              });
-            }}
-          >
+          <Select value={form.division} onValueChange={div => setForm(p => {
+            const cats = categoriesForDivision(customCategories, div);
+            return { ...p, division: div, category: cats.some(c => c.value === p.category) ? p.category : cats[0]?.value || "other" };
+          })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {BAR_DIVISIONS.map(d => (
-                <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-              ))}
-            </SelectContent>
+            <SelectContent>{divisions.map(d => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div>
           <Label className="text-xs">Category</Label>
           <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {formCategories.map(c => (
-                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-              ))}
-            </SelectContent>
+            <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
+            <SelectContent>{formCategories.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="sm:col-span-2">
-          <Label className="text-xs">Item image</Label>
-          <ImageField
-            value={form.image_url}
-            onChange={(url) => setForm(p => ({ ...p, image_url: url }))}
-            clubId={clubId}
-            itemName={form.name}
-            category={form.category}
-          />
+      </div>
+
+      {form.item_kind === "stock" && (
+        <div className="rounded-md border p-2.5 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-medium">Sold by measure (e.g. spirits by the tot)</p>
+              <p className="text-[11px] text-muted-foreground">Leave at 1 for items sold one-for-one.</p>
+            </div>
+            <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
+              onClick={() => setForm(p => ({ ...p, unit_yield: String(DEFAULT_TOTS_PER_BOTTLE), unit_label: "tot", stock_unit_label: "bottle", sellable: false }))}>
+              Spirit: {DEFAULT_TOTS_PER_BOTTLE} tots
+            </Button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-[11px]">Measures per {form.stock_unit_label || "unit"}</Label>
+              <Input type="number" min={1} max={1000} value={form.unit_yield} onChange={e => setForm(p => ({ ...p, unit_yield: e.target.value }))} />
+            </div>
+            {yieldN > 1 && (
+              <>
+                <div>
+                  <Label className="text-[11px]">Stock unit</Label>
+                  <Input value={form.stock_unit_label} onChange={e => setForm(p => ({ ...p, stock_unit_label: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-[11px]">Measure</Label>
+                  <Input value={form.unit_label} onChange={e => setForm(p => ({ ...p, unit_label: e.target.value }))} />
+                </div>
+              </>
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Sell this product directly (e.g. by the whole {form.stock_unit_label || "item"})</Label>
+            <Switch checked={form.sellable} onCheckedChange={v => setForm(p => ({ ...p, sellable: v }))} />
+          </div>
+          {yieldN > 1 && (
+            <p className="text-[11px] text-muted-foreground">After saving, add Single / Double as "Selling option" items that sell from this product.</p>
+          )}
         </div>
+      )}
+
+      {form.item_kind === "stock" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <Label className="text-xs">{editItem ? "Stock on hand" : "Opening stock"} ({yieldN > 1 ? `full ${form.stock_unit_label}s` : "units"})</Label>
+            <Input type="number" min={0} value={form.opening_stock} onChange={e => setForm(p => ({ ...p, opening_stock: e.target.value }))} />
+          </div>
+          {yieldN > 1 ? (
+            <div>
+              <Label className="text-xs">+ open {form.stock_unit_label} ({form.unit_label}s left, 0–{yieldN - 1})</Label>
+              <Input type="number" min={0} max={yieldN - 1} value={form.open_units} onChange={e => setForm(p => ({ ...p, open_units: e.target.value }))} />
+            </div>
+          ) : (
+            <div>
+              <Label className="text-xs">Min stock level</Label>
+              <Input type="number" min={0} value={form.low_stock_threshold} onChange={e => setForm(p => ({ ...p, low_stock_threshold: e.target.value }))} />
+            </div>
+          )}
+          <div>
+            <Label className="text-xs">Cost price per {yieldN > 1 ? form.stock_unit_label : "unit"} (R)</Label>
+            <Input type="number" min={0} step={0.01} value={form.cost_price} onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))} placeholder="0.00" />
+          </div>
+          <div>
+            <Label className="text-xs">Product barcode (optional)</Label>
+            <div className="flex gap-1.5">
+              <Input value={form.barcode} onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))} inputMode="numeric" className="flex-1" />
+              <Button type="button" variant="outline" size="icon" title="Scan barcode with camera" onClick={() => setBarcodeScanOpen(true)}>
+                <ScanBarcode className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Variant of (optional)</Label>
+            <Input value={form.product_group} onChange={e => setForm(p => ({ ...p, product_group: e.target.value }))} placeholder="e.g. Asics Gel Court Hunter" />
+          </div>
+          <div>
+            <Label className="text-xs">Variant (size / model / colour)</Label>
+            <Input value={form.variant_label} onChange={e => setForm(p => ({ ...p, variant_label: e.target.value }))} placeholder="e.g. UK 9" />
+          </div>
+        </div>
+      )}
+
+      {form.item_kind === "option" && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-md border p-2.5">
+          <div className="sm:col-span-3">
+            <Label className="text-xs">Sells from product</Label>
+            <Select value={form.stock_parent_id} onValueChange={v => {
+              const parent = stockItems.find(i => i.id === v);
+              setForm(p => ({ ...p, stock_parent_id: v, product_group: p.product_group || parent?.name.replace(/\s*\d+\s*ml$/i, "") || "",
+                division: parent?.division || p.division, category: parent?.category || p.category }));
+            }}>
+              <SelectTrigger><SelectValue placeholder="Choose the stock product" /></SelectTrigger>
+              <SelectContent>{stockItems.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Uses ({stockItems.find(i => i.id === form.stock_parent_id)?.unit_label || "units"})</Label>
+            <Input type="number" min={1} value={form.consume_units} onChange={e => setForm(p => ({ ...p, consume_units: e.target.value }))} />
+          </div>
+          <div>
+            <Label className="text-xs">Button label</Label>
+            <Input value={form.variant_label} onChange={e => setForm(p => ({ ...p, variant_label: e.target.value }))} placeholder="Single / Double" />
+          </div>
+          <div>
+            <Label className="text-xs">Shown as</Label>
+            <Input value={form.product_group} onChange={e => setForm(p => ({ ...p, product_group: e.target.value }))} placeholder="Klipdrift Brandy" />
+          </div>
+        </div>
+      )}
+
+      {form.item_kind === "special" && (
+        <div className="space-y-2 rounded-md border p-2.5">
+          <p className="text-xs font-medium">Components (stock is deducted from these when the special is sold)</p>
+          {components.map((c, idx) => (
+            <div key={idx} className="grid grid-cols-[1fr_70px_32px] gap-2">
+              <Select value={c.component_item_id} onValueChange={v => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, component_item_id: v } : x))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Product or option" /></SelectTrigger>
+                <SelectContent>{componentChoices.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
+              </Select>
+              <Input type="number" min={1} className="h-8 text-xs" value={c.quantity} onChange={e => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, quantity: e.target.value } : x))} />
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Remove component" onClick={() => setComponents(prev => prev.filter((_, i) => i !== idx))}><X className="w-3 h-3" /></Button>
+            </div>
+          ))}
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setComponents(prev => [...prev, { component_item_id: "", quantity: "1" }])}>
+            <Plus className="w-3 h-3 mr-1" />Add component
+          </Button>
+          <p className="text-xs font-medium pt-2">When is it available? (leave blank for always)</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label className="text-[11px]">From date</Label><Input type="date" value={form.valid_from} onChange={e => setForm(p => ({ ...p, valid_from: e.target.value }))} /></div>
+            <div><Label className="text-[11px]">To date</Label><Input type="date" value={form.valid_to} onChange={e => setForm(p => ({ ...p, valid_to: e.target.value }))} /></div>
+            <div><Label className="text-[11px]">From time</Label><Input type="time" value={form.valid_start_time} onChange={e => setForm(p => ({ ...p, valid_start_time: e.target.value }))} /></div>
+            <div><Label className="text-[11px]">To time</Label><Input type="time" value={form.valid_end_time} onChange={e => setForm(p => ({ ...p, valid_end_time: e.target.value }))} /></div>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {WEEKDAYS.map((d, i) => {
+              const on = form.valid_days.includes(i);
+              return (
+                <Button key={d} type="button" size="sm" variant={on ? "default" : "outline"} className="h-7 px-2 text-xs"
+                  onClick={() => setForm(p => ({ ...p, valid_days: on ? p.valid_days.filter(x => x !== i) : [...p.valid_days, i].sort() }))}>{d}</Button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <Label className="text-xs">Item image</Label>
+        <ImageField value={form.image_url} onChange={(url) => setForm(p => ({ ...p, image_url: url }))} clubId={clubId} itemName={form.name} category={form.category} />
       </div>
       <div className="flex gap-2">
-        <Button size="sm" onClick={editItem ? handleUpdate : handleAdd}>
-          {editItem ? "Save Changes" : "Add Item"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => { setAdding(false); setEditItem(null); resetForm(); }}>
-          Cancel
-        </Button>
+        <Button size="sm" onClick={handleSave}>{editItem ? "Save Changes" : "Add Item"}</Button>
+        <Button size="sm" variant="outline" onClick={() => { setAdding(false); setEditItem(null); resetForm(); }}>Cancel</Button>
       </div>
-      <ProductScanDialog
-        open={barcodeScanOpen}
-        onOpenChange={setBarcodeScanOpen}
-        items={items}
-        onItem={() => {}}
-        onCode={(code) => {
-          setForm(p => ({ ...p, barcode: code }));
-          toast.success(`Barcode ${code} captured`);
-        }}
-      />
+      <ProductScanDialog open={barcodeScanOpen} onOpenChange={setBarcodeScanOpen} items={liveItems} onItem={() => {}}
+        onCode={(code) => { setForm(p => ({ ...p, barcode: code })); toast.success(`Barcode ${code} captured`); }} />
     </div>
   );
 
+  const kindBadge = (i: BarItem) => {
+    const k = i.item_kind || "stock";
+    if (k === "special") return <Badge className="text-[10px]">Special · {validitySummary(i as unknown as InventoryItem)}</Badge>;
+    if (k === "option") {
+      const parent = byId.get(i.stock_parent_id || "");
+      return <Badge variant="secondary" className="text-[10px]">{i.consume_units} {parent?.unit_label || "unit"}{(i.consume_units || 1) > 1 ? "s" : ""} of {parent?.name || "?"}</Badge>;
+    }
+    if (i.variant_label) return <Badge variant="secondary" className="text-[10px]">{i.variant_label}</Badge>;
+    return null;
+  };
+
   return (
     <Card className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Bar &amp; Shop Items ({items.length})</h3>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold">Bar &amp; Shop Items ({liveItems.length})</h3>
+        <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setCatManagerOpen(true)}>
-            <Package className="w-3.5 h-3.5 mr-1" />Categories
+            <Package className="w-3.5 h-3.5 mr-1" />Divisions &amp; categories
           </Button>
           {onQrLabels && (
             <Button size="sm" variant="outline" onClick={() => onQrLabels()}>
@@ -667,130 +790,101 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
           )}
         </div>
       </div>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Switch checked={showArchived} onCheckedChange={setShowArchived} className="scale-75" /> Show archived items
+      </div>
 
-      <Dialog open={catManagerOpen} onOpenChange={setCatManagerOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Item categories</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              The built-in categories are always available. Add your own here — they appear in the item form and on the Bar / POS screen under the division you choose.
-            </p>
-            <div className="flex gap-2">
-              <Input
-                value={newCatLabel}
-                onChange={e => setNewCatLabel(e.target.value)}
-                placeholder="e.g. Cool drinks"
-                className="flex-1"
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddCategory(); } }}
-              />
-              <Select value={newCatDivision} onValueChange={v => setNewCatDivision(v as BarDivision)}>
-                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {BAR_DIVISIONS.map(d => (
-                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button size="sm" onClick={handleAddCategory} disabled={!newCatLabel.trim()}>Add</Button>
-            </div>
-            {customCategories.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No custom categories yet.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {customCategories.map(c => (
-                  <div key={c.id} className="flex items-center gap-2 rounded-md border p-2">
-                    <span className="text-sm flex-1">{c.label}</span>
-                    <Badge variant="outline" className="text-[10px]">{c.division === "shop" ? "Shop" : "Bar"}</Badge>
-                    <Button
-                      variant="ghost" size="icon"
-                      className="h-7 w-7 text-destructive"
-                      title="Remove category"
-                      onClick={() => handleDeleteCategory(c.id, c.value)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CategoryManagerDialog
+        clubId={clubId}
+        open={catManagerOpen}
+        onOpenChange={setCatManagerOpen}
+        usedCategories={new Set(liveItems.map(i => i.category))}
+        usedDivisions={new Set(allItems.map(i => i.division || "bar"))}
+      />
 
       <Dialog open={!!adding || !!editItem} onOpenChange={(v) => { if (!v) { setAdding(false); setEditItem(null); resetForm(); } }}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editItem ? "Edit Bar Item" : "Add Bar Item"}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{editItem ? "Edit item" : "Add item"}</DialogTitle></DialogHeader>
           {itemForm}
         </DialogContent>
       </Dialog>
 
-      <div className="space-y-2">
-        {items.map(item => {
-          const catLabel = categoryLabel(customCategories, item.category);
-          const isLowStock = item.stock_qty > 0 && item.stock_qty <= item.low_stock_threshold;
-          const isOutOfStock = item.stock_qty <= 0;
-          return (
-            <div key={item.id} className="flex items-start sm:items-center gap-2 sm:gap-3 rounded-lg border p-2.5">
-              <div className="w-8 h-8 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-sm">{BAR_CATEGORY_EMOJI[item.category] || "📦"}</span>
-                )}
+      {divisions.map(div => {
+        const divItems = items.filter(i => (i.division || "bar") === div.key);
+        if (divItems.length === 0) return null;
+        const cats = categoriesForDivision(customCategories, div.key);
+        const known = new Set(cats.map(c => c.value));
+        const groups = [
+          ...cats.map(c => ({ value: c.value, label: c.label, list: divItems.filter(i => i.category === c.value) })),
+          { value: "_other", label: "Other / archived categories", list: divItems.filter(i => !known.has(i.category)) },
+        ].filter(g => g.list.length > 0);
+        return (
+          <div key={div.key} className="space-y-3">
+            <h4 className="text-sm font-semibold border-b pb-1">{div.label}</h4>
+            {groups.map(g => (
+              <div key={g.value} className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">{BAR_CATEGORY_EMOJI[g.value] || "📦"} {g.label}</p>
+                {g.list.map(item => {
+                  const kind = item.item_kind || "stock";
+                  const isLowStock = kind === "stock" && item.stock_qty > 0 && item.stock_qty <= item.low_stock_threshold;
+                  const isOutOfStock = item.stock_qty <= 0;
+                  return (
+                    <div key={item.id} className="flex items-start sm:items-center gap-2 sm:gap-3 rounded-lg border p-2.5">
+                      <div className="w-8 h-8 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                        {item.image_url ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                          : <span className="text-sm">{kind === "special" ? "⭐" : BAR_CATEGORY_EMOJI[item.category] || "📦"}</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-sm font-medium truncate ${!item.active ? "line-through text-muted-foreground" : ""}`}>
+                          {item.name}{item.archived_at ? " (archived)" : ""}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                          {(kind !== "stock" || item.sellable !== false)
+                            ? <span className="text-xs text-muted-foreground">{money(item.price)}</span>
+                            : <span className="text-xs text-muted-foreground">Sold via options only</span>}
+                          {item.cost_price > 0 && <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>}
+                          {kindBadge(item)}
+                          {isOutOfStock ? (
+                            <Badge variant="destructive" className="text-[10px] gap-0.5"><AlertTriangle className="w-3 h-3" /> {kind === "stock" ? "Out" : "Unavailable"}</Badge>
+                          ) : kind === "stock" ? (
+                            <Badge variant={isLowStock ? "secondary" : "outline"} className="text-[10px]">
+                              {isLowStock && <AlertTriangle className="w-3 h-3 mr-0.5" />}{formatStock(item as unknown as InventoryItem)} in stock
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px]">{item.stock_qty} can be sold</Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {onQrLabels && !item.archived_at && (
+                          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onQrLabels(item.id)}>
+                            <QrCode className="w-3.5 h-3.5 mr-1" /> QR
+                          </Button>
+                        )}
+                        {item.archived_at ? (
+                          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => handleRestore(item)}>Restore</Button>
+                        ) : (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit item" onClick={() => openEdit(item)}><Pencil className="w-3.5 h-3.5" /></Button>
+                            <Switch checked={item.active} onCheckedChange={() => handleToggleActive(item.id, item.active)} className="scale-75" />
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Remove or archive" onClick={() => handleDelete(item)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className={`text-sm font-medium truncate ${!item.active ? "line-through text-muted-foreground" : ""}`}>
-                  {item.name}
-                </div>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                  <span className="text-xs text-muted-foreground">{money(item.price)}</span>
-                  {item.cost_price > 0 && (
-                    <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>
-                  )}
-                  {isOutOfStock ? (
-                    <Badge variant="destructive" className="text-[10px] gap-0.5">
-                      <AlertTriangle className="w-3 h-3" /> Out
-                    </Badge>
-                  ) : isLowStock ? (
-                    <Badge variant="secondary" className="text-[10px] gap-0.5 border-orange-300 text-orange-700 dark:text-orange-400">
-                      <AlertTriangle className="w-3 h-3" /> {item.stock_qty} (min {item.low_stock_threshold})
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px]">{item.stock_qty} in stock</Badge>
-                  )}
-                  <Badge variant="outline" className="text-[10px]">{item.division === "shop" ? "Shop" : "Bar"}</Badge>
-                  <Badge variant="outline" className="text-[10px]">{catLabel}</Badge>
-                </div>
-              </div>
-              <div className="flex items-center gap-0.5 shrink-0">
-                {onQrLabels && (
-                  <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onQrLabels(item.id)}>
-                    <QrCode className="w-3.5 h-3.5 mr-1" /> QR code
-                  </Button>
-                )}
-                <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit item" onClick={() => openEdit(item)}>
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Switch
-                  checked={item.active}
-                  onCheckedChange={() => handleToggleActive(item.id, item.active)}
-                  className="scale-75"
-                />
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(item.id)}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-        {items.length === 0 && !loading && (
-          <p className="text-sm text-muted-foreground">No items yet — add your first bar item above.</p>
-        )}
-      </div>
+            ))}
+          </div>
+        );
+      })}
+      {items.filter(i => !divisions.some(d => d.key === (i.division || "bar"))).length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Some items belong to an archived division — restore the division under "Divisions &amp; categories" to see them.
+        </p>
+      )}
+      {liveItems.length === 0 && !loading && <p className="text-sm text-muted-foreground">No items yet — add your first item above.</p>}
     </Card>
   );
 }
@@ -954,8 +1048,8 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                         }}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select item" /></SelectTrigger>
                           <SelectContent>
-                            {items.map(i => (
-                              <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
+                            {items.filter(i => !i.archived_at && (i.item_kind || "stock") === "stock").map(i => (
+                              <SelectItem key={i.id} value={i.id}>{i.name}{(i.unit_yield || 1) > 1 ? ` (per ${i.stock_unit_label || "bottle"})` : ""}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

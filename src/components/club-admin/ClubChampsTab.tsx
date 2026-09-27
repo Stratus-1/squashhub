@@ -12905,7 +12905,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 );
                               })()
                             )}
-                            {(handicapMode === "league_average" ? g.some((p) => !handicapStandings?.has(p.id)) : g.some((p) => isUnranked(p as any))) && (
+                            {(handicapMode === "league_average" ? !handicapStandingsLoading && !handicapStandingsError && g.some((p) => !handicapStandings?.has(p.id)) : g.some((p) => isUnranked(p as any))) && (
                               <Badge variant="secondary" className="text-[10px]">
                                 {handicapMode === "league_average" ? `${g.filter((p) => !handicapStandings?.has(p.id)).length} without league results` : `${g.filter((p) => isUnranked(p as any)).length} unranked`}
                               </Badge>

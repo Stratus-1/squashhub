@@ -567,6 +567,31 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
 
   const byId = new Map(allItems.map(i => [i.id, i as unknown as InventoryItem]));
   const componentChoices = liveItems.filter(i => (i.item_kind || "stock") !== "special" && i.id !== editItem?.id);
+  const specials = items.filter(i => i.item_kind === "special");
+
+  /** Plain-language description of what one sale of a special consumes for a component line. */
+  const componentHint = (componentId: string, qty: number): string => {
+    const ci = byId.get(componentId);
+    if (!ci || qty <= 0) return "";
+    const root = ci.stock_parent_id ? byId.get(ci.stock_parent_id) : ci;
+    if (!root) return "";
+    const units = qty * unitsPerSale(ci);
+    const label = root.unit_label || "unit";
+    const measure = (root as { stock_measure?: string }).stock_measure;
+    if (measure === "volume") {
+      const serv = ci.item_kind === "option" ? ` (${qty} serving${qty > 1 ? "s" : ""})` : "";
+      return `Uses ${units} ml = ${(units / 1000).toFixed(2)} L of ${root.name}${serv}`;
+    }
+    if ((root.unit_yield || 1) > 1) {
+      const warn = ci.item_kind !== "option" ? " — whole bottles; pick the Single option to count tots" : "";
+      return `Uses ${units} ${label}${units > 1 ? "s" : ""} of ${root.name} (${root.unit_yield} per ${root.stock_unit_label || "bottle"})${warn}`;
+    }
+    return `Uses ${units} × ${root.name}`;
+  };
+  const recipeSummary = (specialId: string) =>
+    allComponents.filter(c => c.special_item_id === specialId)
+      .map(c => componentHint(c.component_item_id, c.quantity).replace(/^Uses /, "").replace(/ —.*$/, ""))
+      .filter(Boolean).join(" + ") || "No components yet";
 
   const itemForm = (
     <div className="space-y-3">
@@ -738,14 +763,18 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
       {form.item_kind === "special" && (
         <div className="space-y-2 rounded-md border p-2.5">
           <p className="text-xs font-medium">Components (stock is deducted from these when the special is sold)</p>
+          <p className="text-[11px] text-muted-foreground">The special holds no stock of its own. For spirits pick the tot option (e.g. "Klipdrift · Single") and enter the number of tots; for mixers pick the glass/serving option or a can.</p>
           {components.map((c, idx) => (
-            <div key={idx} className="grid grid-cols-[1fr_70px_32px] gap-2">
+            <div key={idx} className="space-y-0.5">
+            <div className="grid grid-cols-[1fr_70px_32px] gap-2">
               <Select value={c.component_item_id} onValueChange={v => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, component_item_id: v } : x))}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Product or option" /></SelectTrigger>
                 <SelectContent>{componentChoices.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
               </Select>
-              <Input type="number" min={1} className="h-8 text-xs" value={c.quantity} onChange={e => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, quantity: e.target.value } : x))} />
+              <Input type="number" min={1} className="h-8 text-xs" aria-label="Quantity per sale" value={c.quantity} onChange={e => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, quantity: e.target.value } : x))} />
               <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Remove component" onClick={() => setComponents(prev => prev.filter((_, i) => i !== idx))}><X className="w-3 h-3" /></Button>
+            </div>
+            {c.component_item_id && <p className="text-[10px] text-muted-foreground">{componentHint(c.component_item_id, parseInt(c.quantity) || 0)}</p>}
             </div>
           ))}
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setComponents(prev => [...prev, { component_item_id: "", quantity: "1" }])}>

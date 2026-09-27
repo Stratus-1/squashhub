@@ -2153,6 +2153,11 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Cause: seven fixed-width transaction columns exceeded the statement dialog width, hiding debit and credit on portrait screens.
 - Fix: portrait transactions now show date, description, account, labelled debit and credit side by side, and running balance below; the existing desktop ledger remains unchanged. The dialog and member picker fit small screens without horizontal scrolling.
 
+## 2026-09-27 — Mobile screenshot paste did not attach in AI Assistance
+- Cause: the composer inspected only `clipboardData.files`; Samsung Internet and mobile keyboards can expose pasted images only through `clipboardData.items`, or through the browser Clipboard API when the paste payload is empty.
+- Fix: image paste now reads files and file-items, deduplicates images, and uses a gesture-bound Clipboard API fallback. Ordinary text paste is unchanged. If the browser withholds image data, the assistant tells the member to use the existing photo picker.
+- Guard: attachment uploads retain the existing three-image and 8 MB-per-image limits.
+
 ## 2026-09-27 — Tournament entry fees billed to host club
 - Problem: cross-club entrants (Louna Stevens, White River → Nelspruit Family Doubles) were billed at their home club; her EFT top-ups (2 × R150, 15 s apart) landed in White River pending payments.
 - Fix: `ensure_tournament_entry_fee` now bills via `resolve_host_billing_member` (finds/creates a billing-exempt visitor row at the host club, no user link, no new person). Association hosts keep home billing. `member_credit_transactions.fee_payment_id` links a payment to its fee; Finance confirm settles the linked fee first. Trigger blocks identical pending requests within 60 s.

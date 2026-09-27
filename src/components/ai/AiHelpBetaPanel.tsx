@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
 import { buildAskPayload, callAiHelp, pageIds, uploadAiScreenshot, useMyAiRequests, type AiHelpPreview } from "@/hooks/use-ai-help";
+import { imageFilesFromClipboard, readClipboardImages } from "@/lib/ai/clipboard-images";
 
 type Att = { path: string; name: string; mime: string; size: number; preview: string };
 type Turn = {
@@ -73,6 +74,31 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const onPaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const images = imageFilesFromClipboard(event.clipboardData);
+    if (images.length > 0) {
+      event.preventDefault();
+      await onFiles(images);
+      return;
+    }
+
+    // Keep normal text paste native. Some mobile keyboards emit an empty paste
+    // payload for images, so ask the Clipboard API while the paste gesture is live.
+    if (event.clipboardData.getData("text/plain")) return;
+    event.preventDefault();
+
+    try {
+      const fallbackImages = await readClipboardImages();
+      if (fallbackImages.length > 0) {
+        await onFiles(fallbackImages);
+      } else {
+        setVoiceMsg("This browser didn't share the pasted image. Tap the photo button to attach it.");
+      }
+    } catch {
+      setVoiceMsg("This browser blocked image paste. Tap the photo button to attach it.");
     }
   };
 
@@ -250,10 +276,7 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-        onPaste={(e) => {
-          const imgs = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
-          if (imgs.length) { e.preventDefault(); void onFiles(imgs); }
-        }}
+        onPaste={(e) => { void onPaste(e); }}
         placeholder="Type, paste a screenshot, or tap the mic and speak…"
         rows={3}
         className="text-[13px]"

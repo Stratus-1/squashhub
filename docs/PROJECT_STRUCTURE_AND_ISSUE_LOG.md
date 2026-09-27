@@ -2186,3 +2186,7 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 
 ## 2026-09-27 — Bar screen showed two “Shop” choices
 - The top tab was the whole buying view while the lower switch selected shop products, so both could say “Shop” and an empty catalogue looked broken. Renamed the top tab “Buy”, labelled the product divisions “Bar items” and “Shop items”, and added an explicit empty message for each division. No sales or category logic changed.
+
+## 2026-09-27 — Visitor QR menu did not separate Bar and Shop
+- Venue QR codes opened the public scan-to-pay menu as one mixed item list, because its public resolver did not return each item's division. The signed-in POS selector did not apply to that route.
+- The public resolver now includes division for both venue and product codes. The venue menu has Bar items / Shop items tabs; legacy products default to Bar, the basket remains intact across tab switches, and individual-product stickers remain a single-product view. Empty divisions show a clear message. No charging flow changed.

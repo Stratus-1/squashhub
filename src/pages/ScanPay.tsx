@@ -23,6 +23,7 @@ import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import type { BarDivision } from "@/lib/bar-categories";
+import { validitySummary } from "@/lib/bar-inventory";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -37,7 +38,16 @@ interface ScanItem {
   image_url?: string | null;
   stock_qty?: number;
   barcode?: string | null;
+  item_kind?: string | null;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  valid_days?: number[] | null;
+  valid_start_time?: string | null;
+  valid_end_time?: string | null;
 }
+
+/** Combo specials get their own pill so a time-limited deal is never buried in a category. */
+const SPECIALS_KEY = "__specials";
 
 interface ScanPayload {
   found: boolean;
@@ -72,6 +82,7 @@ export default function ScanPay() {
   const [pinOpen, setPinOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [division, setDivision] = useState<BarDivision>("bar");
+  const [category, setCategory] = useState<string>("all");
   const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; terminal?: boolean; reference?: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [tab, setTab] = useState<GuestTab | null>(null);
@@ -133,7 +144,26 @@ export default function ScanPay() {
     return keys.length ? keys.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)) : ["bar", "shop"];
   }, [menu]);
   const activeDivision = menuDivisions.includes(division) ? division : menuDivisions[0];
-  const visibleMenu = data?.kind === "item" ? menu : menu.filter((item) => (item.division || "bar") === activeDivision);
+  const divisionMenu = useMemo(
+    () => (data?.kind === "item" ? menu : menu.filter((item) => (item.division || "bar") === activeDivision)),
+    [data?.kind, menu, activeDivision],
+  );
+
+  // Category pills for the chosen division. Time-limited combo specials always
+  // sit in their own pill so a deal is never hidden inside a drinks category.
+  const categoryKeys = useMemo(() => {
+    const hasSpecials = divisionMenu.some((m) => m.item_kind === "special");
+    const rest = Array.from(
+      new Set(divisionMenu.filter((m) => m.item_kind !== "special").map((m) => (m.category || "").trim()).filter(Boolean)),
+    ).sort((a, b) => a.localeCompare(b));
+    return [...(hasSpecials ? [SPECIALS_KEY] : []), ...rest];
+  }, [divisionMenu]);
+  const activeCategory = category !== "all" && !categoryKeys.includes(category) ? "all" : category;
+  const visibleMenu = useMemo(() => {
+    if (activeCategory === "all") return divisionMenu;
+    if (activeCategory === SPECIALS_KEY) return divisionMenu.filter((m) => m.item_kind === "special");
+    return divisionMenu.filter((m) => m.item_kind !== "special" && (m.category || "").trim() === activeCategory);
+  }, [divisionMenu, activeCategory]);
 
   const cartLines = useMemo(
     () =>
@@ -785,6 +815,27 @@ export default function ScanPay() {
                     ))}
                   </div>
                 )}
+                {data.kind !== "item" && categoryKeys.length > 0 && (
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Item category">
+                    {["all", ...categoryKeys].map((c) => {
+                      const on = activeCategory === c;
+                      const label = c === "all" ? "All" : c === SPECIALS_KEY ? "⭐ Specials" : c;
+                      return (
+                        <Button
+                          key={c}
+                          type="button"
+                          size="sm"
+                          variant={on ? "default" : "outline"}
+                          aria-pressed={on}
+                          onClick={() => setCategory(c)}
+                          className="h-8 shrink-0 rounded-full px-3 text-xs capitalize"
+                        >
+                          {label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="grid grid-cols-3 gap-2">
                   {visibleMenu.map((m) => {
                     const qty = cart[m.id] || 0;
@@ -802,8 +853,14 @@ export default function ScanPay() {
                             <span className="text-2xl">📦</span>
                           )}
                         </div>
+                        {m.item_kind === "special" && (
+                          <Badge className="text-[9px] px-1.5 py-0">⭐ Special</Badge>
+                        )}
                         <p className="text-[11px] font-medium text-center leading-tight break-words">{m.name}</p>
                         <p className="text-[11px] text-muted-foreground">{formatMoney(Number(m.price), currency)}</p>
+                        {m.item_kind === "special" && validitySummary(m as any) !== "Always" && (
+                          <p className="text-[10px] text-center leading-tight text-primary">{validitySummary(m as any)}</p>
+                        )}
                         {out && <Badge variant="destructive" className="text-[10px]">Out of stock</Badge>}
                         {qty > 0 && (
                           <>

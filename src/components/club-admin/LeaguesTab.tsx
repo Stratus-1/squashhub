@@ -1354,6 +1354,8 @@ function LeagueCard({ league, associations, onDelete, members, onAllocate }: {
                 {(() => {
                   const captain = regs.find((r: any) => r.is_captain);
                   if (captain) return ` • Capt: ${getMemberName(captain)}`;
+                  const capId = (league as any).captain_member_id;
+                  if (capId) return ` • Capt: ${getMemberName({ club_member_id: capId } as any)}`;
                   return "";
                 })()}
               </p>

@@ -68,7 +68,7 @@ export function DoublesPairsDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leagues")
-        .select("id, name, code, season_id")
+        .select("id, name, code, season_id, captain_member_id")
         .eq("club_id", clubId)
         .eq("association_id", associationId)
         .is("archived_at", null)
@@ -172,6 +172,29 @@ export function DoublesPairsDialog({
     });
     return s;
   }, [pairs]);
+
+  const captainId: string | null =
+    (teams.find((t: any) => t.id === activeTeam) as any)?.captain_member_id ?? null;
+
+  // Doubles captain is ONE person (from the pairs), stored on the team row —
+  // never a singles registration.
+  const setCaptain = useMutation({
+    mutationFn: async (memberId: string | null) => {
+      const { data, error } = await supabase
+        .from("leagues")
+        .update({ captain_member_id: memberId } as any)
+        .eq("id", activeTeam)
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("Captain not saved — no access to this team");
+    },
+    onSuccess: () => {
+      toast.success("Captain updated");
+      qc.invalidateQueries({ queryKey: ["doubles-pairs-teams", associationId, seasonId] });
+      qc.invalidateQueries({ queryKey: ["leagues"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Could not set captain"),
+  });
 
   const create = useMutation({
     mutationFn: async () => {
@@ -326,6 +349,26 @@ export function DoublesPairsDialog({
               </div>
             )}
           </div>
+
+          {activeTeam && pairs.length > 0 && (
+            <div className="space-y-1">
+              <Label>Team captain</Label>
+              <Select
+                value={captainId ?? "none"}
+                onValueChange={(v) => setCaptain.mutate(v === "none" ? null : v)}
+                disabled={setCaptain.isPending}
+              >
+                <SelectTrigger><SelectValue placeholder="Choose a captain" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No captain</SelectItem>
+                  {[...pairedIds].map((id) => (
+                    <SelectItem key={id} value={id}>{nameOf(id)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">One person from this team's pairs.</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">

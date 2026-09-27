@@ -1,5 +1,8 @@
 # Roadmap
 
+## Bar screen labels
+- [x] Replace duplicate Shop labels with Buy, Bar items, and Shop items; verify on mobile.
+
 ## AI Maintenance Manager — Phase 1 (approved plan, in progress)
 - [x] Additive migration: maintenance_cases / case_requesters / analyses / actions / events, triage column, state machine + triggers, backfill, my_ai_maintenance_statuses RPC
 - [x] Shared policy module (server) + TS mirror (src) + tests

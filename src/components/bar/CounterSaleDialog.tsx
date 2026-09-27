@@ -40,11 +40,7 @@ interface MemberHit {
   has_pin: boolean;
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
-  soft_drinks: "🥤", water: "💧", energy: "⚡", beer_cider: "🍺", wine: "🍷",
-  spirits: "🥃", hot_drinks: "☕", snacks: "🍿", meals: "🥪", other: "📦",
-  drinks: "🥤", alcohol: "🍺",
-};
+import { BAR_CATEGORY_EMOJI as CATEGORY_ICONS } from "@/lib/bar-categories";
 
 interface Props {
   open: boolean;

@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SetupSteps, SetupStepNav, type SetupStep } from "./setup/SetupSteps";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Beer, Wine, Coffee, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2, QrCode, ScanBarcode } from "lucide-react";
+import { Plus, Trash2, Pencil, Package, ImageIcon, AlertTriangle, PackagePlus, FileText, X, Upload, Sparkles, Loader2, QrCode, ScanBarcode } from "lucide-react";
 import { BarQrLabelsDialog } from "./BarQrLabelsDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { CounterModeCard } from "@/components/bar/CounterModeCard";
@@ -22,6 +22,15 @@ import { useClubMembers, useUpdateClub, Club } from "@/hooks/use-club";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
+import {
+  BAR_CATEGORY_EMOJI,
+  BAR_DIVISIONS,
+  categoriesForDivision,
+  categoryLabel,
+  categoryValueFromLabel,
+  useBarCategories,
+  type BarDivision,
+} from "@/lib/bar-categories";
 
 interface BarItem {
   id: string;
@@ -29,6 +38,7 @@ interface BarItem {
   name: string;
   price: number;
   category: string;
+  division?: string;
   active: boolean;
   sort_order: number;
   image_url?: string | null;
@@ -51,19 +61,6 @@ interface BarTabEntry {
   bar_items?: { name: string; category: string };
   club_members?: { name: string };
 }
-
-const CATEGORIES = [
-  { value: "soft_drinks", label: "Soft Drinks", icon: Beer },
-  { value: "water", label: "Water", icon: Beer },
-  { value: "energy", label: "Energy & Sports", icon: Beer },
-  { value: "beer_cider", label: "Beer & Cider", icon: Beer },
-  { value: "wine", label: "Wine", icon: Wine },
-  { value: "spirits", label: "Spirits", icon: Wine },
-  { value: "hot_drinks", label: "Hot Drinks", icon: Coffee },
-  { value: "snacks", label: "Snacks", icon: Coffee },
-  { value: "meals", label: "Light Meals", icon: Coffee },
-  { value: "other", label: "Other", icon: Package },
-];
 
 export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) {
   const { format: money } = useClubCurrency();
@@ -392,10 +389,49 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
+  const [form, setForm] = useState({ name: "", price: "", category: "soft_drinks", division: "bar" as BarDivision, image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
   const [barcodeScanOpen, setBarcodeScanOpen] = useState(false);
+  const [catManagerOpen, setCatManagerOpen] = useState(false);
+  const [newCatLabel, setNewCatLabel] = useState("");
+  const [newCatDivision, setNewCatDivision] = useState<BarDivision>("bar");
+  const { data: customCategories = [] } = useBarCategories(clubId);
+  const formCategories = categoriesForDivision(customCategories, form.division);
 
-  const resetForm = () => setForm({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
+  const resetForm = () => setForm({ name: "", price: "", category: "soft_drinks", division: "bar", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
+
+  const handleAddCategory = async () => {
+    const label = newCatLabel.trim();
+    if (!label) return;
+    const value = categoryValueFromLabel(label);
+    const { error } = await fromExt("club_bar_categories").insert({
+      club_id: clubId,
+      division: newCatDivision,
+      label,
+      value,
+      sort_order: customCategories.length,
+    });
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "That category already exists" : error.message);
+    } else {
+      toast.success(`Category "${label}" added`);
+      setNewCatLabel("");
+      qc.invalidateQueries({ queryKey: ["club-bar-categories", clubId] });
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, value: string) => {
+    const inUse = items.some(i => i.category === value);
+    if (inUse) {
+      toast.error("Some items still use this category — move them to another category first.");
+      return;
+    }
+    const { error } = await fromExt("club_bar_categories").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Category removed");
+      qc.invalidateQueries({ queryKey: ["club-bar-categories", clubId] });
+    }
+  };
 
   const openEdit = (item: BarItem) => {
     setEditItem(item);
@@ -403,6 +439,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
       name: item.name,
       price: String(item.price),
       category: item.category,
+      division: (item.division === "shop" ? "shop" : "bar") as BarDivision,
       image_url: item.image_url || "",
       low_stock_threshold: String(item.low_stock_threshold),
       cost_price: item.cost_price ? String(item.cost_price) : "",
@@ -418,6 +455,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
       name: form.name.trim(),
       price: parseFloat(form.price),
       category: form.category,
+      division: form.division,
       sort_order: items.length,
       image_url: form.image_url.trim() || null,
       low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
@@ -440,6 +478,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
       name: form.name.trim(),
       price: parseFloat(form.price),
       category: form.category,
+      division: form.division,
       image_url: form.image_url.trim() || null,
       low_stock_threshold: parseInt(form.low_stock_threshold) || 5,
       cost_price: parseFloat(form.cost_price) || 0,
@@ -468,9 +507,6 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
     else qc.invalidateQueries({ queryKey: ["bar-items"] });
   };
 
-  const CATEGORY_EMOJI: Record<string, string> = {
-    soft_drinks: "🥤", water: "💧", energy: "⚡", beer_cider: "🍺", wine: "🍷", spirits: "🥃", hot_drinks: "☕", snacks: "🍿", meals: "🥪", other: "📦", drinks: "🥤", alcohol: "🍺",
-  };
 
   const itemForm = (
     <div className="rounded-lg border p-3 space-y-3">
@@ -548,11 +584,32 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
           />
         </div>
         <div>
+          <Label className="text-xs">Division</Label>
+          <Select
+            value={form.division}
+            onValueChange={v => {
+              const div = v as BarDivision;
+              setForm(p => {
+                const cats = categoriesForDivision(customCategories, div);
+                const stillValid = cats.some(c => c.value === p.category);
+                return { ...p, division: div, category: stillValid ? p.category : cats[0]?.value || "other" };
+              });
+            }}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {BAR_DIVISIONS.map(d => (
+                <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
           <Label className="text-xs">Category</Label>
           <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {CATEGORIES.map(c => (
+              {formCategories.map(c => (
                 <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
               ))}
             </SelectContent>
@@ -593,8 +650,11 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
   return (
     <Card className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Bar Items ({items.length})</h3>
+        <h3 className="font-semibold">Bar &amp; Shop Items ({items.length})</h3>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setCatManagerOpen(true)}>
+            <Package className="w-3.5 h-3.5 mr-1" />Categories
+          </Button>
           {onQrLabels && (
             <Button size="sm" variant="outline" onClick={() => onQrLabels()}>
               <QrCode className="w-3.5 h-3.5 mr-1" />Product QR labels
@@ -608,6 +668,57 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
         </div>
       </div>
 
+      <Dialog open={catManagerOpen} onOpenChange={setCatManagerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Item categories</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              The built-in categories are always available. Add your own here — they appear in the item form and on the Bar / POS screen under the division you choose.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={newCatLabel}
+                onChange={e => setNewCatLabel(e.target.value)}
+                placeholder="e.g. Cool drinks"
+                className="flex-1"
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddCategory(); } }}
+              />
+              <Select value={newCatDivision} onValueChange={v => setNewCatDivision(v as BarDivision)}>
+                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {BAR_DIVISIONS.map(d => (
+                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" onClick={handleAddCategory} disabled={!newCatLabel.trim()}>Add</Button>
+            </div>
+            {customCategories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No custom categories yet.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {customCategories.map(c => (
+                  <div key={c.id} className="flex items-center gap-2 rounded-md border p-2">
+                    <span className="text-sm flex-1">{c.label}</span>
+                    <Badge variant="outline" className="text-[10px]">{c.division === "shop" ? "Shop" : "Bar"}</Badge>
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-7 w-7 text-destructive"
+                      title="Remove category"
+                      onClick={() => handleDeleteCategory(c.id, c.value)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!adding || !!editItem} onOpenChange={(v) => { if (!v) { setAdding(false); setEditItem(null); resetForm(); } }}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -619,7 +730,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
 
       <div className="space-y-2">
         {items.map(item => {
-          const cat = CATEGORIES.find(c => c.value === item.category);
+          const catLabel = categoryLabel(customCategories, item.category);
           const isLowStock = item.stock_qty > 0 && item.stock_qty <= item.low_stock_threshold;
           const isOutOfStock = item.stock_qty <= 0;
           return (
@@ -628,7 +739,7 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
                 {item.image_url ? (
                   <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-sm">{CATEGORY_EMOJI[item.category] || "📦"}</span>
+                  <span className="text-sm">{BAR_CATEGORY_EMOJI[item.category] || "📦"}</span>
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -651,7 +762,8 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
                   ) : (
                     <Badge variant="outline" className="text-[10px]">{item.stock_qty} in stock</Badge>
                   )}
-                  <Badge variant="outline" className="text-[10px]">{cat?.label}</Badge>
+                  <Badge variant="outline" className="text-[10px]">{item.division === "shop" ? "Shop" : "Bar"}</Badge>
+                  <Badge variant="outline" className="text-[10px]">{catLabel}</Badge>
                 </div>
               </div>
               <div className="flex items-center gap-0.5 shrink-0">

@@ -1063,6 +1063,7 @@ export type Database = {
           club_id: string
           cost_price: number
           created_at: string
+          division: string
           id: string
           image_url: string | null
           low_stock_threshold: number
@@ -1079,6 +1080,7 @@ export type Database = {
           club_id: string
           cost_price?: number
           created_at?: string
+          division?: string
           id?: string
           image_url?: string | null
           low_stock_threshold?: number
@@ -1095,6 +1097,7 @@ export type Database = {
           club_id?: string
           cost_price?: number
           created_at?: string
+          division?: string
           id?: string
           image_url?: string | null
           low_stock_threshold?: number
@@ -2649,6 +2652,47 @@ export type Database = {
             columns: ["statement_id"]
             isOneToOne: false
             referencedRelation: "club_bank_statements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_bar_categories: {
+        Row: {
+          club_id: string
+          created_at: string
+          division: string
+          id: string
+          label: string
+          sort_order: number
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          division?: string
+          id?: string
+          label: string
+          sort_order?: number
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          division?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          updated_at?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_bar_categories_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]

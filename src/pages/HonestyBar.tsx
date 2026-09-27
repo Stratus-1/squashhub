@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { Beer, Wine, Coffee, Package, Plus, Minus, ShoppingCart, Receipt, Store, User, Users, CreditCard, QrCode } from "lucide-react";
+import { Beer, Plus, Minus, ShoppingCart, Receipt, Store, User, Users, CreditCard, QrCode } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt } from "@/lib/supabase-ext";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,32 +24,23 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useClubCurrency } from "@/hooks/use-currency";
+import {
+  BAR_CATEGORY_EMOJI,
+  categoriesForDivision,
+  useBarCategories,
+  type BarDivision,
+} from "@/lib/bar-categories";
 
 interface BarItem {
   id: string;
   name: string;
   price: number;
   category: string;
+  division?: string;
   active: boolean;
   image_url?: string | null;
   stock_qty: number;
 }
-
-const CATEGORY_ICONS: Record<string, string> = {
-  soft_drinks: "🥤",
-  water: "💧",
-  energy: "⚡",
-  beer_cider: "🍺",
-  wine: "🍷",
-  spirits: "🥃",
-  hot_drinks: "☕",
-  snacks: "🍿",
-  meals: "🥪",
-  other: "📦",
-  // legacy values (existing items)
-  drinks: "🥤",
-  alcohol: "🍺",
-};
 
 interface BarTabEntry {
   id: string;
@@ -61,19 +52,6 @@ interface BarTabEntry {
   created_at: string;
   bar_items?: { name: string; category: string };
 }
-
-const CATEGORIES = [
-  { value: "soft_drinks", label: "Soft Drinks", icon: Beer },
-  { value: "water", label: "Water", icon: Beer },
-  { value: "energy", label: "Energy & Sports", icon: Beer },
-  { value: "beer_cider", label: "Beer & Cider", icon: Beer },
-  { value: "wine", label: "Wine", icon: Wine },
-  { value: "spirits", label: "Spirits", icon: Wine },
-  { value: "hot_drinks", label: "Hot Drinks", icon: Coffee },
-  { value: "snacks", label: "Snacks", icon: Coffee },
-  { value: "meals", label: "Light Meals", icon: Coffee },
-  { value: "other", label: "Other", icon: Package },
-];
 
 export default function HonestyBar() {
   const qc = useQueryClient();
@@ -93,6 +71,7 @@ export default function HonestyBar() {
   const [counterSaleOpen, setCounterSaleOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("shop");
   const [qrOpen, setQrOpen] = useState(false);
+  const [division, setDivision] = useState<BarDivision>("bar");
 
   const { data: items = [] } = useQuery({
     queryKey: ["bar-items", clubId],
@@ -270,11 +249,19 @@ export default function HonestyBar() {
 
 
 
-  const inStock = items.filter(i => i.stock_qty > 0);
-  const groupedByCategory = CATEGORIES.map(cat => ({
+  const { data: customCategories = [] } = useBarCategories(clubId);
+  const inStock = items.filter(i => i.stock_qty > 0 && (i.division || "bar") === division);
+  const divisionCategories = categoriesForDivision(customCategories, division);
+  const groupedByCategory = divisionCategories.map(cat => ({
     ...cat,
     items: inStock.filter(i => i.category === cat.value),
   })).filter(g => g.items.length > 0);
+  // Items whose category isn't in the current list (legacy values) still show, under their own heading.
+  const knownValues = new Set(divisionCategories.map(c => c.value));
+  const uncategorised = inStock.filter(i => !knownValues.has(i.category));
+  if (uncategorised.length > 0) {
+    groupedByCategory.push({ value: "_legacy", label: "Other items", division, items: uncategorised });
+  }
 
   if (!clubId || !club?.honesty_bar_enabled) {
     return (
@@ -364,13 +351,28 @@ export default function HonestyBar() {
           </TabsList>
 
           <TabsContent value="shop" className="space-y-4 mt-4">
+            {/* Bar / Shop division switch */}
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+              {(["bar", "shop"] as BarDivision[]).map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDivision(d)}
+                  className={`flex items-center justify-center gap-1.5 rounded-md py-2 text-xs font-semibold transition-colors ${
+                    division === d ? "bg-background shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  {d === "bar" ? <Beer className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
+                  {d === "bar" ? "Bar" : "Shop"}
+                </button>
+              ))}
+            </div>
             {/* Item catalog */}
             {groupedByCategory.map(group => {
-              const Icon = group.icon;
               return (
                 <div key={group.value}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-base">{BAR_CATEGORY_EMOJI[group.value] || "📦"}</span>
                     <h3 className="text-sm font-semibold">{group.label}</h3>
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
@@ -386,7 +388,7 @@ export default function HonestyBar() {
                             {item.image_url ? (
                               <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                             ) : (
-                              <span className="text-2xl">{CATEGORY_ICONS[item.category] || "📦"}</span>
+                              <span className="text-2xl">{BAR_CATEGORY_EMOJI[item.category] || "📦"}</span>
                             )}
                           </div>
                           <p className="text-[11px] font-medium leading-tight text-center truncate w-full">{item.name}</p>

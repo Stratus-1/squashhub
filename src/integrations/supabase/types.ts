@@ -8159,6 +8159,60 @@ export type Database = {
           },
         ]
       }
+      league_reserve_players: {
+        Row: {
+          association_id: string
+          club_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          member_id: string
+          rank: number
+          season_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          club_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          member_id: string
+          rank?: number
+          season_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          member_id?: string
+          rank?: number
+          season_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_reserve_players_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_reserve_players_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_rounds: {
         Row: {
           association_id: string
@@ -8289,10 +8343,14 @@ export type Database = {
           original_player_bonus_value: number
           pairing_policy: string
           points_per_game: number | null
+          reserve_mode: string
           reserves_per_team: number | null
           share_bonus_on_tie: boolean
           singles_rubbers: number | null
           sub_direction: string
+          sub_from_bye_team: boolean
+          sub_from_reserves: boolean
+          sub_rank_rule: string
           team_size: number
           team_size_mode: string
           team_win_bonus_enabled: boolean
@@ -8330,10 +8388,14 @@ export type Database = {
           original_player_bonus_value?: number
           pairing_policy?: string
           points_per_game?: number | null
+          reserve_mode?: string
           reserves_per_team?: number | null
           share_bonus_on_tie?: boolean
           singles_rubbers?: number | null
           sub_direction?: string
+          sub_from_bye_team?: boolean
+          sub_from_reserves?: boolean
+          sub_rank_rule?: string
           team_size?: number
           team_size_mode?: string
           team_win_bonus_enabled?: boolean
@@ -8371,10 +8433,14 @@ export type Database = {
           original_player_bonus_value?: number
           pairing_policy?: string
           points_per_game?: number | null
+          reserve_mode?: string
           reserves_per_team?: number | null
           share_bonus_on_tie?: boolean
           singles_rubbers?: number | null
           sub_direction?: string
+          sub_from_bye_team?: boolean
+          sub_from_reserves?: boolean
+          sub_rank_rule?: string
           team_size?: number
           team_size_mode?: string
           team_win_bonus_enabled?: boolean
@@ -8480,6 +8546,8 @@ export type Database = {
           club_id: string
           created_at: string
           created_by: string | null
+          effective_from: string
+          effective_to: string | null
           id: string
           is_active: boolean
           league_id: string
@@ -8494,6 +8562,8 @@ export type Database = {
           club_id: string
           created_at?: string
           created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
           id?: string
           is_active?: boolean
           league_id: string
@@ -8508,6 +8578,8 @@ export type Database = {
           club_id?: string
           created_at?: string
           created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
           id?: string
           is_active?: boolean
           league_id?: string

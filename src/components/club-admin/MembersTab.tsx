@@ -648,11 +648,11 @@ export function MembersTab({ clubId }: { clubId: string }) {
   const filtered = members.filter(m => {
     const status = (m as any).status || "active";
     if (statusFilter !== "all" && status !== statusFilter) return false;
-    const name = m.profiles?.name || m.name || "";
-    const email = m.profiles?.email || m.email || "";
-    const phone = m.phone || m.profiles?.phone || "";
-    const q = search.toLowerCase();
-    return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || (m.club_member_number || "").toLowerCase().includes(q) || phone.toLowerCase().includes(q);
+    // Club record is the source of truth; also match the login profile.
+    const hay = [m.name, m.profiles?.name, m.email, m.profiles?.email, m.phone, m.profiles?.phone, m.club_member_number]
+      .filter(Boolean).join(" ").toLowerCase();
+    const q = search.trim().toLowerCase();
+    return hay.includes(q);
   });
 
   const statusCounts = members.reduce(

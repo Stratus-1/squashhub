@@ -53,6 +53,7 @@ export function LineupSwapDialog({
   onSelect, onClear,
 }: Props) {
   const [search, setSearch] = useState("");
+  const [pending, setPending] = useState<SwapCandidate | null>(null);
 
   const { data: candidates, isLoading } = useQuery({
     queryKey: ["lineup-swap-candidates", teamCode, associationId, fixtureDate, allowMultiFixturePerNight, subRules],

@@ -2940,6 +2940,7 @@ export type Database = {
       }
       club_bar_settings: {
         Row: {
+          allow_negative_stock: boolean
           club_id: string
           costing_enabled: boolean
           costing_enabled_at: string | null
@@ -2948,6 +2949,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_negative_stock?: boolean
           club_id: string
           costing_enabled?: boolean
           costing_enabled_at?: string | null
@@ -2956,6 +2958,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_negative_stock?: boolean
           club_id?: string
           costing_enabled?: boolean
           costing_enabled_at?: string | null
@@ -16760,6 +16763,7 @@ export type Database = {
         }
         Returns: string
       }
+      bar_allow_negative_stock: { Args: { _club: string }; Returns: boolean }
       bar_cost_of_sales: {
         Args: { _club: string; _from: string; _to: string }
         Returns: {

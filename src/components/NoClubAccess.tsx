@@ -80,7 +80,7 @@ export function NoClubAccess() {
     if (lastName.trim().length < 2) { toast.error("Please enter your last name"); return; }
     if (homeClub.trim().length < 2) { toast.error("Please enter your home club"); return; }
 
-    if (!(await dup.guard({ name: `${firstName.trim()} ${lastName.trim()}`, phone }))) return;
+    if (!(await dup.guard({ name: `${firstName.trim()} ${lastName.trim()}`, phone, claimedOnly: true }))) return;
 
     setLoading(true);
     try {

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { BAR_CATEGORY_EMOJI as CATEGORY_ICONS } from "@/lib/bar-categories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +21,6 @@ interface BarItem {
   image_url?: string | null;
   stock_qty: number;
 }
-
-import { BAR_CATEGORY_EMOJI as CATEGORY_ICONS } from "@/lib/bar-categories";
 
 type PaymentMethod = "card";
 

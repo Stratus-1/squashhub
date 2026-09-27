@@ -1522,10 +1522,10 @@ export default function LeagueGameDetail() {
     }
   }, [fixtureId, user, activeMember?.id, queryClient]);
 
-  const handleSwap = useCallback(async (c: SwapCandidate) => {
+  const handleSwap = useCallback(async (c: SwapCandidate, half?: 0 | 1) => {
     if (!swapTarget) return;
     const { idx, side, correction } = swapTarget;
-    const updatedPositionsForSave = buildSwappedPositions(positions, idx, side, c);
+    const updatedPositionsForSave = buildSwappedPositions(positions, idx, side, c, half);
 
     setPositions(updatedPositionsForSave);
     setSwapTarget(null);
@@ -3987,6 +3987,9 @@ export default function LeagueGameDetail() {
           position={swapTarget.idx + 1}
           currentName={swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName}
           currentCode={swapTarget.side === "home" ? positions[swapTarget.idx].homeCode : positions[swapTarget.idx].awayCode}
+          pairPlayers={doublesInfo?.isDoubles
+            ? splitPairLabel(swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName)
+            : null}
           inUseCodes={buildInUseMap(swapTarget.side)}
           associationId={fixtureRulesAssociationId ?? null}
           fixtureDate={fixture?.fixture_date ?? null}

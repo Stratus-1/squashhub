@@ -327,6 +327,26 @@ export function DoublesPairsDialog({
             )}
           </div>
 
+          {activeTeam && pairs.length > 0 && (
+            <div className="space-y-1">
+              <Label>Team captain</Label>
+              <Select
+                value={captainId ?? "none"}
+                onValueChange={(v) => setCaptain.mutate(v === "none" ? null : v)}
+                disabled={setCaptain.isPending}
+              >
+                <SelectTrigger><SelectValue placeholder="Choose a captain" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No captain</SelectItem>
+                  {[...pairedIds].map((id) => (
+                    <SelectItem key={id} value={id}>{nameOf(id)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">One person from this team's pairs.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-xs">Player 1</Label>

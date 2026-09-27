@@ -116,13 +116,17 @@ export function AddReservesDialog({
   const affSet = useMemo(() => new Set(affiliated), [affiliated]);
   const inGroupSet = useMemo(() => new Set(alreadyInGroup), [alreadyInGroup]);
 
-  const eligible = useMemo(() => {
+  const leagueReserveSet = useMemo(() => new Set(leagueReserves.map((r) => r.member_id)), [leagueReserves]);
+
+  const all = useMemo(() => {
     const f = filter.trim().toLowerCase();
     return members
+      .filter((m: any) => m.status !== "resigned" && m.status !== "suspended")
       .map((m: any) => {
         let blocked: string | null = null;
-        if (associationId && !affSet.has(m.id)) blocked = "not opted into this association";
-        else if (inGroupSet.has(m.id)) blocked = "already in this league group";
+        if (associationId && !isClubLeague && !affSet.has(m.id)) blocked = "not opted into this association";
+        else if (perLeague && leagueReserveSet.has(m.id)) blocked = "already on the reserve team";
+        else if (!perLeague && inGroupSet.has(m.id)) blocked = "already in this league group";
         else if (gender === "men" && !isMaleGender(m.gender)) blocked = "not a male member";
         else if (gender === "ladies" && !isFemaleGender(m.gender)) blocked = "not a female member";
         // NOTE: sub-direction / movement-cap rules are NOT applied here. Being added
@@ -135,14 +139,14 @@ export function AddReservesDialog({
         return true;
       })
       .sort((a: any, b: any) => {
-        // Eligible first, then by ladder
-        if (!!a._blocked !== !!b._blocked) return a._blocked ? 1 : -1;
         const ap = a.ladder_position ?? Number.POSITIVE_INFINITY;
         const bp = b.ladder_position ?? Number.POSITIVE_INFINITY;
         if (ap !== bp) return ap - bp;
         return (a.name || "").localeCompare(b.name || "");
       });
-  }, [members, associationId, affSet, inGroupSet, gender, filter]);
+  }, [members, associationId, isClubLeague, perLeague, leagueReserveSet, affSet, inGroupSet, gender, filter]);
+  const blockedCount = all.filter((m: any) => m._blocked).length;
+  const eligible = showBlocked ? all : all.filter((m: any) => !m._blocked);
 
   const toggle = (id: string) => {
     setPicked(prev => {

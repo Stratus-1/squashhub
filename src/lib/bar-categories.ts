@@ -42,6 +42,7 @@ export const BUILTIN_BAR_CATEGORIES: BarCategory[] = [
   { value: "hot_drinks", label: "Hot Drinks", division: "bar" },
   { value: "snacks", label: "Snacks", division: "bar" },
   { value: "meals", label: "Light Meals", division: "bar" },
+  { value: "restaurant", label: "Restaurant", division: "bar" },
   { value: "rackets", label: "Rackets", division: "shop" },
   { value: "clothing", label: "Clothing", division: "shop" },
   { value: "footwear", label: "Footwear", division: "shop" },
@@ -51,7 +52,7 @@ export const BUILTIN_BAR_CATEGORIES: BarCategory[] = [
 
 export const BAR_CATEGORY_EMOJI: Record<string, string> = {
   soft_drinks: "🥤", water: "💧", energy: "⚡", beer_cider: "🍺", wine: "🍷", spirits: "🥃",
-  hot_drinks: "☕", snacks: "🍿", meals: "🥪", rackets: "🏸", clothing: "👕", footwear: "👟",
+  hot_drinks: "☕", snacks: "🍿", meals: "🥪", restaurant: "🍔", rackets: "🏸", clothing: "👕", footwear: "👟",
   accessories: "🧢", other: "📦", drinks: "🥤", alcohol: "🍺",
   custom_beer: "🍺", custom_cider: "🍏", custom_spirits: "🥃", custom_wine: "🍷", custom_food: "🥪",
   custom_chips: "🍟", custom_hot_drinks: "☕", custom_cold_drinks_buddies: "🥤", custom_balls: "🟢",

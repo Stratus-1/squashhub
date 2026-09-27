@@ -2177,3 +2177,9 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Symptom: searching "Uitsig" on squashhub.co.za/register-club returned "No clubs matched".
 - Cause: `search_registerable_clubs` filtered `tenant_type = 'club'` only; 15 NSA-imported clubs (Uitsig, CSIR, Irene, Centurion, etc.) are `nsa_seeded` and were excluded.
 - Fix: function now includes `nsa_seeded` in the tenant_type filter. Verified: `search_registerable_clubs('uitsig')` returns Uitsig Squash Club. Live immediately (DB function, no publish needed).
+
+## 2026-09-27 — Bar POS: Bar/Shop divisions and custom categories
+- Request: split the bar into two divisions (Bar = drinks/snacks, Shop = rackets/clothing/other) and let clubs create their own item categories.
+- DB: `bar_items.division TEXT NOT NULL DEFAULT 'bar'`; new `club_bar_categories` (club_id, division, label, value, sort_order; UNIQUE(club_id, value)) with RLS (members read, club admins manage).
+- Code: new `src/lib/bar-categories.ts` (built-in categories per division, shared emoji map, `useBarCategories`). `HonestyBarTab` item form has a Division select; category options follow the division; "Categories" dialog adds/removes custom categories (removal blocked while items use them). `HonestyBar` POS has a Bar/Shop toggle; items filter by division; legacy categories group under "Other items". `CounterSaleDialog` and `QuickVisitorSaleDialog` use the shared emoji map.
+- Verified in preview on CSIR (bar capability temporarily enabled, then reverted): POS toggle switches Bar/Shop; category dialog added and deleted "Cool drinks"; Add-item form switches category list to Rackets/Clothing/Footwear/Accessories when Division = Shop. tsgo + build clean. Preview-only; not published.

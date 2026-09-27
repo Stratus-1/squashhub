@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { HelpCircle, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,8 +25,11 @@ export function FeedbackFab() {
   const ai = useAiAssistant();
   const beta = useAiHelpBeta();
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
 
   if (!user?.id) return null;
+  // Hide on the scan-to-pay page: its full-width cart bar owns the bottom-right corner.
+  if (/(^|\/)s\/[^/]+$/.test(pathname)) return null;
 
   const betaOn = beta.enabled && !!beta.clubId;
   const aiOn = betaOn || ai.allowed;

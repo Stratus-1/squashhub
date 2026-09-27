@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
+import { loadLeagueAverageScores } from "@/lib/tournament-formats/league-average-handicap";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import {
@@ -7508,10 +7509,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
 
 
+  /**
+   * Regional/national tournaments: players from other clubs are placed by their
+   * regional league (e.g. NSA) playing record, not by the host club's teams.
+   * Anyone with league results this season has a known league + average position.
+   */
+  const participatingMemberIdsKey = useMemo(
+    () =>
+      filterParticipatingEntrants(inviteeRows as any[], { paymentRequired: paymentRequired && entryFeeAmount > 0 })
+        .map((r: any) => r.club_member_id)
+        .filter(Boolean)
+        .sort()
+        .join(","),
+    [inviteeRows, paymentRequired, entryFeeAmount],
+  );
+  const { data: regionalLeagueMemberIds = new Set<string>() } = useQuery({
+    queryKey: ["regional-league-standing-members", participatingMemberIdsKey],
+    enabled: scopeIsWide && participatingMemberIdsKey.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const scores = await loadLeagueAverageScores(participatingMemberIdsKey.split(","));
+      return new Set<string>(scores.keys());
+    },
+  });
+
   /** Accepted entrants who belong to no source league — need a division by hand. */
   const acceptedNeedingDivision = useMemo(() => {
     const inAnyLeague = new Set<string>();
     registrationsByLeague.forEach((ids) => ids.forEach((id) => inAnyLeague.add(id)));
+    if (scopeIsWide) {
+      (scopeLeagueMembersByLeague as Map<string, string[]>).forEach((ids) => ids.forEach((id) => inAnyLeague.add(id)));
+      (regionalLeagueMemberIds as Set<string>).forEach((id) => inAnyLeague.add(id));
+    }
     return filterParticipatingEntrants(inviteeRows as any[], {
       paymentRequired: paymentRequired && entryFeeAmount > 0,
     })
@@ -12341,8 +12370,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             {acceptedNeedingDivision.length > 0 && (
               <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
                 <span className="font-semibold">Accepted — needs division assignment ({acceptedNeedingDivision.length}):</span>{" "}
-                {acceptedNeedingDivision.map((p) => p.name).join(", ")}. They accepted the invitation but play in none of
-                the source leagues — place them into a division manually.
+                {acceptedNeedingDivision.map((p) => p.name).join(", ")}. They accepted the invitation but have no team in the source leagues and no regional league (NSA) results this season —
+                place them into a division manually.
               </div>
             )}
           </CardHeader>

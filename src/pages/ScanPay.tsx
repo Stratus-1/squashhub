@@ -23,6 +23,7 @@ import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import type { BarDivision } from "@/lib/bar-categories";
+import { categoryLabel, useBarCategories } from "@/lib/bar-categories";
 import { validitySummary } from "@/lib/bar-inventory";
 
 
@@ -124,6 +125,7 @@ export default function ScanPay() {
 
   const club = data?.club;
   const currency = club?.currency_code;
+  const { data: catRows } = useBarCategories(club?.id);
 
   // The public QR page is deliberately identity-free: even if the phone is
   // still signed in, a member must identify with their membership number and
@@ -816,10 +818,10 @@ export default function ScanPay() {
                   </div>
                 )}
                 {data.kind !== "item" && categoryKeys.length > 0 && (
-                  <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Item category">
+                  <div className="flex flex-wrap gap-1.5 pb-1" role="group" aria-label="Item category">
                     {["all", ...categoryKeys].map((c) => {
                       const on = activeCategory === c;
-                      const label = c === "all" ? "All" : c === SPECIALS_KEY ? "⭐ Specials" : c;
+                      const label = c === "all" ? "All" : c === SPECIALS_KEY ? "⭐ Specials" : categoryLabel(catRows || [], c);
                       return (
                         <Button
                           key={c}
@@ -828,7 +830,7 @@ export default function ScanPay() {
                           variant={on ? "default" : "outline"}
                           aria-pressed={on}
                           onClick={() => setCategory(c)}
-                          className="h-8 shrink-0 rounded-full px-3 text-xs capitalize"
+                          className="h-7 rounded-full px-2.5 text-[11px] capitalize"
                         >
                           {label}
                         </Button>

@@ -379,6 +379,22 @@ export default function HonestyBar() {
                 </Button>
               ))}
             </div>
+            {/* Category shortcuts — jump straight to a section. */}
+            {groupedByCategory.length > 1 && (
+              <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-1.5">
+                {groupedByCategory.map(g => (
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => document.getElementById(`bar-cat-${g.value}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    className="shrink-0 inline-flex items-center gap-1 rounded-full border bg-muted/60 px-2.5 py-1 text-[11px] font-medium hover:bg-accent transition-colors"
+                  >
+                    <span>{g.value === "_specials" ? "⭐" : BAR_CATEGORY_EMOJI[g.value] || "📦"}</span>
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {inStock.length === 0 && (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 No {(divisions.find(d => d.key === activeDivision)?.label || activeDivision).toLowerCase()} items available yet.
@@ -387,7 +403,7 @@ export default function HonestyBar() {
             {/* Item catalog */}
             {groupedByCategory.map(group => {
               return (
-                <div key={group.value}>
+                <div key={group.value} id={`bar-cat-${group.value}`} className="scroll-mt-14">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-base">{BAR_CATEGORY_EMOJI[group.value] || "📦"}</span>
                     <h3 className="text-sm font-semibold">{group.label}</h3>

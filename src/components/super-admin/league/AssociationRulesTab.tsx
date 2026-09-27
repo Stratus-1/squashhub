@@ -247,7 +247,7 @@ export default function AssociationRulesTab({ associationId, readOnly = false }:
           <div className="md:col-span-2 border-t pt-3 mt-1">
             <ToggleRow
               label="Original-player bonus (NIL rule)"
-              hint="When on, the team earns extra points for each originally-allocated player who actually plays. Reserves/subs do NOT earn this bonus."
+              hint="Singles: extra points for each originally-allocated player who plays. Doubles: extra points for each original pair that plays together — a pair with a sub earns nothing. A pair saved by an admin in Doubles pairs is the original pair from that date. Reserves/subs never earn this bonus."
               value={!!form.original_player_bonus_enabled}
               onChange={(v) => set("original_player_bonus_enabled", v)}
             />

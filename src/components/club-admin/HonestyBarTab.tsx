@@ -52,7 +52,7 @@ interface BarItem {
   low_stock_threshold: number;
   cost_price: number;
   barcode?: string | null;
-  item_kind?: "stock" | "option" | "special" | null;
+  item_kind?: "stock" | "option" | "special" | "made_to_order" | null;
   stock_parent_id?: string | null;
   consume_units?: number | null;
   unit_yield?: number | null;

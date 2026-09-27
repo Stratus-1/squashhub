@@ -322,6 +322,50 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
     return { teams, reserves: reservePicks, taken: top.length };
   }, [sortedPool, requirements.totalPlayersRequired, numTeams, slotsPerTeam, singlesPerTeam, effectivePairsPerTeam, reserves, distribution, leagueNumber, startPosition, questions.allocationMode, questions.askLadderStart]);
 
+  // Edit mode: load the players/pairs already saved on these teams so the
+  // wizard shows them and never overwrites them with a fresh auto-draft.
+  const editTeamIds = editContext?.teamLeagueIds ?? [];
+  const { data: savedRoster } = useQuery({
+    queryKey: ["sbs-saved-roster", editTeamIds.join(",")],
+    enabled: open && editTeamIds.length > 0,
+    queryFn: async () => {
+      const [pairsRes, regsRes] = await Promise.all([
+        fromExt("league_team_pairs")
+          .select("league_id, player_one_member_id, player_two_member_id, pair_order")
+          .in("league_id", editTeamIds).eq("is_active", true).order("pair_order"),
+        fromExt("member_league_registrations")
+          .select("league_id, club_member_id, player_rank")
+          .in("league_id", editTeamIds).order("player_rank"),
+      ]);
+      if (pairsRes.error) throw pairsRes.error;
+      if (regsRes.error) throw regsRes.error;
+      return { pairs: (pairsRes.data || []) as any[], regs: (regsRes.data || []) as any[] };
+    },
+  });
+  const keepSavedRoster = !!savedRoster && (savedRoster.pairs.length > 0 || savedRoster.regs.length > 0);
+  const displayAllocation = useMemo(() => {
+    if (!keepSavedRoster || !savedRoster) return allocation;
+    const byId = new Map(members.map((m: any) => [m.id, m]));
+    const person = (id: string) => {
+      const m: any = byId.get(id);
+      return { id, name: m?.name ?? "Unknown", ladder_position: m?.ladder_position ?? null };
+    };
+    const teams = Array.from({ length: numTeams }, (_, i) => {
+      const lid = editTeamIds[i];
+      const pairs = savedRoster.pairs.filter((p) => p.league_id === lid)
+        .map((p) => [person(p.player_one_member_id), person(p.player_two_member_id)] as [any, any]);
+      const pairIds = new Set(pairs.flat().map((p) => p.id));
+      const singles = savedRoster.regs.filter((r) => r.league_id === lid && !pairIds.has(r.club_member_id))
+        .map((r) => person(r.club_member_id));
+      return {
+        name: `${leagueNumber} ${TEAM_LETTERS[i] || String(i + 1)}`,
+        picks: [...singles, ...pairs.flat()],
+        pairs,
+      };
+    });
+    return { teams, reserves: allocation.reserves, taken: allocation.taken };
+  }, [keepSavedRoster, savedRoster, allocation, members, numTeams, editTeamIds, leagueNumber]);
+
 
   // Detect existing league rows for this association+gender+number that we'd need
   const existingLeagueNames = useMemo(() => {
@@ -839,8 +883,13 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
               Optional: name each team (e.g. <em>Warriors</em>, <em>Bulldogs</em>). Leave blank to use {leagueNumber} A, B, C…
             </p>
 
-            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(allocation.teams.length, 3)}, minmax(0, 1fr))` }}>
-              {allocation.teams.map((team, i) => {
+            {keepSavedRoster && (
+              <p className="text-[11px] text-muted-foreground">
+                Showing the players and pairs already saved on these teams. Saving here keeps them unchanged — edit pairs from each team's Doubles pairs window.
+              </p>
+            )}
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(displayAllocation.teams.length, 3)}, minmax(0, 1fr))` }}>
+              {displayAllocation.teams.map((team, i) => {
                 const customName = (teamNames[i] || "").trim();
                 const displayName = customName
                   ? `${leagueNumber} ${customName}`

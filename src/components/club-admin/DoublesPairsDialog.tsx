@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { Pencil, Trash2, Users } from "lucide-react";
 import { validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
-import { pairDisplayName } from "@/lib/leagues/format";
 import { useAssociationRules } from "@/hooks/use-association-rules";
 
 /**

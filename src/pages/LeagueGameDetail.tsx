@@ -2102,6 +2102,16 @@ export default function LeagueGameDetail() {
     const _todayStr = format(new Date(), "yyyy-MM-dd");
     const isFixtureSameDayOrPast = !!_fxDateStr && _fxDateStr <= _todayStr;
     const wouldFinalize = !!(adminOverride || (isClubAdmin && isFixtureSameDayOrPast) || (homeSig && awaySig));
+    if (wouldFinalize && !adminOverride) {
+      // Doubles sub rules: block a final result with a sub the league doesn't allow.
+      for (let i = 0; i < positions.length; i++) {
+        const issue = doublesSubIssue(i, "home") || doublesSubIssue(i, "away");
+        if (issue) {
+          toast.error(`Pair ${i + 1}: ${issue}`);
+          return;
+        }
+      }
+    }
     if (wouldFinalize) {
       // GUARD 1: never submit a final result with zero games played and no
       // forfeits recorded. A bonus/penalty-only submission posts phantom

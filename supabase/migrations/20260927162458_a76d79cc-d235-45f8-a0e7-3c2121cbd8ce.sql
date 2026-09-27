@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.bar_allow_negative_stock(uuid) FROM PUBLIC, anon, authenticated;

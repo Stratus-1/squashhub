@@ -409,7 +409,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
 
 /* ─── Item Manager: products, variants, selling options, specials ─── */
-type ItemKind = "stock" | "option" | "special";
+type ItemKind = "stock" | "option" | "special" | "made_to_order";
 interface ComponentLine { component_item_id: string; quantity: string }
 
 const emptyForm = (division = "bar", category = "") => ({
@@ -610,6 +610,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
             <SelectItem value="stock">Product — holds stock (beer, Buddy, balls, shoes, a spirit bottle)</SelectItem>
             <SelectItem value="option">Selling option — sold from a product's stock (Single / Double tot)</SelectItem>
             <SelectItem value="special">Special / combo — a bundle of products at one price</SelectItem>
+            <SelectItem value="made_to_order">Made to order — food you prepare (burgers, chips); no stock levels</SelectItem>
           </SelectContent>
         </Select>
       </div>

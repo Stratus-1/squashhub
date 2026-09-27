@@ -40,7 +40,9 @@ interface Props {
   /** Allow registered players from another same-tier team to sub in this fixture. */
   allowMultiFixturePerNight?: boolean;
   subRules?: SubRules | null;
-  onSelect: (c: SwapCandidate) => void;
+  /** Doubles: the two players of the pair at this position — picker first asks which one is out */
+  pairPlayers?: [string, string] | null;
+  onSelect: (c: SwapCandidate, half?: 0 | 1) => void;
   onClear?: () => void;
 }
 
@@ -50,10 +52,13 @@ export function LineupSwapDialog({
   associationId, fixtureDate,
   allowMultiFixturePerNight = false,
   subRules,
+  pairPlayers,
   onSelect, onClear,
 }: Props) {
   const [search, setSearch] = useState("");
   const [pending, setPending] = useState<SwapCandidate | null>(null);
+  const [outHalf, setOutHalf] = useState<0 | 1 | null>(null);
+  const effectiveCurrentName = pairPlayers && outHalf != null ? pairPlayers[outHalf] : currentName;
 
   const { data: candidates, isLoading } = useQuery({
     queryKey: ["lineup-swap-candidates", teamCode, associationId, fixtureDate, allowMultiFixturePerNight, subRules],
@@ -321,7 +326,7 @@ export function LineupSwapDialog({
   }, [candidates, inUseCodes, search]);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) setPending(null); onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setPending(null); setOutHalf(null); } onOpenChange(o); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
@@ -331,13 +336,20 @@ export function LineupSwapDialog({
           <DialogDescription className="text-xs">
             {pending ? (
               <>
-                Replace <span className="font-medium text-foreground">{currentName || "this player"}</span>
+                Replace <span className="font-medium text-foreground">{effectiveCurrentName || "this player"}</span>
                 {" "}with <span className="font-medium text-foreground">{pending.name}</span>
                 {pending.code && <span className="text-muted-foreground"> ({pending.code})</span>}?
               </>
+            ) : pairPlayers && outHalf === null ? (
+              <>
+                Pair: <span className="font-medium text-foreground">{currentName || "—"}</span>
+                <span className="block text-[10px] text-muted-foreground mt-1">
+                  Which player are you replacing?
+                </span>
+              </>
             ) : (
               <>
-                Replacing: <span className="font-medium text-foreground">{currentName || "—"}</span>
+                Replacing: <span className="font-medium text-foreground">{effectiveCurrentName || "—"}</span>
                 {currentCode && <span className="text-muted-foreground"> ({currentCode})</span>}
                 <span className="block text-[10px] text-muted-foreground mt-1">
                   Who should replace them?{" "}
@@ -355,7 +367,7 @@ export function LineupSwapDialog({
             <div className="border rounded-md p-3 text-xs space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Out</span>
-                <span className="font-medium">{currentName || "—"}</span>
+                <span className="font-medium">{effectiveCurrentName || "—"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">In</span>
@@ -370,10 +382,27 @@ export function LineupSwapDialog({
               <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => setPending(null)}>
                 Back
               </Button>
-              <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => { onSelect(pending); setPending(null); }}>
+              <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => { onSelect(pending, outHalf ?? undefined); setPending(null); setOutHalf(null); }}>
                 Replace player
               </Button>
             </div>
+          </div>
+        ) : pairPlayers && outHalf === null ? (
+          <div className="space-y-2">
+            {pairPlayers.map((p, i) => (
+              <Button
+                key={i}
+                variant="outline"
+                size="sm"
+                className="w-full h-9 text-xs justify-start"
+                onClick={() => setOutHalf(i as 0 | 1)}
+              >
+                <UserMinus className="w-3.5 h-3.5 mr-2 text-destructive" /> Replace {p}
+              </Button>
+            ))}
+            <p className="text-[10px] text-muted-foreground italic">
+              The other player of the pair stays in the lineup.
+            </p>
           </div>
         ) : (
         <div className="space-y-2">

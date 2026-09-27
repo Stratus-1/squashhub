@@ -319,6 +319,7 @@ export default function LeagueGameDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [savingSetup, setSavingSetup] = useState(false);
   const [swapTarget, setSwapTarget] = useState<{ idx: number; side: "home" | "away"; correction?: boolean } | null>(null);
+  // Doubles: when the target position is a pair, the dialog returns which half (0/1) is being replaced.
   const [savingCorrectedTotals, setSavingCorrectedTotals] = useState(false);
   const [originalLineupSnapshot, setOriginalLineupSnapshot] = useState<OriginalLineupSnapshot | null>(null);
   const [adminOverride, setAdminOverride] = useState(false);
@@ -1425,12 +1426,21 @@ export default function LeagueGameDetail() {
     handleRosterDrop(o.side, o.idx, a.code, a.name);
   }, [handleRosterDrop, handleSlotReorder]);
 
-  const buildSwappedPositions = useCallback((rows: PositionEntry[], idx: number, side: "home" | "away", c: SwapCandidate) => {
+  const buildSwappedPositions = useCallback((rows: PositionEntry[], idx: number, side: "home" | "away", c: SwapCandidate, half?: 0 | 1) => {
     const next = rows.map((p) => ({ ...p }));
     const codeUpper = c.code.toUpperCase();
     const candidateNameKey = normalizePlayerName(c.name);
     const targetCodeKey = side === "home" ? "homeCode" : "awayCode";
     const targetNameKey = side === "home" ? "homeName" : "awayName";
+    // Doubles half-swap: replace only the chosen player of the pair, keep the partner.
+    if (half != null) {
+      const pair = splitPairLabel(next[idx][targetNameKey]);
+      if (pair) {
+        const newLabel = half === 0 ? `${c.name} & ${pair[1]}` : `${pair[0]} & ${c.name}`;
+        next[idx] = { ...next[idx], [targetNameKey]: newLabel };
+        return next;
+      }
+    }
     let existingIdx = -1;
     let existingSide: "home" | "away" | null = null;
     next.forEach((p, i) => {
@@ -1512,10 +1522,10 @@ export default function LeagueGameDetail() {
     }
   }, [fixtureId, user, activeMember?.id, queryClient]);
 
-  const handleSwap = useCallback(async (c: SwapCandidate) => {
+  const handleSwap = useCallback(async (c: SwapCandidate, half?: 0 | 1) => {
     if (!swapTarget) return;
     const { idx, side, correction } = swapTarget;
-    const updatedPositionsForSave = buildSwappedPositions(positions, idx, side, c);
+    const updatedPositionsForSave = buildSwappedPositions(positions, idx, side, c, half);
 
     setPositions(updatedPositionsForSave);
     setSwapTarget(null);
@@ -3977,6 +3987,9 @@ export default function LeagueGameDetail() {
           position={swapTarget.idx + 1}
           currentName={swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName}
           currentCode={swapTarget.side === "home" ? positions[swapTarget.idx].homeCode : positions[swapTarget.idx].awayCode}
+          pairPlayers={doublesInfo?.isDoubles
+            ? splitPairLabel(swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName)
+            : null}
           inUseCodes={buildInUseMap(swapTarget.side)}
           associationId={fixtureRulesAssociationId ?? null}
           fixtureDate={fixture?.fixture_date ?? null}

@@ -27,9 +27,11 @@ import { useClubCurrency } from "@/hooks/use-currency";
 import {
   BAR_CATEGORY_EMOJI,
   categoriesForDivision,
+  useBarDivisions,
   useBarCategories,
   type BarDivision,
 } from "@/lib/bar-categories";
+import { groupForPos, onMenu, type InventoryItem } from "@/lib/bar-inventory";
 
 interface BarItem {
   id: string;
@@ -250,17 +252,25 @@ export default function HonestyBar() {
 
 
   const { data: customCategories = [] } = useBarCategories(clubId);
-  const inStock = items.filter(i => i.stock_qty > 0 && (i.division || "bar") === division);
-  const divisionCategories = categoriesForDivision(customCategories, division);
+  const { divisions } = useBarDivisions(clubId);
+  const activeDivision = divisions.some(d => d.key === division) ? division : (divisions[0]?.key || "bar");
+  const menuItems = items.filter(i => onMenu(i as unknown as InventoryItem));
+  const inStock = menuItems.filter(i => (i.division || "bar") === activeDivision);
+  const specials = inStock.filter(i => (i as any).item_kind === "special");
+  const regular = inStock.filter(i => (i as any).item_kind !== "special");
+  const divisionCategories = categoriesForDivision(customCategories, activeDivision);
   const groupedByCategory = divisionCategories.map(cat => ({
     ...cat,
-    items: inStock.filter(i => i.category === cat.value),
+    items: regular.filter(i => i.category === cat.value),
   })).filter(g => g.items.length > 0);
   // Items whose category isn't in the current list (legacy values) still show, under their own heading.
   const knownValues = new Set(divisionCategories.map(c => c.value));
-  const uncategorised = inStock.filter(i => !knownValues.has(i.category));
+  const uncategorised = regular.filter(i => !knownValues.has(i.category));
   if (uncategorised.length > 0) {
-    groupedByCategory.push({ value: "_legacy", label: "Other items", division, items: uncategorised });
+    groupedByCategory.push({ value: "_legacy", label: "Other items", division: activeDivision, items: uncategorised });
+  }
+  if (specials.length > 0) {
+    groupedByCategory.unshift({ value: "_specials", label: "Specials", division: activeDivision, items: specials });
   }
 
   if (!clubId || !club?.honesty_bar_enabled) {
@@ -352,26 +362,26 @@ export default function HonestyBar() {
 
           <TabsContent value="shop" className="space-y-4 mt-4">
             {/* Choose which kind of item to browse. */}
-            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-              {(["bar", "shop"] as BarDivision[]).map(d => (
+            <div className="grid gap-1 rounded-lg bg-muted p-1" style={{ gridTemplateColumns: `repeat(${Math.max(divisions.length, 1)}, minmax(0, 1fr))` }}>
+              {divisions.map(d => (
                 <Button
-                  key={d}
+                  key={d.key}
                   type="button"
                   variant="ghost"
-                  aria-pressed={division === d}
-                  onClick={() => setDivision(d)}
+                  aria-pressed={activeDivision === d.key}
+                  onClick={() => setDivision(d.key)}
                   className={`h-9 flex items-center justify-center gap-1.5 rounded-md text-xs font-semibold transition-colors ${
-                    division === d ? "bg-background shadow-sm" : "text-muted-foreground"
+                    activeDivision === d.key ? "bg-background shadow-sm" : "text-muted-foreground"
                   }`}
                 >
-                  {d === "bar" ? <Beer className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
-                  {d === "bar" ? "Bar items" : "Shop items"}
+                  {d.key === "bar" ? <Beer className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
+                  {d.label}
                 </Button>
               ))}
             </div>
             {inStock.length === 0 && (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No {division === "bar" ? "bar" : "shop"} items available yet.
+                No {(divisions.find(d => d.key === activeDivision)?.label || activeDivision).toLowerCase()} items available yet.
               </p>
             )}
             {/* Item catalog */}
@@ -383,23 +393,41 @@ export default function HonestyBar() {
                     <h3 className="text-sm font-semibold">{group.label}</h3>
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-                    {group.items.map(item => {
-                      const qty = cart[item.id] || 0;
+                    {groupForPos(group.items as unknown as InventoryItem[], items as unknown as InventoryItem[]).map(entry => {
+                      const first = entry.options[0].item;
+                      const qty = entry.options.reduce((n, o) => n + (cart[o.item.id] || 0), 0);
+                      const multi = entry.options.length > 1;
                       return (
                         <Card
-                          key={item.id}
-                          className={`relative p-1.5 flex flex-col items-center gap-1 cursor-pointer hover:bg-accent/50 transition-colors ${qty > 0 ? "ring-2 ring-primary" : ""}`}
-                          onClick={() => updateCart(item.id, 1)}
+                          key={entry.key}
+                          className={`relative p-1.5 flex flex-col items-center gap-1 transition-colors ${multi ? "" : "cursor-pointer hover:bg-accent/50"} ${qty > 0 ? "ring-2 ring-primary" : ""}`}
+                          onClick={multi ? undefined : () => updateCart(first.id, 1)}
                         >
                           <div className="w-full aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
-                            {item.image_url ? (
-                              <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                            {first.image_url ? (
+                              <img src={first.image_url} alt={entry.title} className="w-full h-full object-cover" loading="lazy" />
                             ) : (
-                              <span className="text-2xl">{BAR_CATEGORY_EMOJI[item.category] || "📦"}</span>
+                              <span className="text-2xl">{entry.isSpecial ? "⭐" : BAR_CATEGORY_EMOJI[first.category] || "📦"}</span>
                             )}
                           </div>
-                          <p className="text-[11px] font-medium leading-tight text-center truncate w-full">{item.name}</p>
-                          <p className="text-[11px] text-muted-foreground leading-none">{money(item.price)}</p>
+                          <p className="text-[11px] font-medium leading-tight text-center truncate w-full">{entry.title}</p>
+                          {multi ? (
+                            <div className="flex flex-wrap justify-center gap-1 w-full">
+                              {entry.options.map(o => (
+                                <Button
+                                  key={o.item.id}
+                                  size="sm"
+                                  variant={cart[o.item.id] ? "default" : "outline"}
+                                  className="h-7 px-1.5 text-[10px] leading-tight flex-1 min-w-[44%]"
+                                  onClick={() => updateCart(o.item.id, 1)}
+                                >
+                                  {o.label} {money(o.item.price)}{cart[o.item.id] ? ` ×${cart[o.item.id]}` : ""}
+                                </Button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground leading-none">{money(first.price)}</p>
+                          )}
                           {qty > 0 && (
                             <>
                               <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
@@ -409,7 +437,12 @@ export default function HonestyBar() {
                                 size="icon"
                                 variant="outline"
                                 className="absolute top-1 left-1 h-5 w-5"
-                                onClick={(e) => { e.stopPropagation(); updateCart(item.id, -1); }}
+                                aria-label="Remove one"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const last = [...entry.options].reverse().find(o => cart[o.item.id]);
+                                  if (last) updateCart(last.item.id, -1);
+                                }}
                               >
                                 <Minus className="w-3 h-3" />
                               </Button>

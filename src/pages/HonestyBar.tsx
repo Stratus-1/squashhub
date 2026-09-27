@@ -71,6 +71,7 @@ export default function HonestyBar() {
   const [counterSaleOpen, setCounterSaleOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("shop");
   const [qrOpen, setQrOpen] = useState(false);
+  const [division, setDivision] = useState<BarDivision>("bar");
 
   const { data: items = [] } = useQuery({
     queryKey: ["bar-items", clubId],

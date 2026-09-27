@@ -389,10 +389,49 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editItem, setEditItem] = useState<BarItem | null>(null);
-  const [form, setForm] = useState({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
+  const [form, setForm] = useState({ name: "", price: "", category: "soft_drinks", division: "bar" as BarDivision, image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
   const [barcodeScanOpen, setBarcodeScanOpen] = useState(false);
+  const [catManagerOpen, setCatManagerOpen] = useState(false);
+  const [newCatLabel, setNewCatLabel] = useState("");
+  const [newCatDivision, setNewCatDivision] = useState<BarDivision>("bar");
+  const { data: customCategories = [] } = useBarCategories(clubId);
+  const formCategories = categoriesForDivision(customCategories, form.division);
 
-  const resetForm = () => setForm({ name: "", price: "", category: "soft_drinks", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
+  const resetForm = () => setForm({ name: "", price: "", category: "soft_drinks", division: "bar", image_url: "", low_stock_threshold: "5", cost_price: "", opening_stock: "0", barcode: "" });
+
+  const handleAddCategory = async () => {
+    const label = newCatLabel.trim();
+    if (!label) return;
+    const value = categoryValueFromLabel(label);
+    const { error } = await fromExt("club_bar_categories").insert({
+      club_id: clubId,
+      division: newCatDivision,
+      label,
+      value,
+      sort_order: customCategories.length,
+    });
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "That category already exists" : error.message);
+    } else {
+      toast.success(`Category "${label}" added`);
+      setNewCatLabel("");
+      qc.invalidateQueries({ queryKey: ["club-bar-categories", clubId] });
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, value: string) => {
+    const inUse = items.some(i => i.category === value);
+    if (inUse) {
+      toast.error("Some items still use this category — move them to another category first.");
+      return;
+    }
+    const { error } = await fromExt("club_bar_categories").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Category removed");
+      qc.invalidateQueries({ queryKey: ["club-bar-categories", clubId] });
+    }
+  };
 
   const openEdit = (item: BarItem) => {
     setEditItem(item);

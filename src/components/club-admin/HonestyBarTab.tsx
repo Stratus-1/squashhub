@@ -857,7 +857,35 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
 
       <Dialog open={!!adding || !!editItem} onOpenChange={(v) => { if (!v) { setAdding(false); setEditItem(null); resetForm(); } }}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editItem ? "Edit item" : "Add item"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{form.item_kind === "special" ? (editItem ? "Edit special / bundle" : "Add special / bundle") : editItem ? "Edit item" : "Add item"}</DialogTitle></DialogHeader>
+          {itemForm}
+        </DialogContent>
+      </Dialog>
+
+      <div className="space-y-1.5 rounded-lg border p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">⭐ Specials &amp; bundles ({specials.filter(s => !s.archived_at).length})</p>
+          <p className="text-[11px] text-muted-foreground">No stock of their own — each sale uses the recipe below</p>
+        </div>
+        {specials.length === 0 && <p className="text-xs text-muted-foreground">No specials yet — use "Add Special / Bundle" above.</p>}
+        {specials.map(s => (
+          <div key={s.id} className="flex items-start sm:items-center gap-2 rounded-md border p-2">
+            <div className="flex-1 min-w-0">
+              <div className={`text-sm font-medium ${!s.active ? "line-through text-muted-foreground" : ""}`}>{s.name}{s.archived_at ? " (archived)" : ""} · {money(s.price)}</div>
+              <div className="text-[11px] text-muted-foreground">{recipeSummary(s.id)}</div>
+              <div className="text-[10px] text-muted-foreground">{s.active ? "Active" : "Inactive"} · {validitySummary(s as unknown as InventoryItem)}</div>
+            </div>
+            {!s.archived_at && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit special" onClick={() => openEdit(s)}><Pencil className="w-3.5 h-3.5" /></Button>
+                <Switch checked={s.active} onCheckedChange={() => handleToggleActive(s.id, s.active)} className="scale-75" aria-label="Active" />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {false && (<Dialog open={false}><DialogContent>
+
           {itemForm}
         </DialogContent>
       </Dialog>

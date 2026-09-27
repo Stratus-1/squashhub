@@ -191,8 +191,9 @@ export function isValidNow(i: InventoryItem, at: Date = new Date()): boolean {
 
 /** Should the item appear as sellable on a POS menu right now? */
 export function onMenu(i: InventoryItem, at: Date = new Date()): boolean {
-  // Made-to-order food holds no stock — it is always on the menu.
-  const hasStock = kindOf(i) === "made_to_order" || (i.stock_qty ?? 0) > 0;
+  // Made-to-order food and specials hold no stock of their own — they are always on the menu.
+  const k = kindOf(i);
+  const hasStock = k === "made_to_order" || k === "special" || (i.stock_qty ?? 0) > 0;
   return (i.active ?? true) && (i.sellable ?? true) && !i.archived_at && isValidNow(i, at) && hasStock;
 }
 

@@ -497,7 +497,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
       });
     } else if (form.item_kind === "option") {
       Object.assign(base, { stock_parent_id: form.stock_parent_id || null, consume_units: Math.max(1, parseInt(form.consume_units) || 1) });
-    } else {
+    } else if (form.item_kind === "special") {
       Object.assign(base, {
         valid_from: form.valid_from || null, valid_to: form.valid_to || null,
         valid_days: form.valid_days.length ? form.valid_days : null,

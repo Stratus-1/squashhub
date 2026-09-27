@@ -110,6 +110,16 @@ export function leagueAverageHandicap(
   return a < b ? { handicap_a: -diff, handicap_b: 0 } : { handicap_a: 0, handicap_b: -diff };
 }
 
+/** NSA codes are stored as "NSF6086" but clubs often type "6086" or "nsf 6086". */
+export function nsaCodeVariants(raw: string): string[] {
+  const t = raw.trim();
+  if (!t) return [];
+  const digits = t.replace(/\D/g, "");
+  const out = new Set<string>([t]);
+  if (digits) out.add(`NSF${digits.padStart(4, "0")}`);
+  return Array.from(out);
+}
+
 /** Member's regional standing and the exact index used for handicap scoring. */
 export async function loadLeagueAverageStandings(
   memberIds: string[],

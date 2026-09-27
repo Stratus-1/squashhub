@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.mark_registration_on_draw_entry() FROM PUBLIC, anon, authenticated;

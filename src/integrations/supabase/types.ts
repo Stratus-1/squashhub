@@ -3140,6 +3140,7 @@ export type Database = {
           division_choices: number[]
           fee_paid_cents: number
           fee_payment_id: string | null
+          fee_status: string
           id: string
           invite_revoked_at: string | null
           invite_token: string | null
@@ -3155,6 +3156,8 @@ export type Database = {
           proof_uploaded_at: string | null
           proof_uploaded_by: string | null
           proof_url: string | null
+          registration_source: string | null
+          registration_status: string
           status: string
           updated_at: string
           whatsapp_group_opt_in: boolean
@@ -3170,6 +3173,7 @@ export type Database = {
           division_choices?: number[]
           fee_paid_cents?: number
           fee_payment_id?: string | null
+          fee_status?: string
           id?: string
           invite_revoked_at?: string | null
           invite_token?: string | null
@@ -3185,6 +3189,8 @@ export type Database = {
           proof_uploaded_at?: string | null
           proof_uploaded_by?: string | null
           proof_url?: string | null
+          registration_source?: string | null
+          registration_status?: string
           status?: string
           updated_at?: string
           whatsapp_group_opt_in?: boolean
@@ -3200,6 +3206,7 @@ export type Database = {
           division_choices?: number[]
           fee_paid_cents?: number
           fee_payment_id?: string | null
+          fee_status?: string
           id?: string
           invite_revoked_at?: string | null
           invite_token?: string | null
@@ -3215,6 +3222,8 @@ export type Database = {
           proof_uploaded_at?: string | null
           proof_uploaded_by?: string | null
           proof_url?: string | null
+          registration_source?: string | null
+          registration_status?: string
           status?: string
           updated_at?: string
           whatsapp_group_opt_in?: boolean

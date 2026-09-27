@@ -37,7 +37,7 @@ export function leagueOrdinal(label: string | null | undefined): number | null {
 export function leaguePositionLabel(standing: LeagueStanding): string {
   const n = standing.division;
   const suffix = n % 100 >= 11 && n % 100 <= 13 ? "th" : n % 10 === 1 ? "st" : n % 10 === 2 ? "nd" : n % 10 === 3 ? "rd" : "th";
-  return `${n}${suffix} League · avg ${standing.avgPosition.toFixed(1)} (${standing.rubbers} games) · index ${standing.index.toFixed(1)}${standing.category ? ` · ${standing.category}` : ""}`;
+  return `${n}${suffix} League · avg ${standing.avgPosition.toFixed(1)} (${standing.rubbers} games) · index ${standing.index.toFixed(1)}${standing.category ? ` · ${standing.category.charAt(0).toUpperCase()}${standing.category.slice(1)}` : ""}`;
 }
 
 /** rubbers per league, keyed `${category}|${division}` */

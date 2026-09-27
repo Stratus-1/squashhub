@@ -22,6 +22,7 @@ import { formatMoney } from "@/lib/qr-shortcodes";
 import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
+import type { BarDivision } from "@/lib/bar-categories";
 
 
 const GUEST_PREF_KEY = "sh.scanpay.guest";
@@ -32,6 +33,7 @@ interface ScanItem {
   name: string;
   price: number;
   category?: string;
+  division?: BarDivision | null;
   image_url?: string | null;
   stock_qty?: number;
   barcode?: string | null;
@@ -69,6 +71,7 @@ export default function ScanPay() {
   const [submitting, setSubmitting] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [division, setDivision] = useState<BarDivision>("bar");
   const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; terminal?: boolean; reference?: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [tab, setTab] = useState<GuestTab | null>(null);
@@ -123,6 +126,7 @@ export default function ScanPay() {
     if (data?.kind === "item" && data.item) return [data.item as ScanItem];
     return (data?.menu || []) as ScanItem[];
   }, [data]);
+  const visibleMenu = data?.kind === "item" ? menu : menu.filter((item) => (item.division || "bar") === division);
 
   const cartLines = useMemo(
     () =>
@@ -757,8 +761,25 @@ export default function ScanPay() {
                     <ScanBarcode className="w-3.5 h-3.5" /> Scan item
                   </Button>
                 </div>
+                {data.kind !== "item" && (
+                  <div role="tablist" aria-label="Item division" className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
+                    {(["bar", "shop"] as BarDivision[]).map((d) => (
+                      <Button
+                        key={d}
+                        type="button"
+                        role="tab"
+                        aria-selected={division === d}
+                        variant="ghost"
+                        onClick={() => setDivision(d)}
+                        className={`h-10 text-xs font-semibold ${division === d ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                      >
+                        {d === "bar" ? "Bar items" : "Shop items"}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 <div className="grid grid-cols-3 gap-2">
-                  {menu.map((m) => {
+                  {visibleMenu.map((m) => {
                     const qty = cart[m.id] || 0;
                     const out = typeof m.stock_qty === "number" && m.stock_qty <= 0;
                     return (
@@ -795,9 +816,9 @@ export default function ScanPay() {
                       </Card>
                     );
                   })}
-                  {menu.length === 0 && (
+                   {visibleMenu.length === 0 && (
                     <p className="col-span-3 text-sm text-muted-foreground text-center py-6">
-                      Nothing is in stock right now.
+                       {data.kind === "item" ? "Nothing is in stock right now." : `No ${division} items available yet.`}
                     </p>
                   )}
                 </div>

@@ -1,5 +1,9 @@
 # Roadmap
 
+## Visitor QR menu divisions
+- [x] Show Bar items and Shop items separately on the public venue QR menu; retain one-product QR behavior.
+- [x] Include division in the public item data and preserve cart contents when switching.
+
 ## Bar screen labels
 - [x] Replace duplicate Shop labels with Buy, Bar items, and Shop items; verify on mobile.
 

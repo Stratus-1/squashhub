@@ -275,7 +275,7 @@ export function LineupSwapDialog({
         const sourceLeagueNumber = sourceLeague
           ? parseLeagueNumber(tierOf(sourceLeague) ?? sourceLeague.name, sourceLeague.code)
           : null;
-        if (targetLeagueNumber != null) {
+        if (targetTier && targetLeagueNumber != null) {
           const eligibility = checkSubEligibility(
             subRules,
             { homeLeagueNumber: sourceLeagueNumber, homePosition: info.rank ?? null, gender: null },

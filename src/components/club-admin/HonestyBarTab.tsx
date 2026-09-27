@@ -408,7 +408,7 @@ interface ComponentLine { component_item_id: string; quantity: string }
 const emptyForm = (division = "bar", category = "") => ({
   name: "", price: "", category, division, image_url: "", low_stock_threshold: "5", cost_price: "",
   opening_stock: "0", open_units: "0", barcode: "",
-  item_kind: "stock" as ItemKind, unit_yield: "1", unit_label: "tot", stock_unit_label: "bottle", sellable: true,
+  item_kind: "stock" as ItemKind, unit_yield: "1", unit_label: "tot", stock_unit_label: "bottle", stock_measure: "count" as "count" | "bottle" | "volume", opening_litres: "0", sellable: true,
   product_group: "", variant_label: "", stock_parent_id: "", consume_units: "1",
   valid_from: "", valid_to: "", valid_days: [] as number[], valid_start_time: "", valid_end_time: "",
 });
@@ -457,6 +457,8 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
       opening_stock: String(whole), open_units: String(open), barcode: item.barcode ?? "",
       item_kind: (item.item_kind || "stock") as ItemKind, unit_yield: String(y),
       unit_label: item.unit_label || "tot", stock_unit_label: item.stock_unit_label || "bottle",
+      stock_measure: ((item as { stock_measure?: string }).stock_measure as "count" | "bottle" | "volume") || (y > 1 ? "bottle" : "count"),
+      opening_litres: String((item.stock_units ?? 0) / y),
       sellable: item.sellable !== false, product_group: item.product_group || "", variant_label: item.variant_label || "",
       stock_parent_id: item.stock_parent_id || "", consume_units: String(item.consume_units || 1),
       valid_from: item.valid_from || "", valid_to: item.valid_to || "", valid_days: item.valid_days || [],
@@ -480,7 +482,10 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
         unit_yield: yieldN, sellable: form.sellable,
         unit_label: yieldN > 1 ? form.unit_label.trim() || "tot" : null,
         stock_unit_label: yieldN > 1 ? form.stock_unit_label.trim() || "bottle" : null,
-        stock_units: (parseInt(form.opening_stock) || 0) * yieldN + (yieldN > 1 ? Math.min(yieldN - 1, parseInt(form.open_units) || 0) : 0),
+        stock_measure: form.stock_measure === "volume" ? "volume" : yieldN > 1 ? "bottle" : "count",
+        stock_units: form.stock_measure === "volume"
+          ? Math.max(0, Math.round((parseFloat(form.opening_litres) || 0) * yieldN))
+          : (parseInt(form.opening_stock) || 0) * yieldN + (yieldN > 1 ? Math.min(yieldN - 1, parseInt(form.open_units) || 0) : 0),
       });
     } else if (form.item_kind === "option") {
       Object.assign(base, { stock_parent_id: form.stock_parent_id || null, consume_units: Math.max(1, parseInt(form.consume_units) || 1) });
@@ -610,8 +615,12 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
               <p className="text-[11px] text-muted-foreground">Leave at 1 for items sold one-for-one.</p>
             </div>
             <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
-              onClick={() => setForm(p => ({ ...p, unit_yield: String(DEFAULT_TOTS_PER_BOTTLE), unit_label: "tot", stock_unit_label: "bottle", sellable: false }))}>
-              Spirit: {DEFAULT_TOTS_PER_BOTTLE} tots
+              onClick={() => setForm(p => ({ ...p, stock_measure: "bottle", unit_yield: String(DEFAULT_TOTS_PER_BOTTLE), unit_label: "tot", stock_unit_label: "bottle", sellable: false }))}>
+              Spirit (bottle → tots)
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
+              onClick={() => setForm(p => ({ ...p, stock_measure: "volume", unit_yield: "1000", unit_label: "ml", stock_unit_label: "litre", sellable: false }))}>
+              Bulk mixer (litres)
             </Button>
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -636,19 +645,27 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
             <Label className="text-xs">Sell this product directly (e.g. by the whole {form.stock_unit_label || "item"})</Label>
             <Switch checked={form.sellable} onCheckedChange={v => setForm(p => ({ ...p, sellable: v }))} />
           </div>
-          {yieldN > 1 && (
-            <p className="text-[11px] text-muted-foreground">After saving, add Single / Double as "Selling option" items that sell from this product.</p>
+          {yieldN > 1 && form.stock_measure !== "volume" && (
+            <p className="text-[11px] text-muted-foreground">Set tots per bottle for this spirit (e.g. 28 or 30). After saving, add Single (1) / Double (2) as "Selling option" items.</p>
+          )}
+          {form.stock_measure === "volume" && (
+            <p className="text-[11px] text-muted-foreground">Stock is kept in litres (any bottle size). After saving, add a "Selling option" such as Glass that uses e.g. 250 ml (= 4 servings per litre).</p>
           )}
         </div>
       )}
 
       {form.item_kind === "stock" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
+          <div className={form.stock_measure === "volume" ? "hidden" : ""}>
             <Label className="text-xs">{editItem ? "Stock on hand" : "Opening stock"} ({yieldN > 1 ? `full ${form.stock_unit_label}s` : "units"})</Label>
             <Input type="number" min={0} value={form.opening_stock} onChange={e => setForm(p => ({ ...p, opening_stock: e.target.value }))} />
           </div>
-          {yieldN > 1 ? (
+          {form.stock_measure === "volume" ? (
+            <div>
+              <Label className="text-xs">Litres on hand (e.g. 5.5)</Label>
+              <Input type="number" min={0} step={0.1} value={form.opening_litres} onChange={e => setForm(p => ({ ...p, opening_litres: e.target.value }))} />
+            </div>
+          ) : yieldN > 1 ? (
             <div>
               <Label className="text-xs">+ open {form.stock_unit_label} ({form.unit_label}s left, 0–{yieldN - 1})</Label>
               <Input type="number" min={0} max={yieldN - 1} value={form.open_units} onChange={e => setForm(p => ({ ...p, open_units: e.target.value }))} />
@@ -699,6 +716,9 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
           <div>
             <Label className="text-xs">Uses ({stockItems.find(i => i.id === form.stock_parent_id)?.unit_label || "units"})</Label>
             <Input type="number" min={1} value={form.consume_units} onChange={e => setForm(p => ({ ...p, consume_units: e.target.value }))} />
+            {stockItems.find(i => i.id === form.stock_parent_id)?.unit_label === "ml" && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">= {(1000 / Math.max(1, parseInt(form.consume_units) || 1)).toFixed(1)} servings per litre</p>
+            )}
           </div>
           <div>
             <Label className="text-xs">Button label</Label>
@@ -931,12 +951,17 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
         paymentMethod ? `Paid: ${paymentMethod}` : null,
       ].filter(Boolean).join(" | ");
 
-      const purchases = validLines.map(l => ({
+      const purchases = validLines.map(l => {
+        const it = items.find(i => i.id === l.bar_item_id) as (BarItem & { stock_measure?: string }) | undefined;
+        const isVol = it?.stock_measure === "volume";
+        const q = parseFloat(l.quantity) || 0;
+        return {
         club_id: clubId,
         bar_item_id: l.bar_item_id,
-        quantity: parseInt(l.quantity),
+        quantity: isVol ? Math.max(1, Math.ceil(q)) : parseInt(l.quantity),
+        quantity_units: isVol ? Math.max(1, Math.round(q * Math.max(1, it?.unit_yield || 1000))) : null,
         unit_cost: parseFloat(l.unit_cost) || 0,
-        total_cost: (parseInt(l.quantity)) * (parseFloat(l.unit_cost) || 0),
+        total_cost: q * (parseFloat(l.unit_cost) || 0),
         supplier: supplier.trim() || null,
         supplier_note: supplierNote || null,
         invoice_number: invoiceNumber.trim() || null,

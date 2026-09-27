@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  formatStock, groupForPos, isValidNow, onMenu, specialAvailable, splitUnits, stockRequirement, unitsPerSale,
+  formatStock, groupForPos, litresToUnits, servingMlFromPerLitre, servingsAvailable, totsToStockUnits, wholeEquivalent, isValidNow, onMenu, specialAvailable, splitUnits, stockRequirement, unitsPerSale,
   type InventoryItem, type SpecialComponent,
 } from "@/lib/bar-inventory";
 import { allCategories, categoriesForDivision, resolveDivisions } from "@/lib/bar-categories";
@@ -30,9 +30,9 @@ describe("bottle-to-tot stock", () => {
     expect(unitsPerSale(buddy)).toBe(1);
   });
   it("shows full bottles plus the open bottle", () => {
-    expect(formatStock(brandy)).toBe("10 bottles + 20/30 tots");
+    expect(formatStock(brandy)).toBe("10.67 bottles (10 + 20/30 tots)");
     expect(splitUnits(283, 30)).toEqual({ whole: 9, open: 13 });
-    expect(formatStock(jam)).toBe("3 bottles + 26/28 tots"); // configurable yield 28
+    expect(formatStock(jam)).toBe("3.93 bottles (3 + 26/28 tots)"); // configurable yield 28
     expect(formatStock(buddy)).toBe("24");
   });
 });
@@ -100,5 +100,46 @@ describe("club-configurable divisions and categories", () => {
     expect(categoriesForDivision(clubA, "shop").some(c => c.value === "custom_k_tape")).toBe(true);
     // A club with no rows still gets the untouched defaults.
     expect(allCategories([]).find(c => c.value === "spirits")?.label).toBe("Spirits");
+  });
+});
+
+describe("Uitzig-style 28-tot spirits and mixers", () => {
+  const gin = base({ id: "g", name: "Gin", unit_yield: 28, stock_units: totsToStockUnits(70), stock_qty: 2 });
+  const coke = base({ id: "c", name: "Coke", stock_measure: "volume", unit_yield: 1000, stock_units: litresToUnits(2 + 2 + 1.5), stock_qty: 5, sellable: false });
+  const glass = base({ id: "cg", item_kind: "option", stock_parent_id: "c", consume_units: servingMlFromPerLitre(4), stock_qty: 22 });
+  const gd = base({ id: "gd", item_kind: "option", stock_parent_id: "g", consume_units: 2, stock_qty: 35 });
+  const tonic = base({ id: "t", name: "Tonic 200ml", stock_units: 24, stock_qty: 24 });
+  const sp = base({ id: "sp", item_kind: "special", stock_qty: 1 });
+  const sp2 = base({ id: "sp2", item_kind: "special", stock_qty: 1 });
+  const m = new Map([gin, coke, glass, gd, tonic, sp, sp2].map(i => [i.id, i]));
+  const cc: SpecialComponent[] = [
+    { special_item_id: "sp", component_item_id: "gd", quantity: 2 },
+    { special_item_id: "sp", component_item_id: "cg", quantity: 2 },
+    { special_item_id: "sp2", component_item_id: "gd", quantity: 1 },
+    { special_item_id: "sp2", component_item_id: "t", quantity: 1 },
+  ];
+  it("70 tots at 28/bottle = 2.50 bottles, 2 + 14/28", () => {
+    expect(wholeEquivalent(70, 28)).toBe(2.5);
+    expect(formatStock(gin)).toBe("2.50 bottles (2 + 14/28 tots)");
+  });
+  it("bulk mixer: 5.5 L at 4 glasses/L = 22 servings", () => {
+    expect(coke.stock_units).toBe(5500);
+    expect(formatStock(coke)).toBe("5.50 L");
+    expect(servingsAvailable(glass, coke)).toBe(22);
+    expect(servingMlFromPerLitre(5)).toBe(200); // configurable, not hard-coded
+  });
+  it("recipe deducts exact spirit tots + mixer servings", () => {
+    const need = stockRequirement(sp, 1, m, cc);
+    expect(need.get("g")).toBe(4);
+    expect(need.get("c")).toBe(500); // 2 glasses = 0.5 L
+    expect(specialAvailable("sp", m, cc)).toBe(11); // min(70/4=17, 5500/500=11)
+    const need2 = stockRequirement(sp2, 1, m, cc);
+    expect(need2.get("t")).toBe(1); // packaged mixer = 1 serving
+  });
+  it("repeated sales never create or destroy stock", () => {
+    let units = 70;
+    for (let k = 0; k < 17; k++) units -= stockRequirement(sp, 1, m, cc).get("g")!;
+    expect(units).toBe(2);
+    expect(formatStock({ ...gin, stock_units: units })).toBe("0.07 bottles (0 + 2/28 tots)");
   });
 });

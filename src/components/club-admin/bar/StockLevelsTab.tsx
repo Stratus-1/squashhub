@@ -313,7 +313,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
           <div className="text-xs grid gap-1">
             {deviations.map((r) => (
               <div key={r.bar_item_id} className="flex justify-between gap-2">
-                <span className="truncate">{r.name}{r.y > 1 ? ` (${r.unit_label || "tot"}s: ${r.y}/bottle)` : ""}</span>
+                <span className="truncate">{r.name}{r.y > 1 ? ` (${r.unit_label || "tot"}s: ${r.y} per unit)` : ""}</span>
                 <span className={(r.variance ?? 0) < 0 ? "text-destructive" : "text-emerald-600"}>
                   expected {r.expected} · counted {r.counted} · {(r.variance ?? 0) > 0 ? "+" : ""}{r.variance}
                 </span>
@@ -340,7 +340,7 @@ export function StockLevelsTab({ clubId }: { clubId: string }) {
         ) : (
           rows.map((r) => (
             <div key={r.bar_item_id} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 px-3 py-1.5 text-xs items-center border-b last:border-0">
-              <span className="truncate">{r.name}{r.y > 1 ? ` (${r.unit_label || "tot"}s: ${r.y}/bottle)` : ""}</span>
+              <span className="truncate">{r.name}{r.y > 1 ? ` (${r.unit_label || "tot"}s: ${r.y} per unit)` : ""}</span>
               <span className="text-right w-16 tabular-nums">{r.expected}</span>
               <span className="text-right w-16 tabular-nums text-muted-foreground">{r.y > 1 ? `${r.current_qty}+${(r.current_units ?? 0) % r.y}` : r.current_qty}</span>
               <span className="w-24 text-right">

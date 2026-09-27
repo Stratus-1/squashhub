@@ -14,6 +14,7 @@
  */
 
 export type BarItemKind = "stock" | "option" | "special";
+export type StockMeasure = "count" | "bottle" | "volume";
 
 export interface InventoryItem {
   id: string;
@@ -29,6 +30,8 @@ export interface InventoryItem {
   unit_label?: string | null;
   stock_unit_label?: string | null;
   stock_units?: number | null;
+  /** Labelling only: count (one-for-one), bottle (spirits by tot), volume (bulk mixer by litre). */
+  stock_measure?: StockMeasure | null;
   stock_qty: number;
   sellable?: boolean | null;
   product_group?: string | null;
@@ -106,16 +109,51 @@ export function splitUnits(units: number, yieldPer: number): { whole: number; op
   return { whole: Math.floor(u / y), open: u % y };
 }
 
-/** Human stock label: "10 bottles + 20/30 tots" or "24". */
+export const ML_PER_LITRE = 1000;
+
+export function measureOf(i: InventoryItem): StockMeasure {
+  if (i.stock_measure) return i.stock_measure;
+  return Math.max(1, i.unit_yield || 1) > 1 ? "bottle" : "count";
+}
+
+/** Decimal whole-unit equivalent, e.g. 70 tots at 28/bottle = 2.5 bottles; 5500 ml = 5.5 L. Display only. */
+export function wholeEquivalent(units: number, yieldPer: number): number {
+  return Math.max(0, units || 0) / Math.max(1, yieldPer || 1);
+}
+
+/** Convert an imported total-tots count to stock units (tots are the stored unit — no rounding). */
+export function totsToStockUnits(totalTots: number): number {
+  return Math.max(0, Math.round(totalTots));
+}
+
+/** Convert litres received/counted to ml stock units (integer ml; 5.5 L = 5500). */
+export function litresToUnits(litres: number): number {
+  return Math.max(0, Math.round((litres || 0) * ML_PER_LITRE));
+}
+
+/** Serving size in ml from a configurable servings-per-litre (4/L = 250 ml). */
+export function servingMlFromPerLitre(servingsPerLitre: number): number {
+  return Math.max(1, Math.round(ML_PER_LITRE / Math.max(0.001, servingsPerLitre || 1)));
+}
+
+/** Human stock label: "2.50 bottles (2 + 14/28 tots)", "5.50 L" or "24". */
 export function formatStock(i: InventoryItem): string {
   const y = Math.max(1, i.unit_yield || 1);
   if (kindOf(i) !== "stock") return String(i.stock_qty ?? 0);
+  const units = i.stock_units ?? 0;
+  const m = measureOf(i);
+  if (m === "volume") return `${wholeEquivalent(units, y).toFixed(2)} ${y === ML_PER_LITRE ? "L" : i.stock_unit_label || "units"}`;
   if (y === 1) return String(i.stock_units ?? i.stock_qty ?? 0);
-  const { whole, open } = splitUnits(i.stock_units ?? 0, y);
+  const { whole, open } = splitUnits(units, y);
   const bottle = i.stock_unit_label || "bottle";
   const tot = i.unit_label || "tot";
-  const main = `${whole} ${bottle}${whole === 1 ? "" : "s"}`;
-  return open ? `${main} + ${open}/${y} ${tot}s` : main;
+  const dec = `${wholeEquivalent(units, y).toFixed(2)} ${bottle}s`;
+  return open ? `${dec} (${whole} + ${open}/${y} ${tot}s)` : dec;
+}
+
+/** Servings available from a bulk/serving option, e.g. Coke glass 250 ml from 5.5 L = 22. */
+export function servingsAvailable(option: InventoryItem, parent: InventoryItem): number {
+  return Math.floor((parent.stock_units ?? 0) / unitsPerSale(option));
 }
 
 function localParts(at: Date, timeZone = "Africa/Johannesburg") {

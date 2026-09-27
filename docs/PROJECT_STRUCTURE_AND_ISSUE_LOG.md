@@ -2190,3 +2190,8 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 ## 2026-09-27 — Visitor QR menu did not separate Bar and Shop
 - Venue QR codes opened the public scan-to-pay menu as one mixed item list, because its public resolver did not return each item's division. The signed-in POS selector did not apply to that route.
 - The public resolver now includes division for both venue and product codes. The venue menu has Bar items / Shop items tabs; legacy products default to Bar, the basket remains intact across tab switches, and individual-product stickers remain a single-product view. Empty divisions show a clear message. No charging flow changed.
+
+## 2026-09-27 — Doubles original-pair bonus, reserves, sub rules
+- Doubles OPB is per original pair (both players together), pairs resolved on the fixture date via `league_team_pairs.effective_from/effective_to`, frozen into `permanentSquadSnapshot.{home,away}.pairs` on first save (`src/lib/leagues/original-pair-bonus.ts`).
+- Admin pair edits close the old row and open a new one dated today → new player is original from then on; past fixtures keep the old pair. Pair removal is a soft close.
+- `league_rules.reserve_mode` (per_team|per_league), `sub_from_reserves`, `sub_from_bye_team`, `sub_rank_rule` (any|same|same_or_lower); league reserve team in `league_reserve_players` with rank. Scorecard shows "Sub not allowed" and blocks final submit (`src/lib/leagues/doubles-sub-eligibility.ts`).

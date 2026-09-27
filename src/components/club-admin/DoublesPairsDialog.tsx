@@ -68,7 +68,7 @@ export function DoublesPairsDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leagues")
-        .select("id, name, code, season_id")
+        .select("id, name, code, season_id, captain_member_id")
         .eq("club_id", clubId)
         .eq("association_id", associationId)
         .is("archived_at", null)
@@ -172,6 +172,29 @@ export function DoublesPairsDialog({
     });
     return s;
   }, [pairs]);
+
+  const captainId: string | null =
+    (teams.find((t: any) => t.id === activeTeam) as any)?.captain_member_id ?? null;
+
+  // Doubles captain is ONE person (from the pairs), stored on the team row —
+  // never a singles registration.
+  const setCaptain = useMutation({
+    mutationFn: async (memberId: string | null) => {
+      const { data, error } = await supabase
+        .from("leagues")
+        .update({ captain_member_id: memberId } as any)
+        .eq("id", activeTeam)
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("Captain not saved — no access to this team");
+    },
+    onSuccess: () => {
+      toast.success("Captain updated");
+      qc.invalidateQueries({ queryKey: ["doubles-pairs-teams", associationId, seasonId] });
+      qc.invalidateQueries({ queryKey: ["leagues"] });
+    },
+    onError: (e: any) => toast.error(e.message || "Could not set captain"),
+  });
 
   const create = useMutation({
     mutationFn: async () => {

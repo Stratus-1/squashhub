@@ -603,7 +603,7 @@ export default function LeagueGameDetail() {
   // A doubles league plays RUBBERS (pairs), not one row per player. The
   // scorecard must render one row per rubber and show both partner names.
   const { data: doublesInfo } = useQuery({
-    queryKey: ["league-fixture-doubles", fixture?.home_team_code, fixture?.away_team_code],
+    queryKey: ["league-fixture-doubles", fixture?.home_team_code, fixture?.away_team_code, (fixture as any)?.fixture_date],
     enabled: !!(fixture?.home_team_code || fixture?.away_team_code),
     queryFn: async () => {
       const codes = [fixture?.home_team_code, fixture?.away_team_code].filter(Boolean) as string[];
@@ -654,18 +654,52 @@ export default function LeagueGameDetail() {
 
 
 
-      const { data: pairs } = await (supabase as any)
+      // Pairs official on the fixture date (admin edits start a new official
+      // pair from their date; earlier fixtures keep the earlier pair).
+      const fixtureDate: string | null = (fixture as any)?.fixture_date ?? null;
+      const assocId = (leagues as any[])[0]?.association_id ?? null;
+
+      // Bye teams: same-association teams with no fixture on this date.
+      let byeLeagueIds: string[] = [];
+      let byeCodeById = new Map<string, string>();
+      if (assocId && fixtureDate) {
+        const { data: assocTeams } = await (supabase as any)
+          .from("leagues").select("id, code").eq("association_id", assocId).is("archived_at", null);
+        const { data: dayFx } = await (supabase as any)
+          .from("platform_league_fixtures").select("home_team_code, away_team_code").eq("fixture_date", fixtureDate);
+        const playing = new Set<string>();
+        for (const f of (dayFx || []) as any[]) {
+          playing.add(String(f.home_team_code || "").toUpperCase());
+          playing.add(String(f.away_team_code || "").toUpperCase());
+        }
+        for (const t of (assocTeams || []) as any[]) {
+          const c = String(t.code || "").toUpperCase();
+          if (c && !playing.has(c)) { byeLeagueIds.push(t.id); byeCodeById.set(t.id, c); }
+        }
+      }
+
+      const { data: allPairs } = await (supabase as any)
         .from("league_team_pairs")
-        .select("league_id, pair_label, pair_order, player_one_member_id, player_two_member_id, is_active")
-        .in("league_id", leagueIds)
-        .eq("is_active", true)
+        .select("league_id, pair_label, pair_order, player_one_member_id, player_two_member_id, is_active, effective_from, effective_to")
+        .in("league_id", [...leagueIds, ...byeLeagueIds])
         .order("pair_order", { ascending: true });
+      const pairs = pairsEffectiveOn(
+        ((allPairs || []) as any[]).map((p) => ({ ...p, one: p.player_one_member_id, two: p.player_two_member_id })),
+        fixtureDate,
+      );
+
+      // League reserve team (reserve_mode = per_league).
+      const { data: reserveRows } = assocId
+        ? await (supabase as any).from("league_reserve_players")
+            .select("member_id, rank").eq("association_id", assocId).eq("is_active", true)
+        : { data: [] };
 
       const memberIds = new Set<string>();
-      for (const p of (pairs || []) as any[]) {
+      for (const p of pairs as any[]) {
         if (p.player_one_member_id) memberIds.add(p.player_one_member_id);
         if (p.player_two_member_id) memberIds.add(p.player_two_member_id);
       }
+      for (const r of (reserveRows || []) as any[]) memberIds.add(r.member_id);
       const nameById = new Map<string, string>();
       if (memberIds.size) {
         const { data: members } = await supabase
@@ -674,16 +708,34 @@ export default function LeagueGameDetail() {
       }
 
       const pairsByCode: Record<string, Array<{ code: string; name: string }>> = {};
-      for (const p of (pairs || []) as any[]) {
-        const key = codeByLeagueId.get(p.league_id);
-        if (!key) continue;
+      const pairKeysByCode: Record<string, string[]> = {};
+      const byeRankByName: Record<string, number> = {};
+      const byeOrderCount = new Map<string, number>();
+      for (const p of pairs as any[]) {
         const one = nameById.get(p.player_one_member_id) || "";
         const two = nameById.get(p.player_two_member_id) || "";
+        const byeCode = byeCodeById.get(p.league_id);
+        if (byeCode) {
+          const n = (byeOrderCount.get(byeCode) || 0) + 1;
+          byeOrderCount.set(byeCode, n);
+          const rank = Number(p.pair_order) || n;
+          if (one) byeRankByName[normalizePlayerName(one)] = rank;
+          if (two) byeRankByName[normalizePlayerName(two)] = rank;
+          if (!leagueIds.includes(p.league_id)) continue;
+        }
+        const key = codeByLeagueId.get(p.league_id);
+        if (!key) continue;
         const label = [one, two].filter(Boolean).join(" & ") || p.pair_label || "";
         if (!label) continue;
         (pairsByCode[key] ||= []).push({ code: "", name: label });
+        if (one && two) (pairKeysByCode[key] ||= []).push(pairKey(one, two));
       }
-      return { isDoubles: true, rubbers, pairsByCode };
+      const reserveRankByName: Record<string, number> = {};
+      for (const r of (reserveRows || []) as any[]) {
+        const n = nameById.get(r.member_id);
+        if (n) reserveRankByName[normalizePlayerName(n)] = Number(r.rank) || 1;
+      }
+      return { isDoubles: true, rubbers, pairsByCode, pairKeysByCode, byeRankByName, reserveRankByName };
     },
   });
   const doublesRubbers = doublesInfo?.isDoubles ? doublesInfo.rubbers : 0;

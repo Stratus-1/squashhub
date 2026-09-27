@@ -771,7 +771,7 @@ export default function ScanPay() {
                         aria-selected={division === d}
                         variant="ghost"
                         onClick={() => setDivision(d)}
-                        className={`h-10 text-xs font-semibold ${division === d ? "bg-background shadow-sm" : "text-muted-foreground"}`}
+                        className={`h-10 text-xs font-semibold ${division === d ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
                       >
                         {d === "bar" ? "Bar items" : "Shop items"}
                       </Button>

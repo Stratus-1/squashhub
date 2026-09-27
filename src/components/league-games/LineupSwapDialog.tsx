@@ -326,7 +326,7 @@ export function LineupSwapDialog({
   }, [candidates, inUseCodes, search]);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) setPending(null); onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { setPending(null); setOutHalf(null); } onOpenChange(o); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base flex items-center gap-2">
@@ -336,13 +336,20 @@ export function LineupSwapDialog({
           <DialogDescription className="text-xs">
             {pending ? (
               <>
-                Replace <span className="font-medium text-foreground">{currentName || "this player"}</span>
+                Replace <span className="font-medium text-foreground">{effectiveCurrentName || "this player"}</span>
                 {" "}with <span className="font-medium text-foreground">{pending.name}</span>
                 {pending.code && <span className="text-muted-foreground"> ({pending.code})</span>}?
               </>
+            ) : pairPlayers && outHalf === null ? (
+              <>
+                Pair: <span className="font-medium text-foreground">{currentName || "—"}</span>
+                <span className="block text-[10px] text-muted-foreground mt-1">
+                  Which player are you replacing?
+                </span>
+              </>
             ) : (
               <>
-                Replacing: <span className="font-medium text-foreground">{currentName || "—"}</span>
+                Replacing: <span className="font-medium text-foreground">{effectiveCurrentName || "—"}</span>
                 {currentCode && <span className="text-muted-foreground"> ({currentCode})</span>}
                 <span className="block text-[10px] text-muted-foreground mt-1">
                   Who should replace them?{" "}

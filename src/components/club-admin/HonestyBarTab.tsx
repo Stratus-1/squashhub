@@ -934,13 +934,13 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
   };
 
   const invoiceTotal = lines.reduce((sum, l) => {
-    const qty = parseInt(l.quantity) || 0;
+    const qty = parseFloat(l.quantity) || 0;
     const cost = parseFloat(l.unit_cost) || 0;
     return sum + qty * cost;
   }, 0);
 
   const handleSubmit = async () => {
-    const validLines = lines.filter(l => l.bar_item_id && parseInt(l.quantity) > 0);
+    const validLines = lines.filter(l => l.bar_item_id && parseFloat(l.quantity) > 0);
     if (validLines.length === 0) { toast.error("Add at least one item line"); return; }
 
     setSubmitting(true);
@@ -967,7 +967,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
         invoice_number: invoiceNumber.trim() || null,
         invoice_date: invoiceDate,
         payment_method: paymentMethod,
-      }));
+      }; });
 
       const { error } = await fromExt("bar_stock_purchases").insert(purchases);
       if (error) throw error;
@@ -1074,7 +1074,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                           <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select item" /></SelectTrigger>
                           <SelectContent>
                             {items.filter(i => !i.archived_at && (i.item_kind || "stock") === "stock").map(i => (
-                              <SelectItem key={i.id} value={i.id}>{i.name}{(i.unit_yield || 1) > 1 ? ` (per ${i.stock_unit_label || "bottle"})` : ""}</SelectItem>
+                              <SelectItem key={i.id} value={i.id}>{i.name}{(i as { stock_measure?: string }).stock_measure === "volume" ? " (litres)" : (i.unit_yield || 1) > 1 ? ` (per ${i.stock_unit_label || "bottle"})` : ""}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -1082,7 +1082,7 @@ function PurchaseInvoice({ clubId, items }: { clubId: string; items: BarItem[] }
                       <div>
                         {idx === 0 && <Label className="text-[10px] text-muted-foreground">Qty</Label>}
                         <Input
-                          type="number" min={1} className="h-8 text-xs"
+                          type="number" min={0.1} step="any" className="h-8 text-xs"
                           value={line.quantity}
                           onChange={e => updateLine(idx, "quantity", e.target.value)}
                         />

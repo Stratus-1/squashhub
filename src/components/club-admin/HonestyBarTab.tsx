@@ -650,8 +650,11 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
   return (
     <Card className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Bar Items ({items.length})</h3>
+        <h3 className="font-semibold">Bar &amp; Shop Items ({items.length})</h3>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setCatManagerOpen(true)}>
+            <Package className="w-3.5 h-3.5 mr-1" />Categories
+          </Button>
           {onQrLabels && (
             <Button size="sm" variant="outline" onClick={() => onQrLabels()}>
               <QrCode className="w-3.5 h-3.5 mr-1" />Product QR labels
@@ -664,6 +667,57 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
           )}
         </div>
       </div>
+
+      <Dialog open={catManagerOpen} onOpenChange={setCatManagerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Item categories</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              The built-in categories are always available. Add your own here — they appear in the item form and on the Bar / POS screen under the division you choose.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={newCatLabel}
+                onChange={e => setNewCatLabel(e.target.value)}
+                placeholder="e.g. Cool drinks"
+                className="flex-1"
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddCategory(); } }}
+              />
+              <Select value={newCatDivision} onValueChange={v => setNewCatDivision(v as BarDivision)}>
+                <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {BAR_DIVISIONS.map(d => (
+                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" onClick={handleAddCategory} disabled={!newCatLabel.trim()}>Add</Button>
+            </div>
+            {customCategories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No custom categories yet.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {customCategories.map(c => (
+                  <div key={c.id} className="flex items-center gap-2 rounded-md border p-2">
+                    <span className="text-sm flex-1">{c.label}</span>
+                    <Badge variant="outline" className="text-[10px]">{c.division === "shop" ? "Shop" : "Bar"}</Badge>
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-7 w-7 text-destructive"
+                      title="Remove category"
+                      onClick={() => handleDeleteCategory(c.id, c.value)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!adding || !!editItem} onOpenChange={(v) => { if (!v) { setAdding(false); setEditItem(null); resetForm(); } }}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
@@ -708,7 +762,8 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
                   ) : (
                     <Badge variant="outline" className="text-[10px]">{item.stock_qty} in stock</Badge>
                   )}
-                  <Badge variant="outline" className="text-[10px]">{cat?.label}</Badge>
+                  <Badge variant="outline" className="text-[10px]">{item.division === "shop" ? "Shop" : "Bar"}</Badge>
+                  <Badge variant="outline" className="text-[10px]">{catLabel}</Badge>
                 </div>
               </div>
               <div className="flex items-center gap-0.5 shrink-0">

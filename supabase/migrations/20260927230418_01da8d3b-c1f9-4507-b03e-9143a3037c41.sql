@@ -1,0 +1,1 @@
+ALTER TABLE public.bar_items DROP CONSTRAINT bar_items_kind_chk; ALTER TABLE public.bar_items ADD CONSTRAINT bar_items_kind_chk CHECK (item_kind IN ('stock','option','special','made_to_order'));

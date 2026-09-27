@@ -1447,18 +1447,18 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
       }}>
 
         <DialogContent
-          className="w-[95vw] max-w-5xl min-h-[80vh] max-h-[95vh] flex flex-col p-0"
+          className="w-[calc(100vw-1rem)] max-w-5xl h-[calc(100dvh-1rem)] sm:h-auto sm:min-h-[80vh] sm:max-h-[95vh] flex flex-col p-0"
           onOpenAutoFocus={(e) => { if (statementFromLinkRef.current) { e.preventDefault(); statementFromLinkRef.current = false; } }}
         >
-          <DialogHeader className="p-6 pb-0">
+          <DialogHeader className="px-4 pt-5 pb-0 sm:p-6 sm:pb-0 text-left">
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" /> {Party} Statement
             </DialogTitle>
             <DialogDescription>Select a member to view their account statement.</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col flex-1 min-h-0 px-6 pb-6 pt-3">
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="relative flex-1" ref={memberSearchRef}>
+          <div className="flex flex-col flex-1 min-h-0 px-4 pb-4 pt-3 sm:px-6 sm:pb-6">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <div className="relative flex-1 min-w-[150px]" ref={memberSearchRef}>
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground z-10" />
                 <Input
                   placeholder={statementMemberId ? "Change member…" : "Type a name to search…"}
@@ -1585,7 +1585,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
 
                   return (
                     <>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         <Card className="p-2">
                           <p className="text-[10px] text-muted-foreground">Total Billed</p>
                           <p className="text-sm font-bold text-destructive tabular-nums">{money(billed)}</p>
@@ -1594,7 +1594,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                           <p className="text-[10px] text-muted-foreground">Payments / Credits</p>
                           <p className="text-sm font-bold text-green-600 tabular-nums">{money(paid)}</p>
                         </Card>
-                        <Card className="p-2">
+                        <Card className="p-2 col-span-2 sm:col-span-1">
                           <p className="text-[10px] text-muted-foreground">Net Balance</p>
                           <p className={cn("text-sm font-bold tabular-nums", outstanding > 0.01 ? "text-destructive" : outstanding < -0.01 ? "text-green-600" : "text-muted-foreground")}>
                             {money(outstanding)} {outstanding < -0.01 ? "Cr" : ""}
@@ -1606,7 +1606,7 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                         <p className="text-sm text-muted-foreground">No transactions for this member.</p>
                       ) : (
                         <div className="overflow-hidden border rounded-lg">
-                          <div className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          <div className="hidden sm:grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 bg-muted/60 border-b text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                             <span>Date</span>
                             <span>Description</span>
                             <span>Account</span>
@@ -1615,7 +1615,43 @@ export function FinanceTab({ club, clubId, party = "member" }: { club: Club; clu
                             <span className="text-right">Balance</span>
                             <span />
                           </div>
-                          <div className="divide-y">
+                          <div className="sm:hidden divide-y">
+                            {rowsDesc.map((entry: any) => (
+                              <div key={entry.id} className="p-3 space-y-2 text-xs min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                                    {format(new Date(entry.created_at), "dd MMM yy")}
+                                  </span>
+                                  <RowActionMenu entry={entry} />
+                                </div>
+                                <p className="font-medium break-words">{entry.description}</p>
+                                <Badge variant="outline" className="text-[10px] max-w-full whitespace-normal text-left">
+                                  {getLabel(entry.account)}
+                                </Badge>
+                                <div className="grid grid-cols-2 gap-2 border-t pt-2">
+                                  <div className="min-w-0">
+                                    <p className="text-[10px] text-muted-foreground">Debit</p>
+                                    <p className={cn("tabular-nums font-semibold break-all", Number(entry.memberDebit) > 0 && "text-destructive")}>
+                                      {Number(entry.memberDebit) > 0 ? money(Number(entry.memberDebit)) : "—"}
+                                    </p>
+                                  </div>
+                                  <div className="min-w-0 text-right">
+                                    <p className="text-[10px] text-muted-foreground">Credit</p>
+                                    <p className={cn("tabular-nums font-semibold break-all", Number(entry.memberCredit) > 0 && "text-green-600")}>
+                                      {Number(entry.memberCredit) > 0 ? money(Number(entry.memberCredit)) : "—"}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex justify-between gap-2 border-t pt-2">
+                                  <span className="text-[10px] text-muted-foreground">Balance</span>
+                                  <span className={cn("tabular-nums font-semibold text-right break-all", entry.running > 0.01 ? "text-destructive" : entry.running < -0.01 ? "text-green-600" : "text-muted-foreground")}>
+                                    {money(entry.running)} {entry.running < -0.01 ? "Cr" : ""}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="hidden sm:block divide-y">
                             {rowsDesc.map((entry: any) => (
                               <div key={entry.id} className="grid grid-cols-[80px_1fr_110px_70px_70px_80px_32px] gap-1 px-3 py-2 text-xs items-center">
                                 <span className="text-[10px] text-muted-foreground tabular-nums">

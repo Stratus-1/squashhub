@@ -2148,3 +2148,7 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - 42 members posted (R50,051.06 net). Excluded non-members: Tuck Shop Sales, Squash Rush, Du Toit-Smuts Prokureurs. 17 report names had no SquashHub member and were not posted.
 - Removed duplicates: Lucas Esterhuizen R150 overpayment (already in old books), Rachel Gates doubled R60 Yoco ledger entry. Kept Family Doubles payments, Vian Crafford R260 credit, visitor fee.
 - Note: `fee_type='opening_balance'` is also used at St John's — always scope updates by club.
+
+## 2026-09-27 — Member statement clipped on portrait phones
+- Cause: seven fixed-width transaction columns exceeded the statement dialog width, hiding debit and credit on portrait screens.
+- Fix: portrait transactions now show date, description, account, labelled debit and credit side by side, and running balance below; the existing desktop ledger remains unchanged. The dialog and member picker fit small screens without horizontal scrolling.

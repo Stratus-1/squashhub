@@ -409,7 +409,7 @@ export function LineupSwapDialog({
                       if (elsewhere) {
                         toast.warning(`${c.name} is in ${c.inUse!.side === "home" ? "Home" : "Visitors"} #${c.inUse!.position} — they will be moved.`);
                       }
-                      onSelect(c);
+                      setPending(c);
                     }}
                     className="w-full text-left px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
                   >

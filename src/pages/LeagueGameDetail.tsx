@@ -2669,7 +2669,13 @@ export default function LeagueGameDetail() {
   const isSubstituted = (code: string | null | undefined, idx: number, side: "home" | "away") => {
     // SUB indicator only applies when the league has the original-player bonus rule.
     // Without that rule (e.g. NSA), substitutions are unrestricted and irrelevant.
-    if (!leagueRules?.original_player_bonus_enabled) return false;
+    if (!leagueRules?.original_player_bonus_enabled && !doublesInfo?.isDoubles) return false;
+    if (doublesInfo?.isDoubles) {
+      const label = side === "home" ? positions[idx]?.homeName : positions[idx]?.awayName;
+      if (!splitPairLabel(label)) return false;
+      const keys = side === "home" ? (summary as any)._homePairKeys : (summary as any)._awayPairKeys;
+      return countOriginalPairs([label], keys || []) === 0;
+    }
     const cur = normalizePlayerCode(code);
     const pos = positions[idx];
     const curName = normalizePlayerName(side === "home" ? pos?.homeName : pos?.awayName);
@@ -2681,6 +2687,34 @@ export default function LeagueGameDetail() {
     if (cur && squadCodes.has(cur)) return false;
     if (curName && squadNames.has(curName)) return false;
     return true;
+  };
+
+  // Doubles sub rule check: returns a reason when a sub in this rubber is not
+  // allowed (wrong source or wrong rank), otherwise null.
+  const doublesSubIssue = (idx: number, side: "home" | "away"): string | null => {
+    if (!doublesInfo?.isDoubles || !leagueRules?.enforce_sub_rules) return null;
+    const label = side === "home" ? positions[idx]?.homeName : positions[idx]?.awayName;
+    const split = splitPairLabel(label);
+    if (!split) return null;
+    const keys: string[] = (side === "home" ? (summary as any)._homePairKeys : (summary as any)._awayPairKeys) || [];
+    const originals = new Set(keys.flatMap((k) => k.split("|")));
+    const rules = {
+      enforce: true,
+      fromReserves: (leagueRules as any).sub_from_reserves ?? true,
+      fromByeTeam: !!(leagueRules as any).sub_from_bye_team,
+      rankRule: ((leagueRules as any).sub_rank_rule ?? "any") as any,
+    };
+    const info: any = doublesInfo as any;
+    for (const n of split) {
+      if (originals.has(n)) continue;
+      const key = normalizePlayerName(n);
+      const r = checkDoublesSub(rules, {
+        reserveRank: info.reserveRankByName?.[key] ?? null,
+        byeRank: info.byeRankByName?.[key] ?? null,
+      }, idx + 1);
+      if (!r.ok) return `${n}: ${r.reason}`;
+    }
+    return null;
   };
 
   return (
@@ -3029,6 +3063,9 @@ export default function LeagueGameDetail() {
                               {isCaptainCode(pos.homeCode, "home") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold" title="Team captain">C</Badge>
                               )}
+                              {doublesSubIssue(idx, "home") && (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4" title={doublesSubIssue(idx, "home") || ""}>Sub not allowed</Badge>
+                              )}
                               {isSubstituted(pos.homeCode, idx, "home") && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold" title="Substitute (replaced original player)">SUB</Badge>
                               )}
@@ -3120,6 +3157,9 @@ export default function LeagueGameDetail() {
                               <span className={cn("truncate transition-colors", homeNameTint)}>{pos.homeName || "—"}</span>
                               {isCaptainCode(pos.homeCode, "home") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold shrink-0" title="Team captain">C</Badge>
+                              )}
+                              {doublesSubIssue(idx, "home") && (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4" title={doublesSubIssue(idx, "home") || ""}>Sub not allowed</Badge>
                               )}
                               {isSubstituted(pos.homeCode, idx, "home") && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold shrink-0" title="Substitute (replaced original player)">SUB</Badge>
@@ -3222,6 +3262,9 @@ export default function LeagueGameDetail() {
                               {isCaptainCode(pos.awayCode, "away") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold" title="Team captain">C</Badge>
                               )}
+                              {doublesSubIssue(idx, "away") && (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4" title={doublesSubIssue(idx, "away") || ""}>Sub not allowed</Badge>
+                              )}
                               {isSubstituted(pos.awayCode, idx, "away") && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold" title="Substitute (replaced original player)">SUB</Badge>
                               )}
@@ -3313,6 +3356,9 @@ export default function LeagueGameDetail() {
                               <span className={cn("truncate transition-colors", awayNameTint)}>{pos.awayName || "—"}</span>
                               {isCaptainCode(pos.awayCode, "away") && (
                                 <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 text-white font-bold shrink-0" title="Team captain">C</Badge>
+                              )}
+                              {doublesSubIssue(idx, "away") && (
+                                <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4" title={doublesSubIssue(idx, "away") || ""}>Sub not allowed</Badge>
                               )}
                               {isSubstituted(pos.awayCode, idx, "away") && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-orange-400 text-orange-600 font-bold shrink-0" title="Substitute (replaced original player)">SUB</Badge>

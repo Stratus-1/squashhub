@@ -814,6 +814,27 @@ export default function ScanPay() {
                     ))}
                   </div>
                 )}
+                {data.kind !== "item" && categoryKeys.length > 0 && (
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Item category">
+                    {["all", ...categoryKeys].map((c) => {
+                      const on = activeCategory === c;
+                      const label = c === "all" ? "All" : c === SPECIALS_KEY ? "⭐ Specials" : c;
+                      return (
+                        <Button
+                          key={c}
+                          type="button"
+                          size="sm"
+                          variant={on ? "default" : "outline"}
+                          aria-pressed={on}
+                          onClick={() => setCategory(c)}
+                          className="h-8 shrink-0 rounded-full px-3 text-xs capitalize"
+                        >
+                          {label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="grid grid-cols-3 gap-2">
                   {visibleMenu.map((m) => {
                     const qty = cart[m.id] || 0;

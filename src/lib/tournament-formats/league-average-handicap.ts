@@ -125,7 +125,7 @@ export async function loadLeagueAverageStandings(
   for (const a of (affs || []) as any[]) {
     if (a.active === false || !a.league_association_number) continue;
     const list = codesByMember.get(a.club_member_id) || [];
-    list.push(String(a.league_association_number).trim());
+    list.push(...nsaCodeVariants(String(a.league_association_number)));
     codesByMember.set(a.club_member_id, list);
   }
   const codes = Array.from(new Set(Array.from(codesByMember.values()).flat()));

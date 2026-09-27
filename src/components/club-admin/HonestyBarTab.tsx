@@ -30,7 +30,7 @@ import {
   useBarDivisions,
 } from "@/lib/bar-categories";
 import {
-  DEFAULT_TOTS_PER_BOTTLE, WEEKDAYS, formatStock, splitUnits, validitySummary,
+  DEFAULT_TOTS_PER_BOTTLE, WEEKDAYS, formatStock, splitUnits, validitySummary, unitsPerSale,
   type InventoryItem, type SpecialComponent,
 } from "@/lib/bar-inventory";
 import { CategoryManagerDialog } from "./bar/CategoryManagerDialog";
@@ -841,6 +841,16 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
               <Plus className="w-3.5 h-3.5 mr-1" />Add Item
             </Button>
           )}
+          {!adding && !editItem && (
+            <Button size="sm" onClick={() => {
+              resetForm();
+              setForm(p => ({ ...p, item_kind: "special" }));
+              setComponents([{ component_item_id: "", quantity: "1" }]);
+              setAdding(true);
+            }}>
+              <Plus className="w-3.5 h-3.5 mr-1" />Add Special / Bundle
+            </Button>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -884,11 +894,6 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
           </div>
         ))}
       </div>
-      {false && (<Dialog open={false}><DialogContent>
-
-          {itemForm}
-        </DialogContent>
-      </Dialog>
 
       {divisions.map(div => {
         const divItems = items.filter(i => (i.division || "bar") === div.key);

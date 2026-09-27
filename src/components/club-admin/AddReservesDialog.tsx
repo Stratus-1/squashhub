@@ -160,6 +160,22 @@ export function AddReservesDialog({
     if (picked.size === 0) { toast.error("Pick at least one member"); return; }
     setSaving(true);
     try {
+      if (perLeague) {
+        const start = Math.max(0, ...leagueReserves.map((r) => r.rank || 0));
+        const ids = eligible.filter((m: any) => picked.has(m.id)).map((m: any) => m.id);
+        const rows = ids.map((memberId: string, idx: number) => ({
+          club_id: clubId, association_id: associationId, season_id: seasonId ?? null,
+          member_id: memberId, rank: start + idx + 1,
+        }));
+        const { data, error } = await (supabase as any).from("league_reserve_players").insert(rows).select("id");
+        if (error) throw error;
+        if (!data?.length) throw new Error("Only club admins can change the reserve team.");
+        toast.success(`Added ${rows.length} to the reserve team`);
+        qc.invalidateQueries({ queryKey: reservesKey });
+        setPicked(new Set());
+        onOpenChange(false);
+        return;
+      }
       let reservesLeagueId = existingReservesLeague?.id ?? null;
 
       // Create the reserves league row on the fly if it doesn't exist
@@ -222,12 +238,16 @@ export function AddReservesDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-4 h-4" />
-            Add Reserve Players — {genderLabel} {leagueNumber}
+            {perLeague ? "Add to league reserve team" : `Add Reserve Players — ${genderLabel} ${leagueNumber}`}
           </DialogTitle>
           <DialogDescription>
-            Pick members to add as reserves. They go into the{" "}
-            <strong>{existingReservesLeague?.name ?? `${genderLabel} ${leagueNumber} Reserves`}</strong>{" "}
-            row{existingReservesLeague ? "" : " (will be created)"}. Members already in this league group are hidden.
+            {perLeague ? (
+              <>This league keeps <strong>one reserve team</strong> (set in Rules). Reserves are added in ladder order; change their rank in the Doubles pairs window.</>
+            ) : (
+              <>Pick members to add as reserves. They go into the{" "}
+              <strong>{existingReservesLeague?.name ?? `${genderLabel} ${leagueNumber} Reserves`}</strong>{" "}
+              row{existingReservesLeague ? "" : " (will be created)"}.</>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -241,8 +261,13 @@ export function AddReservesDialog({
               className="pl-7 h-8 text-sm"
             />
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            {eligible.length} eligible • {picked.size} selected
+          <p className="text-[11px] text-muted-foreground flex items-center gap-2">
+            <span>{all.length - blockedCount} eligible • {picked.size} selected</span>
+            {blockedCount > 0 && (
+              <button type="button" className="underline ml-auto" onClick={() => setShowBlocked((v) => !v)}>
+                {showBlocked ? "Hide" : "Show"} {blockedCount} not eligible
+              </button>
+            )}
           </p>
 
           <Card className="max-h-[40vh] overflow-y-auto p-1.5 space-y-0.5">

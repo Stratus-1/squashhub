@@ -2227,3 +2227,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - DB: `bar_consume_sale` skips deduction for made_to_order; `resolve_qr_short_code` QR menu includes made_to_order items at zero stock.
 - Frontend: `onMenu`/`formatStock` in src/lib/bar-inventory.ts; built-in `restaurant` category (🍔) in src/lib/bar-categories.ts; Add Item form gains "Made to order" kind and auto-selects it when category = Restaurant; admin list shows a "Made to order" badge instead of Out of stock.
 - Preview-only, unpublished.
+
+## 2026-09-28 — Bar menu: category shortcuts + specials visibility
+- HonestyBar.tsx: sticky horizontally-scrollable category chip row above the catalogue; each chip smooth-scrolls to its section (`bar-cat-<value>` anchors, scroll-mt-14).
+- Specials were hidden from the Buy menu: (1) `onMenu` required stock_qty > 0 — specials hold no stock, now exempt like made_to_order; (2) a special with equal valid_start_time/valid_end_time (e.g. 00:43–00:43) was never valid — equal times now mean "all day" in both `isValidNow` (bar-inventory.ts) and DB `bar_item_valid_now`; (3) `resolve_qr_short_code` QR menu now includes specials at zero stock. Verified at 384px: Specials section + chips render, chip tap scrolls to section.

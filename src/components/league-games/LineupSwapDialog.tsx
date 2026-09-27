@@ -454,6 +454,7 @@ export function LineupSwapDialog({
             </Button>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

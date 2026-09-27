@@ -54,6 +54,8 @@ export function DoublesPairsDialog({
   const [teamId, setTeamId] = useState<string>("");
   const [p1, setP1] = useState<string>("");
   const [p2, setP2] = useState<string>("");
+  // Pairs-list search: filter saved pairs by either player's name.
+  const [pairSearch, setPairSearch] = useState<string>("");
   // Pair currently being edited (replace one player) + the replacement choice.
   const [editPairId, setEditPairId] = useState<string | null>(null);
   const [editSlot, setEditSlot] = useState<"one" | "two">("one");

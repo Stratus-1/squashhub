@@ -936,7 +936,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
                 {g.list.map(item => {
                   const kind = item.item_kind || "stock";
                   const isLowStock = kind === "stock" && item.stock_qty > 0 && item.stock_qty <= item.low_stock_threshold;
-                  const isOutOfStock = item.stock_qty <= 0;
+                  const isOutOfStock = kind !== "made_to_order" && item.stock_qty <= 0;
                   return (
                     <div key={item.id} className="flex items-start sm:items-center gap-2 sm:gap-3 rounded-lg border p-2.5">
                       <div className="w-8 h-8 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
@@ -953,7 +953,9 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
                             : <span className="text-xs text-muted-foreground">Sold via options only</span>}
                           {item.cost_price > 0 && <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>}
                           {kindBadge(item)}
-                          {isOutOfStock ? (
+                          {kind === "made_to_order" ? (
+                            <Badge variant="outline" className="text-[10px]">Made to order</Badge>
+                          ) : isOutOfStock ? (
                             <Badge variant="destructive" className="text-[10px] gap-0.5"><AlertTriangle className="w-3 h-3" /> {kind === "stock" ? "Out" : "Unavailable"}</Badge>
                           ) : kind === "stock" ? (
                             <Badge variant={isLowStock ? "secondary" : "outline"} className="text-[10px]">

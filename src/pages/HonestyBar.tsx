@@ -249,11 +249,19 @@ export default function HonestyBar() {
 
 
 
-  const inStock = items.filter(i => i.stock_qty > 0);
-  const groupedByCategory = CATEGORIES.map(cat => ({
+  const { data: customCategories = [] } = useBarCategories(clubId);
+  const inStock = items.filter(i => i.stock_qty > 0 && (i.division || "bar") === division);
+  const divisionCategories = categoriesForDivision(customCategories, division);
+  const groupedByCategory = divisionCategories.map(cat => ({
     ...cat,
     items: inStock.filter(i => i.category === cat.value),
   })).filter(g => g.items.length > 0);
+  // Items whose category isn't in the current list (legacy values) still show, under their own heading.
+  const knownValues = new Set(divisionCategories.map(c => c.value));
+  const uncategorised = inStock.filter(i => !knownValues.has(i.category));
+  if (uncategorised.length > 0) {
+    groupedByCategory.push({ value: "_legacy", label: "Other items", division, items: uncategorised });
+  }
 
   if (!clubId || !club?.honesty_bar_enabled) {
     return (

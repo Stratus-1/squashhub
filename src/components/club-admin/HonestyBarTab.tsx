@@ -584,11 +584,32 @@ function ItemManager({ clubId, items, loading, onQrLabels }: { clubId: string; i
           />
         </div>
         <div>
+          <Label className="text-xs">Division</Label>
+          <Select
+            value={form.division}
+            onValueChange={v => {
+              const div = v as BarDivision;
+              setForm(p => {
+                const cats = categoriesForDivision(customCategories, div);
+                const stillValid = cats.some(c => c.value === p.category);
+                return { ...p, division: div, category: stillValid ? p.category : cats[0]?.value || "other" };
+              });
+            }}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {BAR_DIVISIONS.map(d => (
+                <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
           <Label className="text-xs">Category</Label>
           <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {CATEGORIES.map(c => (
+              {formCategories.map(c => (
                 <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
               ))}
             </SelectContent>

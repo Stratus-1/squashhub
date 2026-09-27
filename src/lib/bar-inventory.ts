@@ -13,7 +13,7 @@
  * for display and for client-side menu filtering.
  */
 
-export type BarItemKind = "stock" | "option" | "special";
+export type BarItemKind = "stock" | "option" | "special" | "made_to_order";
 export type StockMeasure = "count" | "bottle" | "volume";
 
 export interface InventoryItem {
@@ -139,6 +139,7 @@ export function servingMlFromPerLitre(servingsPerLitre: number): number {
 /** Human stock label: "2.50 bottles (2 + 14/28 tots)", "5.50 L" or "24". */
 export function formatStock(i: InventoryItem): string {
   const y = Math.max(1, i.unit_yield || 1);
+  if (kindOf(i) === "made_to_order") return "Made to order";
   if (kindOf(i) !== "stock") return String(i.stock_qty ?? 0);
   const units = i.stock_units ?? 0;
   const m = measureOf(i);
@@ -190,7 +191,9 @@ export function isValidNow(i: InventoryItem, at: Date = new Date()): boolean {
 
 /** Should the item appear as sellable on a POS menu right now? */
 export function onMenu(i: InventoryItem, at: Date = new Date()): boolean {
-  return (i.active ?? true) && (i.sellable ?? true) && !i.archived_at && isValidNow(i, at) && (i.stock_qty ?? 0) > 0;
+  // Made-to-order food holds no stock — it is always on the menu.
+  const hasStock = kindOf(i) === "made_to_order" || (i.stock_qty ?? 0) > 0;
+  return (i.active ?? true) && (i.sellable ?? true) && !i.archived_at && isValidNow(i, at) && hasStock;
 }
 
 /** Validity summary for admin lists, e.g. "Fri 17:00–23:59". */

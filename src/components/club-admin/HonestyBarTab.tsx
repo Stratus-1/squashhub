@@ -52,7 +52,7 @@ interface BarItem {
   low_stock_threshold: number;
   cost_price: number;
   barcode?: string | null;
-  item_kind?: "stock" | "option" | "special" | null;
+  item_kind?: "stock" | "option" | "special" | "made_to_order" | null;
   stock_parent_id?: string | null;
   consume_units?: number | null;
   unit_yield?: number | null;
@@ -409,7 +409,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
 
 
 /* ─── Item Manager: products, variants, selling options, specials ─── */
-type ItemKind = "stock" | "option" | "special";
+type ItemKind = "stock" | "option" | "special" | "made_to_order";
 interface ComponentLine { component_item_id: string; quantity: string }
 
 const emptyForm = (division = "bar", category = "") => ({
@@ -497,7 +497,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
       });
     } else if (form.item_kind === "option") {
       Object.assign(base, { stock_parent_id: form.stock_parent_id || null, consume_units: Math.max(1, parseInt(form.consume_units) || 1) });
-    } else {
+    } else if (form.item_kind === "special") {
       Object.assign(base, {
         valid_from: form.valid_from || null, valid_to: form.valid_to || null,
         valid_days: form.valid_days.length ? form.valid_days : null,
@@ -610,6 +610,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
             <SelectItem value="stock">Product — holds stock (beer, Buddy, balls, shoes, a spirit bottle)</SelectItem>
             <SelectItem value="option">Selling option — sold from a product's stock (Single / Double tot)</SelectItem>
             <SelectItem value="special">Special / combo — a bundle of products at one price</SelectItem>
+            <SelectItem value="made_to_order">Made to order — food you prepare (burgers, chips); no stock levels</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -636,7 +637,11 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
         </div>
         <div>
           <Label className="text-xs">Category</Label>
-          <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
+          <Select value={form.category} onValueChange={v => setForm(p => ({
+            ...p, category: v,
+            // Restaurant food is prepared to order — default to the no-stock kind.
+            item_kind: !editItem && v === "restaurant" ? "made_to_order" : p.item_kind,
+          }))}>
             <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
             <SelectContent>{formCategories.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
           </Select>
@@ -931,7 +936,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
                 {g.list.map(item => {
                   const kind = item.item_kind || "stock";
                   const isLowStock = kind === "stock" && item.stock_qty > 0 && item.stock_qty <= item.low_stock_threshold;
-                  const isOutOfStock = item.stock_qty <= 0;
+                  const isOutOfStock = kind !== "made_to_order" && item.stock_qty <= 0;
                   return (
                     <div key={item.id} className="flex items-start sm:items-center gap-2 sm:gap-3 rounded-lg border p-2.5">
                       <div className="w-8 h-8 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
@@ -948,7 +953,9 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
                             : <span className="text-xs text-muted-foreground">Sold via options only</span>}
                           {item.cost_price > 0 && <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>}
                           {kindBadge(item)}
-                          {isOutOfStock ? (
+                          {kind === "made_to_order" ? (
+                            <Badge variant="outline" className="text-[10px]">Made to order</Badge>
+                          ) : isOutOfStock ? (
                             <Badge variant="destructive" className="text-[10px] gap-0.5"><AlertTriangle className="w-3 h-3" /> {kind === "stock" ? "Out" : "Unavailable"}</Badge>
                           ) : kind === "stock" ? (
                             <Badge variant={isLowStock ? "secondary" : "outline"} className="text-[10px]">

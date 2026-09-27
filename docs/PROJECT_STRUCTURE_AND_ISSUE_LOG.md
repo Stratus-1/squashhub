@@ -2221,3 +2221,9 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - `HonestyBarTab.tsx`: `componentChoices` and `stockItems` now filter to items in the same division as the special being built (Spirits/Bar → bar items only; shop items excluded). `stockItems` is only used by the option "Sells from product" picker, so bar options can no longer attach to shop stock either.
 - New `src/components/club-admin/bar/ComponentPicker.tsx`: cmdk Popover+Command searchable combobox, type-to-filter, grouped by category with emoji + label; replaces the native Select in the components row (249 items were unusable on mobile).
 - Verified in preview at 384px: no shop items in the list, "klip" filters to Klipdrift/KWV options, selecting "Klipdrift Premium · Single" shows the tot hint; build OK. Preview-only, unpublished.
+
+## 2026-09-28 — Made-to-order bar items (Restaurant category)
+- New item_kind `made_to_order` for food prepared to order (burgers etc.): no stock levels, always on the menu, sales deduct no stock.
+- DB: `bar_consume_sale` skips deduction for made_to_order; `resolve_qr_short_code` QR menu includes made_to_order items at zero stock.
+- Frontend: `onMenu`/`formatStock` in src/lib/bar-inventory.ts; built-in `restaurant` category (🍔) in src/lib/bar-categories.ts; Add Item form gains "Made to order" kind and auto-selects it when category = Restaurant; admin list shows a "Made to order" badge instead of Out of stock.
+- Preview-only, unpublished.

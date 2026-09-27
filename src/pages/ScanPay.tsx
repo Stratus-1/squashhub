@@ -143,7 +143,26 @@ export default function ScanPay() {
     return keys.length ? keys.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)) : ["bar", "shop"];
   }, [menu]);
   const activeDivision = menuDivisions.includes(division) ? division : menuDivisions[0];
-  const visibleMenu = data?.kind === "item" ? menu : menu.filter((item) => (item.division || "bar") === activeDivision);
+  const divisionMenu = useMemo(
+    () => (data?.kind === "item" ? menu : menu.filter((item) => (item.division || "bar") === activeDivision)),
+    [data?.kind, menu, activeDivision],
+  );
+
+  // Category pills for the chosen division. Time-limited combo specials always
+  // sit in their own pill so a deal is never hidden inside a drinks category.
+  const categoryKeys = useMemo(() => {
+    const hasSpecials = divisionMenu.some((m) => m.item_kind === "special");
+    const rest = Array.from(
+      new Set(divisionMenu.filter((m) => m.item_kind !== "special").map((m) => (m.category || "").trim()).filter(Boolean)),
+    ).sort((a, b) => a.localeCompare(b));
+    return [...(hasSpecials ? [SPECIALS_KEY] : []), ...rest];
+  }, [divisionMenu]);
+  const activeCategory = category !== "all" && !categoryKeys.includes(category) ? "all" : category;
+  const visibleMenu = useMemo(() => {
+    if (activeCategory === "all") return divisionMenu;
+    if (activeCategory === SPECIALS_KEY) return divisionMenu.filter((m) => m.item_kind === "special");
+    return divisionMenu.filter((m) => m.item_kind !== "special" && (m.category || "").trim() === activeCategory);
+  }, [divisionMenu, activeCategory]);
 
   const cartLines = useMemo(
     () =>

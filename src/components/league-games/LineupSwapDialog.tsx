@@ -329,16 +329,53 @@ export function LineupSwapDialog({
             {pending ? "Confirm replacement" : `Swap player · ${teamCode} · ${side === "home" ? "Home" : "Visitors"} #${position}`}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Currently: <span className="font-medium text-foreground">{currentName || "—"}</span>
-            {currentCode && <span className="text-muted-foreground"> ({currentCode})</span>}
-            <span className="block text-[10px] text-muted-foreground mt-1">
-              {allowMultiFixturePerNight
-                ? "Reserves and players from other teams in this league."
-                : "Reserves for this league and players from teams on a bye this week."}
-            </span>
+            {pending ? (
+              <>
+                Replace <span className="font-medium text-foreground">{currentName || "this player"}</span>
+                {" "}with <span className="font-medium text-foreground">{pending.name}</span>
+                {pending.code && <span className="text-muted-foreground"> ({pending.code})</span>}?
+              </>
+            ) : (
+              <>
+                Replacing: <span className="font-medium text-foreground">{currentName || "—"}</span>
+                {currentCode && <span className="text-muted-foreground"> ({currentCode})</span>}
+                <span className="block text-[10px] text-muted-foreground mt-1">
+                  Who should replace them?{" "}
+                  {allowMultiFixturePerNight
+                    ? "Pick from reserves and players from other teams in this league."
+                    : "Pick from reserves and players from teams on a bye this week."}
+                </span>
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
+        {pending ? (
+          <div className="space-y-2">
+            <div className="border rounded-md p-3 text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Out</span>
+                <span className="font-medium">{currentName || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">In</span>
+                <span className="font-medium">
+                  {pending.name}
+                  {pending.reserve && <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1.5">Reserve</Badge>}
+                  {pending.byeFrom && <Badge variant="secondary" className="text-[9px] px-1 py-0 ml-1.5">Bye · {pending.byeFrom}</Badge>}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => setPending(null)}>
+                Back
+              </Button>
+              <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => { onSelect(pending); setPending(null); }}>
+                Replace player
+              </Button>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-2">
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />

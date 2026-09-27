@@ -23,6 +23,7 @@ import {
 import { Pencil, Trash2, Users } from "lucide-react";
 import { validatePairComposition, type CompetitionCategory } from "@/lib/leagues/category";
 import { pairDisplayName } from "@/lib/leagues/format";
+import { useAssociationRules } from "@/hooks/use-association-rules";
 
 /**
  * Pair management for Doubles / Hybrid leagues.
@@ -587,6 +588,36 @@ export function DoublesPairsDialog({
               <p className="text-xs text-muted-foreground">No pairs match "{pairSearch.trim()}".</p>
             )}
           </div>
+          {perLeagueReserves && (
+            <div className="rounded-md border border-border p-2 space-y-2">
+              <Label className="text-xs">Reserve team (whole league)</Label>
+              <p className="text-[11px] text-muted-foreground">Each reserve plays at their rank (pair 1, 2, 3...).</p>
+              <div className="flex gap-2">
+                <Select value={resMember} onValueChange={setResMember}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Player" /></SelectTrigger>
+                  <SelectContent>
+                    {roster.filter((r) => !reserveIds.has(r.id)).map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={resRank} onValueChange={setResRank}>
+                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6].map((n) => <SelectItem key={n} value={String(n)}>Rank {n}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" disabled={!resMember || addReserve.isPending} onClick={() => addReserve.mutate()}>Add</Button>
+              </div>
+              {reserves.map((r) => (
+                <div key={r.id} className="flex items-center justify-between text-sm">
+                  <span><Badge variant="outline" className="h-5 text-[10px] mr-2">Rank {r.rank}</Badge>{nameOf(r.member_id)}</span>
+                  <Button size="icon" variant="ghost" aria-label="Remove reserve" onClick={() => removeReserve.mutate(r.id)}><Trash2 className="w-4 h-4" /></Button>
+                </div>
+              ))}
+              {!reserves.length && <p className="text-xs text-muted-foreground">No reserves yet.</p>}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

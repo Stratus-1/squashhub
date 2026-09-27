@@ -2185,4 +2185,4 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Verified in preview on CSIR (bar capability temporarily enabled, then reverted): POS toggle switches Bar/Shop; category dialog added and deleted "Cool drinks"; Add-item form switches category list to Rackets/Clothing/Footwear/Accessories when Division = Shop. tsgo + build clean. Preview-only; not published.
 
 ## 2026-09-27 — Bar screen showed two “Shop” choices
-- The top tab was the whole buying view while the lower switch selected shop products, so both could say “Shop” and an empty catalogue looked broken. Renamed the top tab “Buy items”, retained Bar/Shop for product divisions, and added an explicit empty message for each division. No sales or category logic changed.
+- The top tab was the whole buying view while the lower switch selected shop products, so both could say “Shop” and an empty catalogue looked broken. Renamed the top tab “Buy”, labelled the product divisions “Bar items” and “Shop items”, and added an explicit empty message for each division. No sales or category logic changed.

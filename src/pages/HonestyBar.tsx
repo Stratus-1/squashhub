@@ -336,7 +336,7 @@ export default function HonestyBar() {
           <TabsList className="w-full grid" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>
             <TabsTrigger value="shop" className="gap-1 text-xs">
               <ShoppingCart className="w-3.5 h-3.5" />
-              Buy items
+              Buy
             </TabsTrigger>
             <TabsTrigger value="my-tab" className="gap-1 text-xs">
               <User className="w-3.5 h-3.5" />
@@ -365,7 +365,7 @@ export default function HonestyBar() {
                   }`}
                 >
                   {d === "bar" ? <Beer className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
-                  {d === "bar" ? "Bar" : "Shop"}
+                  {d === "bar" ? "Bar items" : "Shop items"}
                 </Button>
               ))}
             </div>

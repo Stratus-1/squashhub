@@ -368,8 +368,17 @@ export function DoublesPairsDialog({
             {create.isPending ? "Adding..." : "Add pair"}
           </Button>
 
+          {pairs.length > 0 && (
+            <Input
+              value={pairSearch}
+              onChange={(e) => setPairSearch(e.target.value)}
+              placeholder="Search pairs by player name…"
+              className="h-8 text-sm"
+            />
+          )}
+
           <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-            {pairs.map((pair, i) => {
+            {filteredPairs.map((pair, i) => {
               const editing = editPairId === pair.id;
               // Replacement candidates: anyone not already paired, plus the two
               // current players of this pair (so the list is never empty).

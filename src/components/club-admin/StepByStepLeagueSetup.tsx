@@ -530,6 +530,8 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
       }
 
 
+      // Edit mode with players/pairs already saved: keep them untouched.
+      if (!keepSavedRoster) {
       // Wipe any existing registrations on these league rows, then insert fresh
       const allLeagueIds = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];
       for (const lid of allLeagueIds) {

@@ -3,6 +3,7 @@ import {
   computeLeagueStandings,
   leagueAverageHandicap,
   leagueSizes,
+  leaguePositionLabel,
   type LeagueStanding,
 } from "@/lib/tournament-formats/league-average-handicap";
 
@@ -52,6 +53,9 @@ describe("league average handicap", () => {
     const willem: LeagueStanding | undefined = standings.get("W");
     expect(marius).toMatchObject({ division: 6, avgPosition: 3.1, rubbers: 10 });
     expect(willem).toMatchObject({ division: 7, avgPosition: 4, rubbers: 5 });
+    if (!marius || !willem) throw new Error("Expected both regional league standings");
+    expect(leaguePositionLabel(marius)).toBe("6th League · avg 3.1 (10 games) · index 23.1 · Mens");
+    expect(leaguePositionLabel(willem)).toBe("7th League · avg 4.0 (5 games) · index 28.0 · Mens");
     expect(leagueAverageHandicap(marius?.index, willem?.index)).toEqual({ handicap_a: -5, handicap_b: 0 });
   });
 });

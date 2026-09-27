@@ -34,6 +34,12 @@ export function leagueOrdinal(label: string | null | undefined): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
+export function leaguePositionLabel(standing: LeagueStanding): string {
+  const n = standing.division;
+  const suffix = n % 100 >= 11 && n % 100 <= 13 ? "th" : n % 10 === 1 ? "st" : n % 10 === 2 ? "nd" : n % 10 === 3 ? "rd" : "th";
+  return `${n}${suffix} League · avg ${standing.avgPosition.toFixed(1)} (${standing.rubbers} games) · index ${standing.index.toFixed(1)}${standing.category ? ` · ${standing.category}` : ""}`;
+}
+
 /** rubbers per league, keyed `${category}|${division}` */
 export function leagueSizes(rows: RubberRow[]): Map<string, number> {
   const out = new Map<string, number>();

@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { fromExt } from "@/lib/supabase-ext";
-import { loadLeagueAverageScores, loadLeagueAverageStandings } from "@/lib/tournament-formats/league-average-handicap";
+import { leaguePositionLabel, loadLeagueAverageScores, loadLeagueAverageStandings } from "@/lib/tournament-formats/league-average-handicap";
 import { supabase } from "@/integrations/supabase/client";
 import { buildInviteTestUrl, buildInviteUrl } from "@/lib/tournaments/invite-link";
 import {
@@ -12978,7 +12978,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                            const standing = handicapStandings?.get(p.id);
                                            return <span className="block text-[11px] leading-snug font-normal text-muted-foreground">
                                              {standing
-                                               ? `${standing.division}th League · avg ${standing.avgPosition.toFixed(1)} (${standing.rubbers} games) · index ${standing.index.toFixed(1)}${standing.category ? ` · ${standing.category}` : ""}`
+                                               ? leaguePositionLabel(standing)
                                                : handicapStandingsLoading ? "Loading regional league average…" : handicapStandingsError ? "Regional league average unavailable" : "No regional league results this season"}
                                            </span>;
                                          })()}
@@ -13078,7 +13078,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                  const standing = handicapStandings?.get(p.id);
                                  return <span className="block text-[11px] leading-snug font-normal text-muted-foreground">
                                    {standing
-                                     ? `${standing.division}th League · avg ${standing.avgPosition.toFixed(1)} (${standing.rubbers} games) · index ${standing.index.toFixed(1)}${standing.category ? ` · ${standing.category}` : ""}`
+                                     ? leaguePositionLabel(standing)
                                      : handicapStandingsLoading ? "Loading regional league average…" : handicapStandingsError ? "Regional league average unavailable" : "No regional league results this season"}
                                  </span>;
                                })()}

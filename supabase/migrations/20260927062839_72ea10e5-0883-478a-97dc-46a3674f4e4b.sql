@@ -1,0 +1,2 @@
+ALTER TABLE public.tournament_rules DROP CONSTRAINT tr_handicap_mode_check;
+ALTER TABLE public.tournament_rules ADD CONSTRAINT tr_handicap_mode_check CHECK (handicap_mode IN ('none','league_rank','group_order','club_ladder','ladder_history','league_average'));

@@ -7508,10 +7508,38 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
 
 
+  /**
+   * Regional/national tournaments: players from other clubs are placed by their
+   * regional league (e.g. NSA) playing record, not by the host club's teams.
+   * Anyone with league results this season has a known league + average position.
+   */
+  const participatingMemberIdsKey = useMemo(
+    () =>
+      filterParticipatingEntrants(inviteeRows as any[], { paymentRequired: paymentRequired && entryFeeAmount > 0 })
+        .map((r: any) => r.club_member_id)
+        .filter(Boolean)
+        .sort()
+        .join(","),
+    [inviteeRows, paymentRequired, entryFeeAmount],
+  );
+  const { data: regionalLeagueMemberIds = new Set<string>() } = useQuery({
+    queryKey: ["regional-league-standing-members", participatingMemberIdsKey],
+    enabled: scopeIsWide && participatingMemberIdsKey.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const scores = await loadLeagueAverageScores(participatingMemberIdsKey.split(","));
+      return new Set<string>(scores.keys());
+    },
+  });
+
   /** Accepted entrants who belong to no source league — need a division by hand. */
   const acceptedNeedingDivision = useMemo(() => {
     const inAnyLeague = new Set<string>();
     registrationsByLeague.forEach((ids) => ids.forEach((id) => inAnyLeague.add(id)));
+    if (scopeIsWide) {
+      (scopeLeagueMembersByLeague as Map<string, string[]>).forEach((ids) => ids.forEach((id) => inAnyLeague.add(id)));
+      (regionalLeagueMemberIds as Set<string>).forEach((id) => inAnyLeague.add(id));
+    }
     return filterParticipatingEntrants(inviteeRows as any[], {
       paymentRequired: paymentRequired && entryFeeAmount > 0,
     })

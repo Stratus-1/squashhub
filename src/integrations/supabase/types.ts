@@ -1075,6 +1075,7 @@ export type Database = {
           product_group: string | null
           sellable: boolean
           sort_order: number
+          stock_measure: string
           stock_parent_id: string | null
           stock_qty: number
           stock_unit_label: string | null
@@ -1108,6 +1109,7 @@ export type Database = {
           product_group?: string | null
           sellable?: boolean
           sort_order?: number
+          stock_measure?: string
           stock_parent_id?: string | null
           stock_qty?: number
           stock_unit_label?: string | null
@@ -1141,6 +1143,7 @@ export type Database = {
           product_group?: string | null
           sellable?: boolean
           sort_order?: number
+          stock_measure?: string
           stock_parent_id?: string | null
           stock_qty?: number
           stock_unit_label?: string | null
@@ -1292,6 +1295,7 @@ export type Database = {
           payment_method: string
           purchased_by: string | null
           quantity: number
+          quantity_units: number | null
           supplier: string | null
           supplier_note: string | null
           total_cost: number
@@ -1307,6 +1311,7 @@ export type Database = {
           payment_method?: string
           purchased_by?: string | null
           quantity: number
+          quantity_units?: number | null
           supplier?: string | null
           supplier_note?: string | null
           total_cost?: number
@@ -1322,6 +1327,7 @@ export type Database = {
           payment_method?: string
           purchased_by?: string | null
           quantity?: number
+          quantity_units?: number | null
           supplier?: string | null
           supplier_note?: string | null
           total_cost?: number

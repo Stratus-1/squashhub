@@ -3868,6 +3868,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     () => allSelectablePlayers.filter((m: any) => selectedPlayerIds.has(m.id)),
     [allSelectablePlayers, selectedPlayerIds]
   );
+  const handicapMemberIdsKey = useMemo(
+    () => selectedPlayers.map((p: any) => String(p.id)).filter((id) => !id.startsWith("visitor-")).sort().join(","),
+    [selectedPlayers],
+  );
+  const handicapSeason = new Date().getFullYear();
+  const { data: handicapStandings, isLoading: handicapStandingsLoading, isError: handicapStandingsError } = useQuery({
+    queryKey: ["tournament-league-average-standings", handicapMemberIdsKey, handicapSeason],
+    enabled: showWizard && !isDoubles && handicapMode === "league_average" && !!handicapMemberIdsKey,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => loadLeagueAverageStandings(handicapMemberIdsKey.split(","), handicapSeason),
+  });
 
   /**
    * Keep league allocations seeded automatically.
@@ -4094,14 +4105,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         g[extra].push(p);
       });
     });
-    // Seed order per division: the chosen seeding source (club ladder by
-    // default; club rating / regional / national ranking when selected),
-    // unranked last, unless the organiser deliberately reordered by hand.
+    // League-average handicap uses the same regional index displayed next to
+    // each entrant and used to calculate their starting points. Never fall
+    // back to the host club ladder for a player without regional results.
+    // Deliberate organiser reordering and later-stage progression still win.
     const sorted = g.map((list, gi) =>
       sortDivisionEntrants(list as any, {
         manual: manualSeedGroups.has(gi),
         manualOrder: playerOrder,
-        rankOf: seedRankOf,
+        rankOf: handicapMode === "league_average"
+          ? (p) => handicapStandings?.get(p.id)?.index ?? null
+          : seedRankOf,
       }) as ClubMember[],
     );
     // Staged events (Diamond League): a division played AFTER another is not
@@ -4120,7 +4134,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       );
     }
     return sorted;
-  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor, seedRankOf]);
+  }, [isDoubles, selectedPlayers, doublesPairs, numGroups, groupAssignments, extraDivisions, pairGroupAssignments, playerOrder, pairOrder, manualSeedGroups, divisionFollows, seedSourceFor, seedRankOf, handicapMode, handicapStandings]);
 
   /**
    * Staged events field the SAME players again in the next stage, so every
@@ -7523,17 +7537,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         .join(","),
     [inviteeRows, paymentRequired, entryFeeAmount],
   );
-  const handicapMemberIdsKey = useMemo(
-    () => selectedPlayers.map((p: any) => String(p.id)).filter((id) => !id.startsWith("visitor-")).sort().join(","),
-    [selectedPlayers],
-  );
-  const handicapSeason = new Date().getFullYear();
-  const { data: handicapStandings, isLoading: handicapStandingsLoading, isError: handicapStandingsError } = useQuery({
-    queryKey: ["tournament-league-average-standings", handicapMemberIdsKey, handicapSeason],
-    enabled: showWizard && !isDoubles && handicapMode === "league_average" && !!handicapMemberIdsKey,
-    staleTime: 5 * 60 * 1000,
-    queryFn: () => loadLeagueAverageStandings(handicapMemberIdsKey.split(","), handicapSeason),
-  });
   const { data: regionalLeagueMemberIds = new Set<string>() } = useQuery({
     queryKey: ["regional-league-standing-members", participatingMemberIdsKey],
     enabled: scopeIsWide && participatingMemberIdsKey.length > 0,

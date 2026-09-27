@@ -804,7 +804,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
         <ImageField value={form.image_url} onChange={(url) => setForm(p => ({ ...p, image_url: url }))} clubId={clubId} itemName={form.name} category={form.category} />
       </div>
       <div className="flex gap-2">
-        <Button size="sm" onClick={handleSave}>{editItem ? "Save Changes" : "Add Item"}</Button>
+        <Button size="sm" onClick={handleSave}>{editItem ? "Save Changes" : form.item_kind === "special" ? "Create special" : "Add Item"}</Button>
         <Button size="sm" variant="outline" onClick={() => { setAdding(false); setEditItem(null); resetForm(); }}>Cancel</Button>
       </div>
       <ProductScanDialog open={barcodeScanOpen} onOpenChange={setBarcodeScanOpen} items={liveItems} onItem={() => {}}

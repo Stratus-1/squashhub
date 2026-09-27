@@ -774,10 +774,14 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
           {components.map((c, idx) => (
             <div key={idx} className="space-y-0.5">
             <div className="grid grid-cols-[1fr_70px_32px] gap-2">
-              <Select value={c.component_item_id} onValueChange={v => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, component_item_id: v } : x))}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Product or option" /></SelectTrigger>
-                <SelectContent>{componentChoices.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}</SelectContent>
-              </Select>
+              <ComponentPicker
+                items={componentChoices}
+                value={c.component_item_id}
+                onChange={v => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, component_item_id: v } : x))}
+                placeholder="Product or option"
+                categoryLabel={v => categoryLabel(customCategories, v)}
+                categoryEmoji={v => BAR_CATEGORY_EMOJI[v || ""] || "📦"}
+              />
               <Input type="number" min={1} className="h-8 text-xs" aria-label="Quantity per sale" value={c.quantity} onChange={e => setComponents(prev => prev.map((x, i) => i === idx ? { ...x, quantity: e.target.value } : x))} />
               <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Remove component" onClick={() => setComponents(prev => prev.filter((_, i) => i !== idx))}><X className="w-3 h-3" /></Button>
             </div>

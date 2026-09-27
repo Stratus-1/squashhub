@@ -530,9 +530,10 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
       }
 
 
+      // Edit mode with players/pairs already saved: keep them untouched.
       // Wipe any existing registrations on these league rows, then insert fresh
       const allLeagueIds = [...createdLeagueIds, ...(reservesLeagueId ? [reservesLeagueId] : [])];
-      for (const lid of allLeagueIds) {
+      for (const lid of keepSavedRoster ? [] : allLeagueIds) {
         await fromExt("member_league_registrations").delete().eq("league_id", lid);
       }
 
@@ -563,13 +564,13 @@ export function StepByStepLeagueSetup({ clubId, open, onOpenChange, editContext 
           });
         });
       }
-      if (inserts.length > 0) {
+      if (!keepSavedRoster && inserts.length > 0) {
         const { error } = await fromExt("member_league_registrations").insert(inserts);
         if (error) throw error;
       }
 
       // Doubles / Hybrid: persist the allocated pairs as REAL member pairs.
-      if (effectivePairsPerTeam > 0) {
+      if (!keepSavedRoster && effectivePairsPerTeam > 0) {
         const pairRows: any[] = [];
         allocation.teams.forEach((team, i) => {
           (team.pairs || []).forEach(([a, b], idx) => {

@@ -104,16 +104,17 @@ export function leagueAverageHandicap(
   return a < b ? { handicap_a: -diff, handicap_b: 0 } : { handicap_a: 0, handicap_b: -diff };
 }
 
-/** member id → ladder index, from their active league number(s). */
-export async function loadLeagueAverageScores(
+/** Member's regional standing and the exact index used for handicap scoring. */
+export async function loadLeagueAverageStandings(
   memberIds: string[],
   seasonYear = new Date().getFullYear(),
-): Promise<Map<string, number>> {
-  const out = new Map<string, number>();
+): Promise<Map<string, LeagueStanding>> {
+  const out = new Map<string, LeagueStanding>();
   if (memberIds.length === 0) return out;
-  const { data: affs } = await fromExt("member_association_affiliations")
+  const { data: affs, error: affError } = await fromExt("member_association_affiliations")
     .select("club_member_id, league_association_number, active")
     .in("club_member_id", memberIds);
+  if (affError) throw affError;
   const codesByMember = new Map<string, string[]>();
   for (const a of (affs || []) as any[]) {
     if (a.active === false || !a.league_association_number) continue;
@@ -124,31 +125,42 @@ export async function loadLeagueAverageScores(
   const codes = Array.from(new Set(Array.from(codesByMember.values()).flat()));
   if (codes.length === 0) return out;
 
-  const { data: mine } = await fromExt("nsa_rubber_history")
+  const { data: mine, error: mineError } = await fromExt("nsa_rubber_history")
     .select("player_code, league_label, category, position")
     .eq("season_year", seasonYear)
     .in("player_code", codes);
+  if (mineError) throw mineError;
   const rows = (mine || []) as RubberRow[];
   if (rows.length === 0) return out;
 
   // League sizes from the whole season (all players), per category.
   const cats = Array.from(new Set(rows.map((r) => r.category).filter(Boolean))) as string[];
-  const { data: all } = await fromExt("nsa_rubber_history")
+  const { data: all, error: allError } = await fromExt("nsa_rubber_history")
     .select("league_label, category, position")
     .eq("season_year", seasonYear)
     .in("category", cats)
     .gte("position", 3)
     .limit(20000);
+  if (allError) throw allError;
   const sizes = leagueSizes([...(all || []) as RubberRow[], ...rows]);
   const standings = computeLeagueStandings(rows, sizes);
 
   codesByMember.forEach((list, memberId) => {
-    let best: number | null = null;
+    let best: LeagueStanding | null = null;
     for (const c of list) {
       const s = standings.get(c);
-      if (s && (best == null || s.index < best)) best = s.index;
+      if (s && (best == null || s.index < best.index)) best = s;
     }
-    if (best != null) out.set(memberId, best);
+    if (best) out.set(memberId, best);
   });
   return out;
+}
+
+/** Fixture handicap and the allocation display share one source of truth. */
+export async function loadLeagueAverageScores(
+  memberIds: string[],
+  seasonYear = new Date().getFullYear(),
+): Promise<Map<string, number>> {
+  const standings = await loadLeagueAverageStandings(memberIds, seasonYear);
+  return new Map(Array.from(standings, ([id, standing]) => [id, standing.index]));
 }

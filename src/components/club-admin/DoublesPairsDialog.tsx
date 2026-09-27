@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -54,6 +55,8 @@ export function DoublesPairsDialog({
   const [teamId, setTeamId] = useState<string>("");
   const [p1, setP1] = useState<string>("");
   const [p2, setP2] = useState<string>("");
+  // Pairs-list search: filter saved pairs by either player's name.
+  const [pairSearch, setPairSearch] = useState<string>("");
   // Pair currently being edited (replace one player) + the replacement choice.
   const [editPairId, setEditPairId] = useState<string | null>(null);
   const [editSlot, setEditSlot] = useState<"one" | "two">("one");
@@ -144,6 +147,19 @@ export function DoublesPairsDialog({
     const m = new Map(roster.map((r) => [r.id, r.name] as const));
     return (id: string) => m.get(id) ?? "Unknown";
   }, [roster]);
+
+  // Pairs filtered by the search box: match either player's name (or pair
+  // number) so admins can find a pair quickly in long team lists.
+  const filteredPairs = useMemo(() => {
+    const q = pairSearch.trim().toLowerCase();
+    if (!q) return pairs;
+    return (pairs as any[]).filter((pair) => {
+      const one = nameOf(pair.player_one_member_id).toLowerCase();
+      const two = nameOf(pair.player_two_member_id).toLowerCase();
+      return one.includes(q) || two.includes(q) || `pair ${pair.pair_order ?? ""}`.includes(q);
+    });
+  }, [pairs, pairSearch, nameOf]);
+
 
   // A player may only appear in ONE active pair per team/season. Anyone
   // already paired is removed from the dropdowns and blocked again in the
@@ -275,6 +291,8 @@ export function DoublesPairsDialog({
                 setTeamId(value);
                 setP1("");
                 setP2("");
+                setPairSearch("");
+                setEditPairId(null);
               }}
               disabled={teamsLoading || teams.length === 0}
             >
@@ -352,8 +370,17 @@ export function DoublesPairsDialog({
             {create.isPending ? "Adding..." : "Add pair"}
           </Button>
 
+          {pairs.length > 0 && (
+            <Input
+              value={pairSearch}
+              onChange={(e) => setPairSearch(e.target.value)}
+              placeholder="Search pairs by player name…"
+              className="h-8 text-sm"
+            />
+          )}
+
           <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-            {pairs.map((pair, i) => {
+            {filteredPairs.map((pair, i) => {
               const editing = editPairId === pair.id;
               // Replacement candidates: anyone not already paired, plus the two
               // current players of this pair (so the list is never empty).
@@ -438,6 +465,9 @@ export function DoublesPairsDialog({
             })}
             {!pairs.length && (
               <p className="text-xs text-muted-foreground">No pairs yet for this team.</p>
+            )}
+            {pairs.length > 0 && !filteredPairs.length && (
+              <p className="text-xs text-muted-foreground">No pairs match "{pairSearch.trim()}".</p>
             )}
           </div>
         </div>

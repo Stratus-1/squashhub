@@ -1059,6 +1059,7 @@ export type Database = {
         Row: {
           active: boolean
           archived_at: string | null
+          avg_unit_cost: number | null
           barcode: string | null
           category: string
           club_id: string
@@ -1093,6 +1094,7 @@ export type Database = {
         Insert: {
           active?: boolean
           archived_at?: string | null
+          avg_unit_cost?: number | null
           barcode?: string | null
           category?: string
           club_id: string
@@ -1127,6 +1129,7 @@ export type Database = {
         Update: {
           active?: boolean
           archived_at?: string | null
+          avg_unit_cost?: number | null
           barcode?: string | null
           category?: string
           club_id?: string
@@ -1226,44 +1229,59 @@ export type Database = {
       }
       bar_stock_movements: {
         Row: {
+          avg_cost_after: number | null
+          avg_cost_before: number | null
           bar_item_id: string
           club_id: string
+          cost_value: number | null
           created_at: string
           created_by: string | null
           id: string
+          note: string | null
           reason: string
           requested_delta: number
           sold_item_id: string | null
           source_id: string | null
           source_table: string | null
+          unit_cost: number | null
           units_after: number
           units_delta: number
         }
         Insert: {
+          avg_cost_after?: number | null
+          avg_cost_before?: number | null
           bar_item_id: string
           club_id: string
+          cost_value?: number | null
           created_at?: string
           created_by?: string | null
           id?: string
+          note?: string | null
           reason: string
           requested_delta: number
           sold_item_id?: string | null
           source_id?: string | null
           source_table?: string | null
+          unit_cost?: number | null
           units_after: number
           units_delta: number
         }
         Update: {
+          avg_cost_after?: number | null
+          avg_cost_before?: number | null
           bar_item_id?: string
           club_id?: string
+          cost_value?: number | null
           created_at?: string
           created_by?: string | null
           id?: string
+          note?: string | null
           reason?: string
           requested_delta?: number
           sold_item_id?: string | null
           source_id?: string | null
           source_table?: string | null
+          unit_cost?: number | null
           units_after?: number
           units_delta?: number
         }
@@ -2915,6 +2933,41 @@ export type Database = {
             foreignKeyName: "club_bar_divisions_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_bar_settings: {
+        Row: {
+          club_id: string
+          costing_enabled: boolean
+          costing_enabled_at: string | null
+          costing_enabled_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          costing_enabled?: boolean
+          costing_enabled_at?: string | null
+          costing_enabled_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          costing_enabled?: boolean
+          costing_enabled_at?: string | null
+          costing_enabled_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_bar_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
@@ -16707,6 +16760,20 @@ export type Database = {
         }
         Returns: string
       }
+      bar_cost_of_sales: {
+        Args: { _club: string; _from: string; _to: string }
+        Returns: {
+          category: string
+          cogs: number
+          division: string
+          item_name: string
+          quantity: number
+          revenue: number
+          sold_item_id: string
+          uncosted_lines: number
+        }[]
+      }
+      bar_costing_enabled: { Args: { _club: string }; Returns: boolean }
       bar_counter_add_to_tab: {
         Args: {
           _club_id?: string
@@ -16827,6 +16894,10 @@ export type Database = {
           phone_hint: string
         }[]
       }
+      bar_set_average_cost: {
+        Args: { _cost_per_purchase_unit: number; _item: string; _note: string }
+        Returns: number
+      }
       bar_special_available: { Args: { _special: string }; Returns: number }
       bar_staff_can_serve: {
         Args: { _club_id: string; _user_id: string }
@@ -16837,6 +16908,7 @@ export type Database = {
           _clamp?: boolean
           _delta: number
           _item: string
+          _purchase_cost_per_unit?: number
           _reason: string
           _sold_item?: string
           _source_id?: string

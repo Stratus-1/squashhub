@@ -2200,3 +2200,6 @@ Pool standings (ClubChampsView getGroupStandings) included playoff_* rows sharin
 - Added club-configurable divisions/categories, variants, bottle-to-tot selling options (yield default 30, per product), specials/combos with date/day/time windows, stock movement ledger, open-bottle stock takes.
 - Ordinary items keep the existing policy (sale never blocked, stock floors at 0); specials are blocked unless valid now and every component has enough stock, and deduct all components atomically.
 - Riverside: previous 23 test items archived (not deleted, history kept); pilot dataset seeded. No other club's data changed.
+
+## 2026-09-27 — Optional weighted-average bar costing
+Added per-club costing switch, average cost per stock unit, cost snapshots on every stock movement, audited cost adjustment, cost-of-sales report and admin "Costing & margins" step. Off for all clubs; verified in a rolled-back Riverside transaction.

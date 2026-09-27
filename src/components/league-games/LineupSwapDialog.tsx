@@ -382,10 +382,27 @@ export function LineupSwapDialog({
               <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => setPending(null)}>
                 Back
               </Button>
-              <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => { onSelect(pending); setPending(null); }}>
+              <Button size="sm" className="flex-1 h-8 text-xs" onClick={() => { onSelect(pending, outHalf ?? undefined); setPending(null); setOutHalf(null); }}>
                 Replace player
               </Button>
             </div>
+          </div>
+        ) : pairPlayers && outHalf === null ? (
+          <div className="space-y-2">
+            {pairPlayers.map((p, i) => (
+              <Button
+                key={i}
+                variant="outline"
+                size="sm"
+                className="w-full h-9 text-xs justify-start"
+                onClick={() => setOutHalf(i as 0 | 1)}
+              >
+                <UserMinus className="w-3.5 h-3.5 mr-2 text-destructive" /> Replace {p}
+              </Button>
+            ))}
+            <p className="text-[10px] text-muted-foreground italic">
+              The other player of the pair stays in the lineup.
+            </p>
           </div>
         ) : (
         <div className="space-y-2">

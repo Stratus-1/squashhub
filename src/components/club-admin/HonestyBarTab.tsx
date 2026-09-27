@@ -35,6 +35,8 @@ import {
 } from "@/lib/bar-inventory";
 import { CategoryManagerDialog } from "./bar/CategoryManagerDialog";
 import { ImportItemsDialog } from "./bar/ImportItemsDialog";
+import { ComponentPicker } from "./bar/ComponentPicker";
+import { categoryLabel } from "@/lib/bar-categories";
 
 interface BarItem {
   id: string;
@@ -568,7 +570,10 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
   };
 
   const byId = new Map(allItems.map(i => [i.id, i as unknown as InventoryItem]));
-  const componentChoices = liveItems.filter(i => (i.item_kind || "stock") !== "special" && i.id !== editItem?.id);
+  // Special components come from the same division as the special — a Spirits
+  // (bar) special must never offer shop products like racquets or shoes.
+  const componentChoices = liveItems.filter(i => (i.item_kind || "stock") !== "special" && i.id !== editItem?.id
+    && (i.division || "bar") === (form.division || "bar"));
   const specials = items.filter(i => i.item_kind === "special");
 
   /** Plain-language description of what one sale of a special consumes for a component line. */

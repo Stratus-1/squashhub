@@ -81,6 +81,7 @@ export default function ScanPay() {
   const [pinOpen, setPinOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [division, setDivision] = useState<BarDivision>("bar");
+  const [category, setCategory] = useState<string>("all");
   const [done, setDone] = useState<{ total: number; itemName: string; onAccount: boolean; cardPaid?: boolean; terminal?: boolean; reference?: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [tab, setTab] = useState<GuestTab | null>(null);

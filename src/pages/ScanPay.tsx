@@ -126,7 +126,14 @@ export default function ScanPay() {
     if (data?.kind === "item" && data.item) return [data.item as ScanItem];
     return (data?.menu || []) as ScanItem[];
   }, [data]);
-  const visibleMenu = data?.kind === "item" ? menu : menu.filter((item) => (item.division || "bar") === division);
+  // Division tabs come from what this club actually sells (clubs can configure their own divisions).
+  const menuDivisions = useMemo(() => {
+    const keys = Array.from(new Set(menu.map((m) => (m.division || "bar") as string)));
+    const rank = (k: string) => (k === "bar" ? 0 : k === "shop" ? 1 : 2);
+    return keys.length ? keys.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)) : ["bar", "shop"];
+  }, [menu]);
+  const activeDivision = menuDivisions.includes(division) ? division : menuDivisions[0];
+  const visibleMenu = data?.kind === "item" ? menu : menu.filter((item) => (item.division || "bar") === activeDivision);
 
   const cartLines = useMemo(
     () =>
@@ -762,18 +769,18 @@ export default function ScanPay() {
                   </Button>
                 </div>
                 {data.kind !== "item" && (
-                  <div role="tablist" aria-label="Item division" className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1">
-                    {(["bar", "shop"] as BarDivision[]).map((d) => (
+                  <div role="tablist" aria-label="Item division" className="grid gap-1 rounded-md bg-muted p-1" style={{ gridTemplateColumns: `repeat(${menuDivisions.length}, minmax(0, 1fr))` }}>
+                    {menuDivisions.map((d) => (
                       <Button
                         key={d}
                         type="button"
                         role="tab"
-                        aria-selected={division === d}
+                        aria-selected={activeDivision === d}
                         variant="ghost"
                         onClick={() => setDivision(d)}
-                        className={`h-10 text-xs font-semibold ${division === d ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
+                        className={`h-10 text-xs font-semibold ${activeDivision === d ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}
                       >
-                        {d === "bar" ? "Bar items" : "Shop items"}
+                        {d === "bar" ? "Bar items" : d === "shop" ? "Shop items" : d.charAt(0).toUpperCase() + d.slice(1).replace(/_/g, " ")}
                       </Button>
                     ))}
                   </div>
@@ -818,7 +825,7 @@ export default function ScanPay() {
                   })}
                    {visibleMenu.length === 0 && (
                     <p className="col-span-3 text-sm text-muted-foreground text-center py-6">
-                       {data.kind === "item" ? "Nothing is in stock right now." : `No ${division} items available yet.`}
+                       {data.kind === "item" ? "Nothing is in stock right now." : `No ${activeDivision} items available yet.`}
                     </p>
                   )}
                 </div>

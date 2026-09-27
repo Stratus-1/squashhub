@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { BAR_CATEGORY_EMOJI as CATEGORY_ICONS } from "@/lib/bar-categories";
+import { onMenu, type InventoryItem } from "@/lib/bar-inventory";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +43,7 @@ export function QuickVisitorSaleDialog({ open, onOpenChange, items, clubId, logg
   const [visitorName, setVisitorName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const inStock = useMemo(() => items.filter(i => i.stock_qty > 0), [items]);
+  const inStock = useMemo(() => items.filter(i => onMenu(i as unknown as InventoryItem)), [items]);
 
   const cartLines = Object.entries(cart)
     .filter(([, q]) => q > 0)

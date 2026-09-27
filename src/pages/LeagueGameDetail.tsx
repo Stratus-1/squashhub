@@ -670,9 +670,15 @@ export default function LeagueGameDetail() {
         const { data: dayFx } = await (supabase as any)
           .from("platform_league_fixtures").select("home_team_code, away_team_code").eq("fixture_date", fixtureDate);
         const playing = new Set<string>();
+        // A fixture against the "__BYE__" placeholder means that team is ON BYE,
+        // so it must not count as playing (otherwise bye players are never offered).
+        const isByeCode = (c: string) => /^_*BYE_*$/.test(c);
         for (const f of (dayFx || []) as any[]) {
-          playing.add(String(f.home_team_code || "").toUpperCase());
-          playing.add(String(f.away_team_code || "").toUpperCase());
+          const h = String(f.home_team_code || "").toUpperCase();
+          const a = String(f.away_team_code || "").toUpperCase();
+          if (isByeCode(h) || isByeCode(a)) continue;
+          playing.add(h);
+          playing.add(a);
         }
         for (const t of (assocTeams || []) as any[]) {
           const c = String(t.code || "").toUpperCase();

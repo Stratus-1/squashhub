@@ -16864,6 +16864,10 @@ export type Database = {
           teams: number
         }[]
       }
+      copy_league_season_teams: {
+        Args: { p_season_id: string }
+        Returns: number
+      }
       count_member_duplicate_hints: {
         Args: { _club_id: string; _name: string; _phone: string }
         Returns: number

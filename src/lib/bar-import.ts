@@ -21,7 +21,7 @@ export const IMPORT_FIELDS: { key: ImportField; label: string; help: string; ali
   { key: "yield", label: "Tots per bottle", help: "Spirits only (default 30)", aliases: ["tots per bottle", "tots", "yield", "servings per bottle"] },
   { key: "single_price", label: "Single price", help: "Spirits: creates a Single (1 tot) option", aliases: ["single", "single price", "single tot"] },
   { key: "double_price", label: "Double price", help: "Spirits: creates a Double (2 tots) option", aliases: ["double", "double price", "double tot"] },
-  { key: "serving_ml", label: "Serving size (ml)", help: "Bulk mixers: e.g. 250 per glass", aliases: ["serving ml", "glass ml", "serving size", "ml per glass"] },
+  { key: "serving_ml", label: "Serving size (ml)", help: "Bulk mixers: e.g. 250 per glass", aliases: ["serving ml", "serving size ml", "glass ml", "serving size", "ml per glass"] },
   { key: "serving_price", label: "Serving price", help: "Bulk mixers: price per glass", aliases: ["glass price", "serving price"] },
   { key: "product_group", label: "Product group", help: "e.g. Asics Gel shoe", aliases: ["product group", "group name", "model"] },
   { key: "variant", label: "Variant / size", help: "e.g. UK 9, Large", aliases: ["variant", "size", "colour", "color"] },

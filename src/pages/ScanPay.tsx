@@ -37,7 +37,16 @@ interface ScanItem {
   image_url?: string | null;
   stock_qty?: number;
   barcode?: string | null;
+  item_kind?: string | null;
+  valid_from?: string | null;
+  valid_to?: string | null;
+  valid_days?: number[] | null;
+  valid_start_time?: string | null;
+  valid_end_time?: string | null;
 }
+
+/** Combo specials get their own pill so a time-limited deal is never buried in a category. */
+const SPECIALS_KEY = "__specials";
 
 interface ScanPayload {
   found: boolean;

@@ -637,7 +637,11 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
         </div>
         <div>
           <Label className="text-xs">Category</Label>
-          <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
+          <Select value={form.category} onValueChange={v => setForm(p => ({
+            ...p, category: v,
+            // Restaurant food is prepared to order — default to the no-stock kind.
+            item_kind: !editItem && v === "restaurant" ? "made_to_order" : p.item_kind,
+          }))}>
             <SelectTrigger><SelectValue placeholder="Choose" /></SelectTrigger>
             <SelectContent>{formCategories.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
           </Select>

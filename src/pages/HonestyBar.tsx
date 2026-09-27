@@ -335,8 +335,8 @@ export default function HonestyBar() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid" style={{ gridTemplateColumns: canSeeVisitors ? "1fr 1fr 1fr" : "1fr 1fr" }}>
             <TabsTrigger value="shop" className="gap-1 text-xs">
-              <Store className="w-3.5 h-3.5" />
-              Shop
+              <ShoppingCart className="w-3.5 h-3.5" />
+              Buy items
             </TabsTrigger>
             <TabsTrigger value="my-tab" className="gap-1 text-xs">
               <User className="w-3.5 h-3.5" />
@@ -351,22 +351,29 @@ export default function HonestyBar() {
           </TabsList>
 
           <TabsContent value="shop" className="space-y-4 mt-4">
-            {/* Bar / Shop division switch */}
+            {/* Choose which kind of item to browse. */}
             <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
               {(["bar", "shop"] as BarDivision[]).map(d => (
-                <button
+                <Button
                   key={d}
                   type="button"
+                  variant="ghost"
+                  aria-pressed={division === d}
                   onClick={() => setDivision(d)}
-                  className={`flex items-center justify-center gap-1.5 rounded-md py-2 text-xs font-semibold transition-colors ${
+                  className={`h-9 flex items-center justify-center gap-1.5 rounded-md text-xs font-semibold transition-colors ${
                     division === d ? "bg-background shadow-sm" : "text-muted-foreground"
                   }`}
                 >
                   {d === "bar" ? <Beer className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
                   {d === "bar" ? "Bar" : "Shop"}
-                </button>
+                </Button>
               ))}
             </div>
+            {inStock.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No {division === "bar" ? "bar" : "shop"} items available yet.
+              </p>
+            )}
             {/* Item catalog */}
             {groupedByCategory.map(group => {
               return (

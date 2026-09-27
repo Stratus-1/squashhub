@@ -29,6 +29,7 @@ interface BarItem {
   name: string;
   price: number;
   category: string;
+  division?: string;
   active: boolean;
   sort_order: number;
   image_url?: string | null;
@@ -51,19 +52,6 @@ interface BarTabEntry {
   bar_items?: { name: string; category: string };
   club_members?: { name: string };
 }
-
-const CATEGORIES = [
-  { value: "soft_drinks", label: "Soft Drinks", icon: Beer },
-  { value: "water", label: "Water", icon: Beer },
-  { value: "energy", label: "Energy & Sports", icon: Beer },
-  { value: "beer_cider", label: "Beer & Cider", icon: Beer },
-  { value: "wine", label: "Wine", icon: Wine },
-  { value: "spirits", label: "Spirits", icon: Wine },
-  { value: "hot_drinks", label: "Hot Drinks", icon: Coffee },
-  { value: "snacks", label: "Snacks", icon: Coffee },
-  { value: "meals", label: "Light Meals", icon: Coffee },
-  { value: "other", label: "Other", icon: Package },
-];
 
 export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) {
   const { format: money } = useClubCurrency();

@@ -1,3 +1,5 @@
+import { parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
+
 export type EffectiveScoringMode = "standard" | "time_capped_points" | "swiss";
 export type EffectiveMatchType = "singles" | "doubles" | "mixed";
 export type EffectiveWinCondition = "win_by_2" | "sudden_death";
@@ -10,6 +12,8 @@ export interface EffectiveTournamentSettings {
   winCondition: EffectiveWinCondition;
   matchType: EffectiveMatchType;
   isDoubles: boolean;
+  /** null = organiser hasn't chosen one → marker falls back to manual serving. */
+  doublesServingMethod: DoublesServingMethod | null;
 }
 
 function mapValue(map: unknown, groupNumber: number | string | null | undefined): unknown {
@@ -83,5 +87,8 @@ export function effectiveTournamentSettings(
       "win_by_2",
     matchType: type,
     isDoubles: type === "doubles" || type === "mixed",
+    doublesServingMethod:
+      parseServingMethod(mapValue(tournament?.league_doubles_serving_methods, groupNumber)) ??
+      parseServingMethod(tournament?.doubles_serving_method),
   };
 }

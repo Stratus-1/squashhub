@@ -37,6 +37,9 @@ export interface LeagueRules {
   sub_from_reserves?: boolean;
   sub_from_bye_team?: boolean;
   sub_rank_rule?: "any" | "same" | "same_or_lower";
+  // Doubles live-marker serving method (added 2026-09-28). null = not set →
+  // marker keeps the manual serve controls.
+  doubles_serving_method?: "even_odd" | "by_position" | "second_server" | null;
   // Original-player bonus (NIL): +N points per originally-allocated player who actually plays
   original_player_bonus_enabled: boolean;
   original_player_bonus_value: number;

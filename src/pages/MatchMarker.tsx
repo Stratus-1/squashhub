@@ -246,7 +246,7 @@ export default function MatchMarker() {
       // resume should be equally direct and server-authoritative.
       const [{ data: tournamentData, error: tournamentError }, { data: rulesData, error: rulesError }] = await Promise.all([
         fromExt("tournaments")
-          .select("id, club_id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+          .select("id, club_id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, doubles_serving_method, league_doubles_serving_methods")
           .eq("id", row.champ_id)
           .maybeSingle(),
         fromExt("tournament_rules")
@@ -357,6 +357,13 @@ export default function MatchMarker() {
         handicapB: Number(row.handicap_b) || 0,
         clubId: champ?.club_id || undefined,
         initialScores: parseTournamentScores(row),
+        doublesServing: isDoubles
+          ? {
+              method: effective.doublesServingMethod,
+              pairA: [playerFor(row.player_a_member_id, row.player_a, "Player A").name, playerFor(row.partner_a_member_id, row.partner_a, "Partner A").name],
+              pairB: [playerFor(row.player_b_member_id, row.player_b, "Player B").name, playerFor(row.partner_b_member_id, row.partner_b, "Partner B").name],
+            }
+          : undefined,
       };
 
       if (cancelled) return;
@@ -392,7 +399,7 @@ export default function MatchMarker() {
       const row = data as any;
       const [{ data: tournamentData }, { data: rulesData }] = await Promise.all([
         fromExt("tournaments")
-          .select("id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games")
+          .select("id, match_type, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, doubles_serving_method, league_doubles_serving_methods")
           .eq("id", row.champ_id)
           .maybeSingle(),
         fromExt("tournament_rules")
@@ -412,9 +419,13 @@ export default function MatchMarker() {
         config.scoringFormat !== scoringFormat ||
         config.bestOf !== bestOf ||
         !!config.playAllGames !== playAllGames ||
-        config.deuceRule !== deuceRule
+        config.deuceRule !== deuceRule ||
+        (config.doublesServing && (config.doublesServing.method ?? null) !== effective.doublesServingMethod)
       ) {
-        setConfig({ ...config, scoringFormat, bestOf, playAllGames, deuceRule });
+        setConfig({
+          ...config, scoringFormat, bestOf, playAllGames, deuceRule,
+          ...(config.doublesServing ? { doublesServing: { ...config.doublesServing, method: effective.doublesServingMethod } } : {}),
+        });
       }
     };
 

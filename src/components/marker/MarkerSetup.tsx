@@ -55,6 +55,13 @@ export interface MarkerConfig {
   handicapB?: number; // league-rank handicap, side B starting score offset
   initialScores?: Array<{ a: number; b: number }>;
   clubId?: string;
+  /** Doubles serving guidance: both players of each pair plus the
+   *  competition's serving method (null = not configured → manual mode). */
+  doublesServing?: {
+    method: import("@/lib/marker/doubles-serving").DoublesServingMethod | null;
+    pairA: [string, string];
+    pairB: [string, string];
+  } | null;
 }
 
 interface Props {

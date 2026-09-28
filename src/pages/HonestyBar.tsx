@@ -74,6 +74,7 @@ export default function HonestyBar() {
   const [activeTab, setActiveTab] = useState("shop");
   const [qrOpen, setQrOpen] = useState(false);
   const [division, setDivision] = useState<BarDivision>("bar");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const { data: items = [] } = useQuery({
     queryKey: ["bar-items", clubId],
@@ -272,6 +273,7 @@ export default function HonestyBar() {
   if (specials.length > 0) {
     groupedByCategory.unshift({ value: "_specials", label: "Specials", division: activeDivision, items: specials });
   }
+  const visibleCategory = groupedByCategory.find(g => g.value === selectedCategory) ?? groupedByCategory[0];
 
   if (!clubId || !club?.honesty_bar_enabled) {
     return (
@@ -369,7 +371,7 @@ export default function HonestyBar() {
                   type="button"
                   variant="ghost"
                   aria-pressed={activeDivision === d.key}
-                  onClick={() => setDivision(d.key)}
+                   onClick={() => { setDivision(d.key); setSelectedCategory(null); }}
                   className={`h-9 flex items-center justify-center gap-1.5 rounded-md text-xs font-semibold transition-colors ${
                     activeDivision === d.key ? "bg-background shadow-sm" : "text-muted-foreground"
                   }`}
@@ -379,19 +381,21 @@ export default function HonestyBar() {
                 </Button>
               ))}
             </div>
-            {/* Category shortcuts — jump straight to a section. */}
-            {groupedByCategory.length > 1 && (
-              <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-1.5">
+             {/* Pick one category at a time; keep the cart when switching. */}
+             {groupedByCategory.length > 0 && (
+               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2" role="group" aria-label="Product categories">
                 {groupedByCategory.map(g => (
-                  <button
+                   <Button
                     key={g.value}
                     type="button"
-                    onClick={() => document.getElementById(`bar-cat-${g.value}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-full border bg-muted/60 px-2.5 py-1 text-[11px] font-medium hover:bg-accent transition-colors"
+                     variant={visibleCategory?.value === g.value ? "default" : "outline"}
+                     aria-pressed={visibleCategory?.value === g.value}
+                     onClick={() => setSelectedCategory(g.value)}
+                     className="h-auto min-h-12 min-w-0 gap-2 px-2 py-2 text-xs leading-tight whitespace-normal text-center"
                   >
-                    <span>{g.value === "_specials" ? "⭐" : BAR_CATEGORY_EMOJI[g.value] || "📦"}</span>
-                    {g.label}
-                  </button>
+                     <span className="text-xl shrink-0" aria-hidden="true">{g.value === "_specials" ? "⭐" : BAR_CATEGORY_EMOJI[g.value] || "📦"}</span>
+                     <span className="min-w-0 break-words">{g.label}</span>
+                   </Button>
                 ))}
               </div>
             )}
@@ -401,9 +405,9 @@ export default function HonestyBar() {
               </p>
             )}
             {/* Item catalog */}
-            {groupedByCategory.map(group => {
+             {visibleCategory && [visibleCategory].map(group => {
               return (
-                <div key={group.value} id={`bar-cat-${group.value}`} className="scroll-mt-14">
+                 <div key={group.value}>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-base">{BAR_CATEGORY_EMOJI[group.value] || "📦"}</span>
                     <h3 className="text-sm font-semibold">{group.label}</h3>

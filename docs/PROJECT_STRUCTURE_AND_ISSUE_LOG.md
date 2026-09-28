@@ -2244,3 +2244,6 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ### 2026-09-28 — Guided doubles serving in the live marker
 - Problem: doubles marker showed only the first name of each pair ("Dave serving") and had no idea which partner served.
 - Fix: new `src/lib/marker/doubles-serving.ts` (Even/Odd, By position, Second server), start prompt `DoublesServeSetup` (Forehand/Backhand for both pairs, serving pair, first server), serve banner "Name — SERVE RIGHT", "Correct server" override that rewrites state, state persisted with the marker session and in undo history. Settings: League rules → Scoring → "Doubles serving method"; tournament division settings → "Doubles serving method" (doubles divisions). Unset = old manual behaviour. Tests: `src/test/doubles-serving.test.ts`.
+
+### 2026-09-28 — Bar menu category selection
+- Replaced the horizontal jump-to-section strip on the signed-in Buy menu with larger, wrapping category choices. Choosing one shows only its products, with the cart retained across category and Bar/Shop switches. A division switch starts on its first available category; empty divisions retain their empty message. Prices, stock and QR menu are unchanged.

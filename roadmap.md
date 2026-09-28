@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Counter mode menu
-- [ ] Match the regular bar's product imagery, add top category and Bar/Shop choices, and keep the existing tab and payment flow unchanged.
-- [ ] Verify counter browsing on desktop and phone without publishing.
+- [x] Match the regular bar's product imagery, add top category and Bar/Shop choices, and keep the existing tab and payment flow unchanged.
+- [x] Verify counter browsing on desktop and phone without publishing.
 
 ## Uitsig Club Champs test selections
 - [x] Clear only the four never-invited, organiser-created test selections and their saved draft order; leave them eligible for future invitations.

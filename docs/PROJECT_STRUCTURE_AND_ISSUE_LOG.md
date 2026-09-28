@@ -2236,3 +2236,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - 12 prepared-food items (Beef curry and rice, Boerie Roll, Chicken Curry Rice, Chicken Pasta, Curry and Rice, NMSA Sunday Lunch, Prego Roll and Chips, Rib Burgers, Schawarmas, Toasted Sandwich, Vetkoek Mince, Vetkoek Plain) moved from custom_food to category `restaurant` with item_kind `made_to_order` (no stock, always on menu).
 - CH Bites/Dry Wors left as stocked snack (has real stock of 8).
 - Migration widened `bar_items_kind_chk` to include `made_to_order` (was blocking the update).
+
+### 2026-09-28 — League scorecard ignored "Sudden death"
+- Nelspruit Doubles association rules had win_by=1 (sudden death), but LeagueGameDetail let team mirror rows (default win_by=2, points null) override the association row, so the marker played win-by-2.
+- Fix: association-scoped `league_rules` now wins for points-per-game and deuce rule; team rows only fill gaps.

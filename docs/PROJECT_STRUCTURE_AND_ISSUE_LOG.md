@@ -1,3 +1,6 @@
+## 2026-09-28 — Uitsig Club Champs test selections cleared
+- The four checked names on Uitsig Club Champs had been saved as organiser-created registrations and entry rows by Save Progress, despite having no invitations, responses, payments, fixtures or games. With guarded club/tournament-specific checks, removed those four test entry/registration rows and cleared the four draft player IDs and saved seed order. An audit event retains the former row IDs and reason. They were **not** marked withdrawn or declined, and can be invited afresh. The player picker now offers Withdraw only for a registered entrant; a draft-only selection can be unticked instead. No other tournaments or clubs changed. UI change preview-only.
+
 ## 2026-09-28 — Uitsig prepared food stock label
 - Riverside and Uitsig's 12 restaurant products are correctly `made_to_order` with zero physical stock, but the QR page treated any zero quantity as "Out of stock" and disabled purchase. The QR page now exempts made-to-order food (and recipe specials) from the physical stock lock. Admin item rows show a club-scoped sales tally from existing member charges and visitor sales; pending/failed visitor payments do not count. Do not decrement food inventory or invent a negative balance: food is made to order, while sale rows retain quantities and history. No club data or stock was changed. Preview-only.
 

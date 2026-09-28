@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Uitsig Club Champs test selections
-- [ ] Clear only the four never-invited, organiser-created test selections and their saved draft order; leave them eligible for future invitations.
+- [x] Clear only the four never-invited, organiser-created test selections and their saved draft order; leave them eligible for future invitations.
 - [ ] Stop showing withdrawal as the action for a draft-only selected player; verify the refreshed player list.
 
 ## Uitsig restaurant availability

@@ -126,7 +126,7 @@ export default function HonestyBar() {
 
   const accountTabEnabled = (club as any)?.bar_account_tab_enabled !== false;
   const payOnlineEnabled = (club as any)?.bar_pay_online_enabled !== false
-    && ["stitch", "yoco"].includes(String((club as any)?.payment_gateway || "").toLowerCase());
+    && ["stitch", "yoco", "payfast"].includes(String((club as any)?.payment_gateway || "").toLowerCase());
   const cardSwipeEnabled = (club as any)?.bar_card_swipe_enabled !== false;
 
 

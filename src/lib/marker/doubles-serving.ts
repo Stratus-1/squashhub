@@ -1,0 +1,256 @@
+/**
+ * Doubles serving state machine for the live marker.
+ *
+ * Pure logic — no React, no storage. The marker screen keeps one
+ * `DoublesServeState` and replaces it after every rally, game change or
+ * marker correction. Singles never touches this module.
+ *
+ * Methods (configured per competition, see `doubles_serving_method`):
+ *  - even_odd:      side from the SERVING team's score (even → RIGHT, odd → LEFT);
+ *                   partners alternate each time the pair regains service.
+ *  - by_position:   Forehand player serves RIGHT, Backhand serves LEFT;
+ *                   partners alternate each time the pair regains service.
+ *  - second_server: each hand = Forehand (RIGHT) then Backhand (LEFT), then
+ *                   service transfers to the other pair, which starts again
+ *                   with its Forehand player.
+ */
+
+export type DoublesServingMethod = "even_odd" | "by_position" | "second_server";
+export type Team = "a" | "b";
+export type ServeSide = "R" | "L";
+/** Index of a player inside a pair (0 = first listed, 1 = second listed). */
+export type Slot = 0 | 1;
+
+export const DOUBLES_SERVING_METHODS: { value: DoublesServingMethod; label: string; hint: string }[] = [
+  { value: "even_odd", label: "Even / Odd", hint: "Serving pair's score even → serve RIGHT, odd → LEFT. Partners alternate when the pair wins service back." },
+  { value: "by_position", label: "By position", hint: "Forehand player serves RIGHT, Backhand player serves LEFT. Partners alternate when the pair wins service back." },
+  { value: "second_server", label: "Second server", hint: "Each pair serves Forehand (RIGHT) then Backhand (LEFT) before service passes to the other pair." },
+];
+
+export function parseServingMethod(raw: unknown): DoublesServingMethod | null {
+  return raw === "even_odd" || raw === "by_position" || raw === "second_server" ? raw : null;
+}
+
+export interface PairPositions {
+  /** Which slot plays Forehand (right wall). The other slot is Backhand. */
+  a: { forehand: Slot };
+  b: { forehand: Slot };
+}
+
+export interface DoublesServeState {
+  version: 1;
+  method: DoublesServingMethod;
+  positions: PairPositions;
+  /** Pair currently serving. */
+  team: Team;
+  /** Slot of the current server inside the serving pair. */
+  server: Slot;
+  side: ServeSide;
+  /** Last player to serve for each pair (null = pair hasn't served yet). */
+  prevServer: { a: Slot | null; b: Slot | null };
+  /** Who serves for each pair the first time it gets service (even_odd / by_position). */
+  firstServer: { a: Slot; b: Slot };
+  /** second_server only: 1 = first server of this hand, 2 = second server. */
+  hand: 1 | 2;
+}
+
+export interface Scores { a: number; b: number }
+
+const other = (t: Team): Team => (t === "a" ? "b" : "a");
+const flip = (s: Slot): Slot => (s === 0 ? 1 : 0);
+
+export function isForehand(positions: PairPositions, team: Team, slot: Slot): boolean {
+  return positions[team].forehand === slot;
+}
+
+function positionSide(positions: PairPositions, team: Team, slot: Slot): ServeSide {
+  return isForehand(positions, team, slot) ? "R" : "L";
+}
+
+function parityside(score: number): ServeSide {
+  return score % 2 === 0 ? "R" : "L";
+}
+
+/** Correct side for the given server under the method, at the given score. */
+export function sideFor(method: DoublesServingMethod, positions: PairPositions, team: Team, slot: Slot, scores: Scores): ServeSide {
+  if (method === "even_odd") return parityside(scores[team]);
+  return positionSide(positions, team, slot);
+}
+
+/** Server for `team` when it (re)gains service under alternating methods. */
+function nextAlternatingServer(state: DoublesServeState, team: Team): Slot {
+  const prev = state.prevServer[team];
+  return prev == null ? state.firstServer[team] : flip(prev);
+}
+
+export interface StartInput {
+  method: DoublesServingMethod;
+  positions: PairPositions;
+  /** Pair serving first (toss winner / current serving pair when resuming). */
+  servingTeam: Team;
+  /** even_odd / by_position: first server of each pair. Ignored for second_server. */
+  firstServer?: { a: Slot; b: Slot };
+  /** Current score (0-0 at the start; live score when resuming mid-game). */
+  scores?: Scores;
+}
+
+export function startDoubles(input: StartInput): DoublesServeState {
+  const { method, positions, servingTeam } = input;
+  const scores = input.scores ?? { a: 0, b: 0 };
+  const firstServer = input.firstServer ?? { a: positions.a.forehand, b: positions.b.forehand };
+  const server: Slot = method === "second_server" ? positions[servingTeam].forehand : firstServer[servingTeam];
+  return {
+    version: 1,
+    method,
+    positions,
+    team: servingTeam,
+    server,
+    side: sideFor(method, positions, servingTeam, server, scores),
+    prevServer: { a: null, b: null, [servingTeam]: server } as DoublesServeState["prevServer"],
+    firstServer,
+    hand: 1,
+  };
+}
+
+/**
+ * Apply one rally. `scores` is the score AFTER the rally (unchanged for an
+ * English hand-out where no point is scored).
+ */
+export function afterRally(state: DoublesServeState, winner: Team, scores: Scores): DoublesServeState {
+  const { method, positions } = state;
+  if (winner === state.team) {
+    // Serving pair keeps service with the same server.
+    return { ...state, side: sideFor(method, positions, state.team, state.server, scores) };
+  }
+
+  if (method === "second_server") {
+    if (state.hand === 1) {
+      const server = flip(positions[state.team].forehand); // backhand
+      return {
+        ...state,
+        hand: 2,
+        server,
+        side: positionSide(positions, state.team, server),
+        prevServer: { ...state.prevServer, [state.team]: server },
+      };
+    }
+    const team = other(state.team);
+    const server = positions[team].forehand;
+    return {
+      ...state,
+      team,
+      hand: 1,
+      server,
+      side: "R",
+      prevServer: { ...state.prevServer, [team]: server },
+    };
+  }
+
+  const team = other(state.team);
+  const server = nextAlternatingServer(state, team);
+  return {
+    ...state,
+    team,
+    server,
+    hand: 1,
+    side: sideFor(method, positions, team, server, scores),
+    prevServer: { ...state.prevServer, [team]: server },
+  };
+}
+
+/**
+ * New game. The winner of the previous game serves first (squash rules).
+ * The winning rally has already been applied with `afterRally`, so for the
+ * alternating methods the current server is kept and only the side is reset
+ * for 0-0. Second server starts a fresh hand: Forehand from the RIGHT.
+ */
+export function startNextGame(state: DoublesServeState, gameWinner: Team): DoublesServeState {
+  const zero = { a: 0, b: 0 };
+  if (state.method === "second_server") {
+    const server = state.positions[gameWinner].forehand;
+    return {
+      ...state,
+      team: gameWinner,
+      hand: 1,
+      server,
+      side: "R",
+      prevServer: { ...state.prevServer, [gameWinner]: server },
+    };
+  }
+  let s = state;
+  if (s.team !== gameWinner) s = afterRally(s, gameWinner, zero);
+  return { ...s, side: sideFor(s.method, s.positions, s.team, s.server, zero) };
+}
+
+export interface OverrideInput {
+  team: Team;
+  server: Slot;
+  /** Optional explicit side. Defaults to the method's side for this server. */
+  side?: ServeSide;
+  scores: Scores;
+}
+
+/**
+ * Marker correction. Rewrites the internal state so every following rally is
+ * calculated from the corrected server (not just the display).
+ */
+export function overrideServer(state: DoublesServeState, input: OverrideInput): DoublesServeState {
+  const { team, server, scores } = input;
+  const hand: 1 | 2 = state.method === "second_server"
+    ? (isForehand(state.positions, team, server) ? 1 : 2)
+    : 1;
+  return {
+    ...state,
+    team,
+    server,
+    hand,
+    side: input.side ?? sideFor(state.method, state.positions, team, server, scores),
+    prevServer: { ...state.prevServer, [team]: server },
+  };
+}
+
+/** Validate a persisted state (localStorage) — returns null when unusable. */
+export function restoreDoublesState(raw: unknown, method: DoublesServingMethod | null): DoublesServeState | null {
+  if (!raw || typeof raw !== "object" || !method) return null;
+  const s = raw as Partial<DoublesServeState>;
+  const slot = (v: unknown): v is Slot => v === 0 || v === 1;
+  const team = (v: unknown): v is Team => v === "a" || v === "b";
+  if (s.version !== 1 || s.method !== method) return null;
+  if (!s.positions || !slot(s.positions.a?.forehand) || !slot(s.positions.b?.forehand)) return null;
+  if (!team(s.team) || !slot(s.server) || (s.side !== "R" && s.side !== "L")) return null;
+  if (!s.firstServer || !slot(s.firstServer.a) || !slot(s.firstServer.b)) return null;
+  const prev = s.prevServer ?? { a: null, b: null };
+  return {
+    version: 1,
+    method,
+    positions: { a: { forehand: s.positions.a.forehand }, b: { forehand: s.positions.b.forehand } },
+    team: s.team,
+    server: s.server,
+    side: s.side,
+    prevServer: { a: slot(prev.a) ? prev.a : null, b: slot(prev.b) ? prev.b : null },
+    firstServer: { a: s.firstServer.a, b: s.firstServer.b },
+    hand: s.hand === 2 ? 2 : 1,
+  };
+}
+
+// ---------- Display helpers ----------
+
+export type PairNames = [string, string];
+
+/** Both players of a pair, e.g. "Dave Smith & John Doe". */
+export function pairDisplayName(pair: PairNames): string {
+  return `${pair[0]} & ${pair[1]}`;
+}
+
+export function sideWord(side: ServeSide): "RIGHT" | "LEFT" {
+  return side === "R" ? "RIGHT" : "LEFT";
+}
+
+/** "Dave Smith — SERVE RIGHT" */
+export function servingBanner(state: DoublesServeState, pairs: { a: PairNames; b: PairNames }): string {
+  return `${pairs[state.team][state.server]} — SERVE ${sideWord(state.side)}`;
+}
+
+export function methodLabel(method: DoublesServingMethod | null): string {
+  return DOUBLES_SERVING_METHODS.find((m) => m.value === method)?.label ?? "Not set";
+}

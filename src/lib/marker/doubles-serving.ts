@@ -254,3 +254,33 @@ export function servingBanner(state: DoublesServeState, pairs: { a: PairNames; b
 export function methodLabel(method: DoublesServingMethod | null): string {
   return DOUBLES_SERVING_METHODS.find((m) => m.value === method)?.label ?? "Not set";
 }
+
+interface ConfigLike {
+  isDoubles?: boolean;
+  playerA: { name: string };
+  playerB: { name: string };
+  partnerA?: { name?: string } | null;
+  partnerB?: { name?: string } | null;
+  doublesServing?: { method: DoublesServingMethod | null; pairA: PairNames; pairB: PairNames } | null;
+}
+
+/**
+ * Doubles pairs for a marker config, or null for singles. Singles configs
+ * (no partners, no explicit pairs) always return null so singles scoring is
+ * never touched.
+ */
+export function resolveDoublesPairs(config: ConfigLike): { method: DoublesServingMethod | null; a: PairNames; b: PairNames } | null {
+  if (config.doublesServing) {
+    const { pairA, pairB, method } = config.doublesServing;
+    if (pairA?.[0] && pairA?.[1] && pairB?.[0] && pairB?.[1]) return { method: parseServingMethod(method), a: pairA, b: pairB };
+    return null;
+  }
+  if (config.isDoubles && config.partnerA?.name && config.partnerB?.name) {
+    return {
+      method: null,
+      a: [config.playerA.name, config.partnerA.name],
+      b: [config.playerB.name, config.partnerB.name],
+    };
+  }
+  return null;
+}

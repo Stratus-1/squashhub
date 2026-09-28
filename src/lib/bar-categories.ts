@@ -63,7 +63,7 @@ export const BAR_CATEGORY_EMOJI: Record<string, string> = {
 };
 
 /** Recognisable product-specific fallback when a club has not uploaded a product photo. */
-export function barProductEmoji(item: { name: string; category: string; item_kind?: string | null }): string {
+export function barProductEmoji(item: { name: string; category?: string | null; item_kind?: string | null }): string {
   if (item.item_kind === "special") return "⭐";
   const name = item.name.toLowerCase();
   const match = (pattern: RegExp) => pattern.test(name);
@@ -88,7 +88,7 @@ export function barProductEmoji(item: { name: string; category: string; item_kin
   if (match(/\b(pasta)\b/)) return "🍝";
   if (match(/\b(curry|rice)\b/)) return "🍛";
   if (match(/\b(bag|backpack|12r|6pack)\b/) && item.category === "custom_bags") return "🎒";
-  if (match(/\b(ball|dot|trip pack)\b/) && /ball/.test(item.category)) return "🟢";
+  if (match(/\b(ball|dot|trip pack)\b/) && /ball/.test(item.category || "")) return "🟢";
   if (match(/\b(shoe|trainer|insole|gel blade)\b/)) return "👟";
   if (match(/\b(sock)\b/)) return "🧦";
   if (match(/\b(cap|hat)\b/) && item.category === "custom_clothing") return "🧢";
@@ -97,7 +97,7 @@ export function barProductEmoji(item: { name: string; category: string; item_kin
   if (match(/\b(grip|overgrip)\b/)) return "🖐️";
   if (match(/\b(headband|wristband|wband)\b/)) return "🎽";
   if (match(/\b(tape|ktape)\b/)) return "🩹";
-  return BAR_CATEGORY_EMOJI[item.category] || "📦";
+  return BAR_CATEGORY_EMOJI[item.category || ""] || "📦";
 }
 
 /** Default divisions for clubs that have not configured their own. */

@@ -29,6 +29,13 @@ Deno.serve(async (req) => {
     const reference = fields.m_payment_id;
     if (!reference) return new Response("ok");
 
+    // Bar / counter tab payments (bar-card-pay) use a shared `PF-…` reference
+    // on their bar_visitor_sales lines instead of a payment session.
+    if (reference.startsWith("PF-")) {
+      await handleBarItn(admin, raw, ordered, fields, reference);
+      return new Response("ok");
+    }
+
     const { data: session } = await admin
       .from("payfast_payment_sessions")
       .select("*")

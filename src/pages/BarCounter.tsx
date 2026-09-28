@@ -163,6 +163,12 @@ export default function BarCounter() {
     () => board?.tabs.find((t) => t.tab_id === activeTabId) ?? null,
     [board, activeTabId],
   );
+  // Online card payment only works through the gateways the bar checkout supports.
+  const onlineAvailable = !!board && board.online_enabled !== false && !!board.venue_code
+    && ["stitch", "yoco"].includes(board.payment_gateway ?? "");
+  const onlineLink = activeTab && board?.venue_code
+    ? `${window.location.origin}/s/${board.venue_code}?tab=${activeTab.tab_id}&t=${(activeTab as any).token}`
+    : null;
   const cartTotal = useMemo(
     () =>
       Object.entries(cart).reduce((sum, [id, qty]) => {

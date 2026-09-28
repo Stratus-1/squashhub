@@ -270,6 +270,10 @@ export default function ScanPay() {
 
   // Restore a tab opened earlier this evening on this phone.
   useEffect(() => {
+    // Counter "Pay online" QR carries the tab so the guest can pay it here.
+    const qp = new URLSearchParams(window.location.search);
+    const qTab = qp.get("tab"), qTok = qp.get("t");
+    if (qTab && qTok) localStorage.setItem(tabKey, JSON.stringify({ tab_id: qTab, token: qTok }));
     const raw = typeof window !== "undefined" ? localStorage.getItem(tabKey) : null;
     if (!raw) return;
     let saved: { tab_id: string; token: string } | null = null;

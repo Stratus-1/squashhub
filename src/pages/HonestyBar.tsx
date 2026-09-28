@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useClubCurrency } from "@/hooks/use-currency";
 import {
   BAR_CATEGORY_EMOJI,
+  barProductEmoji,
   categoriesForDivision,
   useBarDivisions,
   useBarCategories,
@@ -427,7 +428,7 @@ export default function HonestyBar() {
                             {first.image_url ? (
                               <img src={first.image_url} alt={entry.title} className="w-full h-full object-cover" loading="lazy" />
                             ) : (
-                              <span className="text-2xl">{entry.isSpecial ? "⭐" : BAR_CATEGORY_EMOJI[first.category] || "📦"}</span>
+                               <span className="text-2xl">{barProductEmoji({ ...first, item_kind: entry.isSpecial ? "special" : (first as any).item_kind })}</span>
                             )}
                           </div>
                            <p className="text-[11px] font-medium leading-tight text-center line-clamp-2 min-h-7 w-full">{entry.title}</p>

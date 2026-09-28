@@ -1,3 +1,6 @@
+## 2026-09-28 — Uitsig catalogue icon follow-up
+- Uitsig still appeared repetitive after the category map was filled: all products within a category reused the same symbol, and the QR menu used a box for every imageless product. Added product-name-aware fallback symbols throughout the catalogue and QR menu, with category symbols on QR filters. This is display-only; no item photos, prices, stock, or club data changed. Preview-only pending verification.
+
 ## 2026-09-28 — Uitsig catalogue icons
 - Riverside and Uitsig share the same category-icon map, but eleven copied custom category keys had no icon and therefore displayed generic boxes in both category choices and product tiles. Added matching icons for those keys; no product photos exist on either club's copied inventory (`image_url` is empty for all 293 items), so no images or stock records were changed. Uitsig's self-service menu remains disabled under its existing club setting. Preview-only.
 

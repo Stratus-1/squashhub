@@ -56,11 +56,49 @@ export const BAR_CATEGORY_EMOJI: Record<string, string> = {
   accessories: "🧢", other: "📦", drinks: "🥤", alcohol: "🍺",
   custom_beer: "🍺", custom_cider: "🍏", custom_spirits: "🥃", custom_wine: "🍷", custom_food: "🥪",
   custom_chips: "🍟", custom_hot_drinks: "☕", custom_cold_drinks_buddies: "🥤", custom_balls: "🟢",
-  custom_shoes: "👟", custom_clothing: "👕", custom_racquets: "🎾", custom_bags: "🎒",
+  custom_shoes: "👟", custom_clothing: "👕", custom_racquets: "🏸", custom_bags: "🎒",
   custom_mixers: "🥤", custom_racketball: "⚫", custom_grips: "🖐️", custom_premix_hardtack: "🍹",
   custom_strings: "🧵", custom_socks: "🧦", custom_eyewear: "🥽", custom_sweets_snacks: "🍬",
   custom_wristbands_headbands: "🎽", custom_fitness_accessories: "💪", custom_k_tape: "🩹",
 };
+
+/** Recognisable product-specific fallback when a club has not uploaded a product photo. */
+export function barProductEmoji(item: { name: string; category: string; item_kind?: string | null }): string {
+  if (item.item_kind === "special") return "⭐";
+  const name = item.name.toLowerCase();
+  const match = (pattern: RegExp) => pattern.test(name);
+  if (match(/\b(bucket|four pack|4 pack)\b/)) return "🪣";
+  if (match(/\b(beer|lager|ale|zero alc)\b/)) return "🍺";
+  if (match(/\b(cider|savanna|hunters|flying fish|brutal fruit)\b/)) return "🍏";
+  if (match(/\b(water|sparkling)\b/)) return "💧";
+  if (match(/\b(coke|cola|buddies|grapetiser|soda|fanta|sprite)\b/)) return "🥤";
+  if (match(/\b(monster|energade|powerade|lucozade|energy bar)\b/)) return "⚡";
+  if (match(/\b(coffee|cappuccino|cappucino|espresso|latte)\b/)) return "☕";
+  if (match(/\b(tea|ice tea)\b/)) return "🫖";
+  if (match(/\b(wine|merlot|sauvignon|chardonnay)\b/)) return "🍷";
+  if (match(/\b(gin|tonic)\b/)) return "🍸";
+  if (match(/\b(vodka|rum|whisky|whiskey|brandy|klippies|buffelsfontein|klipdrift)\b/)) return "🥃";
+  if (match(/\b(popcorn)\b/)) return "🍿";
+  if (match(/\b(chips|doritos)\b/)) return "🍟";
+  if (match(/\b(chocolate|chocolates)\b/)) return "🍫";
+  if (match(/\b(jelly|sweets|candy)\b/)) return "🍬";
+  if (match(/\b(nuts|almonds|cashew|peanuts|macadamias)\b/)) return "🥜";
+  if (match(/\b(burger)\b/)) return "🍔";
+  if (match(/\b(sandwich|toasted|prego|boerie roll)\b/)) return "🥪";
+  if (match(/\b(pasta)\b/)) return "🍝";
+  if (match(/\b(curry|rice)\b/)) return "🍛";
+  if (match(/\b(bag|backpack|12r|6pack)\b/) && item.category === "custom_bags") return "🎒";
+  if (match(/\b(ball|dot|trip pack)\b/) && /ball/.test(item.category)) return "🟢";
+  if (match(/\b(shoe|trainer|insole|gel blade)\b/)) return "👟";
+  if (match(/\b(sock)\b/)) return "🧦";
+  if (match(/\b(cap|hat)\b/) && item.category === "custom_clothing") return "🧢";
+  if (match(/\b(shirt|tshirt|t-shirt|racerback)\b/)) return "👕";
+  if (match(/\b(glasses|eyewear|goggles)\b/)) return "🥽";
+  if (match(/\b(grip|overgrip)\b/)) return "🖐️";
+  if (match(/\b(headband|wristband|wband)\b/)) return "🎽";
+  if (match(/\b(tape|ktape)\b/)) return "🩹";
+  return BAR_CATEGORY_EMOJI[item.category] || "📦";
+}
 
 /** Default divisions for clubs that have not configured their own. */
 export const BAR_DIVISIONS: BarDivisionDef[] = [

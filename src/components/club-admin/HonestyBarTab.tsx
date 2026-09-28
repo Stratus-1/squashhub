@@ -25,6 +25,7 @@ import { format } from "date-fns";
 import { useClubCurrency } from "@/hooks/use-currency";
 import {
   BAR_CATEGORY_EMOJI,
+  barProductEmoji,
   categoriesForDivision,
   useBarCategories,
   useBarDivisions,
@@ -941,7 +942,7 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
                     <div key={item.id} className="flex items-start sm:items-center gap-2 sm:gap-3 rounded-lg border p-2.5">
                       <div className="w-8 h-8 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
                         {item.image_url ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                          : <span className="text-sm">{kind === "special" ? "⭐" : BAR_CATEGORY_EMOJI[item.category] || "📦"}</span>}
+                          : <span className="text-sm">{barProductEmoji(item)}</span>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className={`text-sm font-medium truncate ${!item.active ? "line-through text-muted-foreground" : ""}`}>

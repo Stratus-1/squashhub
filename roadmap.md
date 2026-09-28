@@ -1,5 +1,8 @@
 # Roadmap
 
+## Uitsig catalogue icon correction
+- [ ] Make category choices identifiable and show product-specific symbols wherever images are absent; verify Uitsig in preview without changing club data.
+
 ## Bar/shop rollout across clubs (approved)
 - [x] Replace Uitsig's unreferenced catalogue with a club-owned Riverside copy; audit stock and verify options/recipes.
 - [x] Enable per-club Bar/Shop division visibility and shared category labels without changing other clubs' items.

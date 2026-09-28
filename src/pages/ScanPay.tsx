@@ -23,7 +23,7 @@ import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import type { BarDivision } from "@/lib/bar-categories";
-import { categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
+import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 import { validitySummary } from "@/lib/bar-inventory";
 
 
@@ -823,7 +823,7 @@ export default function ScanPay() {
                   <div className="flex flex-wrap gap-1.5 pb-1" role="group" aria-label="Item category">
                     {["all", ...categoryKeys].map((c) => {
                       const on = activeCategory === c;
-                      const label = c === "all" ? "All" : c === SPECIALS_KEY ? "⭐ Specials" : categoryLabel(catRows || [], c);
+                      const label = c === "all" ? "All" : c === SPECIALS_KEY ? "⭐ Specials" : `${BAR_CATEGORY_EMOJI[c] || "📦"} ${categoryLabel(catRows || [], c)}`;
                       return (
                         <Button
                           key={c}
@@ -854,7 +854,7 @@ export default function ScanPay() {
                           {m.image_url ? (
                             <img src={m.image_url} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
                           ) : (
-                            <span className="text-2xl">📦</span>
+                             <span className="text-2xl">{barProductEmoji(m)}</span>
                           )}
                         </div>
                         {m.item_kind === "special" && (

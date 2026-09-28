@@ -1,0 +1,1 @@
+UPDATE league_match_results SET away_player_name = 'Sherique Crafford & Fp Victor', away_player_code = NULL, updated_at = now() WHERE id = '94cdcd11-7f8a-4bf9-b983-092275de805e' AND fixture_id = 'bdb6b14b-3c02-42b7-9a00-30a2ae8f3948' AND position = 3;

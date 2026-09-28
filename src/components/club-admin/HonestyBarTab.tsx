@@ -104,6 +104,16 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
     },
   });
 
+  const { data: madeToOrderSold = [] } = useQuery({
+    queryKey: ["bar-made-to-order-sold", clubId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("bar_made_to_order_sold" as any, { _club_id: clubId });
+      if (error) throw error;
+      return (data ?? []) as { bar_item_id: string; sold_qty: number }[];
+    },
+    enabled: !!clubId,
+  });
+
   const { data: recentEntries = [] } = useQuery({
     queryKey: ["bar-tab-recent", clubId],
     queryFn: async () => {
@@ -265,7 +275,7 @@ export function HonestyBarTab({ club, clubId }: { club: Club; clubId: string }) 
               </Button>
             </div>
           </Card>
-          <ItemManager clubId={clubId} items={items} loading={itemsLoading} onQrLabels={openQrLabels} />
+          <ItemManager clubId={clubId} items={items} soldCounts={new Map(madeToOrderSold.map(row => [row.bar_item_id, Number(row.sold_qty)]))} loading={itemsLoading} onQrLabels={openQrLabels} />
         </div>
       )}
 
@@ -421,7 +431,7 @@ const emptyForm = (division = "bar", category = "") => ({
   valid_from: "", valid_to: "", valid_days: [] as number[], valid_start_time: "", valid_end_time: "",
 });
 
-function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId: string; items: BarItem[]; loading: boolean; onQrLabels?: (itemId?: string) => void }) {
+function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels }: { clubId: string; items: BarItem[]; soldCounts: Map<string, number>; loading: boolean; onQrLabels?: (itemId?: string) => void }) {
   const { format: money } = useClubCurrency();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
@@ -955,7 +965,10 @@ function ItemManager({ clubId, items: allItems, loading, onQrLabels }: { clubId:
                           {item.cost_price > 0 && <span className="text-xs text-muted-foreground">(cost {money(item.cost_price)})</span>}
                           {kindBadge(item)}
                           {kind === "made_to_order" ? (
-                            <Badge variant="outline" className="text-[10px]">Made to order</Badge>
+                            <>
+                              <Badge variant="outline" className="text-[10px]">Made to order</Badge>
+                              <span className="text-xs text-muted-foreground tabular-nums">{soldCounts.get(item.id) ?? 0} sold</span>
+                            </>
                           ) : isOutOfStock ? (
                             <Badge variant="destructive" className="text-[10px] gap-0.5"><AlertTriangle className="w-3 h-3" /> {kind === "stock" ? "Out" : "Unavailable"}</Badge>
                           ) : kind === "stock" ? (

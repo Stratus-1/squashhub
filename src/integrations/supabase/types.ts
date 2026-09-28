@@ -16857,6 +16857,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      bar_made_to_order_sold: {
+        Args: { _club_id: string }
+        Returns: {
+          bar_item_id: string
+          sold_qty: number
+        }[]
+      }
       bar_open_tabs: { Args: { _club_id: string }; Returns: Json }
       bar_qr_charge_guest_tab_member: {
         Args: {

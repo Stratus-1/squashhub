@@ -72,6 +72,10 @@ export function stockRequirement(
 ): Map<string, number> {
   const need = new Map<string, number>();
   const add = (root: string, units: number) => need.set(root, (need.get(root) || 0) + units);
+  if (kindOf(item) === "made_to_order") {
+    // Sales are recorded in tab/visitor sale rows, never as negative physical stock.
+    return need;
+  }
   if (kindOf(item) === "special") {
     for (const c of components.filter(c => c.special_item_id === item.id)) {
       const ci = byId.get(c.component_item_id);

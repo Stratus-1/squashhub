@@ -37,6 +37,15 @@ describe("bottle-to-tot stock", () => {
   });
 });
 
+describe("made-to-order food", () => {
+  it("stays on the menu at zero stock and has no physical stock requirement", () => {
+    const food = base({ id: "food", name: "Boerie Roll", category: "restaurant", item_kind: "made_to_order", stock_qty: 0 });
+    expect(onMenu(food)).toBe(true);
+    expect(stockRequirement(food, 4, new Map([[food.id, food]]), [])).toEqual(new Map());
+    expect(formatStock(food)).toBe("Made to order");
+  });
+});
+
 describe("specials", () => {
   it("deduct components from the underlying stock", () => {
     const need = stockRequirement(fri, 1, byId, comps);

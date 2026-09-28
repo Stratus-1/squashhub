@@ -1,3 +1,6 @@
+## 2026-09-28 — Uitsig prepared food stock label
+- Riverside and Uitsig's 12 restaurant products are correctly `made_to_order` with zero physical stock, but the QR page treated any zero quantity as "Out of stock" and disabled purchase. The QR page now exempts made-to-order food (and recipe specials) from the physical stock lock. Admin item rows show a club-scoped sales tally from existing member charges and visitor sales; pending/failed visitor payments do not count. Do not decrement food inventory or invent a negative balance: food is made to order, while sale rows retain quantities and history. No club data or stock was changed. Preview-only.
+
 ## 2026-09-28 — Uitsig catalogue icon follow-up
 - Uitsig still appeared repetitive after the category map was filled: all products within a category reused the same symbol, and the QR menu used a box for every imageless product. Added product-name-aware fallback symbols throughout the catalogue and QR menu, with category symbols on QR filters and in the category manager. Verified Uitsig's catalogue displays different symbols for beer, mixers, cider, specials and spirits. This is display-only; no item photos, prices, stock, or club data changed. Preview-only.
 

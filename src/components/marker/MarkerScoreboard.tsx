@@ -419,6 +419,9 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       let nextDbl: DoublesServeState | null = null;
       if (guided && dbl) {
         nextDbl = afterRally(dbl, scorer, { a: newA, b: newB });
+        // Which pair serves first in the new game follows the marker's existing
+        // first-service rule (game winner); the doubles method only picks the
+        // player and side, resetting each pair to its Forehand first server.
         if (gameWinner) nextDbl = startNextGame(nextDbl, gameWinner);
         applyDbl(nextDbl);
         if (nextDbl.team !== dbl.team) {
@@ -629,7 +632,6 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
               method: dblMethod,
               positions: { a: { forehand: r.forehand.a }, b: { forehand: r.forehand.b } },
               servingTeam: r.servingTeam,
-              firstServer: r.firstServer,
               scores: { a: scoreA, b: scoreB },
             });
             setDblStart(st);

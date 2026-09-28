@@ -6,10 +6,11 @@
  * marker correction. Singles never touches this module.
  *
  * Methods (configured per competition, see `doubles_serving_method`):
- *  - even_odd:      side from the SERVING team's score (even → RIGHT, odd → LEFT);
- *                   partners alternate each time the pair regains service.
- *  - by_position:   Forehand player serves RIGHT, Backhand serves LEFT;
- *                   partners alternate each time the pair regains service.
+ *  - even_odd:      Forehand is the pair's first server in a game, then partners
+ *                   alternate each time the pair regains service; the SIDE comes
+ *                   only from the serving pair's score (even → RIGHT, odd → LEFT).
+ *  - by_position:   Forehand is the first server, partners alternate on each
+ *                   regain; Forehand serves RIGHT, Backhand serves LEFT.
  *  - second_server: each hand = Forehand (RIGHT) then Backhand (LEFT), then
  *                   service transfers to the other pair, which starts again
  *                   with its Forehand player.
@@ -22,8 +23,8 @@ export type ServeSide = "R" | "L";
 export type Slot = 0 | 1;
 
 export const DOUBLES_SERVING_METHODS: { value: DoublesServingMethod; label: string; hint: string }[] = [
-  { value: "even_odd", label: "Even / Odd", hint: "Serving pair's score even → serve RIGHT, odd → LEFT. Partners alternate when the pair wins service back." },
-  { value: "by_position", label: "By position", hint: "Forehand player serves RIGHT, Backhand player serves LEFT. Partners alternate when the pair wins service back." },
+  { value: "even_odd", label: "Even / Odd", hint: "Forehand serves first, then partners alternate when the pair wins service back. Side: serving pair's score even → RIGHT, odd → LEFT." },
+  { value: "by_position", label: "By position", hint: "Forehand serves first, then partners alternate when the pair wins service back. Forehand serves RIGHT, Backhand LEFT." },
   { value: "second_server", label: "Second server", hint: "Each pair serves Forehand (RIGHT) then Backhand (LEFT) before service passes to the other pair." },
 ];
 
@@ -48,7 +49,7 @@ export interface DoublesServeState {
   side: ServeSide;
   /** Last player to serve for each pair (null = pair hasn't served yet). */
   prevServer: { a: Slot | null; b: Slot | null };
-  /** Who serves for each pair the first time it gets service (even_odd / by_position). */
+  /** Each pair's first server in a game — always its Forehand player. */
   firstServer: { a: Slot; b: Slot };
   /** second_server only: 1 = first server of this hand, 2 = second server. */
   hand: 1 | 2;
@@ -88,8 +89,6 @@ export interface StartInput {
   positions: PairPositions;
   /** Pair serving first (toss winner / current serving pair when resuming). */
   servingTeam: Team;
-  /** even_odd / by_position: first server of each pair. Ignored for second_server. */
-  firstServer?: { a: Slot; b: Slot };
   /** Current score (0-0 at the start; live score when resuming mid-game). */
   scores?: Scores;
 }
@@ -97,8 +96,9 @@ export interface StartInput {
 export function startDoubles(input: StartInput): DoublesServeState {
   const { method, positions, servingTeam } = input;
   const scores = input.scores ?? { a: 0, b: 0 };
-  const firstServer = input.firstServer ?? { a: positions.a.forehand, b: positions.b.forehand };
-  const server: Slot = method === "second_server" ? positions[servingTeam].forehand : firstServer[servingTeam];
+  // Forehand is always a pair's first server (every method).
+  const firstServer = { a: positions.a.forehand, b: positions.b.forehand };
+  const server: Slot = positions[servingTeam].forehand;
   return {
     version: 1,
     method,
@@ -159,27 +159,15 @@ export function afterRally(state: DoublesServeState, winner: Team, scores: Score
 }
 
 /**
- * New game. The winner of the previous game serves first (squash rules).
- * The winning rally has already been applied with `afterRally`, so for the
- * alternating methods the current server is kept and only the side is reset
- * for 0-0. Second server starts a fresh hand: Forehand from the RIGHT.
+ * New game. `servingTeam` is the pair ENTITLED to first service under the
+ * match's own first-service rule (decided by the caller / marker) — this
+ * module never decides which pair serves. Server alternation is reset so each
+ * pair's Forehand player is its first server in the new game; the last server
+ * of the previous game does NOT carry over. Second server always starts a
+ * fresh sequence: Forehand RIGHT, then Backhand LEFT.
  */
-export function startNextGame(state: DoublesServeState, gameWinner: Team): DoublesServeState {
-  const zero = { a: 0, b: 0 };
-  if (state.method === "second_server") {
-    const server = state.positions[gameWinner].forehand;
-    return {
-      ...state,
-      team: gameWinner,
-      hand: 1,
-      server,
-      side: "R",
-      prevServer: { ...state.prevServer, [gameWinner]: server },
-    };
-  }
-  let s = state;
-  if (s.team !== gameWinner) s = afterRally(s, gameWinner, zero);
-  return { ...s, side: sideFor(s.method, s.positions, s.team, s.server, zero) };
+export function startNextGame(state: DoublesServeState, servingTeam: Team): DoublesServeState {
+  return startDoubles({ method: state.method, positions: state.positions, servingTeam });
 }
 
 export interface OverrideInput {

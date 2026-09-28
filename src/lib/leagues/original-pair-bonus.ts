@@ -27,6 +27,15 @@ export function splitPairLabel(label: string | null | undefined): [string, strin
   return parts.length === 2 ? [parts[0], parts[1]] : null;
 }
 
+/** Same split as splitPairLabel but keeps the original capitalisation (for display/saving). */
+export function splitPairLabelDisplay(label: string | null | undefined): [string, string] | null {
+  const parts = String(label || "")
+    .split(/\s*(?:&|\/|\+|\band\b)\s*/i)
+    .map((s) => s.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  return parts.length === 2 ? [parts[0], parts[1]] : null;
+}
+
 export const pairKey = (a: string, b: string) => [norm(a), norm(b)].sort().join("|");
 
 /**

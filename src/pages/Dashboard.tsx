@@ -788,6 +788,11 @@ export default function Dashboard() {
 
       <PageHeader title={effectiveClub?.name || "SquashHub"} subtitle={((myClubMember?.role as string | undefined) === "visitor" || myClubMember?.fee_category?.name?.trim().toLowerCase() === "visitor") ? `Welcome back to visiting our club, ${firstName}` : `Welcome back, ${firstName}`} showNotifications showProfile />
 
+      {/* Door / lights controls first, so Open Door is at the top of the screen */}
+      <div className="px-4 mt-2">
+        <DashboardDeviceControls />
+      </div>
+
       {/* My member number (digits only) — used with the Bar PIN at the bar/shop */}
       {activeMember?.club_member_number && (
         <div className="px-4 mt-2">
@@ -972,9 +977,6 @@ export default function Dashboard() {
       {/* Arrears / suspension banner (always visible if applicable) */}
       <MemberSuspensionBanner />
 
-      <div className="px-4 mt-2">
-        <DashboardDeviceControls />
-      </div>
 
 
       {/* Club internet / data bundle status (club admins only) */}

@@ -23,8 +23,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2 } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
+import { QRCodeSVG } from "qrcode.react";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 
 interface CounterItem { id: string; name: string; price: number; category?: string | null; division?: string | null; item_kind?: string | null; barcode?: string | null; image_url?: string | null }
@@ -76,6 +77,7 @@ export default function BarCounter() {
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
+  const [onlineOpen, setOnlineOpen] = useState(false);
   const [memberNumber, setMemberNumber] = useState("");
   const [identifying, setIdentifying] = useState(false);
   const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);

@@ -234,6 +234,25 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return myCaptainCodes.has(home) || myCaptainCodes.has(away);
   };
 
+  // Court names for fixtures that carry a court_id (club-scoped courts table)
+  const { data: courtRows = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["fixture-court-names", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courts")
+        .select("id, name")
+        .eq("club_id", clubId!);
+      if (error) throw error;
+      return (data || []) as any;
+    },
+  });
+  const courtNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const c of courtRows) map.set(c.id, c.name);
+    return map;
+  }, [courtRows]);
+
   // ---------- Availability (per squash week) ----------
   const dow = (typeof weekStartDow === "number" ? weekStartDow : 3); // default Wed
   const fixtureWeekStart = (fixtureDate: string): string =>

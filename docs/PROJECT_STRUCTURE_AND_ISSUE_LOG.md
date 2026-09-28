@@ -2247,3 +2247,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 
 ### 2026-09-28 — Bar menu category selection
 - Replaced the horizontal jump-to-section strip on the signed-in Buy menu with larger, wrapping category choices. Choosing one shows only its products, with the cart retained across category and Bar/Shop switches. A division switch starts on its first available category; empty divisions retain their empty message. Prices, stock and QR menu are unchanged.
+
+### 2026-09-28 — Multi-club bar/shop rollout
+- Built-in categories remain a per-club fallback rather than writing rows to every club. The unambiguous shared labels are Cold Drinks, Energy Drinks and Snacks & Sweets; Beer & Cider stays combined where existing inventory uses that key. No other club's product category, price or stock is rewritten.
+- The division manager gains a reversible Show/Hide Shop control. Hiding archives that club's Shop division, retaining shop items, stock and history. Riverside-to-Uitsig catalogue copying must remap item relationships within Uitsig and record opening stock through bar_stock_apply.

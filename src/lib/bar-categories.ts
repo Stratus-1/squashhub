@@ -33,14 +33,14 @@ export interface CustomCategoryRow {
 
 /** Built-in categories. Clubs can rename/reorder/archive them or add their own via club_bar_categories. */
 export const BUILTIN_BAR_CATEGORIES: BarCategory[] = [
-  { value: "soft_drinks", label: "Soft Drinks", division: "bar" },
+  { value: "soft_drinks", label: "Cold Drinks", division: "bar" },
   { value: "water", label: "Water", division: "bar" },
-  { value: "energy", label: "Energy & Sports", division: "bar" },
+  { value: "energy", label: "Energy Drinks", division: "bar" },
   { value: "beer_cider", label: "Beer & Cider", division: "bar" },
   { value: "wine", label: "Wine", division: "bar" },
   { value: "spirits", label: "Spirits", division: "bar" },
   { value: "hot_drinks", label: "Hot Drinks", division: "bar" },
-  { value: "snacks", label: "Snacks", division: "bar" },
+  { value: "snacks", label: "Snacks & Sweets", division: "bar" },
   { value: "meals", label: "Light Meals", division: "bar" },
   { value: "restaurant", label: "Restaurant", division: "bar" },
   { value: "rackets", label: "Rackets", division: "shop" },

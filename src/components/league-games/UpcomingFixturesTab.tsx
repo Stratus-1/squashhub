@@ -234,6 +234,25 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
     return myCaptainCodes.has(home) || myCaptainCodes.has(away);
   };
 
+  // Court names for fixtures that carry a court_id (club-scoped courts table)
+  const { data: courtRows = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["fixture-court-names", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courts")
+        .select("id, name")
+        .eq("club_id", clubId!);
+      if (error) throw error;
+      return (data || []) as any;
+    },
+  });
+  const courtNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const c of courtRows) map.set(c.id, c.name);
+    return map;
+  }, [courtRows]);
+
   // ---------- Availability (per squash week) ----------
   const dow = (typeof weekStartDow === "number" ? weekStartDow : 3); // default Wed
   const fixtureWeekStart = (fixtureDate: string): string =>
@@ -533,6 +552,9 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" /> {f.venue_name}
+                          {f.court_id != null && courtNameById.get(f.court_id) && (
+                            <span className="font-medium text-foreground">· {courtNameById.get(f.court_id)}</span>
+                          )}
                         </span>
                         <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
                         {(result?.status === "submitted" || (result?.status === "draft" && result?.hasSavedScore)) && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}

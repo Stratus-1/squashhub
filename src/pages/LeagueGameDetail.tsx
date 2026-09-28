@@ -1883,7 +1883,9 @@ export default function LeagueGameDetail() {
     // configured format wins over any stale local state.
     const homeRule = fixture?.home_team_code ? teamRulesByCode?.[fixture.home_team_code.toUpperCase()] : undefined;
     const awayRule = fixture?.away_team_code ? teamRulesByCode?.[fixture.away_team_code.toUpperCase()] : undefined;
-    const effectivePpg = homeRule?.points_per_game ?? awayRule?.points_per_game ?? leagueRules?.points_per_game;
+    // The association-scoped rules row is authoritative; team rows are
+    // mirrors (often holding defaults) and only fill gaps.
+    const effectivePpg = leagueRules?.points_per_game ?? homeRule?.points_per_game ?? awayRule?.points_per_game;
     const effectiveFormat = effectivePpg === 15 ? "par15"
       : effectivePpg === 11 ? "par11"
       : scoringFormat;
@@ -1891,7 +1893,7 @@ export default function LeagueGameDetail() {
       : leagueRules?.games_format === "best_of_3" ? 3
       : bestOf;
     // win_by 1 = sudden death at deuce; anything else plays win-by-2.
-    const effectiveWinBy = homeRule?.win_by ?? awayRule?.win_by ?? leagueRules?.win_by ?? 2;
+    const effectiveWinBy = leagueRules?.win_by ?? homeRule?.win_by ?? awayRule?.win_by ?? 2;
     const deuceRule: MarkerConfig["deuceRule"] = effectiveWinBy <= 1 ? "sudden_death" : "win_by_2";
     return {
       playerA: { name: pos.homeName || pos.homeCode, number: pos.homeCode, club: fixture?.home_team_code || "" },

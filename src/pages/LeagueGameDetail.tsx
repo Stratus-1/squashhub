@@ -1,4 +1,4 @@
-import { countOriginalPairs, pairKey, pairsEffectiveOn, splitPairLabel } from "@/lib/leagues/original-pair-bonus";
+import { countOriginalPairs, pairKey, pairsEffectiveOn, splitPairLabel, splitPairLabelDisplay } from "@/lib/leagues/original-pair-bonus";
 import { checkDoublesSub } from "@/lib/leagues/doubles-sub-eligibility";
 import { useState, useMemo, useRef, useCallback, useEffect, type CSSProperties, type ReactNode } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
@@ -4002,7 +4002,7 @@ export default function LeagueGameDetail() {
           currentName={swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName}
           currentCode={swapTarget.side === "home" ? positions[swapTarget.idx].homeCode : positions[swapTarget.idx].awayCode}
           pairPlayers={doublesInfo?.isDoubles
-            ? splitPairLabel(swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName)
+            ? splitPairLabelDisplay(swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName)
             : null}
           inUseCodes={buildInUseMap(swapTarget.side)}
           associationId={fixtureRulesAssociationId ?? null}

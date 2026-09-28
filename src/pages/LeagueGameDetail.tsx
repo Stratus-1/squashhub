@@ -1,4 +1,4 @@
-import { countOriginalPairs, pairKey, pairsEffectiveOn, splitPairLabel } from "@/lib/leagues/original-pair-bonus";
+import { countOriginalPairs, pairKey, pairsEffectiveOn, splitPairLabel, splitPairLabelDisplay } from "@/lib/leagues/original-pair-bonus";
 import { checkDoublesSub } from "@/lib/leagues/doubles-sub-eligibility";
 import { useState, useMemo, useRef, useCallback, useEffect, type CSSProperties, type ReactNode } from "react";
 import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
@@ -1434,9 +1434,21 @@ export default function LeagueGameDetail() {
     const targetNameKey = side === "home" ? "homeName" : "awayName";
     // Doubles half-swap: replace only the chosen player of the pair, keep the partner.
     if (half != null) {
-      const pair = splitPairLabel(next[idx][targetNameKey]);
+      const pair = splitPairLabelDisplay(next[idx][targetNameKey]);
       if (pair) {
+        const outgoing = pair[half];
         const newLabel = half === 0 ? `${c.name} & ${pair[1]}` : `${pair[0]} & ${c.name}`;
+        // If the substitute already plays in another pair on this side, move
+        // the outgoing player into their old spot so nobody is listed twice.
+        next.forEach((p, i) => {
+          if (i === idx) return;
+          const other = splitPairLabelDisplay(p[targetNameKey]);
+          if (!other) return;
+          const at = other.findIndex((n) => normalizePlayerName(n) === candidateNameKey);
+          if (at < 0) return;
+          const replaced = at === 0 ? `${outgoing} & ${other[1]}` : `${other[0]} & ${outgoing}`;
+          next[i] = { ...next[i], [targetNameKey]: replaced };
+        });
         next[idx] = { ...next[idx], [targetNameKey]: newLabel };
         return next;
       }
@@ -3990,7 +4002,7 @@ export default function LeagueGameDetail() {
           currentName={swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName}
           currentCode={swapTarget.side === "home" ? positions[swapTarget.idx].homeCode : positions[swapTarget.idx].awayCode}
           pairPlayers={doublesInfo?.isDoubles
-            ? splitPairLabel(swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName)
+            ? splitPairLabelDisplay(swapTarget.side === "home" ? positions[swapTarget.idx].homeName : positions[swapTarget.idx].awayName)
             : null}
           inUseCodes={buildInUseMap(swapTarget.side)}
           associationId={fixtureRulesAssociationId ?? null}

@@ -40,7 +40,7 @@ interface MemberHit {
   has_pin: boolean;
 }
 
-import { BAR_CATEGORY_EMOJI as CATEGORY_ICONS } from "@/lib/bar-categories";
+import { barProductEmoji } from "@/lib/bar-categories";
 import { onMenu, type InventoryItem } from "@/lib/bar-inventory";
 
 interface Props {
@@ -260,7 +260,7 @@ export function CounterSaleDialog({ open, onOpenChange, items, clubId }: Props) 
                     {item.image_url ? (
                       <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
-                      <span className="text-2xl">{CATEGORY_ICONS[item.category] || "📦"}</span>
+                       <span className="text-2xl">{barProductEmoji(item)}</span>
                     )}
                   </div>
                   <p className="text-[11px] font-medium leading-tight text-center truncate mt-1">{item.name}</p>

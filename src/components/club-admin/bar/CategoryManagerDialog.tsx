@@ -20,6 +20,7 @@ import {
   useBarCategories,
   useBarDivisions,
   BAR_DIVISIONS,
+  BAR_CATEGORY_EMOJI,
   type BarCategory,
 } from "@/lib/bar-categories";
 
@@ -242,7 +243,7 @@ export function CategoryManagerDialog({ clubId, open, onOpenChange, usedCategori
                         </Button>
                       </>
                     ) : (
-                      <span className={`text-sm flex-1 truncate ${c.archived ? "line-through text-muted-foreground" : ""}`}>{c.label}</span>
+                       <span className={`text-sm flex-1 truncate ${c.archived ? "line-through text-muted-foreground" : ""}`}><span aria-hidden="true" className="mr-1.5">{BAR_CATEGORY_EMOJI[c.value] || "📦"}</span>{c.label}</span>
                     )}
                     {usedCategories.has(c.value) && <Badge variant="outline" className="text-[10px]">in use</Badge>}
                     <Select value={c.division} onValueChange={v => saveCategory(c, { division: v })}>

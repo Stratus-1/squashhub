@@ -552,6 +552,9 @@ export function UpcomingFixturesTab({ platformAssocIds, clubTeamCodes, myTeamCod
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" /> {f.venue_name}
+                          {f.court_id != null && courtNameById.get(f.court_id) && (
+                            <span className="font-medium text-foreground">· {courtNameById.get(f.court_id)}</span>
+                          )}
                         </span>
                         <Badge variant="outline" className="text-[10px]">{f.division}</Badge>
                         {(result?.status === "submitted" || (result?.status === "draft" && result?.hasSavedScore)) && <Badge variant="secondary" className="text-[10px]">Scored</Badge>}

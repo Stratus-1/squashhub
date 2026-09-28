@@ -65,7 +65,7 @@ export function DoublesServeSetup({ method, pairs, resuming, onStart }: Props) {
       {alternating && fh[t] !== null && (
         <div className="space-y-1">
           <p className="text-[11px] text-muted-foreground">
-            {resuming ? "Who served last for this pair's next turn?" : "Who serves first for this pair?"}
+            {resuming ? "Who serves (next) for this pair?" : "Who serves first for this pair?"}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {([0, 1] as Slot[]).map((s) => (

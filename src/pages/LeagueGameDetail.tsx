@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsClubAdmin } from "@/hooks/use-club";
 import { MarkerScoreboard, type GameScore } from "@/components/marker/MarkerScoreboard";
+import { parseServingMethod } from "@/lib/marker/doubles-serving";
 import type { MarkerConfig } from "@/components/marker/MarkerSetup";
 import { clearMarkerStateForSession, getMarkerSessionKeys, hasMarkerStateForSession } from "@/lib/marker-storage";
 import { cn } from "@/lib/utils";
@@ -1924,14 +1925,22 @@ export default function LeagueGameDetail() {
     // win_by 1 = sudden death at deuce; anything else plays win-by-2.
     const effectiveWinBy = leagueRules?.win_by ?? homeRule?.win_by ?? awayRule?.win_by ?? 2;
     const deuceRule: MarkerConfig["deuceRule"] = effectiveWinBy <= 1 ? "sudden_death" : "win_by_2";
+    // Doubles rubber: both sides hold a "Name & Name" pair label. Pass both
+    // players so the marker can guide the actual server (never just the first name).
+    const pairA = doublesRubbers > 0 ? splitPairLabelDisplay(pos.homeName) : null;
+    const pairB = doublesRubbers > 0 ? splitPairLabelDisplay(pos.awayName) : null;
+    const doublesServing = pairA && pairB
+      ? { method: parseServingMethod((leagueRules as any)?.doubles_serving_method), pairA, pairB }
+      : undefined;
     return {
+      doublesServing,
       playerA: { name: pos.homeName || pos.homeCode, number: pos.homeCode, club: fixture?.home_team_code || "" },
       playerB: { name: pos.awayName || pos.awayCode, number: pos.awayCode, club: fixture?.away_team_code || "" },
       isDoubles: false, matchType: "league", scoringFormat: effectiveFormat, bestOf: effectiveBestOf, deuceRule,
       source: "league", sourceId: fixtureId,
       sourcePosition: posIdx + 1,
     };
-  }, [positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules, teamRulesByCode]);
+  }, [positions, fixture, fixtureId, scoringFormat, bestOf, leagueRules, teamRulesByCode, doublesRubbers]);
 
   const startMarking = (posIdx: number) => {
     const pos = positions[posIdx];

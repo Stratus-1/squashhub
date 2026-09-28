@@ -728,13 +728,13 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         {/* Player A */}
         <button
           type="button"
-          disabled={matchOver || resting || !tossDecided}
+          disabled={matchOver || resting || !tossDecided || dblBlocked}
           className={cn(
             "relative rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all duration-150 active:scale-95 min-h-[180px] select-none",
             "bg-primary text-primary-foreground",
             pointFlash === "a" && "scale-[1.03] ring-4 ring-[hsl(var(--win))] shadow-[0_0_0_6px_hsl(var(--win)/0.35)] brightness-125",
             matchOver && matchWinner === "a" && "ring-4 ring-[hsl(var(--win))]",
-            (matchOver || resting || !tossDecided) && "opacity-60 cursor-default"
+            (matchOver || resting || !tossDecided || dblBlocked) && "opacity-60 cursor-default"
           )}
           onClick={() => awardPoint("a")}
         >
@@ -755,8 +755,21 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
               >R</Badge>
             )}
           </div>
-          {config.playerA.number && (
+          {config.playerA.number && !doublesPairs && (
             <p className="text-[10px] opacity-60">#{config.playerA.number}</p>
+          )}
+          {doublesPairs && (
+            <div className="w-full space-y-0.5" data-testid="pair-names-a">
+              {([0, 1] as Slot[]).map((slot) => {
+                const serving = guided && dbl?.team === "a" && dbl.server === slot;
+                const pos = guided && dbl ? (isForehand(dbl.positions, "a", slot) ? "FH" : "BH") : null;
+                return (
+                  <p key={slot} className={cn("text-[11px] leading-tight truncate", serving ? "font-extrabold underline" : "opacity-80")}>
+                    {pos && <span className="opacity-70 mr-1">{pos}</span>}{doublesPairs.a[slot]}
+                  </p>
+                );
+              })}
+            </div>
           )}
           <p className="text-6xl font-heading font-bold tabular-nums leading-none">{scoreA}</p>
           <div className="flex items-center gap-1.5">
@@ -769,13 +782,13 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         {/* Player B */}
         <button
           type="button"
-          disabled={matchOver || resting || !tossDecided}
+          disabled={matchOver || resting || !tossDecided || dblBlocked}
           className={cn(
             "relative rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all duration-150 active:scale-95 min-h-[180px] select-none",
             "bg-secondary text-secondary-foreground",
             pointFlash === "b" && "scale-[1.03] ring-4 ring-[hsl(var(--win))] shadow-[0_0_0_6px_hsl(var(--win)/0.35)] brightness-125",
             matchOver && matchWinner === "b" && "ring-4 ring-[hsl(var(--win))]",
-            (matchOver || resting || !tossDecided) && "opacity-60 cursor-default"
+            (matchOver || resting || !tossDecided || dblBlocked) && "opacity-60 cursor-default"
           )}
           onClick={() => awardPoint("b")}
         >
@@ -796,8 +809,21 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
               >R</Badge>
             )}
           </div>
-          {config.playerB.number && (
+          {config.playerB.number && !doublesPairs && (
             <p className="text-[10px] opacity-60">#{config.playerB.number}</p>
+          )}
+          {doublesPairs && (
+            <div className="w-full space-y-0.5" data-testid="pair-names-b">
+              {([0, 1] as Slot[]).map((slot) => {
+                const serving = guided && dbl?.team === "b" && dbl.server === slot;
+                const pos = guided && dbl ? (isForehand(dbl.positions, "b", slot) ? "FH" : "BH") : null;
+                return (
+                  <p key={slot} className={cn("text-[11px] leading-tight truncate", serving ? "font-extrabold underline" : "opacity-80")}>
+                    {pos && <span className="opacity-70 mr-1">{pos}</span>}{doublesPairs.b[slot]}
+                  </p>
+                );
+              })}
+            </div>
           )}
           <p className="text-6xl font-heading font-bold tabular-nums leading-none">{scoreB}</p>
           <div className="flex items-center gap-1.5">
@@ -825,9 +851,13 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
         <Hand className={cn("w-5 h-5", handOutFlash ? "text-amber-700" : "text-primary")} />
         <span className={cn("font-semibold", handOutFlash ? "text-base uppercase tracking-wide text-amber-900" : "text-sm")}>
           {handOutFlash ? (
-            <>HAND-OUT · serve to <span className="font-bold">{server === "a" ? playerAName : playerBName}</span></>
+            <>HAND-OUT · <span className="font-bold">{servingLabel}</span>{guided ? ` — SERVE ${sideWord(serveSide)}` : ""}</>
           ) : (
-            <>Serving: {server === "a" ? playerAName : playerBName} ({serveSide})</>
+            guided && dbl && doublesPairs ? (
+              <span className="text-base font-extrabold uppercase tracking-wide" data-testid="serve-banner">{servingBanner(dbl, { a: doublesPairs.a, b: doublesPairs.b })}</span>
+            ) : (
+              <>Serving: {servingLabel} ({serveSide})</>
+            )
           )}
         </span>
         {server === "b" ? (
@@ -836,9 +866,69 @@ export function MarkerScoreboard({ config, initialScores, onMatchComplete, onRes
       </div>
 
       {/* Server indicator (side auto-toggles when server scores; tap the R/L badge next to the server's score to correct) */}
-      <p className="text-center text-xs text-muted-foreground">
-        {isEnglish ? "Hand-in/Hand-out · " : ""}Serving: <span className="font-semibold">{server === "a" ? playerAName : playerBName}</span> ({serveSide}) <span className="opacity-60">· tap the R/L badge to correct</span>
-      </p>
+      {guided && dbl ? (
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <span>{isEnglish ? "Hand-in/Hand-out · " : ""}Serving method: {methodLabel(dblMethod)}{dbl.method === "second_server" ? ` · ${dbl.hand === 1 ? "1st" : "2nd"} server` : ""}</span>
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] underline" disabled={matchOver} onClick={() => setOverrideOpen(true)}>
+            Correct server
+          </Button>
+        </div>
+      ) : (
+        <p className="text-center text-xs text-muted-foreground">
+          {isEnglish ? "Hand-in/Hand-out · " : ""}Serving: <span className="font-semibold">{servingLabel}</span> ({serveSide}) <span className="opacity-60">· tap the R/L badge to correct</span>
+          {doublesPairs && !dblMethod && <span className="block opacity-70">Doubles serving method not set for this competition — choose server and box by hand.</span>}
+        </p>
+      )}
+
+      {/* Marker correction: rewrites the doubles serving state, not just the label */}
+      <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Correct the server</DialogTitle>
+            <DialogDescription>Only use this if the match on court differs from the app. Every following serve is worked out from your correction.</DialogDescription>
+          </DialogHeader>
+          {guided && dbl && doublesPairs && (
+            <div className="space-y-3">
+              {(["a", "b"] as const).map((t) => (
+                <div key={t} className="space-y-1">
+                  <p className="text-xs font-semibold">Pair {t.toUpperCase()}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([0, 1] as Slot[]).map((slot) => {
+                      const scores = { a: scoreA, b: scoreB };
+                      const auto = overrideServer(dbl, { team: t, server: slot, scores });
+                      return (
+                        <div key={slot} className="space-y-1">
+                          <p className="text-[11px] truncate">{doublesPairs[t][slot]} ({isForehand(dbl.positions, t, slot) ? "FH" : "BH"})</p>
+                          <div className="grid grid-cols-2 gap-1">
+                            {(["R", "L"] as const).map((side) => (
+                              <Button
+                                key={side}
+                                size="sm"
+                                variant={dbl.team === t && dbl.server === slot && dbl.side === side ? "default" : side === auto.side ? "secondary" : "outline"}
+                                className="h-8 text-[11px]"
+                                onClick={() => {
+                                  applyDbl(overrideServer(dbl, { team: t, server: slot, side, scores }));
+                                  setOverrideOpen(false);
+                                  toast.success(`${doublesPairs[t][slot]} — SERVE ${sideWord(side)}`);
+                                }}
+                              >
+                                {side === "R" ? "Right" : "Left"}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setOverrideOpen(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
       {/* Controls */}

@@ -219,7 +219,7 @@ export default function ScanPay() {
     const poll = async (attempt = 0) => {
       if (cancelled) return;
       const { data: res } = await supabase.functions.invoke("bar-card-verify", {
-        body: { sale_id: pending!.saleId },
+        body: { sale_id: pending!.saleId, cancelled: new URLSearchParams(window.location.search).has("payfast_cancelled") },
       });
       if (cancelled) return;
       const status = (res as any)?.status;
@@ -233,7 +233,7 @@ export default function ScanPay() {
         setDone({ total: pending!.total, itemName: pending!.itemName, onAccount: false, cardPaid: true });
         return;
       }
-      if (status === "failed" || attempt >= 3) {
+      if (status === "failed" || attempt >= 8) {
         localStorage.removeItem(PENDING_SALE_KEY);
         setVerifying(false);
         if (status === "failed") toast.error("That card payment did not go through.");

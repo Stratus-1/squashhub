@@ -390,7 +390,7 @@ export default function BarCounter() {
 
   // ---- Board ------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-background pb-64">
+    <div className="min-h-screen bg-background pb-80">
       <SEO title="Bar counter" description="Open tabs at the bar counter" path="/bar/counter" noIndex />
 
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3 flex items-center justify-between">
@@ -557,10 +557,10 @@ export default function BarCounter() {
                 <Card key={item.id} className={`relative p-1.5 flex flex-col gap-1 ${qty > 0 ? "ring-2 ring-primary" : ""}`}>
                   <Button type="button" variant="ghost" aria-label={`Add ${item.name}`} onClick={() => setCart(c => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
                     className="h-auto min-w-0 w-full p-0 flex flex-col items-center gap-1 whitespace-normal hover:bg-accent/50">
-                    <span className="w-full aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                    <span className="w-full h-24 sm:h-28 rounded-md overflow-hidden bg-muted flex items-center justify-center">
                       {item.image_url ? <img src={item.image_url} alt="" className="w-full h-full object-cover" loading="lazy" /> : <span className="text-3xl" aria-hidden="true">{barProductEmoji(item)}</span>}
                     </span>
-                    <span className="text-[11px] font-medium leading-tight text-center break-words min-h-7 w-full">{item.name}</span>
+                    <span className="text-[11px] font-medium leading-tight text-center break-words line-clamp-2 min-h-7 w-full">{item.name}</span>
                     <span className="text-[11px] text-muted-foreground">{money(item.price)}</span>
                   </Button>
                   <div className="flex items-center justify-between mt-auto pt-1">
@@ -584,7 +584,7 @@ export default function BarCounter() {
           </div>
           {visibleItems.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{itemSearch ? "No products match your search." : "No products in this category."}</p>}
 
-          <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
+          <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
             <div className="max-w-7xl mx-auto space-y-2">
             <Button className="w-full h-12 gap-2" disabled={cartTotal <= 0 || busy} onClick={addRound}>
               <Receipt className="w-4 h-4" />

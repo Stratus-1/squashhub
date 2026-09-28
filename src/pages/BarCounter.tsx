@@ -23,8 +23,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { toast } from "sonner";
-import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2 } from "lucide-react";
+import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2, Smartphone } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
+import { QRCodeSVG } from "qrcode.react";
 import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 
 interface CounterItem { id: string; name: string; price: number; category?: string | null; division?: string | null; item_kind?: string | null; barcode?: string | null; image_url?: string | null }
@@ -43,6 +44,10 @@ interface Board {
   club_name: string;
   cash_enabled: boolean;
   card_enabled: boolean;
+  account_enabled?: boolean;
+  online_enabled?: boolean;
+  payment_gateway?: string;
+  venue_code?: string | null;
   items: CounterItem[];
   tabs: CounterTab[];
 }
@@ -72,6 +77,7 @@ export default function BarCounter() {
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
+  const [onlineOpen, setOnlineOpen] = useState(false);
   const [memberNumber, setMemberNumber] = useState("");
   const [identifying, setIdentifying] = useState(false);
   const [identified, setIdentified] = useState<{ id: string; display_name: string } | null>(null);
@@ -157,6 +163,12 @@ export default function BarCounter() {
     () => board?.tabs.find((t) => t.tab_id === activeTabId) ?? null,
     [board, activeTabId],
   );
+  // Online card payment only works through the gateways the bar checkout supports.
+  const onlineAvailable = !!board && board.online_enabled !== false && !!board.venue_code
+    && ["stitch", "yoco"].includes(board.payment_gateway ?? "");
+  const onlineLink = activeTab && board?.venue_code
+    ? `${window.location.origin}/s/${board.venue_code}?tab=${activeTab.tab_id}&t=${(activeTab as any).token}`
+    : null;
   const cartTotal = useMemo(
     () =>
       Object.entries(cart).reduce((sum, [id, qty]) => {
@@ -606,15 +618,53 @@ export default function BarCounter() {
                 <CreditCard className="w-4 h-4" /> Card machine
               </Button>
             </div>
-            <Button
-              variant="secondary" className="w-full h-11 gap-2"
-              disabled={busy || activeTab.total <= 0}
-              onClick={() => { setMemberNumber(""); setMemberOpen(true); }}
-            >
-              <UserCheck className="w-4 h-4" /> Add to member account
-            </Button>
+            {(board.account_enabled !== false || onlineAvailable) && (
+              <div className={`grid gap-2 ${board.account_enabled !== false && onlineAvailable ? "grid-cols-2" : "grid-cols-1"}`}>
+                {onlineAvailable && (
+                  <Button
+                    variant="outline" className="h-11 gap-2"
+                    disabled={busy || activeTab.total <= 0}
+                    onClick={async () => { if (await flushCart(activeTab.tab_id)) setOnlineOpen(true); }}
+                  >
+                    <Smartphone className="w-4 h-4" /> Pay online
+                  </Button>
+                )}
+                {board.account_enabled !== false && (
+                  <Button
+                    variant="secondary" className="h-11 gap-2"
+                    disabled={busy || activeTab.total <= 0}
+                    onClick={() => { setMemberNumber(""); setMemberOpen(true); }}
+                  >
+                    <UserCheck className="w-4 h-4" /> Member account
+                  </Button>
+                )}
+              </div>
+            )}
+            {board.online_enabled !== false && !onlineAvailable && (
+              <p className="text-[11px] text-muted-foreground text-center">
+                Online card payment isn't available at the bar yet for {board.payment_gateway ? board.payment_gateway.toUpperCase() : "this club's payment gateway"}.
+              </p>
+            )}
             </div>
           </div>
+
+          <Dialog open={onlineOpen} onOpenChange={setOnlineOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Pay {money(activeTab.total)} online</DialogTitle>
+                <DialogDescription className="text-xs">
+                  {activeTab.guest_name} scans this code with their phone and pays the tab by card. The tab closes automatically once the payment is confirmed.
+                </DialogDescription>
+              </DialogHeader>
+              {onlineLink && (
+                <div className="flex flex-col items-center gap-3 py-2">
+                  <div className="rounded-lg bg-background p-3 border"><QRCodeSVG value={onlineLink} size={220} /></div>
+                  <Button variant="outline" size="sm" onClick={() => { navigator.clipboard?.writeText(onlineLink); toast.success("Link copied"); }}>Copy link</Button>
+                </div>
+              )}
+              <Button className="w-full" onClick={() => { setOnlineOpen(false); refetch(); }}>Done</Button>
+            </DialogContent>
+          </Dialog>
 
           <Dialog open={memberOpen} onOpenChange={setMemberOpen}>
             <DialogContent className="max-w-sm">

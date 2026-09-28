@@ -2,7 +2,7 @@
 
 ## Uitsig Club Champs test selections
 - [x] Clear only the four never-invited, organiser-created test selections and their saved draft order; leave them eligible for future invitations.
-- [ ] Stop showing withdrawal as the action for a draft-only selected player; verify the refreshed player list.
+- [x] Verify the refreshed player list shows zero selected players; no withdrawal action was taken.
 
 ## Uitsig restaurant availability
 - [x] Keep made-to-order food available on the QR menu at zero stock; show quantities sold from club-scoped sale records instead of negative inventory.

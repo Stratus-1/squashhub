@@ -12509,7 +12509,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                             {(requireLeagueActive || requireSsaActive) && !m._isVisitor && (
                               <CompetitionStatusBadges memberId={m.id} showUnknown />
                             )}
-                            {editingChampId && entered && selectedPlayerIds.has(m.id) && !selfPairInviteSelection && (
+                            {editingChampId && selectedPlayerIds.has(m.id) && !selfPairInviteSelection && (
                               <Button type="button" variant="ghost" size="sm" className="ml-auto shrink-0 text-destructive"
                                 onClick={() => {
                                   if (confirm(`Withdraw ${m.name || m.profiles?.name || "this player"} from the tournament?\n\nBefore they have played: they leave the entrant list and their unplayed games are removed — then click Rebuild Schedule.\nIf they have already played: use 'Pull a player out' on Tournament Games instead (results kept, remaining games forfeited).`)) {

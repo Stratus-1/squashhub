@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save } from "lucide-react";
+import { DOUBLES_SERVING_METHODS } from "@/lib/marker/doubles-serving";
 
 interface Props {
   associationId: string;
@@ -123,6 +124,20 @@ export default function AssociationRulesTab({ associationId, readOnly = false }:
               ]}
               onChange={(v) => set("max_timeouts_per_player", Number(v))}
             />
+          </div>
+          <div className="border-t pt-3">
+            <SegButtons
+              label="Doubles serving method"
+              value={form.doubles_serving_method ?? "none"}
+              options={[
+                { v: "none", l: "Not set", hint: "Marker chooses server and box by hand (previous behaviour)." },
+                ...DOUBLES_SERVING_METHODS.map((m) => ({ v: m.value, l: m.label, hint: m.hint })),
+              ]}
+              onChange={(v) => set("doubles_serving_method", v === "none" ? null : (v as LeagueRules["doubles_serving_method"]))}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Doubles only. The live marker asks for each pair's Forehand and Backhand player, then shows who serves and from which side.
+            </p>
           </div>
           <p className="text-xs text-muted-foreground">
             {(() => {

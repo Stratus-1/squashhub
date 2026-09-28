@@ -4,6 +4,7 @@
 - [x] Replace Uitsig's unreferenced catalogue with a club-owned Riverside copy; audit stock and verify options/recipes.
 - [x] Enable per-club Bar/Shop division visibility and shared category labels without changing other clubs' items.
 - [x] Check Uitsig's admin catalogue and Nelspruit's simple menu in preview; do not publish. Uitsig's self-service menu remains disabled under its pre-existing club setting.
+- [x] Match the category and product fallback icons across Riverside and Uitsig; neither club has saved product photos to copy.
 
 ## Visitor QR menu divisions
 - [x] Show Bar items and Shop items separately on the public venue QR menu; retain one-product QR behavior.

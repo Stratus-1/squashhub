@@ -698,10 +698,11 @@ export default function LeagueGameDetail() {
       );
 
       // League reserve team (reserve_mode = per_league).
-      let { data: reserveRows } = assocId
+      const { data: perLeagueReserves } = assocId
         ? await (supabase as any).from("league_reserve_players")
             .select("member_id, rank").eq("association_id", assocId).eq("is_active", true)
         : { data: [] };
+      let reserveRows: any[] = (perLeagueReserves || []) as any[];
 
       // Per-team reserve mode: reserves are registered in a same-association
       // "Reserves" league (the same pool the replacement picker offers).

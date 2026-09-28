@@ -8606,6 +8606,7 @@ export type Database = {
           cross_gender_league_play_allowed: boolean
           cross_gender_subs_allowed: boolean
           doubles_rubbers: number | null
+          doubles_serving_method: string | null
           enforce_sub_rules: boolean
           fill_up_leagues_enabled: boolean
           forfeit_allowed: boolean
@@ -8651,6 +8652,7 @@ export type Database = {
           cross_gender_league_play_allowed?: boolean
           cross_gender_subs_allowed?: boolean
           doubles_rubbers?: number | null
+          doubles_serving_method?: string | null
           enforce_sub_rules?: boolean
           fill_up_leagues_enabled?: boolean
           forfeit_allowed?: boolean
@@ -8696,6 +8698,7 @@ export type Database = {
           cross_gender_league_play_allowed?: boolean
           cross_gender_subs_allowed?: boolean
           doubles_rubbers?: number | null
+          doubles_serving_method?: string | null
           enforce_sub_rules?: boolean
           fill_up_leagues_enabled?: boolean
           forfeit_allowed?: boolean
@@ -15445,6 +15448,7 @@ export type Database = {
           division_pairing_method: Json
           division_seed_source: Json
           doubles_pairing_locked: boolean
+          doubles_serving_method: string | null
           draft_player_ids: string[] | null
           draw_locked: boolean
           draw_locked_at: string | null
@@ -15478,6 +15482,7 @@ export type Database = {
           ladder_affects: boolean | null
           league_best_of: Json | null
           league_bye_handling: Json | null
+          league_doubles_serving_methods: Json | null
           league_draw_styles: Json
           league_forfeit_points: Json | null
           league_forfeit_rules: Json | null
@@ -15554,6 +15559,7 @@ export type Database = {
           division_pairing_method?: Json
           division_seed_source?: Json
           doubles_pairing_locked?: boolean
+          doubles_serving_method?: string | null
           draft_player_ids?: string[] | null
           draw_locked?: boolean
           draw_locked_at?: string | null
@@ -15587,6 +15593,7 @@ export type Database = {
           ladder_affects?: boolean | null
           league_best_of?: Json | null
           league_bye_handling?: Json | null
+          league_doubles_serving_methods?: Json | null
           league_draw_styles?: Json
           league_forfeit_points?: Json | null
           league_forfeit_rules?: Json | null
@@ -15663,6 +15670,7 @@ export type Database = {
           division_pairing_method?: Json
           division_seed_source?: Json
           doubles_pairing_locked?: boolean
+          doubles_serving_method?: string | null
           draft_player_ids?: string[] | null
           draw_locked?: boolean
           draw_locked_at?: string | null
@@ -15696,6 +15704,7 @@ export type Database = {
           ladder_affects?: boolean | null
           league_best_of?: Json | null
           league_bye_handling?: Json | null
+          league_doubles_serving_methods?: Json | null
           league_draw_styles?: Json
           league_forfeit_points?: Json | null
           league_forfeit_rules?: Json | null

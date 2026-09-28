@@ -1035,7 +1035,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const ids = (existingChamps as any[]).map((c: any) => c.id);
       if (ids.length === 0) return {} as Record<string, any>;
       const { data, error } = await fromExt("tournaments")
-        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points, league_sources, league_source_modes, draft_player_ids")
+        .select("id, event_type, max_entrants, max_per_league, seeding_source, participating_club_ids, league_genders, league_match_types, league_scoring_modes, league_points_per_game, league_best_of, league_win_conditions, league_doubles_serving_methods, league_play_all_games, league_playoffs, league_bye_handling, league_forfeit_rules, league_forfeit_points, league_sources, league_source_modes, draft_player_ids")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, any> = {};
@@ -1395,6 +1395,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [leaguePointsPerGame, setLeaguePointsPerGame] = useState<Record<string, 11 | 15>>({});
   const [leagueBestOf, setLeagueBestOf] = useState<Record<string, 3 | 5>>({});
   const [leagueWinConditions, setLeagueWinConditions] = useState<{[key: string]: "win_by_2" | "sudden_death"}>({});
+  // Per-division doubles serving method for the live marker (unset = manual serving).
+  const [leagueServingMethods, setLeagueServingMethods] = useState<Record<string, DoublesServingMethod>>({});
   // When true for a league, every game is played (no early finish at best-of).
   const [leaguePlayAll, setLeaguePlayAll] = useState<Record<string, boolean>>({});
   // Per-league playoffs: which leagues run their own knockout / finals stage.
@@ -1703,6 +1705,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePointsPerGame(shift);
     setLeagueBestOf(shift);
     setLeagueWinConditions(shift);
+    setLeagueServingMethods(shift);
     setNumGroups((n) => Math.max(0, (n || 0) - 1));
   };
   const [byeHandling, setByeHandling] = useState<"" | "no_match" | "walkover_win" | "neutral">("no_match");
@@ -2991,6 +2994,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_points_per_game: Object.keys(leaguePointsPerGame).length > 0 ? leaguePointsPerGame : null,
       league_best_of: Object.keys(leagueBestOf).length > 0 ? leagueBestOf : null,
       league_win_conditions: Object.keys(leagueWinConditions).length > 0 ? leagueWinConditions : null,
+      league_doubles_serving_methods: Object.keys(leagueServingMethods).length > 0 ? leagueServingMethods : null,
       league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
       league_playoffs: Object.keys(leaguePlayoffs).length > 0 ? leaguePlayoffs : null,
       league_playoff_modes: Object.keys(leaguePlayoffModes).length > 0 ? leaguePlayoffModes : null,
@@ -8117,6 +8121,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setLeaguePointsPerGame(inheritedP);
     setLeagueBestOf(inheritedB);
     setLeagueWinConditions(inheritedW);
+    {
+      const raw = ((ex as any).league_doubles_serving_methods as Record<string, unknown> | null) || {};
+      const next: Record<string, DoublesServingMethod> = {};
+      for (const [k, v] of Object.entries(raw)) { const m = parseServingMethod(v); if (m) next[k] = m; }
+      setLeagueServingMethods(next);
+    }
     setLeaguePlayAll(inheritedPA);
     setLeaguePlayoffs(inheritedPO);
     // Post-pool playoff style + qualifiers (absent on older tournaments → position).
@@ -10280,6 +10290,23 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     ]}
                                     onChange={(v) => setLeagueWinCondition(gn, v as "win_by_2" | "sudden_death")}
                                   />
+                                  {matchTypeForLeague(gn) === "doubles" && (
+                                    <SegRow
+                                      label="Doubles serving method"
+                                      value={leagueServingMethods[String(gn)] ?? "none"}
+                                      color="cyan"
+                                      options={[
+                                        { v: "none", l: "Not set" },
+                                        ...DOUBLES_SERVING_METHODS.map((m) => ({ v: m.value, l: m.label })),
+                                      ]}
+                                      onChange={(v) => setLeagueServingMethods((m) => {
+                                        const next = { ...m };
+                                        const parsed = parseServingMethod(v);
+                                        if (parsed) next[String(gn)] = parsed; else delete next[String(gn)];
+                                        return next;
+                                      })}
+                                    />
+                                  )}
                                   <SegRow
                                     label="Bye handling"
                                     value={byeForLeague(gn)}

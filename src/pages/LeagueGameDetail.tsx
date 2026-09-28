@@ -698,7 +698,7 @@ export default function LeagueGameDetail() {
       );
 
       // League reserve team (reserve_mode = per_league).
-      const { data: reserveRows } = assocId
+      let { data: reserveRows } = assocId
         ? await (supabase as any).from("league_reserve_players")
             .select("member_id, rank").eq("association_id", assocId).eq("is_active", true)
         : { data: [] };

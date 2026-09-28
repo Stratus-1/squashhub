@@ -23,7 +23,7 @@ import { rememberPayReturnTarget } from "@/lib/stitch-checkout";
 import { BarOtpDialog } from "@/components/bar/BarOtpDialog";
 import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import type { BarDivision } from "@/lib/bar-categories";
-import { categoryLabel, useBarCategories } from "@/lib/bar-categories";
+import { categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 import { validitySummary } from "@/lib/bar-inventory";
 
 
@@ -126,6 +126,7 @@ export default function ScanPay() {
   const club = data?.club;
   const currency = club?.currency_code;
   const { data: catRows } = useBarCategories(club?.id);
+  const { divisions: configuredDivisions } = useBarDivisions(club?.id);
 
   // The public QR page is deliberately identity-free: even if the phone is
   // still signed in, a member must identify with their membership number and
@@ -137,14 +138,15 @@ export default function ScanPay() {
   /** Everything the payer can tap — a single-item sticker still shows a menu of one. */
   const menu = useMemo<ScanItem[]>(() => {
     if (data?.kind === "item" && data.item) return [data.item as ScanItem];
-    return (data?.menu || []) as ScanItem[];
-  }, [data]);
+    const allowed = new Set(configuredDivisions.map(d => d.key));
+    return ((data?.menu || []) as ScanItem[]).filter(item => allowed.has(item.division || "bar"));
+  }, [data, configuredDivisions]);
   // Division tabs come from what this club actually sells (clubs can configure their own divisions).
   const menuDivisions = useMemo(() => {
     const keys = Array.from(new Set(menu.map((m) => (m.division || "bar") as string)));
     const rank = (k: string) => (k === "bar" ? 0 : k === "shop" ? 1 : 2);
-    return keys.length ? keys.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)) : ["bar", "shop"];
-  }, [menu]);
+    return keys.length ? keys.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)) : configuredDivisions.map(d => d.key);
+  }, [menu, configuredDivisions]);
   const activeDivision = menuDivisions.includes(division) ? division : menuDivisions[0];
   const divisionMenu = useMemo(
     () => (data?.kind === "item" ? menu : menu.filter((item) => (item.division || "bar") === activeDivision)),

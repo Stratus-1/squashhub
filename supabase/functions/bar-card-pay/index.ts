@@ -2,6 +2,14 @@
 // Creates a real Stitch card payment for a QR bar sale (visitor or member),
 // records the sale as PENDING and returns the hosted checkout URL.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { gatewayEnabled, resolveGatewayCreds } from "../_shared/gateway-creds.ts";
+import {
+  PAYFAST_LIVE_PROCESS,
+  PAYFAST_SANDBOX_PROCESS,
+  isSandboxCreds,
+  pfEncode,
+  pfSignature,
+} from "../_shared/payfast.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,9 +103,12 @@ Deno.serve(async (req) => {
     }
 
     const { data: club } = await admin
-      .from("clubs").select("id, name, subdomain, payment_gateway").eq("id", qr.club_id).maybeSingle();
-    const gateway = String(club?.payment_gateway || "").toLowerCase();
-    if (!club || !["stitch", "yoco"].includes(gateway)) {
+      .from("clubs").select("id, name, subdomain, payment_gateway, payment_gateways").eq("id", qr.club_id).maybeSingle();
+    const primary = String(club?.payment_gateway || "").toLowerCase();
+    const gateway = ["stitch", "yoco", "payfast"].includes(primary)
+      ? primary
+      : gatewayEnabled(club as any, "payfast") ? "payfast" : primary;
+    if (!club || !["stitch", "yoco", "payfast"].includes(gateway)) {
       return json({ error: "Card payments are not enabled for this club" });
     }
 
@@ -109,10 +120,14 @@ Deno.serve(async (req) => {
     const clientId = (creds.client_id || "").trim();
     const clientSecret = (creds.client_secret || "").trim();
     const yocoSecretKey = String(creds.secret_key || (secrets as any)?.payment_gateway_secret_key || "").trim();
+    const pfCreds = resolveGatewayCreds(secrets?.payment_gateway_credentials, "payfast");
     if (gateway === "stitch" && (!clientId || !clientSecret)) {
       return json({ error: "This club has not finished its card payment setup" });
     }
     if (gateway === "yoco" && !yocoSecretKey) {
+      return json({ error: "This club has not finished its card payment setup" });
+    }
+    if (gateway === "payfast" && (!(pfCreds.merchant_id || "").trim() || !(pfCreds.merchant_key || "").trim())) {
       return json({ error: "This club has not finished its card payment setup" });
     }
 

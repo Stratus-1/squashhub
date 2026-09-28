@@ -703,6 +703,22 @@ export default function LeagueGameDetail() {
             .select("member_id, rank").eq("association_id", assocId).eq("is_active", true)
         : { data: [] };
 
+      // Per-team reserve mode: reserves are registered in a same-association
+      // "Reserves" league (the same pool the replacement picker offers).
+      if (assocId) {
+        const { data: resLeagues } = await (supabase as any)
+          .from("leagues").select("id, name").eq("association_id", assocId).is("archived_at", null);
+        const resIds = ((resLeagues || []) as any[]).filter((l) => /reserves?/i.test(l.name || "")).map((l) => l.id);
+        if (resIds.length) {
+          const { data: resRegs } = await (supabase as any)
+            .from("member_league_registrations").select("club_member_id, player_rank").in("league_id", resIds);
+          const extra = ((resRegs || []) as any[])
+            .filter((r) => r.club_member_id && !((reserveRows || []) as any[]).some((x) => x.member_id === r.club_member_id))
+            .map((r) => ({ member_id: r.club_member_id, rank: Number(r.player_rank) || 1 }));
+          (reserveRows as any) = [...((reserveRows || []) as any[]), ...extra];
+        }
+      }
+
       const memberIds = new Set<string>();
       for (const p of pairs as any[]) {
         if (p.player_one_member_id) memberIds.add(p.player_one_member_id);

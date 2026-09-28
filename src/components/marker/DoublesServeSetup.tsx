@@ -13,7 +13,6 @@ import {
 export interface DoublesSetupResult {
   forehand: { a: Slot; b: Slot };
   servingTeam: Team;
-  firstServer: { a: Slot; b: Slot };
 }
 
 interface Props {
@@ -30,12 +29,8 @@ interface Props {
  */
 export function DoublesServeSetup({ method, pairs, resuming, onStart }: Props) {
   const [fh, setFh] = useState<{ a: Slot | null; b: Slot | null }>({ a: null, b: null });
-  const [first, setFirst] = useState<{ a: Slot | null; b: Slot | null }>({ a: null, b: null });
   const [servingTeam, setServingTeam] = useState<Team | null>(null);
-  const alternating = method !== "second_server";
-
-  const firstFor = (t: Team): Slot | null => first[t] ?? fh[t];
-  const ready = fh.a !== null && fh.b !== null && servingTeam !== null && (!alternating || (firstFor("a") !== null && firstFor("b") !== null));
+  const ready = fh.a !== null && fh.b !== null && servingTeam !== null;
 
   const pairBlock = (t: Team) => (
     <div className="space-y-1.5" data-testid={`pair-setup-${t}`}>
@@ -62,26 +57,6 @@ export function DoublesServeSetup({ method, pairs, resuming, onStart }: Props) {
           <span className="font-semibold text-foreground">{pairs[t][fh[t] === 0 ? 1 : 0]}</span>
         </p>
       )}
-      {alternating && fh[t] !== null && (
-        <div className="space-y-1">
-          <p className="text-[11px] text-muted-foreground">
-            {resuming ? "Who serves (next) for this pair?" : "Who serves first for this pair?"}
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {([0, 1] as Slot[]).map((s) => (
-              <Button
-                key={s}
-                size="sm"
-                variant={firstFor(t) === s ? "secondary" : "outline"}
-                className="h-auto min-h-8 whitespace-normal text-[11px] leading-tight py-1"
-                onClick={() => setFirst((m) => ({ ...m, [t]: s }))}
-              >
-                {pairs[t][s]}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 
@@ -94,6 +69,7 @@ export function DoublesServeSetup({ method, pairs, resuming, onStart }: Props) {
           {DOUBLES_SERVING_METHODS.find((m) => m.value === method)?.hint}
         </p>
       </div>
+      <p className="text-[11px] text-muted-foreground">The Forehand player serves first for each pair.</p>
       {pairBlock("a")}
       {pairBlock("b")}
       <div className="space-y-1.5">
@@ -121,7 +97,6 @@ export function DoublesServeSetup({ method, pairs, resuming, onStart }: Props) {
           onStart({
             forehand: { a: fh.a!, b: fh.b! },
             servingTeam: servingTeam!,
-            firstServer: { a: (firstFor("a") ?? fh.a)!, b: (firstFor("b") ?? fh.b)! },
           });
         }}
       >

@@ -2240,3 +2240,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ### 2026-09-28 — League scorecard ignored "Sudden death"
 - Nelspruit Doubles association rules had win_by=1 (sudden death), but LeagueGameDetail let team mirror rows (default win_by=2, points null) override the association row, so the marker played win-by-2.
 - Fix: association-scoped `league_rules` now wins for points-per-game and deuce rule; team rows only fill gaps.
+
+### 2026-09-28 — Guided doubles serving in the live marker
+- Problem: doubles marker showed only the first name of each pair ("Dave serving") and had no idea which partner served.
+- Fix: new `src/lib/marker/doubles-serving.ts` (Even/Odd, By position, Second server), start prompt `DoublesServeSetup` (Forehand/Backhand for both pairs, serving pair, first server), serve banner "Name — SERVE RIGHT", "Correct server" override that rewrites state, state persisted with the marker session and in undo history. Settings: League rules → Scoring → "Doubles serving method"; tournament division settings → "Doubles serving method" (doubles divisions). Unset = old manual behaviour. Tests: `src/test/doubles-serving.test.ts`.

@@ -112,6 +112,10 @@ export function CategoryManagerDialog({ clubId, open, onOpenChange, usedCategori
     } catch (e) { fail(e); }
   };
 
+  const toggleShop = async (archived: boolean) => {
+    await saveDivision("shop", { archived_at: archived ? new Date().toISOString() : null });
+  };
+
   /** Upsert a category row (built-in overrides share the built-in value). */
   const saveCategory = async (c: BarCategory, patch: Partial<{ label: string; division: string; sort_order: number; archived_at: string | null }>) => {
     const row = {
@@ -172,6 +176,15 @@ export function CategoryManagerDialog({ clubId, open, onOpenChange, usedCategori
         <section className="space-y-2">
           <h4 className="text-sm font-semibold">Divisions</h4>
           <p className="text-xs text-muted-foreground">The top-level tabs on the POS (e.g. Bar, Shop). Divisions in use are archived rather than deleted.</p>
+          {allDivs.some(d => d.key === "shop") && (
+            <div className="flex items-center justify-between gap-2 rounded-md border p-2">
+              <span className="text-sm">Show Shop on the menu</span>
+              <Button size="sm" variant="outline" aria-pressed={!allDivs.find(d => d.key === "shop")?.archived}
+                onClick={() => toggleShop(!allDivs.find(d => d.key === "shop")?.archived)}>
+                {allDivs.find(d => d.key === "shop")?.archived ? "Show Shop" : "Hide Shop"}
+              </Button>
+            </div>
+          )}
           {allDivs.map((d, idx) => (
             <div key={d.key} className="flex items-center gap-1.5 rounded-md border p-2">
               {editing === `d:${d.key}` ? (

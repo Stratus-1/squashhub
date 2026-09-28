@@ -1,3 +1,6 @@
+## 2026-09-28 — Uitsig catalogue icons
+- Riverside and Uitsig share the same category-icon map, but eleven copied custom category keys had no icon and therefore displayed generic boxes in both category choices and product tiles. Added matching icons for those keys; no product photos exist on either club's copied inventory (`image_url` is empty for all 293 items), so no images or stock records were changed. Uitsig's self-service menu remains disabled under its existing club setting. Preview-only.
+
 ## 2026-09-27 — Tournament standings tied rows use regional average order
 
 - In singles tournaments with league-average handicap, tied standings rows (including before games) now use the same regional league index as Allocate players, with missing results last. Played results retain their standings priority; other tournament modes keep their existing ladder fallback. No draw, scores, or saved player order changed.

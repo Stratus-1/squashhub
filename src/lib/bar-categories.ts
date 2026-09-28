@@ -57,6 +57,9 @@ export const BAR_CATEGORY_EMOJI: Record<string, string> = {
   custom_beer: "🍺", custom_cider: "🍏", custom_spirits: "🥃", custom_wine: "🍷", custom_food: "🥪",
   custom_chips: "🍟", custom_hot_drinks: "☕", custom_cold_drinks_buddies: "🥤", custom_balls: "🟢",
   custom_shoes: "👟", custom_clothing: "👕", custom_racquets: "🎾", custom_bags: "🎒",
+  custom_mixers: "🥤", custom_racketball: "⚫", custom_grips: "🖐️", custom_premix_hardtack: "🍹",
+  custom_strings: "🧵", custom_socks: "🧦", custom_eyewear: "🥽", custom_sweets_snacks: "🍬",
+  custom_wristbands_headbands: "🎽", custom_fitness_accessories: "💪", custom_k_tape: "🩹",
 };
 
 /** Default divisions for clubs that have not configured their own. */

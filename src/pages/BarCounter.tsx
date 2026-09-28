@@ -25,8 +25,9 @@ import { ProductScanDialog } from "@/components/bar/ProductScanDialog";
 import { toast } from "sonner";
 import { Loader2, Lock, Plus, Minus, Receipt, Banknote, CreditCard, RefreshCw, ArrowLeft, UserCheck, ScanBarcode, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
+import { BAR_CATEGORY_EMOJI, barProductEmoji, categoryLabel, useBarCategories, useBarDivisions } from "@/lib/bar-categories";
 
-interface CounterItem { id: string; name: string; price: number; category?: string | null; barcode?: string | null; image_url?: string | null }
+interface CounterItem { id: string; name: string; price: number; category?: string | null; division?: string | null; item_kind?: string | null; barcode?: string | null; image_url?: string | null }
 interface CounterTab {
   tab_id: string;
   token: string;
@@ -65,6 +66,9 @@ export default function BarCounter() {
   const [unlocking, setUnlocking] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [division, setDivision] = useState("bar");
+  const [category, setCategory] = useState<string | null>(null);
+  const [itemSearch, setItemSearch] = useState("");
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
@@ -105,6 +109,29 @@ export default function BarCounter() {
       return data as unknown as Board;
     },
   });
+  // PIN-only devices receive the sellable menu from the authorised counter RPC.
+  // Signed-in staff can also see their club's edited category and division labels.
+  const { data: categoryRows = [] } = useBarCategories(code ? undefined : board?.club_id);
+  const { divisions: configuredDivisions } = useBarDivisions(code ? undefined : board?.club_id);
+  const menuDivisions = useMemo(() => {
+    const keys = Array.from(new Set((board?.items ?? []).map(item => item.division || "bar")));
+    return keys.map(key => ({ key, label: configuredDivisions.find(d => d.key === key)?.label || (key === "bar" ? "Bar" : key === "shop" ? "Shop" : key.replace(/_/g, " ")) }))
+      .sort((a, b) => (a.key === "bar" ? -1 : b.key === "bar" ? 1 : a.key === "shop" ? -1 : b.key === "shop" ? 1 : a.label.localeCompare(b.label)));
+  }, [board?.items, configuredDivisions]);
+  const activeDivision = menuDivisions.some(d => d.key === division) ? division : menuDivisions[0]?.key;
+  const divisionItems = useMemo(() => (board?.items ?? []).filter(item => (item.division || "bar") === activeDivision), [board?.items, activeDivision]);
+  const categoryKeys = useMemo(() => {
+    const keys = Array.from(new Set(divisionItems.filter(item => item.item_kind !== "special").map(item => item.category || "_other")));
+    const ordered = keys.sort((a, b) => categoryLabel(categoryRows, a).localeCompare(categoryLabel(categoryRows, b)));
+    return [...(divisionItems.some(item => item.item_kind === "special") ? ["_specials"] : []), ...ordered];
+  }, [divisionItems, categoryRows]);
+  const activeCategory = category && categoryKeys.includes(category) ? category : categoryKeys[0];
+  const visibleItems = useMemo(() => divisionItems.filter(item => {
+    if (itemSearch.trim() && !item.name.toLowerCase().includes(itemSearch.trim().toLowerCase())) return false;
+    if (itemSearch.trim()) return true;
+    if (activeCategory === "_specials") return item.item_kind === "special";
+    return item.item_kind !== "special" && (item.category || "_other") === activeCategory;
+  }), [divisionItems, itemSearch, activeCategory]);
 
   // If the stored device token was revoked ("sign out all devices") or expired,
   // drop it so the page returns to the PIN unlock screen automatically.
@@ -401,7 +428,7 @@ export default function BarCounter() {
       </div>
 
       {settled ? (
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 max-w-7xl mx-auto">
           <Card className="p-6 text-center space-y-3">
             <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
             <div>
@@ -433,7 +460,7 @@ export default function BarCounter() {
           </Button>
         </div>
       ) : !activeTab ? (
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 max-w-7xl mx-auto">
           <Card className="p-3 flex gap-2">
             <Input
               placeholder="Name for a new tab"
@@ -477,7 +504,7 @@ export default function BarCounter() {
         </div>
       ) : (
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <Button variant="ghost" size="sm" className="gap-1 -ml-2" onClick={() => setActiveTabId(null)}>
               <ArrowLeft className="w-4 h-4" /> All tabs
@@ -507,28 +534,45 @@ export default function BarCounter() {
             )}
           </Card>
 
-          <div className="grid grid-cols-2 gap-2">
-            {board.items.map((item) => {
+          {menuDivisions.length > 1 && (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Bar or shop">
+              {menuDivisions.map(d => <Button key={d.key} type="button" size="sm" variant={activeDivision === d.key ? "default" : "outline"} aria-pressed={activeDivision === d.key} onClick={() => { setDivision(d.key); setCategory(null); setItemSearch(""); }}>{d.label}</Button>)}
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2" role="group" aria-label="Product categories">
+            {categoryKeys.map(key => (
+              <Button key={key} type="button" variant={activeCategory === key ? "default" : "outline"} aria-pressed={activeCategory === key}
+                onClick={() => { setCategory(key); setItemSearch(""); }}
+                className="h-auto min-h-14 min-w-0 gap-2 px-2 py-2 text-[13px] leading-tight whitespace-normal">
+                <span className="text-2xl shrink-0" aria-hidden="true">{key === "_specials" ? "⭐" : BAR_CATEGORY_EMOJI[key] || "📦"}</span>
+                <span className="min-w-0 break-words">{key === "_specials" ? "Specials" : key === "_other" ? "Other items" : categoryLabel(categoryRows, key)}</span>
+              </Button>
+            ))}
+          </div>
+          <Input aria-label="Search products" placeholder="Search products" value={itemSearch} onChange={e => setItemSearch(e.target.value)} className="h-10" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            {visibleItems.map((item) => {
               const qty = cart[item.id] ?? 0;
               return (
-                <Card key={item.id} className="p-2">
-                  {item.image_url ? (
-                    <div className="w-full h-20 rounded-md overflow-hidden mb-2 bg-muted">
-                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-                    </div>
-                  ) : null}
-                  <div className="text-sm font-medium leading-tight truncate">{item.name}</div>
-                  <div className="text-[11px] text-muted-foreground">{money(item.price)}</div>
-                  <div className="flex items-center justify-between mt-2">
+                <Card key={item.id} className={`relative p-1.5 flex flex-col gap-1 ${qty > 0 ? "ring-2 ring-primary" : ""}`}>
+                  <Button type="button" variant="ghost" aria-label={`Add ${item.name}`} onClick={() => setCart(c => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
+                    className="h-auto min-w-0 w-full p-0 flex flex-col items-center gap-1 whitespace-normal hover:bg-accent/50">
+                    <span className="w-full aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                      {item.image_url ? <img src={item.image_url} alt="" className="w-full h-full object-cover" loading="lazy" /> : <span className="text-3xl" aria-hidden="true">{barProductEmoji(item)}</span>}
+                    </span>
+                    <span className="text-[11px] font-medium leading-tight text-center break-words min-h-7 w-full">{item.name}</span>
+                    <span className="text-[11px] text-muted-foreground">{money(item.price)}</span>
+                  </Button>
+                  <div className="flex items-center justify-between mt-auto pt-1">
                     <Button
-                      size="icon" variant="outline" className="h-8 w-8" disabled={qty === 0}
+                      size="icon" variant="outline" className="h-9 w-9" disabled={qty === 0} aria-label={`Remove ${item.name}`}
                       onClick={() => setCart((c) => ({ ...c, [item.id]: Math.max(0, (c[item.id] ?? 0) - 1) }))}
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </Button>
-                    <span className="text-sm font-semibold w-6 text-center">{qty}</span>
+                    <span className="text-sm font-semibold w-6 text-center tabular-nums">{qty}</span>
                     <Button
-                      size="icon" variant="outline" className="h-8 w-8"
+                      size="icon" variant="outline" className="h-9 w-9" aria-label={`Add ${item.name}`}
                       onClick={() => setCart((c) => ({ ...c, [item.id]: (c[item.id] ?? 0) + 1 }))}
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -538,8 +582,10 @@ export default function BarCounter() {
               );
             })}
           </div>
+          {visibleItems.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{itemSearch ? "No products match your search." : "No products in this category."}</p>}
 
-          <div className="fixed bottom-16 left-0 right-0 z-40 border-t bg-background p-3 space-y-2">
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-3 space-y-2 max-h-[45vh] overflow-y-auto">
+            <div className="max-w-7xl mx-auto space-y-2">
             <Button className="w-full h-12 gap-2" disabled={cartTotal <= 0 || busy} onClick={addRound}>
               <Receipt className="w-4 h-4" />
               Add {money(cartTotal)} to {activeTab.guest_name}'s tab
@@ -567,6 +613,7 @@ export default function BarCounter() {
             >
               <UserCheck className="w-4 h-4" /> Add to member account
             </Button>
+            </div>
           </div>
 
           <Dialog open={memberOpen} onOpenChange={setMemberOpen}>

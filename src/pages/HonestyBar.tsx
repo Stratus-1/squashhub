@@ -391,9 +391,9 @@ export default function HonestyBar() {
                      variant={visibleCategory?.value === g.value ? "default" : "outline"}
                      aria-pressed={visibleCategory?.value === g.value}
                      onClick={() => setSelectedCategory(g.value)}
-                     className="h-auto min-h-12 min-w-0 gap-2 px-2 py-2 text-xs leading-tight whitespace-normal text-center"
+                     className="h-auto min-h-14 min-w-0 gap-2 px-2 py-2 text-[13px] leading-tight whitespace-normal text-center"
                   >
-                     <span className="text-xl shrink-0" aria-hidden="true">{g.value === "_specials" ? "⭐" : BAR_CATEGORY_EMOJI[g.value] || "📦"}</span>
+                     <span className="text-2xl shrink-0" aria-hidden="true">{g.value === "_specials" ? "⭐" : BAR_CATEGORY_EMOJI[g.value] || "📦"}</span>
                      <span className="min-w-0 break-words">{g.label}</span>
                    </Button>
                 ))}

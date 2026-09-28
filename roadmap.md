@@ -1,5 +1,8 @@
 # Roadmap
 
+## Uitsig restaurant availability
+- [ ] Keep made-to-order food available on the QR menu at zero stock; show quantities sold from club-scoped sale records instead of negative inventory.
+
 ## Uitsig catalogue icon correction
 - [x] Make category choices identifiable and show product-specific symbols wherever images are absent; verify Uitsig in preview without changing club data.
 

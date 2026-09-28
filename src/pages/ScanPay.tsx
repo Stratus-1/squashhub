@@ -843,7 +843,9 @@ export default function ScanPay() {
                 <div className="grid grid-cols-3 gap-2">
                   {visibleMenu.map((m) => {
                     const qty = cart[m.id] || 0;
-                    const out = typeof m.stock_qty === "number" && m.stock_qty <= 0;
+                    // Prepared food holds no inventory; specials derive availability from their components.
+                    const out = m.item_kind !== "made_to_order" && m.item_kind !== "special"
+                      && typeof m.stock_qty === "number" && m.stock_qty <= 0;
                     return (
                       <Card
                         key={m.id}

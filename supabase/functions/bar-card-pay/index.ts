@@ -180,6 +180,37 @@ Deno.serve(async (req) => {
     const reference = `${tabMode ? "TAB" : "BAR"}-${String(sale.id).slice(0, 8)}`;
     const redirectUri = `${PUBLIC_APP_ORIGIN}/pay/return`;
 
+    // ---- PayFast tenants ----------------------------------------------
+    // Same hosted checkout as the PayFast wallet top-up. The payment is
+    // confirmed only by PayFast's signed + validated ITN (payfast-itn), which
+    // finds these lines by the shared `PF-…` reference.
+    if (gateway === "payfast") {
+      const pfRef = `PF-${crypto.randomUUID()}`;
+      await admin.from("bar_visitor_sales").update({ payment_reference: pfRef }).in("id", saleIds);
+      const sub = String((club as any).subdomain || "").toLowerCase();
+      const origin = /^[a-z0-9-]{2,40}$/.test(sub) ? `https://${sub}.squashhub.co.za` : PUBLIC_APP_ORIGIN;
+      const backUrl = `${origin}/s/${encodeURIComponent(String(code))}`;
+      const fields: Array<[string, string]> = [
+        ["merchant_id", String(pfCreds.merchant_id).trim()],
+        ["merchant_key", String(pfCreds.merchant_key).trim()],
+        ["return_url", backUrl],
+        ["cancel_url", `${backUrl}?payfast_cancelled=1`],
+        ["notify_url", `${Deno.env.get("SUPABASE_URL")}/functions/v1/payfast-itn`],
+        ["name_first", (payerName || "Bar").split(" ")[0].slice(0, 100)],
+        ["name_last", (payerName || "").split(" ").slice(1).join(" ").slice(0, 100)],
+        ["m_payment_id", pfRef],
+        ["amount", amount.toFixed(2)],
+        ["item_name", `${club.name || "Club"} — ${tabMode ? "Bar tab" : "Bar purchase"}`.slice(0, 100)],
+      ];
+      const signature = pfSignature(fields, pfCreds.passphrase || "");
+      const base = isSandboxCreds(pfCreds) ? PAYFAST_SANDBOX_PROCESS : PAYFAST_LIVE_PROCESS;
+      const query = fields
+        .filter(([, v]) => String(v || "").trim() !== "")
+        .map(([k, v]) => `${k}=${pfEncode(String(v).trim())}`)
+        .join("&");
+      return json({ sale_id: sale.id, sale_ids: saleIds, redirect_url: `${base}?${query}&signature=${signature}` });
+    }
+
     // ---- Yoco tenants -------------------------------------------------
     if (gateway === "yoco") {
       const cancelUrl = redirectUri.replace(/\/success$/, "");

@@ -21,11 +21,22 @@ Deno.serve(async (req) => {
 
     const { data: sale } = await admin
       .from("bar_visitor_sales")
-      .select("id, club_id, total, payment_status, payment_reference")
+      .select("id, club_id, total, payment_status, payment_reference, created_at")
       .eq("id", sale_id).maybeSingle();
     if (!sale) return json({ error: "Sale not found" });
     if (sale.payment_status === "paid") return json({ status: "paid" });
     if (!sale.payment_reference) return json({ status: sale.payment_status || "pending" });
+
+    // PayFast: the ITN is the only authority. A checkout abandoned for over
+    // 30 minutes is released so a tab goes back to open.
+    if (String(sale.payment_reference).startsWith("PF-")) {
+      const stale = Date.now() - new Date(sale.created_at).getTime() > 30 * 60 * 1000;
+      if (sale.payment_status === "pending" && (stale || cancelled)) {
+        await finaliseBarReference(admin, sale.club_id, sale.payment_reference, "failed");
+        return json({ status: "failed", gateway: "payfast" });
+      }
+      return json({ status: sale.payment_status || "pending", gateway: "payfast", total: Number(sale.total) });
+    }
 
     const { data: club } = await admin
       .from("clubs").select("payment_gateway").eq("id", sale.club_id).maybeSingle();

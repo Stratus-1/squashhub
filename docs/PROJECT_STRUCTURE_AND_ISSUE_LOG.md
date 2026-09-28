@@ -1,3 +1,6 @@
+## 2026-09-28 — Counter mode catalogue navigation
+- Counter tabs listed every product in plain text, with no fallback visual when a club had no uploaded product photo. The active tab now uses the same per-product visual fallback as the regular bar, plus a Bar/Shop choice, top category choices (specials separated), and a product search. Category switches preserve the basket and the existing tab, scan and settlement actions remain unchanged. Checked Uitsig's desktop and mobile counter against a real open tab; selecting Restaurant isolates prepared food and adding one item updates only the local basket, without posting a sale. No prices, stock, permissions or club data changed. Preview-only.
+
 ## 2026-09-28 — Uitsig Club Champs test selections cleared
 - The four checked names on Uitsig Club Champs had been saved as organiser-created registrations and entry rows by Save Progress, despite having no invitations, responses, payments, fixtures or games. With guarded club/tournament-specific checks, removed those four test entry/registration rows and cleared the four draft player IDs and saved seed order. An audit event retains the former row IDs and reason. They were **not** marked withdrawn or declined, and can be invited afresh. Verified the reopened Players list shows 0 of 242 selected; no other tournaments or clubs changed.
 

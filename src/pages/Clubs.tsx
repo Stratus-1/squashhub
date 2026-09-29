@@ -90,6 +90,16 @@ export default function Clubs() {
           <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-2xl">
             Direct links to club sites on SquashHub. Click your club to open its own portal.
           </p>
+          <div className="relative mt-5 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search for a club…"
+              className="pl-9 bg-[hsl(220_45%_8%/0.85)] border-white/10 text-foreground placeholder:text-muted-foreground"
+              aria-label="Search for a club"
+            />
+          </div>
         </div>
       </section>
 
@@ -101,7 +111,14 @@ export default function Clubs() {
           </div>
         ) : (
           <>
+            {q && nsaClubs.length === 0 && otherClubs.length === 0 && (
+              <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">
+                <Search className="w-8 h-8 mx-auto mb-2 opacity-60" />
+                No clubs match “{query.trim()}”.
+              </CardContent></Card>
+            )}
             {/* NSA Clubs */}
+            {(nsaClubs.length > 0 || !q) && (
             <div>
               <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <h2 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">

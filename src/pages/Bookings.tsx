@@ -183,8 +183,11 @@ function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selected
   const [pickerOpen, setPickerOpen] = useState(false);
   const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
   const maxDate = addDays(todayMidnight, 365);
+  // Admins may look back into history: 30 days for club admins, a full year for super-admins.
+  const minDate = addDays(todayMidnight, isSuperAdmin ? -365 : isAdmin ? -30 : 0);
   const canPick = isAdmin || isSuperAdmin;
   const selectedBeyondStrip = selectedDate > addDays(todayMidnight, 6);
+  const selectedInPast = selectedDate < todayMidnight;
 
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 px-4 scrollbar-hide">

@@ -58,3 +58,7 @@
 ## Diamond League substitution (answered)
 - [x] Absent player = substitute allowed; Reserves pool replaces the "unallocated" list on the allocate step, admin drags or taps a reserve into the empty slot.
 - [x] Withdrawn slots keep the empty-slot flag and stay open until a reserve is placed or the tie is played short.
+
+## Current Diamond League setup
+- [ ] Replace misleading standard schedule review with team-tie review; show same-night singles/doubles and #1 vs #1 across opposing teams.
+- [ ] Verify Diamond page-two rules, weekly dates and the separate courts step.

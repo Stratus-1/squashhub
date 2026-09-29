@@ -1,0 +1,141 @@
+import { useQuery } from "@tanstack/react-query";
+import { Gem } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
+import { fromExt } from "@/lib/supabase-ext";
+import {
+  DIAMOND_TEAM_DEFAULTS, CROSSOVER, PLACING_FINALS,
+  tieGames, tieResult, standings, decideLevelFinal,
+  type TeamLeagueConfig, type GameScore,
+} from "@/lib/tournaments/team-league";
+
+type Team = { id: string; name: string; pool: "A" | "B"; players: (string | null)[] };
+type Tie = { id: string; home: string; away: string; court: number; label?: string };
+type Week = { week: number; date: string; stage: "pool" | "semi" | "final"; ties: Tie[] };
+type EventRow = {
+  id: string; name: string;
+  config: TeamLeagueConfig & { dates?: string[] };
+  teams: Team[]; weeks: Week[]; results: Record<string, GameScore[]>;
+};
+
+/** Read-only Diamond League standings for the tournament page: pool tables with
+ *  team totals, the semi-final table (points carried), and final places. */
+export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
+  const { data: ev } = useQuery({
+    queryKey: ["team-league-event-for-tournament", tournamentId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("team_league_events")
+        .select("*").eq("tournament_id", tournamentId).maybeSingle();
+      if (error) throw error;
+      return (data || null) as EventRow | null;
+    },
+    enabled: !!tournamentId,
+  });
+  if (!ev) return null;
+
+  const cfg: TeamLeagueConfig = { ...DIAMOND_TEAM_DEFAULTS, ...ev.config };
+  const teams = ev.teams || [];
+  const weeks = ev.weeks || [];
+  const results = ev.results || {};
+  const games = tieGames(cfg);
+  const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? "?";
+
+  const clean = (tieId: string): GameScore[] =>
+    ((results[tieId] || []) as any[]).map((g) => (g && Number.isFinite(g.home) && Number.isFinite(g.away) ? g : null));
+  const tieRes = (t: Tie) => tieResult(clean(t.id), games.length, cfg.winBonus, cfg.drawRule);
+
+  const poolTies = weeks.filter((w) => w.stage === "pool").flatMap((w) => w.ties);
+  const poolTable = (p: "A" | "B") =>
+    standings(
+      teams.filter((t) => t.pool === p).map((t) => t.id),
+      poolTies.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })),
+      undefined,
+      cfg.tieBreaks,
+    );
+
+  const semiWeek = weeks.find((w) => w.stage === "semi");
+  const finalWeek = weeks.find((w) => w.stage === "final");
+  const semiTable = semiWeek && (() => {
+    const carry = new Map<string, number>();
+    (["A", "B"] as const).forEach((p) => poolTable(p).rows.forEach((r) => carry.set(r.teamId, r.total)));
+    return standings(teams.map((t) => t.id), semiWeek.ties.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })), carry, cfg.tieBreaks);
+  })();
+
+  const anyScores = Object.values(results).some((r) => r?.some(Boolean));
+
+  return (
+    <CollapsibleCard
+      defaultOpen
+      className="border-primary/40"
+      titleClassName="text-lg"
+      title={
+        <span className="flex items-center gap-2">
+          <Gem className="w-4 h-4 text-primary" /> {ev.name} — Team Standings
+          <Badge variant="outline" className="text-[10px]">{teams.length} teams</Badge>
+        </span>
+      }
+      contentClassName="space-y-4"
+    >
+      {!anyScores && (
+        <p className="text-xs text-muted-foreground italic">No scores yet — the tables fill in as games are marked.</p>
+      )}
+      <div className="grid md:grid-cols-2 gap-4">
+        {(["A", "B"] as const).map((p) => (
+          <TeamTable key={p} title={`Pool ${p}`} t={poolTable(p)} name={teamName} />
+        ))}
+      </div>
+      {semiTable && (
+        <div>
+          <p className="text-[11px] text-muted-foreground mb-1">
+            Semi-finals: {CROSSOVER.map((c) => `A${c.a} v B${c.b}`).join(" · ")} — pool points carry over, +{cfg.winBonus} for the win.
+          </p>
+          <TeamTable title="After semi-finals (carried + semi points)" t={semiTable} name={teamName} />
+        </div>
+      )}
+      {finalWeek && (
+        <div>
+          <div className="font-semibold text-sm mb-1">Final places <span className="text-[11px] font-normal text-muted-foreground">(points reset for finals)</span></div>
+          <div className="text-xs space-y-0.5">
+            {finalWeek.ties.map((t, k) => {
+              const res = results[t.id] ? tieRes(t) : null;
+              const w = res?.complete ? decideLevelFinal(clean(t.id), res, cfg.finalLevelRule) : null;
+              const pl = PLACING_FINALS[k]?.places ?? [k * 2 + 1, k * 2 + 2];
+              return (
+                <div key={t.id}>
+                  {pl[0]}. {w ? teamName(w === "home" ? t.home : t.away) : "—"} · {pl[1]}. {w ? teamName(w === "home" ? t.away : t.home) : "—"}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+function TeamTable({ title, t, name }: { title: string; t: ReturnType<typeof standings>; name: (id: string) => string }) {
+  const level = new Set(t.undecided.flat());
+  return (
+    <div>
+      <div className="font-semibold text-sm mb-1">{title}</div>
+      <table className="w-full text-xs">
+        <thead className="text-muted-foreground">
+          <tr><th className="text-left">#</th><th className="text-left">Team</th><th>P</th><th>W</th><th>Pts</th><th>Bonus</th><th>Total</th></tr>
+        </thead>
+        <tbody>
+          {t.rows.map((r, i) => (
+            <tr key={r.teamId} className={level.has(r.teamId) ? "text-destructive" : ""}>
+              <td className="py-0.5">{i + 1}</td>
+              <td className="py-0.5 font-medium">{name(r.teamId)}</td>
+              <td className="text-center">{r.played}</td>
+              <td className="text-center">{r.won}</td>
+              <td className="text-center">{r.points}</td>
+              <td className="text-center">{r.bonus}</td>
+              <td className="text-center font-semibold">{r.total}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

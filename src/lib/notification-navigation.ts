@@ -7,13 +7,22 @@ export type NotificationNavigationInput = {
   data?: Record<string, unknown> | null;
 };
 
+const LEGACY_NOTIFICATION_ROUTES: Record<string, string> = {
+  "/admin/ai-assistance": "/admin/support?view=ai",
+};
+
+export function resolveNotificationUrl(url?: string | null) {
+  const resolvedUrl = String(url || "/notifications");
+  return LEGACY_NOTIFICATION_ROUTES[resolvedUrl] || resolvedUrl;
+}
+
 function getRsvpStatus(notification: NotificationNavigationInput) {
   const value = notification.data && typeof notification.data === "object" ? notification.data.rsvp_status : null;
   return typeof value === "string" ? value.toLowerCase() : "";
 }
 
 function isPendingEventNotification(notification: NotificationNavigationInput) {
-  const resolvedUrl = String(notification.url || "/notifications");
+  const resolvedUrl = resolveNotificationUrl(notification.url);
   if (!resolvedUrl.startsWith("/events")) return false;
 
   const rsvpStatus = getRsvpStatus(notification);
@@ -25,7 +34,7 @@ function isPendingEventNotification(notification: NotificationNavigationInput) {
 }
 
 export function getNotificationNavigation(notification: NotificationNavigationInput) {
-  const resolvedUrl = String(notification.url || "/notifications");
+  const resolvedUrl = resolveNotificationUrl(notification.url);
   const pendingEvent = isPendingEventNotification(notification);
   const pendingTournamentInvite = notification.type === "tournament_invite" || notification.type === "tournament_partner_invite";
   const shouldOpenDetail = notification.type === "marketing" || pendingTournamentInvite || resolvedUrl.startsWith("/notifications") || pendingEvent;

@@ -232,7 +232,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   // Super-admin panel is global — must be accessed on the root host (no club subdomain).
   // If the user is on a club subdomain, redirect them to the root host's /admin.
   if (subdomain && typeof window !== "undefined") {
-    const { protocol, hostname, port, pathname } = window.location;
+      const { protocol, hostname, port, pathname, search } = window.location;
     const portSuffix = port ? `:${port}` : "";
     const KNOWN_ROOTS = ["squashhub.co.za", "squashhub.app"];
     let root: string | null = null;
@@ -240,7 +240,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
       if (hostname === r || hostname.endsWith(`.${r}`)) { root = r; break; }
     }
     if (root) {
-      window.location.href = `${protocol}//${root}${portSuffix}/admin`;
+      const adminPath = pathname.startsWith("/admin") ? pathname : "/admin";
+      window.location.href = `${protocol}//${root}${portSuffix}${adminPath}${search}`;
       return null;
     }
     // Lovable preview / localhost: clear remembered preview tenant so the
@@ -586,6 +587,7 @@ function AppRoutes() {
           <Route path="subscriptions" element={<SuperAdminSubscriptions />} />
           <Route path="settings" element={<SuperAdminSettings />} />
           <Route path="support" element={<AdminSupport />} />
+          <Route path="ai-assistance" element={<Navigate to="/admin/support?view=ai" replace />} />
           <Route path="help" element={<SuperAdminHelpVideos />} />
           <Route path="events/new" element={<AdminEventEditor />} />
           <Route path="events/:id" element={<AdminEventEditor />} />

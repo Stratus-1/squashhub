@@ -364,8 +364,14 @@ export default function Tournaments() {
   // Collapse all playoff stages into a single "Play-offs" bucket per tournament
   // so admins can filter with one click instead of scrolling through every
   // individual final/semifinal/etc.
+  // Diamond League (team) games: bucket per tie ("Week 1 · Division A · Team 1 v Team 4"),
+  // never by the player-league group/pool columns, which don't apply.
+  const diamondTieLabel = (m: any): string | null =>
+    typeof m?.stage_key === "string" && m.stage_key.startsWith("dl:")
+      ? String(m.stage_label || "Diamond League").split(" · ").slice(0, -1).join(" · ") || "Diamond League"
+      : null;
   const bucketKeyOf = (m: any) =>
-    isPlayoff(m)
+    diamondTieLabel(m) ? `${m.champ_id}|dl|${diamondTieLabel(m)}` : isPlayoff(m)
       ? `${m.champ_id}|playoff|all`
       : `${m.champ_id}|${m.group_number ?? "-"}|${poolOf(m) ?? "-"}`;
 
@@ -375,6 +381,11 @@ export default function Tournaments() {
       const key = bucketKeyOf(m);
       const existing = seen.get(key);
       if (existing) { existing.count++; continue; }
+      const dl = diamondTieLabel(m);
+      if (dl) {
+        seen.set(key, { key, champId: m.champ_id, group: null, pool: null, stage: "diamond", stageLabel: dl, count: 1 });
+        continue;
+      }
       seen.set(key, {
         key,
         champId: m.champ_id,

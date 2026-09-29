@@ -305,6 +305,12 @@ export default function MatchMarker() {
           .in("id", ids);
         (members || []).forEach((m: any) => memberMap.set(m.id, m));
 
+        // Players from other clubs are hidden by club privacy rules; the
+        // tournament lookup returns names only for people in this tournament.
+        if (ids.some((id: string) => !memberMap.has(id))) {
+          const { data: names } = await rpcExt("tournament_member_names", { p_champ_id: row.champ_id });
+          (names || []).forEach((m: any) => { if (!memberMap.has(m.id)) memberMap.set(m.id, m); });
+        }
         const missingIds = ids.filter((id: string) => !memberMap.has(id));
         if (missingIds.length > 0) {
           const { data: visitors } = await supabase

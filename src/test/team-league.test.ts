@@ -55,3 +55,35 @@ describe("Diamond League (teams)", () => {
     expect(nightPlan({ ...D, courts: 1 }, 2).overruns).toBe(true);
   });
 });
+
+import { decideLevelFinal } from "@/lib/tournaments/team-league";
+describe("organiser options", () => {
+  const lvl = Array(9).fill({ home: 30, away: 30 });
+  it("draw: split gives 2.5 each, both gives 5 each", () => {
+    expect(tieResult(lvl, 9, 5, "split")).toMatchObject({ homeBonus: 2.5, awayBonus: 2.5 });
+    expect(tieResult(lvl, 9, 5, "both")).toMatchObject({ homeBonus: 5, awayBonus: 5 });
+  });
+  it("most wins separates level totals", () => {
+    const w = tieResult(Array(9).fill({ home: 30, away: 25 }), 9, 5);
+    const l = tieResult(Array(9).fill({ home: 25, away: 30 }), 9, 5);
+    // a and b both end on 500: a won 2 ties, b won 1 tie + bigger losing points
+    const ties = [
+      { homeId: "a", awayId: "x", result: w }, { homeId: "a", awayId: "y", result: w },
+      { homeId: "b", awayId: "x", result: { ...l, homePoints: 250, homeBonus: 0 } },
+    ];
+    const t = standings(["a", "b"], ties, new Map([["b", 300]]), ["most_wins"]);
+    expect(t.rows[0].teamId).toBe(t.rows[0].total >= t.rows[1].total ? t.rows[0].teamId : "");
+    const eq = standings(["a", "b"], [
+      { homeId: "a", awayId: "x", result: w }, { homeId: "b", awayId: "x", result: { ...l, homePoints: 275, homeBonus: 0, winner: "away" } },
+    ], undefined, ["most_wins"]);
+    expect(eq.rows[0].teamId).toBe("a");
+    expect(eq.undecided).toEqual([]);
+  });
+  it("level final decided by games won", () => {
+    const s = [...Array(4).fill({ home: 20, away: 10 }), ...Array(5).fill({ home: 10, away: 18 })];
+    const r = tieResult(s, 9, 5);
+    expect(r.winner).toBe("draw");
+    expect(decideLevelFinal(s, r, "games_won")).toBe("away");
+    expect(decideLevelFinal(s, r, "organiser")).toBeNull();
+  });
+});

@@ -155,7 +155,9 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
     toast.success(`${n} pool weeks created`);
   };
 
-  const tieRes = (t: Tie) => tieResult(results[t.id] || [], games.length, cfg.winBonus, cfg.drawRule);
+  const clean = (tieId: string): GameScore[] =>
+    ((results[tieId] || []) as any[]).map((g) => (g && Number.isFinite(g.home) && Number.isFinite(g.away) ? g : null));
+  const tieRes = (t: Tie) => tieResult(clean(t.id), games.length, cfg.winBonus, cfg.drawRule);
   const poolTies = weeks.filter((w) => w.stage === "pool").flatMap((w) => w.ties);
   const poolTable = (p: "A" | "B") =>
     standings(pools[p].map((t) => t.id), poolTies.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })), undefined, cfg.tieBreaks);
@@ -177,7 +179,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
     const r = tieRes(t);
     if (!r.complete) return null;
     // Semis carry points but the tie itself is won on the night; a level tie falls back to the final rule.
-    const w = r.winner === "draw" ? decideLevelFinal(results[t.id] || [], r, cfg.finalLevelRule) : r.winner;
+    const w = r.winner === "draw" ? decideLevelFinal(clean(t.id), r, cfg.finalLevelRule) : r.winner;
     if (!w) return null;
     return { W: w === "home" ? t.home : t.away, L: w === "home" ? t.away : t.home };
   };
@@ -199,14 +201,13 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
   })();
 
   const setScore = (tieId: string, gi: number, side: "home" | "away", v: string) => {
-    const arr = [...(results[tieId] || Array(games.length).fill(null))];
-    const cur = arr[gi] || { home: NaN, away: NaN };
-    const next = { ...cur, [side]: v === "" ? NaN : Number(v) };
-    arr[gi] = Number.isFinite(next.home) && Number.isFinite(next.away) ? next : (next as any);
-    setResults({ ...results, [tieId]: arr.map((g) => (g && Number.isFinite(g.home) && Number.isFinite(g.away) ? g : g && (Number.isFinite(g.home) || Number.isFinite(g.away)) ? g : null)) as GameScore[] });
+    const arr: any[] = [...(results[tieId] || [])];
+    while (arr.length < games.length) arr.push(null);
+    const cur = arr[gi] || { home: null, away: null };
+    arr[gi] = { ...cur, [side]: v === "" || isNaN(Number(v)) ? null : Number(v) };
+    setResults({ ...results, [tieId]: arr });
   };
-  const clean = (tieId: string) => (results[tieId] || []).map((g) => (g && Number.isFinite(g.home) && Number.isFinite(g.away) ? g : null));
-  const tieResClean = (t: Tie) => tieResult(clean(t.id), games.length, cfg.winBonus, cfg.drawRule);
+  const tieResClean = tieRes;
 
   const plan = nightPlan(cfg, Math.max(...weeks.map((w) => w.ties.length), teams.length / 2));
   const issues = configIssues(cfg);

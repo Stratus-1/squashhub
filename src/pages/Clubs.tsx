@@ -149,6 +149,7 @@ export default function Clubs() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Other clubs */}
             {otherClubs.length > 0 && (

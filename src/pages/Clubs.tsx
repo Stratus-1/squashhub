@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SEO } from "@/components/SEO";
-import { Building2, ChevronRight, Trophy, ArrowLeft } from "lucide-react";
+import { Building2, ChevronRight, Trophy, ArrowLeft, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import shLogoFull from "@/assets/shub-logo-white.png";
 import heroBg from "@/assets/hero-court.jpg";
@@ -31,10 +33,18 @@ export default function Clubs() {
     staleTime: 60_000,
   });
 
+  const [query, setQuery] = useState("");
+
   const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
   const byName = (a: TenantPublic, b: TenantPublic) => a.name.localeCompare(b.name);
-  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded").sort(byName);
-  const otherClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded").sort(byName);
+  const q = query.trim().toLowerCase();
+  const matches = (t: TenantPublic) =>
+    !q ||
+    t.name.toLowerCase().includes(q) ||
+    (t.subdomain ?? "").toLowerCase().includes(q) ||
+    (t.address ?? "").toLowerCase().includes(q);
+  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded" && matches(t)).sort(byName);
+  const otherClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded" && matches(t)).sort(byName);
 
   return (
     <div className="min-h-screen bg-background">

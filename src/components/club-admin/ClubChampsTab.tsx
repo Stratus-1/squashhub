@@ -7908,7 +7908,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       if (!data) return;
       setDiamondMode(true);
       setDiamondDraft({ eventId: data.id, config: data.config, teams: data.teams || [], locked: data.config?.locked || [],
-        started: Array.isArray(data.weeks) && data.weeks.length > 0 });
+        // Locked only once a game has actually been scored — creating the weeks alone doesn't freeze the teams.
+        started: Object.values(data.results || {}).some((s: any) => Array.isArray(s) && s.some(Boolean)) });
     });
     setGender(champ.gender);
     setMatchType(champ.match_type || "singles");

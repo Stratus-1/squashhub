@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SEO } from "@/components/SEO";
-import { Building2, ChevronRight, Trophy, ArrowLeft } from "lucide-react";
+import { Building2, ChevronRight, Trophy, ArrowLeft, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import shLogoFull from "@/assets/shub-logo-white.png";
 import heroBg from "@/assets/hero-court.jpg";
@@ -31,10 +33,18 @@ export default function Clubs() {
     staleTime: 60_000,
   });
 
+  const [query, setQuery] = useState("");
+
   const allClubs = tenants?.filter((t) => t.tenant_type !== "association") ?? [];
   const byName = (a: TenantPublic, b: TenantPublic) => a.name.localeCompare(b.name);
-  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded").sort(byName);
-  const otherClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded").sort(byName);
+  const q = query.trim().toLowerCase();
+  const matches = (t: TenantPublic) =>
+    !q ||
+    t.name.toLowerCase().includes(q) ||
+    (t.subdomain ?? "").toLowerCase().includes(q) ||
+    (t.address ?? "").toLowerCase().includes(q);
+  const nsaClubs = allClubs.filter((t) => t.tenant_type === "nsa_seeded" && matches(t)).sort(byName);
+  const otherClubs = allClubs.filter((t) => t.tenant_type !== "nsa_seeded" && matches(t)).sort(byName);
 
   return (
     <div className="min-h-screen bg-background">
@@ -80,6 +90,16 @@ export default function Clubs() {
           <p className="text-sm sm:text-base text-muted-foreground mt-2 max-w-2xl">
             Direct links to club sites on SquashHub. Click your club to open its own portal.
           </p>
+          <div className="relative mt-5 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search for a club…"
+              className="pl-9 bg-[hsl(220_45%_8%/0.85)] border-white/10 text-foreground placeholder:text-muted-foreground"
+              aria-label="Search for a club"
+            />
+          </div>
         </div>
       </section>
 
@@ -91,7 +111,14 @@ export default function Clubs() {
           </div>
         ) : (
           <>
+            {q && nsaClubs.length === 0 && otherClubs.length === 0 && (
+              <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">
+                <Search className="w-8 h-8 mx-auto mb-2 opacity-60" />
+                No clubs match “{query.trim()}”.
+              </CardContent></Card>
+            )}
             {/* NSA Clubs */}
+            {(nsaClubs.length > 0 || !q) && (
             <div>
               <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <h2 className="text-lg font-extrabold font-heading uppercase tracking-tight text-foreground">
@@ -122,6 +149,7 @@ export default function Clubs() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Other clubs */}
             {otherClubs.length > 0 && (

@@ -8576,6 +8576,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         break;
       }
       case "groups": {
+        // Diamond uses two team divisions and the allocation board, not standard leagues.
+        if (diamondMode) break;
         if (!(numGroups >= 1 && numGroups <= Math.floor(entityCount / 2))) {
           m.push(`Number of groups must be between 1 and ${Math.max(1, Math.floor(entityCount / 2))}`);
         }

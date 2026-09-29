@@ -99,14 +99,33 @@ export default function Tournaments() {
   };
 
   const { data: allChamps = [], isLoading: champsLoading } = useQuery({
-    queryKey: ["tournaments-list", clubId],
+    queryKey: ["tournaments-list", clubId, user?.id],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs")
         .select("*")
         .eq("club_id", clubId!)
         .order("start_date");
       if (error) throw error;
-      return data || [];
+      const own = data || [];
+      // Also include tournaments hosted by OTHER clubs that this login is
+      // entered in (e.g. inter-club league get-togethers), so visiting
+      // players see and can mark their games.
+      if (!user?.id) return own;
+      const { data: mine } = await supabase
+        .from("club_members").select("id").eq("user_id", user.id);
+      const memberIds = (mine || []).map((m: any) => m.id);
+      if (!memberIds.length) return own;
+      const list = memberIds.join(",");
+      const { data: regs } = await (supabase as any)
+        .from("club_champs_registrations").select("champ_id")
+        .or(`club_member_id.in.(${list}),partner_member_id.in.(${list})`);
+      const ownIds = new Set(own.map((c: any) => c.id));
+      const extraIds = Array.from(new Set((regs || []).map((r: any) => r.champ_id)))
+        .filter((id: any) => id && !ownIds.has(id));
+      if (!extraIds.length) return own;
+      const { data: extra } = await fromExt("club_champs").select("*").in("id", extraIds as string[]);
+      return [...own, ...(extra || [])].sort((a: any, b: any) =>
+        String(a.start_date || "").localeCompare(String(b.start_date || "")));
     },
     enabled: !!clubId,
   });

@@ -169,6 +169,8 @@ function isPeakSlot(date: Date, startTime: string, club: any | null | undefined)
 // courts are loaded dynamically from the database
 
 function getDateLabel(date: Date) {
+  const midnight = new Date(); midnight.setHours(0,0,0,0);
+  if (date < midnight) return "History";
   if (isToday(date)) return "Today";
   if (isTomorrow(date)) return "Tomorrow";
   return format(date, "EEEE");

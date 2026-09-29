@@ -236,7 +236,7 @@ function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selected
               mode="single"
               selected={selectedDate}
               onSelect={(d) => { if (d) { onSelect(d); setPickerOpen(false); } }}
-              disabled={(d) => d < todayMidnight || d > maxDate}
+              disabled={(d) => d < minDate || d > maxDate}
               initialFocus
               className={cn("p-3 pointer-events-auto")}
             />

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DIAMOND_TEAM_DEFAULTS as D, tieGames, gameLabel, poolRounds, CROSSOVER, PLACING_FINALS,
-  tieResult, standings, nightPlan, configIssues,
+  tieResult, standings, nightPlan, configIssues, DOUBLES_PAIRING_LABEL,
 } from "@/lib/tournaments/team-league";
 
 describe("Diamond League (teams)", () => {
@@ -85,6 +85,11 @@ describe("organiser options", () => {
     expect(r.winner).toBe("draw");
     expect(decideLevelFinal(s, r, "games_won")).toBe("away");
     expect(decideLevelFinal(s, r, "organiser")).toBeNull();
+  });
+  it("doubles pairing: owner picks fixed positions or singles results; default is singles results", () => {
+    expect(D.doublesPairing).toBe("singles_results");
+    expect(DOUBLES_PAIRING_LABEL.position).toContain("team position");
+    expect(DOUBLES_PAIRING_LABEL.singles_results).toContain("singles results");
   });
 });
 

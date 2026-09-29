@@ -6,9 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
-  DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL,
+  DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, DOUBLES_PAIRING_LABEL,
   tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks,
-  type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule,
+  type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule, type DoublesPairing,
 } from "@/lib/tournaments/team-league";
 
 export type DiamondTeam = { id: string; name: string; pool: "A" | "B"; players: (string | null)[] };
@@ -74,6 +74,10 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
         <select className={sel} value={cfg.finalLevelRule} onChange={(e) => set({ finalLevelRule: e.target.value as FinalLevelRule })}>
           {Object.entries(FINAL_LEVEL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select></div>
+      <div className="col-span-2"><Label className="text-xs">Doubles pairs</Label>
+        <select className={sel} value={cfg.doublesPairing || "singles_results"} onChange={(e) => set({ doublesPairing: e.target.value as DoublesPairing })}>
+          {(Object.keys(DOUBLES_PAIRING_LABEL) as DoublesPairing[]).map((k) => <option key={k} value={k}>{DOUBLES_PAIRING_LABEL[k]}</option>)}
+        </select></div>
       <div className="col-span-2 md:col-span-4"><Label className="text-xs">Tie-breaks when team totals are level (tap in order)</Label>
         <div className="flex flex-wrap gap-1 mt-1">
           {(Object.keys(TIE_BREAK_LABEL) as TieBreak[]).map((tb) => {
@@ -83,7 +87,7 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
         </div></div>
       <div className="col-span-2 md:col-span-4 rounded-lg border p-3 space-y-2">
         <p className="font-semibold">Weekly team ties</p>
-        <p className="text-muted-foreground">Each division plays its own round robin. In every tie between two teams, position #1 plays position #1 on the opposing team, #2 plays #2, and so on — never teammates against each other. Singles and doubles follow in that order <strong>on the same night</strong>, not as separate tournament stages.</p>
+        <p className="text-muted-foreground">Each division plays its own round robin. In every tie between two teams, position #1 plays position #1 on the opposing team, #2 plays #2, and so on — never teammates against each other. Singles and doubles follow in that order <strong>on the same night</strong>, not as separate tournament stages. Doubles pairs: {(cfg.doublesPairing || "singles_results") === "singles_results" ? "formed from the singles results — each team's top two scorers pair up, then the next two" : "always #5+#6, #3+#4, #1+#2 by team position, whatever the singles scores were"}.</p>
         <div className="flex flex-wrap gap-2">{games.map((g) => <Badge key={g.order} variant={g.kind === "singles" ? "secondary" : "outline"}>{gameLabel(g)} vs opposing team’s same position · {g.minutes} min</Badge>)}</div>
         <p className="text-muted-foreground">One tie takes {plan.tieMinutes} min on one court. With {cfg.courts} court{cfg.courts === 1 ? "" : "s"}, estimated finish: {plan.finish} from {cfg.startTime}.
           {plan.overruns && <span className="text-destructive font-medium"> Later than {cfg.endTime} — adjust the time or courts on Dates &amp; Courts, or shorten the games.</span>}

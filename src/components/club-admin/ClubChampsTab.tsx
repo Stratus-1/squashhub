@@ -111,7 +111,6 @@ import {
   wouldCycle,
   type PairingMethod,
 } from "@/lib/tournaments/stage-sequence";
-import { TOURNAMENT_PRESETS, presetToMaps, type TournamentPreset } from "@/lib/tournaments/presets";
 import { distributeIntoPools, flattenPools, moveVisual, normalisePoolAllocation, poolBlocks, poolCounts, poolLetter, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { generateRotatingDoublesSchedule, isRotationEntity, parseRotationEntity, rotationEntityId } from "@/lib/tournaments/rotating-doubles";
 import {
@@ -232,7 +231,7 @@ import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-inp
 import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
 import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
 import { DiamondRulesPanel, DiamondAllocationBoard, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
-import { configIssues as diamondConfigIssues } from "@/lib/tournaments/team-league";
+import { configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 
 
@@ -1527,34 +1526,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     if (fmt === "cross_league") setRoundFormat("cross_league");
     else if (fmt === "knockout") { if (!roundFormat) setRoundFormat("single_round_robin"); }
     else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
-  };
-
-  /**
-   * Apply a ready-made structure (e.g. Durbanville's Diamond League) in one
-   * click. It only fills in the division settings — every value stays
-   * editable afterwards, and nothing already entered on other steps is lost.
-   */
-  const applyPreset = (preset: TournamentPreset) => {
-    const maps = presetToMaps(preset);
-    setNumGroups(maps.numGroups);
-    setUsePerLeagueFormats(true);
-    setGroupLabels((m) => ({ ...m, ...maps.labels }));
-    setLeagueFormats((m) => ({ ...m, ...maps.formats }) as any);
-    setLeagueMatchTypes((m) => ({ ...m, ...maps.matchTypes }));
-    setLeagueScoringModes((m) => ({ ...m, ...maps.scoringModes }));
-    setGroupDurations((m) => ({ ...m, ...maps.durations }));
-    setSwissPools((m) => ({ ...m, ...maps.pools }));
-    setDivisionFollows((m) => ({ ...m, ...maps.follows }));
-    setDivisionPairing((m) => ({ ...m, ...maps.pairing }));
-    setLeagueGenders((m) => {
-      const next = { ...m };
-      preset.divisions.forEach((d) => { next[String(d.gn)] = next[String(d.gn)] ?? gender; });
-      return next;
-    });
-    if (!roundFormat || roundFormat === "cross_league") setRoundFormat("single_round_robin");
-    setScoringMode("time_capped_points");
-    setMatchDuration(maps.matchDuration);
-    toast.success(`${preset.name} structure applied — adjust anything you like`);
   };
 
   /**
@@ -8605,6 +8576,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         break;
       }
       case "groups": {
+        // Diamond uses two team divisions and the allocation board, not standard leagues.
+        if (diamondMode) break;
         if (!(numGroups >= 1 && numGroups <= Math.floor(entityCount / 2))) {
           m.push(`Number of groups must be between 1 and ${Math.max(1, Math.floor(entityCount / 2))}`);
         }
@@ -9092,13 +9065,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           <CardHeader>
             <CardTitle>Dates, Times &amp; Courts</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Lock in when the tournament is played and which courts it owns. You can book the courts now — bookings appear under the tournament name in the courts grid so nothing else can be booked over them.
+              {diamondMode ? "Choose the tournament window, session times and courts for team ties. Weekly fixture dates are on the Diamond League structure page; no court reservations are created before team fixtures exist." : "Lock in when the tournament is played and which courts it owns. You can book the courts now — bookings appear under the tournament name in the courts grid so nothing else can be booked over them."}
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Who arranges the games: the club (fixed schedule on booked
                 courts) or the players themselves (play-by deadline). */}
-            <div className="rounded-lg border p-3 space-y-2">
+            {!diamondMode && <div className="rounded-lg border p-3 space-y-2">
               <Label className="text-sm font-medium">How are games arranged?</Label>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${schedulingMode === "club" ? "border-primary bg-primary/5" : ""}`}>
@@ -9126,10 +9099,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                   </span>
                 </label>
               </div>
-            </div>
+            </div>}
 
             {/* Where does the draw stop: one champion per league, or one per pool? */}
-            <div className="rounded-lg border p-3 space-y-2">
+            {!diamondMode && <div className="rounded-lg border p-3 space-y-2">
               <Label className="text-sm font-medium">Who is the final winner?</Label>
               <p className="text-[11px] text-muted-foreground">
                 Only matters where a league is split into more than one pool.
@@ -9160,7 +9133,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                   </span>
                 </label>
               </div>
-            </div>
+            </div>}
 
             {/* ── Tournament window ── */}
             {schedulingMode === "club" || currentRoundClubScheduled ? (
@@ -9586,7 +9559,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             {/* Capacity validation — lives here because it needs BOTH the structure
                 (leagues, formats, pools, match length) and the schedule (dates,
                 windows, courts). Advisory only: it never blocks setup. */}
-            {schedulingMode === "club" && (
+            {schedulingMode === "club" && !diamondMode && (
               <WizardSection
                 title={"Capacity check"}
                 summary={"Does the plan fit in the court time you have?"}
@@ -9621,18 +9594,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       {step === "structure" && (
         <div className="flex gap-1 rounded-lg border bg-muted/40 p-1 w-fit">
           <Button type="button" size="sm" variant={!diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => setDiamondMode(false)} disabled={diamondDraft.started}>Standard leagues</Button>
-          <Button type="button" size="sm" variant={diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => setDiamondMode(true)}>💎 Diamond League (teams)</Button>
+          <Button type="button" size="sm" variant={diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => { if (!diamondMode && startTime === "18:00" && endTime === "20:00") { setStartTime("17:45"); setEndTime("21:15"); } setDiamondMode(true); }}>💎 Diamond League (teams)</Button>
         </div>
       )}
       {step === "structure" && diamondMode && (
         <Card>
           <CardHeader>
             <CardTitle>Diamond League (teams)</CardTitle>
-            <p className="text-sm text-muted-foreground">Teams of ranked players in two divisions. Every tie is singles then doubles on points; division round robins, crossover semis (points carry) and placing finals.</p>
+            <p className="text-sm text-muted-foreground">Set team numbers, weekly pool dates and scoring rules here. Each team tie plays singles then doubles on the same night; courts and session times remain on Dates &amp; Courts.</p>
           </CardHeader>
           <CardContent>
             <div ref={stepIssuesRef} />
-            <DiamondRulesPanel draft={diamondDraft} onChange={setDiamondDraft} courts={selectedCourtIds.size} />
+            <DiamondRulesPanel draft={diamondDraft} onChange={setDiamondDraft} courts={selectedCourtIds.size} startTime={startTime} endTime={endTime} />
           </CardContent>
         </Card>
       )}
@@ -11013,27 +10986,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     })}
                     <p className="text-[10px] text-muted-foreground italic pt-1">Tip: there is no limit — add a division per class (League 1-4, Ladies, Junior Boys, Junior Girls…). Use the copy icon on a division to clone its rules.</p>
 
-                    {/* Ready-made structures — one click fills in the stages,
-                        game lengths and pairing; everything stays editable. */}
-                    <div className="pt-2 border-t border-border space-y-2">
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ready-made structures</div>
-                      {TOURNAMENT_PRESETS.map((preset) => (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => applyPreset(preset)}
-                          className="w-full text-left rounded-lg border border-border bg-card p-2.5 shadow-sm hover:border-violet-500/50 hover:shadow-md transition-all group"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 group-hover:bg-violet-500 group-hover:text-white transition-colors">
-                              <Sparkles className="w-3.5 h-3.5" />
-                            </span>
-                            <span className="text-xs font-semibold">{preset.name}</span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground leading-tight">{preset.description}</p>
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </div>
 
@@ -13764,8 +13716,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           <CardContent className="space-y-4">
             <div className="text-sm space-y-2">
               <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
-              <p><strong>Type:</strong> {GENDER_LABELS[gender]} {isDoublesCategory ? "Doubles" : "Singles"}</p>
-          <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {awaitingPlayerPairs ? `${registrationUsesInviteList ? selectedPlayerIds.size : registrationRequired ? "Open" : "No"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
+              <p><strong>Type:</strong> {diamondMode ? "Diamond League team competition" : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"}`}</p>
+              <p><strong>{diamondMode ? "Teams" : isDoubles ? "Pairs" : "Players"}:</strong> {diamondMode ? `${diamondDraft.teams.length} teams · ${diamondDraft.config.playersPerTeam} players per team · ${diamondDraft.teams.length * diamondDraft.config.playersPerTeam} places` : awaitingPlayerPairs ? `${registrationUsesInviteList ? selectedPlayerIds.size : registrationRequired ? "Open" : "No"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>
               {schedulingMode === "self" ? (
                 <p><strong>Scheduling:</strong> Players arrange their own games — no fixed days or times</p>
@@ -13776,26 +13728,32 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 </>
               )}
               <p><strong>Courts:</strong> {Array.from(selectedCourtIds).map((id) => getCourtName(id)).join(", ")}</p>
-              <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : roundFormat === "cross_league" ? "League vs League (cross-league only)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>
-              <p><strong>Playoffs:</strong> {enablePlayoffs ? "Yes — position-based knockout after group stage" : "No"}</p>
-              <p><strong>Final winner:</strong> {championScope === "pool" ? "One winner per pool" : "One champion per league — pool winners meet in the league final"}</p>
+              {diamondMode ? <>
+                 <p><strong>Format:</strong> Two division round robins{diamondDraft.teams.length === 8 ? " · crossover semi-finals carry points · placing finals reset points" : ""}</p>
+                 <p><strong>Every team tie:</strong> Matching positions on opposing teams (#1 v #1, #2 v #2, etc.) · {diamondTieGames(diamondDraft.config).map(diamondGameLabel).join(" → ")}</p>
+                <p><strong>Night plan:</strong> singles then doubles on the same night · estimated finish {diamondNightPlan({ ...diamondDraft.config, courts: selectedCourtIds.size || diamondDraft.config.courts, startTime, endTime }, diamondDraft.teams.length / 2).finish}</p>
+              </> : <>
+                <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : roundFormat === "cross_league" ? "League vs League (cross-league only)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>
+                <p><strong>Playoffs:</strong> {enablePlayoffs ? "Yes — position-based knockout after group stage" : "No"}</p>
+                <p><strong>Final winner:</strong> {championScope === "pool" ? "One winner per pool" : "One champion per league — pool winners meet in the league final"}</p>
+              </>}
             </div>
 
             <Separator />
 
-            {awaitingPlayerPairs && (
+            {!diamondMode && awaitingPlayerPairs && (
               <p className="text-sm text-muted-foreground rounded-lg border p-3">
                 Save this tournament now. Once players have registered and confirmed partners, reopen it to generate groups and fixtures.
               </p>
             )}
 
-            {!awaitingPlayerPairs && editingChampId && (
+            {!diamondMode && !awaitingPlayerPairs && editingChampId && (
               <p className="text-xs text-muted-foreground rounded-lg border p-2 bg-muted/30">
                 <strong>Rebuild Schedule</strong> recreates the <em>first</em> fixture list and tournament page entries using the leagues/pairs shown above — it does <em>not</em> change who's paired with whom or which league they're in, and it is <em>not</em> how you advance the draw. Later rounds are generated from <strong>Tournament progress</strong> below (and on the tournament page) once the current round is played. Court bookings are written separately via <strong>Make Court Bookings</strong>.
               </p>
             )}
 
-            {editingChampId && (
+            {!diamondMode && editingChampId && (
               <TournamentProgressCard
                 champId={editingChampId}
                 canManage
@@ -13805,11 +13763,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               />
             )}
 
-            {editingChampId && <DrawLockCard champId={editingChampId} />}
+            {!diamondMode && editingChampId && <DrawLockCard champId={editingChampId} />}
 
 
 
-            {entitiesChangedSinceLoad && (
+            {!diamondMode && entitiesChangedSinceLoad && (
               <div className="rounded-lg border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
                 <p className="font-semibold">⚠ Players changed since this tournament was opened</p>
                 <p className="text-xs mt-0.5">
@@ -13818,7 +13776,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               </div>
             )}
 
-            {!awaitingPlayerPairs && schedulePreview && (
+            {!diamondMode && !awaitingPlayerPairs && schedulePreview && (
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 {Array.from({ length: numGroups }, (_, gi) => {
                   // Always show the preview in the order the slots are actually
@@ -13879,7 +13837,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               </div>
             )}
 
-            {!awaitingPlayerPairs && schedulePreview && (
+            {!diamondMode && !awaitingPlayerPairs && schedulePreview && (
               <>
                 <Separator />
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border p-3 bg-muted/30">

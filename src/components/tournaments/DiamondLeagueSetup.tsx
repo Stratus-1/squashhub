@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL,
-  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers,
+  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule,
 } from "@/lib/tournaments/team-league";
 
@@ -30,9 +30,9 @@ export const newDiamondDraft = (): DiamondDraft => ({
 
 const sel = "w-full h-8 rounded border border-input bg-background px-2 text-xs";
 
-/** Structure step: the Diamond League rules. */
-export function DiamondRulesPanel({ draft, onChange, courts }: { draft: DiamondDraft; onChange: (d: DiamondDraft) => void; courts: number }) {
-  const cfg = { ...draft.config, courts: courts || draft.config.courts };
+/** Structure step: configure team ties and weekly pool play; courts are selected on the Courts step. */
+export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime }: { draft: DiamondDraft; onChange: (d: DiamondDraft) => void; courts: number; startTime: string; endTime: string }) {
+  const cfg = { ...draft.config, courts: courts || draft.config.courts, startTime: startTime || draft.config.startTime, endTime: endTime || draft.config.endTime };
   const set = (c: Partial<DiamondDraft["config"]>) => onChange({ ...draft, config: { ...draft.config, ...c } });
   const setSize = (n: number) => onChange({
     ...draft, config: { ...draft.config, playersPerTeam: n },
@@ -49,6 +49,8 @@ export function DiamondRulesPanel({ draft, onChange, courts }: { draft: DiamondD
   const num = (k: keyof TeamLeagueConfig) => (e: React.ChangeEvent<HTMLInputElement>) => set({ [k]: Number(e.target.value) } as any);
   const games = tieGames(cfg);
   const plan = nightPlan(cfg, draft.teams.length / 2);
+  const rounds = poolRounds(draft.teams.length / 2);
+  const dates = draft.config.dates || [];
   const locked = !!draft.started;
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
@@ -79,8 +81,32 @@ export function DiamondRulesPanel({ draft, onChange, courts }: { draft: DiamondD
             return <Button key={tb} type="button" size="sm" variant={i >= 0 ? "default" : "outline"} className="h-7 text-[11px]" onClick={() => toggleTb(tb)}>{i >= 0 ? `${i + 1}. ` : ""}{TIE_BREAK_LABEL[tb]}</Button>;
           })}
         </div></div>
+      <div className="col-span-2 md:col-span-4 rounded-lg border p-3 space-y-2">
+        <p className="font-semibold">Weekly team ties</p>
+        <p className="text-muted-foreground">Each division plays its own round robin. In every tie between two teams, position #1 plays position #1 on the opposing team, #2 plays #2, and so on — never teammates against each other. Singles and doubles follow in that order <strong>on the same night</strong>, not as separate tournament stages.</p>
+        <div className="flex flex-wrap gap-2">{games.map((g) => <Badge key={g.order} variant={g.kind === "singles" ? "secondary" : "outline"}>{gameLabel(g)} vs opposing team’s same position · {g.minutes} min</Badge>)}</div>
+        <p className="text-muted-foreground">One tie takes {plan.tieMinutes} min on one court. With {cfg.courts} court{cfg.courts === 1 ? "" : "s"}, estimated finish: {plan.finish} from {cfg.startTime}.
+          {plan.overruns && <span className="text-destructive font-medium"> Later than {cfg.endTime} — adjust the time or courts on Dates &amp; Courts, or shorten the games.</span>}
+        </p>
+        <p className="text-muted-foreground">Court selection, session times and tournament window remain on <strong>Dates &amp; Courts</strong>. Weekly dates below are used when creating team fixtures; leave blank to choose them later in Diamond League (teams).</p>
+      </div>
+      <div className="col-span-2 md:col-span-4 rounded-lg border p-3 space-y-3">
+        <p className="font-semibold">Divisions and round-robin weeks</p>
+        {rounds.map((round, i) => <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-2 border-b last:border-0 pb-2 last:pb-0">
+          <Label className="min-w-16 text-xs">Week {i + 1}</Label>
+          <Input type="date" aria-label={`Week ${i + 1} date`} className="h-8 w-40 text-xs" value={dates[i] || ""} disabled={locked} onChange={(e) => { const next = [...dates]; next[i] = e.target.value; set({ dates: next }); }} />
+          <span className="text-muted-foreground">{(["A", "B"] as const).map((pool) => `${pool}: ${round.map(([a, b]) => `${pool}${a} v ${pool}${b}`).join(" · ")}`).join("   |   ")}</span>
+        </div>)}
+        {draft.teams.length === 8 && <div className="space-y-2">
+          <p className="text-muted-foreground">After the pool weeks: crossover semi-finals (points carry), then placing finals (points reset).</p>
+          {["Semi-finals", "Finals"].map((label, j) => { const i = rounds.length + j; return <div key={label} className="flex flex-wrap items-center gap-2">
+            <Label className="min-w-16 text-xs">{label}</Label>
+            <Input type="date" aria-label={`${label} date`} className="h-8 w-40 text-xs" value={dates[i] || ""} disabled={locked} onChange={(e) => { const next = [...dates]; next[i] = e.target.value; set({ dates: next }); }} />
+          </div>; })}
+        </div>}
+        {draft.teams.length !== 8 && <p className="text-muted-foreground">Crossover semi-finals and placing finals are available for two divisions of four teams. Other team counts use the division round robins.</p>}
+      </div>
       <div className="col-span-2 md:col-span-4 text-[11px] text-muted-foreground">
-        Each tie: {games.map(gameLabel).join(" → ")}. A tie takes {plan.tieMinutes} min on one court. Courts, dates and times come from the <strong>Courts</strong> step ({cfg.courts} court{cfg.courts === 1 ? "" : "s"}).
         {configIssues(cfg).map((i) => <div key={i} className="text-destructive">{i}</div>)}
       </div>
     </div>

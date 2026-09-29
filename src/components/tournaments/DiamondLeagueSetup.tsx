@@ -190,7 +190,7 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
                         <span className="flex-1 min-w-0">{p ? chip(p) : <span className="text-muted-foreground">{picked ? "Tap to place" : "empty"}</span>}</span>
                         {p && <button type="button" title={lockedSet.has(key) ? "Unlock" : "Lock"} onClick={(e) => { e.stopPropagation(); toggleLock(key); }}>
                           {lockedSet.has(key) ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3 text-muted-foreground" />}</button>}
-                        {p && !draft.started && <button type="button" title="Back to unallocated" onClick={(e) => { e.stopPropagation(); moveTo(p, null, 0); }}><X className="w-3 h-3" /></button>}
+                        {p && !draft.started && <button type="button" title="Move to reserves" onClick={(e) => { e.stopPropagation(); moveTo(p, null, 0); }}><X className="w-3 h-3" /></button>}
                       </div>
                     );
                   })}

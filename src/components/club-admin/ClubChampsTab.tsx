@@ -230,8 +230,8 @@ import { z } from "zod";
 import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";
 import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
 import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
-import { DiamondRulesPanel, DiamondAllocationBoard, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
-import { configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames } from "@/lib/tournaments/team-league";
+import { DiamondRulesPanel, DiamondAllocationBoard, DiamondFixturesPreview, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
+import { buildPoolWeeks, configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 
 
@@ -3471,12 +3471,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   /** Upserts the Diamond League team event linked to this tournament. */
   const persistDiamond = async (tournamentId: string, status?: string) => {
+    const configuredCourts = selectedCourtIds.size || diamondDraft.config.courts;
+    const weeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], configuredCourts);
     const row: Record<string, any> = {
       club_id: clubId, tournament_id: tournamentId, name: champName || "Diamond League",
-      config: { ...diamondDraft.config, courts: selectedCourtIds.size || diamondDraft.config.courts,
+      config: { ...diamondDraft.config, courts: configuredCourts,
         startTime: startTime || diamondDraft.config.startTime, endTime: endTime || diamondDraft.config.endTime,
         locked: diamondDraft.locked },
       teams: diamondDraft.teams,
+      weeks,
     };
     if (status) row.status = status;
     const q = diamondDraft.eventId
@@ -3486,7 +3489,55 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     if (error) throw error;
     if (data?.id && !diamondDraft.eventId) setDiamondDraft((d) => ({ ...d, eventId: data.id }));
     qc.invalidateQueries({ queryKey: ["team-league-events"] });
+    await syncDiamondFixtures(tournamentId, weeks);
     return data?.id as string;
+  };
+
+  const syncDiamondFixtures = async (tournamentId: string, weeks: ReturnType<typeof buildPoolWeeks>) => {
+    const games = diamondTieGames(diamondDraft.config);
+    const courtIds = Array.from(selectedCourtIds);
+    const { data: existing, error: existingError } = await fromExt("club_champs_matches")
+      .select("id, stage_key, status, score").eq("champ_id", tournamentId).like("stage_key", "dl:%");
+    if (existingError) throw existingError;
+    const protectedKeys = new Set<string>();
+    const replaceableIds: string[] = [];
+    ((existing || []) as any[]).forEach((match) => {
+      if (match.status === "scheduled" && !match.score) replaceableIds.push(match.id);
+      else protectedKeys.add(match.stage_key);
+    });
+    if (replaceableIds.length) {
+      const { error } = await fromExt("club_champs_matches").delete().in("id", replaceableIds);
+      if (error) throw error;
+    }
+    const [startHour, startMinute] = (startTime || diamondDraft.config.startTime || "17:45").split(":").map(Number);
+    const rows: Record<string, any>[] = [];
+    weeks.forEach((week) => week.ties.forEach((tie) => {
+      const home = diamondDraft.teams.find((team) => team.id === tie.home);
+      const away = diamondDraft.teams.find((team) => team.id === tie.away);
+      if (!home || !away) return;
+      let minutes = startHour * 60 + startMinute;
+      games.forEach((game, gameIndex) => {
+        const stageKey = `dl:${tie.id}:${gameIndex}`;
+        const scheduledTime = `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+        minutes += game.minutes;
+        if (protectedKeys.has(stageKey)) return;
+        const [player1, player2] = game.positions;
+        rows.push({ champ_id: tournamentId, group_number: week.week, round_number: week.week,
+          section_number: tie.label?.startsWith("B") ? 2 : 1, stage: "group", stage_key: stageKey,
+          stage_label: `Week ${week.week} · ${home.name} v ${away.name} · ${diamondGameLabel(game)}`,
+          player_a_member_id: home.players[player1 - 1], player_b_member_id: away.players[player1 - 1],
+          partner_a_member_id: player2 ? home.players[player2 - 1] : null,
+          partner_b_member_id: player2 ? away.players[player2 - 1] : null,
+          scheduled_date: week.date, scheduled_time: scheduledTime,
+          court_id: courtIds[tie.court - 1] ?? null, status: "scheduled" });
+      });
+    }));
+    for (let index = 0; index < rows.length; index += 200) {
+      const { error } = await fromExt("club_champs_matches").insert(rows.slice(index, index + 200));
+      if (error) throw error;
+    }
+    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+    qc.invalidateQueries({ queryKey: ["marker-tournament-matches"] });
   };
 
   const createDiamond = useMutation({
@@ -3499,7 +3550,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       await persistDiamond(id, "ready");
     },
     onSuccess: () => {
-      toast.success("Diamond League saved — open it under Diamond League (teams) to create the weeks and enter scores.");
+      toast.success("Diamond League saved — its games are ready under Tournaments.");
       setShowWizard(false);
     },
     onError: (e: any) => toast.error(e.message || "Could not save the Diamond League"),
@@ -13734,6 +13785,20 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 <p><strong>Final winner:</strong> {championScope === "pool" ? "One winner per pool" : "One champion per league — pool winners meet in the league final"}</p>
               </>}
             </div>
+
+            {diamondMode && (
+              <>
+                <Separator />
+                <DiamondFixturesPreview
+                  draft={{ ...diamondDraft, config: { ...diamondDraft.config, courts: selectedCourtIds.size || diamondDraft.config.courts } }}
+                  nameOf={getMemberName}
+                  courtName={(courtNumber) => {
+                    const courtId = Array.from(selectedCourtIds)[courtNumber - 1];
+                    return courtId == null ? `Court ${courtNumber}` : getCourtName(courtId);
+                  }}
+                />
+              </>
+            )}
 
             <Separator />
 

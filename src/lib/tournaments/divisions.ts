@@ -360,7 +360,7 @@ export function planAllLeaguesExpansion(args: {
     // it is still on "all leagues" — no orphan draw is left behind.
     const tmplSrc = divisionSource(sources, templateGn);
     let gn: number;
-    if (reuseTemplate && templateGn <= divisionCount && tmplSrc.mode === "all") {
+    if (reuseTemplate && templateGn <= divisionCount && (tmplSrc.mode === "all" || tmplSrc.leagueIds.length === 0)) {
       gn = templateGn;
       reuseTemplate = false;
     } else {

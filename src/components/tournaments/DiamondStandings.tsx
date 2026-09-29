@@ -31,12 +31,37 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
     },
     enabled: !!tournamentId,
   });
+  const { data: markedGames = [] } = useQuery({
+    queryKey: ["diamond-marked-games", tournamentId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_champs_matches")
+        .select("stage_key, status, side_a_points, side_b_points")
+        .eq("champ_id", tournamentId)
+        .like("stage_key", "dl:%");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!tournamentId,
+    refetchInterval: 10000,
+  });
   if (!ev) return null;
 
   const cfg: TeamLeagueConfig = { ...DIAMOND_TEAM_DEFAULTS, ...ev.config };
   const teams = ev.teams || [];
   const weeks = ev.weeks || [];
-  const results = ev.results || {};
+  const results: Record<string, GameScore[]> = { ...(ev.results || {}) };
+  for (const match of markedGames as any[]) {
+    if (match.status !== "completed") continue;
+    const key = String(match.stage_key || "");
+    const parsed = key.match(/^dl:(.+):(\d+)$/);
+    if (!parsed) continue;
+    const tieId = parsed[1];
+    const gameIndex = Number(parsed[2]);
+    const scores = [...(results[tieId] || [])];
+    while (scores.length <= gameIndex) scores.push(null);
+    scores[gameIndex] = { home: Number(match.side_a_points) || 0, away: Number(match.side_b_points) || 0 };
+    results[tieId] = scores;
+  }
   const games = tieGames(cfg);
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? "?";
 

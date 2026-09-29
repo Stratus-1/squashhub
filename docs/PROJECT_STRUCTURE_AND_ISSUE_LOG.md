@@ -2298,6 +2298,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Root cause: Create pool weeks only persisted JSON on `team_league_events`; the existing Riverside Club DL had three weeks but zero `club_champs_matches`, so Tournament Games and the live marker had nothing to show.
 - The normal tournament Review & Generate step now previews every weekly tie and its position-v-position singles/doubles. Saving creates stable `dl:` tournament game rows immediately, replacing only unplayed Diamond rows and preserving scored/in-progress history.
 - Linked Diamond events no longer appear in the separate manager above the tournament editor. Their team totals render directly in Tournaments → Standings, while doubles rows are recognised from their partner fields in the game list and marker.
+- Backfilled Riverside Club DL only: 72 scheduled game rows across 7, 14 and 21 October 2026 (48 singles, 24 doubles). No other club data changed.
 - Verified organiser email: each singles position faces the same position on the opposing team (#6 down to #1); doubles 5+6, 3+4, 1+2 face the matching opposing pairs. Pool weeks follow A1vA4/A2vA3, A1vA2/A3vA4, A1vA3/A2vA4; crossover and placing rounds apply to eight teams only. Preview verified page-two content without saving an event.
 - Club DL screenshot exposed a false allocation warning: standard groups validation required `numGroups >= 1` although Diamond's two divisions and team slots are configured independently. Skip that standard-only check for Diamond allocation; keep it for standard tournaments.
 

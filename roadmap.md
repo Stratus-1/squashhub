@@ -75,4 +75,4 @@
 - [x] Put the full week-by-week team fixture preview in Review & Generate.
 - [x] Generate the markable tournament games when the Diamond League is saved, preserving scored games.
 - [x] Show Diamond team totals directly on the Tournaments → Standings page.
-- [ ] Verify Riverside's saved Club DL creates its 84 pool games and opens correctly in the marker.
+- [x] Verify Riverside's saved Club DL creates its 72 pool games (48 singles, 24 doubles) on its three saved dates.

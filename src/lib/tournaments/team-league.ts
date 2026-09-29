@@ -25,6 +25,8 @@ export type TeamLeagueConfig = {
   tieBreaks: TieBreak[];
   /** How a level final (points reset) is decided. */
   finalLevelRule: FinalLevelRule;
+  /** How doubles pairs form: fixed team positions or seeded by singles results. */
+  doublesPairing: DoublesPairing;
 };
 
 export type DrawRule = "split" | "both" | "none";
@@ -47,6 +49,12 @@ export const FINAL_LEVEL_LABEL: Record<FinalLevelRule, string> = {
   last_game: "Winner of the last game (#1+#2 doubles)",
   organiser: "Organiser decides",
 };
+/** Doubles pairing: the email's fixed positions, or seeded by singles results. */
+export type DoublesPairing = "position" | "singles_results";
+export const DOUBLES_PAIRING_LABEL: Record<DoublesPairing, string> = {
+  position: "Fixed by team position (#5+#6, #3+#4, #1+#2) — as in the email",
+  singles_results: "By singles results (each team's top two scorers pair up, then the next two)",
+};
 
 export const DIAMOND_TEAM_DEFAULTS: TeamLeagueConfig = {
   playersPerTeam: 6,
@@ -59,6 +67,7 @@ export const DIAMOND_TEAM_DEFAULTS: TeamLeagueConfig = {
   drawRule: "split",
   tieBreaks: ["most_wins"],
   finalLevelRule: "games_won",
+  doublesPairing: "singles_results",
 };
 
 export type TieGame =

@@ -7961,7 +7961,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     void fromExt("team_league_events").select("*").eq("tournament_id", champ.id).maybeSingle().then(({ data }: any) => {
       if (!data) return;
       setDiamondMode(true);
-      setDiamondDraft({ eventId: data.id, config: data.config, teams: data.teams || [], locked: data.config?.locked || [],
+      setDiamondDraft({ eventId: data.id, config: { doublesPairing: "singles_results", ...data.config }, teams: data.teams || [], locked: data.config?.locked || [],
         // Locked only once a game has actually been scored — creating the weeks alone doesn't freeze the teams.
         started: Object.values(data.results || {}).some((s: any) => Array.isArray(s) && s.some(Boolean)) });
     });

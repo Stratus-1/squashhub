@@ -17400,6 +17400,10 @@ export type Database = {
         Args: { _round_id: string }
         Returns: Json
       }
+      diamond_seed_doubles_for_tie: {
+        Args: { p_champ: string; p_prefix: string }
+        Returns: undefined
+      }
       dismiss_duplicate_pair: {
         Args: { _a: string; _b: string; _reason?: string }
         Returns: undefined

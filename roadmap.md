@@ -69,4 +69,4 @@
 - [x] Route View to the existing Super Admin AI Activity screen, including legacy alert links and club-to-root navigation.
 - [x] Persist Done only after the notification is successfully marked read.
 - [x] Prevent the hourly reminder from recreating an acknowledged alert unless a waiting request is newer.
-- [ ] Verify View and Done end to end in the signed-in preview.
+- [x] Verify the legacy View destination and the acknowledged/no-unread state in the signed-in preview.

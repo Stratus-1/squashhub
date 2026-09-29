@@ -1638,7 +1638,9 @@ export default function Bookings() {
               {getDateLabel(selectedDate)} · {format(selectedDate, "d MMM")}
             </p>
             <p className="text-[10px] text-primary mt-1 flex items-center gap-1">
-              <CalendarIcon className="w-3 h-3" /> Tap an open slot below to book a court
+              {selectedDate < new Date(new Date().setHours(0,0,0,0))
+                ? <>History — past bookings can't be changed here</>
+                : <><CalendarIcon className="w-3 h-3" /> Tap an open slot below to book a court</>}
             </p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">

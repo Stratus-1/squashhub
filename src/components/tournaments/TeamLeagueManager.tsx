@@ -56,6 +56,7 @@ export function TeamLeagueManager({ clubId }: { clubId: string }) {
 
   const open = events.find((e) => e.id === openId);
   if (open) return <Editor key={open.id} ev={open} onBack={() => setOpenId(null)} />;
+  if (events.length === 0) return null;
 
   return (
     <Card>
@@ -65,10 +66,9 @@ export function TeamLeagueManager({ clubId }: { clubId: string }) {
             <Gem className="w-4 h-4 text-primary" />
             <div>
               <div className="text-sm font-semibold">Diamond League (teams)</div>
-              <p className="text-[11px] text-muted-foreground">Teams of ranked players, pools, crossover semis and placing finals. Every tie is singles then doubles on points.</p>
+              <p className="text-[11px] text-muted-foreground">Set up a new one in Plan New Tournament → Structure → Diamond League (teams). Open one here to create the weeks, enter scores and see the tables.</p>
             </div>
           </div>
-          <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending}><Plus className="w-3.5 h-3.5 mr-1" />New</Button>
         </div>
       </CardHeader>
       {events.length > 0 && (

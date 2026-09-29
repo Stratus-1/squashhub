@@ -52,4 +52,4 @@
 - [x] Maintenance UI: agent stages, attention-only "Needs you", settings card
 - [ ] Stage 1 prerequisites (blocked on Willem): shared agent secret, agent endpoint/webhook, unlock decision, pg_net webhook + sweep cron, pilot allowlist
 - [x] Doubles league fixtures: replace ONE player of a pair — dialog asks which half, swap keeps the partner. Verified in preview 2026-09-27; preview-only, unpublished.
-- [ ] Diamond League (teams): rules engine + tests DONE (src/lib/tournaments/team-league.ts). NEXT: team entry screen, creating ties/games, marker + team tables. Blocked on organiser answers: draw bonus, tie-break, level final, courts, absent player.
+- [x] Diamond League (teams): rules + organiser options + team screen (Tournaments). Open: absent-player/substitute rule; live marker link for team games.

@@ -12,6 +12,7 @@ import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { orgDescendants } from "@/lib/tournaments/eligibility";
 import { ClubChampsTab } from "@/components/club-admin/ClubChampsTab";
+import { TeamLeagueManager } from "@/components/tournaments/TeamLeagueManager";
 import { cn } from "@/lib/utils";
 
 interface TournamentPlannerProps {
@@ -258,7 +259,8 @@ export function TournamentPlanner({ mode, clubId, dark = false }: TournamentPlan
       </Card>
 
        {effectiveHostClubId ? (
-        <div className={cn(dark && "rounded-lg bg-background text-foreground p-3")}>
+        <div className={cn("space-y-4", dark && "rounded-lg bg-background text-foreground p-3")}>
+          <TeamLeagueManager clubId={effectiveHostClubId} />
           <ClubChampsTab
              key={`${activeOwner ?? "club"}-${effectiveHostClubId}`}
              clubId={effectiveHostClubId}

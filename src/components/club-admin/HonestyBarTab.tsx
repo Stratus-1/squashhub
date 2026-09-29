@@ -917,7 +917,12 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
             <div className="flex-1 min-w-0">
               <div className={`text-sm font-medium ${!s.active ? "line-through text-muted-foreground" : ""}`}>{s.name}{s.archived_at ? " (archived)" : ""} · {money(s.price)}</div>
               <div className="text-[11px] text-muted-foreground">{recipeSummary(s.id)}</div>
-              <div className="text-[10px] text-muted-foreground">{s.active ? "Active" : "Inactive"} · {validitySummary(s as unknown as InventoryItem)}</div>
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] text-muted-foreground">{s.active ? "Active" : "Inactive"} · {validitySummary(s as unknown as InventoryItem)}</span>
+                {s.stock_qty > 0
+                  ? <Badge variant="outline" className="text-[10px]">{s.stock_qty} can be sold</Badge>
+                  : <Badge variant="destructive" className="text-[10px] gap-0.5"><AlertTriangle className="w-3 h-3" /> Unavailable</Badge>}
+              </div>
             </div>
             {!s.archived_at && (
               <div className="flex items-center gap-0.5 shrink-0">
@@ -930,7 +935,8 @@ function ItemManager({ clubId, items: allItems, soldCounts, loading, onQrLabels 
       </div>
 
       {divisions.map(div => {
-        const divItems = items.filter(i => (i.division || "bar") === div.key);
+        // Specials are listed once, in the Specials & bundles box above.
+        const divItems = items.filter(i => (i.division || "bar") === div.key && i.item_kind !== "special");
         if (divItems.length === 0) return null;
         const cats = categoriesForDivision(customCategories, div.key);
         const known = new Set(cats.map(c => c.value));

@@ -662,8 +662,11 @@ export default function ClubChampsView() {
     // rank them alongside everyone else. For doubles we pair them up so they show
     // as a team rather than two single names, and we skip a player whose side
     // partner already has an entry row (their results are counted there).
+    // Players entered in ANY league count as known: in cross-league events
+    // (e.g. 6th v 7th League) opponents belong to the other league's table and
+    // must never be duplicated here as "extra" rows.
     const knownIds = new Set<string>();
-    groupEntries.forEach((e: any) => {
+    standingsEntries.forEach((e: any) => {
       if (e.club_member_id) knownIds.add(e.club_member_id);
       if (e.partner_member_id) knownIds.add(e.partner_member_id);
     });

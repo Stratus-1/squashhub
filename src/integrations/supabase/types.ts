@@ -19094,6 +19094,14 @@ export type Database = {
         Args: { p_champ_id: string; p_last4: string; p_member_number: string }
         Returns: Json
       }
+      tournament_member_names: {
+        Args: { p_champ_id: string }
+        Returns: {
+          club_member_number: string
+          id: string
+          name: string
+        }[]
+      }
       tournament_owner_entity: {
         Args: { p_tournament_id: string }
         Returns: {

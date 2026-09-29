@@ -185,7 +185,7 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
         <Badge variant="secondary">{placed.size} placed · {unallocated.length} reserve{unallocated.length === 1 ? "" : "s"} · {draft.teams.length * draft.config.playersPerTeam} slots</Badge>
         <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={autoFill} disabled={draft.started}><Wand2 className="w-3.5 h-3.5 mr-1" />Place by ranking</Button>
         <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={clearUnlocked} disabled={draft.started}>Clear unlocked slots</Button>
-        <span className="text-[11px] text-muted-foreground">Drag a player onto a slot, or tap a player then tap a slot. Moved players are locked 🔒 so automatic placement leaves them alone.</span>
+        <span className="text-[11px] text-muted-foreground">Drag a player onto a slot, or tap a player then tap a slot. Moved players are locked (yellow) so automatic placement leaves them alone. To reshuffle by ranking: Clear unlocked slots, then Place by ranking.</span>
       </div>
       {flagged.length > 0 && (
         <p className="text-[11px] text-destructive">Withdrawn — their slot is now empty: {flagged.map(nameOf).join(", ")}. Drag a reserve into the empty slot to substitute them; or leave it empty and the tie is played with a forfeit in that slot.</p>

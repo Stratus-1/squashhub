@@ -118,6 +118,29 @@ export default function BellsMarker() {
     bell_paused_seconds: null,
   });
   const scoreStateRef = useRef({ pointsA: 0, pointsB: 0 });
+  const autoSubmittedRef = useRef(false);
+  // When the bell rings the game is over: submit the result automatically
+  // (idempotent server save). An admin can still unlock and resubmit.
+  const autoSubmitRef = useRef<(a: number, b: number) => void>(() => {});
+  autoSubmitRef.current = (a: number, b: number) => {
+    if (!match || autoSubmittedRef.current || match.status === "completed") return;
+    autoSubmittedRef.current = true;
+    if (liveSyncRef.current) { window.clearTimeout(liveSyncRef.current); liveSyncRef.current = null; }
+    liveSyncEnabledRef.current = false;
+    timerStateRef.current = { bell_ends_at: null, bell_paused_seconds: 0 };
+    rpcExt("save_bells_match_result", { _match_id: match.id, _side_a_points: a, _side_b_points: b })
+      .then(({ error }) => {
+        if (error) {
+          autoSubmittedRef.current = false;
+          toast.error("Bell! Could not submit automatically — tap Save result.", { description: error.message });
+          return;
+        }
+        toast.success(`Bell! Result submitted · ${a}-${b}`);
+        qc.invalidateQueries({ queryKey: ["bells-match", matchId] });
+        qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
+        qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+      });
+  };
 
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {

@@ -14,6 +14,7 @@ import { AddSlotDialog } from "@/components/tournaments/AddSlotDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { hydrateTournamentNames } from "@/lib/tournament-names";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubContext } from "@/contexts/ClubContext";
 import { useMyClub, useIsClubAdmin } from "@/hooks/use-club";
@@ -190,7 +191,7 @@ export default function Tournaments() {
     queryKey: ["tournaments-all-matches", champIds],
     queryFn: async () => {
       if (!champIds.length) return [];
-      return fetchAllPages(() =>
+      const rows = await fetchAllPages(() =>
         fromExt("club_champs_matches")
           .select("*, player_a:player_a_member_id(id, name, profiles:user_id(name)), player_b:player_b_member_id(id, name, profiles:user_id(name)), partner_a:partner_a_member_id(id, name, profiles:user_id(name)), partner_b:partner_b_member_id(id, name, profiles:user_id(name)), court:court_id(name)")
           .in("champ_id", champIds)
@@ -198,6 +199,7 @@ export default function Tournaments() {
           .order("scheduled_time")
           .order("id"),
       );
+      return hydrateTournamentNames(rows as any[]);
     },
     enabled: champIds.length > 0,
     refetchInterval: 10000,

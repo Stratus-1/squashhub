@@ -156,19 +156,19 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <Badge variant="secondary">{placed.size} placed · {unallocated.length} unallocated · {draft.teams.length * draft.config.playersPerTeam} slots</Badge>
+        <Badge variant="secondary">{placed.size} placed · {unallocated.length} reserve{unallocated.length === 1 ? "" : "s"} · {draft.teams.length * draft.config.playersPerTeam} slots</Badge>
         <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={autoFill} disabled={draft.started}><Wand2 className="w-3.5 h-3.5 mr-1" />Place by ranking</Button>
         <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={clearUnlocked} disabled={draft.started}>Clear unlocked slots</Button>
         <span className="text-[11px] text-muted-foreground">Drag a player onto a slot, or tap a player then tap a slot. Moved players are locked 🔒 so automatic placement leaves them alone.</span>
       </div>
       {flagged.length > 0 && (
-        <p className="text-[11px] text-destructive">Withdrawn — their slot is now empty: {flagged.map(nameOf).join(", ")}</p>
+        <p className="text-[11px] text-destructive">Withdrawn — their slot is now empty: {flagged.map(nameOf).join(", ")}. Drag a reserve into the empty slot to substitute them; or leave it empty and the tie is played with a forfeit in that slot.</p>
       )}
       <div className="rounded border border-dashed border-border p-2 min-h-10"
         onDragOver={(e) => e.preventDefault()} onDrop={onDrop(null, 0)}
         onClick={() => picked && moveTo(picked, null, 0)}>
-        <div className="text-[11px] font-medium text-muted-foreground mb-1">Unallocated (registered, not in a team)</div>
-        <div className="flex flex-wrap gap-1 text-xs">{unallocated.length ? unallocated.map((id) => <span key={id}>{chip(id)}</span>) : <span className="text-muted-foreground">Nobody waiting</span>}</div>
+        <div className="text-[11px] font-medium text-muted-foreground mb-1">Reserves (registered, waiting for a team slot — drag or tap into any empty slot to substitute)</div>
+        <div className="flex flex-wrap gap-1 text-xs">{unallocated.length ? unallocated.map((id) => <span key={id}>{chip(id)}</span>) : <span className="text-muted-foreground">No reserves waiting</span>}</div>
       </div>
       {(["A", "B"] as const).map((pool) => (
         <div key={pool} className="space-y-1">

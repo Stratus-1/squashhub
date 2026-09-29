@@ -11,6 +11,7 @@ import {
   pfValidateItn,
 } from "../_shared/payfast.ts";
 import { nextChargeDate } from "../_shared/payfast-recurring.ts";
+import { finaliseBarReference } from "../_shared/bar-payment-finalise.ts";
 import { claimPayfastSession, settlePayfastSession } from "../_shared/payfast-settlement.ts";
 
 Deno.serve(async (req) => {
@@ -155,3 +156,57 @@ Deno.serve(async (req) => {
     return new Response("ok");
   }
 });
+
+// Bar tab / scan-to-pay PayFast notifications. Same verification as sessions;
+// the expected amount is the sum of the sale lines sharing the reference.
+async function handleBarItn(
+  admin: any,
+  raw: string,
+  ordered: Array<[string, string]>,
+  fields: Record<string, string>,
+  reference: string,
+) {
+  const { data: rows } = await admin
+    .from("bar_visitor_sales")
+    .select("club_id, total")
+    .eq("payment_reference", reference);
+  const sales = (rows || []) as Array<{ club_id: string; total: number }>;
+  if (!sales.length) {
+    console.error("payfast-itn bar: unknown reference", reference);
+    return;
+  }
+  const clubId = sales[0].club_id;
+  if (sales.some((r) => r.club_id !== clubId)) {
+    console.error("payfast-itn bar: reference spans clubs", reference);
+    return;
+  }
+  const { data: secrets } = await admin
+    .from("club_secrets").select("payment_gateway_credentials").eq("club_id", clubId).maybeSingle();
+  const creds = resolveGatewayCreds(secrets?.payment_gateway_credentials, "payfast");
+  const merchantId = (creds.merchant_id || "").trim();
+  if (!merchantId || (fields.merchant_id || "").trim() !== merchantId) {
+    console.error("payfast-itn bar: merchant mismatch", { reference });
+    return;
+  }
+  if (!pfItnSignatureMatches(ordered, fields.signature || "", creds.passphrase || "")) {
+    console.error("payfast-itn bar: signature mismatch", { reference });
+    return;
+  }
+  if (!(await pfValidateItn(raw, isSandboxCreds(creds)))) {
+    console.error("payfast-itn bar: PayFast did not validate payload", { reference });
+    return;
+  }
+  const status = (fields.payment_status || "").toUpperCase();
+  const expected = sales.reduce((s, r) => s + Number(r.total || 0), 0);
+  const paid = Number(fields.amount_gross || 0);
+  if (status === "COMPLETE") {
+    if (!(paid > 0) || Math.abs(paid - expected) > 0.01) {
+      console.error("payfast-itn bar: amount mismatch", { reference, paid, expected });
+      return;
+    }
+    await finaliseBarReference(admin, clubId, reference, "paid");
+  } else if (status === "FAILED" || status === "CANCELLED") {
+    await finaliseBarReference(admin, clubId, reference, "failed");
+  }
+  console.log("payfast-itn bar status", { reference, status });
+}

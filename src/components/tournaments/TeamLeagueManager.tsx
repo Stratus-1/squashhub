@@ -227,7 +227,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
       w.push({ week: i + 1, date: dates[i] || "", stage: "pool", ties });
     }
     setWeeks(w);
-    toast.success(`${n} pool weeks created`);
+    save.mutate(w);
   };
 
   const clean = (tieId: string): GameScore[] =>
@@ -246,7 +246,8 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
     if (a.undecided.length || b.undecided.length) return toast.error("Some teams are level and the tie-breaks can't separate them. Add a tie-break in the settings.");
     const ties = CROSSOVER.map((c, k) => ({ id: `s${c.match}`, home: a.rows[c.a - 1].teamId, away: b.rows[c.b - 1].teamId, court: courtOf(k), label: `Match ${c.match}: A${c.a} v B${c.b}` }));
     const n = weeks.filter((w) => w.stage === "pool").length;
-    setWeeks([...weeks.filter((w) => w.stage === "pool"), { week: n + 1, date: dates[n] || "", stage: "semi", ties }]);
+    const nw: Week[] = [...weeks.filter((w) => w.stage === "pool"), { week: n + 1, date: dates[n] || "", stage: "semi", ties }];
+    setWeeks(nw); save.mutate(nw);
   };
   const semiWinner = (m: number) => {
     const t = semiWeek?.ties.find((x) => x.id === `s${m}`);
@@ -266,7 +267,8 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
       return { id: `f${f.places[0]}`, home: s[i - 1]![x], away: s[j - 1]![y], court: courtOf(k), label: `Places ${f.places[0]}–${f.places[1]}` };
     });
     const n = weeks.filter((w) => w.stage !== "final").length;
-    setWeeks([...weeks.filter((w) => w.stage !== "final"), { week: n + 1, date: dates[n] || "", stage: "final", ties }]);
+    const nw: Week[] = [...weeks.filter((w) => w.stage !== "final"), { week: n + 1, date: dates[n] || "", stage: "final", ties }];
+    setWeeks(nw); save.mutate(nw);
   };
 
   const semiTable = semiWeek && (() => {
@@ -295,7 +297,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
       <div className="flex items-center justify-between gap-2">
         <Button size="sm" variant="ghost" onClick={onBack}><ArrowLeft className="w-3.5 h-3.5 mr-1" />All</Button>
         <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 max-w-xs text-sm font-semibold" />
-        <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}><Save className="w-3.5 h-3.5 mr-1" />Save</Button>
+        <Button size="sm" onClick={() => save.mutate(undefined)} disabled={save.isPending}><Save className="w-3.5 h-3.5 mr-1" />Save</Button>
       </div>
 
       <Card><CardHeader className="pb-2 text-sm font-semibold">1. Rules</CardHeader>

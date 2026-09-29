@@ -161,19 +161,8 @@ export default function BellsMarker() {
     };
     liveSyncEnabledRef.current = match.status === "in_progress" && !bellStopped;
     if (bellEndReached && match.status !== "completed") {
-      rpcExt("sync_bells_match_state", {
-        _match_id: match.id,
-        _side_a_points: nextPointsA,
-        _side_b_points: nextPointsB,
-        _bell_ends_at: null,
-        _bell_paused_seconds: 0,
-        _status: "scheduled",
-        _patch_timer: true,
-      }).then(({ error }) => {
-        if (error) console.warn("Expired bell sync failed:", error.message);
-        qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
-        qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
-      });
+      // Bell already rang while nobody was on this screen: submit the result.
+      autoSubmitRef.current(nextPointsA, nextPointsB);
     }
     hydratedRef.current = true;
   }, [match, capMinutes, qc]);
@@ -232,22 +221,9 @@ export default function BellsMarker() {
           timerStateRef.current = { bell_ends_at: null, bell_paused_seconds: 0 };
           if (match) {
             const latest = scoreStateRef.current;
-            rpcExt("sync_bells_match_state", {
-              _match_id: match.id,
-              _side_a_points: latest.pointsA,
-              _side_b_points: latest.pointsB,
-              _bell_ends_at: null,
-              _bell_paused_seconds: 0,
-              _status: "scheduled",
-              _patch_timer: true,
-            }).then(({ error }) => {
-              if (error) console.warn("Bell stop sync failed:", error.message);
-              qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
-              qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
-            });
+            autoSubmitRef.current(latest.pointsA, latest.pointsB);
           }
           ringBellSound(3);
-          toast.success("Bell! Time's up — confirm the score.");
           return 0;
         }
         return r - 1;
@@ -412,23 +388,7 @@ export default function BellsMarker() {
     setFinished(true);
     ringBellSound(3);
     const latest = scoreStateRef.current;
-    persistTimer({
-      bell_ends_at: null,
-      bell_paused_seconds: 0,
-      status: "scheduled",
-      side_a_points: latest.pointsA,
-      side_b_points: latest.pointsB,
-    });
-    qc.setQueryData(["bells-match", matchId], (old: any) => old ? ({
-      ...old,
-      status: "scheduled",
-      side_a_points: latest.pointsA,
-      side_b_points: latest.pointsB,
-      bell_ends_at: null,
-      bell_paused_seconds: 0,
-    }) : old);
-    qc.invalidateQueries({ queryKey: ["club-champ-matches", match?.champ_id] });
-    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+    autoSubmitRef.current(latest.pointsA, latest.pointsB);
   };
 
 

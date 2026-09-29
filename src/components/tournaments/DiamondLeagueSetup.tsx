@@ -83,8 +83,8 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
         </div></div>
       <div className="col-span-2 md:col-span-4 rounded-lg border p-3 space-y-2">
         <p className="font-semibold">Weekly team ties</p>
-        <p className="text-muted-foreground">Each division plays its own round robin. Singles and doubles are played in that order <strong>on the same night</strong> within each team tie, not as separate tournament stages.</p>
-        <div className="flex flex-wrap gap-2">{games.map((g) => <Badge key={g.order} variant={g.kind === "singles" ? "secondary" : "outline"}>{gameLabel(g)} · {g.minutes} min</Badge>)}</div>
+        <p className="text-muted-foreground">Each division plays its own round robin. In every tie between two teams, position #1 plays position #1 on the opposing team, #2 plays #2, and so on — never teammates against each other. Singles and doubles follow in that order <strong>on the same night</strong>, not as separate tournament stages.</p>
+        <div className="flex flex-wrap gap-2">{games.map((g) => <Badge key={g.order} variant={g.kind === "singles" ? "secondary" : "outline"}>{gameLabel(g)} vs opposing team’s same position · {g.minutes} min</Badge>)}</div>
         <p className="text-muted-foreground">One tie takes {plan.tieMinutes} min on one court. With {cfg.courts} court{cfg.courts === 1 ? "" : "s"}, estimated finish: {plan.finish} from {cfg.startTime}.
           {plan.overruns && <span className="text-destructive font-medium"> Later than {cfg.endTime} — adjust the time or courts on Dates &amp; Courts, or shorten the games.</span>}
         </p>

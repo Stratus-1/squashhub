@@ -169,6 +169,8 @@ function isPeakSlot(date: Date, startTime: string, club: any | null | undefined)
 // courts are loaded dynamically from the database
 
 function getDateLabel(date: Date) {
+  const midnight = new Date(); midnight.setHours(0,0,0,0);
+  if (date < midnight) return "History";
   if (isToday(date)) return "Today";
   if (isTomorrow(date)) return "Tomorrow";
   return format(date, "EEEE");
@@ -181,8 +183,11 @@ function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selected
   const [pickerOpen, setPickerOpen] = useState(false);
   const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
   const maxDate = addDays(todayMidnight, 365);
+  // Admins may look back into history: 30 days for club admins, a full year for super-admins.
+  const minDate = addDays(todayMidnight, isSuperAdmin ? -365 : isAdmin ? -30 : 0);
   const canPick = isAdmin || isSuperAdmin;
   const selectedBeyondStrip = selectedDate > addDays(todayMidnight, 6);
+  const selectedInPast = selectedDate < todayMidnight;
 
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 px-4 scrollbar-hide">
@@ -216,11 +221,13 @@ function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selected
                   ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
                   : "bg-card hover:bg-secondary border border-border/50 border-dashed"
               )}
-              title="Pick a date (next 30 days) — admin only"
+              title={selectedInPast
+                ? "Viewing history"
+                : "Pick a date (up to 30 days back or 30 days ahead) — admin only"}
             >
               <CalendarIcon className="w-4 h-4" />
               <span className="text-[10px] uppercase tracking-wider mt-0.5">
-                {selectedBeyondStrip ? format(selectedDate, "d MMM") : "Pick"}
+                {selectedBeyondStrip || selectedInPast ? format(selectedDate, "d MMM") : "Pick"}
               </span>
             </button>
           </PopoverTrigger>
@@ -229,7 +236,7 @@ function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selected
               mode="single"
               selected={selectedDate}
               onSelect={(d) => { if (d) { onSelect(d); setPickerOpen(false); } }}
-              disabled={(d) => d < todayMidnight || d > maxDate}
+              disabled={(d) => d < minDate || d > maxDate}
               initialFocus
               className={cn("p-3 pointer-events-auto")}
             />
@@ -1631,7 +1638,9 @@ export default function Bookings() {
               {getDateLabel(selectedDate)} · {format(selectedDate, "d MMM")}
             </p>
             <p className="text-[10px] text-primary mt-1 flex items-center gap-1">
-              <CalendarIcon className="w-3 h-3" /> Tap an open slot below to book a court
+              {selectedDate < new Date(new Date().setHours(0,0,0,0))
+                ? <>History — past bookings can't be changed here</>
+                : <><CalendarIcon className="w-3 h-3" /> Tap an open slot below to book a court</>}
             </p>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">

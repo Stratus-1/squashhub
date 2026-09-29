@@ -2283,3 +2283,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Structure step has two tabs: Standard leagues / Diamond League (teams). DL mode skips the Schedule step; invites, registration, courts and players steps are the normal ones.
 - Allocate step shows `DiamondAllocationBoard` (`src/components/tournaments/DiamondLeagueSetup.tsx`): registered players auto-placed via `autoSlotPlayers` (snake by seeding, locked manual slots never moved, withdrawn players leave a flagged empty slot); drag or tap to move.
 - Saved to `team_league_events` linked by new unique `tournament_id`; running view (weeks, scores, semis, finals) stays in `TeamLeagueManager`, which no longer creates standalone events.
+
+## 2026-09-29 — Diamond League substitutes via a Reserves pool
+- Willem answered the absent-player rule: substitution is allowed; the admin replaces the player.
+- `DiamondAllocationBoard` "Unallocated" list is now the **Reserves** pool: registered players waiting for a team slot; drag or tap a reserve into any empty slot to substitute. Withdrawn slots keep their empty-slot flag until a reserve is placed. Booking history (admin past-date picker) verified in preview the same day.

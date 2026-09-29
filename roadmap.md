@@ -52,4 +52,9 @@
 - [x] Maintenance UI: agent stages, attention-only "Needs you", settings card
 - [ ] Stage 1 prerequisites (blocked on Willem): shared agent secret, agent endpoint/webhook, unlock decision, pg_net webhook + sweep cron, pilot allowlist
 - [x] Doubles league fixtures: replace ONE player of a pair — dialog asks which half, swap keeps the partner. Verified in preview 2026-09-27; preview-only, unpublished.
-- [x] Diamond League (teams): rules + organiser options + team screen (Tournaments). Open: absent-player/substitute rule; live marker link for team games.
+- [x] Diamond League (teams): rules + organiser options + team screen (Tournaments). Absent-player rule answered: substitutes allowed — Reserves pool on the allocate step; drag/tap a reserve into any empty slot. Open: live marker link for team games.
+- [x] Booking history: admins can pick past dates (30 days, super-admins 365) in the date picker; past dates show "History — past bookings can't be changed here" and creation stays blocked. Verified in preview.
+
+## Diamond League substitution (answered)
+- [x] Absent player = substitute allowed; Reserves pool replaces the "unallocated" list on the allocate step, admin drags or taps a reserve into the empty slot.
+- [x] Withdrawn slots keep the empty-slot flag and stay open until a reserve is placed or the tie is played short.

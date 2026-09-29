@@ -3501,8 +3501,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     if (existingError) throw existingError;
     const protectedKeys = new Set<string>();
     const replaceableIds: string[] = [];
+    // Ties with any played game keep all their rows: doubles there may already be re-seeded from singles results.
+    const tieOf = (k: string) => k.replace(/:\d+$/, "");
+    const startedTies = new Set(((existing || []) as any[]).filter((m) => m.status !== "scheduled" || m.score).map((m) => tieOf(m.stage_key)));
     ((existing || []) as any[]).forEach((match) => {
-      if (match.status === "scheduled" && !match.score) replaceableIds.push(match.id);
+      if (match.status === "scheduled" && !match.score && !startedTies.has(tieOf(match.stage_key))) replaceableIds.push(match.id);
       else protectedKeys.add(match.stage_key);
     });
     if (replaceableIds.length) {

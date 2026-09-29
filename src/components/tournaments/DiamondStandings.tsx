@@ -35,7 +35,7 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
     queryKey: ["diamond-marked-games", tournamentId],
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_matches")
-        .select("stage_key, status, side_a_points, side_b_points")
+        .select("stage_key, status, side_a_points, side_b_points, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id")
         .eq("champ_id", tournamentId)
         .like("stage_key", "dl:%");
       if (error) throw error;
@@ -157,6 +157,11 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
                   const res = tieRes(t);
                   const nm = (tm: Team | undefined, pos: number[]) =>
                     pos.map((p) => (tm?.players[p - 1] && names[tm.players[p - 1]!]) || `#${p}`).join(" & ");
+                  const rowNames = (gi: number, side: "a" | "b") => {
+                    const m = (markedGames as any[]).find((x) => x.stage_key === `dl:${t.id}:${gi}`);
+                    const ids = m ? [m[`player_${side}_member_id`], m[`partner_${side}_member_id`]].filter(Boolean) : [];
+                    return ids.length ? ids.map((id: string) => names[id] || "Member").join(" & ") : null;
+                  };
                   return (
                     <div key={t.id} className="rounded border border-border p-2 text-xs">
                       <div className="flex justify-between font-semibold mb-1">
@@ -170,9 +175,9 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
                             return (
                               <tr key={gi}>
                                 <td className="text-muted-foreground pr-1 whitespace-nowrap">{gameLabel(g)}</td>
-                                <td className="text-right">{nm(home, g.positions)}</td>
+                                <td className="text-right">{rowNames(gi, "a") ?? nm(home, g.positions)}</td>
                                 <td className="text-center font-semibold px-1 whitespace-nowrap">{s ? `${s.home} – ${s.away}` : "–"}</td>
-                                <td>{nm(away, g.positions)}</td>
+                                <td>{rowNames(gi, "b") ?? nm(away, g.positions)}</td>
                               </tr>
                             );
                           })}

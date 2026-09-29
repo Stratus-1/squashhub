@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.diamond_seed_doubles_from_singles() FROM PUBLIC, anon, authenticated;

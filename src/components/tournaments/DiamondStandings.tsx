@@ -5,7 +5,7 @@ import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { fromExt } from "@/lib/supabase-ext";
 import {
   DIAMOND_TEAM_DEFAULTS, CROSSOVER, PLACING_FINALS,
-  tieGames, tieResult, standings, decideLevelFinal,
+  tieGames, gameLabel, tieResult, standings, decideLevelFinal,
   type TeamLeagueConfig, type GameScore,
 } from "@/lib/tournaments/team-league";
 
@@ -43,6 +43,16 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
     },
     enabled: !!tournamentId,
     refetchInterval: 10000,
+  });
+  const playerIds = [...new Set((ev?.teams || []).flatMap((t) => t.players).filter(Boolean))] as string[];
+  const { data: names = {} } = useQuery({
+    queryKey: ["diamond-player-names", tournamentId, playerIds.join("|")],
+    queryFn: async () => {
+      const { data, error } = await fromExt("club_members").select("id, name").in("id", playerIds);
+      if (error) throw error;
+      return Object.fromEntries((data || []).map((m: any) => [m.id, m.name || "Member"])) as Record<string, string>;
+    },
+    enabled: playerIds.length > 0,
   });
   if (!ev) return null;
 
@@ -115,6 +125,68 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
             Semi-finals: {CROSSOVER.map((c) => `A${c.a} v B${c.b}`).join(" · ")} — pool points carry over, +{cfg.winBonus} for the win.
           </p>
           <TeamTable title="After semi-finals (carried + semi points)" t={semiTable} name={teamName} />
+        </div>
+      )}
+      <div>
+        <div className="font-semibold text-sm mb-1">Teams</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {teams.map((t) => (
+            <div key={t.id} className="rounded border border-border p-2 text-xs">
+              <div className="font-semibold mb-0.5">{t.name} <span className="text-muted-foreground font-normal">· Division {t.pool}</span></div>
+              {t.players.map((pid, i) => (
+                <div key={i}><span className="text-muted-foreground">#{i + 1}</span> {pid ? names[pid] || "Member" : "—"}</div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      {weeks.length > 0 && (
+        <div className="space-y-3">
+          <div className="font-semibold text-sm">Schedule and scores</div>
+          {weeks.map((w) => (
+            <div key={`${w.stage}-${w.week}`}>
+              <div className="text-xs font-semibold text-primary mb-1">
+                {w.stage === "pool" ? `Week ${w.week}` : w.stage === "semi" ? "Semi-finals" : "Finals"}
+                {w.date ? ` · ${w.date}` : ""}
+              </div>
+              <div className="grid md:grid-cols-2 gap-2">
+                {w.ties.map((t) => {
+                  const home = teams.find((x) => x.id === t.home);
+                  const away = teams.find((x) => x.id === t.away);
+                  const sc = clean(t.id);
+                  const res = tieRes(t);
+                  const nm = (tm: Team | undefined, pos: number[]) =>
+                    pos.map((p) => (tm?.players[p - 1] && names[tm.players[p - 1]!]) || `#${p}`).join(" & ");
+                  return (
+                    <div key={t.id} className="rounded border border-border p-2 text-xs">
+                      <div className="flex justify-between font-semibold mb-1">
+                        <span>{teamName(t.home)} v {teamName(t.away)}{t.label ? ` · ${t.label}` : ""}</span>
+                        <span className="text-muted-foreground">Court {t.court}</span>
+                      </div>
+                      <table className="w-full">
+                        <tbody>
+                          {games.map((g, gi) => {
+                            const s = sc[gi];
+                            return (
+                              <tr key={gi}>
+                                <td className="text-muted-foreground pr-1 whitespace-nowrap">{gameLabel(g)}</td>
+                                <td className="text-right">{nm(home, g.positions)}</td>
+                                <td className="text-center font-semibold px-1 whitespace-nowrap">{s ? `${s.home} – ${s.away}` : "–"}</td>
+                                <td>{nm(away, g.positions)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      {sc.some(Boolean) && (
+                        <div className="text-right mt-1 font-semibold">Points {res.homePoints ?? ""} – {res.awayPoints ?? ""}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
       {finalWeek && (

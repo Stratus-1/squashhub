@@ -9867,7 +9867,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                 const toggle = (id: string) => {
                                   const has = src.leagueIds.includes(id);
                                   const ids = has ? src.leagueIds.filter((x) => x !== id) : [...src.leagueIds, id];
-                                  setSrc({ mode: ids.length === 0 ? "all" : src.mode === "all" ? "selected" : src.mode, leagueIds: ids });
+                                  setSrc({ mode: src.mode === "all" ? "selected" : src.mode, leagueIds: ids });
                                 };
                                 return (
                                   <div className="flex flex-wrap items-center gap-2">
@@ -9891,7 +9891,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           <input
                                             type="checkbox"
                                             className="h-3.5 w-3.5 accent-violet-500"
-                                            checked={src.mode === "all" || src.leagueIds.length === 0}
+                                            checked={src.mode === "all"}
                                             onChange={() => setSrc({ ...DEFAULT_DIVISION_SOURCE })}
                                           />
                                           All leagues — select every league group
@@ -9902,7 +9902,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                           button below to give each league its own competition, with its own winner.
                                         </p>
 
-                                        {(src.mode === "all" || src.leagueIds.length === 0) && (
+                                        {src.mode === "all" && (
                                           <Button
                                             type="button"
                                             variant="secondary"
@@ -9954,18 +9954,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                         <LeagueSourceTree
                                           groups={leagueTree}
                                           selected={
-                                            src.mode === "all" || src.leagueIds.length === 0
+                                            src.mode === "all"
                                               ? allTreeLeagueIds(leagueTree)
                                               : src.leagueIds
                                           }
                                           onChange={(ids) =>
                                             setSrc({
-                                              mode:
-                                                ids.length === 0
-                                                  ? "all"
-                                                  : src.mode === "all"
-                                                    ? "selected"
-                                                    : src.mode,
+                                              mode: src.mode === "all" ? "selected" : src.mode,
                                               leagueIds: ids,
                                             })
                                           }

@@ -29,7 +29,7 @@ export interface DivisionSource {
   leagueIds: string[];
 }
 
-export const DEFAULT_DIVISION_SOURCE: DivisionSource = { mode: "all", leagueIds: [] };
+export const DEFAULT_DIVISION_SOURCE: DivisionSource = { mode: "selected", leagueIds: [] };
 
 type RawMap = Record<string, unknown> | null | undefined;
 

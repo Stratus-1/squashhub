@@ -98,6 +98,17 @@ function getRankRowStyle(rank: number, total: number): React.CSSProperties {
 
 export default function ClubChampsView() {
   const { champId } = useParams<{ champId: string }>();
+  // Diamond League (team) tournaments show team standings only — the
+  // per-player league tables don't apply. Shares DiamondStandings' cache key.
+  const { data: diamondEvent } = useQuery({
+    queryKey: ["team-league-event-for-tournament", champId],
+    queryFn: async () => {
+      const { data, error } = await fromExt("team_league_events").select("*").eq("tournament_id", champId!).maybeSingle();
+      if (error) throw error;
+      return data || null;
+    },
+    enabled: !!champId,
+  });
   const { activeMember } = useMemberContext();
   const myMemberId = activeMember?.id;
 
@@ -3292,7 +3303,7 @@ export default function ClubChampsView() {
         {woodenSpoonsCard}
         <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
           <DiamondStandings tournamentId={champId!} />
-          {standingsCards}
+          {!diamondEvent && standingsCards}
           {fixtureCards}
           {combinedFixtures}
         </div>

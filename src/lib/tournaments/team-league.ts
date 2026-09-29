@@ -131,6 +131,31 @@ export const PLACING_FINALS: { places: [number, number]; from: ["W" | "L", numbe
   { places: [7, 8], from: ["L", 3, "L", 4] },
 ];
 
+export type DiamondTeam = { id: string; name: string; pool: "A" | "B"; players: (string | null)[] };
+export type DiamondTie = { id: string; home: string; away: string; court: number; label?: string };
+export type DiamondWeek = { week: number; date: string; stage: "pool" | "semi" | "final"; ties: DiamondTie[] };
+
+/** Build the pool weeks shown in setup and persisted for scoring. */
+export function buildPoolWeeks(teams: DiamondTeam[], dates: string[], courts: number): DiamondWeek[] {
+  const pools = { A: teams.filter((team) => team.pool === "A"), B: teams.filter((team) => team.pool === "B") };
+  const rounds = { A: poolRounds(pools.A.length), B: poolRounds(pools.B.length) };
+  const count = Math.max(rounds.A.length, rounds.B.length);
+  const courtCount = Math.max(1, courts);
+  return Array.from({ length: count }, (_, roundIndex) => {
+    const ties: DiamondTie[] = [];
+    (["A", "B"] as const).forEach((pool) => {
+      (rounds[pool][roundIndex] || []).forEach(([a, b]) => {
+        const home = pools[pool][a - 1];
+        const away = pools[pool][b - 1];
+        if (!home || !away) return;
+        ties.push({ id: `p${roundIndex + 1}-${home.id}-${away.id}`, home: home.id, away: away.id,
+          court: (ties.length % courtCount) + 1, label: `${pool}${a} v ${pool}${b}` });
+      });
+    });
+    return { week: roundIndex + 1, date: dates[roundIndex] || "", stage: "pool", ties };
+  });
+}
+
 export type GameScore = { home: number; away: number } | null;
 
 export type TieResult = {

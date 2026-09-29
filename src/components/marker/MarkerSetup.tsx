@@ -426,7 +426,7 @@ export function MarkerSetup({ onStart }: Props) {
       return {
         ...m,
         champName: champ?.name || "Tournament",
-        matchType: effective.matchType,
+        matchType: m.partner_a_member_id || m.partner_b_member_id ? "doubles" : effective.matchType,
         scoringMode: effective.scoringMode,
         pointsPerGame: effective.pointsPerGame,
         bestOf: effective.bestOf,

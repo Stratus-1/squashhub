@@ -62,9 +62,10 @@ export function TeamLeagueManager({ clubId }: { clubId: string }) {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const open = events.find((e) => e.id === openId);
+  const standaloneEvents = events.filter((event: any) => !event.tournament_id);
+  const open = standaloneEvents.find((e) => e.id === openId);
   if (open) return <Editor key={open.id} ev={open} onBack={() => setOpenId(null)} />;
-  if (events.length === 0) return null;
+  if (standaloneEvents.length === 0) return null;
 
   return (
     <Card>
@@ -79,9 +80,9 @@ export function TeamLeagueManager({ clubId }: { clubId: string }) {
           </div>
         </div>
       </CardHeader>
-      {events.length > 0 && (
+      {standaloneEvents.length > 0 && (
         <CardContent className="space-y-1">
-          {events.map((e) => (
+          {standaloneEvents.map((e) => (
             <div key={e.id} className="flex items-center gap-1">
               <button onClick={() => setOpenId(e.id)} className="flex-1 flex items-center justify-between rounded border border-border px-3 py-2 text-left text-xs hover:bg-muted">
                 <span className="font-medium">{e.name}{(e as any).tournament_id && <Badge variant="outline" className="ml-2 text-[10px]">From tournament setup</Badge>}</span>

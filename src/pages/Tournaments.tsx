@@ -45,6 +45,7 @@ import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/
 import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches } from "@/lib/tournaments/schedule-order";
+import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
 
 import { eliminatedSide, ELIMINATED_NAME_CLASS } from "@/lib/tournaments/elimination";
 
@@ -122,6 +123,17 @@ export default function Tournaments() {
 
   const champIds = allChamps.map((c: any) => c.id);
   const champIdsKey = champIds.slice().sort().join("|");
+
+  const { data: diamondTournamentIds = [] } = useQuery({
+    queryKey: ["diamond-tournament-ids", champIdsKey],
+    queryFn: async () => {
+      if (!champIds.length) return [];
+      const { data, error } = await fromExt("team_league_events").select("tournament_id").in("tournament_id", champIds);
+      if (error) throw error;
+      return (data || []).map((row: any) => row.tournament_id).filter(Boolean) as string[];
+    }, enabled: champIds.length > 0,
+  });
+  const diamondTournamentSet = useMemo(() => new Set(diamondTournamentIds), [diamondTournamentIds]);
 
 
   // Supabase caps a single response at 1000 rows. Busy clubs have far more
@@ -908,7 +920,7 @@ export default function Tournaments() {
     const tint = courtTint(m.court?.name);
 
     const champ = champs.find((c: any) => c.id === m.champ_id);
-    const isDoubles = champ?.match_type === "doubles";
+    const isDoubles = champ?.match_type === "doubles" || !!m.partner_a_member_id || !!m.partner_b_member_id;
     const isPlaceholder = m.status === "placeholder";
     const tournamentFormat = getTournamentFormat(champ?.scoring_mode);
     const teamA = isPlaceholder ? "Empty slot" : sideLabel(m.player_a, m.partner_a, m.placeholder_a, isDoubles) + hcLabel(m.handicap_a ?? m.n_a);
@@ -1768,6 +1780,7 @@ export default function Tournaments() {
                 </Card>
               )}
               {champs.map((champ: any) => {
+                if (diamondTournamentSet.has(champ.id)) return <DiamondStandings key={champ.id} tournamentId={champ.id} />;
                 return (
 
                   <Card key={champ.id}>

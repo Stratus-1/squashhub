@@ -70,3 +70,9 @@
 - [x] Persist Done only after the notification is successfully marked read.
 - [x] Prevent the hourly reminder from recreating an acknowledged alert unless a waiting request is newer.
 - [x] Verify the legacy View destination and the acknowledged/no-unread state in the signed-in preview.
+
+## Diamond League fixtures and standings
+- [x] Put the full week-by-week team fixture preview in Review & Generate.
+- [x] Generate the markable tournament games when the Diamond League is saved, preserving scored games.
+- [x] Show Diamond team totals directly on the Tournaments → Standings page.
+- [ ] Verify Riverside's saved Club DL creates its 84 pool games and opens correctly in the marker.

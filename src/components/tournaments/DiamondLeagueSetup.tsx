@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL,
-  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds,
+  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule,
 } from "@/lib/tournaments/team-league";
 
@@ -227,4 +227,29 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
       ))}
     </div>
   );
+}
+
+export function DiamondFixturesPreview({ draft, nameOf, courtName }: {
+  draft: DiamondDraft; nameOf: (id: string) => string; courtName: (courtNumber: number) => string;
+}) {
+  const weeks = buildPoolWeeks(draft.teams, draft.config.dates || [], draft.config.courts);
+  const games = tieGames(draft.config);
+  const teamName = (id: string) => draft.teams.find((team) => team.id === id)?.name || "Team";
+  return <div className="space-y-3">
+    <div><p className="text-sm font-semibold">Fixture preview</p><p className="text-[11px] text-muted-foreground">These games are created when you save the Diamond League. Scores are entered from Tournament Games.</p></div>
+    {weeks.map((week) => <div key={week.week} className="rounded border border-border p-2 space-y-2">
+      <div className="flex items-center gap-2 text-xs font-semibold"><span>Week {week.week}</span><Badge variant="outline" className="text-[10px]">{week.date || "Date not set"}</Badge></div>
+      <div className="grid md:grid-cols-2 gap-2">{week.ties.map((tie) => {
+        const home = draft.teams.find((team) => team.id === tie.home);
+        const away = draft.teams.find((team) => team.id === tie.away);
+        return <div key={tie.id} className="rounded border border-border p-2 text-[11px]">
+          <div className="flex justify-between gap-2 font-semibold mb-1"><span>{tie.label} · {courtName(tie.court)}</span><span>{teamName(tie.home)} v {teamName(tie.away)}</span></div>
+          {games.map((game) => {
+            const label = (team?: DiamondTeam) => game.positions.map((position) => nameOf(team?.players[position - 1] || "")).join(" & ");
+            return <div key={game.order} className="grid grid-cols-[1fr_auto_1fr] gap-2 py-0.5"><span className="truncate">{label(home)}</span><span className="text-muted-foreground">v</span><span className="truncate text-right">{label(away)}</span></div>;
+          })}
+        </div>;
+      })}</div>
+    </div>)}
+  </div>;
 }

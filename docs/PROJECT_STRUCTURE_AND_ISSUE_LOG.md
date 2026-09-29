@@ -2287,3 +2287,6 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-09-29 — Diamond League substitutes via a Reserves pool
 - Willem answered the absent-player rule: substitution is allowed; the admin replaces the player.
 - `DiamondAllocationBoard` "Unallocated" list is now the **Reserves** pool: registered players waiting for a team slot; drag or tap a reserve into any empty slot to substitute. Withdrawn slots keep their empty-slot flag until a reserve is placed. Booking history (admin past-date picker) verified in preview the same day.
+
+## 2026-09-29 — Diamond League events can be deleted
+- TeamLeagueManager list rows have a trash button with a confirm dialog; deletes the team_league_events row (club-admin RLS policy "Club admins manage team leagues" already allows DELETE). Linked tournaments keep their row (tournament_id is ON DELETE SET NULL).

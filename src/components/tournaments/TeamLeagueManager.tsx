@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Gem, Plus, ArrowLeft, Save, Wand2 } from "lucide-react";
+import { Gem, Plus, ArrowLeft, Save, Wand2, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,14 @@ export function TeamLeagueManager({ clubId }: { clubId: string }) {
     onSuccess: (row) => { qc.invalidateQueries({ queryKey: ["team-league-events", clubId] }); setOpenId(row.id); },
     onError: (e: any) => toast.error(e.message),
   });
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await fromExt("team_league_events").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Diamond League deleted"); qc.invalidateQueries({ queryKey: ["team-league-events", clubId] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const open = events.find((e) => e.id === openId);
   if (open) return <Editor key={open.id} ev={open} onBack={() => setOpenId(null)} />;
@@ -74,10 +82,22 @@ export function TeamLeagueManager({ clubId }: { clubId: string }) {
       {events.length > 0 && (
         <CardContent className="space-y-1">
           {events.map((e) => (
-            <button key={e.id} onClick={() => setOpenId(e.id)} className="w-full flex items-center justify-between rounded border border-border px-3 py-2 text-left text-xs hover:bg-muted">
-              <span className="font-medium">{e.name}{(e as any).tournament_id && <Badge variant="outline" className="ml-2 text-[10px]">From tournament setup</Badge>}</span>
-              <span className="text-muted-foreground">{e.teams.length} teams · {e.weeks.length} weeks</span>
-            </button>
+            <div key={e.id} className="flex items-center gap-1">
+              <button onClick={() => setOpenId(e.id)} className="flex-1 flex items-center justify-between rounded border border-border px-3 py-2 text-left text-xs hover:bg-muted">
+                <span className="font-medium">{e.name}{(e as any).tournament_id && <Badge variant="outline" className="ml-2 text-[10px]">From tournament setup</Badge>}</span>
+                <span className="text-muted-foreground">{e.teams.length} teams · {e.weeks.length} weeks</span>
+              </button>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                title="Delete this Diamond League"
+                disabled={del.isPending}
+                onClick={() => {
+                  if (window.confirm(`Delete "${e.name}"? Its teams, fixtures and scores will be removed. This cannot be undone.`)) del.mutate(e.id);
+                }}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
           ))}
         </CardContent>
       )}

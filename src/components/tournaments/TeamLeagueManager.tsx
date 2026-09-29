@@ -320,6 +320,11 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          <p className="text-[11px] text-muted-foreground">
+            Tap <span className="font-medium text-foreground">Create pool weeks</span> once every team slot is filled — that generates the fixtures below.
+            Each row is one game: home players on the left, away players on the right, and the two small boxes between them are that game's score
+            (left box = left team's points, right box = right team's points). Empty boxes mean the game hasn't been scored yet. Scores save when you tap Save at the top.
+          </p>
           {!twoByFour && weeks.length > 0 && <p className="text-[11px] text-muted-foreground">Crossover semis and placing finals are set up for 2 pools of 4 teams.</p>}
           {weeks.map((w) => (
             <div key={w.week} className="space-y-2">
@@ -337,14 +342,17 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
                         <span>{t.label} · Court {t.court}</span>
                         <span>{teamName(t.home)} {r.homePoints + r.homeBonus} – {r.awayPoints + r.awayBonus} {teamName(t.away)}</span>
                       </div>
+                      <div className="grid grid-cols-[1fr_3rem_3rem_1fr] gap-1 text-[10px] text-muted-foreground">
+                        <span>{teamName(t.home)}</span><span className="text-center">score</span><span className="text-center">score</span><span className="text-right">{teamName(t.away)}</span>
+                      </div>
                       {games.map((g, gi) => {
                         const nm = (tm?: Team) => g.positions.map((pos) => memberName.get(tm?.players[pos - 1] || "") || `#${pos}`).join(" & ");
                         const s = (results[t.id] || [])[gi] as any;
                         return (
                           <div key={gi} className="grid grid-cols-[1fr_3rem_3rem_1fr] items-center gap-1 py-0.5">
                             <span className="truncate" title={gameLabel(g)}>{nm(H)}</span>
-                            <Input className="h-6 px-1 text-center" inputMode="numeric" value={Number.isFinite(s?.home) ? s.home : ""} onChange={(e) => setScore(t.id, gi, "home", e.target.value)} />
-                            <Input className="h-6 px-1 text-center" inputMode="numeric" value={Number.isFinite(s?.away) ? s.away : ""} onChange={(e) => setScore(t.id, gi, "away", e.target.value)} />
+                            <Input className="h-6 px-1 text-center" inputMode="numeric" placeholder="pts" title={`${gameLabel(g)} — home points`} value={Number.isFinite(s?.home) ? s.home : ""} onChange={(e) => setScore(t.id, gi, "home", e.target.value)} />
+                            <Input className="h-6 px-1 text-center" inputMode="numeric" placeholder="pts" title={`${gameLabel(g)} — away points`} value={Number.isFinite(s?.away) ? s.away : ""} onChange={(e) => setScore(t.id, gi, "away", e.target.value)} />
                             <span className="truncate text-right">{nm(A)}</span>
                           </div>
                         );

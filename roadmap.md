@@ -62,3 +62,4 @@
 ## Current Diamond League setup
 - [ ] Replace misleading standard schedule review with team-tie review; show same-night singles/doubles and #1 vs #1 across opposing teams.
 - [ ] Verify Diamond page-two rules, weekly dates and the separate courts step.
+- [ ] Recheck the organiser email: position-versus-position across opposing teams and exact singles/doubles order.

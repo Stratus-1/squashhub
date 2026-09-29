@@ -111,7 +111,6 @@ import {
   wouldCycle,
   type PairingMethod,
 } from "@/lib/tournaments/stage-sequence";
-import { TOURNAMENT_PRESETS, presetToMaps, type TournamentPreset } from "@/lib/tournaments/presets";
 import { distributeIntoPools, flattenPools, moveVisual, normalisePoolAllocation, poolBlocks, poolCounts, poolLetter, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { generateRotatingDoublesSchedule, isRotationEntity, parseRotationEntity, rotationEntityId } from "@/lib/tournaments/rotating-doubles";
 import {
@@ -1527,34 +1526,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     if (fmt === "cross_league") setRoundFormat("cross_league");
     else if (fmt === "knockout") { if (!roundFormat) setRoundFormat("single_round_robin"); }
     else if (!roundFormat || roundFormat === "cross_league") setRoundFormat(fmt as any);
-  };
-
-  /**
-   * Apply a ready-made structure (e.g. Durbanville's Diamond League) in one
-   * click. It only fills in the division settings — every value stays
-   * editable afterwards, and nothing already entered on other steps is lost.
-   */
-  const applyPreset = (preset: TournamentPreset) => {
-    const maps = presetToMaps(preset);
-    setNumGroups(maps.numGroups);
-    setUsePerLeagueFormats(true);
-    setGroupLabels((m) => ({ ...m, ...maps.labels }));
-    setLeagueFormats((m) => ({ ...m, ...maps.formats }) as any);
-    setLeagueMatchTypes((m) => ({ ...m, ...maps.matchTypes }));
-    setLeagueScoringModes((m) => ({ ...m, ...maps.scoringModes }));
-    setGroupDurations((m) => ({ ...m, ...maps.durations }));
-    setSwissPools((m) => ({ ...m, ...maps.pools }));
-    setDivisionFollows((m) => ({ ...m, ...maps.follows }));
-    setDivisionPairing((m) => ({ ...m, ...maps.pairing }));
-    setLeagueGenders((m) => {
-      const next = { ...m };
-      preset.divisions.forEach((d) => { next[String(d.gn)] = next[String(d.gn)] ?? gender; });
-      return next;
-    });
-    if (!roundFormat || roundFormat === "cross_league") setRoundFormat("single_round_robin");
-    setScoringMode("time_capped_points");
-    setMatchDuration(maps.matchDuration);
-    toast.success(`${preset.name} structure applied — adjust anything you like`);
   };
 
   /**
@@ -9098,7 +9069,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           <CardContent className="space-y-5">
             {/* Who arranges the games: the club (fixed schedule on booked
                 courts) or the players themselves (play-by deadline). */}
-            <div className="rounded-lg border p-3 space-y-2">
+            {!diamondMode && <div className="rounded-lg border p-3 space-y-2">
               <Label className="text-sm font-medium">How are games arranged?</Label>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer ${schedulingMode === "club" ? "border-primary bg-primary/5" : ""}`}>
@@ -9126,10 +9097,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                   </span>
                 </label>
               </div>
-            </div>
+            </div>}
 
             {/* Where does the draw stop: one champion per league, or one per pool? */}
-            <div className="rounded-lg border p-3 space-y-2">
+            {!diamondMode && <div className="rounded-lg border p-3 space-y-2">
               <Label className="text-sm font-medium">Who is the final winner?</Label>
               <p className="text-[11px] text-muted-foreground">
                 Only matters where a league is split into more than one pool.
@@ -9160,7 +9131,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                   </span>
                 </label>
               </div>
-            </div>
+            </div>}
 
             {/* ── Tournament window ── */}
             {schedulingMode === "club" || currentRoundClubScheduled ? (
@@ -9586,7 +9557,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             {/* Capacity validation — lives here because it needs BOTH the structure
                 (leagues, formats, pools, match length) and the schedule (dates,
                 windows, courts). Advisory only: it never blocks setup. */}
-            {schedulingMode === "club" && (
+            {schedulingMode === "club" && !diamondMode && (
               <WizardSection
                 title={"Capacity check"}
                 summary={"Does the plan fit in the court time you have?"}
@@ -11013,27 +10984,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                     })}
                     <p className="text-[10px] text-muted-foreground italic pt-1">Tip: there is no limit — add a division per class (League 1-4, Ladies, Junior Boys, Junior Girls…). Use the copy icon on a division to clone its rules.</p>
 
-                    {/* Ready-made structures — one click fills in the stages,
-                        game lengths and pairing; everything stays editable. */}
-                    <div className="pt-2 border-t border-border space-y-2">
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ready-made structures</div>
-                      {TOURNAMENT_PRESETS.map((preset) => (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => applyPreset(preset)}
-                          className="w-full text-left rounded-lg border border-border bg-card p-2.5 shadow-sm hover:border-violet-500/50 hover:shadow-md transition-all group"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 group-hover:bg-violet-500 group-hover:text-white transition-colors">
-                              <Sparkles className="w-3.5 h-3.5" />
-                            </span>
-                            <span className="text-xs font-semibold">{preset.name}</span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground leading-tight">{preset.description}</p>
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </div>
 

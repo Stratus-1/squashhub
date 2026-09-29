@@ -156,7 +156,23 @@ export default function ClubChampsView() {
         .order("scheduled_date")
         .order("scheduled_time");
       if (error) throw error;
-      return data || [];
+      const rows = (data || []) as any[];
+      // Players from other clubs come back blank under club privacy rules;
+      // fill their names from the tournament-scoped lookup.
+      const needs = rows.some((m) =>
+        (m.player_a_member_id && !m.player_a) || (m.player_b_member_id && !m.player_b) ||
+        (m.partner_a_member_id && !m.partner_a) || (m.partner_b_member_id && !m.partner_b));
+      if (needs) {
+        const { data: names } = await rpcExt("tournament_member_names", { p_champ_id: champId });
+        const byId = new Map(((names || []) as any[]).map((n) => [n.id, { id: n.id, name: n.name }]));
+        for (const m of rows) {
+          for (const k of ["player_a", "player_b", "partner_a", "partner_b"]) {
+            const id = m[`${k}_member_id`];
+            if (id && !m[k] && byId.has(id)) m[k] = byId.get(id);
+          }
+        }
+      }
+      return rows;
     },
     enabled: !!champId,
     refetchInterval: 5000,
@@ -206,7 +222,16 @@ export default function ClubChampsView() {
         .eq("champ_id", champId!)
         .neq("status", "cancelled");
       if (error) throw error;
-      return (data || []) as any[];
+      const rows = (data || []) as any[];
+      if (rows.some((r) => (r.club_member_id && !r.member) || (r.partner_member_id && !r.partner))) {
+        const { data: names } = await rpcExt("tournament_member_names", { p_champ_id: champId });
+        const byId = new Map(((names || []) as any[]).map((n) => [n.id, { id: n.id, name: n.name }]));
+        for (const r of rows) {
+          if (r.club_member_id && !r.member && byId.has(r.club_member_id)) r.member = byId.get(r.club_member_id);
+          if (r.partner_member_id && !r.partner && byId.has(r.partner_member_id)) r.partner = byId.get(r.partner_member_id);
+        }
+      }
+      return rows;
     },
     enabled: !!champId,
   });

@@ -128,12 +128,67 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? "?";
   const used = new Set(teams.flatMap((t) => t.players.filter(Boolean) as string[]));
 
-  const save = useMutation({
-    mutationFn: async () => {
-      const { error } = await fromExt("team_league_events").update({ name, config: cfg, teams, weeks, results }).eq("id", ev.id);
+  // Mirror every Diamond game into the linked tournament's game list so it
+  // shows under Upcoming and can be marked. Scored/started games are kept.
+  const syncFixtures = async (wk: Week[]) => {
+    const champId = (ev as any).tournament_id as string | null;
+    if (!champId) return 0;
+    const { data: courtRows } = await fromExt("courts").select("id").eq("club_id", ev.club_id).order("id");
+    const courtIds = ((courtRows || []) as any[]).map((c) => c.id as number);
+    const { data: existing, error: exErr } = await fromExt("club_champs_matches")
+      .select("id, stage_key, status, score").eq("champ_id", champId).like("stage_key", "dl:%");
+    if (exErr) throw exErr;
+    const keep = new Set<string>();
+    const drop: string[] = [];
+    ((existing || []) as any[]).forEach((m) => {
+      if (m.status === "scheduled" && !m.score) drop.push(m.id); else keep.add(m.stage_key);
+    });
+    if (drop.length) {
+      const { error } = await fromExt("club_champs_matches").delete().in("id", drop);
       if (error) throw error;
+    }
+    const [sh, sm] = (cfg.startTime || "17:45").split(":").map(Number);
+    const rows: any[] = [];
+    wk.forEach((w) => w.ties.forEach((t) => {
+      const home = teams.find((x) => x.id === t.home), away = teams.find((x) => x.id === t.away);
+      if (!home || !away) return;
+      let mins = sh * 60 + sm;
+      games.forEach((g, gi) => {
+        const key = `dl:${t.id}:${gi}`;
+        const time = `${String(Math.floor(mins / 60) % 24).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+        mins += g.minutes;
+        if (keep.has(key)) return;
+        const [p1, p2] = g.positions;
+        rows.push({
+          champ_id: champId, group_number: w.week, round_number: w.week, section_number: 1,
+          stage: w.stage === "pool" ? "group" : "knockout", stage_key: key,
+          stage_label: `${w.stage === "pool" ? `Week ${w.week}` : w.stage === "semi" ? "Semi-finals" : "Finals"} · ${home.name} v ${away.name} · ${gameLabel(g)}`,
+          player_a_member_id: home.players[p1 - 1], player_b_member_id: away.players[p1 - 1],
+          partner_a_member_id: p2 ? home.players[p2 - 1] : null, partner_b_member_id: p2 ? away.players[p2 - 1] : null,
+          scheduled_date: w.date || null, scheduled_time: time,
+          court_id: courtIds[t.court - 1] ?? null, status: "scheduled",
+        });
+      });
+    }));
+    for (let i = 0; i < rows.length; i += 200) {
+      const { error } = await fromExt("club_champs_matches").insert(rows.slice(i, i + 200));
+      if (error) throw error;
+    }
+    return rows.length;
+  };
+
+  const save = useMutation({
+    mutationFn: async (wkOverride?: Week[]) => {
+      const wk = wkOverride ?? weeks;
+      const { error } = await fromExt("team_league_events").update({ name, config: cfg, teams, weeks: wk, results }).eq("id", ev.id);
+      if (error) throw error;
+      return syncFixtures(wk);
     },
-    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["team-league-events", ev.club_id] }); },
+    onSuccess: (n) => {
+      toast.success((ev as any).tournament_id ? `Saved — fixtures updated in the tournament's games (${n} new)` : "Saved");
+      qc.invalidateQueries({ queryKey: ["team-league-events", ev.club_id] });
+      qc.invalidateQueries();
+    },
     onError: (e: any) => toast.error(e.message),
   });
 

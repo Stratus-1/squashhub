@@ -209,13 +209,13 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
                   {t.players.map((p, i) => {
                     const key = `${t.id}:${i}`;
                     return (
-                      <div key={i} className="flex items-center gap-1 text-xs rounded border border-border px-1 py-0.5 min-h-7"
+                      <div key={i} className={`flex items-center gap-1 text-xs rounded border px-1 py-0.5 min-h-7 ${lockedSet.has(key) ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30" : "border-border"}`}
                         onDragOver={(e) => e.preventDefault()} onDrop={onDrop(t.id, i)}
                         onClick={() => picked && moveTo(picked, t.id, i)}>
                         <span className="w-6 text-muted-foreground">#{i + 1}</span>
                         <span className="flex-1 min-w-0">{p ? chip(p) : <span className="text-muted-foreground">{picked ? "Tap to place" : "empty"}</span>}</span>
-                        {p && <button type="button" title={lockedSet.has(key) ? "Unlock" : "Lock"} onClick={(e) => { e.stopPropagation(); toggleLock(key); }}>
-                          {lockedSet.has(key) ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3 text-muted-foreground" />}</button>}
+                        {p && <button type="button" title={lockedSet.has(key) ? "Locked — click to unlock" : "Unlocked — click to lock"} onClick={(e) => { e.stopPropagation(); toggleLock(key); }}>
+                          {lockedSet.has(key) ? <Lock className="w-3.5 h-3.5 text-amber-500 fill-amber-400" /> : <Unlock className="w-3 h-3 text-muted-foreground" />}</button>}
                         {p && !draft.started && <button type="button" title="Move to reserves" onClick={(e) => { e.stopPropagation(); moveTo(p, null, 0); }}><X className="w-3 h-3" /></button>}
                       </div>
                     );

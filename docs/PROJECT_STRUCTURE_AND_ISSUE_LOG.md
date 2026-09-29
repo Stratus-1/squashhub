@@ -2272,3 +2272,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-09-28 — Cleared Uitsig test counter tabs (Willem & Koos)
 - Removed 2 bar_guest_tabs (Willem R93 settled, Koos R88 open), 6 bar_visitor_sales, 8 bar_stock_movements, 12 club_journal_entries.
 - Restored deducted stock on 7 items (incl. +500ml mixer, +4 tots); audit_events row `clear_test_bar_tabs` recorded.
+
+## 2026-09-29 — Diamond League (teams) rules engine
+- Organiser email showed Diamond League is a TEAM pool competition (teams of N, ties = N singles + N/2 doubles, +5 win bonus, crossover semis carry points, placing finals reset). Old `DIAMOND_LEAGUE_PRESET` (individual singles→doubles) is the wrong model.
+- Added pure `src/lib/tournaments/team-league.ts` (+ `src/test/team-league.test.ts`): flexible team size, email week order for pools of 4, crossover A1vB2/A2vB1/A3vB4/A4vB3, placings 1–8, standings with carry, level totals reported as undecided (no invented tie-break), night timing.
+- Not yet wired into the setup screen. Preview only.

@@ -9063,7 +9063,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           <CardHeader>
             <CardTitle>Dates, Times &amp; Courts</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Lock in when the tournament is played and which courts it owns. You can book the courts now — bookings appear under the tournament name in the courts grid so nothing else can be booked over them.
+              {diamondMode ? "Choose the tournament window, session times and courts for team ties. Weekly fixture dates are on the Diamond League structure page; no court reservations are created before team fixtures exist." : "Lock in when the tournament is played and which courts it owns. You can book the courts now — bookings appear under the tournament name in the courts grid so nothing else can be booked over them."}
             </p>
           </CardHeader>
           <CardContent className="space-y-5">

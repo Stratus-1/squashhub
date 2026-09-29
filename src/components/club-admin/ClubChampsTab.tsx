@@ -9592,7 +9592,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       {step === "structure" && (
         <div className="flex gap-1 rounded-lg border bg-muted/40 p-1 w-fit">
           <Button type="button" size="sm" variant={!diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => setDiamondMode(false)} disabled={diamondDraft.started}>Standard leagues</Button>
-          <Button type="button" size="sm" variant={diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => setDiamondMode(true)}>💎 Diamond League (teams)</Button>
+          <Button type="button" size="sm" variant={diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => { if (!diamondMode && startTime === "18:00" && endTime === "20:00") { setStartTime("17:45"); setEndTime("21:15"); } setDiamondMode(true); }}>💎 Diamond League (teams)</Button>
         </div>
       )}
       {step === "structure" && diamondMode && (
@@ -13727,8 +13727,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               )}
               <p><strong>Courts:</strong> {Array.from(selectedCourtIds).map((id) => getCourtName(id)).join(", ")}</p>
               {diamondMode ? <>
-                <p><strong>Format:</strong> Two division round robins · crossover semi-finals carry points · placing finals reset points</p>
-                <p><strong>Every team tie:</strong> {diamondTieGames(diamondDraft.config).map(diamondGameLabel).join(" → ")}</p>
+                 <p><strong>Format:</strong> Two division round robins{diamondDraft.teams.length === 8 ? " · crossover semi-finals carry points · placing finals reset points" : ""}</p>
+                 <p><strong>Every team tie:</strong> Matching positions on opposing teams (#1 v #1, #2 v #2, etc.) · {diamondTieGames(diamondDraft.config).map(diamondGameLabel).join(" → ")}</p>
                 <p><strong>Night plan:</strong> singles then doubles on the same night · estimated finish {diamondNightPlan({ ...diamondDraft.config, courts: selectedCourtIds.size || diamondDraft.config.courts, startTime, endTime }, diamondDraft.teams.length / 2).finish}</p>
               </> : <>
                 <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : roundFormat === "cross_league" ? "League vs League (cross-league only)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>

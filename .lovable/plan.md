@@ -13,6 +13,14 @@ It is a **team competition**, not individuals:
 
 The current "Diamond League" template is wrong for this (it runs an individual singles round robin then pairs players up). It will be replaced.
 
+## Flexible team size (template, not hard-coded)
+- Team size is a setting: **players per team** (even number, 2–8). The games per tie follow from it:
+  - 6 per team → 6 singles + 3 doubles (5+6, 3+4, 1+2)
+  - 4 per team → 4 singles + 2 doubles (3+4, 1+2) — e.g. 32 players = 8 teams of 4
+- Number of teams and pools are settings too (default 8 teams in 2 pools of 4). The fixed week pairings, crossover semis and placing finals shown above are for 2 pools of 4; other shapes use a normal round robin order.
+- Game lengths (20/30 min), bonus (5), start time and order (lowest number first) stay editable.
+- The night's timing is recalculated from the number of games and courts, with a warning if it runs past the end time.
+
 ## What the organiser will do on Monday 5 October
 1. Open normal Tournaments → new tournament → pick **Diamond League (teams)**.
 2. Enter the 8 team names and drop each team's 6 players into slots #1–#6 (the teams are his, the app never reshuffles them), and put 4 teams in Pool A, 4 in Pool B.
@@ -33,7 +41,7 @@ The current "Diamond League" template is wrong for this (it runs an individual s
 5. **Absent player:** is a substitute allowed, or is that game forfeited (and for how many points)?
 
 ## Technical details
-- Reuse the existing team-tie model rather than a new engine: tournament entrant units become **teams** with ordered roster slots; each tie expands into rubbers from a fixed `tieFormat` (6 singles by position desc, 3 doubles pairs [5,6],[3,4],[1,2]) — same data shape as `Stage.tieFormat` in `smart-builder/ties.ts`.
+- Reuse the existing team-tie model rather than a new engine: tournament entrant units become **teams** with ordered roster slots; each tie expands into rubbers from a fixed `tieFormat` (generated from `playersPerTeam`: N singles by position desc, N/2 doubles pairs from the bottom up) — same data shape as `Stage.tieFormat` in `smart-builder/ties.ts`.
 - Stages: `pool_rr` (2 pools, fixed round pairings from the email) → `crossover` mapping (A1-B2, A2-B1, A3-B4, A4-B3) with `standings: carry` → `placement_finals` (W/L of semis, `standings: reset`), via the existing `StageMapping` in `tournaments/mapping.ts` and progression in `progression.ts`.
 - Team standings: sum of rubber points + tie bonus (5, confirmed); tie-breaks left unset until you answer → progression blocks with a plain message instead of guessing.
 - Replace `DIAMOND_LEAGUE_PRESET` in `presets.ts`; update `tournament-presets.test.ts`; add tests for tie expansion (9 games, order), pool round pairings, crossover mapping, carry vs reset, 1–8 placings.

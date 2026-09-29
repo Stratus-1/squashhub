@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CollapsibleCard, CollapsibleSection } from "@/components/ui/collapsible-card";
+import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ArrowLeft, FileSpreadsheet, Printer, User, CalendarClock, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { format, eachDayOfInterval, getDay } from "date-fns";
@@ -3290,6 +3291,7 @@ export default function ClubChampsView() {
 
         {woodenSpoonsCard}
         <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
+          <DiamondStandings tournamentId={champId!} />
           {standingsCards}
           {fixtureCards}
           {combinedFixtures}

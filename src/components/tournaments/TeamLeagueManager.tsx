@@ -75,7 +75,7 @@ export function TeamLeagueManager({ clubId }: { clubId: string }) {
         <CardContent className="space-y-1">
           {events.map((e) => (
             <button key={e.id} onClick={() => setOpenId(e.id)} className="w-full flex items-center justify-between rounded border border-border px-3 py-2 text-left text-xs hover:bg-muted">
-              <span className="font-medium">{e.name}</span>
+              <span className="font-medium">{e.name}{(e as any).tournament_id && <Badge variant="outline" className="ml-2 text-[10px]">From tournament setup</Badge>}</span>
               <span className="text-muted-foreground">{e.teams.length} teams · {e.weeks.length} weeks</span>
             </button>
           ))}

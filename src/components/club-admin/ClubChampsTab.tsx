@@ -231,6 +231,8 @@ import { z } from "zod";
 import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-input";
 import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
 import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
+import { DiamondRulesPanel, DiamondAllocationBoard, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
+import { configIssues as diamondConfigIssues } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 
 
@@ -1121,6 +1123,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const [playoffBreakMinutes, setPlayoffBreakMinutes] = useState<number>(0);
   const [playoffDate, setPlayoffDate] = useState<string>("");
   const [scoringMode, setScoringMode] = useState<"" | "standard" | "time_capped_points" | "swiss">("");
+  // Diamond League (teams): a second structure mode. Stored on a linked team_league_events row.
+  const [diamondMode, setDiamondMode] = useState(false);
+  const [diamondDraft, setDiamondDraft] = useState<DiamondDraft>(() => newDiamondDraft());
   // Swiss-only config: per-league pools & rounds (keyed by group_number string).
   const [swissPools, setSwissPools] = useState<Record<string, number>>({});
   /** Knockout draw style per division: "straight" (default) or "graduated" (fair entry). */
@@ -2846,9 +2851,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   // yet it shows the (empty) Registered Pairs card, so the organiser always has
   // somewhere to review and manage pairings.
   const activeSteps = useMemo<WizardStep[]>(() => {
+    // Diamond League builds its weekly ties from the team pools — no player schedule step.
+    if (diamondMode) return STEPS.filter((s) => s !== "schedule");
     if (!awaitingPlayerPairs) return STEPS;
     return ["category", "structure", "registration", "courts", "invites", "players", "review"];
-  }, [awaitingPlayerPairs]);
+  }, [awaitingPlayerPairs, diamondMode]);
   const stepIdx = activeSteps.indexOf(step);
 
   useEffect(() => {
@@ -3491,6 +3498,42 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     }
   };
 
+  /** Upserts the Diamond League team event linked to this tournament. */
+  const persistDiamond = async (tournamentId: string, status?: string) => {
+    const row: Record<string, any> = {
+      club_id: clubId, tournament_id: tournamentId, name: champName || "Diamond League",
+      config: { ...diamondDraft.config, courts: selectedCourtIds.size || diamondDraft.config.courts,
+        startTime: startTime || diamondDraft.config.startTime, endTime: endTime || diamondDraft.config.endTime,
+        locked: diamondDraft.locked },
+      teams: diamondDraft.teams,
+    };
+    if (status) row.status = status;
+    const q = diamondDraft.eventId
+      ? fromExt("team_league_events").update(row).eq("id", diamondDraft.eventId).select("id").single()
+      : fromExt("team_league_events").insert(row).select("id").single();
+    const { data, error } = await q;
+    if (error) throw error;
+    if (data?.id && !diamondDraft.eventId) setDiamondDraft((d) => ({ ...d, eventId: data.id }));
+    qc.invalidateQueries({ queryKey: ["team-league-events"] });
+    return data?.id as string;
+  };
+
+  const createDiamond = useMutation({
+    mutationFn: async () => {
+      if (!startDate || !endDate) throw new Error("Add a start and end date on the Courts step first.");
+      const empty = diamondDraft.teams.filter((t) => t.players.some((p) => !p));
+      if (empty.length) throw new Error(`Fill every team slot first: ${empty.map((t) => t.name).join(", ")}`);
+      const id = await saveDraft();
+      if (!id) throw new Error("Could not save the tournament");
+      await persistDiamond(id, "ready");
+    },
+    onSuccess: () => {
+      toast.success("Diamond League saved — open it under Diamond League (teams) to create the weeks and enter scores.");
+      setShowWizard(false);
+    },
+    onError: (e: any) => toast.error(e.message || "Could not save the Diamond League"),
+  });
+
   const handleManualSave = async () => {
     if (!clubId) {
       toast.error("No club selected");
@@ -3507,6 +3550,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         toast.error("Could not save progress — the draft was not created");
         return;
       }
+      if (diamondMode) await persistDiamond(savedChampId);
       await saveEntriesDraft(savedChampId);
       toast.success(startDate && endDate ? "Progress saved" : "Draft saved — add dates when you're ready");
     } catch (e: any) {
@@ -7880,6 +7924,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     setCustomizeDailySchedule(false);
     setDaySchedules([]);
     setEditingChampId(null);
+    setDiamondMode(false);
+    setDiamondDraft(newDiamondDraft());
     setEntitiesSnapshotAtLoad(null);
     setRebuildToastFiredForSnapshot(null);
   };
@@ -7887,6 +7933,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   const loadChampForEdit = async (champ: any) => {
     resetWizard();
     setEditingChampId(champ.id);
+    void fromExt("team_league_events").select("*").eq("tournament_id", champ.id).maybeSingle().then(({ data }: any) => {
+      if (!data) return;
+      setDiamondMode(true);
+      setDiamondDraft({ eventId: data.id, config: data.config, teams: data.teams || [], locked: data.config?.locked || [],
+        started: Array.isArray(data.weeks) && data.weeks.length > 0 });
+    });
     setGender(champ.gender);
     setMatchType(champ.match_type || "singles");
     // Playoffs are restored per league further down (inheritedPO falls back to
@@ -8517,6 +8569,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         break;
       }
       case "structure": {
+        if (diamondMode) { m.push(...diamondConfigIssues(diamondDraft.config)); break; }
         if (!(numGroups >= 1)) m.push("At least one league");
         if (!scoringMode) m.push("Scoring format");
         if (scoringMode === "standard") {
@@ -9566,6 +9619,24 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
       {/* ── STEP: STRUCTURE & CAPACITY ── */}
       {step === "structure" && (
+        <div className="flex gap-1 rounded-lg border bg-muted/40 p-1 w-fit">
+          <Button type="button" size="sm" variant={!diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => setDiamondMode(false)} disabled={diamondDraft.started}>Standard leagues</Button>
+          <Button type="button" size="sm" variant={diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => setDiamondMode(true)}>💎 Diamond League (teams)</Button>
+        </div>
+      )}
+      {step === "structure" && diamondMode && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Diamond League (teams)</CardTitle>
+            <p className="text-sm text-muted-foreground">Teams of ranked players in two divisions. Every tie is singles then doubles on points; division round robins, crossover semis (points carry) and placing finals.</p>
+          </CardHeader>
+          <CardContent>
+            <div ref={stepIssuesRef} />
+            <DiamondRulesPanel draft={diamondDraft} onChange={setDiamondDraft} courts={selectedCourtIds.size} />
+          </CardContent>
+        </Card>
+      )}
+      {step === "structure" && !diamondMode && (
         <Card>
           <CardHeader>
             <CardTitle>Structure &amp; Capacity</CardTitle>
@@ -12642,7 +12713,28 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
 
       {/* ── STEP: GROUPS ── */}
-      {step === "groups" && (
+      {step === "groups" && diamondMode && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Allocate players to teams</CardTitle>
+            <p className="text-sm text-muted-foreground">Registered players are placed automatically by the seeding you chose (#1 = strongest). Move anyone you like.</p>
+          </CardHeader>
+          <CardContent>
+            <DiamondAllocationBoard
+              draft={diamondDraft}
+              onChange={setDiamondDraft}
+              players={(() => {
+                const ladder = genderMembers.map((m) => m.id);
+                const order = playerOrder.length ? [...playerOrder, ...ladder.filter((id) => !playerOrder.includes(id))] : ladder;
+                const rest = Array.from(selectedPlayerIds).filter((id) => !order.includes(id));
+                return [...order.filter((id) => selectedPlayerIds.has(id)), ...rest];
+              })()}
+              nameOf={(id) => (members as any[]).find((m) => m.id === id)?.name || "Player"}
+            />
+          </CardContent>
+        </Card>
+      )}
+      {step === "groups" && !diamondMode && (
         <Card>
           <CardHeader>
             <div className="flex items-start justify-between gap-3">
@@ -13837,16 +13929,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               onClick={() => {
                 // A rebuild on a live tournament deletes and re-creates every
                 // fixture — never let that happen on a single click.
+                if (diamondMode) { createDiamond.mutate(); return; }
                 if (editingChampId && rebuildImpact.requiresConfirmation) {
                   setRebuildConfirmOpen(true);
                   return;
                 }
                 createChamp.mutate();
               }}
-              disabled={createChamp.isPending}
+              disabled={createChamp.isPending || createDiamond.isPending}
             >
-              {createChamp.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
-              {awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
+              {(createChamp.isPending || createDiamond.isPending) && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+              {diamondMode ? "Save Diamond League" : awaitingPlayerPairs ? "Save Tournament" : editingChampId ? "Rebuild Schedule" : "Generate Schedule"}
             </Button>
           ) : (
 

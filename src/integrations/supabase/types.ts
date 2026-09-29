@@ -14575,6 +14575,7 @@ export type Database = {
           results: Json
           status: string
           teams: Json
+          tournament_id: string | null
           updated_at: string
           weeks: Json
         }
@@ -14588,6 +14589,7 @@ export type Database = {
           results?: Json
           status?: string
           teams?: Json
+          tournament_id?: string | null
           updated_at?: string
           weeks?: Json
         }
@@ -14601,6 +14603,7 @@ export type Database = {
           results?: Json
           status?: string
           teams?: Json
+          tournament_id?: string | null
           updated_at?: string
           weeks?: Json
         }
@@ -14610,6 +14613,20 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_league_events_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "club_champs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_league_events_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
             referencedColumns: ["id"]
           },
         ]

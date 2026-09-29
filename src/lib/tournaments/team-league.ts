@@ -253,3 +253,37 @@ export function nightPlan(c: TeamLeagueConfig, tiesPerNight: number) {
   const finish = toMin(c.startTime) + waves * tieMinutes;
   return { tieMinutes, finish: toHm(finish), overruns: finish > toMin(c.endTime) };
 }
+
+export type SlotTeam = { id: string; players: (string | null)[] };
+
+/**
+ * Places registered players into empty team slots by strength.
+ * `ordered` is strongest first. Tier k (players k*T..k*T+T-1) fills slot #k+1,
+ * snaking across teams so strength is spread evenly. Locked slots (admin
+ * placements, key `teamId:index`) are never touched; players no longer in
+ * `ordered` are removed from unlocked slots and reported in `removed`.
+ */
+export function autoSlotPlayers(ordered: string[], teams: SlotTeam[], locked: Set<string> = new Set()) {
+  const keep = new Set(ordered);
+  const removed: string[] = [];
+  const next = teams.map((t) => ({
+    ...t,
+    players: t.players.map((p, i) => {
+      if (p && !keep.has(p) && !locked.has(`${t.id}:${i}`)) { removed.push(p); return null; }
+      return p;
+    }),
+  }));
+  const placed = new Set(next.flatMap((t) => t.players.filter(Boolean) as string[]));
+  const queue = ordered.filter((id) => !placed.has(id));
+  const size = Math.max(0, ...next.map((t) => t.players.length));
+  const T = next.length;
+  for (let slot = 0; slot < size && queue.length; slot++) {
+    const order = slot % 2 === 0 ? [...Array(T).keys()] : [...Array(T).keys()].reverse();
+    for (const ti of order) {
+      if (!queue.length) break;
+      const t = next[ti];
+      if (slot < t.players.length && !t.players[slot] && !locked.has(`${t.id}:${slot}`)) t.players[slot] = queue.shift()!;
+    }
+  }
+  return { teams: next, unplaced: queue, removed };
+}

@@ -87,3 +87,25 @@ describe("organiser options", () => {
     expect(decideLevelFinal(s, r, "organiser")).toBeNull();
   });
 });
+
+import { autoSlotPlayers } from "@/lib/tournaments/team-league";
+describe("autoSlotPlayers", () => {
+  const empty = () => [{ id: "t1", players: [null, null] }, { id: "t2", players: [null, null] }] as { id: string; players: (string | null)[] }[];
+  it("snakes strongest players across teams by slot", () => {
+    const r = autoSlotPlayers(["a", "b", "c", "d"], empty());
+    expect(r.teams[0].players).toEqual(["a", "d"]);
+    expect(r.teams[1].players).toEqual(["b", "c"]);
+  });
+  it("never moves locked placements and fills only empty slots", () => {
+    const t = empty(); t[1].players[0] = "a";
+    const r = autoSlotPlayers(["a", "b", "c"], t, new Set(["t2:0"]));
+    expect(r.teams[1].players[0]).toBe("a");
+    expect(r.teams[0].players[0]).toBe("b");
+  });
+  it("empties slots of withdrawn players, keeps locked, reports overflow", () => {
+    const t = empty(); t[0].players = ["x", "y"];
+    const r = autoSlotPlayers(["y", "p", "q", "r", "s"], t, new Set(["t0:0"]));
+    expect(r.removed).toEqual(["x"]);
+    expect(r.unplaced).toEqual(["s"]);
+  });
+});

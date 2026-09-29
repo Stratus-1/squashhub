@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fromExt, rpcExt } from "@/lib/supabase-ext";
+import { hydrateTournamentNames } from "@/lib/tournament-names";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 
@@ -68,7 +69,8 @@ export default function BellsMarker() {
         const r = Array.isArray(row.champ.rules) ? row.champ.rules[0] : row.champ.rules;
         row.champ = { ...row.champ, scoring_mode: r?.scoring_mode ?? null, handicap_mode: r?.handicap_mode ?? null };
       }
-      return row;
+      const [named] = await hydrateTournamentNames([row]);
+      return named;
     },
     enabled: !!matchId,
   });
@@ -82,7 +84,7 @@ export default function BellsMarker() {
         .select("id, status, is_bye, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name)")
         .eq("champ_id", match!.champ_id);
       if (error) throw error;
-      return data as any[];
+      return hydrateTournamentNames((data || []) as any[]);
     },
     enabled: !!match?.champ_id,
   });

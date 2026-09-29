@@ -221,7 +221,9 @@ function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selected
                   ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
                   : "bg-card hover:bg-secondary border border-border/50 border-dashed"
               )}
-              title="Pick a date (next 30 days) — admin only"
+              title={selectedInPast
+                ? "Viewing history"
+                : "Pick a date (up to 30 days back or 30 days ahead) — admin only"}
             >
               <CalendarIcon className="w-4 h-4" />
               <span className="text-[10px] uppercase tracking-wider mt-0.5">

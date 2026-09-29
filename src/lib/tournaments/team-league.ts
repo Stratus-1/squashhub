@@ -19,6 +19,33 @@ export type TeamLeagueConfig = {
   startTime: string; // "17:45"
   endTime: string; // "21:15"
   courts: number;
+  /** Level tie: split = half the bonus each, both = full bonus each, none. */
+  drawRule: DrawRule;
+  /** Ordered tie-breaks when team totals are level. */
+  tieBreaks: TieBreak[];
+  /** How a level final (points reset) is decided. */
+  finalLevelRule: FinalLevelRule;
+};
+
+export type DrawRule = "split" | "both" | "none";
+export type TieBreak = "most_wins" | "games_won" | "points_diff" | "head_to_head";
+export type FinalLevelRule = "games_won" | "last_game" | "organiser";
+
+export const DRAW_RULE_LABEL: Record<DrawRule, string> = {
+  split: "Split the bonus (e.g. 2.5 each)",
+  both: "Both teams get the full bonus",
+  none: "No bonus for a draw",
+};
+export const TIE_BREAK_LABEL: Record<TieBreak, string> = {
+  most_wins: "Most ties won",
+  games_won: "Most individual games won",
+  points_diff: "Best points difference",
+  head_to_head: "Head-to-head result",
+};
+export const FINAL_LEVEL_LABEL: Record<FinalLevelRule, string> = {
+  games_won: "Most individual games won",
+  last_game: "Winner of the last game (#1+#2 doubles)",
+  organiser: "Organiser decides",
 };
 
 export const DIAMOND_TEAM_DEFAULTS: TeamLeagueConfig = {
@@ -28,7 +55,10 @@ export const DIAMOND_TEAM_DEFAULTS: TeamLeagueConfig = {
   winBonus: 5,
   startTime: "17:45",
   endTime: "21:15",
-  courts: 2,
+  courts: 4,
+  drawRule: "split",
+  tieBreaks: ["most_wins"],
+  finalLevelRule: "games_won",
 };
 
 export type TieGame =
@@ -110,48 +140,101 @@ export type TieResult = {
   winner: "home" | "away" | "draw" | null;
   homeBonus: number;
   awayBonus: number;
+  homeGames: number;
+  awayGames: number;
 };
+
+/** Decide a level final (points reset). Returns null when the organiser decides or still level. */
+export function decideLevelFinal(scores: GameScore[], r: TieResult, rule: FinalLevelRule): "home" | "away" | null {
+  if (r.winner !== "draw") return r.winner === "home" || r.winner === "away" ? r.winner : null;
+  if (rule === "games_won") return r.homeGames > r.awayGames ? "home" : r.awayGames > r.homeGames ? "away" : null;
+  if (rule === "last_game") {
+    const last = scores[scores.length - 1];
+    if (!last || last.home === last.away) return null;
+    return last.home > last.away ? "home" : "away";
+  }
+  return null;
+}
 
 /**
  * Tie total. A level tie gets NO bonus until the organiser confirms the rule
  * (`drawBonus` left undefined = draw is reported, no bonus awarded).
  */
-export function tieResult(scores: GameScore[], games: number, winBonus: number, drawBonus?: number): TieResult {
+export function tieResult(scores: GameScore[], games: number, winBonus: number, drawBonus?: number | DrawRule): TieResult {
   const played = scores.filter(Boolean) as { home: number; away: number }[];
   const homePoints = played.reduce((s, g) => s + g.home, 0);
   const awayPoints = played.reduce((s, g) => s + g.away, 0);
   const complete = played.length === games;
   let winner: TieResult["winner"] = null;
   if (complete) winner = homePoints > awayPoints ? "home" : awayPoints > homePoints ? "away" : "draw";
-  const d = drawBonus ?? 0;
+  const d = typeof drawBonus === "number" ? drawBonus
+    : drawBonus === "split" ? winBonus / 2 : drawBonus === "both" ? winBonus : 0;
+  const homeGames = played.filter((g) => g.home > g.away).length;
+  const awayGames = played.filter((g) => g.away > g.home).length;
   return {
-    complete, homePoints, awayPoints, winner,
+    complete, homePoints, awayPoints, winner, homeGames, awayGames,
     homeBonus: winner === "home" ? winBonus : winner === "draw" ? d : 0,
     awayBonus: winner === "away" ? winBonus : winner === "draw" ? d : 0,
   };
 }
 
-export type StandingRow = { teamId: string; played: number; points: number; bonus: number; total: number };
+export type StandingRow = {
+  teamId: string; played: number; won: number; points: number; against: number;
+  bonus: number; games: number; total: number;
+};
 
 export type TieRecord = { homeId: string; awayId: string; result: TieResult };
 
-/** Team table. `carry` rows are added in (semis carry pool totals). */
-export function standings(teamIds: string[], ties: TieRecord[], carry?: Map<string, number>) {
+/**
+ * Team table. `carry` totals are added in (semis carry pool totals). Level
+ * totals are separated only by the configured tie-breaks; anything still level
+ * is reported in `undecided` — never guessed.
+ */
+export function standings(teamIds: string[], ties: TieRecord[], carry?: Map<string, number>, tieBreaks: TieBreak[] = []) {
   const rows = new Map<string, StandingRow>(
-    teamIds.map((id) => [id, { teamId: id, played: 0, points: 0, bonus: 0, total: carry?.get(id) ?? 0 }]),
+    teamIds.map((id) => [id, { teamId: id, played: 0, won: 0, points: 0, against: 0, bonus: 0, games: 0, total: carry?.get(id) ?? 0 }]),
   );
-  for (const t of ties) {
-    if (!t.result.complete) continue;
+  const done = ties.filter((t) => t.result.complete);
+  for (const t of done) {
     const h = rows.get(t.homeId), a = rows.get(t.awayId);
-    if (h) { h.played++; h.points += t.result.homePoints; h.bonus += t.result.homeBonus; h.total += t.result.homePoints + t.result.homeBonus; }
-    if (a) { a.played++; a.points += t.result.awayPoints; a.bonus += t.result.awayBonus; a.total += t.result.awayPoints + t.result.awayBonus; }
+    const r = t.result;
+    if (h) { h.played++; h.points += r.homePoints; h.against += r.awayPoints; h.bonus += r.homeBonus; h.games += r.homeGames; h.total += r.homePoints + r.homeBonus; if (r.winner === "home") h.won++; }
+    if (a) { a.played++; a.points += r.awayPoints; a.against += r.homePoints; a.bonus += r.awayBonus; a.games += r.awayGames; a.total += r.awayPoints + r.awayBonus; if (r.winner === "away") a.won++; }
   }
-  const sorted = [...rows.values()].sort((x, y) => y.total - x.total);
+  const h2h = (x: string, y: string) => {
+    let s = 0;
+    for (const t of done) {
+      if (t.homeId === x && t.awayId === y) s += t.result.winner === "home" ? 1 : t.result.winner === "away" ? -1 : 0;
+      if (t.homeId === y && t.awayId === x) s += t.result.winner === "away" ? 1 : t.result.winner === "home" ? -1 : 0;
+    }
+    return s;
+  };
+  const cmp = (x: StandingRow, y: StandingRow, group: number) => {
+    if (y.total !== x.total) return y.total - x.total;
+    for (const tb of tieBreaks) {
+      const d = tb === "most_wins" ? y.won - x.won
+        : tb === "games_won" ? y.games - x.games
+        : tb === "points_diff" ? (y.points - y.against) - (x.points - x.against)
+        : group === 2 ? -h2h(x.teamId, y.teamId) : 0;
+      if (d) return d;
+    }
+    return 0;
+  };
+  const byTotal = [...rows.values()].sort((x, y) => y.total - x.total);
+  const sorted: StandingRow[] = [];
   const undecided: string[][] = [];
-  for (let i = 0; i < sorted.length; ) {
+  for (let i = 0; i < byTotal.length; ) {
     let j = i;
-    while (j + 1 < sorted.length && sorted[j + 1].total === sorted[i].total) j++;
-    if (j > i) undecided.push(sorted.slice(i, j + 1).map((r) => r.teamId));
+    while (j + 1 < byTotal.length && byTotal[j + 1].total === byTotal[i].total) j++;
+    const grp = byTotal.slice(i, j + 1).sort((x, y) => cmp(x, y, j - i + 1));
+    sorted.push(...grp);
+    for (let k = 0; k < grp.length - 1; k++) {
+      if (cmp(grp[k], grp[k + 1], grp.length) === 0) {
+        const last = undecided[undecided.length - 1];
+        if (last && last.includes(grp[k].teamId)) last.push(grp[k + 1].teamId);
+        else undecided.push([grp[k].teamId, grp[k + 1].teamId]);
+      }
+    }
     i = j + 1;
   }
   return { rows: sorted, undecided };

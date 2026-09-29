@@ -232,7 +232,7 @@ import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-inp
 import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
 import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
 import { DiamondRulesPanel, DiamondAllocationBoard, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
-import { configIssues as diamondConfigIssues } from "@/lib/tournaments/team-league";
+import { configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 
 
@@ -9628,11 +9628,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         <Card>
           <CardHeader>
             <CardTitle>Diamond League (teams)</CardTitle>
-            <p className="text-sm text-muted-foreground">Teams of ranked players in two divisions. Every tie is singles then doubles on points; division round robins, crossover semis (points carry) and placing finals.</p>
+            <p className="text-sm text-muted-foreground">Set team numbers, weekly pool dates and scoring rules here. Each team tie plays singles then doubles on the same night; courts and session times remain on Dates &amp; Courts.</p>
           </CardHeader>
           <CardContent>
             <div ref={stepIssuesRef} />
-            <DiamondRulesPanel draft={diamondDraft} onChange={setDiamondDraft} courts={selectedCourtIds.size} />
+            <DiamondRulesPanel draft={diamondDraft} onChange={setDiamondDraft} courts={selectedCourtIds.size} startTime={startTime} endTime={endTime} />
           </CardContent>
         </Card>
       )}
@@ -13764,8 +13764,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           <CardContent className="space-y-4">
             <div className="text-sm space-y-2">
               <p><strong>Name:</strong> {champName || `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"} Club Champs ${new Date().getFullYear()}`}</p>
-              <p><strong>Type:</strong> {GENDER_LABELS[gender]} {isDoublesCategory ? "Doubles" : "Singles"}</p>
-          <p><strong>{isDoubles ? "Pairs" : "Players"}:</strong> {awaitingPlayerPairs ? `${registrationUsesInviteList ? selectedPlayerIds.size : registrationRequired ? "Open" : "No"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
+              <p><strong>Type:</strong> {diamondMode ? "Diamond League team competition" : `${GENDER_LABELS[gender]} ${isDoublesCategory ? "Doubles" : "Singles"}`}</p>
+              <p><strong>{diamondMode ? "Teams" : isDoubles ? "Pairs" : "Players"}:</strong> {diamondMode ? `${diamondDraft.teams.length} teams · ${diamondDraft.config.playersPerTeam} players per team · ${diamondDraft.teams.length * diamondDraft.config.playersPerTeam} places` : awaitingPlayerPairs ? `${registrationUsesInviteList ? selectedPlayerIds.size : registrationRequired ? "Open" : "No"} registrations before scheduling` : `${entityCount} in ${numGroups} league${numGroups > 1 ? "s" : ""}`}</p>
               <p><strong>Period:</strong> {startDate} to {endDate}</p>
               {schedulingMode === "self" ? (
                 <p><strong>Scheduling:</strong> Players arrange their own games — no fixed days or times</p>
@@ -13776,26 +13776,32 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 </>
               )}
               <p><strong>Courts:</strong> {Array.from(selectedCourtIds).map((id) => getCourtName(id)).join(", ")}</p>
-              <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : roundFormat === "cross_league" ? "League vs League (cross-league only)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>
-              <p><strong>Playoffs:</strong> {enablePlayoffs ? "Yes — position-based knockout after group stage" : "No"}</p>
-              <p><strong>Final winner:</strong> {championScope === "pool" ? "One winner per pool" : "One champion per league — pool winners meet in the league final"}</p>
+              {diamondMode ? <>
+                <p><strong>Format:</strong> Two division round robins · crossover semi-finals carry points · placing finals reset points</p>
+                <p><strong>Every team tie:</strong> {diamondTieGames(diamondDraft.config).map(diamondGameLabel).join(" → ")}</p>
+                <p><strong>Night plan:</strong> singles then doubles on the same night · estimated finish {diamondNightPlan({ ...diamondDraft.config, courts: selectedCourtIds.size || diamondDraft.config.courts, startTime, endTime }, diamondDraft.teams.length / 2).finish}</p>
+              </> : <>
+                <p><strong>Format:</strong> {roundFormat === "double_round_robin" ? "Double round-robin (home & away)" : roundFormat === "cross_league" ? "League vs League (cross-league only)" : "Single round-robin"}{roundFormat === "double_round_robin" ? ` · Bye: ${byeHandling.replace(/_/g, " ")}` : ""}</p>
+                <p><strong>Playoffs:</strong> {enablePlayoffs ? "Yes — position-based knockout after group stage" : "No"}</p>
+                <p><strong>Final winner:</strong> {championScope === "pool" ? "One winner per pool" : "One champion per league — pool winners meet in the league final"}</p>
+              </>}
             </div>
 
             <Separator />
 
-            {awaitingPlayerPairs && (
+            {!diamondMode && awaitingPlayerPairs && (
               <p className="text-sm text-muted-foreground rounded-lg border p-3">
                 Save this tournament now. Once players have registered and confirmed partners, reopen it to generate groups and fixtures.
               </p>
             )}
 
-            {!awaitingPlayerPairs && editingChampId && (
+            {!diamondMode && !awaitingPlayerPairs && editingChampId && (
               <p className="text-xs text-muted-foreground rounded-lg border p-2 bg-muted/30">
                 <strong>Rebuild Schedule</strong> recreates the <em>first</em> fixture list and tournament page entries using the leagues/pairs shown above — it does <em>not</em> change who's paired with whom or which league they're in, and it is <em>not</em> how you advance the draw. Later rounds are generated from <strong>Tournament progress</strong> below (and on the tournament page) once the current round is played. Court bookings are written separately via <strong>Make Court Bookings</strong>.
               </p>
             )}
 
-            {editingChampId && (
+            {!diamondMode && editingChampId && (
               <TournamentProgressCard
                 champId={editingChampId}
                 canManage
@@ -13805,11 +13811,11 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               />
             )}
 
-            {editingChampId && <DrawLockCard champId={editingChampId} />}
+            {!diamondMode && editingChampId && <DrawLockCard champId={editingChampId} />}
 
 
 
-            {entitiesChangedSinceLoad && (
+            {!diamondMode && entitiesChangedSinceLoad && (
               <div className="rounded-lg border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
                 <p className="font-semibold">⚠ Players changed since this tournament was opened</p>
                 <p className="text-xs mt-0.5">
@@ -13818,7 +13824,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               </div>
             )}
 
-            {!awaitingPlayerPairs && schedulePreview && (
+            {!diamondMode && !awaitingPlayerPairs && schedulePreview && (
               <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 {Array.from({ length: numGroups }, (_, gi) => {
                   // Always show the preview in the order the slots are actually
@@ -13879,7 +13885,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               </div>
             )}
 
-            {!awaitingPlayerPairs && schedulePreview && (
+            {!diamondMode && !awaitingPlayerPairs && schedulePreview && (
               <>
                 <Separator />
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border p-3 bg-muted/30">

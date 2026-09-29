@@ -227,7 +227,7 @@ function DateChips({ selectedDate, onSelect, isAdmin, isSuperAdmin }: { selected
             >
               <CalendarIcon className="w-4 h-4" />
               <span className="text-[10px] uppercase tracking-wider mt-0.5">
-                {selectedBeyondStrip ? format(selectedDate, "d MMM") : "Pick"}
+                {selectedBeyondStrip || selectedInPast ? format(selectedDate, "d MMM") : "Pick"}
               </span>
             </button>
           </PopoverTrigger>

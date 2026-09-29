@@ -342,6 +342,9 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
                         <span>{t.label} · Court {t.court}</span>
                         <span>{teamName(t.home)} {r.homePoints + r.homeBonus} – {r.awayPoints + r.awayBonus} {teamName(t.away)}</span>
                       </div>
+                      <div className="grid grid-cols-[1fr_3rem_3rem_1fr] gap-1 text-[10px] text-muted-foreground">
+                        <span>{teamName(t.home)}</span><span className="text-center">score</span><span className="text-center">score</span><span className="text-right">{teamName(t.away)}</span>
+                      </div>
                       {games.map((g, gi) => {
                         const nm = (tm?: Team) => g.positions.map((pos) => memberName.get(tm?.players[pos - 1] || "") || `#${pos}`).join(" & ");
                         const s = (results[t.id] || [])[gi] as any;

@@ -63,4 +63,4 @@
 - [x] Replace misleading standard schedule review with team-tie review; show same-night singles/doubles and #1 vs #1 across opposing teams.
 - [x] Verify Diamond page-two rules, weekly dates and the separate courts step (preview, no save).
 - [x] Recheck the organiser email: position-versus-position across opposing teams and exact singles/doubles order.
-- [ ] Fix false “Number of groups must be between 1 and 24” warning on Diamond League Allocate players step (screenshot from Club DL).
+- [x] Fix false “Number of groups must be between 1 and 24” warning on Diamond League Allocate players step (screenshot from Club DL).

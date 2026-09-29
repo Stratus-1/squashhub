@@ -76,3 +76,4 @@
 - [x] Generate the markable tournament games when the Diamond League is saved, preserving scored games.
 - [x] Show Diamond team totals directly on the Tournaments → Standings page.
 - [x] Verify Riverside's saved Club DL creates its 72 pool games (48 singles, 24 doubles) on its three saved dates.
+- [x] Diamond doubles pairs auto re-seeded from singles points (DB trigger diamond_seed_doubles_from_singles)

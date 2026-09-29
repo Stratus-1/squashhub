@@ -14564,6 +14564,56 @@ export type Database = {
         }
         Relationships: []
       }
+      team_league_events: {
+        Row: {
+          club_id: string
+          config: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          results: Json
+          status: string
+          teams: Json
+          updated_at: string
+          weeks: Json
+        }
+        Insert: {
+          club_id: string
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          results?: Json
+          status?: string
+          teams?: Json
+          updated_at?: string
+          weeks?: Json
+        }
+        Update: {
+          club_id?: string
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          results?: Json
+          status?: string
+          teams?: Json
+          updated_at?: string
+          weeks?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_league_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_divisions: {
         Row: {
           created_at: string

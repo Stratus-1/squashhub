@@ -6,7 +6,7 @@ It is a **team competition**, not individuals:
 - Teams split into **Pool A and Pool B** (4 teams each). The email says "pools"; you called them "divisions" — same thing here.
 - Every meeting between two teams (a "tie") is always the same: **6 singles** (20 min, points, order #6 → #1), then **3 doubles** (30 min, points, pairs 5+6, 3+4, 1+2, same order).
 - Tie result = total points of all 9 games; the winning team gets **+5 bonus**.
-- Weeks 1–3: round robin inside each pool (A1vA4 & A2vA3 / A1vA2 & A3vA4 / A1vA3 & A2vA4). Pool ranking = points added up over 3 weeks.
+- Weeks 1–3: round robin inside each pool ("A1" = Pool A team 1, so A1vA4 = Pool A team 1 v Pool A team 4): (A1vA4 & A2vA3 / A1vA2 & A3vA4 / A1vA3 & A2vA4). Pool ranking = points added up over 3 weeks.
 - Week 4 semis (crossover): A1vB2, A2vB1, A3vB4, A4vB3. **Points carry forward** from the pools.
 - Week 5 finals: **points reset**, straight shoot-out: W1vW2 (1st/2nd), L1vL2 (3rd/4th), W3vW4 (5th/6th), L3vL4 (7th/8th).
 - Start 17:45, finish 21:15, every Wednesday.

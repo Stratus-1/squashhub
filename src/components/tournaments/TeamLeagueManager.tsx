@@ -163,7 +163,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
         rows.push({
           champ_id: champId, group_number: w.week, round_number: w.week, section_number: 1,
           stage: w.stage === "pool" ? "group" : "knockout", stage_key: key,
-          stage_label: `${w.stage === "pool" ? `Week ${w.week}` : w.stage === "semi" ? "Semi-finals" : "Finals"} · ${home.name} v ${away.name} · ${gameLabel(g)}`,
+          stage_label: `${w.stage === "pool" ? `Week ${w.week} · Division ${home.pool}` : w.stage === "semi" ? "Semi-finals" : "Finals"} · ${home.name} v ${away.name} · ${gameLabel(g)}`,
           player_a_member_id: home.players[p1 - 1], player_b_member_id: away.players[p1 - 1],
           partner_a_member_id: p2 ? home.players[p2 - 1] : null, partner_b_member_id: p2 ? away.players[p2 - 1] : null,
           scheduled_date: w.date || null, scheduled_time: time,

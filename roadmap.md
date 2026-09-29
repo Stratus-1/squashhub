@@ -64,3 +64,9 @@
 - [x] Verify Diamond page-two rules, weekly dates and the separate courts step (preview, no save).
 - [x] Recheck the organiser email: position-versus-position across opposing teams and exact singles/doubles order.
 - [x] Fix false “Number of groups must be between 1 and 24” warning on Diamond League Allocate players step (screenshot from Club DL).
+
+## Repeating AI Assistance notification
+- [x] Route View to the existing Super Admin AI Activity screen, including legacy alert links and club-to-root navigation.
+- [x] Persist Done only after the notification is successfully marked read.
+- [x] Prevent the hourly reminder from recreating an acknowledged alert unless a waiting request is newer.
+- [ ] Verify View and Done end to end in the signed-in preview.

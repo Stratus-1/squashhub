@@ -157,7 +157,8 @@ export function NotificationActionModal() {
 
   const markRead = useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from("notifications").update({ read: true }).eq("id", id);
+      const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -223,27 +224,37 @@ export function NotificationActionModal() {
     }
   }, [isLast]);
 
-  const handleAction = useCallback(() => {
+  const handleAction = useCallback(async () => {
     if (!current) return;
     // Explicit acknowledgement always clears the popup — including invites,
     // which stay available in the notification bell.
-    markRead.mutate(current.id);
-    const url = current.url || "/notifications";
-    const navigation = getNotificationNavigation(current);
-    const shouldOpenDetail = navigation.shouldOpenDetail || current.type === "marketing" || url.startsWith("/notifications");
-    setOpen(false);
-    setDismissed(true);
-    navigate(shouldOpenDetail ? navigation.targetUrl : url);
-  }, [current, markRead, navigate]);
-
-  const handleDismiss = useCallback(() => {
-    if (!current) return;
-    markRead.mutate(current.id);
-    if (isLast) {
+    try {
+      await markRead.mutateAsync(current.id);
+      const navigation = getNotificationNavigation(current);
       setOpen(false);
       setDismissed(true);
-    } else {
-      setCurrentIndex((i) => i + 1);
+      navigate(navigation.targetUrl);
+    } catch (error) {
+      toast.error("Could not dismiss notification", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
+  }, [current, markRead, navigate]);
+
+  const handleDismiss = useCallback(async () => {
+    if (!current) return;
+    try {
+      await markRead.mutateAsync(current.id);
+      if (isLast) {
+        setOpen(false);
+        setDismissed(true);
+      } else {
+        setCurrentIndex((i) => i + 1);
+      }
+    } catch (error) {
+      toast.error("Could not dismiss notification", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
     }
   }, [current, isLast, markRead]);
 
@@ -374,7 +385,8 @@ export function NotificationActionModal() {
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={handleDismiss}
+                  onClick={() => void handleDismiss()}
+                  disabled={markRead.isPending}
                 >
                   <Check className="w-4 h-4 mr-1.5" />
                   {isLast ? "Done" : "Next"}

@@ -60,6 +60,6 @@
 - [x] Withdrawn slots keep the empty-slot flag and stay open until a reserve is placed or the tie is played short.
 
 ## Current Diamond League setup
-- [ ] Replace misleading standard schedule review with team-tie review; show same-night singles/doubles and #1 vs #1 across opposing teams.
-- [ ] Verify Diamond page-two rules, weekly dates and the separate courts step.
-- [ ] Recheck the organiser email: position-versus-position across opposing teams and exact singles/doubles order.
+- [x] Replace misleading standard schedule review with team-tie review; show same-night singles/doubles and #1 vs #1 across opposing teams.
+- [x] Verify Diamond page-two rules, weekly dates and the separate courts step (preview, no save).
+- [x] Recheck the organiser email: position-versus-position across opposing teams and exact singles/doubles order.

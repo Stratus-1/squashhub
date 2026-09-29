@@ -29,7 +29,7 @@ export interface DivisionSource {
   leagueIds: string[];
 }
 
-export const DEFAULT_DIVISION_SOURCE: DivisionSource = { mode: "all", leagueIds: [] };
+export const DEFAULT_DIVISION_SOURCE: DivisionSource = { mode: "selected", leagueIds: [] };
 
 type RawMap = Record<string, unknown> | null | undefined;
 
@@ -142,7 +142,8 @@ export function parseDivisionSources(
     const rawMode = (modes || {})[k];
     let mode: DivisionSourceMode =
       rawMode === "all" || rawMode === "selected" || rawMode === "combined" ? rawMode : "selected";
-    if (leagueIds.length === 0) mode = "all";
+    // An empty selection stays "selected" (nothing ticked) — it still behaves
+    // as unrestricted downstream, but must not flip back to "all" on reload.
     out[k] = { mode, leagueIds };
   });
   return out;
@@ -359,7 +360,7 @@ export function planAllLeaguesExpansion(args: {
     // it is still on "all leagues" — no orphan draw is left behind.
     const tmplSrc = divisionSource(sources, templateGn);
     let gn: number;
-    if (reuseTemplate && templateGn <= divisionCount && tmplSrc.mode === "all") {
+    if (reuseTemplate && templateGn <= divisionCount && (tmplSrc.mode === "all" || tmplSrc.leagueIds.length === 0)) {
       gn = templateGn;
       reuseTemplate = false;
     } else {

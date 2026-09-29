@@ -38,8 +38,8 @@ describe("division sources", () => {
   it("parses persisted jsonb pair", () => {
     const parsed = parseDivisionSources({ "1": ["l2", "l3"], "2": [] }, { "1": "combined", "2": "selected" });
     expect(parsed["1"]).toEqual({ mode: "combined", leagueIds: ["l2", "l3"] });
-    // empty selection always degrades to "all"
-    expect(parsed["2"]).toEqual({ mode: "all", leagueIds: [] });
+    // empty selection stays "selected" (nothing ticked) but behaves unrestricted
+    expect(parsed["2"]).toEqual({ mode: "selected", leagueIds: [] });
   });
 
   it("ignores junk values", () => {

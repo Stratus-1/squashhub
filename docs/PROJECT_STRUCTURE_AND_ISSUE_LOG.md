@@ -2278,3 +2278,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Added pure `src/lib/tournaments/team-league.ts` (+ `src/test/team-league.test.ts`): flexible team size, email week order for pools of 4, crossover A1vB2/A2vB1/A3vB4/A4vB3, placings 1–8, standings with carry, level totals reported as undecided (no invented tie-break), night timing.
 - Not yet wired into the setup screen. Preview only.
 - Follow-up: organiser options added (draw bonus split/both/none, ordered tie-breaks most wins/games won/points diff/head-to-head, level final rule, default 4 courts). New club-scoped `team_league_events` table (admins manage, members view) and `TeamLeagueManager` card above the tournament wizard: rules, teams + ranked players, pool weeks, score entry, tables, crossover semis, placing finals. Scores entered by admin (not yet linked to the live marker).
+
+## 2026-09-29 — Diamond League inside the normal tournament setup
+- Structure step has two tabs: Standard leagues / Diamond League (teams). DL mode skips the Schedule step; invites, registration, courts and players steps are the normal ones.
+- Allocate step shows `DiamondAllocationBoard` (`src/components/tournaments/DiamondLeagueSetup.tsx`): registered players auto-placed via `autoSlotPlayers` (snake by seeding, locked manual slots never moved, withdrawn players leave a flagged empty slot); drag or tap to move.
+- Saved to `team_league_events` linked by new unique `tournament_id`; running view (weeks, scores, semis, finals) stays in `TeamLeagueManager`, which no longer creates standalone events.

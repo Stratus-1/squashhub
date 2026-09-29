@@ -1,0 +1,2 @@
+DELETE FROM public.club_members WHERE id='0478da19-f4da-4201-acf0-0c3d52445c15' AND is_pending_approval = true AND club_id='102dcc94-4b1f-4f51-8113-240de007c776';
+DELETE FROM public.people p WHERE p.id='65228f7b-de1a-4c91-b121-8a744bb75212' AND NOT EXISTS (SELECT 1 FROM public.club_members cm WHERE cm.person_id=p.id);

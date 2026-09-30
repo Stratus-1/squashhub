@@ -2331,3 +2331,6 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Tanya Kinnear: kept login-linked record (now NSC396), moved her paid R3,300 family fee to it, removed duplicate unpaid R1,375 + R350; old record resigned. Holing: R1,650 opening balance moved Matt → Leigh. George Luputa already single record.
 - Doubles swap list verified in preview: only Reserves + bye-team (LG001 on 06 Oct) players; sudden death (win_by=1) shows PAR 11 and is respected.
 - Club admin Members list: "All current" now hides resigned members (e.g. Adele Geldenhuys); "Resigned" chip still shows them.
+
+## 2026-09-30 — Diamond League team labels
+- Default Diamond team names now use division-local labels A1–A4 and B1–B4 in setup, standings, and newly generated fixture labels. Previously saved default names are displayed with those labels without editing club records, player slots, scores, or custom team names. Focused team-league tests cover the old-name display mapping.

@@ -141,6 +141,12 @@ export const PLACING_FINALS: { places: [number, number]; from: ["W" | "L", numbe
 ];
 
 export type DiamondTeam = { id: string; name: string; pool: "A" | "B"; players: (string | null)[] };
+/** Division-local team number; keep IDs, placements and custom names untouched. */
+export function diamondTeamName(team: Pick<DiamondTeam, "name" | "pool">, index: number, teams: readonly Pick<DiamondTeam, "pool">[]): string {
+  const number = teams.slice(0, index + 1).filter((t) => t.pool === team.pool).length;
+  return team.name === `Team ${index + 1}` ? `${team.pool}${number}` : team.name;
+}
+
 export type DiamondTie = { id: string; home: string; away: string; court: number; label?: string };
 export type DiamondWeek = { week: number; date: string; stage: "pool" | "semi" | "final"; ties: DiamondTie[] };
 

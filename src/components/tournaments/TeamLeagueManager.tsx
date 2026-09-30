@@ -11,7 +11,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useClubMembers } from "@/hooks/use-club";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, CROSSOVER, PLACING_FINALS,
-  tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal,
+  tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName,
   type TeamLeagueConfig, type TieBreak, type GameScore, type DrawRule, type FinalLevelRule,
 } from "@/lib/tournaments/team-league";
 
@@ -27,7 +27,7 @@ type EventRow = {
 const uid = () => crypto.randomUUID().slice(0, 8);
 const newTeams = (n: number, size: number): Team[] =>
   Array.from({ length: n }, (_, i) => ({
-    id: uid(), name: `Team ${i + 1}`, pool: i < n / 2 ? "A" : "B", players: Array(size).fill(null),
+    id: uid(), name: `${i < n / 2 ? "A" : "B"}${(i % (n / 2)) + 1}`, pool: i < n / 2 ? "A" : "B", players: Array(size).fill(null),
   }));
 
 export function TeamLeagueManager({ clubId }: { clubId: string }) {
@@ -126,7 +126,10 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
     () => [...(members as any[])].filter((m) => m.status !== "resigned").sort((a, b) => (a.name || "").localeCompare(b.name || "")),
     [members],
   );
-  const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? "?";
+  const teamName = (id: string) => {
+    const index = teams.findIndex((t) => t.id === id);
+    return index < 0 ? "?" : diamondTeamName(teams[index], index, teams);
+  };
   const used = new Set(teams.flatMap((t) => t.players.filter(Boolean) as string[]));
 
   // Mirror every Diamond game into the linked tournament's game list so it
@@ -163,7 +166,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
         rows.push({
           champ_id: champId, group_number: w.week, round_number: w.week, section_number: 1,
           stage: w.stage === "pool" ? "group" : "knockout", stage_key: key,
-          stage_label: `${w.stage === "pool" ? `Week ${w.week} · Division ${home.pool}` : w.stage === "semi" ? "Semi-finals" : "Finals"} · ${home.name} v ${away.name} · ${gameLabel(g)}`,
+           stage_label: `${w.stage === "pool" ? `Week ${w.week} · Division ${home.pool}` : w.stage === "semi" ? "Semi-finals" : "Finals"} · ${teamName(home.id)} v ${teamName(away.id)} · ${gameLabel(g)}`,
           player_a_member_id: home.players[p1 - 1], player_b_member_id: away.players[p1 - 1],
           partner_a_member_id: p2 ? home.players[p2 - 1] : null, partner_b_member_id: p2 ? away.players[p2 - 1] : null,
           scheduled_date: w.date || null, scheduled_time: time,
@@ -199,9 +202,12 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
   };
   const setTeamCount = (n: number) => {
     const next = [...teams];
-    while (next.length < n) next.push(newTeams(1, cfg.playersPerTeam)[0]);
+    while (next.length < n) next.push({ id: uid(), name: "", pool: "B", players: Array(cfg.playersPerTeam).fill(null) });
     next.length = n;
-    setTeams(next.map((t, i) => ({ ...t, pool: i < n / 2 ? "A" : "B" })));
+    setTeams(next.map((t, i) => {
+      const pool = i < n / 2 ? "A" : "B";
+      return { ...t, name: t.name || `${pool}${i < n / 2 ? i + 1 : i - n / 2 + 1}`, pool };
+    }));
   };
 
   const pools = { A: teams.filter((t) => t.pool === "A"), B: teams.filter((t) => t.pool === "B") };
@@ -211,7 +217,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
   const generatePool = () => {
     if (played) return toast.error("Games have been scored — pool fixtures are locked.");
     const incomplete = teams.filter((t) => t.players.some((p) => !p));
-    if (incomplete.length) return toast.error(`Fill every slot first: ${incomplete.map((t) => t.name).join(", ")}`);
+    if (incomplete.length) return toast.error(`Fill every slot first: ${incomplete.map((t) => teamName(t.id)).join(", ")}`);
     const rA = poolRounds(pools.A.length), rB = poolRounds(pools.B.length);
     const n = Math.max(rA.length, rB.length);
     const w: Week[] = [];
@@ -350,7 +356,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
           {teams.map((t, ti) => (
             <div key={t.id} className="rounded border border-border p-2 space-y-1">
               <div className="flex gap-1">
-                <Input className="h-7 text-xs font-semibold" value={t.name} onChange={(e) => setTeams(teams.map((x, i) => (i === ti ? { ...x, name: e.target.value } : x)))} />
+                 <Input className="h-7 text-xs font-semibold" value={teamName(t.id)} onChange={(e) => setTeams(teams.map((x, i) => (i === ti ? { ...x, name: e.target.value } : x)))} />
                 <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={t.pool} disabled={weeks.length > 0} onChange={(e) => setTeams(teams.map((x, i) => (i === ti ? { ...x, pool: e.target.value as "A" | "B" } : x)))}>
                   <option value="A">Pool A</option><option value="B">Pool B</option>
                 </select>

@@ -7523,6 +7523,24 @@ export type Database = {
         }
         Relationships: []
       }
+      help_center_pilot_allowlist: {
+        Row: {
+          added_at: string
+          added_by: string
+          ticket_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string
+          ticket_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string
+          ticket_id?: string
+        }
+        Relationships: []
+      }
       help_center_ticket_outbox: {
         Row: {
           attempts: number
@@ -7532,6 +7550,8 @@ export type Database = {
           enqueued_at: string
           event_id: string
           event_type: string
+          held_at: string | null
+          hold_reason: string | null
           id: number
           last_error: string | null
           locked_until: string | null
@@ -7550,6 +7570,8 @@ export type Database = {
           enqueued_at?: string
           event_id?: string
           event_type?: string
+          held_at?: string | null
+          hold_reason?: string | null
           id?: number
           last_error?: string | null
           locked_until?: string | null
@@ -7568,6 +7590,8 @@ export type Database = {
           enqueued_at?: string
           event_id?: string
           event_type?: string
+          held_at?: string | null
+          hold_reason?: string | null
           id?: number
           last_error?: string | null
           locked_until?: string | null
@@ -18096,6 +18120,7 @@ export type Database = {
         Returns: boolean
       }
       has_wifi_access: { Args: { _club_member_id: string }; Returns: boolean }
+      help_center_delivery_mode: { Args: never; Returns: string }
       help_center_enqueue: {
         Args: {
           p_created: string
@@ -18106,6 +18131,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      help_center_hold_backlog: { Args: never; Returns: Json }
       help_center_initial_sync: { Args: never; Returns: Json }
       help_center_outbox_claim: {
         Args: { p_lease_seconds?: number; p_limit?: number }
@@ -18117,6 +18143,8 @@ export type Database = {
           enqueued_at: string
           event_id: string
           event_type: string
+          held_at: string | null
+          hold_reason: string | null
           id: number
           last_error: string | null
           locked_until: string | null
@@ -18145,6 +18173,11 @@ export type Database = {
         Returns: undefined
       }
       help_center_outbox_wake: { Args: never; Returns: undefined }
+      help_center_pilot_enqueue: { Args: never; Returns: Json }
+      help_center_set_delivery_mode: {
+        Args: { p_mode: string }
+        Returns: string
+      }
       help_center_verify_dispatch: {
         Args: { p_token: string }
         Returns: boolean

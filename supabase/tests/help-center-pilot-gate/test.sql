@@ -23,26 +23,51 @@ SELECT pg_temp.ok(public.help_center_outbox_disarm() AND (SELECT count(*) FROM c
 -- 3. Hold backlog: all undelivered rows of non-active tickets, flags untouched.
 SELECT pg_temp.ok((public.help_center_hold_backlog()->>'held')::int=24, 'hold_backlog holds 22 + 2 new synthetic rows (aggregate only)');
 SELECT pg_temp.ok((public.help_center_hold_backlog()->>'held')::int=0, 'hold_backlog is idempotent');
+SELECT pg_temp.ok((SELECT count(*) FROM snap) > 0, 'pre-hold snapshot is non-empty');
+SELECT pg_temp.ok(NOT EXISTS (
+  SELECT 1 FROM snap s WHERE NOT EXISTS (SELECT 1 FROM public.help_center_ticket_outbox o WHERE o.id = s.id)),
+  'every pre-hold snapshot row still exists');
 SELECT pg_temp.ok(NOT EXISTS (
   SELECT 1 FROM snap s JOIN public.help_center_ticket_outbox o USING (id)
-   WHERE o.delivered_at IS DISTINCT FROM s.delivered_at OR o.dead_at IS DISTINCT FROM s.dead_at
-      OR o.attempts <> s.attempts OR o.event_id <> s.event_id OR o.status <> s.status OR o.revision <> s.revision),
-  'held rows keep delivered/dead/attempts/payload unchanged');
+   WHERE o.event_id IS DISTINCT FROM s.event_id
+      OR o.ticket_id IS DISTINCT FROM s.ticket_id
+      OR o.event_type IS DISTINCT FROM s.event_type
+      OR o.correlation_id IS DISTINCT FROM s.correlation_id
+      OR o.status IS DISTINCT FROM s.status
+      OR o.revision IS DISTINCT FROM s.revision
+      OR o.ticket_created_at IS DISTINCT FROM s.ticket_created_at
+      OR o.ticket_updated_at IS DISTINCT FROM s.ticket_updated_at
+      OR o.enqueued_at IS DISTINCT FROM s.enqueued_at
+      OR o.attempts IS DISTINCT FROM s.attempts
+      OR o.delivered_at IS DISTINCT FROM s.delivered_at
+      OR o.dead_at IS DISTINCT FROM s.dead_at),
+  'held rows keep ids, type, correlation, timestamps, payload, attempts, delivered/dead unchanged');
 SELECT pg_temp.ok((SELECT count(*) FROM public.help_center_ticket_outbox) >= (SELECT count(*) FROM snap), 'no rows deleted');
 
 -- 4. Append-only protections still hold (each in a subtransaction).
-DO $$ BEGIN
-  BEGIN DELETE FROM public.help_center_ticket_outbox; RAISE EXCEPTION 'x'; EXCEPTION WHEN others THEN
-    IF SQLERRM NOT LIKE '%append-only%' THEN RAISE EXCEPTION 'FAIL delete: %', SQLERRM; END IF; END;
-  BEGIN UPDATE public.help_center_ticket_outbox SET status='open'; RAISE EXCEPTION 'x'; EXCEPTION WHEN others THEN
-    IF SQLERRM NOT LIKE '%immutable%' THEN RAISE EXCEPTION 'FAIL payload: %', SQLERRM; END IF; END;
-  BEGIN UPDATE public.help_center_ticket_outbox SET delivered_at=now() WHERE held_at IS NOT NULL; RAISE EXCEPTION 'x'; EXCEPTION WHEN others THEN
-    IF SQLERRM NOT LIKE '%held events%' THEN RAISE EXCEPTION 'FAIL held deliver: %', SQLERRM; END IF; END;
-  BEGIN UPDATE public.help_center_ticket_outbox SET held_at=NULL WHERE held_at IS NOT NULL; RAISE EXCEPTION 'x'; EXCEPTION WHEN others THEN
-    IF SQLERRM NOT LIKE '%together%' THEN RAISE EXCEPTION 'FAIL half-clear: %', SQLERRM; END IF; END;
-  BEGIN TRUNCATE public.help_center_ticket_outbox; RAISE EXCEPTION 'x'; EXCEPTION WHEN others THEN
+DO $$ DECLARE v_id bigint; v_n bigint; BEGIN
+  SELECT min(id) INTO v_id FROM public.help_center_ticket_outbox;
+  SELECT count(*) INTO v_n FROM public.help_center_ticket_outbox;
+  -- Row-level DELETE guard, single targeted row.
+  BEGIN DELETE FROM public.help_center_ticket_outbox WHERE id = v_id; RAISE EXCEPTION 'no-guard'; EXCEPTION WHEN others THEN
+    IF SQLERRM NOT LIKE '%append-only%' THEN RAISE EXCEPTION 'FAIL row delete: %', SQLERRM; END IF; END;
+  -- Row-level DELETE guard, whole table.
+  BEGIN DELETE FROM public.help_center_ticket_outbox; RAISE EXCEPTION 'no-guard'; EXCEPTION WHEN others THEN
+    IF SQLERRM NOT LIKE '%append-only%' THEN RAISE EXCEPTION 'FAIL bulk delete: %', SQLERRM; END IF; END;
+  IF NOT EXISTS (SELECT 1 FROM public.help_center_ticket_outbox WHERE id = v_id) THEN RAISE EXCEPTION 'FAIL: row removed by delete'; END IF;
+  RAISE NOTICE 'PASS: row DELETE guard refuses single and bulk deletes';
+  -- Statement-level TRUNCATE guard.
+  BEGIN TRUNCATE public.help_center_ticket_outbox; RAISE EXCEPTION 'no-guard'; EXCEPTION WHEN others THEN
     IF SQLERRM NOT LIKE '%append-only%' THEN RAISE EXCEPTION 'FAIL truncate: %', SQLERRM; END IF; END;
-  RAISE NOTICE 'PASS: append-only, payload, held and truncate guards';
+  IF (SELECT count(*) FROM public.help_center_ticket_outbox) <> v_n THEN RAISE EXCEPTION 'FAIL: rows lost after truncate'; END IF;
+  RAISE NOTICE 'PASS: statement TRUNCATE guard refuses and row count unchanged';
+  BEGIN UPDATE public.help_center_ticket_outbox SET status='open'; RAISE EXCEPTION 'no-guard'; EXCEPTION WHEN others THEN
+    IF SQLERRM NOT LIKE '%immutable%' THEN RAISE EXCEPTION 'FAIL payload: %', SQLERRM; END IF; END;
+  BEGIN UPDATE public.help_center_ticket_outbox SET delivered_at=now() WHERE held_at IS NOT NULL; RAISE EXCEPTION 'no-guard'; EXCEPTION WHEN others THEN
+    IF SQLERRM NOT LIKE '%held events%' THEN RAISE EXCEPTION 'FAIL held deliver: %', SQLERRM; END IF; END;
+  BEGIN UPDATE public.help_center_ticket_outbox SET held_at=NULL WHERE held_at IS NOT NULL; RAISE EXCEPTION 'no-guard'; EXCEPTION WHEN others THEN
+    IF SQLERRM NOT LIKE '%together%' THEN RAISE EXCEPTION 'FAIL half-clear: %', SQLERRM; END IF; END;
+  RAISE NOTICE 'PASS: payload, held-deliver and half-clear guards';
 END $$;
 
 -- 5. Pilot enqueue: 4 open tickets, idempotent, aggregate-only output.

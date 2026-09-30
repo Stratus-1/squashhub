@@ -191,10 +191,11 @@ export default function AuthCallback() {
           } else {
             // Safety net: an account with no club context must pick its club
             // before continuing — never leave a club-less registration.
-            const { count } = await supabase
+            const { count, error: membershipError } = await supabase
               .from("club_members")
               .select("id", { count: "exact", head: true })
               .eq("user_id", user.id);
+            if (membershipError) throw membershipError;
             // A Google account without a club membership should return to an
             // existing imported club, not be sent to register another club.
             // Only use a unique exact-email candidate; never guess for family
@@ -208,7 +209,7 @@ export default function AuthCallback() {
                 return;
               }
             }
-            navigate(count ? "/" : "/register-club", { replace: true });
+            navigate(count ? "/" : "/find-club", { replace: true });
           }
         } else {
           navigate("/auth", { replace: true });

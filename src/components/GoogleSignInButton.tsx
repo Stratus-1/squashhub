@@ -9,7 +9,7 @@ interface Props {
   className?: string;
   /** If true, preserves the current club subdomain in the post-OAuth redirect. */
   preserveClub?: boolean;
-/** Explain that an existing membership is matched by its club-held email. */
+  /** Explain that an existing membership is matched by its club-held email. */
   showHint?: boolean;
 }
 
@@ -26,7 +26,7 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
     setLoading(true);
     try {
       const sub = preserveClub ? getClubSubdomain() : null;
-      // A public same-origin callback retains the selected club for the preview.
+      // A public same-origin callback retains the selected club on every host.
       // Never send OAuth directly to a protected page.
       const callback = new URL("/auth/callback", window.location.origin);
       if (sub) callback.searchParams.set("club", sub);

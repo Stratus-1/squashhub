@@ -54,6 +54,15 @@ Deno.serve(async (req) => {
   const { data: okToken, error: vErr } = await db.rpc("help_center_verify_dispatch", { p_token: token });
   if (vErr || okToken !== true) return json(401, { error: "unauthorized" });
 
+  // Delivery gate (paused by default; pilot = server-side allowlist only). The
+  // claim RPC enforces the same gate; this early exit also avoids touching cron.
+  const { data: modeRaw, error: mErr } = await db.rpc("help_center_delivery_mode");
+  const mode = !mErr && (modeRaw === "pilot" || modeRaw === "live") ? modeRaw : "paused";
+  if (mode === "paused") {
+    console.log(JSON.stringify({ fn: "help-center-ticket-feed", event: "paused" }));
+    return json(200, { delivered: 0, failed: 0, mode });
+  }
+
   // Fail closed until exact configuration exists.
   const ingressUrl = Deno.env.get("HELP_CENTER_INGRESS_URL") ?? "";
   const hmacKey = Deno.env.get("HELP_CENTER_HMAC_KEY") ?? "";

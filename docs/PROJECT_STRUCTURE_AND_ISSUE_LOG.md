@@ -2334,3 +2334,4 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 
 ## 2026-09-30 — Diamond League team labels
 - Default Diamond team names now use division-local labels A1–A4 and B1–B4 in setup, standings, and newly generated fixture labels. Previously saved default names are displayed with those labels without editing club records, player slots, scores, or custom team names. Focused team-league tests cover the old-name display mapping.
+- The legacy Current Standings — Leaders / Bottom cards used individual player rankings even for linked Diamond League tournaments. Replace the leaders card with the Diamond team standings at the same position, hide individual bottom/survivor cards, and retain the team schedule and scores. Individual tournaments keep their existing rankings.

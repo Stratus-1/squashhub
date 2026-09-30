@@ -3325,12 +3325,11 @@ export default function ClubChampsView() {
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
         />
-        {survivorsCard}
-        {winnersCard}
+        {!diamondEvent && survivorsCard}
+        {diamondEvent ? <DiamondStandings tournamentId={champId!} /> : winnersCard}
 
-        {woodenSpoonsCard}
+        {!diamondEvent && woodenSpoonsCard}
         <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
-          <DiamondStandings tournamentId={champId!} />
           {!diamondEvent && standingsCards}
           {fixtureCards}
           {combinedFixtures}

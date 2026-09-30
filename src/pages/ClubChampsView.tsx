@@ -3326,11 +3326,10 @@ export default function ClubChampsView() {
           onGeneratePlayoffs={enablePlayoffs ? () => generatePlayoffs.mutate({}) : undefined}
         />
         {!diamondEvent && survivorsCard}
-        {!diamondEvent && winnersCard}
+        {diamondEvent ? <DiamondStandings tournamentId={champId!} /> : winnersCard}
 
         {!diamondEvent && woodenSpoonsCard}
         <div id="tournament-fixtures" className="space-y-4 scroll-mt-20">
-          <DiamondStandings tournamentId={champId!} />
           {!diamondEvent && standingsCards}
           {fixtureCards}
           {combinedFixtures}

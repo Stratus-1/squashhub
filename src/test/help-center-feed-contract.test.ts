@@ -31,4 +31,9 @@ describe("help-center-ticket-feed contract is unchanged by the pilot gate", () =
     expect(gate).not.toMatch(/PERFORM cron\.unschedule/);
     expect(gate).toContain("VALUES ('delivery_mode', 'paused')");
   });
+  it("never logs event, ticket, correlation or outbox identifiers", () => {
+    const logs = src.match(/console\.(log|warn|error|info|debug)\([^;]*;/g) ?? [];
+    expect(logs.length).toBeGreaterThan(0);
+    for (const l of logs) expect(l).not.toMatch(/event_id|ticket_id|product_case_ref|correlation_id|\br\.|payload|body/);
+  });
 });

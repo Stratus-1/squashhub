@@ -89,6 +89,7 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
       poolTies.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })),
       undefined,
       cfg.tieBreaks,
+      true,
     );
 
   const semiWeek = weeks.find((w) => w.stage === "semi");
@@ -116,6 +117,9 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
     >
       {!anyScores && (
         <p className="text-xs text-muted-foreground italic">No scores yet — the tables fill in as games are marked.</p>
+      )}
+      {anyScores && (
+        <p className="text-[11px] text-muted-foreground">Live: points update as each game is marked. P, W and the win bonus are added when a team match is finished.</p>
       )}
       <div className="grid md:grid-cols-2 gap-4">
         {(["A", "B"] as const).map((p) => (

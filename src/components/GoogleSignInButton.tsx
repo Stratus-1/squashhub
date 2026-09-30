@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
+import { getTenantAwareAuthRedirect } from "@/lib/site";
 import { toast } from "sonner";
 import { getClubSubdomain } from "@/lib/subdomain";
 
@@ -26,22 +27,23 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
     setLoading(true);
     try {
       const sub = preserveClub ? getClubSubdomain() : null;
-      // A public same-origin callback retains the selected club on every host.
-      // Never send OAuth directly to a protected page.
-      const callback = new URL("/auth/callback", window.location.origin);
+      // Production domains are served from Vercel, which cannot proxy the
+      // Lovable /~oauth broker (404). Use backend-direct Google OAuth via the
+      // production root allowlist; index.html bounces back to the subdomain.
+      const callback = new URL(getTenantAwareAuthRedirect("/auth/callback"));
+      if (sub && !callback.searchParams.has("tenant")) callback.searchParams.set("tenant", sub);
       if (sub) callback.searchParams.set("club", sub);
 
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: callback.toString(),
-        extraParams: { prompt: "select_account" },
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: callback.toString(), queryParams: { prompt: "select_account" } },
       });
 
-      if (result.error) {
-        toast.error(result.error.message || "Google sign-in failed");
+      if (error) {
+        toast.error(error.message || "Google sign-in failed");
         setLoading(false);
         return;
       }
-      if (!result.redirected) window.location.assign(callback.toString());
     } catch (e: any) {
       toast.error(e?.message || "Google sign-in failed");
       setLoading(false);

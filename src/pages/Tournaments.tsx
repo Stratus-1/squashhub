@@ -22,7 +22,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useNavigate } from "react-router-dom";
 import { format, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FinalizeTournamentSetupDialog } from "@/components/tournaments/FinalizeTournamentSetupDialog";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
@@ -456,6 +456,8 @@ export default function Tournaments() {
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [champFilter, setChampFilter] = useState<string>("all");
+  const gamesCardRef = useRef<HTMLDivElement | null>(null);
   // "round" (default) | "slot" | "flat"
   const [groupMode, setGroupMode] = useState<"round" | "slot" | "flat">(() => {
     if (typeof window === "undefined") return "round";
@@ -479,6 +481,7 @@ export default function Tournaments() {
   const applyFilters = (list: any[]) =>
     list.filter(
       (m) =>
+        (champFilter === "all" || m.champ_id === champFilter) &&
         (poolFilter === "all" || bucketKeyOf(m) === poolFilter) &&
         (dateFilter === "all" || m.scheduled_date === dateFilter),
     );
@@ -1571,10 +1574,26 @@ export default function Tournaments() {
                         const now = new Date();
                         const regOpen = (!opensAt || now >= opensAt) && (!closesAt || now <= closesAt) && !champ.entries_locked;
                         return (
-                          <button
+                          <div
                             key={champ.id}
-                            onClick={() => navigate(`/club-champs/${champ.id}`)}
-                            className="w-full flex items-center justify-between gap-2 p-2 rounded bg-muted/50 hover:bg-muted text-left"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              setChampFilter(champ.id);
+                              setPoolFilter("all");
+                              setDateFilter("all");
+                              gamesCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setChampFilter(champ.id);
+                                setPoolFilter("all");
+                                setDateFilter("all");
+                                gamesCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                              }
+                            }}
+                            className="w-full flex items-center justify-between gap-2 p-2 rounded bg-muted/50 hover:bg-muted text-left cursor-pointer"
                           >
                             <div className="min-w-0">
                               <p className="text-sm font-medium truncate">{champ.name}</p>
@@ -1585,9 +1604,17 @@ export default function Tournaments() {
                             <div className="flex items-center gap-1.5 shrink-0">
                               {regOpen && <Badge variant="default" className="text-[10px]">Open</Badge>}
                               <Badge variant="secondary" className="text-[10px]">{champ.status}</Badge>
-                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                title="Open tournament (standings & details)"
+                                onClick={(e) => { e.stopPropagation(); navigate(`/club-champs/${champ.id}`); }}
+                              >
+                                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                              </Button>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -1617,7 +1644,7 @@ export default function Tournaments() {
               </Card>
 
 
-              <Card>
+              <Card ref={gamesCardRef} className="scroll-mt-4">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -1688,9 +1715,24 @@ export default function Tournaments() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {(buckets.length > 1 || availableDates.length > 1) && (
+                  {(buckets.length > 1 || availableDates.length > 1 || champFilter !== "all") && (
                     <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2">
                       <label className="text-xs text-muted-foreground shrink-0">Filter:</label>
+                      {champs.length > 1 && (
+                        <Select value={champFilter} onValueChange={setChampFilter}>
+                          <SelectTrigger className="h-8 text-xs w-full sm:max-w-[200px]">
+                            <SelectValue placeholder="All tournaments" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All tournaments ({upcomingMatches.length})</SelectItem>
+                            {champs.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name} ({upcomingMatches.filter((m: any) => m.champ_id === c.id).length})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       {availableDates.length > 1 && (
                         <Select value={dateFilter} onValueChange={setDateFilter}>
                           <SelectTrigger className="h-8 text-xs w-full sm:max-w-[180px]">
@@ -1755,12 +1797,12 @@ export default function Tournaments() {
                         </div>
                       )}
 
-                      {(poolFilter !== "all" || dateFilter !== "all") && (
+                      {(poolFilter !== "all" || dateFilter !== "all" || champFilter !== "all") && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-8 text-xs"
-                          onClick={() => { setPoolFilter("all"); setDateFilter("all"); }}
+                          onClick={() => { setPoolFilter("all"); setDateFilter("all"); setChampFilter("all"); }}
                         >
                           Clear
                         </Button>

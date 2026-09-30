@@ -94,3 +94,5 @@
 - [x] Member template seeded to all clubs
 - [x] Fees table recurring option shown only when club switch is on; gateway recurring support from one shared capability list (no hardcoded gateway names)
 - [x] Tests + issue log
+
+- [x] Bells games: renamed "Ring & Score" to "Mark game"

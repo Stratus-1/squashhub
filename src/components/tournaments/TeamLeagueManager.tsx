@@ -327,7 +327,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
             <select className="w-full h-8 rounded border border-input bg-background px-2" value={cfg.drawRule} onChange={(e) => setCfg({ ...cfg, drawRule: e.target.value as DrawRule })}>
               {Object.entries(DRAW_RULE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select></div>
-          <div className="col-span-2"><Label className="text-xs">Level final (points reset)</Label>
+          <div className="col-span-2"><Label className="text-xs">Winner of a drawn tie (points reset)</Label>
             <select className="w-full h-8 rounded border border-input bg-background px-2" value={cfg.finalLevelRule} onChange={(e) => setCfg({ ...cfg, finalLevelRule: e.target.value as FinalLevelRule })}>
               {Object.entries(FINAL_LEVEL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select></div>

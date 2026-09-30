@@ -10,10 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { fromExt } from "@/lib/supabase-ext";
 import { useClubMembers } from "@/hooks/use-club";
 import {
-  DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, CROSSOVER, PLACING_FINALS,
-  tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName, diamondGameStarts,
+  DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, PLACING_FINALS,
+  tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName,
+  diamondSemiTies, diamondFinalTies,
   type TeamLeagueConfig, type TieBreak, type GameScore, type DrawRule, type FinalLevelRule,
 } from "@/lib/tournaments/team-league";
+import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 
 type Team = { id: string; name: string; pool: "A" | "B"; players: (string | null)[] };
 type Tie = { id: string; home: string; away: string; court: number; label?: string };
@@ -211,7 +213,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
   const generateSemis = () => {
     const a = poolTable("A"), b = poolTable("B");
     if (a.undecided.length || b.undecided.length) return toast.error("Some teams are level and the tie-breaks can't separate them. Add a tie-break in the settings.");
-    const ties = CROSSOVER.map((c, k) => ({ id: `s${c.match}`, home: a.rows[c.a - 1].teamId, away: b.rows[c.b - 1].teamId, court: courtOf(k), label: `Match ${c.match}: A${c.a} v B${c.b}` }));
+    const ties = diamondSemiTies(a.rows.map((r) => r.teamId), b.rows.map((r) => r.teamId), courtOf);
     const n = weeks.filter((w) => w.stage === "pool").length;
     const nw: Week[] = [...weeks.filter((w) => w.stage === "pool"), { week: n + 1, date: dates[n] || "", stage: "semi", ties }];
     setWeeks(nw); save.mutate(nw);
@@ -229,10 +231,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
   const generateFinals = () => {
     const s = [1, 2, 3, 4].map(semiWinner);
     if (s.some((x) => !x)) return toast.error("Every semi needs a decided result first.");
-    const ties = PLACING_FINALS.map((f, k) => {
-      const [x, i, y, j] = f.from;
-      return { id: `f${f.places[0]}`, home: s[i - 1]![x], away: s[j - 1]![y], court: courtOf(k), label: `Places ${f.places[0]}–${f.places[1]}` };
-    });
+    const ties = diamondFinalTies(s as Array<{ W: string; L: string }>, courtOf);
     const n = weeks.filter((w) => w.stage !== "final").length;
     const nw: Week[] = [...weeks.filter((w) => w.stage !== "final"), { week: n + 1, date: dates[n] || "", stage: "final", ties }];
     setWeeks(nw); save.mutate(nw);

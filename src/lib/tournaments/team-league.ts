@@ -173,12 +173,23 @@ export function diamondTeamName(team: Pick<DiamondTeam, "name" | "pool">, index:
 export type DiamondTie = { id: string; home: string; away: string; court: number; label?: string };
 export type DiamondWeek = { week: number; date: string; stage: "pool" | "semi" | "final"; ties: DiamondTie[] };
 
+const ORD = ["", "1st", "2nd", "3rd", "4th"];
+/** Semi label by finishing position (not team name), e.g. "Match 1: 1st Div A v 2nd Div B". */
+export function diamondSemiLabel(match: number, a: number, b: number): string {
+  return `Match ${match}: ${ORD[a] || `#${a}`} Div A v ${ORD[b] || `#${b}`} Div B`;
+}
+/** Rewrites legacy stored labels like "Match 1: A1 v B2" to finishing-position wording. */
+export function diamondTieLabel(label?: string): string | undefined {
+  const m = label?.match(/^Match (\d+): A(\d) v B(\d)$/);
+  return m ? diamondSemiLabel(+m[1], +m[2], +m[3]) : label;
+}
+
 /** Crossover semi ties from two finished pool tables, ordered best → worst. */
 export function diamondSemiTies(aOrder: string[], bOrder: string[], courtOf: (i: number) => number): DiamondTie[] {
   return CROSSOVER.map((c, k) => ({
     id: `s${c.match}`,
     home: aOrder[c.a - 1], away: bOrder[c.b - 1],
-    court: courtOf(k), label: `Match ${c.match}: A${c.a} v B${c.b}`,
+    court: courtOf(k), label: diamondSemiLabel(c.match, c.a, c.b),
   }));
 }
 

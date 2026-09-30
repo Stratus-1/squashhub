@@ -10,6 +10,7 @@ import {
   tieGames, gameLabel, tieResult, standings, decideLevelFinal, diamondTeamName,
   diamondSemiTies, diamondFinalTies,
   type TeamLeagueConfig, type GameScore,
+  diamondTieLabel,
 } from "@/lib/tournaments/team-league";
 import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 
@@ -335,7 +336,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
                   return (
                     <div key={t.id} className="rounded border border-border p-2 text-xs">
                       <div className="flex justify-between font-semibold mb-1">
-                        <span>{teamName(t.home)} v {teamName(t.away)}{t.label ? ` · ${t.label}` : ""}</span>
+                        <span>{teamName(t.home)} v {teamName(t.away)}{t.label ? ` · ${diamondTieLabel(t.label)}` : ""}</span>
                         <span className="text-muted-foreground">Court {t.court}</span>
                       </div>
                       <table className="w-full">

@@ -14,6 +14,7 @@ import {
   tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName,
   diamondSemiTies, diamondFinalTies,
   type TeamLeagueConfig, type TieBreak, type GameScore, type DrawRule, type FinalLevelRule,
+  diamondTieLabel,
 } from "@/lib/tournaments/team-league";
 import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 
@@ -364,7 +365,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
                   return (
                     <div key={t.id} className="rounded border border-border p-2 text-xs">
                       <div className="flex justify-between font-medium mb-1">
-                        <span>{t.label} · Court {t.court}</span>
+                        <span>{diamondTieLabel(t.label)} · Court {t.court}</span>
                         <span>{teamName(t.home)} {r.homePoints + r.homeBonus} – {r.awayPoints + r.awayBonus} {teamName(t.away)}</span>
                       </div>
                       <div className="grid grid-cols-[1fr_3rem_3rem_1fr] gap-1 text-[10px] text-muted-foreground">

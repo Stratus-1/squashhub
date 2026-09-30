@@ -299,7 +299,12 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
             <div key={t.id} className="rounded border border-border p-2 text-xs">
               <div className="font-semibold mb-0.5">{teamName(t.id)} <span className="text-muted-foreground font-normal">· Division {t.pool}</span></div>
               {t.players.map((pid, i) => (
-                <div key={i}><span className="text-muted-foreground">#{i + 1}</span> {pid ? names[pid] || "Member" : "—"}</div>
+                <div key={i}>
+                  <span className="text-muted-foreground">#{i + 1}</span> {pid ? names[pid] || "Member" : "—"}
+                  {pid && anyScores && (
+                    <span className="text-muted-foreground ml-1">· {playerTotals.get(pid) || 0} pts</span>
+                  )}
+                </div>
               ))}
             </div>
           ))}

@@ -230,7 +230,7 @@ export type TieRecord = { homeId: string; awayId: string; result: TieResult };
  * totals are separated only by the configured tie-breaks; anything still level
  * is reported in `undecided` — never guessed.
  */
-export function standings(teamIds: string[], ties: TieRecord[], carry?: Map<string, number>, tieBreaks: TieBreak[] = []) {
+export function standings(teamIds: string[], ties: TieRecord[], carry?: Map<string, number>, tieBreaks: TieBreak[] = [], includeLive = false) {
   const rows = new Map<string, StandingRow>(
     teamIds.map((id) => [id, { teamId: id, played: 0, won: 0, points: 0, against: 0, bonus: 0, games: 0, total: carry?.get(id) ?? 0 }]),
   );
@@ -240,6 +240,14 @@ export function standings(teamIds: string[], ties: TieRecord[], carry?: Map<stri
     const r = t.result;
     if (h) { h.played++; h.points += r.homePoints; h.against += r.awayPoints; h.bonus += r.homeBonus; h.games += r.homeGames; h.total += r.homePoints + r.homeBonus; if (r.winner === "home") h.won++; }
     if (a) { a.played++; a.points += r.awayPoints; a.against += r.homePoints; a.bonus += r.awayBonus; a.games += r.awayGames; a.total += r.awayPoints + r.awayBonus; if (r.winner === "away") a.won++; }
+  }
+  // Live running score: points/games from unfinished ties; no played/won/bonus until the tie is complete.
+  if (includeLive) for (const t of ties) {
+    const r = t.result;
+    if (r.complete || (r.homePoints === 0 && r.awayPoints === 0)) continue;
+    const h = rows.get(t.homeId), a = rows.get(t.awayId);
+    if (h) { h.points += r.homePoints; h.against += r.awayPoints; h.games += r.homeGames; h.total += r.homePoints; }
+    if (a) { a.points += r.awayPoints; a.against += r.homePoints; a.games += r.awayGames; a.total += r.awayPoints; }
   }
   const h2h = (x: string, y: string) => {
     let s = 0;

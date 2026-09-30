@@ -95,7 +95,7 @@ export default function BellsMarker() {
   const format = getTournamentFormat(champ?.scoring_mode);
   const isBells = format?.key === BellsFormat.key;
 
-  const { data: diamondConfig } = useQuery({
+  const { data: diamondConfig, isLoading: diamondTimingLoading } = useQuery({
     queryKey: ["diamond-marker-timing", match?.champ_id],
     queryFn: async () => {
       const { data, error } = await fromExt("team_league_events")
@@ -164,7 +164,7 @@ export default function BellsMarker() {
 
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
-    if (!match) return;
+    if (!match || diamondTimingLoading) return;
     // Seed from saved live points if present; otherwise from the league-rank
     // handicap so the scoreboard opens at e.g. −3 / 0 instead of 0 / 0.
     const hcA = Number(match.handicap_a) || 0;
@@ -210,7 +210,7 @@ export default function BellsMarker() {
       autoSubmitRef.current(nextPointsA, nextPointsB);
     }
     hydratedRef.current = true;
-  }, [match, capMinutes, qc]);
+  }, [match, capMinutes, diamondTimingLoading, qc]);
 
   useEffect(() => {
     scoreStateRef.current = { pointsA, pointsB };

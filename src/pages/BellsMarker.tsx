@@ -163,6 +163,10 @@ export default function BellsMarker() {
         qc.invalidateQueries({ queryKey: ["bells-match", matchId] });
         qc.invalidateQueries({ queryKey: ["club-champ-matches", match.champ_id] });
         qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
+        // Game is done — close the scoreboard automatically so the marker
+        // isn't left staring at a "Resubmit" screen. Short delay lets the
+        // success toast read before navigating.
+        setTimeout(() => navigate("/tournaments", { replace: true }), 1800);
       });
   };
 

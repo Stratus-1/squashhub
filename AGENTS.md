@@ -180,3 +180,4 @@ Supabase currently owns the dominant data and backend path. Migrate incrementall
 <!-- LOVABLE:BEGIN -->
 - Club Google registration uses a public same-origin callback with club context and reuses existing club_members identity; only a unique exact-email unclaimed match auto-claims; why: preserve member history without guessing across shared family emails.
 <!-- LOVABLE:END -->
+- Help Center ticket feed: support_threads insert/status change appends to service-role-only, append-only `help_center_ticket_outbox` in the same transaction; `help-center-ticket-feed` publishes only ticket UUID/status/revision/timestamps with static redacted text, HMAC-signed with dedicated `HELP_CENTER_HMAC_KEY`, fails closed without exact tenant scope + redaction policy, bounded backoff, retry cron armed only while pending; why: SquashHub stays authoritative and no customer content leaves the platform.

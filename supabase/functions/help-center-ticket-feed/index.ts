@@ -15,7 +15,10 @@ const KEY_ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 const REDACTED_TITLE = "SquashHub support ticket";
 const REDACTED_SUMMARY = "Details are held in SquashHub and are not exported.";
 const TENANT_SCOPE_RE = /^[a-z0-9][a-z0-9._:-]{2,63}$/;
-const ALLOWED_STATUS = new Set(["open", "pending", "in_progress", "waiting", "resolved", "closed"]);
+const ALLOWED_STATUS = new Set(["open", "waiting", "in_progress", "resolved", "closed"]);
+// support_threads has no category/priority fields; receiver contract requires fixed values.
+const CONTRACT_CATEGORY = "product_help";
+const CONTRACT_PRIORITY = "normal";
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_ATTEMPTS = 12;
 
@@ -78,6 +81,16 @@ Deno.serve(async (req) => {
 
   let delivered = 0, failed = 0;
   for (const r of (rows ?? []) as OutboxRow[]) {
+    // Map source status to the receiver's strict enum; fail closed per event on unknown values.
+    const mappedStatus = r.status === "pending" ? "waiting" : r.status;
+    if (!ALLOWED_STATUS.has(mappedStatus)) {
+      await db.rpc("help_center_outbox_result", {
+        p_id: r.id, p_ok: false, p_error: "invalid_source_status", p_max_attempts: MAX_ATTEMPTS,
+      });
+      failed++;
+      console.warn(JSON.stringify({ fn: "help-center-ticket-feed", event_id: r.event_id, ok: false, err: "invalid_source_status" }));
+      continue;
+    }
     const payload = {
       contract_version: CONTRACT_VERSION,
       event_id: r.event_id,
@@ -85,9 +98,9 @@ Deno.serve(async (req) => {
       product_case_ref: r.ticket_id,
       case_revision: r.revision,
       tenant_scope_ref: tenantScope,
-      category: "support",
-      priority: "normal",
-      source_status: ALLOWED_STATUS.has(r.status) ? r.status : "other",
+      category: CONTRACT_CATEGORY,
+      priority: CONTRACT_PRIORITY,
+      source_status: mappedStatus,
       redacted_title: REDACTED_TITLE,
       redacted_summary: REDACTED_SUMMARY,
       redaction_policy_version: REDACTION_POLICY,

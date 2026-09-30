@@ -9235,7 +9235,27 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             </div>}
 
             {/* ── Tournament window ── */}
-            {schedulingMode === "club" || currentRoundClubScheduled ? (
+            {diamondMode ? (
+              <div className="rounded-lg border p-3 space-y-3">
+                <Label className="text-sm font-medium">Playing nights</Label>
+                <p className="text-[11px] text-muted-foreground">
+                  {diamondWeekDates.length > 0
+                    ? `${diamondWeekDates.length} week${diamondWeekDates.length === 1 ? "" : "s"}: ${diamondWeekDates[0]} → ${diamondWeekDates[diamondWeekDates.length - 1]} · ${[...playDays].sort().map((d) => DAY_NAMES[d]).join(", ")}`
+                    : "No weekly dates yet — set them on the Diamond League structure page."}
+                  {" "}Dates come from the weekly fixtures, so you only enter them once.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm">Evening start time</Label>
+                    <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Latest court time</Label>
+                    <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            ) : schedulingMode === "club" || currentRoundClubScheduled ? (
               <WizardSection
                 title={"Dates & times"}
                 summary={`${startDate || "start?"} → ${endDate || "end?"} · ${startTime}–${endTime} · ${playDays.size} play day${playDays.size === 1 ? "" : "s"}`}

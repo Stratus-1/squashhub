@@ -1854,7 +1854,7 @@ export default function Tournaments() {
                 </Card>
               )}
               {champs.map((champ: any) => {
-                if (diamondTournamentSet.has(champ.id)) return <DiamondStandings key={champ.id} tournamentId={champ.id} />;
+                if (diamondTournamentSet.has(champ.id)) return <DiamondStandings key={champ.id} tournamentId={champ.id} canManage={canManageChamps || isClubAdmin} />;
                 return (
 
                   <Card key={champ.id}>

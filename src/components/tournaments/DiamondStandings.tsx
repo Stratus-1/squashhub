@@ -1,26 +1,33 @@
-import { useQuery } from "@tanstack/react-query";
-import { Gem, Trophy, TrendingDown } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Gem, Trophy, TrendingDown, Wand2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { fromExt } from "@/lib/supabase-ext";
 import {
   DIAMOND_TEAM_DEFAULTS, CROSSOVER, PLACING_FINALS,
   tieGames, gameLabel, tieResult, standings, decideLevelFinal, diamondTeamName,
+  diamondSemiTies, diamondFinalTies,
   type TeamLeagueConfig, type GameScore,
 } from "@/lib/tournaments/team-league";
+import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 
 type Team = { id: string; name: string; pool: "A" | "B"; players: (string | null)[] };
 type Tie = { id: string; home: string; away: string; court: number; label?: string };
 type Week = { week: number; date: string; stage: "pool" | "semi" | "final"; ties: Tie[] };
 type EventRow = {
-  id: string; name: string;
+  id: string; club_id: string; name: string;
   config: TeamLeagueConfig & { dates?: string[] };
   teams: Team[]; weeks: Week[]; results: Record<string, GameScore[]>;
 };
 
-/** Read-only Diamond League standings for the tournament page: pool tables with
- *  team totals, the semi-final table (points carried), and final places. */
-export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
+/** Diamond League standings for the tournament page: pool tables with
+ *  team totals, the semi-final table (points carried), and final places.
+ *  Admins can create the crossover semi-finals and placing finals right here
+ *  once every league week (or every semi) is decided. */
+export function DiamondStandings({ tournamentId, canManage = false }: { tournamentId: string; canManage?: boolean }) {
+  const qc = useQueryClient();
   const { data: ev } = useQuery({
     queryKey: ["team-league-event-for-tournament", tournamentId],
     queryFn: async () => {
@@ -54,6 +61,42 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
     },
     enabled: playerIds.length > 0,
   });
+  const generatePlayoff = useMutation({
+    mutationFn: async (stage: "semi" | "final") => {
+      if (!ev) throw new Error("Event not loaded yet.");
+      const weeksNow = ev.weeks || [];
+      let nw: Week[];
+      if (stage === "semi") {
+        const a = poolTable("A"), b = poolTable("B");
+        if (a.undecided.length || b.undecided.length) throw new Error("Some teams are level and the tie-breaks can't separate them. Add a tie-break in the settings.");
+        const n = weeksNow.filter((w) => w.stage === "pool").length;
+        nw = [
+          ...weeksNow.filter((w) => w.stage === "pool"),
+          { week: n + 1, date: (ev.config.dates || [])[n] || "", stage: "semi", ties: diamondSemiTies(a.rows.map((r) => r.teamId), b.rows.map((r) => r.teamId), courtOf) },
+        ];
+      } else {
+        const s = [1, 2, 3, 4].map(semiWinner);
+        if (s.some((x) => !x)) throw new Error("Every semi-final needs a decided result first.");
+        const n = weeksNow.filter((w) => w.stage !== "final").length;
+        nw = [
+          ...weeksNow.filter((w) => w.stage !== "final"),
+          { week: n + 1, date: (ev.config.dates || [])[n] || "", stage: "final", ties: diamondFinalTies(s as Array<{ W: string; L: string }>, courtOf) },
+        ];
+      }
+      const { error } = await fromExt("team_league_events").update({ weeks: nw }).eq("id", ev.id);
+      if (error) throw error;
+      const champId = (ev as any).tournament_id as string | null;
+      if (champId) await syncDiamondFixtures({ champId, clubId: ev.club_id, cfg, teams, weeks: nw, teamName });
+      return stage;
+    },
+    onSuccess: (stage) => {
+      qc.invalidateQueries({ queryKey: ["team-league-event-for-tournament", tournamentId] });
+      qc.invalidateQueries({ queryKey: ["diamond-marked-games", tournamentId] });
+      qc.invalidateQueries({ queryKey: ["champ-matches"] });
+      toast.success(stage === "semi" ? "Semi-finals created" : "Finals created");
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not create the play-offs."),
+  });
   if (!ev) return null;
 
   const cfg: TeamLeagueConfig = { ...DIAMOND_TEAM_DEFAULTS, ...ev.config };
@@ -77,6 +120,7 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
     const index = teams.findIndex((t) => t.id === id);
     return index < 0 ? "?" : diamondTeamName(teams[index], index, teams);
   };
+  const courtOf = (i: number) => (i % Math.max(1, cfg.courts)) + 1;
 
   const clean = (tieId: string): GameScore[] =>
     ((results[tieId] || []) as any[]).map((g) => (g && Number.isFinite(g.home) && Number.isFinite(g.away) ? g : null));
@@ -107,6 +151,18 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
     (["A", "B"] as const).forEach((p) => poolTable(p).rows.forEach((r) => carry.set(r.teamId, r.total)));
     return standings(teams.map((t) => t.id), semiWeek.ties.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })), carry, cfg.tieBreaks);
   })();
+  const semiWinner = (m: number) => {
+    const t = semiWeek?.ties.find((x) => x.id === `s${m}`);
+    if (!t) return null;
+    const r = tieRes(t);
+    if (!r.complete) return null;
+    // Semis carry points but the tie itself is won on the night; a level tie falls back to the final rule.
+    const w = r.winner === "draw" ? decideLevelFinal(clean(t.id), r, cfg.finalLevelRule) : r.winner;
+    if (!w) return null;
+    return { W: w === "home" ? t.home : t.away, L: w === "home" ? t.away : t.home };
+  };
+  const poolDone = poolTies.length > 0 && poolTies.every((t) => tieRes(t).complete);
+  const semisDecided = !!semiWeek && semiWeek.ties.length > 0 && [1, 2, 3, 4].every((m) => semiWinner(m) !== null);
 
   const anyScores = Object.values(results).some((r) => r?.some(Boolean));
   // Fun stats: the single team on top and at the bottom across both divisions (live totals).
@@ -144,6 +200,34 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
       )}
       {anyScores && (
         <p className="text-[11px] text-muted-foreground">Live: points update as each game is marked. P, W and the win bonus are added when a team match is finished.</p>
+      )}
+      {canManage && !semiWeek && poolTies.length > 0 && (
+        poolDone ? (
+          <div className="flex items-center gap-2 flex-wrap rounded border border-primary/40 bg-primary/5 p-2 text-xs">
+            <span className="font-medium">All league weeks are played.</span>
+            <Button size="sm" className="h-7 text-xs" disabled={generatePlayoff.isPending} onClick={() => generatePlayoff.mutate("semi")}>
+              <Wand2 className="w-3.5 h-3.5 mr-1" /> Create semi-finals
+            </Button>
+            <span className="text-muted-foreground">Top two of each division cross over: A1 v B2, A2 v B1, A3 v B4, A4 v B3.</span>
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            {poolTies.filter((t) => tieRes(t).complete).length} of {poolTies.length} team ties played — semi-finals unlock when every league week is finished.
+          </p>
+        )
+      )}
+      {canManage && semiWeek && !finalWeek && (
+        semisDecided ? (
+          <div className="flex items-center gap-2 flex-wrap rounded border border-primary/40 bg-primary/5 p-2 text-xs">
+            <span className="font-medium">Semi-finals are decided.</span>
+            <Button size="sm" className="h-7 text-xs" disabled={generatePlayoff.isPending} onClick={() => generatePlayoff.mutate("final")}>
+              <Wand2 className="w-3.5 h-3.5 mr-1" /> Create finals
+            </Button>
+            <span className="text-muted-foreground">Places 1–8 from the semi results; points reset for the finals.</span>
+          </div>
+        ) : (
+          <p className="text-[11px] text-muted-foreground">Finals unlock when every semi-final is decided.</p>
+        )
       )}
       {frontRunner && woodenSpoon && (
         <div className="grid grid-cols-2 gap-2" data-field="diamond-fun-stats">

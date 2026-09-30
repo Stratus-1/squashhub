@@ -173,6 +173,23 @@ export function diamondTeamName(team: Pick<DiamondTeam, "name" | "pool">, index:
 export type DiamondTie = { id: string; home: string; away: string; court: number; label?: string };
 export type DiamondWeek = { week: number; date: string; stage: "pool" | "semi" | "final"; ties: DiamondTie[] };
 
+/** Crossover semi ties from two finished pool tables, ordered best → worst. */
+export function diamondSemiTies(aOrder: string[], bOrder: string[], courtOf: (i: number) => number): DiamondTie[] {
+  return CROSSOVER.map((c, k) => ({
+    id: `s${c.match}`,
+    home: aOrder[c.a - 1], away: bOrder[c.b - 1],
+    court: courtOf(k), label: `Match ${c.match}: A${c.a} v B${c.b}`,
+  }));
+}
+
+/** Placing finals from decided semi results, in semi order (match 1..4). */
+export function diamondFinalTies(winners: Array<{ W: string; L: string }>, courtOf: (i: number) => number): DiamondTie[] {
+  return PLACING_FINALS.map((f, k) => {
+    const [x, i, y, j] = f.from;
+    return { id: `f${f.places[0]}`, home: winners[i - 1]![x], away: winners[j - 1]![y], court: courtOf(k), label: `Places ${f.places[0]}–${f.places[1]}` };
+  });
+}
+
 /** Resolve a marker's two sides by its saved fixture, not by player membership. */
 export function diamondMatchTeamNames(stageKey: string | null | undefined, teams: readonly DiamondTeam[], weeks: readonly DiamondWeek[]): [string, string] | null {
   const tieId = stageKey?.match(/^dl:(.+):\d+$/)?.[1];

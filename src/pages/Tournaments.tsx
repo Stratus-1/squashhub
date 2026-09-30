@@ -456,6 +456,8 @@ export default function Tournaments() {
   const [showAllPast, setShowAllPast] = useState(false);
   const [poolFilter, setPoolFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [champFilter, setChampFilter] = useState<string>("all");
+  const gamesCardRef = useRef<HTMLDivElement | null>(null);
   // "round" (default) | "slot" | "flat"
   const [groupMode, setGroupMode] = useState<"round" | "slot" | "flat">(() => {
     if (typeof window === "undefined") return "round";
@@ -479,6 +481,7 @@ export default function Tournaments() {
   const applyFilters = (list: any[]) =>
     list.filter(
       (m) =>
+        (champFilter === "all" || m.champ_id === champFilter) &&
         (poolFilter === "all" || bucketKeyOf(m) === poolFilter) &&
         (dateFilter === "all" || m.scheduled_date === dateFilter),
     );

@@ -7476,10 +7476,12 @@ export type Database = {
       help_center_ticket_outbox: {
         Row: {
           attempts: number
+          correlation_id: string
           dead_at: string | null
           delivered_at: string | null
           enqueued_at: string
           event_id: string
+          event_type: string
           id: number
           last_error: string | null
           locked_until: string | null
@@ -7492,10 +7494,12 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          correlation_id?: string
           dead_at?: string | null
           delivered_at?: string | null
           enqueued_at?: string
           event_id?: string
+          event_type?: string
           id?: number
           last_error?: string | null
           locked_until?: string | null
@@ -7508,10 +7512,12 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          correlation_id?: string
           dead_at?: string | null
           delivered_at?: string | null
           enqueued_at?: string
           event_id?: string
+          event_type?: string
           id?: number
           last_error?: string | null
           locked_until?: string | null
@@ -17936,14 +17942,26 @@ export type Database = {
         Returns: boolean
       }
       has_wifi_access: { Args: { _club_member_id: string }; Returns: boolean }
+      help_center_enqueue: {
+        Args: {
+          p_created: string
+          p_status: string
+          p_ticket: string
+          p_type: string
+          p_updated: string
+        }
+        Returns: undefined
+      }
       help_center_outbox_claim: {
         Args: { p_lease_seconds?: number; p_limit?: number }
         Returns: {
           attempts: number
+          correlation_id: string
           dead_at: string | null
           delivered_at: string | null
           enqueued_at: string
           event_id: string
+          event_type: string
           id: number
           last_error: string | null
           locked_until: string | null

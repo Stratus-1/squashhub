@@ -15,6 +15,7 @@ import { buildStitchReturnUrl, openStitchCheckout, rememberPendingStitchSession 
 import { useMemberContext } from "@/contexts/MemberContext";
 
 import StitchOnboardingCard from "./StitchOnboardingCard";
+import RecurringPaymentSettingsCard from "./RecurringPaymentSettingsCard";
 
 // ─── Gateway Registry ───────────────────────────────────────
 type FieldDef = {
@@ -848,6 +849,9 @@ export function BankingTab({ club, clubId }: { club: Club; clubId: string }) {
           </span>
         )}
       </div>
+
+      <RecurringPaymentSettingsCard clubId={clubId} club={club as any} />
+
 
       
 

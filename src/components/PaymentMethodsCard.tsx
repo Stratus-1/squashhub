@@ -17,6 +17,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildStitchReturnUrl, openStitchCheckout, openStitchMandateWindow, closeStitchMandateWindow } from "@/lib/stitch-checkout";
 import { useClubCurrency } from "@/hooks/use-currency";
 import { toast } from "sonner";
+import {
+  allowedPeriods, arrearsOfferOpen, clubRecurringAvailable, monthlyInstalment,
+  needsReapprovalToIncrease, useClubRecurringSettings,
+} from "@/lib/recurring-payments";
 
 type Mandate = {
   id: string;
@@ -67,6 +71,32 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   const [awaitingId, setAwaitingId] = useState<string | null>(null);
   const [awaitingUrl, setAwaitingUrl] = useState<string | null>(null);
   const [awaitingDone, setAwaitingDone] = useState(false);
+  // Outstanding-balance mode: the setup dialog pays off the unpaid balance.
+  const [arrearsMode, setArrearsMode] = useState(false);
+  const [addMonths, setAddMonths] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
+
+  const { data: recurring } = useClubRecurringSettings(clubId);
+  const { data: outstanding = 0 } = useQuery({
+    queryKey: ["member-outstanding", clubMemberId],
+    enabled: !!clubMemberId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("club_member_fee_payments").select("amount")
+        .eq("club_member_id", clubMemberId).eq("paid", false);
+      return (data || []).reduce((s: number, f: any) => s + Math.max(0, Number(f.amount || 0)), 0);
+    },
+  });
+  const { data: arrearsPlans = [] } = useQuery({
+    queryKey: ["arrears-plans", clubMemberId],
+    enabled: !!clubMemberId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("mandate_arrears_plans").select("*")
+        .eq("club_member_id", clubMemberId).eq("status", "active");
+      return (data || []) as Array<{ id: string; mandate_id: string; total_amount: number; monthly_extra: number; months_total: number; months_charged: number; amount_collected: number; ends_on: string }>;
+    },
+  });
 
   const { data: mandates = [], isLoading: mandatesLoading } = useQuery({
     queryKey: ["stitch-mandates", clubMemberId],
@@ -335,14 +365,22 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   // Auto-recalculate monthly amount when months changes (unless user typed an override)
   // MUST be declared before any conditional early-return to satisfy Rules of Hooks.
   useEffect(() => {
+    if (arrearsMode) {
+      setAmount(monthlyInstalment(outstanding, Number(months)).toFixed(2));
+      return;
+    }
     if (!selectedCategory || amountTouched) return;
     const n = Number(months);
     const annual = annualFor(selectedCategory);
     if (n > 0 && annual > 0) setAmount((annual / n).toFixed(2));
-  }, [months, selectedCategory, amountTouched, fallbackAnnual]);
+  }, [months, selectedCategory, amountTouched, fallbackAnnual, arrearsMode, outstanding]);
 
   const isPayfast = paymentGateway === "payfast";
-  if (paymentGateway !== "stitch" && !isPayfast) return null;
+  // Shown only when the club's gateway supports recurring AND the club allows it.
+  if (!clubRecurringAvailable(paymentGateway, recurring)) return null;
+  const periods = allowedPeriods(recurring, arrearsMode);
+  const arrearsOpen = arrearsOfferOpen(recurring, outstanding);
+  const arrearsPeriods = allowedPeriods(recurring, true);
 
 
   const pendingMandate = mandates.find((m) => m.status === "pending") || null;
@@ -374,7 +412,9 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       return;
     }
     setSelectedCategory(cat);
-    const defaultMonths = 6;
+    setArrearsMode(false);
+    const choices = allowedPeriods(recurring);
+    const defaultMonths = choices.includes(6) ? 6 : choices[choices.length - 1] || 6;
     setMonths(String(defaultMonths));
     const annual = annualFor(cat);
     setAmount(annual > 0 ? (annual / defaultMonths).toFixed(2) : "");
@@ -385,6 +425,51 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
   }
 
 
+  function openArrearsSetup() {
+    if (pendingMandate) { resumeSetup(pendingMandate); return; }
+    const m = arrearsPeriods[arrearsPeriods.length - 1] || 1;
+    setSelectedCategory({ ...GENERAL_CATEGORY, name: "Outstanding balance" });
+    setArrearsMode(true);
+    setMonths(String(m));
+    setAmount(monthlyInstalment(outstanding, m).toFixed(2));
+    setAmountTouched(true);
+    setDebitDay("1");
+    setSetupOpen(true);
+  }
+
+  async function addArrearsToMandate(m: Mandate) {
+    const n = Number(addMonths);
+    if (!n) { toast.error("Choose a period"); return; }
+    setAddBusy(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("start_arrears_plan", { p_mandate_id: m.id, p_months: n });
+      if (error) throw error;
+      if (data?.status === "needs_reauth") {
+        // Bank-capped rail: the higher monthly total must be re-approved.
+        toast.info(`Your new monthly total is ${money(Number(data.new_total))}. Please approve the higher amount.`);
+        openSetup(categories.find((c) => c.id === m.fee_category_id) || GENERAL_CATEGORY);
+        setMonths(String(n));
+        setAmount(Number(data.new_total).toFixed(2));
+        setAmountTouched(true);
+        return;
+      }
+      toast.success(`Added ${money(Number(data.monthly_extra))} per month for ${n} months`);
+      qc.invalidateQueries({ queryKey: ["arrears-plans", clubMemberId] });
+      setAddMonths("");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not add your outstanding balance");
+    } finally {
+      setAddBusy(false);
+    }
+  }
+
+  async function cancelArrears(planId: string) {
+    if (!confirm("Stop adding your outstanding balance to this monthly payment?")) return;
+    const { error } = await (supabase as any).rpc("cancel_arrears_plan", { p_plan_id: planId });
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["arrears-plans", clubMemberId] });
+  }
+
   async function submitSetup() {
     if (!selectedCategory) return;
     if (pendingMandate) {
@@ -394,6 +479,10 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       return;
     }
     const amt = Number(amount);
+    if (!periods.includes(Number(months))) {
+      toast.error("Choose one of the periods your club allows");
+      return;
+    }
     if (!(amt > 0)) {
       toast.error("Enter a valid amount");
       return;
@@ -617,6 +706,49 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                     );
                   })()}
 
+                  {m.status === "active" && (() => {
+                    const plan = arrearsPlans.find((p) => p.mandate_id === m.id);
+                    if (plan) {
+                      return (
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          <p className="text-[11px] text-primary leading-snug">
+                            + {money(Number(plan.monthly_extra))} / month towards your outstanding balance
+                            ({plan.months_charged} of {plan.months_total} paid, ends {formatDate(new Date(`${plan.ends_on}T00:00:00`))}).
+                          </p>
+                          <button type="button" className="text-[11px] text-muted-foreground underline" onClick={() => cancelArrears(plan.id)}>Stop</button>
+                        </div>
+                      );
+                    }
+                    if (!arrearsOpen) return null;
+                    const n = Number(addMonths);
+                    const extra = n ? monthlyInstalment(outstanding, n) : 0;
+                    const base = m.max_amount_cents / 100;
+                    return (
+                      <div className="mt-2 space-y-1 rounded-md border p-2">
+                        <p className="text-[11px] font-medium">Add your {money(outstanding)} outstanding balance to this monthly payment</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Select value={addMonths} onValueChange={setAddMonths}>
+                            <SelectTrigger className="h-7 w-32 text-xs"><SelectValue placeholder="Months" /></SelectTrigger>
+                            <SelectContent>
+                              {arrearsPeriods.map((p) => (
+                                <SelectItem key={p} value={String(p)}>{p} months</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" className="h-7 text-[11px]" disabled={!n || addBusy} onClick={() => addArrearsToMandate(m)}>
+                            {addBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : "Add to my monthly payment"}
+                          </Button>
+                        </div>
+                        {n > 0 && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Now {money(base)} + {money(extra)} extra = <strong>{money(base + extra)}</strong> per month for {n} months, then back to {money(base)}.
+                            {needsReapprovalToIncrease(m.gateway) ? " You'll be asked to approve the higher amount." : ""}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => cancelMandate(m.id)} className="h-7 px-2">
                   <X className="w-3.5 h-3.5" />
@@ -628,6 +760,19 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
           <p className="text-xs text-muted-foreground">
             No recurring card payment set up yet. Choose a fee category below to pay automatically from your card each month.
           </p>
+        )}
+
+        {activeMandates.filter((m) => m.status === "active").length === 0 && arrearsOpen && (
+          <div className="border-t pt-2 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium">Pay your {money(outstanding)} outstanding monthly</p>
+              <p className="text-[10px] text-muted-foreground">
+                Spread it over {arrearsPeriods.join(" / ")} months
+                {recurring?.arrears_until ? ` · offer open until ${formatDate(new Date(`${recurring.arrears_until}T00:00:00`))}` : ""}
+              </p>
+            </div>
+            <Button size="sm" className="h-7 text-xs" onClick={openArrearsSetup}>Pay monthly</Button>
+          </div>
         )}
 
         {visibleCategories.length > 0 && (
@@ -671,7 +816,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
       <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Set up monthly card payment</DialogTitle>
+            <DialogTitle>{arrearsMode ? "Pay outstanding balance monthly" : "Set up monthly payment"}</DialogTitle>
             <DialogDescription>
               {selectedCategory?.name} — authorise your card once so this fee is charged automatically each month.
               The amount below will be charged on your chosen day.
@@ -692,16 +837,16 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
             </div>
 
             <div>
-              <Label className="text-xs">Split annual fee over (months)</Label>
+              <Label className="text-xs">{arrearsMode ? `Split ${money(outstanding)} over (months)` : "Split annual fee over (months)"}</Label>
 
               <Select value={months} onValueChange={(v) => { setMonths(v); setAmountTouched(false); }}>
                 <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[3, 4, 6, 10, 12].map((n) => (
+                  {periods.map((n) => (
                     <SelectItem key={n} value={String(n)}>
-                      {n} months {annualFor(selectedCategory) > 0 ? `· ${money(annualFor(selectedCategory) / n)} / month` : ""}
+                      {n} months {arrearsMode ? `· ${money(monthlyInstalment(outstanding, n))} / month` : annualFor(selectedCategory) > 0 ? `· ${money(annualFor(selectedCategory) / n)} / month` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -716,6 +861,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
                   min="1"
                   step="0.01"
                   value={amount}
+                  readOnly={arrearsMode}
                   onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }}
                   className="h-9"
                 />
@@ -760,7 +906,7 @@ export default function PaymentMethodsCard({ clubId, clubMemberId, paymentGatewa
               Cancel
             </Button>
             <Button onClick={submitSetup} disabled={submitting}>
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue to Stitch"}
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue"}
             </Button>
           </DialogFooter>
         </DialogContent>

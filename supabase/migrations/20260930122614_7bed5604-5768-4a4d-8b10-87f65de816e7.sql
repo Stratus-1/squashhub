@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.club_recurring_settings_audit() FROM public, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.club_recurring_settings_validate() FROM public, anon, authenticated;

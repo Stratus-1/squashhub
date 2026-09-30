@@ -5326,6 +5326,56 @@ export type Database = {
           },
         ]
       }
+      club_recurring_settings: {
+        Row: {
+          allowed_months: number[]
+          arrears_enabled: boolean
+          arrears_from: string | null
+          arrears_max_months: number
+          arrears_min_amount: number
+          arrears_until: string | null
+          club_id: string
+          created_at: string
+          recurring_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowed_months?: number[]
+          arrears_enabled?: boolean
+          arrears_from?: string | null
+          arrears_max_months?: number
+          arrears_min_amount?: number
+          arrears_until?: string | null
+          club_id: string
+          created_at?: string
+          recurring_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowed_months?: number[]
+          arrears_enabled?: boolean
+          arrears_from?: string | null
+          arrears_max_months?: number
+          arrears_min_amount?: number
+          arrears_until?: string | null
+          club_id?: string
+          created_at?: string
+          recurring_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_recurring_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_router_alert_settings: {
         Row: {
           club_id: string
@@ -9923,6 +9973,82 @@ export type Database = {
           },
         ]
       }
+      mandate_arrears_plans: {
+        Row: {
+          amount_collected: number
+          club_id: string
+          club_member_id: string
+          created_at: string
+          created_by: string | null
+          ends_on: string
+          id: string
+          mandate_id: string
+          monthly_extra: number
+          months_charged: number
+          months_total: number
+          starts_on: string
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          amount_collected?: number
+          club_id: string
+          club_member_id: string
+          created_at?: string
+          created_by?: string | null
+          ends_on: string
+          id?: string
+          mandate_id: string
+          monthly_extra: number
+          months_charged?: number
+          months_total: number
+          starts_on?: string
+          status?: string
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          amount_collected?: number
+          club_id?: string
+          club_member_id?: string
+          created_at?: string
+          created_by?: string | null
+          ends_on?: string
+          id?: string
+          mandate_id?: string
+          monthly_extra?: number
+          months_charged?: number
+          months_total?: number
+          starts_on?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mandate_arrears_plans_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mandate_arrears_plans_club_member_id_fkey"
+            columns: ["club_member_id"]
+            isOneToOne: false
+            referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mandate_arrears_plans_mandate_id_fkey"
+            columns: ["mandate_id"]
+            isOneToOne: false
+            referencedRelation: "stitch_mandates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_correction_requests: {
         Row: {
           created_at: string
@@ -13417,6 +13543,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      recurring_payment_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          club_id: string
+          created_at: string
+          details: Json
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          club_id: string
+          created_at?: string
+          details?: Json
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          club_id?: string
+          created_at?: string
+          details?: Json
+          id?: string
+        }
+        Relationships: []
       }
       reminder_log: {
         Row: {
@@ -17165,6 +17318,7 @@ export type Database = {
         Args: { _tournament_id: string; _user_id: string }
         Returns: boolean
       }
+      cancel_arrears_plan: { Args: { p_plan_id: string }; Returns: undefined }
       cancel_doubles_pair: {
         Args: { p_pair_id: string; p_token?: string; p_verify?: string }
         Returns: Json
@@ -18966,6 +19120,10 @@ export type Database = {
       snapshot_club_rankings: {
         Args: { _club_id: string; _period?: string }
         Returns: string
+      }
+      start_arrears_plan: {
+        Args: { p_mandate_id: string; p_months: number }
+        Returns: Json
       }
       store_bar_otp: {
         Args: { _club_member_id: string; _code: string }

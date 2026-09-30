@@ -173,6 +173,18 @@ export function diamondTeamName(team: Pick<DiamondTeam, "name" | "pool">, index:
 export type DiamondTie = { id: string; home: string; away: string; court: number; label?: string };
 export type DiamondWeek = { week: number; date: string; stage: "pool" | "semi" | "final"; ties: DiamondTie[] };
 
+/** Resolve a marker's two sides by its saved fixture, not by player membership. */
+export function diamondMatchTeamNames(stageKey: string | null | undefined, teams: readonly DiamondTeam[], weeks: readonly DiamondWeek[]): [string, string] | null {
+  const tieId = stageKey?.match(/^dl:(.+):\d+$/)?.[1];
+  if (!tieId) return null;
+  const tie = weeks.flatMap((week) => week.ties).find((item) => item.id === tieId);
+  if (!tie) return null;
+  const homeIndex = teams.findIndex((team) => team.id === tie.home);
+  const awayIndex = teams.findIndex((team) => team.id === tie.away);
+  if (homeIndex < 0 || awayIndex < 0) return null;
+  return [diamondTeamName(teams[homeIndex], homeIndex, teams), diamondTeamName(teams[awayIndex], awayIndex, teams)];
+}
+
 /** Build the pool weeks shown in setup and persisted for scoring. */
 export function buildPoolWeeks(teams: DiamondTeam[], dates: string[], courts: number): DiamondWeek[] {
   const pools = { A: teams.filter((team) => team.pool === "A"), B: teams.filter((team) => team.pool === "B") };

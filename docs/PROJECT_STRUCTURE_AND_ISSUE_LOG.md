@@ -2339,3 +2339,6 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-09-30 — Diamond League slot and break timing
 - Team setup has separate singles/doubles slot and included changeover-break minutes. Night estimates and game starts use the full slot; the Bells timer uses slot minus break per game. New linked Diamond tournaments save time-capped scoring; existing tournaments retain their original scoring mode on edit and require a separately reviewed scoring-mode transition before the Bells marker is usable.
 - Re-saving updates existing unstarted fixture times in place (and removes only obsolete unstarted rows); a tie with any started or scored game keeps all its fixture rows untouched. No live club data was changed as part of this source update.
+
+## 2026-09-30 — Diamond League marker team names
+- The time-capped scoring screen now shows each side's saved fixture team name (A1/B1 or a custom name) beside the player or doubles pair in both counters and the serving indicator. Team identity comes from the linked event's saved weeks and team IDs, not a player's club or an inferred membership; unrelated Bells games retain their existing labels. Scoring and saved results are unchanged.

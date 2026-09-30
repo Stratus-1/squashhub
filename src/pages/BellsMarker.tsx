@@ -21,7 +21,7 @@ import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChampMarkerHeartbeat } from "@/hooks/use-champ-marker-lock";
-import { DIAMOND_TEAM_DEFAULTS, diamondPlayingMinutes, tieGames, type TeamLeagueConfig } from "@/lib/tournaments/team-league";
+import { DIAMOND_TEAM_DEFAULTS, diamondMatchTeamNames, diamondPlayingMinutes, tieGames, type DiamondTeam, type DiamondWeek, type TeamLeagueConfig } from "@/lib/tournaments/team-league";
 
 
 /**
@@ -95,16 +95,20 @@ export default function BellsMarker() {
   const format = getTournamentFormat(champ?.scoring_mode);
   const isBells = format?.key === BellsFormat.key;
 
-  const { data: diamondConfig, isLoading: diamondTimingLoading, isError: diamondTimingError } = useQuery({
+  const { data: diamondEvent, isLoading: diamondTimingLoading, isError: diamondTimingError } = useQuery({
     queryKey: ["diamond-marker-timing", match?.champ_id],
     queryFn: async () => {
       const { data, error } = await fromExt("team_league_events")
-        .select("config").eq("tournament_id", match?.champ_id).maybeSingle();
+        .select("config, teams, weeks").eq("tournament_id", match?.champ_id).maybeSingle();
       if (error) throw error;
-      return data?.config as Partial<TeamLeagueConfig> | undefined;
+      return data as { config: Partial<TeamLeagueConfig>; teams: DiamondTeam[]; weeks: DiamondWeek[] } | null;
     },
     enabled: !!match?.champ_id && String(match?.stage_key || "").startsWith("dl:"),
   });
+  const diamondConfig = diamondEvent?.config;
+  const diamondTeamNames = diamondEvent
+    ? diamondMatchTeamNames(match?.stage_key, diamondEvent.teams || [], diamondEvent.weeks || [])
+    : null;
 
   // Per-league time cap fallback (delegated to format strategy)
   const capMinutes = useMemo(() => {
@@ -291,6 +295,8 @@ export default function BellsMarker() {
   const hcSuffix = (h: number) => (h !== 0 ? ` · HCP ${h > 0 ? "+" : ""}${h}` : "");
   const pairAName = `${getName(match?.player_a)}${match?.partner_a ? " & " + getName(match.partner_a) : ""}${hcSuffix(hcA)}`;
   const pairBName = `${getName(match?.player_b)}${match?.partner_b ? " & " + getName(match.partner_b) : ""}${hcSuffix(hcB)}`;
+  const sideAName = diamondTeamNames ? `${diamondTeamNames[0]} · ${pairAName}` : pairAName;
+  const sideBName = diamondTeamNames ? `${diamondTeamNames[1]} · ${pairBName}` : pairBName;
 
   // Ring the boxing-bell sound (also vibrates on mobile). Used at start of
   // play, when "Ring bell now" is pressed, and when the countdown expires.
@@ -795,7 +801,7 @@ export default function BellsMarker() {
               <>
                 <Hand className="w-5 h-5" />
                 <span className={cn("font-semibold", handOutFlash && "text-base uppercase tracking-wide")}>
-                  {handOutFlash ? "HAND-OUT · serve to" : "Serving:"} <span className={cn(handOutFlash && "font-bold")}>{pairAName}</span>
+                   {handOutFlash ? "HAND-OUT · serve to" : "Serving:"} <span className={cn(handOutFlash && "font-bold")}>{sideAName}</span>
                 </span>
                 <ArrowLeft className="w-5 h-5" />
               </>
@@ -803,7 +809,7 @@ export default function BellsMarker() {
               <>
                 <ArrowRight className="w-5 h-5" />
                 <span className={cn("font-semibold", handOutFlash && "text-base uppercase tracking-wide")}>
-                  {handOutFlash ? "HAND-OUT · serve to" : "Serving:"} <span className={cn(handOutFlash && "font-bold")}>{pairBName}</span>
+                   {handOutFlash ? "HAND-OUT · serve to" : "Serving:"} <span className={cn(handOutFlash && "font-bold")}>{sideBName}</span>
                 </span>
                 <Hand className="w-5 h-5 scale-x-[-1]" />
               </>
@@ -814,7 +820,7 @@ export default function BellsMarker() {
         {/* Counters */}
         <div className="grid grid-cols-2 gap-3">
           <Counter
-            label={pairAName}
+             label={sideAName}
             value={pointsA}
             onPlus={() => handleIncrement("a")}
             onMinus={() => handleDecrement("a")}
@@ -827,7 +833,7 @@ export default function BellsMarker() {
             }}
           />
           <Counter
-            label={pairBName}
+             label={sideBName}
             value={pointsB}
             onPlus={() => handleIncrement("b")}
             onMinus={() => handleDecrement("b")}

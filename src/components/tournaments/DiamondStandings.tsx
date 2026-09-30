@@ -131,7 +131,7 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
       )}
       <div className="grid md:grid-cols-2 gap-4">
         {(["A", "B"] as const).map((p) => (
-          <TeamTable key={p} title={`Division ${p}`} t={poolTable(p)} name={teamName} />
+          <TeamTable key={p} title={`Division ${p}`} t={poolTable(p)} name={teamName} inProgress={inProgress} />
         ))}
       </div>
       {semiTable && (
@@ -230,7 +230,7 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
   );
 }
 
-function TeamTable({ title, t, name }: { title: string; t: ReturnType<typeof standings>; name: (id: string) => string }) {
+function TeamTable({ title, t, name, inProgress }: { title: string; t: ReturnType<typeof standings>; name: (id: string) => string; inProgress?: Set<string> }) {
   const level = new Set(t.undecided.flat());
   return (
     <div>

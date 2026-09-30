@@ -98,3 +98,8 @@ verify_jwt = false
 
 [functions.set-member-standing]
 verify_jwt = false
+
+# Help Center outbox dispatcher: woken by pg_net/cron with a private dispatch
+# secret (x-dispatch-secret), not a user JWT. Auth is enforced in code.
+[functions.help-center-ticket-feed]
+verify_jwt = false

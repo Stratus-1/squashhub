@@ -2316,3 +2316,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-09-30 — Google sign-in 404 on club subdomains (regression)
 - Cause: the 10:46 UTC Uitsig registration change switched web Google sign-in to the managed Lovable broker (`/~oauth/initiate`). squashhub.co.za and club subdomains are served from Vercel, which cannot serve that path, so Google returned 404 (worked the night before).
 - Fix: GoogleSignInButton and ClubAuth restored to backend-direct Google OAuth via `getTenantAwareAuthRedirect` (tenant + club params kept). The new "Register or sign in with Google" button and hint text are kept. Do not switch web Google back to the broker unless the domains are served by Lovable.
+
+## 2026-09-30 — Duplicate member records (Altu Sadie, PCC)
+- Cause: signed-in callers had their own records excluded from the duplicate check (account-recovery), and email was never compared, so a logged-in player could create a second record at their own club.
+- Fix: BEFORE INSERT trigger `club_members_block_duplicate` refuses a new record when a non-resigned record at the same club has the same normalized name and the same login or email (all paths, incl. Google/imports); a visitor insert is refused when the same login is an active non-visitor member with the same name at another club (ALREADY_MEMBER_ELSEWHERE:<subdomain>). register-visitor-user returns 409 codes; NoClubAccess sends the player to their home club. Families with different names are unaffected.

@@ -84,5 +84,5 @@
 - [x] Diamond doubles pairs auto re-seeded from singles points (DB trigger diamond_seed_doubles_from_singles)
 
 ## Duplicate member prevention
-- [ ] Never create a second member record for the same person (same login or same email + same name), on every signup path incl. Google.
-- [ ] Accidental visitor registration by an existing member keeps them at their original club.
+- [x] Never create a second member record for the same person (same login or same email + same name), on every signup path incl. Google.
+- [x] Accidental visitor registration by an existing member keeps them at their original club.

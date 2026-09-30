@@ -397,8 +397,8 @@ function TeamTable({ title, t, name, inProgress }: { title: string; t: ReturnTyp
         </thead>
         <tbody>
           {t.rows.map((r, i) => (
-            <tr key={r.teamId} className={level.has(r.teamId) ? "text-destructive" : ""}>
-              <td className="py-0.5">{i + 1}</td>
+            <tr key={r.teamId} style={getRankRowStyle(i, t.rows.length)} className={level.has(r.teamId) ? "font-semibold" : undefined}>
+              <td className="py-0.5 pl-1.5 rounded-l">{i + 1}</td>
               <td className="py-0.5 font-medium">
                 {name(r.teamId)}
                 {inProgress?.has(r.teamId) && (
@@ -409,7 +409,7 @@ function TeamTable({ title, t, name, inProgress }: { title: string; t: ReturnTyp
               <td className="text-center">{r.won}</td>
               <td className="text-center">{r.points}</td>
               <td className="text-center">{r.bonus}</td>
-              <td className="text-center font-semibold">{r.total}</td>
+              <td className="text-center font-semibold pr-1.5 rounded-r">{r.total}</td>
             </tr>
           ))}
         </tbody>

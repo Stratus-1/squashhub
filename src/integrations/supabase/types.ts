@@ -17952,6 +17952,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      help_center_initial_sync: { Args: never; Returns: Json }
       help_center_outbox_claim: {
         Args: { p_lease_seconds?: number; p_limit?: number }
         Returns: {

@@ -1644,7 +1644,7 @@ export default function Tournaments() {
               </Card>
 
 
-              <Card>
+              <Card ref={gamesCardRef} className="scroll-mt-4">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -1715,9 +1715,24 @@ export default function Tournaments() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {(buckets.length > 1 || availableDates.length > 1) && (
+                  {(buckets.length > 1 || availableDates.length > 1 || champFilter !== "all") && (
                     <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2">
                       <label className="text-xs text-muted-foreground shrink-0">Filter:</label>
+                      {champs.length > 1 && (
+                        <Select value={champFilter} onValueChange={setChampFilter}>
+                          <SelectTrigger className="h-8 text-xs w-full sm:max-w-[200px]">
+                            <SelectValue placeholder="All tournaments" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All tournaments ({upcomingMatches.length})</SelectItem>
+                            {champs.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name} ({upcomingMatches.filter((m: any) => m.champ_id === c.id).length})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       {availableDates.length > 1 && (
                         <Select value={dateFilter} onValueChange={setDateFilter}>
                           <SelectTrigger className="h-8 text-xs w-full sm:max-w-[180px]">
@@ -1782,12 +1797,12 @@ export default function Tournaments() {
                         </div>
                       )}
 
-                      {(poolFilter !== "all" || dateFilter !== "all") && (
+                      {(poolFilter !== "all" || dateFilter !== "all" || champFilter !== "all") && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-8 text-xs"
-                          onClick={() => { setPoolFilter("all"); setDateFilter("all"); }}
+                          onClick={() => { setPoolFilter("all"); setDateFilter("all"); setChampFilter("all"); }}
                         >
                           Clear
                         </Button>

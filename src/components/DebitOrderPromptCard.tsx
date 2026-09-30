@@ -57,7 +57,6 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
           .eq("club_member_id", clubMemberId!).eq("paid", false),
       ]);
 
-      // Gate 1: the club's gateway must support recurring pulls.
       // Gate 1: a recurring-capable gateway is on and the club allows recurring.
       const gateway = recurringGatewayFor(clubRes.data as any);
       if (!clubRecurringAvailable(gateway, settingsRes.data as any)) {

@@ -97,7 +97,15 @@ export function NoClubAccess() {
         },
       });
       if (error || (data as any)?.error) {
-        toast.error((data as any)?.error || error?.message || "Failed to register as visitor");
+        let body: any = data;
+        if (!body?.error && (error as any)?.context?.json) {
+          try { body = await (error as any).context.json(); } catch { /* ignore */ }
+        }
+        toast.error(body?.error || error?.message || "Failed to register as visitor");
+        // Existing member registering as a visitor by accident: send them home.
+        if (body?.code === "already_member_elsewhere" && body?.home_club && /^[a-z0-9-]+$/i.test(body.home_club)) {
+          setTimeout(() => { window.location.href = `https://${body.home_club}.squashhub.co.za/`; }, 1500);
+        }
         setLoading(false);
         return;
       }

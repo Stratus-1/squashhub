@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useClubRecurringSettings, recurringGatewayFor, clubRecurringAvailable } from "@/lib/recurring-payments";
 import { useNationalBodyFees, useMyClub, useFeeCategories, useLeagueAssociations, NationalBodyFee, MemberFeeCategory, LeagueAssociation } from "@/hooks/use-club";
 import { fromExt } from "@/lib/supabase-ext";
 import { Card } from "@/components/ui/card";
@@ -62,12 +63,14 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     queryKey: ["club-gateway", clubId],
     enabled: !!clubId,
     queryFn: async () => {
-      const { data } = await fromExt("clubs").select("payment_gateway").eq("id", clubId).maybeSingle();
-      return data as { payment_gateway?: string | null } | null;
+      const { data } = await fromExt("clubs").select("payment_gateway, payment_gateways").eq("id", clubId).maybeSingle();
+      return data as { payment_gateway?: string | null; payment_gateways?: string[] | null } | null;
     },
   });
-  const gateway = (gatewayRow?.payment_gateway ?? (club?.id === clubId ? club?.payment_gateway : null)) || "";
-  const stitchEnabled = String(gateway).toLowerCase() === "stitch";
+  const { data: recurringSettings } = useClubRecurringSettings(clubId);
+  const recurringGateway = recurringGatewayFor(gatewayRow ?? (club?.id === clubId ? (club as any) : null));
+  // Recurring column/option appears only when a recurring-capable gateway is on AND the club allows recurring.
+  const stitchEnabled = clubRecurringAvailable(recurringGateway, recurringSettings);
   const [reminderDays, setReminderDays] = useState(club?.fee_reminder_days_before ?? 14);
   const [editFee, setEditFee] = useState<UnifiedFee | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -189,7 +192,7 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
     qc.invalidateQueries({ queryKey: ["fee-categories"] });
     qc.invalidateQueries({ queryKey: ["league-associations"] });
     qc.invalidateQueries({ queryKey: ["national-body-fees"] });
-    toast.success(newVal ? "Eligible for recurring card payment" : "Removed from recurring card payment");
+    toast.success(newVal ? "Eligible for recurring payment" : "Removed from recurring payment");
   };
 
   const handleDelete = async (fee: UnifiedFee) => {
@@ -281,9 +284,9 @@ export function FeesTab({ clubId, tenantType = "club" }: { clubId: string; tenan
                   <div className="text-[10px] font-normal text-muted-foreground normal-case">Show on public page</div>
                 </TableHead>
                 {stitchEnabled && (
-                  <TableHead className="text-center" title="When ON, this fee can be auto-charged from members who set up a recurring card payment via Stitch.">
-                    Recurring Card
-                    <div className="text-[10px] font-normal text-muted-foreground normal-case">Eligible for Stitch</div>
+                  <TableHead className="text-center" title="When ON, this fee can be collected from members who set up a recurring payment.">
+                    Recurring
+                    <div className="text-[10px] font-normal text-muted-foreground normal-case">Monthly collection</div>
                   </TableHead>
                 )}
                 <TableHead className="w-[80px]"></TableHead>
@@ -654,11 +657,11 @@ function FeeDialog({ clubId, open, onOpenChange, existing, tenantType = "club", 
             <Card className="p-3 bg-muted/30 space-y-2">
               <div className="flex items-center gap-2">
                 <Switch checked={debitOrderEligible} onCheckedChange={setDebitOrderEligible} id="debit-order" />
-                <Label htmlFor="debit-order" className="cursor-pointer text-sm font-medium">Eligible for recurring card payment (Stitch)</Label>
+                <Label htmlFor="debit-order" className="cursor-pointer text-sm font-medium">Eligible for recurring payment</Label>
               </div>
               {debitOrderEligible && (
                 <div className="space-y-1">
-                  <p className="text-[10px] text-muted-foreground">Members with an active Stitch card authorisation will be auto-charged each month (subject to admin approval window).</p>
+                  <p className="text-[10px] text-muted-foreground">Members with an active recurring payment will have this fee collected each month.</p>
                 </div>
               )}
             </Card>

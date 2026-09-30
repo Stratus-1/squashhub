@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
         p_id: r.id, p_ok: false, p_error: "invalid_source_status", p_max_attempts: MAX_ATTEMPTS,
       });
       failed++;
-      console.warn(JSON.stringify({ fn: "help-center-ticket-feed", event_id: r.event_id, ok: false, err: "invalid_source_status" }));
+      console.warn(JSON.stringify({ fn: "help-center-ticket-feed", event: "result", ok: false, err: "invalid_source_status" }));
       continue;
     }
     const payload = {
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
       p_id: r.id, p_ok: ok, p_error: ok ? null : errCode, p_max_attempts: MAX_ATTEMPTS,
     });
     ok ? delivered++ : failed++;
-    console.log(JSON.stringify({ fn: "help-center-ticket-feed", event_id: r.event_id, ok, err: errCode || undefined }));
+    console.log(JSON.stringify({ fn: "help-center-ticket-feed", event: "result", ok, err: errCode || undefined }));
   }
 
   const { data: disarmed } = await db.rpc("help_center_outbox_disarm");

@@ -73,7 +73,7 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
         <select className={sel} value={cfg.drawRule} onChange={(e) => set({ drawRule: e.target.value as DrawRule })}>
           {Object.entries(DRAW_RULE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select></div>
-      <div className="col-span-2 md:col-span-1"><Label className="text-xs">Level final</Label>
+      <div className="col-span-2 md:col-span-1"><Label className="text-xs">Winner of a drawn tie</Label>
         <select className={sel} value={cfg.finalLevelRule} onChange={(e) => set({ finalLevelRule: e.target.value as FinalLevelRule })}>
           {Object.entries(FINAL_LEVEL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select></div>

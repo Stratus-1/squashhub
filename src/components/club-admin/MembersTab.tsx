@@ -417,6 +417,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const [search, setSearch] = useState("");
+  // Default "All" hides resigned members; pick "Resigned" to see them.
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "resigned">("all");
   const [addOpen, setAddOpen] = useState(false);
   const [bulkTypesOpen, setBulkTypesOpen] = useState(false);
@@ -648,7 +649,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
   const filtered = members.filter(m => {
     const status = (m as any).status || "active";
-    if (statusFilter !== "all" && status !== statusFilter) return false;
+    // "All" means current members: resigned stay hidden unless "Resigned" is picked.
+    if (statusFilter === "all" ? status === "resigned" : status !== statusFilter) return false;
     // Club record is the source of truth; also match the login profile.
     const hay = [m.name, m.profiles?.name, m.email, m.profiles?.email, m.phone, m.profiles?.phone, m.club_member_number]
       .filter(Boolean).join(" ").toLowerCase();
@@ -1021,7 +1023,7 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
       <div className="flex flex-wrap items-center gap-1">
         {([
-          { key: "all", label: `All (${members.length})`, cls: "" },
+          { key: "all", label: `All current (${statusCounts.active + statusCounts.suspended})`, cls: "" },
           { key: "active", label: `Active (${statusCounts.active})`, cls: "border-emerald-500/50 text-emerald-700 dark:text-emerald-400" },
           { key: "suspended", label: `Suspended (${statusCounts.suspended})`, cls: "border-amber-500/50 text-amber-700 dark:text-amber-400" },
           { key: "resigned", label: `Resigned (${statusCounts.resigned})`, cls: "border-slate-500/50 text-slate-600 dark:text-slate-400" },

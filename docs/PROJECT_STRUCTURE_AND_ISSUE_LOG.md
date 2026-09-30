@@ -2326,3 +2326,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Gateway recurring support is declared once in `src/lib/recurring-payments.ts` (`RECURRING_GATEWAYS`); Fees table Recurring column, My Account and dashboard prompt read it — never compare gateway names in screens.
 - `mandate_arrears_plans` + RPCs `start_arrears_plan` / `cancel_arrears_plan` (server-side rule checks). Card gateways add the extra in `payfast-charge-mandates` (capped at plan remainder and amount owed, auto-completes); bank-capped debit orders require re-approval of the higher total instead of a plan row.
 - "Pay your outstanding balance monthly" template seeded to all 799 clubs (not sent).
+
+### 2026-09-30 — Susan's Nelspruit helper tickets
+- Tanya Kinnear: kept login-linked record (now NSC396), moved her paid R3,300 family fee to it, removed duplicate unpaid R1,375 + R350; old record resigned. Holing: R1,650 opening balance moved Matt → Leigh. George Luputa already single record.
+- Doubles swap list verified in preview: only Reserves + bye-team (LG001 on 06 Oct) players; sudden death (win_by=1) shows PAR 11 and is respected.
+- Club admin Members list: "All current" now hides resigned members (e.g. Adele Geldenhuys); "Resigned" chip still shows them.

@@ -3532,7 +3532,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         const saved = replaceable.get(stageKey);
         if (saved) {
           replaceable.delete(stageKey);
-          if (saved.scheduled_date !== week.date || saved.scheduled_time?.slice(0, 5) !== scheduledTime) updates.push({ id: saved.id, date: week.date || null, time: scheduledTime });
+          if (saved.scheduled_date !== (week.date || null) || saved.scheduled_time?.slice(0, 5) !== scheduledTime) updates.push({ id: saved.id, date: week.date || null, time: scheduledTime });
           return;
         }
         const [player1, player2] = game.positions;

@@ -95,7 +95,7 @@ export default function BellsMarker() {
   const format = getTournamentFormat(champ?.scoring_mode);
   const isBells = format?.key === BellsFormat.key;
 
-  const { data: diamondConfig, isLoading: diamondTimingLoading } = useQuery({
+  const { data: diamondConfig, isLoading: diamondTimingLoading, isError: diamondTimingError } = useQuery({
     queryKey: ["diamond-marker-timing", match?.champ_id],
     queryFn: async () => {
       const { data, error } = await fromExt("team_league_events")
@@ -164,7 +164,7 @@ export default function BellsMarker() {
 
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
-    if (!match || diamondTimingLoading) return;
+    if (!match || diamondTimingLoading || diamondTimingError) return;
     // Seed from saved live points if present; otherwise from the league-rank
     // handicap so the scoreboard opens at e.g. −3 / 0 instead of 0 / 0.
     const hcA = Number(match.handicap_a) || 0;
@@ -210,7 +210,7 @@ export default function BellsMarker() {
       autoSubmitRef.current(nextPointsA, nextPointsB);
     }
     hydratedRef.current = true;
-  }, [match, capMinutes, diamondTimingLoading, qc]);
+  }, [match, capMinutes, diamondTimingLoading, diamondTimingError, qc]);
 
   useEffect(() => {
     scoreStateRef.current = { pointsA, pointsB };
@@ -569,7 +569,7 @@ export default function BellsMarker() {
   };
 
 
-  if (isLoading) {
+  if (isLoading || diamondTimingLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -583,6 +583,10 @@ export default function BellsMarker() {
         Match not found.
       </div>
     );
+  }
+
+  if (String(match.stage_key || "").startsWith("dl:") && (diamondTimingError || !diamondConfig)) {
+    return <div className="min-h-screen flex items-center justify-center p-6 text-sm text-destructive">Diamond League timing is unavailable. Please retry before starting this game.</div>;
   }
 
   if (!isBells) {

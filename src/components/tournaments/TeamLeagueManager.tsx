@@ -11,7 +11,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useClubMembers } from "@/hooks/use-club";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, CROSSOVER, PLACING_FINALS,
-  tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName,
+  tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName, diamondGameStarts,
   type TeamLeagueConfig, type TieBreak, type GameScore, type DrawRule, type FinalLevelRule,
 } from "@/lib/tournaments/team-league";
 
@@ -151,16 +151,14 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
       const { error } = await fromExt("club_champs_matches").delete().in("id", drop);
       if (error) throw error;
     }
-    const [sh, sm] = (cfg.startTime || "17:45").split(":").map(Number);
+    const starts = diamondGameStarts(cfg, cfg.startTime || "17:45");
     const rows: any[] = [];
     wk.forEach((w) => w.ties.forEach((t) => {
       const home = teams.find((x) => x.id === t.home), away = teams.find((x) => x.id === t.away);
       if (!home || !away) return;
-      let mins = sh * 60 + sm;
       games.forEach((g, gi) => {
         const key = `dl:${t.id}:${gi}`;
-        const time = `${String(Math.floor(mins / 60) % 24).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
-        mins += g.minutes;
+         const time = starts[gi];
         if (keep.has(key)) return;
         const [p1, p2] = g.positions;
         rows.push({
@@ -317,8 +315,10 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
             <select className="w-full h-8 rounded border border-input bg-background px-2" value={teams.length} disabled={weeks.length > 0} onChange={(e) => setTeamCount(Number(e.target.value))}>
               {[4, 6, 8, 10, 12].map((n) => <option key={n} value={n}>{n} (2 pools of {n / 2})</option>)}
             </select></div>
-          <div><Label className="text-xs">Singles minutes</Label><Input className="h-8" type="number" value={cfg.singlesMinutes} onChange={num("singlesMinutes")} /></div>
-          <div><Label className="text-xs">Doubles minutes</Label><Input className="h-8" type="number" value={cfg.doublesMinutes} onChange={num("doublesMinutes")} /></div>
+           <div><Label className="text-xs">Singles slot (min)</Label><Input className="h-8" type="number" min={1} step={1} value={cfg.singlesMinutes} onChange={num("singlesMinutes")} /></div>
+           <div><Label className="text-xs">Singles break (min)</Label><Input className="h-8" type="number" min={0} step={1} value={cfg.singlesBreakMinutes ?? 0} onChange={num("singlesBreakMinutes")} /></div>
+           <div><Label className="text-xs">Doubles slot (min)</Label><Input className="h-8" type="number" min={1} step={1} value={cfg.doublesMinutes} onChange={num("doublesMinutes")} /></div>
+           <div><Label className="text-xs">Doubles break (min)</Label><Input className="h-8" type="number" min={0} step={1} value={cfg.doublesBreakMinutes ?? 0} onChange={num("doublesBreakMinutes")} /></div>
           <div><Label className="text-xs">Win bonus</Label><Input className="h-8" type="number" value={cfg.winBonus} onChange={num("winBonus")} /></div>
           <div><Label className="text-xs">Courts</Label><Input className="h-8" type="number" value={cfg.courts} onChange={num("courts")} /></div>
           <div><Label className="text-xs">Start</Label><Input className="h-8" type="time" value={cfg.startTime} onChange={(e) => setCfg({ ...cfg, startTime: e.target.value })} /></div>

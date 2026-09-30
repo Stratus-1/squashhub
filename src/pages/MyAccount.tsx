@@ -41,6 +41,7 @@ import { checkBookingBalance } from "@/lib/booking-balance-gate";
 import { FamilyInviteCard } from "@/components/family/FamilyInviteCard";
 
 import PaymentMethodsCard from "@/components/PaymentMethodsCard";
+import { recurringGatewayFor } from "@/lib/recurring-payments";
 
 export default function MyAccount() {
   const { activeMember, isViewingAs, isLoading: memberContextLoading } = useMemberContext();
@@ -915,7 +916,7 @@ export default function MyAccount() {
         <PaymentMethodsCard
           clubId={clubId}
           clubMemberId={clubMemberId}
-          paymentGateway={club?.payment_gateway}
+          paymentGateway={recurringGatewayFor(club as any)}
           memberFeeCategoryId={feeCategoryId}
         />
       )}

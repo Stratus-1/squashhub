@@ -13,6 +13,7 @@ import {
   diamondTieLabel,
 } from "@/lib/tournaments/team-league";
 import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
+import { getRankRowStyle } from "@/lib/standings-rank-style";
 
 type Team = { id: string; name: string; pool: "A" | "B"; players: (string | null)[] };
 type Tie = { id: string; home: string; away: string; court: number; label?: string };

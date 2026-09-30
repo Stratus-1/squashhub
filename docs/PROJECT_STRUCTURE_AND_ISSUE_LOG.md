@@ -2335,3 +2335,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-09-30 — Diamond League team labels
 - Default Diamond team names now use division-local labels A1–A4 and B1–B4 in setup, standings, and newly generated fixture labels. Previously saved default names are displayed with those labels without editing club records, player slots, scores, or custom team names. Focused team-league tests cover the old-name display mapping.
 - The legacy Current Standings — Leaders / Bottom cards used individual player rankings even for linked Diamond League tournaments. Replace the leaders card with the Diamond team standings at the same position, hide individual bottom/survivor cards, and retain the team schedule and scores. Individual tournaments keep their existing rankings.
+
+## 2026-09-30 — Diamond League slot and break timing
+- Team setup has separate singles/doubles slot and included changeover-break minutes. Night estimates and game starts use the full slot; the Bells timer uses slot minus break per game. New linked Diamond tournaments save time-capped scoring; existing tournaments retain their original scoring mode on edit and require a separately reviewed scoring-mode transition before the Bells marker is usable.
+- Re-saving updates existing unstarted fixture times in place (and removes only obsolete unstarted rows); a tie with any started or scored game keeps all its fixture rows untouched. No live club data was changed as part of this source update.

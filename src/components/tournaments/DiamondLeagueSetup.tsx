@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, DOUBLES_PAIRING_LABEL,
-  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks, diamondTeamName,
+  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks, diamondTeamName, diamondPlayingMinutes,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule, type DoublesPairing,
 } from "@/lib/tournaments/team-league";
 
@@ -66,8 +66,10 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
           {[4, 6, 8, 10, 12].map((n) => <option key={n} value={n}>{n} (2 divisions of {n / 2})</option>)}
         </select>
         <p className="text-[10px] text-muted-foreground mt-0.5">Needs {draft.teams.length * cfg.playersPerTeam} players.</p></div>
-      <div><Label className="text-xs">Singles minutes</Label><Input className="h-8" type="number" value={cfg.singlesMinutes} onChange={num("singlesMinutes")} /></div>
-      <div><Label className="text-xs">Doubles minutes</Label><Input className="h-8" type="number" value={cfg.doublesMinutes} onChange={num("doublesMinutes")} /></div>
+       <div><Label className="text-xs">Singles slot (min)</Label><Input className="h-8" type="number" min={1} step={1} value={cfg.singlesMinutes} onChange={num("singlesMinutes")} /></div>
+       <div><Label className="text-xs">Singles break (min)</Label><Input className="h-8" type="number" min={0} step={1} value={cfg.singlesBreakMinutes ?? 0} onChange={num("singlesBreakMinutes")} /></div>
+       <div><Label className="text-xs">Doubles slot (min)</Label><Input className="h-8" type="number" min={1} step={1} value={cfg.doublesMinutes} onChange={num("doublesMinutes")} /></div>
+       <div><Label className="text-xs">Doubles break (min)</Label><Input className="h-8" type="number" min={0} step={1} value={cfg.doublesBreakMinutes ?? 0} onChange={num("doublesBreakMinutes")} /></div>
       <div><Label className="text-xs">Win bonus</Label><Input className="h-8" type="number" value={cfg.winBonus} onChange={num("winBonus")} /></div>
       <div className="col-span-2"><Label className="text-xs">Level tie (same points)</Label>
         <select className={sel} value={cfg.drawRule} onChange={(e) => set({ drawRule: e.target.value as DrawRule })}>
@@ -91,7 +93,7 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
       <div className="col-span-2 md:col-span-4 rounded-lg border p-3 space-y-2">
         <p className="font-semibold">Weekly team ties</p>
         <p className="text-muted-foreground">Each division plays its own round robin. In every tie between two teams, position #1 plays position #1 on the opposing team, #2 plays #2, and so on — never teammates against each other. Singles and doubles follow in that order <strong>on the same night</strong>, not as separate tournament stages. Doubles pairs: {(cfg.doublesPairing || "singles_results") === "singles_results" ? "formed from the singles results — each team's top two scorers pair up, then the next two" : "always #5+#6, #3+#4, #1+#2 by team position, whatever the singles scores were"}.</p>
-        <div className="flex flex-wrap gap-2">{games.map((g) => <Badge key={g.order} variant={g.kind === "singles" ? "secondary" : "outline"}>{gameLabel(g)} vs opposing team’s same position · {g.minutes} min</Badge>)}</div>
+         <div className="flex flex-wrap gap-2">{games.map((g) => <Badge key={g.order} variant={g.kind === "singles" ? "secondary" : "outline"}>{gameLabel(g)} vs opposing team’s same position · {diamondPlayingMinutes(cfg, g.kind)} min play + {g.kind === "singles" ? cfg.singlesBreakMinutes ?? 0 : cfg.doublesBreakMinutes ?? 0} min break</Badge>)}</div>
         <p className="text-muted-foreground">One tie takes {plan.tieMinutes} min on one court. With {cfg.courts} court{cfg.courts === 1 ? "" : "s"}, estimated finish: {plan.finish} from {cfg.startTime}.
           {plan.overruns && <span className="text-destructive font-medium"> Later than {cfg.endTime} — adjust the time or courts on Dates &amp; Courts, or shorten the games.</span>}
         </p>

@@ -15,6 +15,9 @@ export type TeamLeagueConfig = {
   playersPerTeam: number; // even, 2..8
   singlesMinutes: number;
   doublesMinutes: number;
+  /** Changeover inside each slot; the Bells timer runs for slot minus break. */
+  singlesBreakMinutes?: number;
+  doublesBreakMinutes?: number;
   winBonus: number;
   startTime: string; // "17:45"
   endTime: string; // "21:15"
@@ -60,6 +63,8 @@ export const DIAMOND_TEAM_DEFAULTS: TeamLeagueConfig = {
   playersPerTeam: 6,
   singlesMinutes: 20,
   doublesMinutes: 30,
+  singlesBreakMinutes: 0,
+  doublesBreakMinutes: 0,
   winBonus: 5,
   startTime: "17:45",
   endTime: "21:15",
@@ -78,7 +83,10 @@ export function configIssues(c: TeamLeagueConfig): string[] {
   const out: string[] = [];
   if (!Number.isInteger(c.playersPerTeam) || c.playersPerTeam < 2 || c.playersPerTeam > 8 || c.playersPerTeam % 2)
     out.push("Players per team must be an even number from 2 to 8.");
-  if (c.singlesMinutes <= 0 || c.doublesMinutes <= 0) out.push("Game lengths must be more than 0 minutes.");
+  if (!Number.isInteger(c.singlesMinutes) || !Number.isInteger(c.doublesMinutes) || c.singlesMinutes <= 0 || c.doublesMinutes <= 0) out.push("Slots must be whole minutes greater than 0.");
+  for (const [kind, slot, rest] of [["Singles", c.singlesMinutes, c.singlesBreakMinutes ?? 0], ["Doubles", c.doublesMinutes, c.doublesBreakMinutes ?? 0]] as const) {
+    if (!Number.isInteger(rest) || rest < 0 || rest >= slot) out.push(`${kind} break must be a whole number of minutes from 0 to less than the slot.`);
+  }
   if (c.courts < 1) out.push("At least one court is needed.");
   return out;
 }
@@ -96,6 +104,21 @@ export function tieGames(c: TeamLeagueConfig): TieGame[] {
 
 export const gameLabel = (g: TieGame) =>
   g.kind === "singles" ? `Singles #${g.positions[0]}` : `Doubles #${g.positions[0]}+#${g.positions[1]}`;
+
+/** The scheduled slot includes its changeover; only this portion is scored. */
+export function diamondPlayingMinutes(c: TeamLeagueConfig, kind: TieGame["kind"]): number {
+  return kind === "singles" ? c.singlesMinutes - (c.singlesBreakMinutes ?? 0) : c.doublesMinutes - (c.doublesBreakMinutes ?? 0);
+}
+
+/** Scheduled starts remain separated by the entire slot, including the break. */
+export function diamondGameStarts(c: TeamLeagueConfig, startTime: string): string[] {
+  let minute = toMin(startTime);
+  return tieGames(c).map((game) => {
+    const start = toHm(minute % (24 * 60));
+    minute += game.minutes;
+    return start;
+  });
+}
 
 /** Round-robin weeks for one pool. Slots are 1-based seeds ("A1" = slot 1). */
 export function poolRounds(size: number): [number, number][][] {

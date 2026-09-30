@@ -11,7 +11,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import { useClubMembers } from "@/hooks/use-club";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, CROSSOVER, PLACING_FINALS,
-  tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName,
+  tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName, diamondGameStarts,
   type TeamLeagueConfig, type TieBreak, type GameScore, type DrawRule, type FinalLevelRule,
 } from "@/lib/tournaments/team-league";
 
@@ -140,28 +140,31 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
     const { data: courtRows } = await fromExt("courts").select("id").eq("club_id", ev.club_id).order("id");
     const courtIds = ((courtRows || []) as any[]).map((c) => c.id as number);
     const { data: existing, error: exErr } = await fromExt("club_champs_matches")
-      .select("id, stage_key, status, score").eq("champ_id", champId).like("stage_key", "dl:%");
+      .select("id, stage_key, status, score, scheduled_date, scheduled_time").eq("champ_id", champId).like("stage_key", "dl:%");
     if (exErr) throw exErr;
     const keep = new Set<string>();
-    const drop: string[] = [];
+    const replaceable = new Map<string, { id: string; scheduled_date: string | null; scheduled_time: string | null }>();
+    const startedTies = new Set(((existing || []) as any[]).filter((m) => m.status !== "scheduled" || m.score).map((m) => String(m.stage_key).replace(/:\d+$/, "")));
     ((existing || []) as any[]).forEach((m) => {
-      if (m.status === "scheduled" && !m.score) drop.push(m.id); else keep.add(m.stage_key);
+      if (m.status === "scheduled" && !m.score && !startedTies.has(String(m.stage_key).replace(/:\d+$/, ""))) replaceable.set(m.stage_key, m);
+      else keep.add(m.stage_key);
     });
-    if (drop.length) {
-      const { error } = await fromExt("club_champs_matches").delete().in("id", drop);
-      if (error) throw error;
-    }
-    const [sh, sm] = (cfg.startTime || "17:45").split(":").map(Number);
+    const starts = diamondGameStarts(cfg, cfg.startTime || "17:45");
     const rows: any[] = [];
+    const updates: Array<{ id: string; date: string | null; time: string }> = [];
     wk.forEach((w) => w.ties.forEach((t) => {
       const home = teams.find((x) => x.id === t.home), away = teams.find((x) => x.id === t.away);
       if (!home || !away) return;
-      let mins = sh * 60 + sm;
       games.forEach((g, gi) => {
         const key = `dl:${t.id}:${gi}`;
-        const time = `${String(Math.floor(mins / 60) % 24).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
-        mins += g.minutes;
+         const time = starts[gi];
         if (keep.has(key)) return;
+         const saved = replaceable.get(key);
+         if (saved) {
+           replaceable.delete(key);
+           if (saved.scheduled_date !== (w.date || null) || saved.scheduled_time?.slice(0, 5) !== time) updates.push({ id: saved.id, date: w.date || null, time });
+           return;
+         }
         const [p1, p2] = g.positions;
         rows.push({
           champ_id: champId, group_number: w.week, round_number: w.week, section_number: 1,
@@ -174,6 +177,14 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
         });
       });
     }));
+    for (const item of updates) {
+      const { error } = await fromExt("club_champs_matches").update({ scheduled_date: item.date, scheduled_time: item.time }).eq("id", item.id).eq("status", "scheduled").is("score", null);
+      if (error) throw error;
+    }
+    if (replaceable.size) {
+      const { error } = await fromExt("club_champs_matches").delete().in("id", [...replaceable.values()].map((item) => item.id)).eq("status", "scheduled").is("score", null);
+      if (error) throw error;
+    }
     for (let i = 0; i < rows.length; i += 200) {
       const { error } = await fromExt("club_champs_matches").insert(rows.slice(i, i + 200));
       if (error) throw error;
@@ -183,6 +194,8 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
 
   const save = useMutation({
     mutationFn: async (wkOverride?: Week[]) => {
+      const timingIssues = configIssues(cfg);
+      if (timingIssues.length) throw new Error(timingIssues.join(" "));
       const wk = wkOverride ?? weeks;
       const { error } = await fromExt("team_league_events").update({ name, config: cfg, teams, weeks: wk, results }).eq("id", ev.id);
       if (error) throw error;
@@ -317,8 +330,10 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
             <select className="w-full h-8 rounded border border-input bg-background px-2" value={teams.length} disabled={weeks.length > 0} onChange={(e) => setTeamCount(Number(e.target.value))}>
               {[4, 6, 8, 10, 12].map((n) => <option key={n} value={n}>{n} (2 pools of {n / 2})</option>)}
             </select></div>
-          <div><Label className="text-xs">Singles minutes</Label><Input className="h-8" type="number" value={cfg.singlesMinutes} onChange={num("singlesMinutes")} /></div>
-          <div><Label className="text-xs">Doubles minutes</Label><Input className="h-8" type="number" value={cfg.doublesMinutes} onChange={num("doublesMinutes")} /></div>
+           <div><Label className="text-xs">Singles slot (min)</Label><Input className="h-8" type="number" min={1} step={1} value={cfg.singlesMinutes} onChange={num("singlesMinutes")} /></div>
+           <div><Label className="text-xs">Singles break (min)</Label><Input className="h-8" type="number" min={0} step={1} value={cfg.singlesBreakMinutes ?? 0} onChange={num("singlesBreakMinutes")} /></div>
+           <div><Label className="text-xs">Doubles slot (min)</Label><Input className="h-8" type="number" min={1} step={1} value={cfg.doublesMinutes} onChange={num("doublesMinutes")} /></div>
+           <div><Label className="text-xs">Doubles break (min)</Label><Input className="h-8" type="number" min={0} step={1} value={cfg.doublesBreakMinutes ?? 0} onChange={num("doublesBreakMinutes")} /></div>
           <div><Label className="text-xs">Win bonus</Label><Input className="h-8" type="number" value={cfg.winBonus} onChange={num("winBonus")} /></div>
           <div><Label className="text-xs">Courts</Label><Input className="h-8" type="number" value={cfg.courts} onChange={num("courts")} /></div>
           <div><Label className="text-xs">Start</Label><Input className="h-8" type="time" value={cfg.startTime} onChange={(e) => setCfg({ ...cfg, startTime: e.target.value })} /></div>

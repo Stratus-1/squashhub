@@ -231,7 +231,7 @@ import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-inp
 import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
 import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
 import { DiamondRulesPanel, DiamondAllocationBoard, DiamondFixturesPreview, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
-import { buildPoolWeeks, configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames } from "@/lib/tournaments/team-league";
+import { buildPoolWeeks, configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames, diamondGameStarts } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 
 
@@ -2886,7 +2886,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       start_time: startTime,
       end_time: endTime,
       match_duration_minutes: matchDuration,
-      scoring_mode: scoringMode,
+      scoring_mode: diamondMode && !diamondDraft.eventId ? "time_capped_points" : scoringMode,
       swiss_pools: swissPools,
       league_draw_styles: leagueDrawStyles,
       pool_sizes: poolSizeOverrides,
@@ -3471,6 +3471,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   /** Upserts the Diamond League team event linked to this tournament. */
   const persistDiamond = async (tournamentId: string, status?: string) => {
+    const timingIssues = diamondConfigIssues(diamondDraft.config);
+    if (timingIssues.length) throw new Error(timingIssues.join(" "));
     const configuredCourts = selectedCourtIds.size || diamondDraft.config.courts;
     const poolWeeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], configuredCourts);
     // Preserve any knockout (semi/final) weeks already stored on the event —
@@ -3503,35 +3505,36 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   const syncDiamondFixtures = async (tournamentId: string, weeks: ReturnType<typeof buildPoolWeeks>) => {
     const games = diamondTieGames(diamondDraft.config);
+    const starts = diamondGameStarts(diamondDraft.config, startTime || diamondDraft.config.startTime || "17:45");
     const courtIds = Array.from(selectedCourtIds);
     const { data: existing, error: existingError } = await fromExt("club_champs_matches")
-      .select("id, stage_key, status, score").eq("champ_id", tournamentId).like("stage_key", "dl:%");
+      .select("id, stage_key, status, score, scheduled_date, scheduled_time").eq("champ_id", tournamentId).like("stage_key", "dl:%");
     if (existingError) throw existingError;
     const protectedKeys = new Set<string>();
-    const replaceableIds: string[] = [];
+    const replaceable = new Map<string, { id: string; scheduled_date: string | null; scheduled_time: string | null }>();
     // Ties with any played game keep all their rows: doubles there may already be re-seeded from singles results.
     const tieOf = (k: string) => k.replace(/:\d+$/, "");
     const startedTies = new Set(((existing || []) as any[]).filter((m) => m.status !== "scheduled" || m.score).map((m) => tieOf(m.stage_key)));
     ((existing || []) as any[]).forEach((match) => {
-      if (match.status === "scheduled" && !match.score && !startedTies.has(tieOf(match.stage_key))) replaceableIds.push(match.id);
+      if (match.status === "scheduled" && !match.score && !startedTies.has(tieOf(match.stage_key))) replaceable.set(match.stage_key, match);
       else protectedKeys.add(match.stage_key);
     });
-    if (replaceableIds.length) {
-      const { error } = await fromExt("club_champs_matches").delete().in("id", replaceableIds);
-      if (error) throw error;
-    }
-    const [startHour, startMinute] = (startTime || diamondDraft.config.startTime || "17:45").split(":").map(Number);
     const rows: Record<string, any>[] = [];
+    const updates: Array<{ id: string; date: string | null; time: string }> = [];
     weeks.forEach((week) => week.ties.forEach((tie) => {
       const home = diamondDraft.teams.find((team) => team.id === tie.home);
       const away = diamondDraft.teams.find((team) => team.id === tie.away);
       if (!home || !away) return;
-      let minutes = startHour * 60 + startMinute;
       games.forEach((game, gameIndex) => {
         const stageKey = `dl:${tie.id}:${gameIndex}`;
-        const scheduledTime = `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-        minutes += game.minutes;
+        const scheduledTime = starts[gameIndex];
         if (protectedKeys.has(stageKey)) return;
+        const saved = replaceable.get(stageKey);
+        if (saved) {
+          replaceable.delete(stageKey);
+          if (saved.scheduled_date !== (week.date || null) || saved.scheduled_time?.slice(0, 5) !== scheduledTime) updates.push({ id: saved.id, date: week.date || null, time: scheduledTime });
+          return;
+        }
         const [player1, player2] = game.positions;
         rows.push({ champ_id: tournamentId, group_number: week.week, round_number: week.week,
           section_number: tie.label?.startsWith("B") ? 2 : 1, stage: "group", stage_key: stageKey,
@@ -3543,6 +3546,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           court_id: courtIds[tie.court - 1] ?? null, status: "scheduled" });
       });
     }));
+    for (const item of updates) {
+      const { error } = await fromExt("club_champs_matches").update({ scheduled_date: item.date, scheduled_time: item.time }).eq("id", item.id).eq("status", "scheduled").is("score", null);
+      if (error) throw error;
+    }
+    if (replaceable.size) {
+      const { error } = await fromExt("club_champs_matches").delete().in("id", [...replaceable.values()].map((item) => item.id)).eq("status", "scheduled").is("score", null);
+      if (error) throw error;
+    }
     for (let index = 0; index < rows.length; index += 200) {
       const { error } = await fromExt("club_champs_matches").insert(rows.slice(index, index + 200));
       if (error) throw error;
@@ -5783,7 +5794,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             start_time: startTime,
             end_time: endTime,
             match_duration_minutes: matchDuration,
-            scoring_mode: scoringMode,
+            scoring_mode: diamondMode ? "time_capped_points" : scoringMode,
             swiss_pools: swissPools,
             league_draw_styles: leagueDrawStyles,
             pool_sizes: poolSizeOverrides,

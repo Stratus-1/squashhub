@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DIAMOND_TEAM_DEFAULTS as D, tieGames, gameLabel, poolRounds, CROSSOVER, PLACING_FINALS,
-  tieResult, standings, nightPlan, configIssues, DOUBLES_PAIRING_LABEL, diamondTeamName,
+  tieResult, standings, nightPlan, configIssues, DOUBLES_PAIRING_LABEL, diamondTeamName, diamondPlayingMinutes, diamondGameStarts,
 } from "@/lib/tournaments/team-league";
 
 describe("Diamond League (teams)", () => {
@@ -59,6 +59,18 @@ describe("Diamond League (teams)", () => {
     expect(p.finish).toBe("21:15");
     expect(p.overruns).toBe(false);
     expect(nightPlan({ ...D, courts: 1 }, 2).overruns).toBe(true);
+  });
+  it("keeps slot starts while breaks shorten only the timed scoring", () => {
+    const cfg = { ...D, singlesMinutes: 22, singlesBreakMinutes: 3, doublesMinutes: 32, doublesBreakMinutes: 4 };
+    expect(diamondPlayingMinutes(cfg, "singles")).toBe(19);
+    expect(diamondPlayingMinutes(cfg, "doubles")).toBe(28);
+    expect(diamondGameStarts(cfg, "17:45")).toEqual(["17:45", "18:07", "18:29", "18:51", "19:13", "19:35", "19:57", "20:29", "21:01"]);
+    expect(nightPlan(cfg, 1).tieMinutes).toBe(228);
+    expect(nightPlan(cfg, 1).finish).toBe("21:33");
+    expect(configIssues(cfg)).toEqual([]);
+    expect(configIssues({ ...cfg, singlesBreakMinutes: 22 })).toContain("Singles break must be a whole number of minutes from 0 to less than the slot.");
+    expect(configIssues({ ...cfg, doublesBreakMinutes: -1 })).toContain("Doubles break must be a whole number of minutes from 0 to less than the slot.");
+    expect(diamondPlayingMinutes({ ...D }, "singles")).toBe(20);
   });
 });
 

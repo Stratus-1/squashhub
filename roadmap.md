@@ -84,6 +84,7 @@
 - [x] Show Diamond team totals directly on the Tournaments → Standings page.
 - [x] Verify Riverside's saved Club DL creates its 72 pool games (48 singles, 24 doubles) on its three saved dates.
 - [x] Diamond doubles pairs auto re-seeded from singles points (DB trigger diamond_seed_doubles_from_singles)
+- [x] Separate singles/doubles slots and included changeover breaks; recalculate unstarted game times on organiser save, leave started games untouched.
 
 ## Duplicate member prevention
 - [x] Never create a second member record for the same person (same login or same email + same name), on every signup path incl. Google.

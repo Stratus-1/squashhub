@@ -21,6 +21,7 @@ import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChampMarkerHeartbeat } from "@/hooks/use-champ-marker-lock";
+import { DIAMOND_TEAM_DEFAULTS, diamondPlayingMinutes, tieGames, type TeamLeagueConfig } from "@/lib/tournaments/team-league";
 
 
 /**
@@ -59,7 +60,7 @@ export default function BellsMarker() {
     queryFn: async () => {
       const { data, error } = await fromExt("club_champs_matches")
         .select(
-          "id, champ_id, group_number, section_number, pool_number, status, scheduled_date, scheduled_time, side_a_points, side_b_points, score, bell_ends_at, bell_paused_seconds, handicap_a, handicap_b, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name), champ:champ_id(id, name, match_duration_minutes, group_durations, group_break_minutes, pool_durations, default_break_minutes, rules:tournament_rules(scoring_mode, handicap_mode))",
+          "id, champ_id, stage_key, group_number, section_number, pool_number, status, scheduled_date, scheduled_time, side_a_points, side_b_points, score, bell_ends_at, bell_paused_seconds, handicap_a, handicap_b, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id, player_a:player_a_member_id(id,name), player_b:player_b_member_id(id,name), partner_a:partner_a_member_id(id,name), partner_b:partner_b_member_id(id,name), champ:champ_id(id, name, match_duration_minutes, group_durations, group_break_minutes, pool_durations, default_break_minutes, rules:tournament_rules(scoring_mode, handicap_mode))",
         )
         .eq("id", matchId!)
         .single();
@@ -94,11 +95,28 @@ export default function BellsMarker() {
   const format = getTournamentFormat(champ?.scoring_mode);
   const isBells = format?.key === BellsFormat.key;
 
+  const { data: diamondConfig, isLoading: diamondTimingLoading, isError: diamondTimingError } = useQuery({
+    queryKey: ["diamond-marker-timing", match?.champ_id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("team_league_events")
+        .select("config").eq("tournament_id", match?.champ_id).maybeSingle();
+      if (error) throw error;
+      return data?.config as Partial<TeamLeagueConfig> | undefined;
+    },
+    enabled: !!match?.champ_id && String(match?.stage_key || "").startsWith("dl:"),
+  });
+
   // Per-league time cap fallback (delegated to format strategy)
   const capMinutes = useMemo(() => {
     if (!champ) return 30;
+    const index = Number(String(match?.stage_key || "").match(/^dl:.+:(\d+)$/)?.[1]);
+    if (diamondConfig && Number.isInteger(index)) {
+      const cfg = { ...DIAMOND_TEAM_DEFAULTS, ...diamondConfig };
+      const kind = tieGames(cfg)[index]?.kind;
+      if (kind) return Math.max(1, diamondPlayingMinutes(cfg, kind));
+    }
     return BellsFormat.getTimeCapMinutes(champ, match?.group_number, match?.pool_number ?? match?.section_number) ?? 30;
-  }, [champ, match?.group_number, match?.pool_number, match?.section_number]);
+  }, [champ, diamondConfig, match?.stage_key, match?.group_number, match?.pool_number, match?.section_number]);
 
   const [pointsA, setPointsA] = useState(0);
   const [pointsB, setPointsB] = useState(0);
@@ -146,7 +164,7 @@ export default function BellsMarker() {
 
   // Initialise / hydrate from existing match (admin can re-open and adjust)
   useEffect(() => {
-    if (!match) return;
+    if (!match || diamondTimingLoading || diamondTimingError) return;
     // Seed from saved live points if present; otherwise from the league-rank
     // handicap so the scoreboard opens at e.g. −3 / 0 instead of 0 / 0.
     const hcA = Number(match.handicap_a) || 0;
@@ -192,7 +210,7 @@ export default function BellsMarker() {
       autoSubmitRef.current(nextPointsA, nextPointsB);
     }
     hydratedRef.current = true;
-  }, [match, capMinutes, qc]);
+  }, [match, capMinutes, diamondTimingLoading, diamondTimingError, qc]);
 
   useEffect(() => {
     scoreStateRef.current = { pointsA, pointsB };
@@ -551,7 +569,7 @@ export default function BellsMarker() {
   };
 
 
-  if (isLoading) {
+  if (isLoading || diamondTimingLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -565,6 +583,10 @@ export default function BellsMarker() {
         Match not found.
       </div>
     );
+  }
+
+  if (String(match.stage_key || "").startsWith("dl:") && (diamondTimingError || !diamondConfig)) {
+    return <div className="min-h-screen flex items-center justify-center p-6 text-sm text-destructive">Diamond League timing is unavailable. Please retry before starting this game.</div>;
   }
 
   if (!isBells) {

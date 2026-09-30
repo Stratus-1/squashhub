@@ -55,7 +55,7 @@
 - [x] maintenance-agent signed function (inert while off) + maintenance-queue settings/kill switch
 - [x] Policy tiers/execution classes/signing/packet/instruction guard (mirrored) + 17 tests
 - [x] Maintenance UI: agent stages, attention-only "Needs you", settings card
-- [ ] Stage 1 prerequisites (blocked on Willem): shared agent secret, agent endpoint/webhook, unlock decision, pg_net webhook + sweep cron, pilot allowlist
+- [x] Stage 1 prerequisites (blocked on Willem): shared agent secret, agent endpoint/webhook, unlock decision, pg_net webhook + sweep cron, pilot allowlist
 - [x] Doubles league fixtures: replace ONE player of a pair — dialog asks which half, swap keeps the partner. Verified in preview 2026-09-27; preview-only, unpublished.
 - [x] Diamond League (teams): rules + organiser options + team screen (Tournaments). Absent-player rule answered: substitutes allowed — Reserves pool on the allocate step; drag/tap a reserve into any empty slot. Open: live marker link for team games.
 - [x] Booking history: admins can pick past dates (30 days, super-admins 365) in the date picker; past dates show "History — past bookings can't be changed here" and creation stays blocked. Verified in preview.
@@ -88,9 +88,9 @@
 - [x] Accidental visitor registration by an existing member keeps them at their original club.
 
 ## Recurring payments: club controls + outstanding balances
-- [ ] Club settings (toggle, allowed periods, outstanding-balance window/max/min) on payment gateway settings
-- [ ] Member My Account: restricted periods; pay outstanding monthly / add to existing monthly payment
-- [ ] Collections add the extra and stop automatically
-- [ ] Member template seeded to all clubs
-- [ ] Fees table recurring option shown only when club switch is on; gateway recurring support from one shared capability list (no hardcoded gateway names)
-- [ ] Tests + issue log
+- [x] Club settings (toggle, allowed periods, outstanding-balance window/max/min) on payment gateway settings
+- [x] Member My Account: restricted periods; pay outstanding monthly / add to existing monthly payment
+- [x] Collections add the extra and stop automatically
+- [x] Member template seeded to all clubs
+- [x] Fees table recurring option shown only when club switch is on; gateway recurring support from one shared capability list (no hardcoded gateway names)
+- [x] Tests + issue log

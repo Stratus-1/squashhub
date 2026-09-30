@@ -2320,3 +2320,9 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-09-30 — Duplicate member records (Altu Sadie, PCC)
 - Cause: signed-in callers had their own records excluded from the duplicate check (account-recovery), and email was never compared, so a logged-in player could create a second record at their own club.
 - Fix: BEFORE INSERT trigger `club_members_block_duplicate` refuses a new record when a non-resigned record at the same club has the same normalized name and the same login or email (all paths, incl. Google/imports); a visitor insert is refused when the same login is an active non-visitor member with the same name at another club (ALREADY_MEMBER_ELSEWHERE:<subdomain>). register-visitor-user returns 409 codes; NoClubAccess sends the player to their home club. Families with different names are unaffected.
+
+## 2026-09-30 — Recurring payments: club controls + outstanding-balance plans
+- New `club_recurring_settings` (switch, allowed months, outstanding-balance window/max/min, audited to `recurring_payment_audit`); admin card under Payment gateway settings.
+- Gateway recurring support is declared once in `src/lib/recurring-payments.ts` (`RECURRING_GATEWAYS`); Fees table Recurring column, My Account and dashboard prompt read it — never compare gateway names in screens.
+- `mandate_arrears_plans` + RPCs `start_arrears_plan` / `cancel_arrears_plan` (server-side rule checks). Card gateways add the extra in `payfast-charge-mandates` (capped at plan remainder and amount owed, auto-completes); bank-capped debit orders require re-approval of the higher total instead of a plan row.
+- "Pay your outstanding balance monthly" template seeded to all 799 clubs (not sent).

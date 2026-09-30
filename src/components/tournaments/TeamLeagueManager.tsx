@@ -14,6 +14,7 @@ import {
   tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName,
   diamondSemiTies, diamondFinalTies,
   type TeamLeagueConfig, type TieBreak, type GameScore, type DrawRule, type FinalLevelRule,
+  diamondTieLabel,
 } from "@/lib/tournaments/team-league";
 import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 

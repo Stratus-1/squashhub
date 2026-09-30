@@ -10,6 +10,7 @@ import {
   tieGames, gameLabel, tieResult, standings, decideLevelFinal, diamondTeamName,
   diamondSemiTies, diamondFinalTies,
   type TeamLeagueConfig, type GameScore,
+  diamondTieLabel,
 } from "@/lib/tournaments/team-league";
 import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 

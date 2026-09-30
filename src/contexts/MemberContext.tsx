@@ -90,9 +90,11 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         if (!(ownMembers || []).length) {
           try {
             const { data: unclaimed } = await (supabase.rpc as any)("find_unclaimed_memberships");
-            const mine = ((unclaimed || []) as any[]).find((r) => r.club_id === club.id);
-            if (mine?.member_id) {
-              await (supabase.rpc as any)("claim_unclaimed_membership", { _member_id: mine.member_id });
+            const mine = ((unclaimed || []) as any[]).filter((r) => r.club_id === club.id && r.match_reason === "email");
+            // Never claim on name/phone alone or guess between family members
+            // sharing an email. Those cases require an explicit choice.
+            if (mine.length === 1 && mine[0]?.member_id) {
+              await (supabase.rpc as any)("claim_unclaimed_membership", { _member_id: mine[0].member_id });
               const retry = await loadOwnMembers();
               if (!retry.error) ownMembers = retry.data;
             }

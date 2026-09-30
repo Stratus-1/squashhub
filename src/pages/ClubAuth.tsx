@@ -20,6 +20,7 @@ import { HCaptcha, HCaptchaHandle, verifyCaptchaToken } from "@/components/HCapt
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { useDuplicateGuard } from "@/components/auth/DuplicateAccountGuard";
@@ -825,22 +826,19 @@ export default function ClubAuth() {
       } catch { /* ignore */ }
 
       const { getClubSubdomain } = await import("@/lib/subdomain");
-      const { getTenantAwareAuthRedirect } = await import("@/lib/site");
       const sub = getClubSubdomain();
-      const callback = new URL(getTenantAwareAuthRedirect("/auth/callback"));
-      if (sub && !callback.searchParams.has("tenant")) callback.searchParams.set("tenant", sub);
+      const callback = new URL("/auth/callback", window.location.origin);
       if (sub) callback.searchParams.set("club", sub);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: callback.toString(),
-          queryParams: { prompt: "select_account" },
-        },
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: callback.toString(),
+        extraParams: { prompt: "select_account" },
       });
-      if (error) {
+      if (result.error) {
         localStorage.removeItem(pendingVisitorKey);
-        toast.error(error.message || "Google sign-in failed");
+        toast.error(result.error.message || "Google sign-in failed");
         setLoading(false);
+      } else if (!result.redirected) {
+        window.location.assign(callback.toString());
       }
       // Browser is redirecting to Google.
     } catch (err: any) {
@@ -1359,6 +1357,12 @@ export default function ClubAuth() {
                         ? <>Already a member of {clubName}? Enter your <strong>email</strong> and the <strong>cell phone number</strong> the club has on file. Your member number will be issued by the club.</>
                         : <>Already a member of {clubName}? Enter your <strong>email</strong> plus your <strong>Member/League Number</strong> <em>or</em> the <strong>cell phone number</strong> the club has on file.</>}
                   </p>
+                  {!hideGoogleAuth && !isAssociation && (
+                    <div className="mb-4 space-y-2">
+                      <GoogleSignInButton label="Register or sign in with Google" showHint />
+                      <GoogleAuthDivider text="or register with email and password" />
+                    </div>
+                  )}
                   <form onSubmit={handleExistingMemberSignup} className="space-y-3">
                     <div>
                       <Label htmlFor="existing-email">Email <span className="text-destructive">*</span></Label>

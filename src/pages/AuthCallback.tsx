@@ -195,6 +195,19 @@ export default function AuthCallback() {
               .from("club_members")
               .select("id", { count: "exact", head: true })
               .eq("user_id", user.id);
+            // A Google account without a club membership should return to an
+            // existing imported club, not be sent to register another club.
+            // Only use a unique exact-email candidate; never guess for family
+            // accounts sharing an email or matches based on name/phone.
+            if (!count) {
+              const { data: suggestions } = await (supabase.rpc as any)("find_unclaimed_memberships");
+              const emailMatches = ((suggestions || []) as Array<{ club_slug: string | null; match_reason: string }>)
+                .filter((match) => match.match_reason === "email" && match.club_slug);
+              if (emailMatches.length === 1) {
+                navigate(`/?club=${encodeURIComponent(emailMatches[0].club_slug || "")}`, { replace: true });
+                return;
+              }
+            }
             navigate(count ? "/" : "/register-club", { replace: true });
           }
         } else {

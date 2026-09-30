@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DIAMOND_TEAM_DEFAULTS as D, tieGames, gameLabel, poolRounds, CROSSOVER, PLACING_FINALS,
-  tieResult, standings, nightPlan, configIssues, DOUBLES_PAIRING_LABEL, diamondTeamName, diamondPlayingMinutes, diamondGameStarts,
+  tieResult, standings, nightPlan, configIssues, DOUBLES_PAIRING_LABEL, diamondTeamName, diamondMatchTeamNames, diamondPlayingMinutes, diamondGameStarts,
 } from "@/lib/tournaments/team-league";
 
 describe("Diamond League (teams)", () => {
@@ -10,6 +10,17 @@ describe("Diamond League (teams)", () => {
     expect(teams.map((t, i) => diamondTeamName(t, i, teams))).toEqual(["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4"]);
     teams[4].name = "The Rockets";
     expect(diamondTeamName(teams[4], 4, teams)).toBe("The Rockets");
+  });
+  it("labels marker sides from the fixture, including doubles and custom team names", () => {
+    const teams = [
+      { id: "home", name: "Team 1", pool: "A" as const, players: ["same-player", "partner"] },
+      { id: "away", name: "Falcons", pool: "B" as const, players: ["same-player", "other"] },
+    ];
+    const weeks = [{ week: 1, date: "", stage: "pool" as const, ties: [{ id: "tie-1", home: "home", away: "away", court: 1 }] }];
+    expect(diamondMatchTeamNames("dl:tie-1:0", teams, weeks)).toEqual(["A1", "Falcons"]);
+    expect(diamondMatchTeamNames("dl:tie-1:6", teams, weeks)).toEqual(["A1", "Falcons"]);
+    expect(diamondMatchTeamNames("dl:missing:0", teams, weeks)).toBeNull();
+    expect(diamondMatchTeamNames("round-1", teams, weeks)).toBeNull();
   });
   it("6 per team: 6 singles #6→#1 then doubles 5+6, 3+4, 1+2", () => {
     expect(tieGames(D).map(gameLabel)).toEqual([

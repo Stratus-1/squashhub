@@ -1738,6 +1738,31 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     });
   }, [customizeDailySchedule, startDate, endDate, playDays, startTime, endTime]);
 
+  /**
+   * Diamond League: the weekly fixture dates on the structure step are the ONLY
+   * place dates are entered. The tournament window and play days are derived
+   * from them so the organiser never types the same dates twice.
+   */
+  const diamondWeekDates = useMemo(
+    () => (diamondDraft.config.dates || []).filter(Boolean).slice().sort(),
+    [diamondDraft.config.dates],
+  );
+  useEffect(() => {
+    if (!diamondMode || diamondWeekDates.length === 0) return;
+    const first = diamondWeekDates[0];
+    const last = diamondWeekDates[diamondWeekDates.length - 1];
+    if (startDate !== first) setStartDate(first);
+    if (endDate !== last) setEndDate(last);
+    const wanted = new Set<number>();
+    for (const iso of diamondWeekDates) {
+      try { wanted.add(getDay(parseISO(iso))); } catch { /* ignore bad date */ }
+    }
+    const same = wanted.size === playDays.size && [...wanted].every((d) => playDays.has(d));
+    if (!same) setPlayDays(wanted);
+  }, [diamondMode, diamondWeekDates, startDate, endDate, playDays]);
+
+
+
   const [groupAssignments, setGroupAssignments] = useState<Map<string, number>>(new Map());
   /**
    * A player may enter SEVERAL divisions (e.g. "1st League" + "Masters Mixed").

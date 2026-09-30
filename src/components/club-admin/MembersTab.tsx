@@ -417,7 +417,8 @@ export function MembersTab({ clubId }: { clubId: string }) {
 
   const feeDueMonth = clubData?.club?.member_fee_due_month ?? 1;
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "resigned">("all");
+  // Default hides resigned members; admins can still pick "All" or "Resigned".
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended" | "resigned">("active");
   const [addOpen, setAddOpen] = useState(false);
   const [bulkTypesOpen, setBulkTypesOpen] = useState(false);
   const [editMember, setEditMember] = useState<ClubMember | null>(null);

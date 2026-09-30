@@ -140,7 +140,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
     const { data: courtRows } = await fromExt("courts").select("id").eq("club_id", ev.club_id).order("id");
     const courtIds = ((courtRows || []) as any[]).map((c) => c.id as number);
     const { data: existing, error: exErr } = await fromExt("club_champs_matches")
-      .select("id, stage_key, status, score").eq("champ_id", champId).like("stage_key", "dl:%");
+      .select("id, stage_key, status, score, scheduled_date, scheduled_time").eq("champ_id", champId).like("stage_key", "dl:%");
     if (exErr) throw exErr;
     const keep = new Set<string>();
     const replaceable = new Map<string, { id: string; scheduled_date: string | null; scheduled_time: string | null }>();

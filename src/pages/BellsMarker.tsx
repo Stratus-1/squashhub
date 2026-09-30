@@ -21,6 +21,7 @@ import { useIsSuperAdmin } from "@/hooks/use-club";
 import { useMemberContext } from "@/contexts/MemberContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChampMarkerHeartbeat } from "@/hooks/use-champ-marker-lock";
+import { DIAMOND_TEAM_DEFAULTS, diamondPlayingMinutes, tieGames, type TeamLeagueConfig } from "@/lib/tournaments/team-league";
 
 
 /**
@@ -94,11 +95,28 @@ export default function BellsMarker() {
   const format = getTournamentFormat(champ?.scoring_mode);
   const isBells = format?.key === BellsFormat.key;
 
+  const { data: diamondConfig } = useQuery({
+    queryKey: ["diamond-marker-timing", match?.champ_id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("team_league_events")
+        .select("config").eq("tournament_id", match?.champ_id).maybeSingle();
+      if (error) throw error;
+      return data?.config as Partial<TeamLeagueConfig> | undefined;
+    },
+    enabled: !!match?.champ_id && String(match?.stage_key || "").startsWith("dl:"),
+  });
+
   // Per-league time cap fallback (delegated to format strategy)
   const capMinutes = useMemo(() => {
     if (!champ) return 30;
+    const index = Number(String(match?.stage_key || "").match(/^dl:.+:(\d+)$/)?.[1]);
+    if (diamondConfig && Number.isInteger(index)) {
+      const cfg = { ...DIAMOND_TEAM_DEFAULTS, ...diamondConfig };
+      const kind = tieGames(cfg)[index]?.kind;
+      if (kind) return Math.max(1, diamondPlayingMinutes(cfg, kind));
+    }
     return BellsFormat.getTimeCapMinutes(champ, match?.group_number, match?.pool_number ?? match?.section_number) ?? 30;
-  }, [champ, match?.group_number, match?.pool_number, match?.section_number]);
+  }, [champ, diamondConfig, match?.stage_key, match?.group_number, match?.pool_number, match?.section_number]);
 
   const [pointsA, setPointsA] = useState(0);
   const [pointsB, setPointsB] = useState(0);

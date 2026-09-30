@@ -22,7 +22,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useNavigate } from "react-router-dom";
 import { format, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FinalizeTournamentSetupDialog } from "@/components/tournaments/FinalizeTournamentSetupDialog";
 import { SwapFixtureButton } from "@/components/tournaments/SwapFixtureButton";
@@ -1574,10 +1574,26 @@ export default function Tournaments() {
                         const now = new Date();
                         const regOpen = (!opensAt || now >= opensAt) && (!closesAt || now <= closesAt) && !champ.entries_locked;
                         return (
-                          <button
+                          <div
                             key={champ.id}
-                            onClick={() => navigate(`/club-champs/${champ.id}`)}
-                            className="w-full flex items-center justify-between gap-2 p-2 rounded bg-muted/50 hover:bg-muted text-left"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              setChampFilter(champ.id);
+                              setPoolFilter("all");
+                              setDateFilter("all");
+                              gamesCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setChampFilter(champ.id);
+                                setPoolFilter("all");
+                                setDateFilter("all");
+                                gamesCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                              }
+                            }}
+                            className="w-full flex items-center justify-between gap-2 p-2 rounded bg-muted/50 hover:bg-muted text-left cursor-pointer"
                           >
                             <div className="min-w-0">
                               <p className="text-sm font-medium truncate">{champ.name}</p>
@@ -1588,9 +1604,17 @@ export default function Tournaments() {
                             <div className="flex items-center gap-1.5 shrink-0">
                               {regOpen && <Badge variant="default" className="text-[10px]">Open</Badge>}
                               <Badge variant="secondary" className="text-[10px]">{champ.status}</Badge>
-                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                title="Open tournament (standings & details)"
+                                onClick={(e) => { e.stopPropagation(); navigate(`/club-champs/${champ.id}`); }}
+                              >
+                                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                              </Button>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>

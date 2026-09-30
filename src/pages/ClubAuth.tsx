@@ -20,7 +20,6 @@ import { HCaptcha, HCaptchaHandle, verifyCaptchaToken } from "@/components/HCapt
 import { fromExt } from "@/lib/supabase-ext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { LeaguePlayerSignupBanner } from "@/components/LeaguePlayerSignupBanner";
 import { BackToHomeLink } from "@/components/BackToHomeLink";
 import { useDuplicateGuard } from "@/components/auth/DuplicateAccountGuard";
@@ -826,19 +825,19 @@ export default function ClubAuth() {
       } catch { /* ignore */ }
 
       const { getClubSubdomain } = await import("@/lib/subdomain");
+      const { getTenantAwareAuthRedirect } = await import("@/lib/site");
       const sub = getClubSubdomain();
-      const callback = new URL("/auth/callback", window.location.origin);
+      const callback = new URL(getTenantAwareAuthRedirect("/auth/callback"));
+      if (sub && !callback.searchParams.has("tenant")) callback.searchParams.set("tenant", sub);
       if (sub) callback.searchParams.set("club", sub);
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: callback.toString(),
-        extraParams: { prompt: "select_account" },
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: callback.toString(), queryParams: { prompt: "select_account" } },
       });
-      if (result.error) {
+      if (error) {
         localStorage.removeItem(pendingVisitorKey);
-        toast.error(result.error.message || "Google sign-in failed");
+        toast.error(error.message || "Google sign-in failed");
         setLoading(false);
-      } else if (!result.redirected) {
-        window.location.assign(callback.toString());
       }
       // Browser is redirecting to Google.
     } catch (err: any) {

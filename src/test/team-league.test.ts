@@ -1,10 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
   DIAMOND_TEAM_DEFAULTS as D, tieGames, gameLabel, poolRounds, CROSSOVER, PLACING_FINALS,
-  tieResult, standings, nightPlan, configIssues, DOUBLES_PAIRING_LABEL,
+  tieResult, standings, nightPlan, configIssues, DOUBLES_PAIRING_LABEL, diamondTeamName,
 } from "@/lib/tournaments/team-league";
 
 describe("Diamond League (teams)", () => {
+  it("shows existing default names by division while preserving custom names", () => {
+    const teams = Array.from({ length: 8 }, (_, i) => ({ name: `Team ${i + 1}`, pool: (i < 4 ? "A" : "B") as "A" | "B" }));
+    expect(teams.map((t, i) => diamondTeamName(t, i, teams))).toEqual(["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4"]);
+    teams[4].name = "The Rockets";
+    expect(diamondTeamName(teams[4], 4, teams)).toBe("The Rockets");
+  });
   it("6 per team: 6 singles #6→#1 then doubles 5+6, 3+4, 1+2", () => {
     expect(tieGames(D).map(gameLabel)).toEqual([
       "Singles #6", "Singles #5", "Singles #4", "Singles #3", "Singles #2", "Singles #1",

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, DOUBLES_PAIRING_LABEL,
-  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks,
+  tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks, diamondTeamName,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule, type DoublesPairing,
 } from "@/lib/tournaments/team-league";
 
@@ -23,7 +23,7 @@ export type DiamondDraft = {
 
 const uid = () => crypto.randomUUID().slice(0, 8);
 export const newDiamondTeams = (n: number, size: number): DiamondTeam[] =>
-  Array.from({ length: n }, (_, i) => ({ id: uid(), name: `Team ${i + 1}`, pool: i < n / 2 ? "A" : "B", players: Array(size).fill(null) }));
+  Array.from({ length: n }, (_, i) => ({ id: uid(), name: `${i < n / 2 ? "A" : "B"}${(i % (n / 2)) + 1}`, pool: i < n / 2 ? "A" : "B", players: Array(size).fill(null) }));
 export const newDiamondDraft = (): DiamondDraft => ({
   config: { ...DIAMOND_TEAM_DEFAULTS, dates: [] }, teams: newDiamondTeams(8, DIAMOND_TEAM_DEFAULTS.playersPerTeam), locked: [],
 });
@@ -41,9 +41,12 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
   });
   const setTeamCount = (n: number) => {
     const next = [...draft.teams];
-    while (next.length < n) next.push(newDiamondTeams(1, cfg.playersPerTeam)[0]);
+    while (next.length < n) next.push({ id: uid(), name: "", pool: "B", players: Array(cfg.playersPerTeam).fill(null) });
     next.length = n;
-    onChange({ ...draft, teams: next.map((t, i) => ({ ...t, name: t.name, pool: i < n / 2 ? "A" : "B" })) });
+    onChange({ ...draft, teams: next.map((t, i) => {
+      const pool = i < n / 2 ? "A" : "B";
+      return { ...t, name: t.name || `${pool}${i < n / 2 ? i + 1 : i - n / 2 + 1}`, pool };
+    }) });
   };
   const toggleTb = (tb: TieBreak) => set({ tieBreaks: cfg.tieBreaks.includes(tb) ? cfg.tieBreaks.filter((x) => x !== tb) : [...cfg.tieBreaks, tb] });
   const num = (k: keyof TeamLeagueConfig) => (e: React.ChangeEvent<HTMLInputElement>) => set({ [k]: Number(e.target.value) } as any);
@@ -204,9 +207,9 @@ export function DiamondAllocationBoard({ draft, onChange, players, nameOf }: {
         <div key={pool} className="space-y-1">
           <div className="text-xs font-semibold">Division {pool}</div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            {draft.teams.filter((t) => t.pool === pool).map((t) => (
+             {draft.teams.filter((t) => t.pool === pool).map((t) => (
               <Card key={t.id}><CardHeader className="p-2 pb-1">
-                <Input className="h-7 text-xs font-semibold" value={t.name}
+                 <Input className="h-7 text-xs font-semibold" value={diamondTeamName(t, draft.teams.indexOf(t), draft.teams)}
                   onChange={(e) => onChange({ ...draft, teams: draft.teams.map((x) => (x.id === t.id ? { ...x, name: e.target.value } : x)) })} />
               </CardHeader>
                 <CardContent className="p-2 pt-0 space-y-1">
@@ -238,7 +241,10 @@ export function DiamondFixturesPreview({ draft, nameOf, courtName }: {
 }) {
   const weeks = buildPoolWeeks(draft.teams, draft.config.dates || [], draft.config.courts);
   const games = tieGames(draft.config);
-  const teamName = (id: string) => draft.teams.find((team) => team.id === id)?.name || "Team";
+   const teamName = (id: string) => {
+     const index = draft.teams.findIndex((team) => team.id === id);
+     return index < 0 ? "Team" : diamondTeamName(draft.teams[index], index, draft.teams);
+   };
   return <div className="space-y-3">
     <div><p className="text-sm font-semibold">Fixture preview</p><p className="text-[11px] text-muted-foreground">These games are created when you save the Diamond League. Scores are entered from Tournament Games.</p></div>
     {weeks.map((week) => <div key={week.week} className="rounded border border-border p-2 space-y-2">

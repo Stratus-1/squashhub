@@ -5,7 +5,7 @@ import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { fromExt } from "@/lib/supabase-ext";
 import {
   DIAMOND_TEAM_DEFAULTS, CROSSOVER, PLACING_FINALS,
-  tieGames, gameLabel, tieResult, standings, decideLevelFinal,
+  tieGames, gameLabel, tieResult, standings, decideLevelFinal, diamondTeamName,
   type TeamLeagueConfig, type GameScore,
 } from "@/lib/tournaments/team-league";
 
@@ -73,7 +73,10 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
     results[tieId] = scores;
   }
   const games = tieGames(cfg);
-  const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? "?";
+  const teamName = (id: string) => {
+    const index = teams.findIndex((t) => t.id === id);
+    return index < 0 ? "?" : diamondTeamName(teams[index], index, teams);
+  };
 
   const clean = (tieId: string): GameScore[] =>
     ((results[tieId] || []) as any[]).map((g) => (g && Number.isFinite(g.home) && Number.isFinite(g.away) ? g : null));
@@ -132,7 +135,7 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {teams.map((t) => (
             <div key={t.id} className="rounded border border-border p-2 text-xs">
-              <div className="font-semibold mb-0.5">{t.name} <span className="text-muted-foreground font-normal">· Division {t.pool}</span></div>
+              <div className="font-semibold mb-0.5">{teamName(t.id)} <span className="text-muted-foreground font-normal">· Division {t.pool}</span></div>
               {t.players.map((pid, i) => (
                 <div key={i}><span className="text-muted-foreground">#{i + 1}</span> {pid ? names[pid] || "Member" : "—"}</div>
               ))}

@@ -143,16 +143,15 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
       .select("id, stage_key, status, score").eq("champ_id", champId).like("stage_key", "dl:%");
     if (exErr) throw exErr;
     const keep = new Set<string>();
-    const drop: string[] = [];
+    const replaceable = new Map<string, { id: string; scheduled_date: string | null; scheduled_time: string | null }>();
+    const startedTies = new Set(((existing || []) as any[]).filter((m) => m.status !== "scheduled" || m.score).map((m) => String(m.stage_key).replace(/:\d+$/, "")));
     ((existing || []) as any[]).forEach((m) => {
-      if (m.status === "scheduled" && !m.score) drop.push(m.id); else keep.add(m.stage_key);
+      if (m.status === "scheduled" && !m.score && !startedTies.has(String(m.stage_key).replace(/:\d+$/, ""))) replaceable.set(m.stage_key, m);
+      else keep.add(m.stage_key);
     });
-    if (drop.length) {
-      const { error } = await fromExt("club_champs_matches").delete().in("id", drop);
-      if (error) throw error;
-    }
     const starts = diamondGameStarts(cfg, cfg.startTime || "17:45");
     const rows: any[] = [];
+    const updates: Array<{ id: string; date: string | null; time: string }> = [];
     wk.forEach((w) => w.ties.forEach((t) => {
       const home = teams.find((x) => x.id === t.home), away = teams.find((x) => x.id === t.away);
       if (!home || !away) return;
@@ -160,6 +159,12 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
         const key = `dl:${t.id}:${gi}`;
          const time = starts[gi];
         if (keep.has(key)) return;
+         const saved = replaceable.get(key);
+         if (saved) {
+           replaceable.delete(key);
+           if (saved.scheduled_date !== (w.date || null) || saved.scheduled_time?.slice(0, 5) !== time) updates.push({ id: saved.id, date: w.date || null, time });
+           return;
+         }
         const [p1, p2] = g.positions;
         rows.push({
           champ_id: champId, group_number: w.week, round_number: w.week, section_number: 1,
@@ -172,6 +177,14 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
         });
       });
     }));
+    for (const item of updates) {
+      const { error } = await fromExt("club_champs_matches").update({ scheduled_date: item.date, scheduled_time: item.time }).eq("id", item.id).eq("status", "scheduled").is("score", null);
+      if (error) throw error;
+    }
+    if (replaceable.size) {
+      const { error } = await fromExt("club_champs_matches").delete().in("id", [...replaceable.values()].map((item) => item.id)).eq("status", "scheduled").is("score", null);
+      if (error) throw error;
+    }
     for (let i = 0; i < rows.length; i += 200) {
       const { error } = await fromExt("club_champs_matches").insert(rows.slice(i, i + 200));
       if (error) throw error;
@@ -181,6 +194,8 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
 
   const save = useMutation({
     mutationFn: async (wkOverride?: Week[]) => {
+      const timingIssues = configIssues(cfg);
+      if (timingIssues.length) throw new Error(timingIssues.join(" "));
       const wk = wkOverride ?? weeks;
       const { error } = await fromExt("team_league_events").update({ name, config: cfg, teams, weeks: wk, results }).eq("id", ev.id);
       if (error) throw error;

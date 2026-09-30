@@ -83,6 +83,14 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
   const tieRes = (t: Tie) => tieResult(clean(t.id), games.length, cfg.winBonus, cfg.drawRule);
 
   const poolTies = weeks.filter((w) => w.stage === "pool").flatMap((w) => w.ties);
+  const inProgress = new Set<string>();
+  for (const t of poolTies) {
+    const sc = clean(t.id);
+    if (sc.some(Boolean) && !tieRes(t).complete) {
+      inProgress.add(t.home);
+      inProgress.add(t.away);
+    }
+  }
   const poolTable = (p: "A" | "B") =>
     standings(
       teams.filter((t) => t.pool === p).map((t) => t.id),

@@ -3,7 +3,7 @@
 ## Diamond League: admin play-offs from the Standings tab
 - [x] Shared play-off builders (diamondSemiTies/diamondFinalTies) + shared fixture sync (diamond-fixtures.ts)
 - [x] Standings tab: Create semi-finals / Create finals buttons for admins, gated on completed weeks/semis
-- [ ] Verify in preview with Riverside Club DL (all 3 weeks played) and run tests/build
+- [x] Verified in preview with Riverside Club DL (all 3 weeks played): "All league weeks are played." banner with the enabled Create semi-finals button shows on the Standings tab; tests and typecheck pass
 
 ## Uitsig welcome and Google registration
 - [x] Add the supplied login video to Uitsig's welcome email, WhatsApp and in-app messages only; leave SMS unchanged.

@@ -113,6 +113,18 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
   const combinedRows = [...poolTable("A").rows, ...poolTable("B").rows].sort((a, b) => b.total - a.total);
   const frontRunner = anyScores ? combinedRows[0] : undefined;
   const woodenSpoon = anyScores && combinedRows.length > 1 ? combinedRows[combinedRows.length - 1] : undefined;
+  // Individual player totals: points scored in every marked game, singles and doubles alike.
+  const playerTotals = new Map<string, number>();
+  for (const m of markedGames as any[]) {
+    const a = Number(m.side_a_points) || 0;
+    const b = Number(m.side_b_points) || 0;
+    if (!a && !b) continue;
+    for (const id of [m.player_a_member_id, m.partner_a_member_id].filter(Boolean)) playerTotals.set(id, (playerTotals.get(id) || 0) + a);
+    for (const id of [m.player_b_member_id, m.partner_b_member_id].filter(Boolean)) playerTotals.set(id, (playerTotals.get(id) || 0) + b);
+  }
+  const playersRanked = [...playerTotals.entries()].sort((x, y) => y[1] - x[1]);
+  const topPlayer = playersRanked[0];
+  const lastPlayer = playersRanked.length > 1 ? playersRanked[playersRanked.length - 1] : undefined;
 
   return (
     <CollapsibleCard
@@ -161,6 +173,26 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
               </div>
             </div>
           </div>
+          {topPlayer && lastPlayer && (
+            <>
+              <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs flex items-start gap-2">
+                <Trophy className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Top player</div>
+                  <div className="font-semibold truncate">{names[topPlayer[0]] || "Member"}</div>
+                  <div className="text-muted-foreground">{topPlayer[1]} points scored</div>
+                </div>
+              </div>
+              <div className="rounded border border-border bg-muted/30 p-2 text-xs flex items-start gap-2">
+                <TrendingDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Last player</div>
+                  <div className="font-semibold truncate">{names[lastPlayer[0]] || "Member"}</div>
+                  <div className="text-muted-foreground">{lastPlayer[1]} points scored</div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
       <div className="grid md:grid-cols-2 gap-4">

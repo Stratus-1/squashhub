@@ -83,6 +83,14 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
   const tieRes = (t: Tie) => tieResult(clean(t.id), games.length, cfg.winBonus, cfg.drawRule);
 
   const poolTies = weeks.filter((w) => w.stage === "pool").flatMap((w) => w.ties);
+  const inProgress = new Set<string>();
+  for (const t of poolTies) {
+    const sc = clean(t.id);
+    if (sc.some(Boolean) && !tieRes(t).complete) {
+      inProgress.add(t.home);
+      inProgress.add(t.away);
+    }
+  }
   const poolTable = (p: "A" | "B") =>
     standings(
       teams.filter((t) => t.pool === p).map((t) => t.id),
@@ -123,7 +131,7 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
       )}
       <div className="grid md:grid-cols-2 gap-4">
         {(["A", "B"] as const).map((p) => (
-          <TeamTable key={p} title={`Division ${p}`} t={poolTable(p)} name={teamName} />
+          <TeamTable key={p} title={`Division ${p}`} t={poolTable(p)} name={teamName} inProgress={inProgress} />
         ))}
       </div>
       {semiTable && (
@@ -222,7 +230,7 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
   );
 }
 
-function TeamTable({ title, t, name }: { title: string; t: ReturnType<typeof standings>; name: (id: string) => string }) {
+function TeamTable({ title, t, name, inProgress }: { title: string; t: ReturnType<typeof standings>; name: (id: string) => string; inProgress?: Set<string> }) {
   const level = new Set(t.undecided.flat());
   return (
     <div>
@@ -235,7 +243,12 @@ function TeamTable({ title, t, name }: { title: string; t: ReturnType<typeof sta
           {t.rows.map((r, i) => (
             <tr key={r.teamId} className={level.has(r.teamId) ? "text-destructive" : ""}>
               <td className="py-0.5">{i + 1}</td>
-              <td className="py-0.5 font-medium">{name(r.teamId)}</td>
+              <td className="py-0.5 font-medium">
+                {name(r.teamId)}
+                {inProgress?.has(r.teamId) && (
+                  <span className="ml-1 text-[10px] font-normal text-primary" title="Team match still in progress">● live</span>
+                )}
+              </td>
               <td className="text-center">{r.played}</td>
               <td className="text-center">{r.won}</td>
               <td className="text-center">{r.points}</td>

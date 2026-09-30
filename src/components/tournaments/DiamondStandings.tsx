@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Gem } from "lucide-react";
+import { Gem, Trophy, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import { fromExt } from "@/lib/supabase-ext";

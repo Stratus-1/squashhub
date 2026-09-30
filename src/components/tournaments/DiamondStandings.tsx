@@ -243,7 +243,12 @@ function TeamTable({ title, t, name, inProgress }: { title: string; t: ReturnTyp
           {t.rows.map((r, i) => (
             <tr key={r.teamId} className={level.has(r.teamId) ? "text-destructive" : ""}>
               <td className="py-0.5">{i + 1}</td>
-              <td className="py-0.5 font-medium">{name(r.teamId)}</td>
+              <td className="py-0.5 font-medium">
+                {name(r.teamId)}
+                {inProgress?.has(r.teamId) && (
+                  <span className="ml-1 text-[10px] font-normal text-primary" title="Team match still in progress">● live</span>
+                )}
+              </td>
               <td className="text-center">{r.played}</td>
               <td className="text-center">{r.won}</td>
               <td className="text-center">{r.points}</td>

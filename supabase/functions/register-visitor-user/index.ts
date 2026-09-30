@@ -191,6 +191,21 @@ Deno.serve(async (req) => {
       if (!reusedExistingAccount) {
         try { await admin.auth.admin.deleteUser(userId); } catch (_) { /* ignore */ }
       }
+      const msg = memberErr.message || "";
+      const elsewhere = msg.match(/ALREADY_MEMBER_ELSEWHERE:(\S+)/);
+      if (elsewhere) {
+        return json({
+          error: "You're already a member of another club, so no visitor record was created. Taking you to your own club.",
+          code: "already_member_elsewhere",
+          home_club: elsewhere[1],
+        }, 409);
+      }
+      if (msg.includes("DUPLICATE_MEMBER")) {
+        return json({
+          error: "You already have a record at this club, so no duplicate was created. Please sign in with your existing account.",
+          code: "duplicate_member",
+        }, 409);
+      }
       return json({
         error: "Failed to create visitor membership: " + memberErr.message,
         details: memberErr,

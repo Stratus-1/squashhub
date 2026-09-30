@@ -118,6 +118,8 @@ export function TournamentProgressCard({
   // that actually have group fixtures.
   const poolOnly = useMemo(() => {
     if (shown.length > 0) return [];
+    // Diamond League weeks are not pools — their progress lives in the Diamond manager.
+    if ((matches as any[]).some((m) => String(m.stage_key || "").startsWith("dl:"))) return [];
     const gns = Array.from(
       new Set(
         (matches as any[])

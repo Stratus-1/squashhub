@@ -445,6 +445,30 @@ export function tournamentNextAction(
   }
 
   if (sections.length === 0) {
+    // Diamond League: group_number is the WEEK, not a pool. The league stage
+    // is only complete when every week is played, and finals are set up in
+    // the Diamond manager — never via "Generate knockout round".
+    const dlRows = (matches as any[]).filter(
+      (m) => String(m.stage_key || "").startsWith("dl:") && (m.stage || "group") === "group" && !m.is_bye,
+    );
+    if (dlRows.length > 0) {
+      const done = dlRows.filter((m) => DONE.has(String(m.status || "").toLowerCase())).length;
+      const allDone = done === dlRows.length;
+      return {
+        stage: allDone ? "pool_complete" : "pool_play",
+        status: allDone ? "League weeks complete" : "League weeks in progress",
+        headline: allDone
+          ? "All league weeks are played — set up the finals in the Diamond League manager."
+          : `League weeks — ${done} of ${dlRows.length} games played.`,
+        ctaLabel: allDone ? null : "Enter remaining results",
+        action: allDone ? "none" : "await_results",
+        disabled: false,
+        blockedReason: null,
+        groupNumber: null,
+        section: null,
+        complete: false,
+      };
+    }
     // No knockout yet — fall back to the pool stage of each division.
     const gns = Array.from(
       new Set(

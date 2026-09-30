@@ -7455,6 +7455,75 @@ export type Database = {
           },
         ]
       }
+      help_center_feed_private: {
+        Row: {
+          created_at: string
+          key: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      help_center_ticket_outbox: {
+        Row: {
+          attempts: number
+          dead_at: string | null
+          delivered_at: string | null
+          enqueued_at: string
+          event_id: string
+          id: number
+          last_error: string | null
+          locked_until: string | null
+          next_attempt_at: string
+          revision: number
+          status: string
+          ticket_created_at: string
+          ticket_id: string
+          ticket_updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          dead_at?: string | null
+          delivered_at?: string | null
+          enqueued_at?: string
+          event_id?: string
+          id?: number
+          last_error?: string | null
+          locked_until?: string | null
+          next_attempt_at?: string
+          revision: number
+          status: string
+          ticket_created_at: string
+          ticket_id: string
+          ticket_updated_at: string
+        }
+        Update: {
+          attempts?: number
+          dead_at?: string | null
+          delivered_at?: string | null
+          enqueued_at?: string
+          event_id?: string
+          id?: number
+          last_error?: string | null
+          locked_until?: string | null
+          next_attempt_at?: string
+          revision?: number
+          status?: string
+          ticket_created_at?: string
+          ticket_id?: string
+          ticket_updated_at?: string
+        }
+        Relationships: []
+      }
       help_videos: {
         Row: {
           category: string
@@ -17867,6 +17936,46 @@ export type Database = {
         Returns: boolean
       }
       has_wifi_access: { Args: { _club_member_id: string }; Returns: boolean }
+      help_center_outbox_claim: {
+        Args: { p_lease_seconds?: number; p_limit?: number }
+        Returns: {
+          attempts: number
+          dead_at: string | null
+          delivered_at: string | null
+          enqueued_at: string
+          event_id: string
+          id: number
+          last_error: string | null
+          locked_until: string | null
+          next_attempt_at: string
+          revision: number
+          status: string
+          ticket_created_at: string
+          ticket_id: string
+          ticket_updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "help_center_ticket_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      help_center_outbox_disarm: { Args: never; Returns: boolean }
+      help_center_outbox_result: {
+        Args: {
+          p_error?: string
+          p_id: number
+          p_max_attempts?: number
+          p_ok: boolean
+        }
+        Returns: undefined
+      }
+      help_center_outbox_wake: { Args: never; Returns: undefined }
+      help_center_verify_dispatch: {
+        Args: { p_token: string }
+        Returns: boolean
+      }
       invite_verification_kind: {
         Args: { p_member_id: string }
         Returns: string

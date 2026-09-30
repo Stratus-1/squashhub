@@ -109,6 +109,10 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
   })();
 
   const anyScores = Object.values(results).some((r) => r?.some(Boolean));
+  // Fun stats: the single team on top and at the bottom across both divisions (live totals).
+  const combinedRows = [...poolTable("A").rows, ...poolTable("B").rows].sort((a, b) => b.total - a.total);
+  const frontRunner = anyScores ? combinedRows[0] : undefined;
+  const woodenSpoon = anyScores && combinedRows.length > 1 ? combinedRows[combinedRows.length - 1] : undefined;
 
   return (
     <CollapsibleCard
@@ -128,6 +132,36 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
       )}
       {anyScores && (
         <p className="text-[11px] text-muted-foreground">Live: points update as each game is marked. P, W and the win bonus are added when a team match is finished.</p>
+      )}
+      {frontRunner && woodenSpoon && (
+        <div className="grid grid-cols-2 gap-2" data-field="diamond-fun-stats">
+          <div className="rounded border border-primary/40 bg-primary/5 p-2 text-xs flex items-start gap-2">
+            <Trophy className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Front runner</div>
+              <div className="font-semibold truncate">
+                {teamName(frontRunner.teamId)}
+                {inProgress.has(frontRunner.teamId) && <span className="ml-1 text-[10px] font-normal text-primary">● live</span>}
+              </div>
+              <div className="text-muted-foreground">
+                Division {teams.find((t) => t.id === frontRunner.teamId)?.pool} · {frontRunner.points} pts + {frontRunner.bonus} bonus = {frontRunner.total}
+              </div>
+            </div>
+          </div>
+          <div className="rounded border border-border bg-muted/30 p-2 text-xs flex items-start gap-2">
+            <TrendingDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Wooden spooner</div>
+              <div className="font-semibold truncate">
+                {teamName(woodenSpoon.teamId)}
+                {inProgress.has(woodenSpoon.teamId) && <span className="ml-1 text-[10px] font-normal text-primary">● live</span>}
+              </div>
+              <div className="text-muted-foreground">
+                Division {teams.find((t) => t.id === woodenSpoon.teamId)?.pool} · {woodenSpoon.points} pts + {woodenSpoon.bonus} bonus = {woodenSpoon.total}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       <div className="grid md:grid-cols-2 gap-4">
         {(["A", "B"] as const).map((p) => (

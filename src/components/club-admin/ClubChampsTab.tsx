@@ -3471,6 +3471,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   /** Upserts the Diamond League team event linked to this tournament. */
   const persistDiamond = async (tournamentId: string, status?: string) => {
+    const timingIssues = diamondConfigIssues(diamondDraft.config);
+    if (timingIssues.length) throw new Error(timingIssues.join(" "));
     const configuredCourts = selectedCourtIds.size || diamondDraft.config.courts;
     const poolWeeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], configuredCourts);
     // Preserve any knockout (semi/final) weeks already stored on the event —
@@ -3503,6 +3505,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
   const syncDiamondFixtures = async (tournamentId: string, weeks: ReturnType<typeof buildPoolWeeks>) => {
     const games = diamondTieGames(diamondDraft.config);
+    const starts = diamondGameStarts(diamondDraft.config, startTime || diamondDraft.config.startTime || "17:45");
     const courtIds = Array.from(selectedCourtIds);
     const { data: existing, error: existingError } = await fromExt("club_champs_matches")
       .select("id, stage_key, status, score").eq("champ_id", tournamentId).like("stage_key", "dl:%");
@@ -3520,17 +3523,14 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       const { error } = await fromExt("club_champs_matches").delete().in("id", replaceableIds);
       if (error) throw error;
     }
-    const [startHour, startMinute] = (startTime || diamondDraft.config.startTime || "17:45").split(":").map(Number);
     const rows: Record<string, any>[] = [];
     weeks.forEach((week) => week.ties.forEach((tie) => {
       const home = diamondDraft.teams.find((team) => team.id === tie.home);
       const away = diamondDraft.teams.find((team) => team.id === tie.away);
       if (!home || !away) return;
-      let minutes = startHour * 60 + startMinute;
       games.forEach((game, gameIndex) => {
         const stageKey = `dl:${tie.id}:${gameIndex}`;
-        const scheduledTime = `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-        minutes += game.minutes;
+        const scheduledTime = starts[gameIndex];
         if (protectedKeys.has(stageKey)) return;
         const [player1, player2] = game.positions;
         rows.push({ champ_id: tournamentId, group_number: week.week, round_number: week.week,

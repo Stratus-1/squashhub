@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { clubRecurringAvailable, recurringGatewayFor } from "@/lib/recurring-payments";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,8 +42,9 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
       const clubId = member?.club_id;
       if (!clubId) return { eligible: false, outstanding: 0 };
 
-      const [clubRes, mandateRes, catRes, assocRes, nbRes, feesRes] = await Promise.all([
-        supabase.from("clubs").select("payment_gateway").eq("id", clubId).maybeSingle(),
+      const [clubRes, settingsRes, mandateRes, catRes, assocRes, nbRes, feesRes] = await Promise.all([
+        supabase.from("clubs").select("payment_gateway, payment_gateways").eq("id", clubId).maybeSingle(),
+        (supabase as any).from("club_recurring_settings").select("*").eq("club_id", clubId).maybeSingle(),
         fromExt("stitch_mandates").select("id, status")
           .eq("club_member_id", clubMemberId!).in("status", ["active", "pending"]).limit(1),
         fromExt("member_fee_categories").select("name")
@@ -56,8 +58,9 @@ export default function DebitOrderPromptCard({ clubMemberId }: { clubMemberId: s
       ]);
 
       // Gate 1: the club's gateway must support recurring pulls.
-      const gateway = String(clubRes.data?.payment_gateway || "").toLowerCase();
-      if (gateway !== "stitch" && gateway !== "payfast") {
+      // Gate 1: a recurring-capable gateway is on and the club allows recurring.
+      const gateway = recurringGatewayFor(clubRes.data as any);
+      if (!clubRecurringAvailable(gateway, settingsRes.data as any)) {
         return { eligible: false, outstanding: 0 };
       }
       // Gate 2: no active/pending mandate already.

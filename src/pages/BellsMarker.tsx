@@ -185,8 +185,10 @@ export default function BellsMarker() {
       bell_paused_seconds: bellEndReached ? 0 : (typeof match.bell_paused_seconds === "number" ? match.bell_paused_seconds : null),
     };
     liveSyncEnabledRef.current = match.status === "in_progress" && !bellStopped;
-    if (bellEndReached && match.status !== "completed") {
-      // Bell already rang while nobody was on this screen: submit the result.
+    if (bellEndReached && match.status === "in_progress" && hasLive) {
+      // Bell already rang during a scored, live match while nobody was on
+      // this screen: submit the recorded score. Never finalise a match that
+      // was not started or never scored — the marker must submit it manually.
       autoSubmitRef.current(nextPointsA, nextPointsB);
     }
     hydratedRef.current = true;

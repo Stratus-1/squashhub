@@ -3472,7 +3472,15 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
   /** Upserts the Diamond League team event linked to this tournament. */
   const persistDiamond = async (tournamentId: string, status?: string) => {
     const configuredCourts = selectedCourtIds.size || diamondDraft.config.courts;
-    const weeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], configuredCourts);
+    const poolWeeks = buildPoolWeeks(diamondDraft.teams, diamondDraft.config.dates || [], configuredCourts);
+    // Preserve any knockout (semi/final) weeks already stored on the event —
+    // the wizard only regenerates pool weeks and must never wipe them.
+    let knockoutWeeks: any[] = [];
+    if (diamondDraft.eventId) {
+      const { data: existing } = await fromExt("team_league_events").select("weeks").eq("id", diamondDraft.eventId).maybeSingle();
+      knockoutWeeks = (((existing as any)?.weeks as any[]) || []).filter((w: any) => w?.stage && w.stage !== "pool");
+    }
+    const weeks = [...poolWeeks, ...knockoutWeeks] as ReturnType<typeof buildPoolWeeks>;
     const row: Record<string, any> = {
       club_id: clubId, tournament_id: tournamentId, name: champName || "Diamond League",
       config: { ...diamondDraft.config, courts: configuredCourts,

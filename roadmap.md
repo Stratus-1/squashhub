@@ -92,4 +92,5 @@
 - [ ] Member My Account: restricted periods; pay outstanding monthly / add to existing monthly payment
 - [ ] Collections add the extra and stop automatically
 - [ ] Member template seeded to all clubs
+- [ ] Fees table recurring option shown only when club switch is on; gateway recurring support from one shared capability list (no hardcoded gateway names)
 - [ ] Tests + issue log

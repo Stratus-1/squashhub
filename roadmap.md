@@ -96,3 +96,6 @@
 - [x] Tests + issue log
 
 - [x] Bells games: renamed "Ring & Score" to "Mark game"
+
+- [x] Help Center pilot gate (paused/pilot/live, backlog hold, pilot enqueue) — source + tests only
+- [ ] Apply staged migration supabase/pending-migrations/20260930150800 (waits on owner approval), then redeploy feed

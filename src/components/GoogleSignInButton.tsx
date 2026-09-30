@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { toast } from "sonner";
 import { getClubSubdomain } from "@/lib/subdomain";
-import { getTenantAwareAuthRedirect } from "@/lib/site";
 
 interface Props {
   label?: string;
   className?: string;
   /** If true, preserves the current club subdomain in the post-OAuth redirect. */
   preserveClub?: boolean;
-  /** Show the "Gmail users can sign in or register with Google" helper line. */
+  /** Explain that an existing membership is matched by its club-held email. */
   showHint?: boolean;
 }
 
@@ -18,17 +17,6 @@ export function isGoogleAuthDisabled(): boolean {
   return String(import.meta.env.VITE_DISABLE_GOOGLE_AUTH || "").toLowerCase() === "true";
 }
 
-/**
- * "Continue with Google" button using Supabase-direct Google OAuth (BYO credentials).
- *
- * Production domains (squashhub.co.za, *.squashhub.co.za) are served from Vercel,
- * which can't proxy Lovable's /~oauth/* broker. Supabase's /auth/v1/callback works
- * from any origin, so we use that flow everywhere.
- *
- * GCP config:
- *  - Authorized redirect URI: https://bzbuppwzljadulwntjys.supabase.co/auth/v1/callback
- *  - Client ID + Secret pasted into Cloud → Auth Settings → Google provider.
- */
 export function GoogleSignInButton({ label = "Continue with Google", className, preserveClub = true, showHint = true }: Props) {
   if (isGoogleAuthDisabled()) return null;
 
@@ -38,28 +26,22 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
     setLoading(true);
     try {
       const sub = preserveClub ? getClubSubdomain() : null;
-      // Route OAuth callback through the production root so the redirect URL is
-      // in Supabase's allowlist. The bootstrap in index.html bounces back to
-      // the tenant subdomain (preserving the ?code= param) for the callback.
-      const callback = new URL(getTenantAwareAuthRedirect("/auth/callback"));
-      if (sub && !callback.searchParams.has("tenant")) callback.searchParams.set("tenant", sub);
-      // Keep ?club= too so AuthCallback can resolve the tenant on the subdomain.
+      // A public same-origin callback retains the selected club on every host.
+      // Never send OAuth directly to a protected page.
+      const callback = new URL("/auth/callback", window.location.origin);
       if (sub) callback.searchParams.set("club", sub);
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: callback.toString(),
-          queryParams: { prompt: "select_account" },
-        },
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: callback.toString(),
+        extraParams: { prompt: "select_account" },
       });
 
-      if (error) {
-        toast.error(error.message || "Google sign-in failed");
+      if (result.error) {
+        toast.error(result.error.message || "Google sign-in failed");
         setLoading(false);
         return;
       }
-      // Browser is redirecting to Google.
+      if (!result.redirected) window.location.assign(callback.toString());
     } catch (e: any) {
       toast.error(e?.message || "Google sign-in failed");
       setLoading(false);
@@ -73,7 +55,7 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
         variant="outline"
         onClick={handleClick}
         disabled={loading}
-        className={`w-full gap-2 bg-white text-black hover:bg-white/90 border-input ${className || ""}`}
+        className={`w-full gap-2 bg-card text-foreground hover:bg-muted border-input ${className || ""}`}
       >
         <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden>
           <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
@@ -85,7 +67,7 @@ export function GoogleSignInButton({ label = "Continue with Google", className, 
       </Button>
       {showHint && (
         <p className="text-[11px] leading-snug text-center text-muted-foreground">
-          New or existing members with a Gmail address can simply sign in or register with their Google account — no password needed.
+          Use the Google account with the email your club has on file to keep your membership and match history. No password needed.
         </p>
       )}
     </div>

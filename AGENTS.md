@@ -177,3 +177,6 @@ Supabase currently owns the dominant data and backend path. Migrate incrementall
 - Doubles serving is a pure state machine in `src/lib/marker/doubles-serving.ts` (methods even_odd/by_position/second_server); the method lives on `league_rules.doubles_serving_method` and `tournaments.doubles_serving_method` / `league_doubles_serving_methods` (null = manual legacy serving), and the marker persists positions + server state with its local session; why: the marker must know the real server per pair and singles must stay untouched.
 - Diamond League is a normal-wizard team mode: `team_league_events` links 1:1 by `tournament_id`; `autoSlotPlayers` preserves locks; `buildPoolWeeks` drives preview, saved weeks and stable `dl:` match rows; why: invitations, courts, Upcoming, marking and standings must share one tournament fixture identity.
 - Diamond League doubles pairs are re-seeded by DB trigger `diamond_seed_doubles_from_singles` once a tie's singles are all scored (points scored, level -> higher position); why: pairing is automatic and never touches started doubles.
+<!-- LOVABLE:BEGIN -->
+- Club Google registration uses a public same-origin callback with club context and reuses existing club_members identity; only a unique exact-email unclaimed match auto-claims; why: preserve member history without guessing across shared family emails.
+<!-- LOVABLE:END -->

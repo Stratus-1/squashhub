@@ -1,5 +1,10 @@
 # Roadmap
 
+## Uitsig welcome and Google registration
+- [x] Add the supplied login video to Uitsig's welcome email, WhatsApp and in-app messages only; leave SMS unchanged.
+- [x] Give existing members a Google registration option linked by their club-held email, without guessing across shared addresses.
+- [x] Verify the Uitsig template and registration screens in preview; do not publish.
+
 ## Counter mode menu
 - [x] Match the regular bar's product imagery, add top category and Bar/Shop choices, and keep the existing tab and payment flow unchanged.
 - [x] Verify counter browsing on desktop and phone without publishing.

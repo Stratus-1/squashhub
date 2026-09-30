@@ -10,6 +10,7 @@ const REDACTION_POLICY = "squashhub-ticket-metadata-v1";
 const CONTRACT_VERSION = "1.0";
 const SIGN_METHOD = "POST";
 const SIGN_PATH = "/v1/support/tickets";
+const APPROVED_INGRESS_URL = "https://stratus-support-ingress-9essk3i1.uc.gateway.dev/v1/support/tickets";
 const EVENT_TYPES = new Set(["case.created", "case.updated", "case.deleted"]);
 const KEY_ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 const REDACTED_TITLE = "SquashHub support ticket";
@@ -70,8 +71,7 @@ Deno.serve(async (req) => {
   const redactionPolicy = Deno.env.get("HELP_CENTER_REDACTION_POLICY") ?? "";
   const keyId = Deno.env.get("HELP_CENTER_KEY_ID") ?? "";
   const missing: string[] = [];
-  let urlOk = false;
-  try { const u = new URL(ingressUrl); urlOk = u.protocol === "https:" && u.pathname === SIGN_PATH && !u.search; } catch { /* invalid */ }
+  const urlOk = ingressUrl === APPROVED_INGRESS_URL;
   if (!urlOk) missing.push("HELP_CENTER_INGRESS_URL");
   if (!KEY_ID_RE.test(keyId)) missing.push("HELP_CENTER_KEY_ID");
   if (hmacKey.length < 32) missing.push("HELP_CENTER_HMAC_KEY");
@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
       const t = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
       const res = await fetch(ingressUrl, {
         method: "POST",
+        redirect: "error",
         signal: ctrl.signal,
         headers: {
           "Content-Type": "application/json",
@@ -147,7 +148,8 @@ Deno.serve(async (req) => {
     await db.rpc("help_center_outbox_result", {
       p_id: r.id, p_ok: ok, p_error: ok ? null : errCode, p_max_attempts: MAX_ATTEMPTS,
     });
-    ok ? delivered++ : failed++;
+    if (ok) delivered++;
+    else failed++;
     console.log(JSON.stringify({ fn: "help-center-ticket-feed", event: "result", ok, err: errCode || undefined }));
   }
 

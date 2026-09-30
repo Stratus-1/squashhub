@@ -11,6 +11,11 @@ describe("help-center-ticket-feed contract is unchanged by the pilot gate", () =
     for (const h of ['"Idempotency-Key": r.event_id', '"X-Connector-Key-Id": keyId', '"X-Connector-Timestamp": ts', '"X-Connector-Signature": `sha256=${sig}`'])
       expect(src).toContain(h);
   });
+  it("pins signed delivery to the approved Stratus Gateway and rejects redirects", () => {
+    expect(src).toContain('const APPROVED_INGRESS_URL = "https://stratus-support-ingress-9essk3i1.uc.gateway.dev/v1/support/tickets";');
+    expect(src).toContain("const urlOk = ingressUrl === APPROVED_INGRESS_URL;");
+    expect(src).toContain('redirect: "error",');
+  });
   it("keeps the payload fields, status mapping and receiver semantics", () => {
     for (const k of ["contract_version", "event_id", "event_type", "product_case_ref", "case_revision", "tenant_scope_ref",
       "category", "priority", "source_status", "redacted_title", "redacted_summary", "redaction_policy_version",

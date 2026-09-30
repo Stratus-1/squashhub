@@ -14,8 +14,10 @@ const EVENT_TYPES = new Set(["case.created", "case.updated", "case.deleted"]);
 const KEY_ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 const REDACTED_TITLE = "SquashHub support ticket";
 const REDACTED_SUMMARY = "Details are held in SquashHub and are not exported.";
-const TENANT_SCOPE_RE = /^[a-z0-9][a-z0-9._:-]{2,63}$/;
-const ALLOWED_STATUS = new Set(["open", "pending", "in_progress", "waiting", "resolved", "closed"]);
+const ALLOWED_STATUS = new Set(["open", "waiting", "in_progress", "resolved", "closed"]);
+// support_threads has no category/priority fields; receiver contract requires fixed values.
+const CONTRACT_CATEGORY = "product_help";
+const CONTRACT_PRIORITY = "normal";
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_ATTEMPTS = 12;
 

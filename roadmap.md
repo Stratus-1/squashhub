@@ -86,3 +86,10 @@
 ## Duplicate member prevention
 - [x] Never create a second member record for the same person (same login or same email + same name), on every signup path incl. Google.
 - [x] Accidental visitor registration by an existing member keeps them at their original club.
+
+## Recurring payments: club controls + outstanding balances
+- [ ] Club settings (toggle, allowed periods, outstanding-balance window/max/min) on payment gateway settings
+- [ ] Member My Account: restricted periods; pay outstanding monthly / add to existing monthly payment
+- [ ] Collections add the extra and stop automatically
+- [ ] Member template seeded to all clubs
+- [ ] Tests + issue log

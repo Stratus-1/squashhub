@@ -113,6 +113,18 @@ export function DiamondStandings({ tournamentId }: { tournamentId: string }) {
   const combinedRows = [...poolTable("A").rows, ...poolTable("B").rows].sort((a, b) => b.total - a.total);
   const frontRunner = anyScores ? combinedRows[0] : undefined;
   const woodenSpoon = anyScores && combinedRows.length > 1 ? combinedRows[combinedRows.length - 1] : undefined;
+  // Individual player totals: points scored in every marked game, singles and doubles alike.
+  const playerTotals = new Map<string, number>();
+  for (const m of markedGames as any[]) {
+    const a = Number(m.side_a_points) || 0;
+    const b = Number(m.side_b_points) || 0;
+    if (!a && !b) continue;
+    for (const id of [m.player_a_member_id, m.partner_a_member_id].filter(Boolean)) playerTotals.set(id, (playerTotals.get(id) || 0) + a);
+    for (const id of [m.player_b_member_id, m.partner_b_member_id].filter(Boolean)) playerTotals.set(id, (playerTotals.get(id) || 0) + b);
+  }
+  const playersRanked = [...playerTotals.entries()].sort((x, y) => y[1] - x[1]);
+  const topPlayer = playersRanked[0];
+  const lastPlayer = playersRanked.length > 1 ? playersRanked[playersRanked.length - 1] : undefined;
 
   return (
     <CollapsibleCard

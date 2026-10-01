@@ -5,6 +5,7 @@
 // Never exports subject, messages/previews, user identity, attachments, AI context
 // or maintenance data. Fails closed until every config secret is set exactly.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { classifyDeliveryResponse, MAX_DELIVERY_ATTEMPTS } from "./delivery-result.js";
 
 const REDACTION_POLICY = "squashhub-ticket-metadata-v1";
 const CONTRACT_VERSION = "1.0";
@@ -21,7 +22,6 @@ const ALLOWED_STATUS = new Set(["open", "waiting", "in_progress", "resolved", "c
 const CONTRACT_CATEGORY = "product_help";
 const CONTRACT_PRIORITY = "normal";
 const REQUEST_TIMEOUT_MS = 10_000;
-const MAX_ATTEMPTS = 12;
 
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     const mappedStatus = r.status === "pending" ? "waiting" : r.status;
     if (!ALLOWED_STATUS.has(mappedStatus)) {
       await db.rpc("help_center_outbox_result", {
-        p_id: r.id, p_ok: false, p_error: "invalid_source_status", p_max_attempts: MAX_ATTEMPTS,
+        p_id: r.id, p_ok: false, p_error: "invalid_source_status", p_max_attempts: 1,
       });
       failed++;
       console.warn(JSON.stringify({ fn: "help-center-ticket-feed", event: "result", ok: false, err: "invalid_source_status" }));
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     };
     const body = JSON.stringify(payload);
     const ts = Math.floor(Date.now() / 1000).toString();
-    let ok = false, errCode = "";
+    let ok = false, errCode: string | null = null, maxAttempts = MAX_DELIVERY_ATTEMPTS;
     try {
       const canonical = `${SIGN_METHOD}\n${SIGN_PATH}\n${ts}\n${await sha256Hex(body)}`;
       const sig = await hmacHex(hmacKey, canonical);
@@ -139,14 +139,15 @@ Deno.serve(async (req) => {
         body,
       }).finally(() => clearTimeout(t));
       await res.body?.cancel();
-      // 409 = already ingested under this idempotency key.
-      ok = res.ok || res.status === 409;
-      if (!ok) errCode = `http_${res.status}`;
+      const delivery = classifyDeliveryResponse(res.status);
+      ok = delivery.ok;
+      errCode = delivery.errorCode;
+      maxAttempts = delivery.maxAttempts;
     } catch (e) {
       errCode = (e as Error)?.name === "AbortError" ? "timeout" : "network";
     }
     await db.rpc("help_center_outbox_result", {
-      p_id: r.id, p_ok: ok, p_error: ok ? null : errCode, p_max_attempts: MAX_ATTEMPTS,
+      p_id: r.id, p_ok: ok, p_error: ok ? null : errCode, p_max_attempts: maxAttempts,
     });
     if (ok) delivered++;
     else failed++;

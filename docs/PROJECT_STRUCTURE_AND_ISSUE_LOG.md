@@ -2350,3 +2350,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-10-01 — Diamond League scored fixture showed “Member”
 - Cause: standings loaded names only for current team slots, while scored fixture rows hold the actual participants; substitutes and re-seeded doubles partners can differ from the current slots.
 - Fix: load names for both current slots and recorded fixture participants, scoped to the event's club. Keep the recorded participant IDs as the display source; do not alter teams, scores, or results.
+
+## 2026-10-01 — Diamond League squad substitution missing from fixtures
+- Cause: saving team slots updated the event JSON, but the fixture synchronizer only refreshed dates/times of existing unscored rows; player IDs were left as originally generated. A started tie's pending doubles may have been re-seeded, so blindly rebuilding them would also lose their order.
+- Fix: on organiser Save, update participants in unstarted games from current team slots; in started ties, change only the departing player's identity in still-scheduled/unscored games. Keep game rows, scores, completed games and seeded partner order. The allocation screen remains a draft until Save.

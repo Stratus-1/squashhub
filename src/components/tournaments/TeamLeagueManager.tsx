@@ -139,7 +139,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
   // shows under Upcoming and can be marked. Scored/started games are kept.
   const syncFixtures = (wk: Week[]) =>
     (ev as any).tournament_id
-      ? syncDiamondFixtures({ champId: (ev as any).tournament_id as string, clubId: ev.club_id, cfg, teams, weeks: wk, teamName })
+      ? syncDiamondFixtures({ champId: (ev as any).tournament_id as string, clubId: ev.club_id, cfg, teams, previousTeams: ev.teams, weeks: wk, teamName })
       : Promise.resolve(0);
 
   const save = useMutation({

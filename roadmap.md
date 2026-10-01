@@ -82,6 +82,7 @@
 - [x] Verify the legacy View destination and the acknowledged/no-unread state in the signed-in preview.
 
 ## Diamond League fixtures and standings
+- [x] Squad replacements update still-unplayed fixtures on Save without changing played games or re-seeded doubles order.
 - [x] Hide individual-player leaders and bottom rankings on linked Diamond League tournaments; show the existing team tables instead.
 - [x] Label default teams A1–A4 and B1–B4 in standings and setup, including previously saved default names; preserve custom names and results.
 - [x] Put the full week-by-week team fixture preview in Review & Generate.

@@ -147,7 +147,7 @@ export function openingRoundsWarning(planned: number, needed: number): string | 
  * Dating play-off games
  * ------------------------------------------------------------------ */
 
-const PLACE_RE = /\d+(st|nd|rd|th)\s*\/\s*\d+(st|nd|rd|th)|place play-?off|placement/i;
+const PLACE_RE = /\d+(st|nd|rd|th)\s*\/\s*\d+(st|nd|rd|th)|placement/i;
 
 /** Is this game a play-off / knockout game (never dated by pool round number)? */
 export function isPlayoffGame(m: { stage?: string | null; stage_label?: string | null }): boolean {

@@ -38,7 +38,7 @@ import { TournamentNextActionBar } from "@/components/tournaments/TournamentNext
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { parseRoundDeadlines, mergeRoundDeadlines, deadlineForStage } from "@/lib/tournaments/round-deadlines";
 import { parseMilestones as parseMilestonesForDates } from "@/lib/tournaments/round-definitions";
-import { playoffDeadline } from "@/lib/tournaments/round-plan";
+import { assignFixedSlots, playoffDeadline, playoffKeyForLabel, playoffModeFor, stageSchedulingFromChamp, type PlayoffKey } from "@/lib/tournaments/round-plan";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
@@ -1517,6 +1517,32 @@ export default function ClubChampsView() {
       for (const row of newRows as any[]) {
         row.play_by = playoffDeadline(playoffMilestones, row.stage_label, row.stage);
       }
+      // Play-off rounds the organiser set to "Fixed date & courts" also get a
+      // court and time on that round's date (players don't book these).
+      {
+        const ss = stageSchedulingFromChamp(champ as any);
+        const byKey = new Map<PlayoffKey, any[]>();
+        for (const row of newRows as any[]) {
+          const k = playoffKeyForLabel(row.stage_label, row.stage);
+          if (!k || playoffModeFor(k, ss, (champ as any)?.scheduling_mode) !== "club" || !ss.playoffs?.[k]) continue;
+          if (!byKey.has(k)) byKey.set(k, []);
+          byKey.get(k)!.push(row);
+        }
+        for (const [k, rows] of byKey) {
+          const slots = assignFixedSlots(rows.length, ss.playoffs![k], Number((champ as any)?.match_duration_minutes) || 45);
+          rows.forEach((row, i) => {
+            const slot = slots[i];
+            if (!slot || !row.play_by) return;
+            row.scheduled_date = row.play_by;
+            row.scheduled_time = slot.scheduled_time;
+            row.court_id = slot.court_id;
+          });
+        }
+      }
+      const slotFields = (row: any, target: any) =>
+        target?.scheduled_date || !row.scheduled_date
+          ? {}
+          : { scheduled_date: row.scheduled_date, scheduled_time: row.scheduled_time, court_id: row.court_id };
 
       // Fixed-pair doubles: every side is always the exact registered pair.
       if (isDoubles) {
@@ -1556,6 +1582,7 @@ export default function ClubChampsView() {
               partner_b_member_id: row.partner_b_member_id,
               stage_label: row.stage_label,
               play_by: (row as any).play_by ?? null,
+              ...slotFields(row, target),
               placeholder_a: row.placeholder_a ?? target.placeholder_a ?? null,
               placeholder_b: row.placeholder_b ?? target.placeholder_b ?? null,
             })
@@ -1591,6 +1618,7 @@ export default function ClubChampsView() {
             partner_b_member_id: row.partner_b_member_id,
             stage_label: row.stage_label,
             play_by: (row as any).play_by ?? null,
+            ...slotFields(row, target),
             placeholder_a: row.placeholder_a ?? null,
             placeholder_b: row.placeholder_b ?? null,
           })

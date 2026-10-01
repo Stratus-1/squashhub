@@ -45,7 +45,7 @@ import { JoinWhatsAppGroupButton } from "@/components/tournaments/JoinWhatsAppGr
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
 import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
 import { parseMilestones } from "@/lib/tournaments/round-definitions";
-import { isPlayoffGame, playoffDeadline } from "@/lib/tournaments/round-plan";
+import { isPlayoffGame, playoffDeadline, stageModeForGame, stageSchedulingFromChamp } from "@/lib/tournaments/round-plan";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches } from "@/lib/tournaments/schedule-order";
 import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
@@ -1268,7 +1268,7 @@ export default function Tournaments() {
             same thing to the two players as "Score it live". */}
         {(() => {
           if (isPlaceholder) return null;
-          const selfScheduled = String((champ as any)?.scheduling_mode || "") === "self";
+          const selfScheduled = stageModeForGame(m, stageSchedulingFromChamp(champ as any), (champ as any)?.scheduling_mode) === "self";
           if (selfScheduled) {
             const perm = canEnterChampResult(m, memberId, { canManage: canManageChamps, anyClubMember: true });
             if (!perm.allowed) return null;

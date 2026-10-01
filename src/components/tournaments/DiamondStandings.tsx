@@ -161,10 +161,19 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
 
   const semiWeek = weeks.find((w) => w.stage === "semi");
   const finalWeek = weeks.find((w) => w.stage === "final");
+  // Live markers for knockout ties: a team with a started, unfinished tie in that stage.
+  const liveIn = (ties: Tie[] = []) => {
+    const s = new Set<string>();
+    for (const t of ties) if (clean(t.id).some(Boolean) && !tieRes(t).complete) { s.add(t.home); s.add(t.away); }
+    return s;
+  };
+  const semiLive = liveIn(semiWeek?.ties);
+  const finalLive = liveIn(finalWeek?.ties);
+  // Live totals: points from each marked game count straight away; W and the win bonus wait for the finished tie.
   const semiTable = semiWeek && (() => {
     const carry = new Map<string, number>();
     (["A", "B"] as const).forEach((p) => poolTable(p).rows.forEach((r) => carry.set(r.teamId, r.total)));
-    return standings(teams.map((t) => t.id), semiWeek.ties.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })), carry, cfg.tieBreaks);
+    return standings(teams.map((t) => t.id), semiWeek.ties.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })), carry, cfg.tieBreaks, true);
   })();
   // Carry mode: running total (pool + semi + final) decides final places.
   const finalTable = finalWeek && semiTable && finalsCarry(cfg) ? (() => {
@@ -305,7 +314,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
           <p className="text-[11px] text-muted-foreground mb-1">
             Semi-finals: {CROSSOVER.map((c) => `A${c.a} v B${c.b}`).join(" · ")} — pool points carry over, +{cfg.winBonus} for the win.
           </p>
-          <TeamTable title="After semi-finals (carried + semi points)" t={semiTable} name={teamName} />
+          <TeamTable title="After semi-finals (carried + semi points)" t={semiTable} name={teamName} inProgress={semiLive} />
         </div>
       )}
       <div>
@@ -383,7 +392,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
           ))}
         </div>
       )}
-      {finalTable && <TeamTable title="After finals (running total) — final places" t={finalTable} name={teamName} />}
+      {finalTable && <TeamTable title="After finals (running total) — final places" t={finalTable} name={teamName} inProgress={finalLive} />}
       {finalWeek && !finalTable && (
         <div>
           <div className="font-semibold text-sm mb-1">Final places <span className="text-[11px] font-normal text-muted-foreground">(points reset for finals)</span></div>

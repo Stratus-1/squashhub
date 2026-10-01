@@ -609,7 +609,6 @@ Deno.serve(async (req) => {
         }
       }
     }
-    }
 
     // 6) Inactivity nudge (3 weeks). Only run weekly (Monday in REMINDERS_TIMEZONE) to keep load low.
     section = "inactive_nudge";

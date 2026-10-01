@@ -172,7 +172,7 @@ export function useMyAiRequests(userId: string | undefined, enabled = true) {
       const rows = (data ?? []) as import("@/lib/ai-requests").MyAiRow[];
       const bugIds = [...new Set(rows.map((r) => r.bug_report_id).filter(Boolean))] as string[];
       const ticketIds = [...new Set(rows.map((r) => r.ticket_id).filter(Boolean))] as string[];
-      const bugs: Record<string, string> = {}; const tickets: Record<string, string> = {}; const cases: Record<string, string> = {};
+      const bugs: Record<string, string> = {}; const tickets: Record<string, string> = {}; const cases: Record<string, string> = {}; const replied: Record<string, boolean> = {};
       if (bugIds.length) {
         const { data: b } = await (supabase.rpc as any)("my_ai_bug_statuses", { _ids: bugIds });
         for (const x of (b ?? []) as { id: string; status: string }[]) bugs[x.id] = x.status;
@@ -183,10 +183,13 @@ export function useMyAiRequests(userId: string | undefined, enabled = true) {
         for (const x of (m ?? []) as { bug_report_id: string; status: string }[]) cases[x.bug_report_id] = x.status;
       }
       if (ticketIds.length) {
-        const { data: t } = await fromExt("support_threads").select("id,status").in("id", ticketIds).eq("user_id", userId!);
-        for (const x of (t ?? []) as { id: string; status: string }[]) tickets[x.id] = x.status;
+        const { data: t } = await fromExt("support_threads").select("id,status,last_message_by").in("id", ticketIds).eq("user_id", userId!);
+        for (const x of (t ?? []) as { id: string; status: string; last_message_by: string | null }[]) {
+          tickets[x.id] = x.status;
+          if (x.last_message_by && x.last_message_by !== userId) replied[x.id] = true;
+        }
       }
-      return { rows, bugs, tickets, cases };
+      return { rows, bugs, tickets, cases, replied };
     },
   });
 }

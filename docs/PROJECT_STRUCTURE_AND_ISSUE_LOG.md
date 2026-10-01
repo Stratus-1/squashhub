@@ -2357,3 +2357,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 
 ## 2026-10-01 — Diamond League points follow team position
 - After a substitution, the roster displayed the incoming player with zero because the totals were keyed by person ID. Team positions retain their accumulated singles and doubles scores across substitutes; historical scored participants remain unchanged. Standings now aggregate scored fixtures by team slot, using singles rows to resolve historical occupants and seeded doubles partners, and label the leader cards as positions rather than personal lifetime totals. Unknown historical doubles slots are not guessed.
+
+## 2026-10-01 — AI Assistance: stale "20 open" alert, invisible support replies, Tanya balance
+- Hourly `ai-open-queries-hourly` counted every `escalated` assistant row even when its support ticket was resolved/closed (17 of 20). Now counts only escalations whose ticket is open/pending/in_progress, clarifications under 7 days old, and unexpired proposals. Old unread alerts marked read.
+- Support replies live on `support_messages`; the assistant's "My requests" only showed the AI answer and linked to `/support` (which opens the newest thread, not the replied one). The panel now shows support replies inline, a "Support replied" note in history, and links to `/support?threadId=…`.
+- Tanya Kinnear (Nelspruit): the earlier fix removed duplicate fee rows but left the matching statement charges (R1,375 + R350) and debtor journals. Reversed both journal groups (audited) and added a R1,725 statement reversal; balance R0.

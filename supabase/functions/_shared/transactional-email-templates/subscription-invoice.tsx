@@ -117,7 +117,7 @@ const Email = (p: Props) => {
               />
             </Section>
           )}
-          <Heading style={h1}>Tax Invoice</Heading>
+          <Heading style={h1}>{p.reissued ? 'Updated Tax Invoice' : 'Tax Invoice'}</Heading>
 
           <Section style={{ marginBottom: '16px' }}>
             <Row>

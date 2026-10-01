@@ -33,3 +33,21 @@ describe("Diamond League play-off builders", () => {
     expect(PLACING_FINALS).toHaveLength(4);
   });
 });
+
+import { diamondFinalTiesFromTable, finalsCarry, DIAMOND_TEAM_DEFAULTS, standings, tieResult } from "@/lib/tournaments/team-league";
+describe("Diamond finals with carried points", () => {
+  const courtOf = (i: number) => (i % 2) + 1;
+  it("pairs by running total: 1v2, 3v4, 5v6, 7v8", () => {
+    const ties = diamondFinalTiesFromTable(["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"], courtOf);
+    expect(ties.map((t) => [t.id, t.home, t.away])).toEqual([["f1", "t1", "t2"], ["f3", "t3", "t4"], ["f5", "t5", "t6"], ["f7", "t7", "t8"]]);
+  });
+  it("carried total decides places even when the higher team loses the final", () => {
+    const loss = tieResult(Array(9).fill({ home: 20, away: 22 }), 9, 5);
+    const t = standings(["a", "b"], [{ homeId: "a", awayId: "b", result: loss }], new Map([["a", 300], ["b", 250]]));
+    expect(t.rows[0].teamId).toBe("a");
+  });
+  it("new events default to carry; legacy configs stay reset", () => {
+    expect(finalsCarry(DIAMOND_TEAM_DEFAULTS)).toBe(true);
+    expect(finalsCarry({})).toBe(false);
+  });
+});

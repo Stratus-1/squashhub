@@ -12,7 +12,7 @@ import { useClubMembers } from "@/hooks/use-club";
 import {
   DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, PLACING_FINALS,
   tieGames, gameLabel, poolRounds, tieResult, standings, nightPlan, configIssues, decideLevelFinal, diamondTeamName,
-  diamondSemiTies, diamondFinalTies,
+  diamondSemiTies, diamondFinalTies, diamondFinalTiesFromTable, finalsCarry,
   type TeamLeagueConfig, type TieBreak, type GameScore, type DrawRule, type FinalLevelRule,
   diamondTieLabel,
 } from "@/lib/tournaments/team-league";
@@ -230,9 +230,15 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
     return { W: w === "home" ? t.home : t.away, L: w === "home" ? t.away : t.home };
   };
   const generateFinals = () => {
-    const s = [1, 2, 3, 4].map(semiWinner);
-    if (s.some((x) => !x)) return toast.error("Every semi needs a decided result first.");
-    const ties = diamondFinalTies(s as Array<{ W: string; L: string }>, courtOf);
+    let ties;
+    if (finalsCarry(cfg)) {
+      if (!semiTable || semiTable.undecided.length) return toast.error("Some teams are level on the running total and the tie-breaks can't separate them.");
+      ties = diamondFinalTiesFromTable(semiTable.rows.map((r) => r.teamId), courtOf);
+    } else {
+      const s = [1, 2, 3, 4].map(semiWinner);
+      if (s.some((x) => !x)) return toast.error("Every semi needs a decided result first.");
+      ties = diamondFinalTies(s as Array<{ W: string; L: string }>, courtOf);
+    }
     const n = weeks.filter((w) => w.stage !== "final").length;
     const nw: Week[] = [...weeks.filter((w) => w.stage !== "final"), { week: n + 1, date: dates[n] || "", stage: "final", ties }];
     setWeeks(nw); save.mutate(nw);
@@ -243,6 +249,11 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
     (["A", "B"] as const).forEach((p) => poolTable(p).rows.forEach((r) => carry.set(r.teamId, r.total)));
     return standings(teams.map((t) => t.id), semiWeek.ties.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })), carry, cfg.tieBreaks);
   })();
+  // Carry mode: running total (pool + semi + final) decides final places.
+  const finalTable = finalWeek && semiTable && finalsCarry(cfg) ? (() => {
+    const carry = new Map(semiTable.rows.map((r) => [r.teamId, r.total] as [string, number]));
+    return standings(teams.map((t) => t.id), finalWeek.ties.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })), carry, cfg.tieBreaks, true);
+  })() : undefined;
 
   const setScore = (tieId: string, gi: number, side: "home" | "away", v: string) => {
     const arr: any[] = [...(results[tieId] || [])];
@@ -355,7 +366,7 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
           {weeks.map((w) => (
             <div key={w.week} className="space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold">
-                Week {w.week} <Badge variant="outline" className="text-[10px]">{w.stage === "pool" ? "Pool" : w.stage === "semi" ? "Semi-finals (points carry)" : "Finals (points reset)"}</Badge>
+                Week {w.week} <Badge variant="outline" className="text-[10px]">{w.stage === "pool" ? "Pool" : w.stage === "semi" ? "Semi-finals (points carry)" : (finalsCarry(cfg) ? "Finals (points carry)" : "Finals (points reset)")}</Badge>
                 <Input type="date" className="h-7 w-36" value={w.date} onChange={(e) => setWeeks(weeks.map((x) => (x.week === w.week ? { ...x, date: e.target.value } : x)))} />
               </div>
               <div className="grid md:grid-cols-2 gap-2">
@@ -399,7 +410,8 @@ function Editor({ ev, onBack }: { ev: EventRow; onBack: () => void }) {
           <CardContent className="grid md:grid-cols-2 gap-3 text-xs">
             {(["A", "B"] as const).map((p) => <Table key={p} title={`Pool ${p}`} t={poolTable(p)} name={teamName} />)}
             {semiTable && <Table title="After semi-finals (carried + semi points)" t={semiTable} name={teamName} />}
-            {finalWeek && (
+            {finalTable && <Table title="After finals (running total) — final places" t={finalTable} name={teamName} />}
+            {finalWeek && !finalTable && (
               <div><div className="font-semibold mb-1">Final places</div>
                 {finalWeek.ties.map((t, k) => {
                   const res = results[t.id] ? tieResClean(t) : null;

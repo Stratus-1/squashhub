@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Lock, Unlock, Wand2, X } from "lucide-react";
 import {
-  DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, DOUBLES_PAIRING_LABEL,
+  DIAMOND_TEAM_DEFAULTS, DRAW_RULE_LABEL, TIE_BREAK_LABEL, FINAL_LEVEL_LABEL, DOUBLES_PAIRING_LABEL, FINALS_POINTS_LABEL, type FinalsPoints,
   tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks, diamondTeamName, diamondPlayingMinutes,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule, type DoublesPairing,
 } from "@/lib/tournaments/team-league";
@@ -79,6 +79,10 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
         <select className={sel} value={cfg.finalLevelRule} onChange={(e) => set({ finalLevelRule: e.target.value as FinalLevelRule })}>
           {Object.entries(FINAL_LEVEL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select></div>
+      <div className="col-span-2"><Label className="text-xs">Points in finals</Label>
+        <select className={sel} value={cfg.finalsPoints || "reset"} onChange={(e) => set({ finalsPoints: e.target.value as FinalsPoints })}>
+          {(Object.keys(FINALS_POINTS_LABEL) as FinalsPoints[]).map((k) => <option key={k} value={k}>{FINALS_POINTS_LABEL[k]}</option>)}
+        </select></div>
       <div className="col-span-2"><Label className="text-xs">Doubles pairs</Label>
         <select className={sel} value={cfg.doublesPairing || "singles_results"} onChange={(e) => set({ doublesPairing: e.target.value as DoublesPairing })}>
           {(Object.keys(DOUBLES_PAIRING_LABEL) as DoublesPairing[]).map((k) => <option key={k} value={k}>{DOUBLES_PAIRING_LABEL[k]}</option>)}
@@ -107,7 +111,7 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
           <span className="text-muted-foreground">{(["A", "B"] as const).map((pool) => `${pool}: ${round.map(([a, b]) => `${pool}${a} v ${pool}${b}`).join(" · ")}`).join("   |   ")}</span>
         </div>)}
         {draft.teams.length === 8 && <div className="space-y-2">
-          <p className="text-muted-foreground">After the pool weeks: crossover semi-finals (points carry), then placing finals (points reset).</p>
+          <p className="text-muted-foreground">After the pool weeks: crossover semi-finals (points carry), then placing finals ({(cfg.finalsPoints || "reset") === "carry" ? "points carry on — running total decides places" : "points reset"}).</p>
           {["Semi-finals", "Finals"].map((label, j) => { const i = rounds.length + j; return <div key={label} className="flex flex-wrap items-center gap-2">
             <Label className="min-w-16 text-xs">{label}</Label>
             <Input type="date" aria-label={`${label} date`} className="h-8 w-40 text-xs" value={dates[i] || ""} disabled={locked} onChange={(e) => { const next = [...dates]; next[i] = e.target.value; set({ dates: next }); }} />

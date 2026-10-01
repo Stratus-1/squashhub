@@ -30,7 +30,15 @@ export type TeamLeagueConfig = {
   finalLevelRule: FinalLevelRule;
   /** How doubles pairs form: fixed team positions or seeded by singles results. */
   doublesPairing: DoublesPairing;
+  /** Finals: carry the running total (pairings + places by total) or reset. Missing = reset (legacy). */
+  finalsPoints?: FinalsPoints;
 };
+export type FinalsPoints = "carry" | "reset";
+export const FINALS_POINTS_LABEL: Record<FinalsPoints, string> = {
+  carry: "Carry on — running total decides final pairings and places",
+  reset: "Reset — semi winners meet; final match decides the place",
+};
+export const finalsCarry = (cfg: Pick<TeamLeagueConfig, "finalsPoints">) => cfg.finalsPoints === "carry";
 
 export type DrawRule = "split" | "both" | "none";
 export type TieBreak = "most_wins" | "games_won" | "points_diff" | "head_to_head";
@@ -60,6 +68,7 @@ export const DOUBLES_PAIRING_LABEL: Record<DoublesPairing, string> = {
 };
 
 export const DIAMOND_TEAM_DEFAULTS: TeamLeagueConfig = {
+  finalsPoints: "carry",
   playersPerTeam: 6,
   singlesMinutes: 20,
   doublesMinutes: 30,
@@ -397,4 +406,12 @@ export function autoSlotPlayers(ordered: string[], teams: SlotTeam[], locked: Se
     }
   }
   return { teams: next, unplaced: queue, removed };
+}
+
+/** Carry mode: finals pair by the running table after the semis (1v2, 3v4, 5v6, 7v8). */
+export function diamondFinalTiesFromTable(order: string[], courtOf: (i: number) => number): DiamondTie[] {
+  return PLACING_FINALS.map((f, k) => ({
+    id: `f${f.places[0]}`, home: order[f.places[0] - 1], away: order[f.places[1] - 1],
+    court: courtOf(k), label: `Places ${f.places[0]}–${f.places[1]} (running total)`,
+  }));
 }

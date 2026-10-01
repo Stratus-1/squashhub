@@ -3534,7 +3534,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     qc.invalidateQueries({ queryKey: ["team-league-events"] });
     await syncSavedDiamondFixtures({
       champId: tournamentId, clubId, cfg: row.config, teams: diamondDraft.teams,
-      previousTeams, weeks, courtIds: Array.from(selectedCourtIds), teamName: (id) => {
+      previousTeams, weeks, courtIds: selectedCourtIds.size ? Array.from(selectedCourtIds) : undefined, teamName: (id) => {
         const index = diamondDraft.teams.findIndex((team) => team.id === id);
         return index < 0 ? "?" : diamondTeamName(diamondDraft.teams[index], index, diamondDraft.teams);
       },

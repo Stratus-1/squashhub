@@ -11,8 +11,15 @@
  * Everything here is pure so it can be unit-tested without a database.
  */
 
-export type LineKind = 'subscription' | 'whatsapp'
+export type LineKind = 'subscription' | 'whatsapp' | 'sms'
 export type InvoiceKind = 'subscription' | 'whatsapp' | 'combined'
+
+export interface SmsCharge {
+  messageCount: number
+  amount: number
+  periodStart: string
+  periodEnd: string
+}
 
 export interface InvoiceLine {
   kind: LineKind
@@ -54,6 +61,8 @@ export interface ConsolidatedInvoice {
   subscriptionAmount: number
   whatsappAmount: number
   whatsappMessageCount: number
+  smsAmount: number
+  smsMessageCount: number
   subtotal: number
   vatAmount: number
   total: number
@@ -99,6 +108,7 @@ export function isSubscriptionDue(periodStartIso: string, billingDayIso: string)
 export function buildConsolidatedInvoice(input: {
   subscription: SubscriptionCharge
   whatsapp?: WhatsAppCharge | null
+  sms?: SmsCharge | null
   vatRate?: number
 }): ConsolidatedInvoice {
   const vatRate = Number(input.vatRate || 0)
@@ -143,6 +153,23 @@ export function buildConsolidatedInvoice(input: {
     })
   }
 
+  let smsAmount = 0
+  let smsMessageCount = 0
+  const sms = input.sms
+  if (sms && sms.messageCount > 0 && sms.amount > 0) {
+    smsAmount = round2(sms.amount)
+    smsMessageCount = sms.messageCount
+    lineItems.push({
+      kind: 'sms',
+      description: `SMS messages — ${sms.messageCount} message${sms.messageCount === 1 ? '' : 's'}`,
+      quantity: sms.messageCount,
+      unit_price: round2(sms.amount / sms.messageCount),
+      amount: smsAmount,
+      period_start: sms.periodStart,
+      period_end: sms.periodEnd,
+    })
+  }
+
   if (!lineItems.length) {
     return {
       skip: true,
@@ -151,18 +178,21 @@ export function buildConsolidatedInvoice(input: {
       subscriptionAmount: 0,
       whatsappAmount: 0,
       whatsappMessageCount: 0,
+      smsAmount: 0,
+      smsMessageCount: 0,
       subtotal: 0,
       vatAmount: 0,
       total: 0,
     }
   }
 
-  const subtotal = round2(subscriptionAmount + whatsappAmount)
+  const messagingAmount = round2(whatsappAmount + smsAmount)
+  const subtotal = round2(subscriptionAmount + messagingAmount)
   const vatAmount = round2(subtotal * vatRate)
   const kind: InvoiceKind =
-    subscriptionAmount > 0 && whatsappAmount > 0
+    subscriptionAmount > 0 && messagingAmount > 0
       ? 'combined'
-      : whatsappAmount > 0
+      : messagingAmount > 0
         ? 'whatsapp'
         : 'subscription'
 
@@ -173,6 +203,8 @@ export function buildConsolidatedInvoice(input: {
     subscriptionAmount,
     whatsappAmount,
     whatsappMessageCount,
+    smsAmount,
+    smsMessageCount,
     subtotal,
     vatAmount,
     total: round2(subtotal + vatAmount),

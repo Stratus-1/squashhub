@@ -63,7 +63,7 @@ export const FINAL_LEVEL_LABEL: Record<FinalLevelRule, string> = {
 /** Doubles pairing: the email's fixed positions, or seeded by singles results. */
 export type DoublesPairing = "position" | "singles_results";
 export const DOUBLES_PAIRING_LABEL: Record<DoublesPairing, string> = {
-  position: "Fixed by team position (#5+#6, #3+#4, #1+#2) — as in the email",
+  position: "Fixed by team position (#5+#6, #3+#4, #1+#2)",
   singles_results: "By singles results (each team's top two scorers pair up, then the next two)",
 };
 

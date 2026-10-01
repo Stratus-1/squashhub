@@ -10,6 +10,28 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { VoiceInputButton } from "@/components/smart-builder/VoiceInputButton";
 import { buildAskPayload, callAiHelp, pageIds, uploadAiScreenshot, useMyAiRequests, type AiHelpPreview } from "@/hooks/use-ai-help";
+import { useSupportMessages } from "@/hooks/use-support";
+
+/** Support's replies on the linked ticket, shown inside the assistant conversation. */
+function SupportReplies({ ticketId, userId }: { ticketId: string; userId: string }) {
+  const { data: msgs = [] } = useSupportMessages(ticketId, true);
+  const replies = msgs.filter((m) => m.sender_id !== userId && m.body?.trim());
+  return (
+    <div className="mt-1 space-y-1">
+      {replies.map((m) => (
+        <div key={m.id} className="rounded-md border border-primary/30 bg-primary/5 p-2">
+          <div className="text-[11px] font-semibold text-primary flex items-center gap-1">
+            <LifeBuoy className="w-3 h-3" /> Support replied · {format(new Date(m.created_at), "d MMM HH:mm")}
+          </div>
+          <p className="whitespace-pre-wrap text-[12px]">{m.body}</p>
+        </div>
+      ))}
+      <Link to={`/support?threadId=${ticketId}`} className="inline-flex items-center gap-1 text-[12px] text-primary underline">
+        <LifeBuoy className="w-3 h-3" /> {replies.length ? "Open this support ticket" : "View your support ticket"}
+      </Link>
+    </div>
+  );
+}
 import { imageFilesFromClipboard, readClipboardImages } from "@/lib/ai/clipboard-images";
 
 type Att = { path: string; name: string; mime: string; size: number; preview: string };
@@ -254,9 +276,7 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
                 )}
               </div>
             )}
-            {t.ticketId && (
-              <Link to="/support" className="mt-1 inline-flex items-center gap-1 text-[12px] text-primary underline"><LifeBuoy className="w-3 h-3" /> View your support ticket</Link>
-            )}
+            {t.ticketId && user?.id && <SupportReplies ticketId={t.ticketId} userId={user.id} />}
           </div>
         ))}
         {busy && <p className="text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Thinking…</p>}

@@ -30,6 +30,8 @@ export type TeamLeagueConfig = {
   finalLevelRule: FinalLevelRule;
   /** How doubles pairs form: fixed team positions or seeded by singles results. */
   doublesPairing: DoublesPairing;
+  /** How doubles pairs serve (marker state machine). Missing = marker's manual legacy serving. */
+  doublesServing?: DoublesServingMethod;
   /** Finals: carry the running total (pairings + places by total) or reset. Missing = reset (legacy). */
   finalsPoints?: FinalsPoints;
 };
@@ -69,6 +71,7 @@ export const DOUBLES_PAIRING_LABEL: Record<DoublesPairing, string> = {
 
 export const DIAMOND_TEAM_DEFAULTS: TeamLeagueConfig = {
   finalsPoints: "carry",
+  doublesServing: "even_odd",
   playersPerTeam: 6,
   singlesMinutes: 20,
   doublesMinutes: 30,

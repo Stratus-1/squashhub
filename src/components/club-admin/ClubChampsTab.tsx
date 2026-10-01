@@ -3002,7 +3002,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_doubles_serving_methods: Object.keys(leagueServingMethods).length > 0 ? leagueServingMethods : null,
       // Diamond doubles use the marker's guided serving state machine. Lives
       // only on tournaments (not the legacy club_champs view).
-      ...(diamondMode ? { doubles_serving_method: diamondDraft.config.doublesServing ?? null } : {}),
+      ...(diamondMode ? { doubles_serving_method: diamondDraft.config.doublesServing ?? "even_odd" } : {}),
       league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
       league_playoffs: Object.keys(leaguePlayoffs).length > 0 ? leaguePlayoffs : null,
       league_playoff_modes: Object.keys(leaguePlayoffModes).length > 0 ? leaguePlayoffModes : null,

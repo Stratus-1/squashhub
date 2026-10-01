@@ -51,6 +51,8 @@ interface Props {
   displayPricePerMember?: number | string
   displayTotal?: number | string
   fxRateToZar?: number | string
+  lineItems?: Array<{ kind: string; description: string; amount: number; period_start?: string; period_end?: string }>
+  reissued?: boolean
 }
 
 const money = (v: number | string | undefined, ccy = 'ZAR') => {
@@ -146,6 +148,16 @@ const Email = (p: Props) => {
 
 
           <Section style={card}>
+            {Array.isArray(p.lineItems) && p.lineItems.length > 0 && p.lineItems.some((l) => l.kind !== 'subscription') ? (
+              p.lineItems.map((l, i) => (
+                <LineRow
+                  key={i}
+                  label={`${l.description}${l.period_start ? ` (${l.period_start} → ${l.period_end})` : ''}`}
+                  value={money(l.amount, currency)}
+                />
+              ))
+            ) : (
+              <>
             <LineRow label="Plan" value={planName} />
             <LineRow label="Billing Cycle" value={billingCycle} />
             <LineRow label="Billing Period" value={`${periodStart} → ${periodEnd}`} />
@@ -160,6 +172,8 @@ const Email = (p: Props) => {
             )}
             {Number(minimumCharge) > 0 && (
               <LineRow label="Minimum Charge" value={money(minimumCharge, currency)} />
+            )}
+              </>
             )}
             <Hr style={hr} />
             <LineRow label="Subtotal" value={money(subtotal, currency)} />

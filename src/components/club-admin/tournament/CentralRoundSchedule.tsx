@@ -193,9 +193,8 @@ export function CentralRoundSchedule({
               Play-off dates{requireMilestones ? "" : " (optional)"}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              The date each championship stage must be played by. You do not say which league is at
-              which stage — the app works that out from the players still standing, so a league that
-              gets there early simply waits for the common date.
+              Only the play-off rounds your structure actually has. Play-off games take these dates —
+              never a pool round's date — and show "Date to be set" until you fill them in.
             </p>
           </div>
         </div>

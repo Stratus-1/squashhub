@@ -37,6 +37,8 @@ import { TournamentNextActionBar } from "@/components/tournaments/TournamentNext
 
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { parseRoundDeadlines, mergeRoundDeadlines, deadlineForStage } from "@/lib/tournaments/round-deadlines";
+import { parseMilestones as parseMilestonesForDates } from "@/lib/tournaments/round-definitions";
+import { playoffDeadline } from "@/lib/tournaments/round-plan";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
@@ -3287,6 +3289,7 @@ export default function ClubChampsView() {
               mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[]),
               round,
               stage,
+              parseMilestonesForDates((champ as any)?.milestone_play_by),
             )
           }
           mode="detail"
@@ -3334,6 +3337,7 @@ export default function ClubChampsView() {
               mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[]),
               round,
               stage,
+              parseMilestonesForDates((champ as any)?.milestone_play_by),
             )
           }
         />

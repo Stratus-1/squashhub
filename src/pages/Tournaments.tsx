@@ -1123,7 +1123,7 @@ export default function Tournaments() {
         >
           <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground shrink-0">
-            {matchDate ? format(matchDate, "EEE dd MMM") : "TBD"}
+            {matchDate ? format(matchDate, "EEE dd MMM") : isPlayoffGame(m) && !playBy ? "Date to be set" : "TBD"}
           </span>
           <span className="text-muted-foreground shrink-0">{m.scheduled_time?.slice(0, 5) || ""}</span>
           {playBy && (

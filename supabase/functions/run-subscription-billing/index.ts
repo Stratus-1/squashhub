@@ -85,8 +85,8 @@ Deno.serve(async (req) => {
   const issueDayRaw =
     typeof body.issueDay === 'number'
       ? body.issueDay
-      : Number(settings.issue_day_of_month ?? settings.invoice_issue_day ?? 25)
-  const issueDay = isFinite(issueDayRaw) ? Math.max(1, Math.min(28, Math.round(issueDayRaw))) : 25
+      : Number(settings.issue_day_of_month ?? settings.invoice_issue_day ?? 1)
+  const issueDay = isFinite(issueDayRaw) ? Math.max(1, Math.min(28, Math.round(issueDayRaw))) : 1
 
   const dateOnly = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
   const issueDayIn = (year: number, monthIdx: number) => {
@@ -413,6 +413,28 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Unbilled SMS usage per club (same window as WhatsApp).
+  const smsUsage = new Map<string, { count: number; amount: number; ids: string[] }>()
+  if (clubIds.length) {
+    const { data: smsRows } = await supabase
+      .from('sms_send_log')
+      .select('id, club_id, unit_cost, segments')
+      .in('club_id', clubIds)
+      .eq('status', 'sent')
+      .eq('billable', true)
+      .is('platform_invoice_id', null)
+      .gte('created_at', `${waRange.start}T00:00:00Z`)
+      .lt('created_at', waCutoff)
+      .range(0, 99999)
+    for (const r of smsRows || []) {
+      const cur = smsUsage.get(r.club_id) ?? { count: 0, amount: 0, ids: [] }
+      cur.count++
+      cur.amount += Number(r.unit_cost || 0) * Number(r.segments || 1)
+      cur.ids.push(r.id)
+      smsUsage.set(r.club_id, cur)
+    }
+  }
+
   // Get current invoice count for this year to build sequential numbers
   const { count: existingCount } = await supabase
     .from('platform_subscription_invoices')
@@ -498,7 +520,7 @@ Deno.serve(async (req) => {
       // A dry run (preview) always projects the upcoming invoice, however far
       // away the renewal is, so admins can inspect it at any time.
       const subDueForRun = iso(periodStart) <= iso(coverageEnd)
-      const subDue = dryRun ? true : subDueForRun
+      const subDue = body.messagingOnly ? false : dryRun ? true : subDueForRun
       // The send run that will actually create/email this invoice: the fixed
       // issue day on or before the renewal date. If that day has already passed
       // (overdue), it goes out with the very next run.
@@ -536,6 +558,14 @@ Deno.serve(async (req) => {
               utilityCount: usage.utility,
               serviceCount: usage.service,
               marketingCount: usage.marketing,
+            }
+          : null,
+        sms: smsUsage.get(sub.club_id)
+          ? {
+              messageCount: smsUsage.get(sub.club_id)!.count,
+              amount: +smsUsage.get(sub.club_id)!.amount.toFixed(2),
+              periodStart: waRange.start,
+              periodEnd: waRange.end,
             }
           : null,
         vatRate,
@@ -578,8 +608,23 @@ Deno.serve(async (req) => {
 
       // Idempotency: one invoice per club per billing month. An existing issued
       // or paid invoice is left alone; a failed one is retried in place.
-      const prior = existingByClubMonth.get(`${sub.club_id}|${invoiceMonth}`)
-      if (!dryRun && prior && prior.status !== 'failed') {
+      let prior = existingByClubMonth.get(`${sub.club_id}|${invoiceMonth}`)
+      // Messaging usage for a club that already has an UNPAID invoice this month
+      // is added to that invoice (reissued as "updated"), never a second invoice.
+      let amended: any = null
+      if (!dryRun && prior && prior.status === 'issued' && !consolidated.subscriptionAmount
+          && (consolidated.whatsappAmount > 0 || consolidated.smsAmount > 0)) {
+        const { data: full } = await supabase
+          .from('platform_subscription_invoices').select('*').eq('id', prior.id).single()
+        if (full) {
+          const keep = (Array.isArray(full.line_items) ? full.line_items : []).filter((l: any) => l.kind === 'subscription')
+          const lines = [...keep, ...consolidated.lineItems]
+          const sub2 = +(Number(full.subscription_amount || 0) + consolidated.whatsappAmount + consolidated.smsAmount).toFixed(2)
+          const vat2 = +(sub2 * vatRate).toFixed(2)
+          amended = { full, lines, subtotal: sub2, vat: vat2, total: +(sub2 + vat2).toFixed(2) }
+        }
+      }
+      if (!dryRun && prior && prior.status !== 'failed' && !amended) {
         skipped++
         results.push({
           subscription_id: sub.id,
@@ -670,6 +715,28 @@ Deno.serve(async (req) => {
         status: 'issued',
       }
 
+      if (amended) {
+        Object.assign(invoicePayload, {
+          invoice_kind: Number(amended.full.subscription_amount) > 0 ? 'combined' : consolidated.kind,
+          line_items: amended.lines,
+          subscription_amount: amended.full.subscription_amount,
+          period_start: amended.full.period_start,
+          period_end: amended.full.period_end,
+          member_count: amended.full.member_count,
+          price_per_member: amended.full.price_per_member,
+          minimum_charge: amended.full.minimum_charge,
+          subtotal: amended.subtotal,
+          vat_amount: amended.vat,
+          total: amended.total,
+          display_total: amended.total,
+          due_date: amended.full.due_date,
+          issued_at: amended.full.issued_at,
+          billing_details: amended.full.billing_details,
+          stitch_payment_link: null,
+          stitch_payment_id: null,
+        })
+      }
+
       let inv: any
       if (prior) {
         const { data, error } = await supabase
@@ -688,6 +755,11 @@ Deno.serve(async (req) => {
           .single()
         if (error) throw error
         inv = data
+      }
+
+      const smsIds = smsUsage.get(sub.club_id)?.ids ?? []
+      if (smsIds.length) {
+        await supabase.from('sms_send_log').update({ platform_invoice_id: inv.id }).in('id', smsIds)
       }
 
       // Mark the WhatsApp usage as billed so it can never be charged twice.
@@ -714,7 +786,7 @@ Deno.serve(async (req) => {
       try {
         payLink = await createStitchPayLink({
           stitchCreds,
-          amountZar: total,
+          amountZar: Number(inv.total),
           currency: billingCurrency,
           invoiceNumber,
           returnUrl: manageUrl,
@@ -746,14 +818,15 @@ Deno.serve(async (req) => {
           memberCount: billableMembers,
           pricePerMember: pricePerMemberZar,
           minimumCharge: minimumChargeZar,
-          lineItems: consolidated.lineItems,
-          invoiceKind: consolidated.kind,
+          lineItems: inv.line_items,
+          invoiceKind: inv.invoice_kind,
+          reissued: !!amended,
           subscriptionAmount: consolidated.subscriptionAmount,
           whatsappAmount: consolidated.whatsappAmount,
           whatsappMessageCount: consolidated.whatsappMessageCount,
-          subtotal,
-          vatAmount,
-          total,
+          subtotal: Number(inv.subtotal),
+          vatAmount: Number(inv.vat_amount),
+          total: Number(inv.total),
           currency: billingCurrency,
           displayCurrency,
           displayPricePerMember: pricePerMemberLocal,
@@ -785,7 +858,7 @@ Deno.serve(async (req) => {
             templateName: 'subscription-invoice',
             recipientEmail: to,
             clubId: (inv as any).club_id ?? null,
-            idempotencyKey: `sub-invoice-${inv.id}-${slug}`,
+            idempotencyKey: `sub-invoice-${inv.id}-${Number(inv.total).toFixed(2)}-${slug}`,
             templateData,
           })
           if (!result.ok) failures.push(`${to}: ${result.error}`)

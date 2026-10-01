@@ -202,7 +202,7 @@ import {
   roundDeadlineSummary,
 } from "@/lib/tournaments/round-deadlines";
 import { CentralRoundSchedule } from "@/components/club-admin/tournament/CentralRoundSchedule";
-import { openingRoundsNeeded, playoffRoundsFor, PLAYOFF_TYPE_INFO, type DivisionShape } from "@/lib/tournaments/round-plan";
+import { openingRoundsNeeded, playoffRoundsFor, PLAYOFF_TYPE_INFO, stageSchedulingFromChamp, type DivisionShape, type StageScheduling } from "@/lib/tournaments/round-plan";
 import { TournamentWhatsAppGroupCard } from "@/components/club-admin/tournament/TournamentWhatsAppGroupCard";
 import { ResultNotifySettingsCard } from "@/components/club-admin/tournament/ResultNotifySettingsCard";
 import { parseResultNotifyChannels, parseResultNotifyScope, type ResultNotifyChannel, type ResultNotifyScope } from "@/lib/tournaments/result-notify";
@@ -1189,6 +1189,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
    */
   const [roundDeadlines, setRoundDeadlines] = useState<RoundDeadline[]>([]);
   const [milestonePlayBy, setMilestonePlayBy] = useState<MilestonePlayBy>({});
+  const [stageScheduling, setStageScheduling] = useState<StageScheduling>({});
 
   const [defaultBreakMinutes, setDefaultBreakMinutes] = useState<number>(0);
   const [courtRotationMinutes, setCourtRotationMinutes] = useState<number | null>(null);
@@ -3044,7 +3045,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       round_definitions: serializeRoundDefinitions(
         fromLegacyDeadlines(serializeRoundDeadlines(roundDeadlines) || []),
       ),
-      milestone_play_by: milestonePlayBy,
+      milestone_play_by: { ...milestonePlayBy, stage_scheduling: { ...stageScheduling, opening: schedulingMode } },
     };
 
     const saveExtras = async (id: string) => {
@@ -5886,7 +5887,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             round_definitions: serializeRoundDefinitions(
               fromLegacyDeadlines(serializeRoundDeadlines(roundDeadlines) || []),
             ),
-            milestone_play_by: milestonePlayBy,
+            milestone_play_by: { ...milestonePlayBy, stage_scheduling: { ...stageScheduling, opening: schedulingMode } },
             participating_club_ids: venueClubIds.filter((id) => id !== clubId),
           } as any)
           .eq("id", champId);
@@ -8070,6 +8071,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
         : parseRoundDeadlines((champ as any).round_play_by),
     );
     setMilestonePlayBy(parseMilestones((champ as any).milestone_play_by));
+    setStageScheduling(stageSchedulingFromChamp(champ as any));
     // Rounds added later from the knockout screen (e.g. round 4) were written
     // straight onto club_champs_rounds before there was a central list. Pull
     // those in ONCE so nothing is lost; from now on they are added centrally.
@@ -9643,6 +9645,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                       playoffRounds={plannedPlayoffRounds}
                       roundsNeeded={plannedOpeningRounds}
                       requireMilestones={simplifiedKnockoutSchedule}
+                      stageScheduling={stageScheduling}
+                      onStageSchedulingChange={setStageScheduling}
+                      schedulingMode={schedulingMode}
+                      courts={(courts as any[]).map((c) => ({ id: c.id, name: c.name }))}
                       progress={knockoutProgress}
                       minDate={startDate || undefined}
                     />
@@ -9663,6 +9669,10 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                 onMilestonesChange={setMilestonePlayBy}
                 playoffRounds={plannedPlayoffRounds}
                 hideOpeningRounds
+                stageScheduling={stageScheduling}
+                onStageSchedulingChange={setStageScheduling}
+                schedulingMode={schedulingMode}
+                courts={(courts as any[]).map((c) => ({ id: c.id, name: c.name }))}
                 minDate={startDate || undefined}
               />
             )}

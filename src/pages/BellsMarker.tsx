@@ -22,6 +22,7 @@ import { useMemberContext } from "@/contexts/MemberContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChampMarkerHeartbeat } from "@/hooks/use-champ-marker-lock";
 import { DIAMOND_TEAM_DEFAULTS, diamondMatchTeamNames, diamondPlayingMinutes, tieGames, type DiamondTeam, type DiamondWeek, type TeamLeagueConfig } from "@/lib/tournaments/team-league";
+import { afterRally, methodLabel, parseServingMethod, sideWord, startDoubles, type DoublesServeState, type PairNames } from "@/lib/marker/doubles-serving";
 
 
 /**
@@ -131,6 +132,16 @@ export default function BellsMarker() {
   const [server, setServer] = useState<"a" | "b">("a");
   const [serveSide, setServeSide] = useState<"L" | "R">("R");
   const [handOutFlash, setHandOutFlash] = useState<"a" | "b" | null>(null);
+  const [dServe, setDServe] = useState<DoublesServeState | null>(null);
+  const { data: servingMethodRow = null } = useQuery({
+    queryKey: ["tournament-doubles-serving", match?.champ_id],
+    queryFn: async () => {
+      const { data, error } = await fromExt("tournaments").select("doubles_serving_method").eq("id", match!.champ_id).maybeSingle();
+      if (error) throw error;
+      return ((data as any)?.doubles_serving_method ?? null) as string | null;
+    },
+    enabled: !!match?.champ_id && !!match?.partner_a,
+  });
   const handOutTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [noShowOpen, setNoShowOpen] = useState(false);
   const tickRef = useRef<number | null>(null);
@@ -302,6 +313,17 @@ export default function BellsMarker() {
   const sideAName = diamondTeamNames ? `${diamondTeamNames[0]} · ${pairAName}` : pairAName;
   const sideBName = diamondTeamNames ? `${diamondTeamNames[1]} · ${pairBName}` : pairBName;
 
+  // Doubles: name the actual server and the side, driven by the configured serving method.
+  const isDoublesMatch = !!(match?.partner_a && match?.partner_b);
+  const servingMethod = parseServingMethod(servingMethodRow);
+  const doublesPairs = isDoublesMatch
+    ? { a: [getName(match.player_a), getName(match.partner_a)] as PairNames, b: [getName(match.player_b), getName(match.partner_b)] as PairNames }
+    : null;
+  const shownServe: DoublesServeState | null = doublesPairs && servingMethod
+    ? dServe ?? startDoubles({ method: servingMethod, positions: { a: { forehand: 0 }, b: { forehand: 0 } }, servingTeam: server, scores: { a: pointsA, b: pointsB } })
+    : null;
+
+
   // Ring the boxing-bell sound (also vibrates on mobile). Used at start of
   // play, when "Ring bell now" is pressed, and when the countdown expires.
   const ringBellSound = (times = 3) => {
@@ -400,6 +422,20 @@ export default function BellsMarker() {
       });
     }
 
+    // Doubles with a serving method: the pure state machine decides server + side.
+    if (shownServe) {
+      const latest = scoreStateRef.current;
+      const next = afterRally(shownServe, side, { a: latest.pointsA, b: latest.pointsB });
+      setDServe(next);
+      setServeSide(next.side);
+      if (next.team !== server) {
+        setServer(next.team);
+        setHandOutFlash(side);
+        if (handOutTimerRef.current) clearTimeout(handOutTimerRef.current);
+        handOutTimerRef.current = setTimeout(() => setHandOutFlash(null), 3000);
+      }
+      return;
+    }
     // Serve switching logic (same as standard match marker)
     if (side === server) {
       setServeSide((s) => (s === "R" ? "L" : "R"));
@@ -466,6 +502,7 @@ export default function BellsMarker() {
     setRunning(false);
     setFinished(false);
     setServer("a");
+    setDServe(null);
     setServeSide("R");
     persistTimer({ bell_ends_at: null, bell_paused_seconds: null, status: "scheduled", side_a_points: hcA, side_b_points: hcB });
     qc.setQueryData(["bells-match", matchId], (old: any) => old ? ({
@@ -801,7 +838,19 @@ export default function BellsMarker() {
                 : "border-border bg-muted/50 text-foreground",
             )}
           >
-            {server === "a" ? (
+            {shownServe && doublesPairs ? (
+              <div className="flex flex-col items-center text-center leading-tight">
+                <span className={cn("font-semibold", handOutFlash && "text-base uppercase tracking-wide")}>
+                  {handOutFlash ? "HAND-OUT · " : "Serving: "}
+                  <span className="font-bold">{doublesPairs[shownServe.team][shownServe.server]}</span>
+                  {" — serve from the "}<span className="font-bold">{sideWord(shownServe.side)}</span>
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {(diamondTeamNames ? diamondTeamNames[shownServe.team === "a" ? 0 : 1] + " · " : "")}
+                  partner {doublesPairs[shownServe.team][shownServe.server === 0 ? 1 : 0]} serves next time they win serve back · {methodLabel(shownServe.method)}
+                </span>
+              </div>
+            ) : server === "a" ? (
               <>
                 <Hand className="w-5 h-5" />
                 <span className={cn("font-semibold", handOutFlash && "text-base uppercase tracking-wide")}>
@@ -833,7 +882,7 @@ export default function BellsMarker() {
             serveSide={serveSide}
             onBadgeClick={() => {
               if (server === "a") setServeSide((s) => (s === "L" ? "R" : "L"));
-              else setServer("a");
+              else { setServer("a"); setDServe(null); }
             }}
           />
           <Counter
@@ -846,7 +895,7 @@ export default function BellsMarker() {
             serveSide={serveSide}
             onBadgeClick={() => {
               if (server === "b") setServeSide((s) => (s === "L" ? "R" : "L"));
-              else setServer("b");
+              else { setServer("b"); setDServe(null); }
             }}
           />
         </div>

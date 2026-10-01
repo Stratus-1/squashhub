@@ -18120,6 +18120,24 @@ export type Database = {
         Returns: boolean
       }
       has_wifi_access: { Args: { _club_member_id: string }; Returns: boolean }
+      help_center_case_context_messages: {
+        Args: { p_ticket: string }
+        Returns: {
+          author_role: string
+          body: string
+          created_at: string
+        }[]
+      }
+      help_center_case_context_thread: {
+        Args: { p_ticket: string }
+        Returns: {
+          created_at: string
+          status: string
+          subject: string
+          ticket_id: string
+          updated_at: string
+        }[]
+      }
       help_center_delivery_mode: { Args: never; Returns: string }
       help_center_enqueue: {
         Args: {

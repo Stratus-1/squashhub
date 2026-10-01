@@ -86,11 +86,14 @@ export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubl
       .slice(0, 60);
   }, [members, candidates, useClubList, search, inMatch]);
 
+  // A game with partners is doubles even when the caller didn't flag it
+  // (e.g. Diamond League ties mix singles and doubles in one event).
+  const doubles = isDoubles || !!match?.partner_a_member_id || !!match?.partner_b_member_id;
   const slots: { key: Slot; label: string; memberId?: string | null }[] = [
     { key: "player_a", label: "Side A player", memberId: match?.player_a_member_id },
-    ...(isDoubles ? [{ key: "partner_a" as Slot, label: "Side A partner", memberId: match?.partner_a_member_id }] : []),
+    ...(doubles ? [{ key: "partner_a" as Slot, label: "Side A partner", memberId: match?.partner_a_member_id }] : []),
     { key: "player_b", label: "Side B player", memberId: match?.player_b_member_id },
-    ...(isDoubles ? [{ key: "partner_b" as Slot, label: "Side B partner", memberId: match?.partner_b_member_id }] : []),
+    ...(doubles ? [{ key: "partner_b" as Slot, label: "Side B partner", memberId: match?.partner_b_member_id }] : []),
   ];
 
   const save = async () => {

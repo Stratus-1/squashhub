@@ -10,7 +10,7 @@ import {
   tieGames, gameLabel, diamondGameStarts,
   type DiamondTeam, type DiamondTie, type DiamondWeek, type TeamLeagueConfig,
 } from "@/lib/tournaments/team-league";
-import { diamondPendingParticipantPatch, diamondSlotReplacements, type ParticipantIds } from "@/lib/tournaments/diamond-participants";
+import { diamondFixtureReplacements, diamondPendingParticipantPatch, diamondSlotReplacements, type ParticipantIds } from "@/lib/tournaments/diamond-participants";
 
 export async function syncDiamondFixtures(opts: {
   champId: string;
@@ -32,9 +32,11 @@ export async function syncDiamondFixtures(opts: {
     .select("id, stage_key, status, score, scheduled_date, scheduled_time, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId).like("stage_key", "dl:%");
   if (exErr) throw exErr;
   const keep = new Set<string>();
+  const savedByKey = new Map<string, ParticipantIds>();
   const replaceable = new Map<string, { id: string; scheduled_date: string | null; scheduled_time: string | null; participants: ParticipantIds; startedTie: boolean }>();
   const startedTies = new Set(((existing || []) as any[]).filter((m) => m.status !== "scheduled" || m.score).map((m) => String(m.stage_key).replace(/:\d+$/, "")));
   ((existing || []) as any[]).forEach((m) => {
+    savedByKey.set(m.stage_key, { player_a_member_id: m.player_a_member_id, player_b_member_id: m.player_b_member_id, partner_a_member_id: m.partner_a_member_id, partner_b_member_id: m.partner_b_member_id });
     if (m.status === "scheduled" && !m.score) replaceable.set(m.stage_key, {
       id: m.id, scheduled_date: m.scheduled_date, scheduled_time: m.scheduled_time,
       participants: { player_a_member_id: m.player_a_member_id, player_b_member_id: m.player_b_member_id, partner_a_member_id: m.partner_a_member_id, partner_b_member_id: m.partner_b_member_id },
@@ -48,6 +50,18 @@ export async function syncDiamondFixtures(opts: {
   weeks.forEach((w) => w.ties.forEach((t) => {
     const home = teams.find((x) => x.id === t.home), away = teams.find((x) => x.id === t.away);
     if (!home || !away) return;
+    const singlesEvidence: Array<{ saved: ParticipantIds; expected: ParticipantIds }> = [];
+    games.forEach((g, gi) => {
+      if (g.kind !== "singles") return;
+      const saved = savedByKey.get(`dl:${t.id}:${gi}`);
+      if (!saved) return;
+      const p = g.positions[0] - 1;
+      singlesEvidence.push({ saved, expected: {
+        player_a_member_id: home.players[p] ?? null, player_b_member_id: away.players[p] ?? null,
+        partner_a_member_id: null, partner_b_member_id: null,
+      } });
+    });
+    const tieReplacements = new Map([...diamondFixtureReplacements(singlesEvidence, teams), ...replacements]);
     games.forEach((g, gi) => {
       const key = `dl:${t.id}:${gi}`;
       const time = starts[gi];
@@ -60,7 +74,7 @@ export async function syncDiamondFixtures(opts: {
       const saved = replaceable.get(key);
       if (saved) {
         replaceable.delete(key);
-        const patch: Record<string, unknown> = diamondPendingParticipantPatch(saved.participants, participants, saved.startedTie, replacements);
+        const patch: Record<string, unknown> = diamondPendingParticipantPatch(saved.participants, participants, saved.startedTie, tieReplacements);
         if (!saved.startedTie && (saved.scheduled_date !== (w.date || null) || saved.scheduled_time?.slice(0, 5) !== time)) {
           patch.scheduled_date = w.date || null;
           patch.scheduled_time = time;

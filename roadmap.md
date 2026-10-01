@@ -108,3 +108,5 @@
 - [x] Help Center pilot gate (paused/pilot/live, backlog hold, pilot enqueue) — source + tests only
 - [ ] Apply staged migration supabase/pending-migrations/20260930150800 (waits on owner approval), then redeploy feed
 - Diamond League: standings rows colour-coded with the shared rank heat scale (dark green -> light green -> pink -> red), same as normal standings; scale extracted to src/lib/standings-rank-style.ts (shared with ClubChampsView).
+
+- [x] Platform invoices: issue on the 1st, bill previous month WhatsApp + SMS, amend unpaid invoice; Super Admin shows real amounts owed (2026-10-01)

@@ -9713,7 +9713,17 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       {step === "structure" && (
         <div className="flex gap-1 rounded-lg border bg-muted/40 p-1 w-fit">
           <Button type="button" size="sm" variant={!diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => setDiamondMode(false)} disabled={diamondDraft.started}>Standard leagues</Button>
-          <Button type="button" size="sm" variant={diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => { if (!diamondMode && startTime === "18:00" && endTime === "20:00") { setStartTime("17:45"); setEndTime("21:15"); } setDiamondMode(true); }}>💎 Diamond League (teams)</Button>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="button" size="sm" variant={diamondMode ? "default" : "ghost"} className="h-8 text-xs" onClick={() => { if (!diamondMode && startTime === "18:00" && endTime === "20:00") { setStartTime("17:45"); setEndTime("21:15"); } setDiamondMode(true); }}>💎 Diamond League (teams)</Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="start" className="max-w-xs text-xs leading-snug">
+                <p className="font-semibold">A team event of singles and doubles</p>
+                <p className="mt-1">Each team tie plays singles rubbers first, then doubles, on the same night. Because of that, teams need an <strong>even number of players</strong> (e.g. 4 players = 4 singles + 2 doubles) and each division needs an <strong>even number of teams</strong>, so every team has an opponent each week.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )}
       {step === "structure" && diamondMode && (

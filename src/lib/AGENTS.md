@@ -23,3 +23,4 @@
 - Club Google registration uses a public same-origin callback with club context and reuses existing club_members identity; only a unique exact-email unclaimed match auto-claims; why: preserve member history without guessing across shared family emails.
 <!-- LOVABLE:END -->
 - Tournament round dates come from `src/lib/tournaments/round-plan.ts`: setup asks only for opening rounds the pools need and the play-off rounds the play-off type has; play-off games are dated only by their play-off round (`playoffDeadline`), never a pool round; why: play-offs borrowed Round 1's date.
+- Per-stage scheduling (pools vs each play-off round: play-by date or fixed date & courts) is stored as `milestone_play_by.stage_scheduling` and resolved by `stageModeForGame`/`playoffModeFor` in `round-plan.ts`, falling back to `scheduling_mode`; why: `club_champs` is a view with INSTEAD OF triggers, and owners mix play-by pools with booked finals.

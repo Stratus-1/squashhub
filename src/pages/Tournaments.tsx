@@ -44,6 +44,8 @@ import { WithdrawPlayerButton } from "@/components/tournaments/WithdrawPlayerBut
 import { JoinWhatsAppGroupButton } from "@/components/tournaments/JoinWhatsAppGroupButton";
 import { canScheduleFixture, scheduleActionShortLabel } from "@/lib/tournaments/fixture-scheduling";
 import { parseRoundDeadlines, deadlineForRound, deadlineForStage, playByNudge, mergeRoundDeadlines } from "@/lib/tournaments/round-deadlines";
+import { parseMilestones } from "@/lib/tournaments/round-definitions";
+import { isPlayoffGame, playoffDeadline } from "@/lib/tournaments/round-plan";
 import { isTerminalMatchStatus } from "@/lib/tournaments/actionable-match";
 import { chronologicalTournamentMatches } from "@/lib/tournaments/schedule-order";
 import { DiamondStandings } from "@/components/tournaments/DiamondStandings";
@@ -765,8 +767,12 @@ export default function Tournaments() {
     if (mine) return String(mine).slice(0, 10);
     const own = matchRoundRow(m)?.play_by;
     if (own) return String(own).slice(0, 10);
+    const champ = champs.find((c: any) => c.id === m.champ_id);
+    const milestones = parseMilestones((champ as any)?.milestone_play_by);
+    // Play-off games only ever take their own play-off round's date.
+    if (isPlayoffGame(m)) return playoffDeadline(milestones, m.stage_label, m.stage);
     return (
-      deadlineForStage(roundPlan(m.champ_id), m.round_number, matchStageLabel(m)) ??
+      deadlineForStage(roundPlan(m.champ_id), m.round_number, matchStageLabel(m), milestones) ??
       roundMeta(m.champ_id, m.round_number).date
     );
   };

@@ -62,7 +62,7 @@ import {
 import { UserX, Trophy, Shuffle, RotateCcw, MoreVertical, UserCog } from "lucide-react";
 import { ReplacePlayerDialog } from "@/components/tournaments/ReplacePlayerDialog";
 
-import { assignPools, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
+import { assignPools, poolsFromGames, poolStandings, pairNextRound, entityIdForEntry, type Entry as SwissEntry, type Match as SwissMatch } from "@/lib/swiss-pairing";
 import { computeFinalPlacements, placementSlotLabel } from "@/lib/tournaments/final-standings";
 import { StructuredEnginePanel } from "@/components/smart-builder/StructuredEnginePanel";
 import { buildPlayoffMatches, buildRegisteredPairMap, enforceRegisteredPairs, isPlayoffRowLocked, shouldAutoFillPlayoffs, type StandingEntity } from "@/lib/tournament-playoffs";
@@ -486,6 +486,9 @@ export default function ClubChampsView() {
       : 1;
 
   const poolLabel = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B
+  // Standings must follow the pool games actually created, not a re-derived split.
+  const playedPoolMap = (groupNum: number, pc: number, dbl: boolean) =>
+    poolsFromGames(assignPools(entries as SwissEntry[], groupNum, pc, dbl), entries as SwissEntry[], matches as any[], groupNum, dbl);
 
   // Resolve a match's pool number. Prefers persisted pool_number, else derives
   // from the pool assignment of player_a's entry (Swiss with >1 pool). Returns
@@ -497,7 +500,7 @@ export default function ClubChampsView() {
     if (pc <= 1) return null;
     const memberIds: string[] = [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id].filter(Boolean);
     if (memberIds.length === 0) return null;
-    const poolMap = assignPools(entries as SwissEntry[], groupNum, pc, isDoubles);
+    const poolMap = playedPoolMap(groupNum, pc, isDoubles);
     for (const mid of memberIds) {
       const e = (entries as any[]).find(
         (x) => x.group_number === groupNum && (x.club_member_id === mid || x.partner_member_id === mid),
@@ -519,7 +522,7 @@ export default function ClubChampsView() {
     // listed under the first pool rather than disappearing.
     if (poolNumber != null && (isSwissForLeague(groupNum) || isRoundRobinForLeague(groupNum))) {
       const poolCount = poolCountFor(groupNum);
-      const poolMap = assignPools(entries as SwissEntry[], groupNum, poolCount, isDoubles);
+      const poolMap = playedPoolMap(groupNum, poolCount, isDoubles);
       groupEntries = groupEntries.filter((e: any) => {
         const p = poolMap.get(entityIdForEntry(e as SwissEntry, isDoubles));
         if (p == null) return e.is_provisional_entry ? poolNumber === 1 : false;

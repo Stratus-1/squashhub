@@ -208,3 +208,79 @@ export function pairNextRound(standings: PoolStanding[]): PairProposal[] {
   }
   return paired;
 }
+
+/**
+ * Pool membership is proven by the pool games already created: in a pool
+ * format, every pool-stage game is between two players of the same pool.
+ * When entry order is re-saved after the draw (or the display split differs
+ * from the generator's), re-deriving pools from order would break the link
+ * between standings and the games actually played. So players who already
+ * have pool games are grouped by who they played; each connected group keeps
+ * a persisted pool_number when present, otherwise the pool most of its
+ * members derive to (ties → lowest unused number). Players with no games
+ * keep the derived pool.
+ */
+export function poolsFromGames(
+  derived: Map<string, number>,
+  entries: Entry[],
+  matches: Array<Match & { stage?: string | null; section_number?: number | null }>,
+  groupNumber: number,
+  isDoubles: boolean,
+): Map<string, number> {
+  const groupEntries = entries.filter((e) => e.group_number === groupNumber);
+  const entityOfMember = new Map<string, string>();
+  for (const e of groupEntries) {
+    const id = entityIdForEntry(e, isDoubles);
+    entityOfMember.set(e.club_member_id, id);
+    if (e.partner_member_id) entityOfMember.set(e.partner_member_id, id);
+  }
+  const parent = new Map<string, string>();
+  const find = (x: string): string => {
+    let r = x;
+    while (parent.get(r) !== r) r = parent.get(r)!;
+    parent.set(x, r);
+    return r;
+  };
+  const pinned = new Map<string, number>(); // entity -> persisted pool
+  const games = matches.filter((m) => m.group_number === groupNumber && (m.stage || "group") === "group" && !m.is_bye);
+  for (const m of games) {
+    const a = entityOfMember.get(m.player_a_member_id || "") ?? entityOfMember.get(m.partner_a_member_id || "");
+    const b = entityOfMember.get(m.player_b_member_id || "") ?? entityOfMember.get(m.partner_b_member_id || "");
+    if (!a || !b || a === b) continue;
+    for (const x of [a, b]) if (!parent.has(x)) parent.set(x, x);
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+    const persisted = m.pool_number ?? m.section_number ?? null;
+    if (persisted != null) { pinned.set(a, persisted); pinned.set(b, persisted); }
+  }
+  if (parent.size === 0) return derived;
+  const comps = new Map<string, string[]>();
+  for (const x of parent.keys()) {
+    const r = find(x);
+    comps.set(r, [...(comps.get(r) || []), x]);
+  }
+  const out = new Map(derived);
+  const used = new Set<number>();
+  const pick = (members: string[]) => {
+    const pin = members.map((m) => pinned.get(m)).find((v) => v != null);
+    if (pin != null) return pin;
+    const votes = new Map<number, number>();
+    for (const m of members) {
+      const p = derived.get(m);
+      if (p != null) votes.set(p, (votes.get(p) || 0) + 1);
+    }
+    const ranked = [...votes.entries()].sort((x, y) => y[1] - x[1] || x[0] - y[0]).map(([p]) => p);
+    const free = ranked.find((p) => !used.has(p));
+    if (free != null) return free;
+    let n = 1;
+    while (used.has(n)) n++;
+    return n;
+  };
+  // Largest groups choose first so a full pool wins its natural letter.
+  for (const members of [...comps.values()].sort((x, y) => y.length - x.length)) {
+    const p = pick(members);
+    used.add(p);
+    for (const m of members) out.set(m, p);
+  }
+  return out;
+}

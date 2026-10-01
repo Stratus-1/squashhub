@@ -30,8 +30,8 @@ export type MilestoneKey = Exclude<StageKey, "early">;
 
 export const MILESTONE_KEYS: MilestoneKey[] = ["quarter_final", "semi_final", "final"];
 
-/** Championship deadlines, keyed by stage. */
-export type MilestonePlayBy = Partial<Record<MilestoneKey, string | null>>;
+/** Championship deadlines, keyed by stage (`place_playoffs` = position play-offs). */
+export type MilestonePlayBy = Partial<Record<MilestoneKey | "place_playoffs", string | null>>;
 
 const STAGE_NAMES: Record<StageKey, string> = {
   early: "Round",
@@ -260,7 +260,7 @@ export function parseMilestones(value: unknown): MilestonePlayBy {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const row = value as Record<string, unknown>;
   const out: MilestonePlayBy = {};
-  for (const key of [...MILESTONE_KEYS, "third_place" as MilestoneKey]) {
+  for (const key of [...MILESTONE_KEYS, "third_place" as MilestoneKey, "place_playoffs" as const]) {
     const d = asDate(row[key]);
     if (d) out[key] = d;
   }
@@ -273,11 +273,15 @@ export function milestoneFor(milestones: MilestonePlayBy, stage: StageKey): stri
 }
 
 /** Validation for the milestone block. [] = ok. */
-export function validateMilestones(m: MilestonePlayBy, opts: { require?: boolean } = {}): string[] {
+export function validateMilestones(
+  m: MilestonePlayBy,
+  opts: { require?: boolean; keys?: Array<MilestoneKey | "place_playoffs"> } = {},
+): string[] {
   const problems: string[] = [];
   if (opts.require) {
-    for (const key of MILESTONE_KEYS) {
-      if (!asDate(m?.[key])) problems.push(`Set the ${stageName(key).toLowerCase()} play-by date.`);
+    for (const key of opts.keys ?? MILESTONE_KEYS) {
+      const name = key === "place_playoffs" ? "place play-offs" : stageName(key).toLowerCase();
+      if (!asDate(m?.[key])) problems.push(`Set the ${name} play-by date.`);
     }
   }
   const q = asDate(m?.quarter_final);

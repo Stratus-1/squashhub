@@ -56,8 +56,9 @@ Deno.serve(async (req) => {
       // Fetch club's leagues
       const { data: leagues } = await supabase
         .from("leagues")
-        .select("id, name, captain_member_id")
-        .eq("club_id", club.id);
+        .select("id, name, captain_member_id, fill_up_reminder_enabled")
+        .eq("club_id", club.id)
+        .is("archived_at", null);
 
       const leagueIds = (leagues ?? []).map((l) => l.id);
       if (leagueIds.length === 0) continue;
@@ -118,7 +119,7 @@ Deno.serve(async (req) => {
 
       // Captain reminders — one per captain
       const captainIds = Array.from(
-        new Set((leagues ?? []).map((l: any) => l.captain_member_id).filter(Boolean)),
+        new Set((leagues ?? []).filter((l: any) => l.fill_up_reminder_enabled === true).map((l: any) => l.captain_member_id).filter(Boolean)),
       );
       if (captainIds.length > 0) {
         const { data: caps } = await supabase

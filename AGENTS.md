@@ -1,186 +1,30 @@
 # SquashHub AI Development Guide
 
-## Project identity
+Multi-tenant squash operations platform (clubs, associations, federation, members): bookings, ladders, leagues, tournaments, live marking, billing, payments, access/devices, comms, PWA and Capacitor apps.
 
-SquashHub is a multi-tenant sports operations platform for squash clubs, associations, national structures, administrators, members, visitors, and spectators. The product spans club onboarding, membership, court bookings, ladders, matches, leagues, tournaments, live marking, federation workflows, billing, payments, access control, smart-court integrations, communications, outreach, PWA installation, and native mobile apps.
+- Repo `Stratus-1/squashhub` (`main`). Docs: `ARCHITECTURE.md`, `README.md`, `MOBILE.md`, `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`, `docs/ANDROID_API_REFERENCE.md`.
+- Scoped rules: `src/lib/AGENTS.md` (competition, bar, identity domain rules), `supabase/AGENTS.md` (Help Center feed).
+- Stack: React 18 + TS + Vite, React Router, React Query, Tailwind/shadcn, Supabase (Postgres/RLS/RPC/Edge Functions), PWA, Capacitor 8, FCM, Vitest, Remotion, Vercel.
+- Commands: `npm run dev|test|lint|build|cap:sync`. Don't open native IDEs unless needed; review `cap:sync` output before committing.
 
-- Canonical repository: `https://github.com/Stratus-1/squashhub.git`
-- Default branch: `main`
-- Canonical local path: `C:\Users\wille\OneDrive\Desktop\Stratus-Projects\SquashHub\Code`
-- Product architecture: `ARCHITECTURE.md`
-- Web setup: `README.md`
-- Mobile setup: `MOBILE.md`
-- Detailed history and known issues: `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`
-- Native API reference: `docs/ANDROID_API_REFERENCE.md`
+## Before editing
+- Read relevant docs and issue history before touching federation, mobile, booking, payment or device flows.
+- Trace route → context → hooks → `src/lib` → tables/RLS/RPCs → Edge Functions → provider callbacks.
+- Install needed dependencies proactively (prefer local); if an external connection loses auth, stop and ask the user to re-authenticate.
 
-## Read before editing
+## Architecture rules
+- Club, association, national and platform scopes are separate authorization boundaries; every club-owned query, cache key, channel, job and credential is scoped to its club/org. Capability flags are packaging, not security.
+- Subdomains, `/c/:subdomain`, preview state and root-host admin routes form one routing contract.
+- Competition state (draws, rounds, pools, progression, marker locks, lineups, results, rankings) are state machines with cross-table invariants: reuse `src/lib/tournaments/`, `src/lib/tournament-formats/`, `src/lib/leagues/`; never recreate rules in pages; add tests before changing them.
+- Bookings affect availability, balances, visitors, reflow, lights, access and notifications. Device/integration boundaries (Shelly, routers, GoBook) need timeouts, retries, idempotency, audit logs; never expose device credentials to the browser. Shelly devices are managed only from the `IoT / Shelly` tile (`docs/IOT_DEVICE_OWNERSHIP.md`).
+- Payment callbacks (Stitch, Yoco) retry/arrive out of order: handlers idempotent; server verification is authoritative; billing/ledger changes must be auditable.
+- Preserve web, PWA, Android and iOS behaviour; deep links, OAuth, push and payment returns need platform testing; native config/signing is sensitive.
+- Integrations: identify source of truth and credential owner, preserve external IDs/idempotency keys, document env vars by name only, log without secrets/PII.
+- Supabase → GCP migration is incremental: one writable authority per domain per phase, authenticated service APIs, outbox/replayable workers; don't move live marking or booking without measuring realtime needs.
 
-1. Read the workspace `../../AGENTS.md` and `../PROJECT.md`.
-2. Read this file, `ARCHITECTURE.md`, `README.md`, and `MOBILE.md`.
-3. Read the relevant domain docs and issue history before changing federation, mobile, booking, payment, or device workflows.
-4. Run `git status --short --branch` and `git remote -v`.
-5. Trace the route, context, hooks, domain libraries, tables, RLS, RPCs, Edge Functions, and external provider callbacks involved.
+## Testing and secrets
+- Extend existing suites; focused tests while developing, full test/lint/build for broad changes; schema changes need migration, RLS, RPC, types and cron review.
+- Never read or expose `.env`, `secrets/`, Firebase/signing files, router/OAuth/payment credentials, member exports or PII. Service-role keys are server-only.
 
-## Technology stack
-
-- React 18, TypeScript, and Vite
-- React Router and TanStack React Query
-- Tailwind CSS, shadcn/ui, Radix UI, and Framer Motion
-- Supabase Postgres, Auth, RLS, Realtime, Storage, RPCs, and Deno Edge Functions
-- PWA/service worker support
-- Capacitor 8 for Android and iOS wrappers
-- Firebase Cloud Messaging for native push notification delivery
-- Vitest with substantial domain coverage
-- Remotion tooling for product media
-- Vercel web deployment configuration
-- Lovable-connected development metadata and APIs
-
-## Commands
-
-```powershell
-npm install
-npm run dev
-npm run test
-npm run lint
-npm run build
-npm run cap:sync
-npm run cap:android
-npm run cap:ios
-```
-
-Do not run native open commands unless the task requires Android Studio or Xcode. `cap:sync` rebuilds the web bundle and synchronizes native projects; understand generated changes before committing them.
-
-## Dependency installation
-
-- When a required package, CLI, or runtime dependency is needed to complete the requested work, install it proactively and continue. Do not wait for a separate installation request.
-- Prefer local project dependencies for reproducible builds; use global installation only when the tool is inherently machine-level.
-- Record meaningful setup changes in `package.json`, lockfiles, or project documentation, and report any external authentication step that still requires the user.
-
-## External authentication
-
-- If Lovable, Vercel, Supabase, GitHub, or another required external connection loses authentication, stop the affected operation and prompt the user to re-authenticate. Do not silently continue with stale credentials or claim that a deployment completed without a confirmed result.
-
-## Repository map
-
-| Path | Responsibility |
-| --- | --- |
-| `src/App.tsx` | Provider composition, route map, authentication gates, club gates, capability gates, and platform admin routing. |
-| `src/contexts/` | Auth, active club, and active member state. Provider order is significant. |
-| `src/pages/` | Member, club, public, payment, competition, admin, and support screens. |
-| `src/components/` | Club admin, association admin, platform admin, tournaments, leagues, live markers, payments, help, and shared UI. |
-| `src/hooks/` | Club, people, permissions, billing, competitions, integrations, notifications, and device-oriented hooks. |
-| `src/lib/` | Domain logic for tournaments, leagues, ladders, billing, subdomains, smart devices, payments, PWA, and MCP tools. |
-| `src/integrations/supabase/` | Supabase client and generated database types. |
-| `supabase/migrations/` | Append-only schema, RLS, RPC, trigger, cron, and data migration history. |
-| `supabase/functions/` | Payments, integrations, messaging, federation sync, billing, access, device, and job workflows. |
-| `android/` and `ios/` | Capacitor native projects. |
-| `remotion/` | Separate media/video composition tooling. |
-| `docs/` | Native, federation, architecture history, and operational references. |
-| `secrets/` | Sensitive local material. Never inspect, print, or commit it. |
-
-## Non-negotiable architecture rules
-
-### Organization and club isolation
-
-- Club, association, national-body, and platform scopes are distinct authorization boundaries.
-- Club subdomains, `/c/:subdomain` routes, preview state, and root-host platform admin routes form one routing contract.
-- Every club-owned query, storage object, cache key, realtime channel, scheduled job, and integration credential must be scoped to the correct club or organization.
-- Capability flags control product packaging and feature access, not security by themselves. Backend authorization remains required.
-
-### Competition integrity
-
-- Tournament draws, rounds, pools, divisions, seeding, byes, forfeits, progression, marker locks, and governance records form state machines.
-- League lineups, fixtures, substitutions, results, penalties, availability, and ranking ledgers have cross-table invariants.
-- Reuse domain logic in `src/lib/tournaments/`, `src/lib/tournament-formats/`, and `src/lib/leagues/`. Do not recreate competition rules in page components.
-- Add tests before changing draw generation, progression, scoring, eligibility, or ranking behavior.
-
-### Booking, access, and devices
-
-- Booking mutations affect availability, balances, visitors, invitations, reflow, lights, door access, and notifications.
-- Shelly BLE, Shelly HTTP, router polling, court lights, GoBook, and access provisioning are failure-prone external/device boundaries. Use timeouts, retries, idempotency, audit logs, and safe fallbacks.
-- Never expose club device credentials or router secrets to the browser.
-- IoT ownership is centralized: Shelly-connected lights, door relays, and gadgets are registered and managed from the `IoT / Shelly` admin tile under the `Lights`, `Access`, and `Gadgets` cards. Do not recreate parallel Shelly setup surfaces or a separate Shelly `Door Access` tile. See `docs/IOT_DEVICE_OWNERSHIP.md`.
-
-### Payments and billing
-
-- Stitch and Yoco callbacks can retry or arrive out of order. All handlers must be idempotent.
-- Club billing, member fees, subscriptions, platform invoices, mandates, bar tabs, and ledger records require auditability and reconciliation.
-- Do not mix a provider redirect result with payment confirmation; server-side verification is authoritative.
-
-### Web, PWA, and native
-
-- Preserve web, installed PWA, Android, and iOS behavior. Browser APIs may not exist in native wrappers and native plugins may not exist on web.
-- Deep links, OAuth callbacks, push permissions, PWA updates, and payment return routes require platform-specific testing.
-- Treat `android/` and `ios/` configuration, signing, Firebase files, associated domains, and URL schemes as sensitive operational surfaces.
-
-## External integrations
-
-The repository contains active or planned boundaries for Supabase, Lovable, Vercel, Stitch, Yoco, Strava, Firebase/FCM, WhatsApp, NSA/federation systems, SportyHQ, GoBook, Shelly devices, router vendors, email providers, and push delivery.
-
-Before changing an integration:
-
-1. Identify the source of truth and credential owner.
-2. Trace browser/native initiation, backend function, callback/webhook, database state, retry behavior, and user-visible recovery.
-3. Preserve external IDs and idempotency keys.
-4. Document environment variables by name only.
-5. Add structured logs without secrets or personal data.
-
-## Supabase-to-GCP direction
-
-Supabase currently owns the dominant data and backend path. Migrate incrementally:
-
-- Introduce typed services around federation sync, notifications, access/device jobs, outreach, billing, and payment orchestration.
-- Strong candidates for GCP extraction are scheduled polling, queues, integration workers, media processing, notification dispatch, analytics, and high-observability device orchestration.
-- Keep one writable authority for bookings, competition state, payment state, and rankings during each migration phase.
-- Use authenticated service-to-service APIs, outbox events, replayable workers, dead-letter handling, and reconciliation dashboards.
-- Do not move latency-sensitive live marking or booking behavior without measuring realtime and offline requirements.
-
-## Testing expectations
-
-- SquashHub already has meaningful tests for tournament, league, booking, billing, PWA, and domain helpers. Extend these suites instead of bypassing them.
-- Run focused tests during development and the full `npm run test` for domain changes.
-- Run `npm run lint` and `npm run build` for broad changes.
-- For native-impacting changes, run the web build and `npm run cap:sync`, then report whether device testing was performed.
-- Database changes require migration, RLS, RPC, function, generated-type, and cron review.
-
-## Secrets and sensitive data
-
-- Never read or expose `.env`, `secrets/`, Firebase service credentials, mobile signing files, router credentials, OAuth secrets, payment credentials, member exports, or personal information.
-- Do not commit downloaded business spreadsheets or member lists from the parent product folder.
-- Public Supabase client configuration is not a substitute for RLS. Service-role credentials are always server-only.
-
-## Completion checklist
-
-- Club, organization, platform, and capability boundaries are preserved.
-- Competition or booking invariants have regression tests.
-- Web/PWA/native impacts are stated.
-- Payment, device, and integration retries are safe and observable.
-- Schema changes use new migrations and generated types are synchronized.
-- Tests, lint, and build have run as appropriate.
-- `ARCHITECTURE.md` is updated for changed boundaries or migration paths.
-- Ladder refinement preserves unsaved sibling proposals and displays the category used to sort; why: saves must be repeatable and evidence truthful.
-- Sessions (date/court/time blocks) are separate from stages: a stage joins an earlier stage's session only via explicit `Stage.sameSessionAs`; `sessionPlan` adds sequential durations; compound ties stay `Stage.tieFormat` rubbers; why: several stages can share one evening without being flagged as overlapping.
-- Pool-v-pool league stages keep pool rotation (`legs`) and in-tie pairing (`tieFormat.pairing`: position/crossover/custom) as separate fields, one discipline per stage; rules live in `src/lib/smart-builder/ties.ts`; why: pairing must never be inferred from 'round robin'.
-- Match scoring resolves tournament → stage (`Stage.scoring`) → round (`Stage.roundScoring`) in `src/lib/smart-builder/scoring.ts`; a Bells cap drives schedule minutes and missing caps block Create; why: stages in one session can use different scoring.
-- Standings method per stage (`Stage.standings`: method, result points, combined, Bells score rule, ordered tie-breaks) lives in `src/lib/smart-builder/standings.ts`; required for pool-v-pool/Bells stages or once chosen, legacy round robins only warn; why: never invent ranking rules.
-- Stage courts resolve pool home courts → `Division.courtKeys` → stage/default courts → tournament court pool, and match length from tie games/Bells cap/match minutes, in `src/lib/smart-builder/court-allocation.ts`; Diamond League shape scales via `diamondShape(capacity, poolSize, poolsPerDivision)`; why: courts belong to divisions/pools, entries vary.
-- Engine capability lives in `src/lib/smart-builder/engine-support.ts` and is read by validate, Review, to-existing and specFromDefinition; unsupported stages block at design time; why: the builder must never design what the engine can't run.
-- Pool-v-pool stages run as engine kind `mapped` with an explicit `StageMapping` (source → units/pairs → matchups by slot A1/B2) in `src/lib/tournaments/mapping.ts`; builder proposes it in `smart-builder/matchups.ts`, admin edits persist on `Stage.mapping`; why: who-plays-whom is data, never inferred from a 'cross-pool' label.
-- Later play-off stages may be marked `Stage.defineLater` ("Define later"): `src/lib/smart-builder/deferred.ts` strips them from validation, schedule maths, engine support, the existing-model mapping and the Create spec (kept as `SpecDivision.deferredStages` planning targets only); why: a deliberately deferred semi-final/final must never block creating or running the stages that play now, and can never be advanced into before it is configured.
-- Stage lifecycle (waiting/ready/blocked/active/completed/deferred/needs_setup) and automatic progression live in `src/lib/tournaments/progression.ts`; predefined stages start via the same engine calls after a dry run, Define-later stages are set up on the live tournament via `setupDeferredStage` (append-only `set_spec` commit op), tie orders go in `TournamentSpec.positionOrders`, and the DB trigger `guard_structured_stage_round_once` refuses a second copy of a stage round; why: progression must never guess, never disturb earlier stages, and never double-generate.
-- Every self-registration path must call `useDuplicateGuard` (backend `account-recovery`, logic in `supabase/functions/_shared/person-match.ts`) before creating a person; why: one national person record, and existing emails are revealed only after phone OTP.
-- Doubles original pairs are dated rows in league_team_pairs (effective_from/effective_to); edits close+insert, never overwrite; why: bonus and history must follow the pair official on each fixture date.
-- Bar/shop inventory: stock lives only on `bar_items.item_kind='stock'` rows in `stock_units` (smallest unit, e.g. tots; `unit_yield` per bottle) and changes only via `bar_stock_apply` with a `bar_stock_movements` row; Single/Double are `option` rows and combos are `special` rows (+ `bar_special_components`) holding no stock; divisions/categories are per-club rows with archive, never hard-delete in-use ones; why: one inventory engine for every club, exact open-bottle stock, atomic combo deduction and an audit trail.
-- Bar stock costing is optional per club (`club_bar_settings.costing_enabled`); `bar_items.avg_unit_cost` is per smallest unit, re-averaged only by purchases inside `bar_stock_apply`, corrected only via audited `bar_set_average_cost`; every movement snapshots `unit_cost`/`cost_value` and reports read snapshots (`bar_cost_of_sales`); why: historic COGS must never change and clubs without costing stay untouched.
-- Bar item bulk import: parsing/validation/matching is pure in `src/lib/bar-import.ts` (club-scoped matching by name+variant or barcode, specials rejected, existing stock never changed — stocktake only); `ImportItemsDialog` writes only after explicit confirm; why: imports must never create duplicates, phantom stock or cross-club changes.
-- Bar item kind `made_to_order` (Restaurant category food like burgers): holds no stock, always on the menu (`onMenu` skips the stock check, QR menu lists it at zero stock), and `bar_consume_sale` deducts nothing; why: food is prepared to order, never stocked.
-- Doubles serving is a pure state machine in `src/lib/marker/doubles-serving.ts` (methods even_odd/by_position/second_server); the method lives on `league_rules.doubles_serving_method` and `tournaments.doubles_serving_method` / `league_doubles_serving_methods` (null = manual legacy serving), and the marker persists positions + server state with its local session; why: the marker must know the real server per pair and singles must stay untouched.
-- Diamond League is a normal-wizard team mode: `team_league_events` links 1:1 by `tournament_id`; `autoSlotPlayers` preserves locks; `buildPoolWeeks` drives preview, saved weeks and stable `dl:` match rows; why: invitations, courts, Upcoming, marking and standings must share one tournament fixture identity.
-- Diamond League doubles pairs are re-seeded by DB trigger `diamond_seed_doubles_from_singles` once a tie's singles are all scored (points scored, level -> higher position); why: pairing is automatic and never touches started doubles.
-<!-- LOVABLE:BEGIN -->
-- Club Google registration uses a public same-origin callback with club context and reuses existing club_members identity; only a unique exact-email unclaimed match auto-claims; why: preserve member history without guessing across shared family emails.
-<!-- LOVABLE:END -->
-- Help Center ticket feed: support_threads insert/status change appends to service-role-only, append-only `help_center_ticket_outbox` in the same transaction; `help-center-ticket-feed` publishes only ticket UUID/status/revision/timestamps with static redacted text, HMAC-signed with dedicated `HELP_CENTER_HMAC_KEY`, fails closed without exact tenant scope + redaction policy, bounded backoff, retry cron armed only while pending; why: SquashHub stays authoritative and no customer content leaves the platform.
-- Help Center delivery gate: `help_center_delivery_mode()` (paused default, pilot = `help_center_pilot_allowlist`, live) is enforced inside both `help_center_outbox_wake` and `help_center_outbox_claim`; backlog is preserved via `held_at`/`hold_reason`, never deleted or marked delivered; disarm deactivates, never unschedules; why: pausing cron is not a kill switch because support writes wake the feed immediately.
-- Help Center publisher releases use the manually dispatched, main-only workflow in `.github/workflows/deploy-help-center-publisher.yml`; store its project-scoped deploy token only in the protected GitHub environment and follow `docs/HELP_CENTER_PUBLISHER_DEPLOYMENT.md`; why: deployment credentials and product delivery gates must remain separate.
-- Tournament round dates come from `src/lib/tournaments/round-plan.ts`: setup asks only for opening rounds the pools need and the play-off rounds the play-off type has; play-off games are dated only by their play-off round (`playoffDeadline`), never a pool round; why: play-offs borrowed Round 1's date.
+## Done checklist
+Boundaries preserved; invariants tested; web/PWA/native impact stated; retries safe; migrations + types synced; `ARCHITECTURE.md` updated for boundary changes.

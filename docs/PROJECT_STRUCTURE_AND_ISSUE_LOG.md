@@ -2346,3 +2346,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-10-01 Platform invoices missed messaging usage
 - Cause: run on the 25th billed the *previous* month (August) of WhatsApp; SMS never billed; Super Admin "Amount Due" was a projection.
 - Fix: issue day 1st; SMS line + sms_send_log.platform_invoice_id; messaging added to an unpaid invoice of the same month (reissued as Updated Tax Invoice); messagingOnly run flag; Super Admin shows unpaid invoice totals and real cycle. Reissued GB INSH-2026-00006 (R267.45), new INSH-2026-00007 Riverside R5, INSH-2026-00008 Nelspruit R147.
+
+## 2026-10-01 — Diamond League scored fixture showed “Member”
+- Cause: standings loaded names only for current team slots, while scored fixture rows hold the actual participants; substitutes and re-seeded doubles partners can differ from the current slots.
+- Fix: load names for both current slots and recorded fixture participants, scoped to the event's club. Keep the recorded participant IDs as the display source; do not alter teams, scores, or results.

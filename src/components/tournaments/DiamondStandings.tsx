@@ -53,11 +53,16 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
     enabled: !!tournamentId,
     refetchInterval: 10000,
   });
-  const playerIds = [...new Set((ev?.teams || []).flatMap((t) => t.players).filter(Boolean))] as string[];
+  // Saved match participants can differ from the current team slots after a
+  // substitute or doubles re-seeding. Resolve both sets of IDs for the scores.
+  const playerIds = [...new Set([
+    ...(ev?.teams || []).flatMap((t) => t.players),
+    ...markedGames.flatMap((m) => [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id]),
+  ].filter((id): id is string => typeof id === "string" && id.length > 0))];
   const { data: names = {} } = useQuery({
     queryKey: ["diamond-player-names", tournamentId, playerIds.join("|")],
     queryFn: async () => {
-      const { data, error } = await fromExt("club_members").select("id, name").in("id", playerIds);
+      const { data, error } = await fromExt("club_members").select("id, name").eq("club_id", ev?.club_id || "").in("id", playerIds);
       if (error) throw error;
       return Object.fromEntries((data || []).map((m: any) => [m.id, m.name || "Member"])) as Record<string, string>;
     },
@@ -339,8 +344,11 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
                   const away = teams.find((x) => x.id === t.away);
                   const sc = clean(t.id);
                   const res = tieRes(t);
-                  const nm = (tm: Team | undefined, pos: number[]) =>
-                    pos.map((p) => (tm?.players[p - 1] && names[tm.players[p - 1]!]) || `#${p}`).join(" & ");
+                   const nm = (tm: Team | undefined, pos: number[]) =>
+                     pos.map((p) => {
+                       const id = tm?.players[p - 1];
+                       return (id && names[id]) || `#${p}`;
+                     }).join(" & ");
                   const rowNames = (gi: number, side: "a" | "b") => {
                     const m = (markedGames as any[]).find((x) => x.stage_key === `dl:${t.id}:${gi}`);
                     const ids = m ? [m[`player_${side}_member_id`], m[`partner_${side}_member_id`]].filter(Boolean) : [];

@@ -2354,3 +2354,6 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-10-01 — Diamond League squad substitution missing from fixtures
 - Cause: saving team slots updated the event JSON, but the fixture synchronizer only refreshed dates/times of existing unscored rows; player IDs were left as originally generated. A started tie's pending doubles may have been re-seeded, so blindly rebuilding them would also lose their order.
 - Fix: on organiser Save, update participants in unstarted games from current team slots; in started ties, change only the departing player's identity in still-scheduled/unscored games. Keep game rows, scores, completed games and seeded partner order. The allocation screen remains a draft until Save.
+
+## 2026-10-01 — Diamond League points follow team position
+- After a substitution, the roster displayed the incoming player with zero because the totals were keyed by person ID. Team positions retain their accumulated singles and doubles scores across substitutes; historical scored participants remain unchanged. Standings now aggregate scored fixtures by team slot, using singles rows to resolve historical occupants and seeded doubles partners, and label the leader cards as positions rather than personal lifetime totals. Unknown historical doubles slots are not guessed.

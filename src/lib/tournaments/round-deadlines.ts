@@ -10,6 +10,7 @@
  *  - [{ label, date }, ...]              → canonical
  *  - { "1": "2026-09-15", ... }          → keyed by round number
  */
+import { playoffDeadline, playoffKeyForLabel } from "./round-plan";
 export type RoundDeadline = {
   label: string;
   date: string;
@@ -151,6 +152,7 @@ export function deadlineForStage(
   list: RoundDeadline[],
   roundNumber?: number | null,
   stageLabel?: string | null,
+  milestones?: Record<string, string | null | undefined> | null,
 ): string | null {
   const clean = serializeRoundDeadlines(list) || [];
   const wanted = normaliseStage(stageLabel);
@@ -158,6 +160,9 @@ export function deadlineForStage(
     const hit = clean.find((d) => normaliseStage(d.label) === wanted);
     if (hit) return hit.date;
   }
+  // A play-off game is dated by ITS play-off round only — never by the pool
+  // round that happens to share its round number. No date → "Date to be set".
+  if (playoffKeyForLabel(stageLabel)) return playoffDeadline(milestones as any, stageLabel);
   return deadlineForRound(clean, roundNumber);
 }
 

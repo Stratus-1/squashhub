@@ -37,6 +37,8 @@ import { TournamentNextActionBar } from "@/components/tournaments/TournamentNext
 
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { parseRoundDeadlines, mergeRoundDeadlines, deadlineForStage } from "@/lib/tournaments/round-deadlines";
+import { parseMilestones as parseMilestonesForDates } from "@/lib/tournaments/round-definitions";
+import { playoffDeadline } from "@/lib/tournaments/round-plan";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
@@ -1510,6 +1512,12 @@ export default function ClubChampsView() {
 
       if (newRows.length === 0) throw new Error("Not enough finishers to build a play-off bracket");
 
+      // Each play-off game takes ITS play-off round's date (never a pool round's).
+      const playoffMilestones = parseMilestonesForDates((champ as any)?.milestone_play_by);
+      for (const row of newRows as any[]) {
+        row.play_by = playoffDeadline(playoffMilestones, row.stage_label, row.stage);
+      }
+
       // Fixed-pair doubles: every side is always the exact registered pair.
       if (isDoubles) {
         enforceRegisteredPairs(newRows as any[], buildRegisteredPairMap(entries as any[]));
@@ -1547,6 +1555,7 @@ export default function ClubChampsView() {
               player_b_member_id: row.player_b_member_id,
               partner_b_member_id: row.partner_b_member_id,
               stage_label: row.stage_label,
+              play_by: (row as any).play_by ?? null,
               placeholder_a: row.placeholder_a ?? target.placeholder_a ?? null,
               placeholder_b: row.placeholder_b ?? target.placeholder_b ?? null,
             })
@@ -1581,6 +1590,7 @@ export default function ClubChampsView() {
             player_b_member_id: row.player_b_member_id,
             partner_b_member_id: row.partner_b_member_id,
             stage_label: row.stage_label,
+            play_by: (row as any).play_by ?? null,
             placeholder_a: row.placeholder_a ?? null,
             placeholder_b: row.placeholder_b ?? null,
           })
@@ -3287,6 +3297,7 @@ export default function ClubChampsView() {
               mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[]),
               round,
               stage,
+              parseMilestonesForDates((champ as any)?.milestone_play_by),
             )
           }
           mode="detail"
@@ -3334,6 +3345,7 @@ export default function ClubChampsView() {
               mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[]),
               round,
               stage,
+              parseMilestonesForDates((champ as any)?.milestone_play_by),
             )
           }
         />

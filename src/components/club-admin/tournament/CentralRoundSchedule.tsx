@@ -15,6 +15,7 @@ import {
   type MilestonePlayBy,
 } from "@/lib/tournaments/round-definitions";
 import type { RoundProgress } from "@/lib/tournaments/self-scheduled-rounds";
+import { openingRoundsWarning, type PlayoffRound } from "@/lib/tournaments/round-plan";
 
 interface Props {
   /** The tournament's central early-round list. */
@@ -30,6 +31,12 @@ interface Props {
   minDate?: string;
   /** Which leagues currently sit on each round, e.g. { 3: ["2nd League"] }. */
   usageByRound?: Record<number, string[]>;
+  /** Play-off rounds the chosen structure really has; when given, only these are asked. */
+  playoffRounds?: PlayoffRound[];
+  /** Opening rounds the pools need (worked out from the structure). */
+  roundsNeeded?: number;
+  /** Hide the opening-round list (organiser books courts on session dates instead). */
+  hideOpeningRounds?: boolean;
 }
 
 /**
@@ -54,23 +61,34 @@ export function CentralRoundSchedule({
   progress = [],
   minDate,
   usageByRound = {},
+  playoffRounds,
+  roundsNeeded = 0,
+  hideOpeningRounds = false,
 }: Props) {
+  const keys = (playoffRounds ? playoffRounds.map((r) => r.key) : MILESTONE_KEYS) as any[];
+  const nameFor = (k: any) => playoffRounds?.find((r) => r.key === k)?.name ?? stageName(k);
+  const roundsWarning = openingRoundsWarning(deadlines.length, roundsNeeded);
+  const fitRounds = () => {
+    const next = deadlines.slice(0, roundsNeeded);
+    while (next.length < roundsNeeded) next.push({ label: defaultRoundLabel(next.length), date: "" });
+    onChange(next);
+  };
   const patch = (i: number, p: Partial<RoundDeadline>) =>
     onChange(deadlines.map((d, j) => (j === i ? { ...d, ...p } : d)));
 
-  const milestoneProblems = validateMilestones(milestones, { require: requireMilestones });
-  const setMilestone = (key: MilestoneKey, value: string) =>
+  const milestoneProblems = validateMilestones(milestones, { require: requireMilestones && keys.length > 0, keys });
+  const setMilestone = (key: MilestoneKey | "place_playoffs", value: string) =>
     onMilestonesChange({ ...milestones, [key]: value || null });
 
   const progressFor = (round: number) => progress.find((p) => p.roundNumber === round) ?? null;
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border p-3 space-y-2.5">
+      {!hideOpeningRounds && <div className="rounded-lg border p-3 space-y-2.5">
         <div className="flex items-start gap-2">
           <CalendarClock className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div className="min-w-0">
-            <div className="text-sm font-medium">Early rounds</div>
+            <div className="text-sm font-medium">Opening rounds{roundsNeeded > 0 ? ` — your pools need ${roundsNeeded}` : ""}</div>
             <p className="text-[11px] text-muted-foreground">
               One list for the whole tournament. Leagues move through these rounds at their own pace — a
               small league may reach its final while a big one is still on Round 3, and a round only
@@ -159,27 +177,37 @@ export function CentralRoundSchedule({
         >
           <Plus className="w-4 h-4 mr-1" /> Add another round
         </Button>
-      </div>
+        {roundsWarning && (
+          <p className="text-[11px] text-amber-700 dark:text-amber-300">
+            {roundsWarning}{" "}
+            <button type="button" className="underline" onClick={fitRounds}>Use {roundsNeeded} rounds</button>
+          </p>
+        )}
+      </div>}
 
-      <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2.5">
+      {keys.length > 0 && <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2.5">
         <div className="flex items-start gap-2">
           <Trophy className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <div className="min-w-0">
             <div className="text-sm font-medium">
-              Championship deadlines{requireMilestones ? "" : " (optional)"}
+              Play-off dates{requireMilestones ? "" : " (optional)"}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              The date each championship stage must be played by. You do not say which league is at
-              which stage — the app works that out from the players still standing, so a league that
-              gets there early simply waits for the common date.
+              Only the play-off rounds your structure actually has. Play-off games take these dates —
+              never a pool round's date — and show "Date to be set" until you fill them in.
             </p>
           </div>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-3">
-          {MILESTONE_KEYS.map((key) => (
+          {keys.map((key) => (
             <div key={key}>
-              <Label className="text-xs">{stageName(key)} played by</Label>
+              <Label className="text-xs">{nameFor(key)} played by</Label>
+              {playoffRounds && (
+                <div className="text-[10px] text-muted-foreground truncate">
+                  {playoffRounds.find((r) => r.key === key)?.usedBy.join(", ")}
+                </div>
+              )}
               <Input
                 type="date"
                 value={milestones?.[key] ?? ""}
@@ -198,7 +226,7 @@ export function CentralRoundSchedule({
             ))}
           </ul>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

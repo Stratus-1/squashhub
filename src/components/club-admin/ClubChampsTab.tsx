@@ -232,7 +232,7 @@ import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
 import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
 import { DiamondRulesPanel, DiamondAllocationBoard, DiamondFixturesPreview, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
 import { syncDiamondFixtures as syncSavedDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
-import { buildPoolWeeks, configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames, diamondGameStarts } from "@/lib/tournaments/team-league";
+import { buildPoolWeeks, configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames, diamondTeamName } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 
 
@@ -3534,7 +3534,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     qc.invalidateQueries({ queryKey: ["team-league-events"] });
     await syncSavedDiamondFixtures({
       champId: tournamentId, clubId, cfg: row.config, teams: diamondDraft.teams,
-      previousTeams, weeks, teamName: (id) => {
+      previousTeams, weeks, courtIds: Array.from(selectedCourtIds), teamName: (id) => {
         const index = diamondDraft.teams.findIndex((team) => team.id === id);
         return index < 0 ? "?" : diamondTeamName(diamondDraft.teams[index], index, diamondDraft.teams);
       },

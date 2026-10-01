@@ -20,12 +20,14 @@ export async function syncDiamondFixtures(opts: {
   weeks: DiamondWeek[];
   teamName: (id: string) => string;
   previousTeams?: DiamondTeam[];
+  courtIds?: number[];
 }): Promise<number> {
   const { champId, clubId, cfg, teams, weeks, teamName, previousTeams = teams } = opts;
   const replacements = diamondSlotReplacements(previousTeams, teams);
   const games = tieGames(cfg);
-  const { data: courtRows } = await fromExt("courts").select("id").eq("club_id", clubId).order("id");
-  const courtIds = ((courtRows || []) as any[]).map((c) => c.id as number);
+  const { data: courtRows, error: courtError } = opts.courtIds ? { data: null, error: null } : await fromExt("courts").select("id").eq("club_id", clubId).order("id");
+  if (courtError) throw courtError;
+  const courtIds = opts.courtIds ?? ((courtRows || []) as any[]).map((c) => c.id as number);
   const { data: existing, error: exErr } = await fromExt("club_champs_matches")
     .select("id, stage_key, status, score, scheduled_date, scheduled_time, player_a_member_id, player_b_member_id, partner_a_member_id, partner_b_member_id").eq("champ_id", champId).like("stage_key", "dl:%");
   if (exErr) throw exErr;

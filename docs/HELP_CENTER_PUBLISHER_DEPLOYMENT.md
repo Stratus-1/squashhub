@@ -16,3 +16,7 @@ The Lovable database connector is for SQL queries and does not supply Edge Funct
 4. Verify the deployed function revision before changing either product or central delivery gates. Deployment alone must leave `help_center_delivery_mode()` paused and `PRODUCT_SUPPORT_INGRESS_ENABLED=false` until the pilot scope, central operator mapping, retention, deployed publisher and end-to-end authorization have been verified.
 
 This workflow does not change database rows, invoke the function, enable retries, unpause the product feed, create product registry entries, or enable the central receiver. It is a deployment path only.
+
+## Delivery response handling
+
+The publisher treats any 2xx response as accepted. The Help Center returns 200 when the same event ID and exact body were already accepted, so idempotent replay remains successful. A 409 is a permanent conflict (for example, the event ID was reused with a different body, the ticket scope changed, or the case is a retained deletion tombstone); the current claimed outbox row is dead-lettered immediately with a safe conflict code. Do not treat HTTP 409 as proof of delivery. Other HTTP errors and network failures retain the bounded retry policy.

@@ -14,6 +14,7 @@ import {
 } from "@/lib/tournaments/team-league";
 import { syncDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 import { diamondPositionPoints, type DiamondScoredMatch } from "@/lib/tournaments/diamond-position-points";
+import { diamondLiveSummary } from "@/lib/tournaments/diamond-live-summary";
 import { getRankRowStyle } from "@/lib/standings-rank-style";
 
 type Team = { id: string; name: string; pool: "A" | "B"; players: (string | null)[] };
@@ -194,8 +195,14 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
   const semisDecided = !!semiWeek && semiWeek.ties.length > 0 && [1, 2, 3, 4].every((m) => semiWinner(m) !== null);
 
   const anyScores = Object.values(results).some((r) => r?.some(Boolean));
-  // Fun stats: the single team on top and at the bottom across both divisions (live totals).
-  const combinedRows = [...poolTable("A").rows, ...poolTable("B").rows].sort((a, b) => b.total - a.total);
+  // Fun stats follow the furthest-created running table: pool → semi-final → final.
+  const summaryStage = diamondLiveSummary(
+    [...poolTable("A").rows, ...poolTable("B").rows],
+    inProgress,
+    semiTable ? { rows: semiTable.rows, liveTeamIds: semiLive } : undefined,
+    finalTable ? { rows: finalTable.rows, liveTeamIds: finalLive } : undefined,
+  );
+  const combinedRows = [...summaryStage.rows].sort((a, b) => b.total - a.total);
   const frontRunner = anyScores ? combinedRows[0] : undefined;
   const woodenSpoon = anyScores && combinedRows.length > 1 ? combinedRows[combinedRows.length - 1] : undefined;
   // The current occupant inherits the team's position total; scored rows retain the original participants.
@@ -262,7 +269,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Front runner</div>
               <div className="font-semibold truncate">
                 {teamName(frontRunner.teamId)}
-                {inProgress.has(frontRunner.teamId) && <span className="ml-1 text-[10px] font-normal text-primary">● live</span>}
+                {summaryStage.liveTeamIds.has(frontRunner.teamId) && <span className="ml-1 text-[10px] font-normal text-primary">● live</span>}
               </div>
               <div className="text-muted-foreground">
                 Division {teams.find((t) => t.id === frontRunner.teamId)?.pool} · {frontRunner.points} pts + {frontRunner.bonus} bonus = {frontRunner.total}
@@ -275,7 +282,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Wooden spooner</div>
               <div className="font-semibold truncate">
                 {teamName(woodenSpoon.teamId)}
-                {inProgress.has(woodenSpoon.teamId) && <span className="ml-1 text-[10px] font-normal text-primary">● live</span>}
+                {summaryStage.liveTeamIds.has(woodenSpoon.teamId) && <span className="ml-1 text-[10px] font-normal text-primary">● live</span>}
               </div>
               <div className="text-muted-foreground">
                 Division {teams.find((t) => t.id === woodenSpoon.teamId)?.pool} · {woodenSpoon.points} pts + {woodenSpoon.bonus} bonus = {woodenSpoon.total}
@@ -295,7 +302,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
               <div className="rounded border border-border bg-muted/30 p-2 text-xs flex items-start gap-2">
                 <TrendingDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Last position</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Wooden spoon position</div>
                   <div className="font-semibold truncate">{names[lastPosition.id || ""] || "Member"} · {teamName(lastPosition.team.id)} #{lastPosition.position}</div>
                   <div className="text-muted-foreground">{lastPosition.points} position points</div>
                 </div>

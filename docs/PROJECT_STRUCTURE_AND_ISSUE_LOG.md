@@ -2367,3 +2367,9 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Symptom: Matthew Holing (NSC187) showed R1,650 owing although the opening-balance fee had been moved to main member Leigh Holing (NSC247).
 - Cause: moving a fee row (`club_member_fee_payments.club_member_id`) does not move its GL rows; My Account reads the balance from `club_journal_entries` by `club_member_id`.
 - Fix: reversed the GL pair on Matthew (`reverses_journal_ref`) and reposted it on Leigh linked to the same fee, audited in `ledger_audit_log`. Rule: when reassigning a fee to another member, always reverse + repost its journal entries too.
+
+## 2026-10-01 — Diamond League summary tiles froze after pool play
+- Symptom: Front runner and Wooden spooner stayed on pool totals while semi-final and final running tables updated below them.
+- Cause: the team summary read only the two pool tables, although the carried semi-final and final tables already contained each newly marked game's points. Position totals already scanned every saved Diamond stage.
+- Fix: summary teams and live markers now follow the furthest-created running table (final, then semi-final, then pool). Added focused guards that individual position points accumulate across pool, semi-final and final games, and renamed Last position to Wooden spoon position.
+- Scope: display calculations and tests only; no fixtures, scores, teams, tenants or live records changed.

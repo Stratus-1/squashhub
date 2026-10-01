@@ -129,6 +129,16 @@ export function ReplacePlayerDialog({ open, onOpenChange, clubId, match, isDoubl
           </DialogDescription>
         </DialogHeader>
 
+        {(match as any)?.stage_label ? (
+          <div className="text-xs rounded-md bg-muted/60 px-2.5 py-1.5">
+            <span className="text-muted-foreground">Game: </span>
+            <span className="font-medium">{(match as any).stage_label}</span>
+            {!doubles && /single/i.test(String((match as any).stage_label)) && (
+              <span className="text-muted-foreground"> — singles, one player per side</span>
+            )}
+          </div>
+        ) : null}
+
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs">Who is being replaced?</Label>

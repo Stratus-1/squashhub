@@ -43,4 +43,21 @@ describe("Diamond League position points", () => {
     expect(totals.get("home:1")).toBeUndefined();
     expect(totals.get("home:2")).toBe(9);
   });
+
+  it("accumulates position points through pool, semi-final and final games", () => {
+    const allWeeks: DiamondWeek[] = [
+      ...weeks,
+      { week: 2, date: "2026-10-08", stage: "semi", ties: [{ id: "semi", home: "home", away: "away", court: 1 }] },
+      { week: 3, date: "2026-10-15", stage: "final", ties: [{ id: "final", home: "home", away: "away", court: 1 }] },
+    ];
+    const rows = [
+      match(3, "reserve", "b1", 10, 8),
+      { ...match(3, "reserve", "b1", 12, 9), stage_key: "dl:semi:3" },
+      { ...match(3, "reserve", "b1", 14, 11), stage_key: "dl:final:3" },
+    ];
+
+    const totals = diamondPositionPoints(teams, allWeeks, config, rows);
+    expect(totals.get("home:1")).toBe(36);
+    expect(totals.get("away:1")).toBe(28);
+  });
 });

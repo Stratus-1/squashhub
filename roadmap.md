@@ -112,4 +112,4 @@
 - Diamond League: standings rows colour-coded with the shared rank heat scale (dark green -> light green -> pink -> red), same as normal standings; scale extracted to src/lib/standings-rank-style.ts (shared with ClubChampsView).
 
 - [x] Platform invoices: issue on the 1st, bill previous month WhatsApp + SMS, amend unpaid invoice; Super Admin shows real amounts owed (2026-10-01)
-- [ ] Update Diamond League team summary and individual position summaries live through semi-finals and finals; rename Last position.
+- [x] Update Diamond League team summary and individual position summaries live through semi-finals and finals; rename Last position.

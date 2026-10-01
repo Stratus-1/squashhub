@@ -2342,3 +2342,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 
 ## 2026-09-30 — Diamond League marker team names
 - The time-capped scoring screen now shows each side's saved fixture team name (A1/B1 or a custom name) beside the player or doubles pair in both counters and the serving indicator. Team identity comes from the linked event's saved weeks and team IDs, not a player's club or an inferred membership; unrelated Bells games retain their existing labels. Scoring and saved results are unchanged.
+
+## 2026-10-01 Platform invoices missed messaging usage
+- Cause: run on the 25th billed the *previous* month (August) of WhatsApp; SMS never billed; Super Admin "Amount Due" was a projection.
+- Fix: issue day 1st; SMS line + sms_send_log.platform_invoice_id; messaging added to an unpaid invoice of the same month (reissued as Updated Tax Invoice); messagingOnly run flag; Super Admin shows unpaid invoice totals and real cycle. Reissued GB INSH-2026-00006 (R267.45), new INSH-2026-00007 Riverside R5, INSH-2026-00008 Nelspruit R147.

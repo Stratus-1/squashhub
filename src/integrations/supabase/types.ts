@@ -13773,6 +13773,7 @@ export type Database = {
           id: string
           kind: string | null
           member_id: string | null
+          platform_invoice_id: string | null
           provider: string | null
           provider_ref: string | null
           segments: number
@@ -13791,6 +13792,7 @@ export type Database = {
           id?: string
           kind?: string | null
           member_id?: string | null
+          platform_invoice_id?: string | null
           provider?: string | null
           provider_ref?: string | null
           segments?: number
@@ -13809,6 +13811,7 @@ export type Database = {
           id?: string
           kind?: string | null
           member_id?: string | null
+          platform_invoice_id?: string | null
           provider?: string | null
           provider_ref?: string | null
           segments?: number
@@ -13830,6 +13833,13 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "club_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_send_log_platform_invoice_id_fkey"
+            columns: ["platform_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "platform_subscription_invoices"
             referencedColumns: ["id"]
           },
         ]

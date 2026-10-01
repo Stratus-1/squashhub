@@ -1,0 +1,2 @@
+ALTER TABLE public.sms_send_log ADD COLUMN IF NOT EXISTS platform_invoice_id uuid REFERENCES public.platform_subscription_invoices(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS sms_send_log_billing_idx ON public.sms_send_log (club_id, created_at) WHERE billable AND platform_invoice_id IS NULL;

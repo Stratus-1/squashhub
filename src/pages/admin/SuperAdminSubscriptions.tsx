@@ -181,20 +181,22 @@ export default function SuperAdminSubscriptions() {
     queryKey: ["sa-club-invoice-state"],
     queryFn: async () => {
       const { data, error } = await fromExt("platform_subscription_invoices")
-        .select("club_id, status, total, due_date, paid_at, issued_at")
+        .select("club_id, status, total, due_date, paid_at, issued_at, billing_cycle, subscription_amount")
         .order("issued_at", { ascending: false })
         .range(0, 49999);
       if (error) throw error;
-      const map = new Map<string, { total: number; unpaid: number; overdue: number; lastPaidAt: string | null }>();
+      const map = new Map<string, { total: number; unpaid: number; overdue: number; owed: number; cycle: string | null; lastPaidAt: string | null }>();
       const today = new Date().toISOString().slice(0, 10);
       for (const inv of (data || []) as any[]) {
-        const cur = map.get(inv.club_id) || { total: 0, unpaid: 0, overdue: 0, lastPaidAt: null as string | null };
+        const cur = map.get(inv.club_id) || { total: 0, unpaid: 0, overdue: 0, owed: 0, cycle: null as string | null, lastPaidAt: null as string | null };
+        if (!cur.cycle && Number(inv.subscription_amount ?? inv.total) > 0 && inv.billing_cycle) cur.cycle = inv.billing_cycle;
         cur.total += 1;
         const st = String(inv.status || "").toLowerCase();
         if (st === "paid") {
           if (!cur.lastPaidAt || (inv.paid_at && inv.paid_at > cur.lastPaidAt)) cur.lastPaidAt = inv.paid_at || cur.lastPaidAt;
         } else if (st !== "cancelled" && st !== "void") {
           cur.unpaid += 1;
+          cur.owed += Number(inv.total || 0);
           if (inv.due_date && String(inv.due_date) < today) cur.overdue += 1;
         }
         map.set(inv.club_id, cur);
@@ -820,7 +822,7 @@ export default function SuperAdminSubscriptions() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">{sub.subscription_plans?.name || "—"}</TableCell>
+                      <TableCell className="text-xs">{(() => { const cyc = invoiceState?.get(sub.club_id)?.cycle; const lbl: Record<string, string> = { monthly: "Monthly", biannual: "6-monthly", annual: "Annual" }; const base = (sub.subscription_plans?.name || "—").replace(/\s*(Monthly|Annual|6-monthly)$/i, ""); return cyc && lbl[cyc] ? `${base} ${lbl[cyc]}` : sub.subscription_plans?.name || "—"; })()}</TableCell>
                       <TableCell className="text-center">
                         <Badge className={`text-[10px] ${STATUS_COLORS[sub.status] || ""}`}>
                           {sub.status}
@@ -849,7 +851,7 @@ export default function SuperAdminSubscriptions() {
                                 className={`text-[10px] ${!inv || inv.total === 0 ? "bg-muted text-muted-foreground" : overdue ? "bg-destructive/10 text-destructive" : inv.unpaid > 0 ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"}`}
                                 title={!inv || inv.total === 0 ? "No invoices issued yet" : `${inv.unpaid} unpaid of ${inv.total} invoice(s)${inv.overdue ? `, ${inv.overdue} overdue` : ""}`}
                               >
-                                {!inv || inv.total === 0 ? "No invoices" : overdue ? `Overdue (${inv.overdue})` : inv.unpaid > 0 ? `Unpaid (${inv.unpaid})` : "Paid"}
+                                {!inv || inv.total === 0 ? "No invoices" : overdue ? `Overdue (${inv.overdue})${inv.unpaid > inv.overdue ? ` · ${inv.unpaid} unpaid` : ""}` : inv.unpaid > 0 ? `Unpaid (${inv.unpaid})` : "Paid"}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center">
@@ -887,15 +889,12 @@ export default function SuperAdminSubscriptions() {
                           if (!plan) return fmtSubscriptionMoney(sub.amount_due);
                           const ccy = (sub.clubs?.currency_code || "ZAR").toUpperCase();
                           const res = chargeFor(live, ccy, cycleOf(plan));
-                          const stale = Math.abs(res.total - Number(sub.amount_due)) > 0.001;
                           const bands = res.rows.map(r => `${r.members} × ${ccySymbol(ccy)}${r.rate.toFixed(2)}`).join("  +  ");
                           return (
                             <span
-                              title={`${bands || "No members"}${res.minApplied ? ` → minimum ${ccySymbol(ccy)}${res.min.toFixed(2)} applied` : ""}${res.months > 1 ? ` × 12 months` : ""}${stale ? `\nStored: ${fmtSubscriptionMoney(sub.amount_due)}` : ""}`}
+                              title={`Outstanding on unpaid invoices.\nNext monthly fee estimate: ${fmtSubscriptionMoney(res.total, ccySymbol(ccy))} (${bands || "No members"}${res.minApplied ? `, minimum applied` : ""})`}
                             >
-                              {fmtSubscriptionMoney(res.total, ccySymbol(ccy))}
-                              {res.minApplied && <span className="ml-1 text-muted-foreground">min</span>}
-                              {stale && <span className="ml-1 text-amber-600">•</span>}
+                              {fmtSubscriptionMoney(invoiceState?.get(sub.club_id)?.owed ?? 0, ccySymbol(ccy))}
                             </span>
                           );
                         })()}

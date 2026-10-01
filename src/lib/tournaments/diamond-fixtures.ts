@@ -80,8 +80,9 @@ export async function syncDiamondFixtures(opts: {
     const { error } = await fromExt("club_champs_matches").update(item.patch).eq("id", item.id).eq("champ_id", champId).eq("status", "scheduled").is("score", null);
     if (error) throw error;
   }
-  if (replaceable.size) {
-    const { error } = await fromExt("club_champs_matches").delete().in("id", [...replaceable.values()].filter((item) => !item.startedTie).map((item) => item.id)).eq("champ_id", champId).eq("status", "scheduled").is("score", null);
+  const obsolete = [...replaceable.values()].filter((item) => !item.startedTie);
+  if (obsolete.length) {
+    const { error } = await fromExt("club_champs_matches").delete().in("id", obsolete.map((item) => item.id)).eq("champ_id", champId).eq("status", "scheduled").is("score", null);
     if (error) throw error;
   }
   for (let i = 0; i < rows.length; i += 200) {

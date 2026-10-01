@@ -231,6 +231,7 @@ import { fromLocalInputValue, toLocalInputValue } from "@/lib/datetime/local-inp
 import { purgeFromSetup } from "@/components/tournaments/WithdrawPlayerButton";
 import { removeFromManualDraws } from "@/lib/tournaments/withdraw";
 import { DiamondRulesPanel, DiamondAllocationBoard, DiamondFixturesPreview, newDiamondDraft, type DiamondDraft } from "@/components/tournaments/DiamondLeagueSetup";
+import { syncDiamondFixtures as syncSavedDiamondFixtures } from "@/lib/tournaments/diamond-fixtures";
 import { buildPoolWeeks, configIssues as diamondConfigIssues, gameLabel as diamondGameLabel, nightPlan as diamondNightPlan, tieGames as diamondTieGames, diamondGameStarts } from "@/lib/tournaments/team-league";
 import { DOUBLES_SERVING_METHODS, parseServingMethod, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 
@@ -3506,8 +3507,12 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     // Preserve any knockout (semi/final) weeks already stored on the event —
     // the wizard only regenerates pool weeks and must never wipe them.
     let knockoutWeeks: any[] = [];
+    let previousTeams = diamondDraft.teams;
     if (diamondDraft.eventId) {
-      const { data: existing } = await fromExt("team_league_events").select("weeks").eq("id", diamondDraft.eventId).maybeSingle();
+      const { data: existing, error: existingError } = await fromExt("team_league_events").select("weeks, teams").eq("id", diamondDraft.eventId).eq("club_id", clubId).maybeSingle();
+      if (existingError) throw existingError;
+      if (!existing) throw new Error("Diamond League not found for this club");
+      previousTeams = (existing as any).teams || diamondDraft.teams;
       knockoutWeeks = (((existing as any)?.weeks as any[]) || []).filter((w: any) => w?.stage && w.stage !== "pool");
     }
     const weeks = [...poolWeeks, ...knockoutWeeks] as ReturnType<typeof buildPoolWeeks>;
@@ -3527,67 +3532,16 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     if (error) throw error;
     if (data?.id && !diamondDraft.eventId) setDiamondDraft((d) => ({ ...d, eventId: data.id }));
     qc.invalidateQueries({ queryKey: ["team-league-events"] });
-    await syncDiamondFixtures(tournamentId, weeks);
-    return data?.id as string;
-  };
-
-  const syncDiamondFixtures = async (tournamentId: string, weeks: ReturnType<typeof buildPoolWeeks>) => {
-    const games = diamondTieGames(diamondDraft.config);
-    const starts = diamondGameStarts(diamondDraft.config, startTime || diamondDraft.config.startTime || "17:45");
-    const courtIds = Array.from(selectedCourtIds);
-    const { data: existing, error: existingError } = await fromExt("club_champs_matches")
-      .select("id, stage_key, status, score, scheduled_date, scheduled_time").eq("champ_id", tournamentId).like("stage_key", "dl:%");
-    if (existingError) throw existingError;
-    const protectedKeys = new Set<string>();
-    const replaceable = new Map<string, { id: string; scheduled_date: string | null; scheduled_time: string | null }>();
-    // Ties with any played game keep all their rows: doubles there may already be re-seeded from singles results.
-    const tieOf = (k: string) => k.replace(/:\d+$/, "");
-    const startedTies = new Set(((existing || []) as any[]).filter((m) => m.status !== "scheduled" || m.score).map((m) => tieOf(m.stage_key)));
-    ((existing || []) as any[]).forEach((match) => {
-      if (match.status === "scheduled" && !match.score && !startedTies.has(tieOf(match.stage_key))) replaceable.set(match.stage_key, match);
-      else protectedKeys.add(match.stage_key);
+    await syncSavedDiamondFixtures({
+      champId: tournamentId, clubId, cfg: row.config, teams: diamondDraft.teams,
+      previousTeams, weeks, teamName: (id) => {
+        const index = diamondDraft.teams.findIndex((team) => team.id === id);
+        return index < 0 ? "?" : diamondTeamName(diamondDraft.teams[index], index, diamondDraft.teams);
+      },
     });
-    const rows: Record<string, any>[] = [];
-    const updates: Array<{ id: string; date: string | null; time: string }> = [];
-    weeks.forEach((week) => week.ties.forEach((tie) => {
-      const home = diamondDraft.teams.find((team) => team.id === tie.home);
-      const away = diamondDraft.teams.find((team) => team.id === tie.away);
-      if (!home || !away) return;
-      games.forEach((game, gameIndex) => {
-        const stageKey = `dl:${tie.id}:${gameIndex}`;
-        const scheduledTime = starts[gameIndex];
-        if (protectedKeys.has(stageKey)) return;
-        const saved = replaceable.get(stageKey);
-        if (saved) {
-          replaceable.delete(stageKey);
-          if (saved.scheduled_date !== (week.date || null) || saved.scheduled_time?.slice(0, 5) !== scheduledTime) updates.push({ id: saved.id, date: week.date || null, time: scheduledTime });
-          return;
-        }
-        const [player1, player2] = game.positions;
-        rows.push({ champ_id: tournamentId, group_number: week.week, round_number: week.week,
-          section_number: tie.label?.startsWith("B") ? 2 : 1, stage: "group", stage_key: stageKey,
-          stage_label: `Week ${week.week} · ${home.name} v ${away.name} · ${diamondGameLabel(game)}`,
-          player_a_member_id: home.players[player1 - 1], player_b_member_id: away.players[player1 - 1],
-          partner_a_member_id: player2 ? home.players[player2 - 1] : null,
-          partner_b_member_id: player2 ? away.players[player2 - 1] : null,
-          scheduled_date: week.date, scheduled_time: scheduledTime,
-          court_id: courtIds[tie.court - 1] ?? null, status: "scheduled" });
-      });
-    }));
-    for (const item of updates) {
-      const { error } = await fromExt("club_champs_matches").update({ scheduled_date: item.date, scheduled_time: item.time }).eq("id", item.id).eq("status", "scheduled").is("score", null);
-      if (error) throw error;
-    }
-    if (replaceable.size) {
-      const { error } = await fromExt("club_champs_matches").delete().in("id", [...replaceable.values()].map((item) => item.id)).eq("status", "scheduled").is("score", null);
-      if (error) throw error;
-    }
-    for (let index = 0; index < rows.length; index += 200) {
-      const { error } = await fromExt("club_champs_matches").insert(rows.slice(index, index + 200));
-      if (error) throw error;
-    }
-    qc.invalidateQueries({ queryKey: ["tournaments-all-matches"] });
-    qc.invalidateQueries({ queryKey: ["marker-tournament-matches"] });
+    qc.invalidateQueries({ queryKey: ["club-champ-matches", tournamentId] });
+    qc.invalidateQueries({ queryKey: ["diamond-marked-games", tournamentId] });
+    return data?.id as string;
   };
 
   const createDiamond = useMutation({

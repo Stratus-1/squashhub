@@ -9655,6 +9655,18 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
 
             )}
 
+            {schedulingMode === "club" && !diamondMode && !simplifiedKnockoutSchedule && plannedPlayoffRounds.length > 0 && (
+              <CentralRoundSchedule
+                deadlines={roundDeadlines}
+                onChange={setRoundDeadlines}
+                milestones={milestonePlayBy}
+                onMilestonesChange={setMilestonePlayBy}
+                playoffRounds={plannedPlayoffRounds}
+                hideOpeningRounds
+                minDate={startDate || undefined}
+              />
+            )}
+
             {/* Capacity validation — lives here because it needs BOTH the structure
                 (leagues, formats, pools, match length) and the schedule (dates,
                 windows, courts). Advisory only: it never blocks setup. */}

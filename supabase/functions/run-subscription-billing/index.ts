@@ -599,7 +599,8 @@ Deno.serve(async (req) => {
       // issue day (25th) and fall due on the 7th of the following month —
       // but never earlier than the invoice's own date (mid-month renewals).
       const dueDate = (() => {
-        let d = new Date(Date.UTC(scheduledSend.getUTCFullYear(), scheduledSend.getUTCMonth() + 1, 7))
+        const sendRef = subDue ? scheduledSend : today
+        let d = new Date(Date.UTC(sendRef.getUTCFullYear(), sendRef.getUTCMonth() + (sendRef.getUTCDate() <= 1 ? 0 : 1), 7))
         while (d < invoiceDate) {
           d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 7))
         }

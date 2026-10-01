@@ -8,7 +8,7 @@ import { fromExt } from "@/lib/supabase-ext";
 import {
   DIAMOND_TEAM_DEFAULTS, CROSSOVER, PLACING_FINALS,
   tieGames, gameLabel, tieResult, standings, decideLevelFinal, diamondTeamName,
-  diamondSemiTies, diamondFinalTies,
+  diamondSemiTies, diamondFinalTies, diamondFinalTiesFromTable, finalsCarry,
   type TeamLeagueConfig, type GameScore,
   diamondTieLabel,
 } from "@/lib/tournaments/team-league";
@@ -77,12 +77,19 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
           { week: n + 1, date: (ev.config.dates || [])[n] || "", stage: "semi", ties: diamondSemiTies(a.rows.map((r) => r.teamId), b.rows.map((r) => r.teamId), courtOf) },
         ];
       } else {
-        const s = [1, 2, 3, 4].map(semiWinner);
-        if (s.some((x) => !x)) throw new Error("Every semi-final needs a decided result first.");
+        let ties;
+        if (finalsCarry(cfg)) {
+          if (!semiTable || semiTable.undecided.length) throw new Error("Some teams are level on the running total and the tie-breaks can't separate them.");
+          ties = diamondFinalTiesFromTable(semiTable.rows.map((r) => r.teamId), courtOf);
+        } else {
+          const s = [1, 2, 3, 4].map(semiWinner);
+          if (s.some((x) => !x)) throw new Error("Every semi-final needs a decided result first.");
+          ties = diamondFinalTies(s as Array<{ W: string; L: string }>, courtOf);
+        }
         const n = weeksNow.filter((w) => w.stage !== "final").length;
         nw = [
           ...weeksNow.filter((w) => w.stage !== "final"),
-          { week: n + 1, date: (ev.config.dates || [])[n] || "", stage: "final", ties: diamondFinalTies(s as Array<{ W: string; L: string }>, courtOf) },
+          { week: n + 1, date: (ev.config.dates || [])[n] || "", stage: "final", ties },
         ];
       }
       const { error } = await fromExt("team_league_events").update({ weeks: nw }).eq("id", ev.id);
@@ -153,6 +160,11 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
     (["A", "B"] as const).forEach((p) => poolTable(p).rows.forEach((r) => carry.set(r.teamId, r.total)));
     return standings(teams.map((t) => t.id), semiWeek.ties.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })), carry, cfg.tieBreaks);
   })();
+  // Carry mode: running total (pool + semi + final) decides final places.
+  const finalTable = finalWeek && semiTable && finalsCarry(cfg) ? (() => {
+    const carry = new Map(semiTable.rows.map((r) => [r.teamId, r.total] as [string, number]));
+    return standings(teams.map((t) => t.id), finalWeek.ties.map((t) => ({ homeId: t.home, awayId: t.away, result: tieRes(t) })), carry, cfg.tieBreaks, true);
+  })() : undefined;
   const semiWinner = (m: number) => {
     const t = semiWeek?.ties.find((x) => x.id === `s${m}`);
     if (!t) return null;
@@ -225,7 +237,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
             <Button size="sm" className="h-7 text-xs" disabled={generatePlayoff.isPending} onClick={() => generatePlayoff.mutate("final")}>
               <Wand2 className="w-3.5 h-3.5 mr-1" /> Create finals
             </Button>
-            <span className="text-muted-foreground">Places 1–8 from the semi results; points reset for the finals.</span>
+            <span className="text-muted-foreground">{finalsCarry(cfg) ? "Points carry into the finals: 1st v 2nd, 3rd v 4th… on the running total; the final total decides places." : "Places 1–8 from the semi results; points reset for the finals."}</span>
           </div>
         ) : (
           <p className="text-[11px] text-muted-foreground">Finals unlock when every semi-final is decided.</p>
@@ -366,7 +378,8 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
           ))}
         </div>
       )}
-      {finalWeek && (
+      {finalTable && <TeamTable title="After finals (running total) — final places" t={finalTable} name={teamName} />}
+      {finalWeek && !finalTable && (
         <div>
           <div className="font-semibold text-sm mb-1">Final places <span className="text-[11px] font-normal text-muted-foreground">(points reset for finals)</span></div>
           <div className="text-xs space-y-0.5">

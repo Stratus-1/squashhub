@@ -135,7 +135,10 @@ export function SubscriptionDuePrompt({ clubId }: { clubId?: string | null }) {
         <AlertCircle className={`w-4 h-4 mt-0.5 shrink-0 ${overdue ? "text-destructive" : "text-amber-500"}`} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">
-            {overdue ? "Subscription payment overdue" : "Subscription payment due"}
+            {overdue ? "Club subscription overdue" : "Club subscription payment due"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            This is your <span className="font-medium text-foreground">club's</span> SquashHub subscription, payable to Stratus Software Solutions — not a personal charge on your own account.
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {actionable.length === 1

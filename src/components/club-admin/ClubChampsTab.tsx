@@ -9721,6 +9721,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
               <TooltipContent side="bottom" align="start" className="max-w-xs text-xs leading-snug">
                 <p className="font-semibold">A team event of singles and doubles</p>
                 <p className="mt-1">Each team tie plays singles rubbers first, then doubles, on the same night. Because of that, teams need an <strong>even number of players</strong> (e.g. 4 players = 4 singles + 2 doubles) and each division needs an <strong>even number of teams</strong>, so every team has an opponent each week.</p>
+                <p className="mt-1 italic text-muted-foreground">The format originated at Durbanville Squash Club.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

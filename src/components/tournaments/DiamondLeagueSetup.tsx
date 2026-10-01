@@ -10,6 +10,7 @@ import {
   tieGames, gameLabel, nightPlan, configIssues, autoSlotPlayers, poolRounds, buildPoolWeeks, diamondTeamName, diamondPlayingMinutes,
   type TeamLeagueConfig, type TieBreak, type DrawRule, type FinalLevelRule, type DoublesPairing,
 } from "@/lib/tournaments/team-league";
+import { DOUBLES_SERVING_METHODS, type DoublesServingMethod } from "@/lib/marker/doubles-serving";
 
 export type DiamondTeam = { id: string; name: string; pool: "A" | "B"; players: (string | null)[] };
 export type DiamondDraft = {
@@ -87,6 +88,11 @@ export function DiamondRulesPanel({ draft, onChange, courts, startTime, endTime 
         <select className={sel} value={cfg.doublesPairing || "singles_results"} onChange={(e) => set({ doublesPairing: e.target.value as DoublesPairing })}>
           {(Object.keys(DOUBLES_PAIRING_LABEL) as DoublesPairing[]).map((k) => <option key={k} value={k}>{DOUBLES_PAIRING_LABEL[k]}</option>)}
         </select></div>
+      <div className="col-span-2"><Label className="text-xs">Doubles serving</Label>
+        <select className={sel} value={cfg.doublesServing || "even_odd"} onChange={(e) => set({ doublesServing: e.target.value as DoublesServingMethod })}>
+          {DOUBLES_SERVING_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+        <p className="text-[10px] text-muted-foreground mt-0.5">{DOUBLES_SERVING_METHODS.find((m) => m.value === (cfg.doublesServing || "even_odd"))?.hint}</p></div>
       <div className="col-span-2 md:col-span-4"><Label className="text-xs">Tie-breaks when team totals are level (tap in order)</Label>
         <div className="flex flex-wrap gap-1 mt-1">
           {(Object.keys(TIE_BREAK_LABEL) as TieBreak[]).map((tb) => {

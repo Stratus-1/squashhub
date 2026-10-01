@@ -15,7 +15,18 @@ import {
   type MilestonePlayBy,
 } from "@/lib/tournaments/round-definitions";
 import type { RoundProgress } from "@/lib/tournaments/self-scheduled-rounds";
-import { openingRoundsWarning, type PlayoffRound } from "@/lib/tournaments/round-plan";
+import {
+  applyPlayoffPreset,
+  openingRoundsWarning,
+  playoffModeFor,
+  presetFor,
+  validateStageScheduling,
+  type PlayoffKey,
+  type PlayoffPreset,
+  type PlayoffRound,
+  type StageMode,
+  type StageScheduling,
+} from "@/lib/tournaments/round-plan";
 
 interface Props {
   /** The tournament's central early-round list. */
@@ -37,7 +48,20 @@ interface Props {
   roundsNeeded?: number;
   /** Hide the opening-round list (organiser books courts on session dates instead). */
   hideOpeningRounds?: boolean;
+  /** Per-stage scheduling (play by date vs fixed date & courts). Shown when onStageSchedulingChange is given. */
+  stageScheduling?: StageScheduling;
+  onStageSchedulingChange?: (next: StageScheduling) => void;
+  /** Tournament-wide mode the pool rounds use. */
+  schedulingMode?: StageMode;
+  /** Courts the organiser can pick for fixed play-off rounds. */
+  courts?: Array<{ id: number; name: string }>;
 }
+
+const PRESETS: Array<{ key: PlayoffPreset; label: string }> = [
+  { key: "same", label: "Same as pool rounds" },
+  { key: "final_fixed", label: "Only the final on a fixed date" },
+  { key: "all_fixed", label: "All play-offs on fixed dates" },
+];
 
 /**
  * The ONE place a tournament's round names and play-by dates are entered.
@@ -64,7 +88,12 @@ export function CentralRoundSchedule({
   playoffRounds,
   roundsNeeded = 0,
   hideOpeningRounds = false,
+  stageScheduling = {},
+  onStageSchedulingChange,
+  schedulingMode = "club",
+  courts = [],
 }: Props) {
+  const perStage = !!onStageSchedulingChange && !!playoffRounds;
   const keys = (playoffRounds ? playoffRounds.map((r) => r.key) : MILESTONE_KEYS) as any[];
   const nameFor = (k: any) => playoffRounds?.find((r) => r.key === k)?.name ?? stageName(k);
   const roundsWarning = openingRoundsWarning(deadlines.length, roundsNeeded);
@@ -79,6 +108,22 @@ export function CentralRoundSchedule({
   const milestoneProblems = validateMilestones(milestones, { require: requireMilestones && keys.length > 0, keys });
   const setMilestone = (key: MilestoneKey | "place_playoffs", value: string) =>
     onMilestonesChange({ ...milestones, [key]: value || null });
+
+  const stageKeys = (playoffRounds ?? []).map((r) => r.key) as PlayoffKey[];
+  const modeOf = (k: PlayoffKey) => playoffModeFor(k, stageScheduling, schedulingMode);
+  const activePreset = perStage ? presetFor(stageScheduling, stageKeys, schedulingMode) : null;
+  const patchStage = (k: PlayoffKey, p: Partial<{ mode: StageMode; start_time: string | null; court_ids: number[] }>) => {
+    const prev = stageScheduling.playoffs?.[k] ?? { mode: modeOf(k), start_time: null, court_ids: [] };
+    onStageSchedulingChange?.({
+      ...stageScheduling,
+      opening: schedulingMode,
+      playoffs: { ...(stageScheduling.playoffs ?? {}), [k]: { ...prev, ...p } },
+    });
+  };
+  const stageProblems = perStage
+    ? validateStageScheduling(stageScheduling, stageKeys, schedulingMode,
+        Object.fromEntries((playoffRounds ?? []).map((r) => [r.key, r.name])))
+    : [];
 
   const progressFor = (round: number) => progress.find((p) => p.roundNumber === round) ?? null;
 
@@ -199,6 +244,109 @@ export function CentralRoundSchedule({
           </div>
         </div>
 
+        {perStage && (
+          <div className="space-y-1">
+            <div className="text-[11px] text-muted-foreground">
+              Pool rounds: {schedulingMode === "self" ? "players book by a date" : "organiser books courts"}. Play-offs:
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {PRESETS.map((p) => (
+                <Button
+                  key={p.key}
+                  type="button"
+                  size="sm"
+                  variant={activePreset === p.key ? "default" : "outline"}
+                  className="h-7 text-xs"
+                  onClick={() => onStageSchedulingChange!(applyPlayoffPreset(p.key, stageKeys, { ...stageScheduling, opening: schedulingMode }, schedulingMode))}
+                >
+                  {p.label}
+                </Button>
+              ))}
+            </div>
+            {stageKeys.includes("final") && (
+              <p className="text-[10px] text-muted-foreground">A 3rd/4th play-off follows the final's setting and date.</p>
+            )}
+          </div>
+        )}
+
+        {perStage ? (
+          <div className="space-y-2">
+            {stageKeys.map((key) => {
+              const mode = modeOf(key);
+              const plan = stageScheduling.playoffs?.[key];
+              const picked = new Set(plan?.court_ids ?? []);
+              return (
+                <div key={key} className="rounded-md border bg-background/60 p-2 space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium">{nameFor(key)}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {playoffRounds!.find((r) => r.key === key)?.usedBy.join(", ")}
+                      </div>
+                    </div>
+                    <div className="inline-flex rounded-md border p-0.5">
+                      {(["self", "club"] as StageMode[]).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => patchStage(key, { mode: m })}
+                          className={`px-2 py-0.5 text-[11px] rounded ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                        >
+                          {m === "self" ? "Play by date" : "Fixed date & courts"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={`grid gap-2 ${mode === "club" ? "sm:grid-cols-[1fr_1fr_2fr]" : "sm:grid-cols-3"}`}>
+                    <div>
+                      <Label className="text-xs">{mode === "club" ? "Date" : "Played by"}</Label>
+                      <Input
+                        type="date"
+                        value={milestones?.[key] ?? ""}
+                        min={deadlines[deadlines.length - 1]?.date || minDate || undefined}
+                        onChange={(e) => setMilestone(key, e.target.value)}
+                        className="h-8"
+                      />
+                    </div>
+                    {mode === "club" && (
+                      <>
+                        <div>
+                          <Label className="text-xs">First game at</Label>
+                          <Input
+                            type="time"
+                            value={plan?.start_time ?? ""}
+                            onChange={(e) => patchStage(key, { start_time: e.target.value || null })}
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Courts</Label>
+                          <div className="flex flex-wrap gap-1">
+                            {courts.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => {
+                                  const next = new Set(picked);
+                                  next.has(c.id) ? next.delete(c.id) : next.add(c.id);
+                                  patchStage(key, { court_ids: Array.from(next).sort((a, b) => a - b) });
+                                }}
+                                className={`px-2 py-1 text-[11px] rounded border ${picked.has(c.id) ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground"}`}
+                              >
+                                {c.name}
+                              </button>
+                            ))}
+                            {courts.length === 0 && <span className="text-[11px] text-muted-foreground">No courts set up.</span>}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
         <div className="grid gap-2 sm:grid-cols-3">
           {keys.map((key) => (
             <div key={key}>
@@ -218,10 +366,11 @@ export function CentralRoundSchedule({
             </div>
           ))}
         </div>
+        )}
 
-        {milestoneProblems.length > 0 && (
+        {(milestoneProblems.length > 0 || stageProblems.length > 0) && (
           <ul className="text-[11px] text-destructive space-y-0.5">
-            {milestoneProblems.map((p) => (
+            {[...milestoneProblems, ...stageProblems].map((p) => (
               <li key={p}>{p}</li>
             ))}
           </ul>

@@ -328,3 +328,9 @@ export function assignFixedSlots(
     return { court_id: courts[i % courts.length], scheduled_time: `${hh}:${mm}` };
   });
 }
+
+/** Stage scheduling is stored inside the tournament's milestone_play_by JSON. */
+export function stageSchedulingFromChamp(champ: { milestone_play_by?: unknown } | null | undefined): StageScheduling {
+  const mp = (champ as any)?.milestone_play_by;
+  return parseStageScheduling(mp && typeof mp === "object" ? mp.stage_scheduling : null);
+}

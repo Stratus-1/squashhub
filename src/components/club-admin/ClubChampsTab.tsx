@@ -2912,8 +2912,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       end_time: endTime,
       match_duration_minutes: matchDuration,
       scoring_mode: diamondMode && !diamondDraft.eventId ? "time_capped_points" : scoringMode,
-      // Diamond doubles use the marker's guided serving state machine.
-      doubles_serving_method: diamondMode ? diamondDraft.config.doublesServing ?? null : undefined,
       swiss_pools: swissPools,
       league_draw_styles: leagueDrawStyles,
       pool_sizes: poolSizeOverrides,
@@ -3001,6 +2999,9 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
       league_best_of: Object.keys(leagueBestOf).length > 0 ? leagueBestOf : null,
       league_win_conditions: Object.keys(leagueWinConditions).length > 0 ? leagueWinConditions : null,
       league_doubles_serving_methods: Object.keys(leagueServingMethods).length > 0 ? leagueServingMethods : null,
+      // Diamond doubles use the marker's guided serving state machine. Lives
+      // only on tournaments (not the legacy club_champs view).
+      ...(diamondMode ? { doubles_serving_method: diamondDraft.config.doublesServing ?? null } : {}),
       league_play_all_games: Object.keys(leaguePlayAll).length > 0 ? leaguePlayAll : null,
       league_playoffs: Object.keys(leaguePlayoffs).length > 0 ? leaguePlayoffs : null,
       league_playoff_modes: Object.keys(leaguePlayoffModes).length > 0 ? leaguePlayoffModes : null,
@@ -5822,7 +5823,6 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
             end_time: endTime,
             match_duration_minutes: matchDuration,
             scoring_mode: diamondMode ? "time_capped_points" : scoringMode,
-            doubles_serving_method: diamondMode ? diamondDraft.config.doublesServing ?? null : undefined,
             swiss_pools: swissPools,
             league_draw_styles: leagueDrawStyles,
             pool_sizes: poolSizeOverrides,

@@ -272,7 +272,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
                 {summaryStage.liveTeamIds.has(frontRunner.teamId) && <span className="ml-1 text-[10px] font-normal text-primary">● live</span>}
               </div>
               <div className="text-muted-foreground">
-                Division {teams.find((t) => t.id === frontRunner.teamId)?.pool} · {frontRunner.points} pts + {frontRunner.bonus} bonus = {frontRunner.total}
+                Division {teams.find((t) => t.id === frontRunner.teamId)?.pool} · {(() => { const c = frontRunner.total - frontRunner.points - frontRunner.bonus; return c > 0 ? `${c} carried + ` : ""; })()}{frontRunner.points} pts + {frontRunner.bonus} bonus = {frontRunner.total}
               </div>
             </div>
           </div>
@@ -285,7 +285,7 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
                 {summaryStage.liveTeamIds.has(woodenSpoon.teamId) && <span className="ml-1 text-[10px] font-normal text-primary">● live</span>}
               </div>
               <div className="text-muted-foreground">
-                Division {teams.find((t) => t.id === woodenSpoon.teamId)?.pool} · {woodenSpoon.points} pts + {woodenSpoon.bonus} bonus = {woodenSpoon.total}
+                Division {teams.find((t) => t.id === woodenSpoon.teamId)?.pool} · {(() => { const c = woodenSpoon.total - woodenSpoon.points - woodenSpoon.bonus; return c > 0 ? `${c} carried + ` : ""; })()}{woodenSpoon.points} pts + {woodenSpoon.bonus} bonus = {woodenSpoon.total}
               </div>
             </div>
           </div>

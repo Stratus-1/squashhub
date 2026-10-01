@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useChampMarkerHeartbeat } from "@/hooks/use-champ-marker-lock";
 import { DIAMOND_TEAM_DEFAULTS, diamondMatchTeamNames, diamondPlayingMinutes, tieGames, type DiamondTeam, type DiamondWeek, type TeamLeagueConfig } from "@/lib/tournaments/team-league";
 import { afterRally, methodLabel, parseServingMethod, sideWord, startDoubles, type DoublesServeState, type PairNames } from "@/lib/marker/doubles-serving";
+import { DoublesServeSetup } from "@/components/marker/DoublesServeSetup";
 
 
 /**
@@ -319,9 +320,13 @@ export default function BellsMarker() {
   const doublesPairs = isDoublesMatch
     ? { a: [getName(match.player_a), getName(match.partner_a)] as PairNames, b: [getName(match.player_b), getName(match.partner_b)] as PairNames }
     : null;
-  const shownServe: DoublesServeState | null = doublesPairs && servingMethod
-    ? dServe ?? startDoubles({ method: servingMethod, positions: { a: { forehand: 0 }, b: { forehand: 0 } }, servingTeam: server, scores: { a: pointsA, b: pointsB } })
-    : null;
+  // Same rule as doubles tournaments: never guess Forehand/Backhand — the marker sets positions first.
+  const shownServe: DoublesServeState | null = doublesPairs && servingMethod ? dServe : null;
+  const needsDoublesSetup = !!(doublesPairs && servingMethod && !dServe);
+  const switchServingPair = (team: "a" | "b") => {
+    setServer(team);
+    setDServe((cur) => cur ? startDoubles({ method: cur.method, positions: cur.positions, servingTeam: team, scores: { a: pointsA, b: pointsB } }) : null);
+  };
 
 
   // Ring the boxing-bell sound (also vibrates on mobile). Used at start of
@@ -870,7 +875,23 @@ export default function BellsMarker() {
           </div>
         )}
 
-        {/* Counters */}
+        {needsDoublesSetup && doublesPairs && servingMethod ? (
+          <DoublesServeSetup
+            method={servingMethod}
+            pairs={doublesPairs}
+            resuming={pointsA + pointsB > 0}
+            onStart={(r) => {
+              setServer(r.servingTeam);
+              setDServe(startDoubles({
+                method: servingMethod,
+                positions: { a: { forehand: r.forehand.a }, b: { forehand: r.forehand.b } },
+                servingTeam: r.servingTeam,
+                scores: { a: pointsA, b: pointsB },
+              }));
+            }}
+          />
+        ) : (
+        /* Counters */
         <div className="grid grid-cols-2 gap-3">
           <Counter
              label={sideAName}
@@ -882,7 +903,7 @@ export default function BellsMarker() {
             serveSide={serveSide}
             onBadgeClick={() => {
               if (server === "a") setServeSide((s) => (s === "L" ? "R" : "L"));
-              else { setServer("a"); setDServe(null); }
+              else switchServingPair("a");
             }}
           />
           <Counter
@@ -895,10 +916,11 @@ export default function BellsMarker() {
             serveSide={serveSide}
             onBadgeClick={() => {
               if (server === "b") setServeSide((s) => (s === "L" ? "R" : "L"));
-              else { setServer("b"); setDServe(null); }
+              else switchServingPair("b");
             }}
           />
         </div>
+        )}
 
 
         {/* Save */}

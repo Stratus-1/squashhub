@@ -2362,3 +2362,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Hourly `ai-open-queries-hourly` counted every `escalated` assistant row even when its support ticket was resolved/closed (17 of 20). Now counts only escalations whose ticket is open/pending/in_progress, clarifications under 7 days old, and unexpired proposals. Old unread alerts marked read.
 - Support replies live on `support_messages`; the assistant's "My requests" only showed the AI answer and linked to `/support` (which opens the newest thread, not the replied one). The panel now shows support replies inline, a "Support replied" note in history, and links to `/support?threadId=…`.
 - Tanya Kinnear (Nelspruit): the earlier fix removed duplicate fee rows but left the matching statement charges (R1,375 + R350) and debtor journals. Reversed both journal groups (audited) and added a R1,725 statement reversal; balance R0.
+
+### 2026-10-01 — Nelspruit: opening balance stayed on the wrong member's statement
+- Symptom: Matthew Holing (NSC187) showed R1,650 owing although the opening-balance fee had been moved to main member Leigh Holing (NSC247).
+- Cause: moving a fee row (`club_member_fee_payments.club_member_id`) does not move its GL rows; My Account reads the balance from `club_journal_entries` by `club_member_id`.
+- Fix: reversed the GL pair on Matthew (`reverses_journal_ref`) and reposted it on Leigh linked to the same fee, audited in `ledger_audit_log`. Rule: when reassigning a fee to another member, always reverse + repost its journal entries too.

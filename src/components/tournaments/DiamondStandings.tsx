@@ -317,6 +317,24 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
           <TeamTable title="After semi-finals (carried + semi points)" t={semiTable} name={teamName} inProgress={semiLive} />
         </div>
       )}
+      {finalTable && <TeamTable title="After finals (running total) — final places" t={finalTable} name={teamName} inProgress={finalLive} />}
+      {finalWeek && !finalTable && (
+        <div>
+          <div className="font-semibold text-sm mb-1">Final places <span className="text-[11px] font-normal text-muted-foreground">(points reset for finals)</span></div>
+          <div className="text-xs space-y-0.5">
+            {finalWeek.ties.map((t, k) => {
+              const res = results[t.id] ? tieRes(t) : null;
+              const w = res?.complete ? decideLevelFinal(clean(t.id), res, cfg.finalLevelRule) : null;
+              const pl = PLACING_FINALS[k]?.places ?? [k * 2 + 1, k * 2 + 2];
+              return (
+                <div key={t.id}>
+                  {pl[0]}. {w ? teamName(w === "home" ? t.home : t.away) : "—"} · {pl[1]}. {w ? teamName(w === "home" ? t.away : t.home) : "—"}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div>
         <div className="font-semibold text-sm mb-1">Teams</div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -390,24 +408,6 @@ export function DiamondStandings({ tournamentId, canManage = false }: { tourname
               </div>
             </div>
           ))}
-        </div>
-      )}
-      {finalTable && <TeamTable title="After finals (running total) — final places" t={finalTable} name={teamName} inProgress={finalLive} />}
-      {finalWeek && !finalTable && (
-        <div>
-          <div className="font-semibold text-sm mb-1">Final places <span className="text-[11px] font-normal text-muted-foreground">(points reset for finals)</span></div>
-          <div className="text-xs space-y-0.5">
-            {finalWeek.ties.map((t, k) => {
-              const res = results[t.id] ? tieRes(t) : null;
-              const w = res?.complete ? decideLevelFinal(clean(t.id), res, cfg.finalLevelRule) : null;
-              const pl = PLACING_FINALS[k]?.places ?? [k * 2 + 1, k * 2 + 2];
-              return (
-                <div key={t.id}>
-                  {pl[0]}. {w ? teamName(w === "home" ? t.home : t.away) : "—"} · {pl[1]}. {w ? teamName(w === "home" ? t.away : t.home) : "—"}
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
     </CollapsibleCard>

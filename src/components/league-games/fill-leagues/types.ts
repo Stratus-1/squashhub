@@ -5,6 +5,7 @@ export type LeagueRow = {
   nsa_team_code?: string | null;
   captain_member_id: string | null;
   allow_cross_gender_guests: boolean | null;
+  fill_up_reminder_enabled?: boolean | null;
 };
 
 export type RegRow = {

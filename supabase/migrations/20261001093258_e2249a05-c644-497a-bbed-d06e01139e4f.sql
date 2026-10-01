@@ -1,0 +1,2 @@
+ALTER TABLE public.leagues ADD COLUMN IF NOT EXISTS fill_up_reminder_enabled boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.leagues.fill_up_reminder_enabled IS 'Per-league opt-in for the weekly fill-up reminder to that league''s captain; sent only when the league has fixtures in the next 14 days.';

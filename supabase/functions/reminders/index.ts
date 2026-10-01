@@ -537,128 +537,78 @@ Deno.serve(async (req) => {
         new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(tomorrowDate)
       ).getDay();
 
-      const { data: optedInClubs } = await supabaseAdmin
+      // Per-league opt-in (leagues.fill_up_reminder_enabled). Only that league's
+      // captain is reminded, and only when the league has a fixture in the next 14 days.
+      const tomorrowIso = isoDateInTz(tomorrowDate, timeZone);
+      const horizonIso = isoDateInTz(addDays(now, 15), timeZone);
+      const { data: clubsForDow } = await supabaseAdmin
         .from("clubs")
-        .select("id, name, league_week_start_dow, fill_top_down_enabled, chairman_member_id, secretary_member_id, club_captain_member_id")
-        .eq("fill_top_down_enabled", true)
+        .select("id, name")
         .eq("league_week_start_dow", tomorrowDow);
 
-      const tomorrowIso = isoDateInTz(tomorrowDate, timeZone);
-
-      for (const club of optedInClubs || []) {
+      for (const club of clubsForDow || []) {
         const clubId = String((club as any).id);
+        const { data: optedLeagues } = await supabaseAdmin
+          .from("leagues")
+          .select("id, name, code, nsa_team_code, captain_member_id")
+          .eq("club_id", clubId)
+          .eq("fill_up_reminder_enabled", true)
+          .is("archived_at", null);
+        if (!optedLeagues || optedLeagues.length === 0) continue;
         if (!(await capOn(clubId, "leagues"))) continue;
         const clubName = String((club as any).name || "your club");
 
-        // Skip clubs whose league season is over: require at least one active
-        // (non-archived) league AND at least one round still running/upcoming.
-        const { count: activeLeagueCount } = await supabaseAdmin
-          .from("leagues")
-          .select("id", { count: "exact", head: true })
-          .eq("club_id", clubId)
-          .is("archived_at", null);
-        if (!activeLeagueCount) continue;
+        for (const lg of optedLeagues as any[]) {
+          const codes = [lg.code, lg.nsa_team_code].filter(Boolean).map((c: string) => String(c));
+          const ors = [`home_team_id.eq.${lg.id}`, `away_team_id.eq.${lg.id}`,
+            ...codes.flatMap((c) => [`home_team_code.eq.${c}`, `away_team_code.eq.${c}`])];
+          const { data: fx } = await supabaseAdmin
+            .from("platform_league_fixtures")
+            .select("id, status")
+            .gte("fixture_date", tomorrowIso)
+            .lte("fixture_date", horizonIso)
+            .or(ors.join(","))
+            .limit(20);
+          const playable = (fx || []).some((f: any) =>
+            !["cancelled", "completed", "postponed", "void"].includes(String(f.status || "").toLowerCase()));
+          if (!playable) continue;
 
-        const { data: liveRounds } = await supabaseAdmin
-          .from("league_rounds")
-          .select("id, round_date, end_date, status")
-          .eq("club_id", clubId)
-          .not("status", "in", "(cancelled,completed,archived)")
-          .limit(500);
-        const hasLiveRound = (liveRounds || []).some((r: any) => {
-          const end = String(r.end_date || r.round_date || "");
-          return end && end >= tomorrowIso;
-        });
-        if (!hasLiveRound) continue;
+          const captainIds = new Set<string>();
+          if (lg.captain_member_id) captainIds.add(String(lg.captain_member_id));
+          const { data: caps } = await supabaseAdmin
+            .from("member_league_registrations")
+            .select("club_member_id")
+            .eq("league_id", lg.id)
+            .eq("is_captain", true);
+          for (const c of caps || []) if ((c as any).club_member_id) captainIds.add(String((c as any).club_member_id));
+          if (captainIds.size === 0) continue;
 
-        // Collect all recipient member ids
-        const recipientMemberIds = new Set<string>();
-        for (const k of ["chairman_member_id", "secretary_member_id", "club_captain_member_id"] as const) {
-          const v = (club as any)[k];
-          if (v) recipientMemberIds.add(String(v));
-        }
-
-        // Captains/admins by role
-        const { data: roleMembers } = await supabaseAdmin
-          .from("club_members")
-          .select("id")
-          .eq("club_id", clubId)
-          .in("role", ["captain", "admin"] as any);
-        for (const m of roleMembers || []) recipientMemberIds.add(String((m as any).id));
-
-        // League captains in this club
-        const { data: leagueCaps } = await supabaseAdmin
-          .from("member_league_registrations")
-          .select("club_member_id, league:leagues!inner(club_id)")
-          .eq("is_captain", true)
-          .eq("league.club_id", clubId);
-        for (const lc of leagueCaps || []) {
-          if ((lc as any).club_member_id) recipientMemberIds.add(String((lc as any).club_member_id));
-        }
-
-        if (recipientMemberIds.size === 0) continue;
-
-        // Resolve user_ids for the recipients (some members may be unlinked)
-        const ids = Array.from(recipientMemberIds);
-        const { data: members } = await supabaseAdmin
-          .from("club_members")
-          .select("id, user_id")
-          .in("id", ids);
-
-        const tomorrowStr = isoDateInTz(tomorrowDate, timeZone);
-        const title = "Plan league games for next week";
-        const message = `${clubName}: the new squash week starts tomorrow (${tomorrowStr}). Fill up your league teams from the top down.`;
-        const url = "/league-games";
-
-        for (const m of members || []) {
-          const memberId = String((m as any).id);
-          const userId = (m as any).user_id ? String((m as any).user_id) : null;
-          if (!userId) {
-            // Unlinked member — write notification keyed by club_member_id only
-            const { data: existing } = await supabaseAdmin
-              .from("reminder_log")
-              .select("id")
-              .eq("user_id", "00000000-0000-0000-0000-000000000000")
-              .eq("kind", "league_planning_reminder")
-              .eq("ref_id", `${clubId}:${memberId}`)
-              .eq("scheduled_for", today)
-              .limit(1);
-            if (existing && existing.length > 0) { skipped += 1; continue; }
-            await supabaseAdmin.from("reminder_log").insert({
-              user_id: "00000000-0000-0000-0000-000000000000",
+          const { data: members } = await supabaseAdmin
+            .from("club_members")
+            .select("id, user_id, status")
+            .in("id", Array.from(captainIds));
+          const title = "Plan league games for next week";
+          const message = `${clubName}: ${lg.name} has games coming up — the new squash week starts tomorrow (${tomorrowIso}). Fill up your team from the top down.`;
+          for (const m of members || []) {
+            if ((m as any).status === "resigned") continue;
+            const userId = (m as any).user_id ? String((m as any).user_id) : null;
+            if (!userId) { skipped += 1; continue; }
+            const ok = await sendReminder({
+              user_id: userId,
               kind: "league_planning_reminder",
-              ref_table: "clubs",
-              ref_id: `${clubId}:${memberId}`,
+              ref_table: "leagues",
+              ref_id: `${lg.id}:${(m as any).id}`,
               scheduled_for: today,
-            } as any);
-            await supabaseAdmin.from("notifications").insert({
-              user_id: "00000000-0000-0000-0000-000000000000",
-              club_member_id: memberId,
               title,
               message,
-              type: "reminder",
-              url,
-              data: { kind: "league_planning_reminder", club_id: clubId },
-            } as any);
-            sent += 1;
-            continue;
+              url: "/league-games",
+              data: { club_id: clubId, league_id: lg.id, member_id: (m as any).id },
+            });
+            if (ok) sent += 1; else skipped += 1;
           }
-
-          const ok = await sendReminder({
-            user_id: userId,
-            kind: "league_planning_reminder",
-            ref_table: "clubs",
-            ref_id: `${clubId}:${memberId}`,
-            scheduled_for: today,
-            title,
-            message,
-            url,
-            data: { club_id: clubId, member_id: memberId },
-          });
-          if (ok) sent += 1;
-          else skipped += 1;
         }
       }
+    }
     }
 
     // 6) Inactivity nudge (3 weeks). Only run weekly (Monday in REMINDERS_TIMEZONE) to keep load low.

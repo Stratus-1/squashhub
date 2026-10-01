@@ -9252,6 +9252,7 @@ export type Database = {
           division: string | null
           external_division_id: string | null
           external_team_id: string | null
+          fill_up_reminder_enabled: boolean
           id: string
           is_reserve: boolean | null
           level: number | null
@@ -9284,6 +9285,7 @@ export type Database = {
           division?: string | null
           external_division_id?: string | null
           external_team_id?: string | null
+          fill_up_reminder_enabled?: boolean
           id?: string
           is_reserve?: boolean | null
           level?: number | null
@@ -9316,6 +9318,7 @@ export type Database = {
           division?: string | null
           external_division_id?: string | null
           external_team_id?: string | null
+          fill_up_reminder_enabled?: boolean
           id?: string
           is_reserve?: boolean | null
           level?: number | null

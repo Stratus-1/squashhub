@@ -60,7 +60,7 @@ interface Invoice {
 }
 
 interface InvoiceLine {
-  kind: "subscription" | "whatsapp";
+  kind: "subscription" | "whatsapp" | "sms";
   description: string;
   quantity: number;
   unit_price: number;
@@ -75,8 +75,9 @@ const lineItemsOf = (inv: Invoice): InvoiceLine[] =>
 
 const INVOICE_KIND_LABEL: Record<string, string> = {
   subscription: "Subscription",
-  whatsapp: "WhatsApp usage",
-  combined: "Subscription + WhatsApp",
+  whatsapp: "Messaging usage",
+  sms: "SMS usage",
+  combined: "Subscription + messaging",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -355,7 +356,7 @@ export function SubscriptionTab({ clubId }: { clubId: string }) {
                     {lineItemsOf(inv).length > 1 && (
                       <div className="text-[10px] text-muted-foreground">
                         {lineItemsOf(inv)
-                          .map((l) => `${l.kind === "whatsapp" ? "WhatsApp" : "Subscription"} ${fmtMoney(Number(l.amount), inv.currency)}`)
+                          .map((l) => `${l.kind === "whatsapp" ? "WhatsApp" : l.kind === "sms" ? "SMS" : "Subscription"} ${fmtMoney(Number(l.amount), inv.currency)}`)
                           .join(" · ")}
                       </div>
                     )}

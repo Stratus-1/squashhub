@@ -889,15 +889,12 @@ export default function SuperAdminSubscriptions() {
                           if (!plan) return fmtSubscriptionMoney(sub.amount_due);
                           const ccy = (sub.clubs?.currency_code || "ZAR").toUpperCase();
                           const res = chargeFor(live, ccy, cycleOf(plan));
-                          const stale = Math.abs(res.total - Number(sub.amount_due)) > 0.001;
                           const bands = res.rows.map(r => `${r.members} × ${ccySymbol(ccy)}${r.rate.toFixed(2)}`).join("  +  ");
                           return (
                             <span
-                              title={`${bands || "No members"}${res.minApplied ? ` → minimum ${ccySymbol(ccy)}${res.min.toFixed(2)} applied` : ""}${res.months > 1 ? ` × 12 months` : ""}${stale ? `\nStored: ${fmtSubscriptionMoney(sub.amount_due)}` : ""}`}
+                              title={`Outstanding on unpaid invoices.\nNext monthly fee estimate: ${fmtSubscriptionMoney(res.total, ccySymbol(ccy))} (${bands || "No members"}${res.minApplied ? `, minimum applied` : ""})`}
                             >
-                              {fmtSubscriptionMoney(res.total, ccySymbol(ccy))}
-                              {res.minApplied && <span className="ml-1 text-muted-foreground">min</span>}
-                              {stale && <span className="ml-1 text-amber-600">•</span>}
+                              {fmtSubscriptionMoney(invoiceState?.get(sub.club_id)?.owed ?? 0, ccySymbol(ccy))}
                             </span>
                           );
                         })()}

@@ -1,4 +1,4 @@
-name: Deploy Help Center ticket publisher
+name: Deploy Help Center support functions
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: squashhub-help-center-publisher-production
+  group: squashhub-help-center-support-functions-production
   cancel-in-progress: false
 
 jobs:
@@ -29,10 +29,11 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy only the Help Center publisher
+      - name: Deploy only the reviewed Help Center support functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: >-
           npx --yes supabase@2.118.0 functions deploy help-center-ticket-feed
           --project-ref bzbuppwzljadulwntjys
-
+          && npx --yes supabase@2.118.0 functions deploy help-center-case-context
+          --project-ref bzbuppwzljadulwntjys

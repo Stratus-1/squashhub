@@ -1,98 +1,56 @@
-# Help Center: safe live pilot (4 open cases) + read-only case-context API
+# Club subscription invoicing: what's wrong and how to fix it
 
-## What the review found (code and functions only, no ticket data)
+## What I found
 
-- Every support ticket create, status change, new message or delete adds a queue row and immediately calls the feed (`help_center_outbox_wake` fires an instant `net.http_post`, whether or not the 5-minute retry job is paused).
-- The feed claims **every** due, undelivered row in id order (`help_center_outbox_claim`). No hold, pilot or scope filter exists.
-- So today, one staff reply on any ticket would wake the feed and drain the 22 resolved-ticket rows along with it. The HMAC key now exists, so they would really be sent.
-- When the queue looks empty, `help_center_outbox_disarm` runs `cron.unschedule` on the retry job. That **deletes** the paused job (jobid 930) instead of leaving it paused.
-- Rows can't be deleted, and a delivered mark can't be undone (guard trigger). Nothing has a "held" state, so "don't send yet" needs a new column.
-- `help_center_initial_sync` skips any open ticket that already has a queue row, even a failed one. It can't be the only way to get the 4 open cases in.
-- Failed rows back off from 30s up to 1h and are marked dead after 12 attempts. The backlog would go dead on its own if it kept being retried, which is another reason to hold it.
+### 1. The Super Admin table doesn't match the club screens
+The invoices themselves are correct. The Super Admin **Club Subscriptions** table is reading the wrong things.
 
-## Part A: Live pilot for the 4 open cases
+| Club | What's really owed | What Super Admin shows |
+|---|---|---|
+| Gordon's Bay | 1 unpaid: October R222 (due 7 Oct) | Unpaid (1), R222. Correct by chance |
+| Highveld | 2 unpaid: September R120 (overdue since 7 Sep) and October R120, so **R240** | Overdue (1), **R120** |
+| Nelspruit | Paid upfront for 6 months, through 1 Mar 2027. R0 owed | "Standard Monthly", **R872** |
+| Riverside | Paid upfront for 6 months, through 28 Feb 2027. R0 owed | "Standard Monthly", **R570** |
 
-### Goal
-Send only the 4 currently open cases. Keep the 22 resolved-ticket rows as they are: not delivered, not dead, not deleted, not sent.
+Why:
+- The **Amount Due** column doesn't add up unpaid invoices. It shows a guess at next month's fee, worked out from today's member count at the monthly rate.
+- The **Plan** column shows the plan's default cycle (monthly). It ignores each club's chosen cycle (6-monthly for Nelspruit and Riverside).
+- The **Payment** badge only counts the overdue invoice when something is overdue, so Highveld shows "(1)" when it actually has 2 unpaid.
 
-### Changes (one additive migration + one publisher edit)
+### 2. WhatsApp was left off the October invoices, and SMS has never been billed
+September usage that nobody has been billed for yet:
 
-1. **Hold column on the queue** (new migration `supabase/migrations/<ts>_help_center_pilot_gate.sql`)
-   - Add `held_at timestamptz NULL` and `hold_reason text NULL` to `help_center_ticket_outbox`.
-   - Update the guard trigger so `held_at` can only be set or cleared on undelivered rows. All payload columns stay immutable.
-   - Change the pending index and `help_center_outbox_claim` to add `AND held_at IS NULL`.
-2. **Feed mode setting** (service-role-only row in `help_center_feed_private`, key `delivery_mode`)
-   - Values: `paused` (default, claim returns nothing), `pilot` (claim only returns rows whose ticket_id is on the allowlist), `live`.
-   - New table `help_center_pilot_allowlist(ticket_id uuid primary key, added_at, added_by text)`. Only `service_role` can access it (GRANT to service_role, REVOKE from anon/authenticated, RLS on, no policies).
-   - The claim filter reads the mode and the allowlist, so nothing outside the pilot can drain by accident, whatever triggers a wake.
-3. **Backlog hold, run once** (`help_center_hold_backlog()`, SECURITY DEFINER, service_role only)
-   - Sets `held_at = now()`, `hold_reason = 'pre_pilot_backlog'` on every row where delivered_at, dead_at and held_at are all null and the ticket's current status is resolved or closed.
-   - Doesn't touch attempts, delivered, dead or payload. Returns only an aggregate count.
-   - Running it again changes nothing.
-4. **Pilot enqueue** (`help_center_pilot_enqueue()`, SECURITY DEFINER, service_role only)
-   - Takes the tickets that are open/pending/waiting/in_progress now and adds them to the allowlist (duplicates ignored).
-   - For each, takes the same per-ticket advisory lock as `help_center_enqueue`. It adds one `case.created` row only if the ticket has no undelivered, unheld row, so it also covers open tickets whose earlier rows failed.
-   - Existing failed rows for those tickets are released instead of duplicated. The receiver's idempotency key is `event_id`.
-   - Returns only `{allowlisted, enqueued}` counts. No ticket IDs, subject, body, requester or club data.
-5. **Stop disarm from deleting the paused job**
-   - Change `help_center_outbox_disarm` to `cron.alter_job(active := false)` on the job selected by name, and to count only unheld rows.
-   - Change `help_center_outbox_wake` so it never re-creates or re-activates the job while mode is `paused`.
-6. **Publisher** (`supabase/functions/help-center-ticket-feed/index.ts`)
-   - No change to the payload or signing contract.
-   - Log the mode in the fail-closed/summary line. Return `{delivered, failed, mode}`.
-   - Handle a `409` from the receiver as delivered (already in place).
+| Club | WhatsApp | SMS |
+|---|---|---|
+| Nelspruit | 230 messages, R103.50 | 109 messages, R43.50 |
+| CSIR | 250, R112.50 | none |
+| Gordon's Bay | 101, R45.45 | none |
+| Riverside | 7, R3.50 | 5, R1.50 |
 
-### Pilot run order (each step needs your go-ahead)
+Why:
+- **WhatsApp:** invoices go out on the 25th. The billing run then looks at the *previous* month's messages. On 25 September it checked **August** (there were none) instead of September. So the October invoices had no WhatsApp line. As things stand, September's messages would only show up on the **November** invoice, a month late. For Nelspruit they would appear on a separate messaging-only invoice in late October.
+- **SMS:** the billing run never looks at SMS at all. There's no SMS line on any invoice, and SMS messages are never marked as billed.
+- **Nelspruit:** no subscription is due until March, so no invoice was created for October. Its messaging usage was never picked up.
 
-```text
-1 apply migration (mode=paused)  -> nothing can send
-2 help_center_hold_backlog()     -> expect count 22
-3 help_center_pilot_enqueue()    -> expect allowlisted 4
-4 GCP side registers the matching HMAC key (owner action)
-5 set mode=pilot, then one manual wake
-6 verify 4 delivered, 22 still held, 0 dead
-7 keep pilot until owner decides backlog policy
-```
+## What I'll change
 
-### What happens to the backlog afterwards (owner decision, not in this change)
-- Option 1: release it (clear `held_at`) under `live` so resolved cases send their last status.
-- Option 2: keep it held for good as `pre_pilot_backlog`, as an audit record.
-- Either way nothing gets deleted or falsely marked delivered.
-
-### Checks
-- Tests run in rolled-back transactions against copies of structure only (no ticket rows are read):
-  - claim returns nothing in `paused`, only allowlisted rows in `pilot`, and never returns held rows
-  - hold and enqueue are idempotent when run twice
-  - the guard still blocks changes to payload, delivered and delete
-  - disarm leaves jobid 930 existing but inactive
-- Aggregate-only queries before and after each step: counts by delivered, dead, held and pending. No IDs or content.
-- Publisher logs contain only event_id, ok and the error code.
-
-## Part B: Read-only case-context API (proposal, for a later build)
-
-**Purpose:** a future central human or agent reader can fetch a limited, redacted view of one case it is allowed to see. SquashHub stays the source of truth, and the API never writes.
-
-- **New function** `supabase/functions/help-center-case-context/index.ts`, set to `verify_jwt=false` in `config.toml`. Auth is enforced in the function's own code.
-- **Separate credential:** its own HMAC key `HELP_CENTER_READER_HMAC_KEY` and key ID `HELP_CENTER_READER_KEY_ID`.
-  - It must differ from the publisher key, the service role and the dispatch secret, and fails closed if not.
-  - Requests are signed over method, path, timestamp and body hash. Requests older than 5 minutes are rejected, and nonces are single-use.
-- **Per-case grant:** new table `help_center_case_grants(ticket_id, reader_principal, scope, expires_at, granted_by, revoked_at)`.
-  - The reader must send its principal and a ticket ID that has a live, unexpired grant. Anything else returns the same 404.
-  - Grants are created only by a SquashHub super admin RPC and are audited. No wildcard or bulk access.
-- **Default output, bounded and redacted:**
-  - Included: status, category, timestamps, message count, and the last N (max 20) staff/member message texts, each cut to 2,000 characters.
-  - Emails, phone numbers, SA ID numbers, card and bank numbers are masked by a shared redactor.
-  - Never included: requester name or ID, club details, attachments, AI context. Any later scope that adds one of these needs your approval and a separate `scope` value.
-- **Audit:** append-only `help_center_case_access_log` records reader, ticket, scope, outcome, byte count and time. It has no content and is service-role only.
-- **No writes:** the function uses a read-only SECURITY DEFINER RPC `help_center_case_context(p_ticket, p_principal, p_scope)`. Nothing is inserted except the audit row.
-- **Retry:** GET requests are safe to repeat. Rate limiting is per principal only if you ask for it.
-
-## Owner decisions needed before building
-1. Backlog policy after the pilot (release vs keep held).
-2. Case-context scope and retention: how long grants and audit rows are kept (proposed: grants 30 days, audit 12 months), and whether message text is allowed at all or only metadata.
-3. Who registers the HMAC key on GCP, and when to switch to `pilot`.
+1. **Super Admin table matches reality**
+   - Amount Due = the total of the club's unpaid invoices. The projected next fee moves into the hover text.
+   - Payment badge: "Overdue (n)" or "Unpaid (n)" using the full unpaid count, e.g. Highveld becomes "Overdue (1) · 2 unpaid, R240".
+   - Plan column shows the club's actual cycle, e.g. "Standard 6-monthly".
+2. **Messaging billed on time**
+   - On the 25th, the run bills every message from the current month up to that moment. Anything sent after that rolls onto the next invoice. Nothing is skipped or counted twice, because each message is marked with the invoice that billed it.
+   - Add an **SMS line** next to the WhatsApp line ("SMS messages: n messages"), at the price already recorded for each message.
+   - Clubs paid upfront, like Nelspruit, get a monthly **messaging-only invoice** whenever they have usage.
+3. **Catch up September (only with your go-ahead)**
+   - Option A: issue one catch-up messaging invoice now for each of Nelspruit, CSIR, Gordon's Bay and Riverside.
+   - Option B: leave it, and September usage goes onto the 25 October run.
+   - I won't change any invoice that's already been issued (Gordon's Bay R222, Highveld R120 x2).
 
 ## Technical details
-- Files: new migration `supabase/migrations/<ts>_help_center_pilot_gate.sql`; edit `supabase/functions/help-center-ticket-feed/index.ts` (mode in logs only); a later separate migration and function for Part B; add `supabase/config.toml` entry for Part B; add AGENTS rule and an issue-log entry in `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`.
-- Cron job 930 stays paused throughout. Secrets are unchanged by Part A.
-- Nothing is published. The function redeploy happens only after you approve.
+- `supabase/functions/run-subscription-billing/index.ts`: use the run month (up to the run moment) instead of `previousMonthRange(billingDate)`, while still sweeping any older unbilled messages. Read billable sent rows from `sms_send_log` (`unit_cost * segments`). Stamp the billed messages after the invoice is inserted.
+- Migration: add a nullable `platform_invoice_id` to `sms_send_log`, plus an index. Add `sms_amount` and `sms_message_count` to `platform_subscription_invoices`.
+- `consolidated.ts`: new `sms` line kind, with the invoice kind set to `combined`/`messaging`. Extend `src/test/consolidated-billing.test.ts`.
+- `SuperAdminSubscriptions.tsx`: amount due from the unpaid invoice totals in `invoiceState`, a fuller badge, and the plan label from the club's cycle.
+- The invoice view and PDF render the new SMS line. Stitch and EFT payment flows stay unchanged.
+- Add an entry to the issue log. Nothing gets published until you ask.

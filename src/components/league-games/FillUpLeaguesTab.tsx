@@ -164,7 +164,7 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
     queryKey: ["leagues-with-captain", clubId, associationId || "all"],
     queryFn: async () => {
       let q = fromExt("leagues")
-        .select("id, name, code, nsa_team_code, captain_member_id, allow_cross_gender_guests, association_id")
+        .select("id, name, code, nsa_team_code, captain_member_id, allow_cross_gender_guests, association_id, fill_up_reminder_enabled")
         .eq("club_id", clubId)
         .is("archived_at", null);
       if (associationId) q = q.eq("association_id", associationId);
@@ -1476,6 +1476,11 @@ export function FillUpLeaguesTab({ clubId, activeMemberId, associationId, rulesA
       availableSet={availableSet}
       placementAlerts={placementAlerts}
       onMarkUnavailable={(mid) => markUnavailable.mutate(mid)}
+      onToggleReminder={amIAdmin ? async (v) => {
+        const { error } = await fromExt("leagues").update({ fill_up_reminder_enabled: v }).eq("id", lg.id).eq("club_id", clubId);
+        if (error) { toast.error("Could not save reminder setting"); return; }
+        qc.invalidateQueries({ queryKey: ["leagues-with-captain", clubId] });
+      } : undefined}
     />
   );
 

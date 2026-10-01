@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Crown, Calendar, MapPin, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -26,9 +27,11 @@ type Props = {
   onMarkUnavailable?: (memberId: string) => void;
   /** memberId → persistent placement warning/error reason. */
   placementAlerts?: Map<string, string>;
+  /** Club admins only: switch this league's weekly fill-up reminder on/off. */
+  onToggleReminder?: (enabled: boolean) => void;
 };
 
-export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit, canDragPlayers, canDragBenchMembers, availableSet, onMarkUnavailable, placementAlerts }: Props) {
+export function LeagueColumn({ league, isCaptain, captainName, positions, benchMembers, memberMap, leagueNumberByMember, fixture, canEdit, canDragPlayers, canDragBenchMembers, availableSet, onMarkUnavailable, placementAlerts, onToggleReminder }: Props) {
   const opponentCode = fixture
     ? fixture.home_team_code === league.code
       ? fixture.away_team_code
@@ -68,6 +71,16 @@ export function LeagueColumn({ league, isCaptain, captainName, positions, benchM
             {captainName || <span className="italic text-muted-foreground">Not assigned</span>}
           </span>
         </div>
+        {onToggleReminder && (
+          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+            <Switch
+              checked={!!league.fill_up_reminder_enabled}
+              onCheckedChange={(v) => onToggleReminder(v)}
+              className="scale-75 origin-left"
+            />
+            Weekly fill-up reminder to captain (only when games are coming up)
+          </label>
+        )}
         {fixture ? (
           <div className="flex items-center gap-2 text-xs flex-wrap">
             <span className="flex items-center gap-1 text-foreground">

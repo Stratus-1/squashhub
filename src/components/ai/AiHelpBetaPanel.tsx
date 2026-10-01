@@ -207,6 +207,9 @@ export function AiHelpBetaPanel({ clubId }: { clubId: string }) {
                 <span className="font-medium line-clamp-1 flex-1">{c.title}</span>
                 <StatusPill s={st} />
               </div>
+              {c.rows.some((r) => r.ticket_id && mine.data?.replied?.[r.ticket_id]) && (
+                <div className="text-[11px] font-semibold text-primary flex items-center gap-1"><LifeBuoy className="w-3 h-3" /> Support replied — open to read</div>
+              )}
               <div className="text-[11px] text-muted-foreground">{format(new Date(c.updatedAt), "d MMM yyyy HH:mm")}{c.rows.length > 1 ? ` · ${c.rows.length} messages` : ""}</div>
             </button>
           );

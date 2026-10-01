@@ -202,6 +202,7 @@ import {
   roundDeadlineSummary,
 } from "@/lib/tournaments/round-deadlines";
 import { CentralRoundSchedule } from "@/components/club-admin/tournament/CentralRoundSchedule";
+import { openingRoundsNeeded, playoffRoundsFor, PLAYOFF_TYPE_INFO, type DivisionShape } from "@/lib/tournaments/round-plan";
 import { TournamentWhatsAppGroupCard } from "@/components/club-admin/tournament/TournamentWhatsAppGroupCard";
 import { ResultNotifySettingsCard } from "@/components/club-admin/tournament/ResultNotifySettingsCard";
 import { parseResultNotifyChannels, parseResultNotifyScope, type ResultNotifyChannel, type ResultNotifyScope } from "@/lib/tournaments/result-notify";
@@ -5608,6 +5609,26 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [numGroups, groups, groupLabels, groupDurations, matchDuration, swissPools, swissRounds, expectedPlayers, leaguePlayoffs, leagueFormats, leagueSections, usePerLeagueFormats, roundFormat, leagueScoringModes, scoringMode]);
 
+  // Which dates the structure really needs: opening rounds + only the play-off
+  // rounds the chosen play-off type has (no optional QF/SF when they can't happen).
+  const roundPlanDivisions = useMemo<DivisionShape[]>(() => capacityLeagues.map((l) => {
+    const pools = Math.max(1, Number(l.pools) || 1);
+    const n = Math.max(0, Number(l.entities) || 0);
+    const poolSizes = Array.from({ length: pools }, (_, p) => Math.floor(n / pools) + (p < n % pools ? 1 : 0));
+    return {
+      label: l.label,
+      format: String(l.format || ""),
+      poolSizes,
+      playoffs: !!l.playoffs,
+      playoffMode: playoffModeForLeague(l.groupNumber),
+      qualifiersPerPool: playoffQualifiersForLeague(l.groupNumber),
+      swissRounds: l.rounds,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [capacityLeagues, leaguePlayoffModes, leaguePlayoffQualifiers]);
+  const plannedPlayoffRounds = useMemo(() => playoffRoundsFor(roundPlanDivisions), [roundPlanDivisions]);
+  const plannedOpeningRounds = useMemo(() => openingRoundsNeeded(roundPlanDivisions), [roundPlanDivisions]);
+
 
   // Create/update champ
   const createChamp = useMutation({
@@ -8575,7 +8596,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
           // system decides which league is at which stage, but the dates are
           // set once, here.
           if (simplifiedKnockoutSchedule) {
-            for (const p of validateMilestones(milestonePlayBy, { require: true })) m.push(p);
+            for (const p of validateMilestones(milestonePlayBy, { require: plannedPlayoffRounds.length > 0, keys: plannedPlayoffRounds.map((r) => r.key) })) m.push(p);
           }
         } else {
           if (!startTime) m.push("Start time");
@@ -9619,6 +9640,8 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                       onChange={setRoundDeadlines}
                       milestones={milestonePlayBy}
                       onMilestonesChange={setMilestonePlayBy}
+                      playoffRounds={plannedPlayoffRounds}
+                      roundsNeeded={plannedOpeningRounds}
                       requireMilestones={simplifiedKnockoutSchedule}
                       progress={knockoutProgress}
                       minDate={startDate || undefined}
@@ -10927,7 +10950,7 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     <div className="flex flex-wrap gap-3">
                                       {([
                                         { v: "position" as PlayoffMode, l: "Position playoffs" },
-                                        { v: "knockout" as PlayoffMode, l: "Knockout playoffs" },
+                                        { v: "knockout" as PlayoffMode, l: "Crossover / knockout" },
                                       ]).map((o) => (
                                         <label key={o.v} className="flex items-center gap-1.5 text-[11px] cursor-pointer">
                                           <input
@@ -10945,8 +10968,13 @@ export function ClubChampsTab({ clubId, ownerOrgId = null, eligibilityOrgId = nu
                                     </div>
                                     {playoffModeForLeague(gn) === "position" ? (
                                       <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                        Matching finishing positions meet: A1 v B1, A2 v B2, A3 v B3 … so every
+                                        <strong>{PLAYOFF_TYPE_INFO.position.name}:</strong> matching finishing positions meet: A1 v B1, A2 v B2, A3 v B3 … so every
                                         overall position in this division is decided.
+                                      </p>
+                                    ) : poolsForDivision(gn) === 2 && playoffQualifiersForLeague(gn) === 2 ? (
+                                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                        <strong>{PLAYOFF_TYPE_INFO.crossover.name}:</strong> {PLAYOFF_TYPE_INFO.crossover.example}{" "}
+                                        <button type="button" className="underline" onClick={() => setLeaguePlayoffQualifiers((m) => ({ ...m, [key]: 4 }))}>Use a bigger knockout</button>
                                       </p>
                                     ) : (
                                       <div className="space-y-1">

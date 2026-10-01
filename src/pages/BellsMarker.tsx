@@ -316,7 +316,8 @@ export default function BellsMarker() {
 
   // Doubles: name the actual server and the side, driven by the configured serving method.
   const isDoublesMatch = !!(match?.partner_a && match?.partner_b);
-  const servingMethod = parseServingMethod(servingMethodRow);
+  // Diamond League always plays guided doubles; older events saved without a method default to Even / Odd.
+  const servingMethod = parseServingMethod(servingMethodRow) ?? (diamondTeamNames ? "even_odd" : null);
   const doublesPairs = isDoublesMatch
     ? { a: [getName(match.player_a), getName(match.partner_a)] as PairNames, b: [getName(match.player_b), getName(match.partner_b)] as PairNames }
     : null;

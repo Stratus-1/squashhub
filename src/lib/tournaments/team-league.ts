@@ -11,6 +11,8 @@
  * level and no rule is configured, ranking reports `undecided`.
  */
 
+import type { DoublesServingMethod } from "@/lib/marker/doubles-serving";
+
 export type TeamLeagueConfig = {
   playersPerTeam: number; // even, 2..8
   singlesMinutes: number;

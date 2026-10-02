@@ -12,10 +12,18 @@ export interface PoolPlan {
   mode: PoolMode;
   /** Preferred pool size — a preference, not a threshold. */
   target?: string;
-  /** Play-offs: how many from each pool qualify. Empty = derived from the play-off size. */
+  /** Legacy play-off settings: read-only fallback; new answers live in playoffPoolQualifiers. */
   perPool?: string;
-  /** Play-offs: extra best runners-up across pools (not yet mappable by the engine). */
   runnersUp?: string;
+}
+
+export type PoolQualification = { perPool?: string; runnersUp?: string };
+
+/** New Playoffs/Progression answer wins; older device/local and tournament plans still resolve as before. */
+export function poolQualificationOf(plan: Record<string, any> | null | undefined, key: string): PoolQualification {
+  const rule = poolPlanOf(plan, key);
+  return plan?.playoffPoolQualifiers?.[key] ?? plan?.playoffPoolQualifiers?.[key.split("::")[0]] ??
+    { perPool: rule?.perPool, runnersUp: rule?.runnersUp };
 }
 
 export const POOL_MODE_LABEL: Record<PoolMode, string> = {

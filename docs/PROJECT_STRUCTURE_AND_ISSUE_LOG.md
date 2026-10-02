@@ -2377,3 +2377,4 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-10-02 — Step-by-Step Beta doubles entry and payment choices
 - Replaced the combined doubles entry/payment menu with independent optional controls: a player may enter both partners and a player may choose to pay for both. Off means each player registers or pays for themselves; either choice can be deferred.
 - Existing per-group partner selection and per-player/per-pair/category fees remain separate. Older device-local combined choices are converted on load; no tournament records, billing, schema, or normal builder were changed. These choices are planning-only, not active registration/payment rules.
+- Follow-up: moved both independent choices into Fees & Payment (including free tournaments), with explicit Yes / No / Decide later answers and matching tree/summary wording; the separate partner-selection step remains unchanged.

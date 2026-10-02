@@ -1,6 +1,14 @@
 name: Deploy Help Center support functions
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-help-center-publisher.yml"
+      - "supabase/functions/help-center-ticket-feed/**"
+      - "supabase/pending-migrations/20260930150800_help_center_pilot_gate.sql"
+      - "src/test/help-center-feed-contract.test.ts"
+      - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
 
 permissions:
@@ -11,19 +19,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  contract:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out proposed source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Verify publisher contract
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test -- --run src/test/help-center-feed-contract.test.ts
+
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: squashhub-support-publisher
     steps:
       - name: Check out canonical main
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Verify publisher contract before deployment
-        run: |
-          npm ci --ignore-scripts
-          npm test -- --run src/test/help-center-feed-contract.test.ts
 
       - name: Require Supabase deployment access
         env:

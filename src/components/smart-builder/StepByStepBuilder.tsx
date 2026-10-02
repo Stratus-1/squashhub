@@ -117,6 +117,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
           {step === 2 && (
             <>
+              <Q t="What will be played?" h="Just the basic fact for now — we won't ask how it fits together yet." />
+              <div className="grid gap-3 sm:grid-cols-3">
+                {(["singles", "doubles", "both"] as const).map((p) => (
+                  <Choice key={p} active={a.playType === p} onClick={() => setA({ ...a, playType: p })} title={PLAY_LABEL[p]} desc={p === "both" ? "Singles and doubles at the same event." : p === "singles" ? "One player per side." : "Two players per side."} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
               <Q t="What categories will you have?" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />
               <div className="space-y-2">
                 {a.categories.map((c, i) => (

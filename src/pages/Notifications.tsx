@@ -1,3 +1,4 @@
+import { notificationActions, messageWithoutActionLinks } from "@/lib/notification-actions";
 import { Card } from "@/components/ui/card";
 import { Bell, Swords, Calendar, Trophy, CheckCircle, Loader2, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -348,7 +349,7 @@ export default function Notifications() {
                           </Card>
                         ) : (
                           <Card className="p-3">
-                            <p className="text-sm whitespace-pre-wrap break-words">{linkify(text)}</p>
+                            <p className="text-sm whitespace-pre-wrap break-words">{linkify(messageWithoutActionLinks(text, notificationActions(notif)))}</p>
                           </Card>
                         )}
                         {Array.isArray(notif?.data?.actions) && notif.data.actions.length > 0 ? (

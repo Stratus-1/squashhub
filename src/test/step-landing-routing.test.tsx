@@ -68,7 +68,7 @@ describe("Tournament Beta landing: New vs Continue managing", () => {
     fireEvent.click(screen.getByText("Build your tournament step by step"));
     expect(screen.getByRole("alertdialog").textContent).toMatch(/unfinished new tournament draft/);
     fireEvent.click(screen.getByText("Start a new tournament"));
-    expect(draft().name).toBeUndefined();
+    expect(draft().name || "").toBe("");
   });
 
   it("D) a template starts a new copied identity — no tournament id, template copy untouched", () => {

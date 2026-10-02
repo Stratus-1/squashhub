@@ -2433,3 +2433,8 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-10-02 — Pool standings shown as one combined ladder (River 2 Clubs)
 - Stored fixtures were already pool-bounded (10+6, 15+10 etc., no cross-pool games). Standings read pool count only from `swiss_pools`, which Beta tournaments never set, so pools rendered as one ladder with a Pool column.
 - Fix: pool count also derived from persisted `pool_number`; engine now asserts pool boundaries and per-pool counts; Generate draw blocks unresolved/duplicated/missing pool places. Tests: `src/test/pool-boundaries.test.ts`.
+
+## 2026-10-02 — Step-by-Step pool creation moved to competition grouping
+- Cause: the Pool structure controls were buried below Planned format and mixed structural size with playoff qualification. New category-only events could not see the setting until much later in setup.
+- Pool creation is now shown immediately under each category without subcategories, or each subcategory when present: Yes / No / Decide after entries close, with preferred size for Yes. Actual allocation remains at Generate draw, using the existing allocation engine and actual active entrants. Explicit No normalises legacy multi-pool provisional formats to one round robin at review; an absent rule retains the old format.
+- Qualification fields moved to Playoffs (once-off) or Stages & scheduling (Club Champs). The saved `playoffPoolQualifiers` overrides the legacy `poolPlan.perPool/runnersUp` fallback without rewriting old plans. Unsupported pool + non-round-robin and between-subcategory combinations block generation. Existing fixtures/results were not modified.

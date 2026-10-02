@@ -737,31 +737,60 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 </div>
               )}
               {adminPairUnits.map((u) => {
-                const unpaired = unpairedIn(u.key); const prs = pairsFor(u.key); const first = pairDraft[u.key] ?? "";
-                if (!prs.length && !unpaired.length) return null;
+                const prs = pairsFor(u.key);
+                const placedUnpaired = unpairedIn(u.key);
+                // Players not yet placed in a group can be paired straight into this doubles group.
+                const unplaced = pickIds.filter((id) => !a.picks[id]);
+                const candidates = [...placedUnpaired, ...unplaced];
+                const sel = (pairDraft[u.key] ?? []).filter((id) => candidates.includes(id));
+                const toggle = (id: string) => setPairDraft({ ...pairDraft, [u.key]: sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id].slice(-2) });
+                const createPair = () => {
+                  if (sel.length !== 2) return;
+                  const [x, y] = sel;
+                  setA({ ...a, picks: { ...a.picks, [x]: u.key, [y]: u.key }, pairs: { ...(a.pairs ?? {}), [u.key]: [...prs, [x, y]] } });
+                  setPairDraft({ ...pairDraft, [u.key]: [] });
+                };
                 return (
-                  <div key={u.key} className="space-y-2 rounded-lg border border-border p-3">
-                    <Label>Pairs — {u.label}</Label>
-                    {prs.length > 0 && <ul className="space-y-1">{prs.map(([x, y], i) => (
-                      <li key={x + y} className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs">
-                        <span className="flex-1"><b>Pair {i + 1}:</b> {memberName(x)} &amp; {memberName(y)}</span>
-                        <Button variant="ghost" size="icon" aria-label="Split pair" onClick={() => setPairs(u.key, prs.filter((p) => p[0] !== x))}><Trash2 className="h-4 w-4" /></Button>
-                      </li>))}</ul>}
-                    {unpaired.length > 0 && (
-                      <div className="space-y-1">
-                        <div className="text-xs text-muted-foreground">{first ? `Now tap ${memberName(first)}'s partner:` : "Not paired yet — tap two players to pair them:"}</div>
-                        <div className="flex flex-wrap gap-1.5">{unpaired.map((id) => (
-                          <button key={id} type="button" onClick={() => {
-                            if (!first) return setPairDraft({ ...pairDraft, [u.key]: id });
-                            if (first === id) return setPairDraft({ ...pairDraft, [u.key]: "" });
-                            setPairDraft({ ...pairDraft, [u.key]: "" }); setPairs(u.key, [...prs, [first, id]]);
-                          }} className={cn("rounded-full border px-2.5 py-1 text-xs", first === id ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted")}>{memberName(id)}</button>))}</div>
-                        <div className="text-xs text-destructive">{unpaired.length} player{unpaired.length === 1 ? " is" : "s are"} not paired yet. Every player in this group needs a partner before you can continue.</div>
+                  <div key={u.key} className="space-y-3 rounded-lg border border-border p-3" data-testid={`pairing-${u.key}`}>
+                    <div className="text-sm font-semibold">Pair players — {u.label}</div>
+                    <div className="space-y-1">
+                      <Label>Unpaired players ({candidates.length})</Label>
+                      {candidates.length === 0 ? (
+                        <div className="text-xs text-muted-foreground">{pickIds.length === 0 ? "Add players from the list above, then pair them here." : "Everyone in this group is paired."}</div>
+                      ) : (
+                        <>
+                          <div className="text-xs text-muted-foreground">Tick two players, then press Create pair.{unplaced.length > 0 && units.length > 1 ? " Players not placed in a group yet will be placed in this group when paired." : ""}</div>
+                          <div className="flex flex-wrap gap-1.5">{candidates.map((id) => (
+                            <button key={id} type="button" aria-pressed={sel.includes(id)} onClick={() => toggle(id)}
+                              className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs", sel.includes(id) ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted")}>
+                              {sel.includes(id) && <Check className="h-3 w-3" />}{memberName(id)}{!a.picks[id] && <span className="opacity-70"> (not placed)</span>}
+                            </button>))}</div>
+                          <Button type="button" size="sm" disabled={sel.length !== 2} onClick={createPair}>
+                            <Plus className="mr-1 h-3 w-3" />Create pair{sel.length === 2 ? `: ${memberName(sel[0])} + ${memberName(sel[1])}` : ` (${sel.length}/2 chosen)`}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Pairs ({prs.length})</Label>
+                      {prs.length === 0 ? <div className="text-xs text-muted-foreground">No pairs yet.</div> : (
+                        <ul className="space-y-1">{prs.map(([x, y], i) => (
+                          <li key={x + y} className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs">
+                            <span className="flex-1"><b>Pair {i + 1}:</b> {memberName(x)} + {memberName(y)}</span>
+                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPairs(u.key, prs.filter((p) => !(p[0] === x && p[1] === y)))}>Split</Button>
+                          </li>))}</ul>
+                      )}
+                    </div>
+                    {placedUnpaired.length > 0 && (
+                      <div className="text-xs text-destructive">
+                        {placedUnpaired.length === 1 ? `${memberName(placedUnpaired[0])} still needs a partner.` : `${placedUnpaired.length} players still need partners.`}
+                        {placedUnpaired.length % 2 === 1 ? " There's an odd number of players, so add one more player or remove one." : ""} You can't continue until everyone in this group is paired.
                       </div>
                     )}
                   </div>
                 );
               })}
+              {pairMode && pickIds.some((id) => !a.picks[id]) && <div className="text-xs text-destructive">Place every picked player in a group (or pair them above) before continuing.</div>}
             </>
           )}
 

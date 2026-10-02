@@ -204,7 +204,10 @@ export async function loadLifecycle(tournamentId: string): Promise<BetaLifecycle
   return ((data as any)?.beta_lifecycle as BetaLifecycle) ?? null;
 }
 export async function saveLifecycle(tournamentId: string, l: BetaLifecycle) {
-  const { error } = await fromExt("tournaments").update({ beta_lifecycle: l }).eq("id", tournamentId);
+  // Never drop the saved setup (format_plan) when a caller holds an older lifecycle copy without it.
+  let next = l;
+  if (l.format_plan === undefined) { const cur = await loadLifecycle(tournamentId).catch(() => null); if (cur?.format_plan) next = { ...l, format_plan: cur.format_plan }; }
+  const { error } = await fromExt("tournaments").update({ beta_lifecycle: next }).eq("id", tournamentId);
   if (error) throw error;
 }
 

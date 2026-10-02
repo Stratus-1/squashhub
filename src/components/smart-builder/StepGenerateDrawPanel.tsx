@@ -79,6 +79,14 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         const gs = p.crossKeys.map(groupOfKey);
         if (gs.some((x) => x == null)) notes.push("Some cross-league groups in your plan no longer match a category here — check the groups below.");
         p.format.crossGroups = [...new Set(gs.filter((x): x is number => x != null))].sort((a, b) => a - b);
+        if (p.crossPairKeys) {
+          // "Choose which groups play each other": only the organiser's pairings, nothing inferred.
+          const me = g;
+          const vs = p.crossPairKeys.map(([x, y]) => [groupOfKey(x), groupOfKey(y)]).filter(([x, y]) => x === me || y === me).map(([x, y]) => (x === me ? y : x));
+          if (vs.some((x) => x == null)) notes.push("A cross-league pairing in your plan no longer matches a category here — check the pairings below.");
+          p.format.crossVs = [...new Set(vs.filter((x): x is number => x != null && x !== me))].sort((a, b) => a - b);
+          p.format.crossGroups = [me, ...p.format.crossVs].sort((a, b) => a - b);
+        }
       }
       list.push({ group: g, label, doubles, units: r.units, format: p.format, notes, playoffs: p.playoffs });
     }
@@ -121,6 +129,30 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       setManual((m) => { const n = { ...m }; delete n[g]; return n; });
       toast.info(`${divs[i].label}: format/seeding changed, so your manual seed and pool changes were reset.`);
     } setConfirmed(false); setDivs((ds) => ds.map((d, k) => k === i ? { ...d, format: { ...d.format, ...patch } } : d)); };
+  /** Switch a cross group between "all selected play each other" and explicit pairings (seeded from its current opponents). */
+  const setCrossMode = (i: number, mode: "all" | "chosen") => {
+    const d = divs[i];
+    if (mode === "all") { setFmt(i, { crossVs: null }); return; }
+    const vs = d.format.crossGroups.filter((g) => g !== d.group);
+    setFmt(i, { crossVs: vs, crossGroups: vs.length ? [d.group, ...vs].sort((a, b) => a - b) : [] });
+  };
+  /** Explicit pairing: set on both groups together so the pairing stays reciprocal. */
+  const togglePairing = (i: number, other: number, on: boolean) => {
+    const me = divs[i].group;
+    setConfirmed(false);
+    setDivs((ds) => ds.map((d) => {
+      if (d.group !== me && d.group !== other) return d;
+      const peer = d.group === me ? other : me;
+      const cur = d.format.crossVs ?? d.format.crossGroups.filter((g) => g !== d.group);
+      const vs = (on ? [...new Set([...cur, peer])] : cur.filter((g) => g !== peer)).sort((a, b) => a - b);
+      return { ...d, format: { ...d.format, kind: d.format.kind ?? "cross", crossVs: vs, crossGroups: vs.length ? [d.group, ...vs].sort((a, b) => a - b) : [] } };
+    }));
+  };
+  const crossPairs = useMemo(() => {
+    const { meetings } = crossSets(divs);
+    const lab = (g: number) => divs.find((d) => d.group === g)?.label ?? `Group ${g}`;
+    return [...meetings.values()].flat().map(([x, y]) => `${lab(x)} v ${lab(y)}`);
+  }, [divs]);
   const nm = (id: string | null) => (id ? names.get(id) ?? "Unknown" : "");
   const unitName = (id: string) => id.split("+").map(nm).join(" & ");
   /** The seeding data actually used for this unit, shown next to its seed. */
@@ -286,13 +318,18 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             </div>
             {f.kind === "cross" && (
               <div className="space-y-1">
-                <span className="text-muted-foreground">Plays against (every pair meets every pair of the other selected groups, never its own group):</span>
+                <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Cross-league matchups">
+                  <Button type="button" size="sm" variant={!f.crossVs ? "default" : "outline"} aria-pressed={!f.crossVs} onClick={() => setCrossMode(i, "all")}>All selected groups play each other</Button>
+                  <Button type="button" size="sm" variant={f.crossVs ? "default" : "outline"} aria-pressed={!!f.crossVs} onClick={() => setCrossMode(i, "chosen")}>Choose which groups play each other</Button>
+                </div>
+                <span className="text-muted-foreground">{f.crossVs ? `${d.label} plays only the groups ticked below (both groups are updated together; never its own group):` : "Plays against (every pair meets every pair of the other selected groups, never its own group):"}</span>
                 <div className="flex flex-wrap gap-1">{seeded.filter((o) => o.group !== d.group).map((o) => {
-                  const on = f.crossGroups.includes(o.group);
+                  const on = f.crossVs ? f.crossVs.includes(o.group) : f.crossGroups.includes(o.group);
                   return <Button key={o.group} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on} onClick={() => {
+                    if (f.crossVs) { togglePairing(i, o.group, !on); return; }
                     const next = on ? f.crossGroups.filter((g) => g !== o.group) : [...new Set([...f.crossGroups, d.group, o.group])];
                     setFmt(i, { crossGroups: next.length < 2 ? [] : next.sort((a, b) => a - b) });
-                  }}>{o.label}</Button>;
+                  }}>{f.crossVs ? `v ${o.label}` : o.label}</Button>;
                 })}</div>
               </div>
             )}
@@ -303,6 +340,13 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         );
       })}
 
+      {crossPairs.length > 0 && (
+        <div className="rounded border border-border p-2" aria-label="Cross-league matchups">
+          <div className="font-medium">Cross-league matchups — exactly these groups meet</div>
+          <ul className="mt-1 space-y-0.5">{crossPairs.map((p) => <li key={p}>{p}</li>)}</ul>
+          <p className="text-muted-foreground">No other cross-group games and no games within a group.</p>
+        </div>
+      )}
       {preview && errors.length === 0 && (
         <div className="rounded border border-border bg-muted/40 p-2">
           <div className="font-medium">Preview — {preview.total} games will be created</div>

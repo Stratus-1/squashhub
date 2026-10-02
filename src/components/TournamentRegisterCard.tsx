@@ -442,7 +442,7 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           Entry fee {money(entryFee)} charged to your member account — settle it with the club as usual.
         </p>
       )}
-      {myReg && isDoubles && myReg.partner_member_id && (
+      {myReg && myReg.partner_member_id && (
         <PartnerFeeOptions registrationId={myReg.id} cardEnabled={cardReady && paymentGateway === "stitch"}
           onPay={(scope) => launchPayment(myReg.id, scope)} onCharged={() => refetch()} />
       )}

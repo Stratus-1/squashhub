@@ -19,12 +19,15 @@ type DayAvail = { date: string; venue: string; courts: string; courtIds?: string
 export type StepAnswers = {
   kind: Kind;
   entries: string;
+  playType: PlayType;
   categories: string[];
   days: DayAvail[];
 };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", categories: [""], days: [] };
-const STEPS = ["Type", "Entries", "Categories", "Dates", "Courts", "Summary"] as const;
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], days: [] };
+const STEPS = ["Type", "Entries", "What", "Categories", "Dates", "Courts", "Summary"] as const;
+
+const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles", doubles: "Doubles", both: "Both" };
 
 const fmtDay = (d: string) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "No date";

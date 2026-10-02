@@ -419,7 +419,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
     categories: units.map((u) => u.label).join(", ") || "categories still to be set",
     category: firstPair ? firstPair.u.label : units[0]?.label || "[their category]",
     amount_due: dueText(firstPair ? firstPair.u : units[0]) || "[set in Fees & Payment]",
-    pay_link: chosenMethods.length ? `open your entry in SquashHub with the link in this message (${methodText})` : "[choose accepted payment methods in Fees & Payment]",
+    pay_link: chosenMethods.length ? `tap the Pay button on this message, or open the tournament in SquashHub (${methodText})` : "[choose accepted payment methods in Fees & Payment]",
     partner_name: firstPair ? memberName(firstPair.p![1]) : "[assigned partner]",
     entry_link: "[entry link added when the tournament is created]",
     closing_date: "[set later]",

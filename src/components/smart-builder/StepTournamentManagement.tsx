@@ -6,9 +6,11 @@ import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   LIFECYCLE, blockersFor, finalisePrereqs, isOutstanding, lifecycleIndex, loadHandover, loadLifecycle, loadRegistrations,
-  nextAction, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow,
+  nextAction, paymentWarning, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow,
 } from "@/lib/smart-builder/step-handover";
 import { StepInformPanel } from "./StepInformPanel";
+import { fromExt } from "@/lib/supabase-ext";
+import { TournamentRegistrationsDialog } from "@/components/club-admin/TournamentRegistrationsDialog";
 
 const money = (c: number) => `R${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
 
@@ -25,6 +27,9 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   const [regs, setRegs] = useState<{ rows: RegRow[]; feeCents: number } | null>(null);
   const [showRegs, setShowRegs] = useState(false);
   const [view, setView] = useState<LifecycleKey | null>(null);
+  const [payDlg, setPayDlg] = useState<any>(null);
+  const openPayments = async () => { const { data } = await fromExt("club_champs").select("*").eq("id", tournamentId).maybeSingle(); if (data) setPayDlg(data); };
+  const [_unpaidOk, _setUnpaidOk] = useState(false);
   const [editWarn, setEditWarn] = useState<null | "Summary" | "Messaging" | "default">(null);
   const reloadRegs = () => loadRegistrations(tournamentId).then(setRegs).catch(() => setRegs({ rows: [], feeCents: 0 }));
   useEffect(() => { reloadRegs(); }, [tournamentId]);
@@ -59,6 +64,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   const owing = rows.filter((r) => isOutstanding(r.status, h.feeDue));
   const paid = rows.filter((r) => r.status === "paid" || r.status === "waived").length;
   const prereqs = finalisePrereqs(rows, h.feeDue);
+  const payWarn = paymentWarning(rows, h.feeDue);
   const pairs = rows.filter((r) => r.partnerName).length;
   // Anything past Invite means real registrations / payments may depend on setup.
   const downstream = cur >= lifecycleIndex("registrations");
@@ -86,7 +92,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
                 className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1",
                   i === cur ? "border-primary bg-primary font-semibold text-primary-foreground" : done ? "border-primary/50 text-primary hover:bg-primary/10" : "border-border text-muted-foreground",
                   shown === l.key && i !== cur && "ring-2 ring-primary/60")}>
-                {done && <Check className="h-3 w-3" />}{!done && i > cur && <Lock className="h-3 w-3" />}{l.label}
+                {done && <Check className="h-3 w-3" />}{!done && i > cur && <Lock className="h-3 w-3" />}{l.label}{done && i !== cur && l.key !== "planning" && <span className="ml-1 text-[10px] opacity-80">· Completed ✓ · View / manage</span>}
               </button>
             </li>
           );
@@ -132,16 +138,19 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           <div className="space-y-2 text-xs">
             {life?.inform && <p className="text-muted-foreground">Players {life.inform.method === "sent" ? "notified through SquashHub" : "recorded as told outside SquashHub"} {new Date(life.inform.at).toLocaleString()}{life.inform.note ? ` · ${life.inform.note}` : ""}.</p>}
             {!revisiting && (prereqs.length
-              ? <div className="rounded border border-destructive/50 bg-destructive/10 p-2">
-                  <div className="font-medium">Finalise entries is blocked: {prereqs.join(" · ")}</div>
-                  <div className="text-muted-foreground">Players pay through their tournament page (Pay now). Payments recorded there show here automatically — press Refresh.</div>
-                </div>
-              : <div className="rounded border border-primary/50 bg-primary/10 p-2 font-medium">Every entry is {h.feeDue ? "paid or waived" : "in"} — you can finalise entries.</div>)}
+              ? <div className="rounded border border-destructive/50 bg-destructive/10 p-2 font-medium">Can't finalise yet: {prereqs.join(" · ")}</div>
+              : payWarn
+                ? <div className="rounded border border-destructive/50 bg-destructive/10 p-2">
+                    <div className="font-medium">{payWarn}</div>
+                    <div className="text-muted-foreground">SquashHub's tournament rules don't require every entry to be paid before finalising or the draw, so this doesn't block you — but you'll be asked to confirm. Players pay with the Pay button on their notification or on their tournament page; payments show here after Refresh.</div>
+                  </div>
+                : <div className="rounded border border-primary/50 bg-primary/10 p-2 font-medium">Every entry is {h.feeDue ? "paid or waived" : "in"} — you can finalise entries.</div>)}
             <div className="flex flex-wrap gap-2">
-              {!revisiting && <Button disabled={prereqs.length > 0} title={prereqs.join(" · ")} onClick={() => advance("registrations", "finalise")}>
+              {!revisiting && <Button disabled={prereqs.length > 0} title={prereqs.join(" · ")} onClick={() => { if (!payWarn || confirm(`${payWarn}. Finalise entries anyway? Unpaid players stay unpaid and can still pay later.`)) advance("registrations", "finalise"); }}>
                 {prereqs.length ? <Lock className="mr-1 h-4 w-4" /> : null}Close registrations & finalise entries<ChevronRight className="ml-1 h-4 w-4" />
               </Button>}
               <Button variant="outline" size="sm" onClick={reloadRegs}>Refresh payments</Button>
+              {h.feeDue && <Button variant="outline" size="sm" onClick={openPayments}>Record a payment / waive (admin)</Button>}
             </div>
           </div>
         )}
@@ -153,11 +162,14 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
               <li className="font-medium">Entered now: {regs ? `${Math.floor(pairs / 2) || pairs} pair${pairs === 1 ? "" : "s"} · ${rows.length} players${h.feeDue ? ` · ${owing.length} payment outstanding` : ""}` : "loading…"}</li>
             </ul>
             {(() => {
-              const why = [...prereqs, ...blockers.map((d) => `Decide: ${d.label}`)];
-              return why.length
-                ? <><Button disabled><Lock className="mr-1 h-4 w-4" />Generate draw & fixtures</Button><p className="text-destructive">Blocked: {why.join(" · ")}</p></>
-                : <><Button onClick={() => advance("finalise", "generate")}>Generate draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Button>
-                    <p className="text-muted-foreground">All prerequisites are met.</p></>;
+              const why = [...prereqs, ...blockers.map((d) => `"${d.label}" is still "Decide later"`)];
+              return <>
+                {payWarn && <p className="text-destructive">{payWarn} — this doesn't block the draw under the existing tournament rules.</p>}
+                {why.length
+                  ? <><Button disabled><Lock className="mr-1 h-4 w-4" />Generate draw & fixtures</Button><p className="text-destructive">Blocked because: {why.join(" · ")}. Decide {why.length === 1 ? "it" : "them"} in setup to unlock.</p></>
+                  : <><Button onClick={() => { if (!payWarn || confirm(`${payWarn}. Continue anyway?`)) advance("finalise", "generate"); }}>Continue to Generate draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Button>
+                      <p className="text-muted-foreground">Prerequisites are met. Note: draw and fixture generation itself is the next Beta build — nothing will be generated yet.</p></>}
+              </>;
             })()}
           </div>
         )}
@@ -185,6 +197,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
         </div>
       </div>
 
+      {payDlg && <TournamentRegistrationsDialog open onOpenChange={(v) => { if (!v) { setPayDlg(null); reloadRegs(); } }} champ={payDlg} clubId={clubId} />}
       <AlertDialog open={!!editWarn} onOpenChange={(o) => !o && setEditWarn(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

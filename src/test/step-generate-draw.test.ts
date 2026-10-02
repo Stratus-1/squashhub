@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defaultPools, poolWarnings, poolsFor, unitId, buildDrawSpec, finalDrawSpec, orderUnits, previewDraw, proposeFormat, rankingIssue, roundDeadlines, unitsFor, withEntrants, type DivFormat, type DrawDivision, type RegLite } from "@/lib/smart-builder/step-draw";
+import { unitParentOf, drawPlanOf, defaultPools, poolWarnings, poolsFor, unitId, buildDrawSpec, finalDrawSpec, orderUnits, previewDraw, proposeFormat, rankingIssue, roundDeadlines, unitsFor, withEntrants, type DivFormat, type DrawDivision, type RegLite } from "@/lib/smart-builder/step-draw";
 import { generateFromSpec } from "@/lib/tournaments/engine-service";
 import { distributeIntoPools, moveToPool } from "@/lib/tournaments/pools";
 
@@ -83,6 +83,12 @@ describe("Step-by-Step generate draw", () => {
     // plan keys map through proposeFormat
     const pr = proposeFormat({ format: { kind: "cross", crossUnits: ["Mens::A", "Mens::B"], crossMode: "chosen", crossPairs: [["Mens::A", "Mens::B"]] } }, "Mens › A · Doubles");
     expect(pr.crossPairKeys).toEqual([["Mens::A", "Mens::B"]]);
+    const bt = proposeFormat({ format: { kind: "cross", crossMode: "parent" } }, "Ladies › B · Doubles");
+    expect(bt.crossByParent).toBe(true);
+    expect(unitParentOf("Ladies › B · Doubles")).toBe("Ladies");
+  });
+  it("draw plan saved on the tournament keeps only setup answers (no players/payments)", () => {
+    expect(drawPlanOf({ format: { kind: "cross", crossMode: "parent" }, entrants: [1], fee: {}, stages: [] })).toEqual({ format: { kind: "cross", crossMode: "parent" }, stages: [] });
   });
   it("cross-league sets must agree; a 2-group set gives 25 games and others stay normal", () => {
     const d = divs();

@@ -90,7 +90,8 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
               ? <Button disabled={!next.available} onClick={() => setOpen(true)}>{next.title}<ChevronRight className="ml-1 h-4 w-4" /></Button>
               : <div className="space-y-2">
                   <pre className="whitespace-pre-wrap rounded border border-border p-2 font-sans text-xs">{h.invitePreview}</pre>
-                  <p className="text-xs text-muted-foreground">Beta: sending invitations from here isn't connected yet — nothing is sent by this page.</p>
+                  <Button disabled title="Not connected yet">Send invitations</Button>
+                  <p className="text-xs text-muted-foreground">Sending invitations from here isn't connected yet — nothing is sent by this page.</p>
                   <Button variant="outline" onClick={() => { if (confirm("Confirm you invited players yourself, outside this page?")) update({ stage: "registrations", completed: [...new Set([...h.completed, "invite" as const])], informedAt: new Date().toISOString() }); }}>
                     Mark as invited manually
                   </Button>

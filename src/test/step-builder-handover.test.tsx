@@ -90,17 +90,21 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     // Conditional first action: inform, not invite.
     expect(screen.queryByRole("button", { name: /^Invite players/ })).toBeNull();
     // Concise by default: one example message, recipients behind an expander.
-    expect(await screen.findByText("2 entered players")).toBeInTheDocument();
+    expect(await screen.findByText(/2 selected players/)).toBeInTheDocument();
     expect(screen.getAllByText(/Your doubles partner:/)).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: /View recipients & individual messages/ }));
-    expect(screen.getAllByText(/Your doubles partner: Ben Jones/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: /^View recipients/ }));
+    expect(screen.getAllByText(/Your doubles partner: Ben Jones/)).toHaveLength(1); // list doesn't repeat messages
+    fireEvent.click(screen.getAllByRole("button", { name: "Preview" })[1]);
     expect(screen.getByText(/Your doubles partner: Anna Smith/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Amount due: R200 for your pair/).length).toBe(3);
+    expect(screen.getAllByText(/Amount due: R200 for your pair/).length).toBe(1);
     expect(screen.queryByText(/Pay now link added when/)).toBeNull();
     expect(screen.queryByText(/You are invited/)).toBeNull();
 
     expect(screen.queryByRole("button", { name: /Continue to Registrations/ })).toBeNull(); // not before sending
-    fireEvent.click(screen.getByRole("button", { name: /Send to 2 players/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Inform selected players/ }));
+    expect(calls.some((c) => c.table === "comms_campaigns")).toBe(false); // nothing before confirming
+    expect(await screen.findByText(/Send to 2 real players\?/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Send now" }));
     expect(await screen.findByText(/2 of 2 reached/)).toBeInTheDocument();
     const camp = calls.find((c) => c.table === "comms_campaigns" && c.op === "insert")!;
     expect(camp.arg).toMatchObject({ audience_type: "selected", audience_member_ids: ["m1", "m2"], channels: ["in_app", "email"] });

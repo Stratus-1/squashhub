@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -36,7 +36,16 @@ export type StepAnswers = {
   disc: Record<string, Disc>;
   /** Invitation message setup only — nothing is sent from this builder. */
   msg: MsgCfg;
+  /** Doubles partner rule per doubles unit key. */
+  partner: Record<string, Partner>;
+  fee: FeeCfg;
 };
+type Partner = "players" | "admin" | "later";
+const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
+type DPay = "separate" | "one_pays" | "one_enters_each_pays" | "later";
+const DPAY_LABEL: Record<DPay, string> = { separate: "Each partner enters and pays separately", one_pays: "One player enters the pair and pays for both", one_enters_each_pays: "One player enters the pair, each pays their own share", later: "Decide later" };
+type FeeCfg = { has: boolean | null; amount: string; varies: boolean; perUnit: Record<string, string>; doublesBasis: "player" | "pair"; doublesPay: DPay | null };
+const DEFAULT_FEE: FeeCfg = { has: null, amount: "", varies: false, perUnit: {}, doublesBasis: "player", doublesPay: null };
 type Channel = "in_app" | "email" | "whatsapp" | "sms";
 type MsgCfg = { channels: Channel[]; body: string | null; later: boolean };
 const CHANNEL_LABEL: Record<Channel, string> = { in_app: "In-app", email: "Email", whatsapp: "WhatsApp", sms: "SMS" };
@@ -47,9 +56,9 @@ type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; plac
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG };
-type StepKey = "Type" | "Entries" | "What" | "Categories" | "Subcategories" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Dates" | "Courts" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Categories: "Categories", Subcategories: "Subcategories", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Dates: "Dates", Courts: "Courts", Summary: "Summary" };
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, fee: DEFAULT_FEE };
+type StepKey = "Type" | "Entries" | "What" | "Categories" | "Subcategories" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Categories: "Categories", Subcategories: "Subcategories", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -119,6 +128,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     units.forEach((u) => { disc[u.key] = p; });
     setA({ ...a, playType: p, disc });
   };
+  const dblUnits = units.filter((u) => u.disc === "doubles");
+  const partnerOf = (k: string): Partner | null => a.partner?.[k] ?? null;
+  const fee: FeeCfg = { ...DEFAULT_FEE, ...(a.fee ?? {}) };
+  const setFee = (p: Partial<FeeCfg>) => setA({ ...a, fee: { ...fee, ...p } });
+  const feeFor = (k: string) => (fee.varies ? fee.perUnit[k] ?? "" : fee.amount);
+  const allAdminPaired = dblUnits.length > 0 && dblUnits.every((u) => partnerOf(u.key) === "admin");
+  const feeUnitText = (u: { key: string; disc: Disc | null }) => `R${feeFor(u.key) || "?"} ${u.disc === "doubles" && fee.doublesBasis === "pair" ? "per pair" : "per player"}`;
+  const feeSummary = fee.has === null ? "Not chosen" : !fee.has ? "No entry fee" : fee.varies ? "Varies by category" : `R${fee.amount || "?"}`;
   const discOk = units.every((u) => u.disc !== null);
   const unitLabel = (k: string) => units.find((u) => u.key === k)?.label ?? "Not placed yet";
   const eligOf = (k: string): Elig => a.elig[k] ?? DEFAULT_ELIG;
@@ -149,8 +166,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     dates: a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
   };
   const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
-  const steps: StepKey[] = ["Type", "Entries", "What", "Categories", "Subcategories", "Players", "Eligibility",
-    ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Dates", "Courts", "Summary"];
+  const steps: StepKey[] = ["Type", "Entries", "What", "Categories", "Subcategories", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+    ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
 
@@ -160,8 +177,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
-  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Categories: cats.length > 0, Subcategories: discOk,
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Dates: daysOk, Courts: courtsOk, Summary: false };
+  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Categories: cats.length > 0, Subcategories: discOk, Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && (!dblUnits.length || fee.doublesPay !== null)), Dates: daysOk, Courts: courtsOk, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -463,6 +480,74 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
+          {cur === "Partners" && (
+            <>
+              <Q t="How will doubles partners be chosen?" h="Set this for each doubles group — they can differ. Decide later never blocks you." />
+              <div className="space-y-3">
+                {dblUnits.map((u) => (
+                  <div key={u.key} className="rounded-md border p-3">
+                    <p className="mb-2 text-sm font-medium">{u.base}</p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {(Object.keys(PARTNER_LABEL) as Partner[]).map((p) => (
+                        <Choice key={p} active={partnerOf(u.key) === p} onClick={() => setA({ ...a, partner: { ...(a.partner ?? {}), [u.key]: p } })} title={PARTNER_LABEL[p]}
+                          desc={p === "players" ? "When entering, a player names their partner." : p === "admin" ? "Players enter on their own; you pair them up later." : "Choose before entries open."} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {cur === "Fees" && (
+            <>
+              <Q t="Is there an entry fee?" h="Setup only — no payments are taken from here." />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Choice active={fee.has === true} onClick={() => setFee({ has: true })} title="Yes" desc="Players pay to enter." />
+                <Choice active={fee.has === false} onClick={() => setFee({ has: false })} title="No" desc="Free to enter." />
+              </div>
+              {fee.has && (
+                <div className="mt-4 space-y-4">
+                  {dblUnits.length > 0 && (
+                    <div>
+                      <Label className="text-sm">For doubles, is the fee per player or per pair?</Label>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        <Choice active={fee.doublesBasis === "player"} onClick={() => setFee({ doublesBasis: "player" })} title="Per player" desc="Each partner's fee." />
+                        <Choice active={fee.doublesBasis === "pair"} onClick={() => setFee({ doublesBasis: "pair" })} title="Per pair" desc="One fee for the two of them." />
+                      </div>
+                    </div>
+                  )}
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={fee.varies} onChange={(e) => setFee({ varies: e.target.checked })} /> Different fee for different categories
+                  </label>
+                  {!fee.varies ? (
+                    <div className="flex items-center gap-2"><span className="text-sm">R</span><Input type="number" min={0} className="max-w-[140px]" aria-label="Entry fee" value={fee.amount} onChange={(e) => setFee({ amount: e.target.value })} /></div>
+                  ) : (
+                    <div className="space-y-2">{units.map((u) => (
+                      <div key={u.key} className="flex items-center gap-2">
+                        <span className="w-56 truncate text-sm">{u.label}</span><span className="text-sm">R</span>
+                        <Input type="number" min={0} className="max-w-[120px]" aria-label={`Fee for ${u.base}`} value={fee.perUnit[u.key] ?? ""} onChange={(e) => setFee({ perUnit: { ...fee.perUnit, [u.key]: e.target.value } })} />
+                        <span className="text-xs text-muted-foreground">{u.disc === "doubles" && fee.doublesBasis === "pair" ? "per pair" : "per player"}</span>
+                      </div>
+                    ))}</div>
+                  )}
+                  {dblUnits.length > 0 && (
+                    <div>
+                      <Label className="text-sm">How do doubles pairs enter and pay?</Label>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {(Object.keys(DPAY_LABEL) as DPay[]).map((d) => {
+                          const off = allAdminPaired && (d === "one_pays" || d === "one_enters_each_pays");
+                          return <Choice key={d} active={fee.doublesPay === d} onClick={() => !off && setFee({ doublesPay: d })} title={DPAY_LABEL[d]}
+                            desc={off ? "Not possible — you assign partners, so players enter on their own." : d === "one_pays" ? "The pair is completed in one go; the partner doesn't register again." : d === "one_enters_each_pays" ? "One entry for the pair; the partner just pays their share." : d === "separate" ? "Both players enter themselves." : "Choose before entries open."} />;
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
           {cur === "Dates" && (
             <>
               <Q t="On which days will it be played?" h="Add one line for each tournament day." />
@@ -534,6 +619,9 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   return <li key={i}>{c}{subs.length > 0 ? <span className="text-muted-foreground"> — {subs.map((x) => `${x} ${discText(`${c}::${x}`)}`).join(", ")}</span> : <span className="text-muted-foreground"> — {discText(c)}</span>}</li>;
                 })}</ul>
               </SummaryRow>
+              {dblUnits.length > 0 && <SummaryRow icon={<Users className="h-4 w-4" />} label="Doubles partners" onEdit={() => go("Partners")}>
+                <ul className="space-y-0.5">{dblUnits.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{partnerOf(u.key) ? PARTNER_LABEL[partnerOf(u.key)!] : "Not chosen"}</span></li>)}</ul>
+              </SummaryRow>}
               <SummaryRow icon={<UserPlus className="h-4 w-4" />} label="How players join" onEdit={() => go("Players")}>{a.source ? SOURCE_LABEL[a.source] : "Not chosen"}</SummaryRow>
               <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label="Who may enter" onEdit={() => go("Eligibility")}>
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{eligText(u.key)}</span></li>)}</ul>
@@ -543,6 +631,11 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
               {selfEntry && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label="Messaging" onEdit={() => go("Messaging")}>{(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`} <span className="text-muted-foreground">· setup only, not sent</span></SummaryRow>}
+              <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
+                {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}
+                  {dblUnits.length > 0 && <li>Doubles: <span className="text-muted-foreground">{fee.doublesPay ? DPAY_LABEL[fee.doublesPay] : "Not chosen"}</span></li>}</ul> : feeSummary}
+                <span className="text-muted-foreground"> · setup only, no payments taken</span>
+              </SummaryRow>
               <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => go("Dates")}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
               <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => go("Courts")}>
                 <ul className="space-y-0.5">{a.days.map((d, i) => (
@@ -606,6 +699,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   {units.map((u) => <TreeLeaf key={u.key}><button type="button" onClick={() => go("Eligibility")} className="rounded px-1 hover:bg-muted">{u.label}</button><span className="block pl-1 text-muted-foreground">{eligText(u.key)}</span></TreeLeaf>)}
                   {selfEntry && <TreeLeaf><button type="button" onClick={() => go("Invites")} className="rounded px-1 hover:bg-muted">Invites: {a.invite ? INVITE_LABEL[a.invite] : "not chosen"} (not sent)</button></TreeLeaf>}
                   {selfEntry && <TreeLeaf><button type="button" onClick={() => go("Messaging")} className="rounded px-1 hover:bg-muted">Message: {(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`}</button></TreeLeaf>}
+                </TreeNode>
+              )}
+              {dblUnits.length > 0 && dblUnits.some((u) => partnerOf(u.key)) && (
+                <TreeNode icon={<Users className="h-4 w-4" />} title="Doubles partners" onClick={() => go("Partners")}>
+                  {dblUnits.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">{partnerOf(u.key) ? PARTNER_LABEL[partnerOf(u.key)!] : "not chosen"}</span></TreeLeaf>)}
+                </TreeNode>
+              )}
+              {fee.has !== null && (
+                <TreeNode icon={<Wallet className="h-4 w-4" />} title={`Fees: ${feeSummary}`} onClick={() => go("Fees")}>
+                  {fee.has && units.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">{feeUnitText(u)}</span></TreeLeaf>)}
+                  {fee.has && dblUnits.length > 0 && <TreeLeaf>Doubles: <span className="text-muted-foreground">{fee.doublesPay ? DPAY_LABEL[fee.doublesPay] : "not chosen"}</span></TreeLeaf>}
                 </TreeNode>
               )}
               {a.days.some((d) => d.date) && (

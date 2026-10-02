@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 const MEMBERS = [{ id: "m1", name: "Anna Smith" }, { id: "m2", name: "Ben Jones" }];
+let regStatus = "pending_payment";
 const calls: Array<{ table: string; op: string; arg: any }> = [];
 function chain(table: string): any {
   let op = "select";
@@ -10,7 +11,7 @@ function chain(table: string): any {
     : table === "club_champs" && op === "insert" ? { data: { id: "t-new" }, error: null }
     : table === "comms_campaigns" && op === "insert" ? { data: { id: "camp1" }, error: null }
     : table === "comms_deliveries" ? { data: [{ club_member_id: "m1", channel: "in_app", status: "sent", error_message: null }, { club_member_id: "m2", channel: "in_app", status: "sent", error_message: null }], error: null }
-    : table === "club_champs_registrations" && op === "select" ? { data: [{ status: "pending_payment" }, { status: "pending_payment" }], error: null }
+    : table === "club_champs_registrations" && op === "select" ? { data: [{ club_member_id: "m1", partner_member_id: "m2", status: regStatus }, { club_member_id: "m2", partner_member_id: "m1", status: regStatus }], error: null }
     : { data: [], error: null };
   const p: any = new Proxy(() => {}, {
     get: (_t, prop) => {
@@ -49,7 +50,7 @@ const seedChamps = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringif
 }));
 
 describe("Step-by-Step handover: Summary → Tournament Management (admin-selected + admin-paired doubles, fee)", () => {
-  beforeEach(() => { localStorage.clear(); calls.length = 0; });
+  beforeEach(() => { localStorage.clear(); calls.length = 0; regStatus = "pending_payment"; });
 
   it("completes setup, enters the pair as payment outstanding, and opens Inform selected players", async () => {
     seedChamps();
@@ -118,7 +119,18 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(calls.some((c) => c.table === "tournaments" && c.op === "update" && c.arg.beta_lifecycle?.inform?.method === "sent")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: /Continue to Registrations & payments/ }));
     await waitFor(() => expect(screen.getAllByText("Registrations & payments").map((e) => e.closest("li")?.getAttribute("aria-current")).join(",")).toBe("step"));
-    expect(screen.getByText("Registrations & payments").closest("li")).toHaveAttribute("aria-current", "step");
+    // Blocked with an explanation, not hidden; nobody is marked paid automatically.
+    expect(await screen.findByText(/Finalise entries is blocked: 2 payments outstanding/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Close registrations & finalise entries/ })).toBeDisabled();
+    // Invite / Inform stays revisitable with Send again; revisiting doesn't move the stage back.
+    fireEvent.click(screen.getByRole("button", { name: /Invite \/ Inform players/ }));
+    expect(await screen.findByText(/Revisiting/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Send again to everyone/ })).toBeInTheDocument();
+    expect(camp.arg.audience_filter.member_vars.m1).toMatchObject({ pay_url: "/club-champs/t-new?pay=1", wa_url: "https://chat.whatsapp.com/AbCdEf123456" });
+    fireEvent.click(screen.getByRole("button", { name: /Back to current stage/ }));
+    regStatus = "paid";
+    fireEvent.click(screen.getByRole("button", { name: /Refresh payments/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Close registrations & finalise entries/ })).not.toBeDisabled());
     fireEvent.click(screen.getByRole("button", { name: /Close registrations & finalise entries/ }));
     await waitFor(() => expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step"));
     expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step");

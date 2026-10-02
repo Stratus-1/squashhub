@@ -6,6 +6,7 @@
  * TournamentSpec the existing structured engine (engine-service / structured-persist) generates from.
  * Nothing here writes; persistence is `step_prepare_draw` + the engine's structured_commit.
  */
+import { readTournamentPlan } from "./step-storage";
 import { buildPlayoffChain } from "./playoff-chain";
 import { generateFromSpec, type PlannedPlayoff, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
@@ -101,10 +102,8 @@ export function rankingIssue(units: DrawUnit[], scope: string | null | undefined
 
 type Plan = Record<string, any>;
 export function readStepPlan(clubId: string, tournamentId: string): Plan | null {
-  try {
-    const p = JSON.parse(localStorage.getItem(`sh.stepbuilder.${clubId}`) || "null");
-    return p && p.createdTournamentId === tournamentId ? p : null;
-  } catch { return null; }
+  try { return readTournamentPlan(clubId, tournamentId); } catch { return null; }
+}
 }
 /** Draw-relevant subset of the Step answers saved on the tournament (beta_lifecycle.format_plan). */
 export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope"] as const;

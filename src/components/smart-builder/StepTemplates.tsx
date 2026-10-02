@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { draftKey, migrateLegacy } from "@/lib/smart-builder/step-storage";
 import { toast } from "sonner";
 import { BookmarkPlus, Gem, Layers, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,7 +79,7 @@ export function TemplatePicker({ clubId, mode, onStartStep, onOpenDraft, onClose
 }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busy, setBusy] = useState(false);
-  const planKey = `sh.stepbuilder.${clubId}`;
+  const planKey = draftKey(clubId);
   useEffect(() => {
     if (mode !== "mine") return;
     fromExt("tournament_templates").select("id,name,updated_at,definition").eq("club_id", clubId).eq("template_key", STEP_TEMPLATE_KEY)
@@ -87,8 +88,9 @@ export function TemplatePicker({ clubId, mode, onStartStep, onOpenDraft, onClose
   }, [clubId, mode]);
 
   const startFrom = (r: Row) => {
+    migrateLegacy(clubId);
     if (hasPlanInProgress(localStorage.getItem(planKey))
-      && !confirm("A setup is already in progress on this device. Replace it with this template? (A tournament you already created is not affected — it stays under Continue managing.)")) return;
+      && !confirm("An unfinished new tournament draft exists on this device. Replace it with a new tournament from this template? (Tournaments you already created are not affected — they stay under Continue managing.)")) return;
     localStorage.setItem(planKey, JSON.stringify(fromStepTemplate(r.definition)));
     localStorage.setItem(reviewKey(clubId), r.name);
     onStartStep();

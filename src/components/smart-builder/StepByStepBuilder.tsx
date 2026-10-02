@@ -11,6 +11,7 @@ import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
+import { LIFECYCLE, loadHandover, persistStepTournament, saveHandover, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
 
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
@@ -70,6 +71,8 @@ const playoffDetail = (p: PlayoffPlan, k?: CompKind | null) => {
 };
 export type StepAnswers = {
   planId?: string;
+  /** Set once "Complete setup & continue" created the tournament; later saves update it. */
+  createdTournamentId?: string;
   kind: Kind;
   entries: string;
   playType: PlayType;
@@ -195,7 +198,7 @@ const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles"
 const fmtDay = (d: string) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "No date";
 
-export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubName?: string }) {
+export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }: { clubId: string; clubName?: string; onCompleted?: (tournamentId: string) => void; initialStep?: "Summary" }) {
   const key = `sh.stepbuilder.${clubId}`;
   const [a, setA] = useState<StepAnswers>(() => {
     try {
@@ -1318,6 +1321,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           {cur === "Summary" && (
             <>
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
+              {handoverPanel("top")}
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Tournament" onEdit={() => go("Basics")}>{a.name || "Unnamed"} · {ownerText}{isChamps && ` · ${periodText}`}</SummaryRow>
               {isChamps ? <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries (provisional)" onEdit={() => go("ExpEntries")}>
                 <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">about {a.unitEntries?.[u.key] || "?"}</span></li>)}</ul>
@@ -1413,6 +1417,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <div><div className="text-sm font-semibold">Next: Help me choose the format</div><div className="text-xs text-muted-foreground">Coming soon — not available in this version.</div></div>
                 <Button size="sm" disabled><Lock className="mr-1 h-4 w-4" />Coming soon</Button>
               </div>
+              {handoverPanel("bottom")}
             </>
           )}
 

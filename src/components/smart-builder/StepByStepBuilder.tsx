@@ -19,7 +19,7 @@ import { useAssociationTenant } from "@/hooks/use-association-tenant";
 import { StageCourtBookings } from "./StageCourtBookings";
 import { tournamentMethodOptions, allowedMethods, type ClubPaymentConfig } from "@/lib/smart-builder/payment-options";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
-import { LIFECYCLE, loadHandover, persistStepTournament, saveHandover, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
+import { LIFECYCLE, loadHandover, loadLifecycle, persistStepTournament, saveHandover, saveLifecycle, type DeferredDecision, type EntrantMessage } from "@/lib/smart-builder/step-handover";
 
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
@@ -352,6 +352,18 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
   const fee: FeeCfg = { ...DEFAULT_FEE, ...(a.fee ?? {}) };
   const setFee = (p: Partial<FeeCfg>) => setA({ ...a, fee: { ...fee, ...p } });
   const feeFor = (k: string) => (fee.varies ? fee.perUnit[k] ?? "" : fee.amount);
+  // Keep the saved tournament's "A player may pay for both partners" answer in step with the builder, so the
+  // partner-payment buttons the players see always match what the messages promise (not only after Complete Setup).
+  const partnerPayAnswer: boolean | undefined = fee.has && dblUnits.length > 0 && fee.doublesCover !== null ? fee.doublesCover : undefined;
+  useEffect(() => {
+    const tid = a.createdTournamentId;
+    if (!tid || partnerPayAnswer === undefined) return;
+    (async () => {
+      const cur = await loadLifecycle(tid).catch(() => null);
+      if (!cur || cur.partner_pay === partnerPayAnswer) return;
+      await saveLifecycle(tid, { ...cur, partner_pay: partnerPayAnswer }).catch(() => undefined);
+    })();
+  }, [a.createdTournamentId, partnerPayAnswer]);
   const feeUnitText = (u: { key: string; disc: Disc | null }) => `R${feeFor(u.key) || "?"} ${u.disc === "doubles" && fee.doublesBasis === "pair" ? "per pair" : "per player"}`;
   const methodOpts = payCfg ? tournamentMethodOptions(payCfg) : [];
   const availMethods = methodOpts.filter((o) => o.available);

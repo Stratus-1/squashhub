@@ -53,6 +53,10 @@ export type InviteDivision = {
 
 export type InvitePayload = {
   found: boolean;
+  /** Authoritative DB fee status (not_required/due/pending/paid/waived/on_account). */
+  fee_status?: string | null;
+  /** 'account' = entry fee allocated to the member's club account. */
+  fee_settled_via?: string | null;
   champ_id?: string;
   tournament_name?: string | null;
   start_date?: string | null;
@@ -198,6 +202,9 @@ export function inviteState(payload: InvitePayload | null | undefined): InviteSt
   const status = String(payload.status || "").toLowerCase();
   if (status === "cancelled" || payload.declined_at) return "declined";
   if (PAID_STATUSES.has(status)) return "registered";
+  // Settled through another route (member account, waiver, card) — never offer payment again.
+  const fee = String(payload.fee_status || "").toLowerCase();
+  if (payload.fee_settled_via === "account" || fee === "on_account" || fee === "paid" || fee === "waived") return "registered";
   // Accepted but not yet paid — always route to payment, even after close.
   if (payload.confirmed_at && PENDING_PAYMENT_STATUSES.has(status)) return "payment_pending";
   if (payload.registration_closed) return "closed";

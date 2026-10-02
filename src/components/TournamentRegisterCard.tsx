@@ -88,7 +88,9 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
     },
     onSuccess: (res) => {
       if (res?.charged === false) {
-        toast.info("No entry fee is payable for this tournament.");
+        toast.info(res?.reason === "already_paid"
+          ? "This entry fee is already paid — nothing was added to your account."
+          : "No entry fee is payable for this tournament.");
       } else {
         toast.success(res?.already
           ? "This entry fee is already on your member account."
@@ -440,8 +442,9 @@ export function TournamentRegisterCard({ champ, clubId, memberId, paymentGateway
           Entry fee {money(entryFee)} charged to your member account — settle it with the club as usual.
         </p>
       )}
-      {myReg && cardReady && paymentGateway === "stitch" && (
-        <PartnerFeeOptions registrationId={myReg.id} onPay={(scope) => launchPayment(myReg.id, scope)} />
+      {myReg && myReg.partner_member_id && (
+        <PartnerFeeOptions registrationId={myReg.id} cardEnabled={cardReady && paymentGateway === "stitch"}
+          onPay={(scope) => launchPayment(myReg.id, scope)} onCharged={() => refetch()} />
       )}
       {myReg && (myReg as any).fee_settled_via !== "account" && (myReg.status === "pending_payment" || myReg.status === "pending_eft") && (
         <div className="space-y-2 mt-1">

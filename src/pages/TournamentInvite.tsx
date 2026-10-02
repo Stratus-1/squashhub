@@ -465,6 +465,28 @@ export default function TournamentInvite() {
     );
   }
 
+  const payVerifyField = (
+<div className="space-y-1.5">
+                <Label htmlFor="pay-verify" className="text-xs">
+                  {inviteVerificationLabel(verificationKind)}
+                </Label>
+                <Input
+                  id="pay-verify"
+                  inputMode={verificationKind === "phone_last4" ? "numeric" : "text"}
+                  autoComplete="off"
+                  value={verify}
+                  onChange={(e) => {
+                    setVerify(e.target.value);
+                    setVerifyError("");
+                  }}
+                  placeholder={verificationKind === "phone_last4" ? "e.g. 4821" : "e.g. Pretorius"}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {verifyError || "A quick check that this invitation is yours — no SquashHub login needed."}
+                </p>
+              </div>
+  );
+
   const header = (
     <div className="space-y-1">
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -502,7 +524,17 @@ export default function TournamentInvite() {
         <Badge className="bg-emerald-600 hover:bg-emerald-600">
           <CheckCircle2 className="w-3 h-3 mr-1" /> You're entered
         </Badge>
+        {(data?.fee_settled_via === "account" || data?.fee_status === "on_account") && (
+          <p className="text-xs text-muted-foreground">Your {money(feeCents)} entry fee is charged to your member account — settle it with the club as usual.</p>
+        )}
         {partnerSection}
+        {!isTest && data?.champ_id && (
+          <PartnerFeeOptions token={token} verify={verify.trim() || null}
+            ready={!!user || !payNeedsVerify || payVerifyReady}
+            busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)}
+            onCharged={() => refetch?.()}
+            verifyField={!user && payNeedsVerify ? payVerifyField : null} />
+        )}
         {data?.champ_id && (
           <Button className="w-full" onClick={() => navigate(`/club-champs/${data.champ_id}`)}>
             View tournament
@@ -536,27 +568,7 @@ export default function TournamentInvite() {
           </Button>
         ) : (
           <div className="space-y-2">
-            {payNeedsVerify && !hasDoublesChoice && (
-              <div className="space-y-1.5">
-                <Label htmlFor="pay-verify" className="text-xs">
-                  {inviteVerificationLabel(verificationKind)}
-                </Label>
-                <Input
-                  id="pay-verify"
-                  inputMode={verificationKind === "phone_last4" ? "numeric" : "text"}
-                  autoComplete="off"
-                  value={verify}
-                  onChange={(e) => {
-                    setVerify(e.target.value);
-                    setVerifyError("");
-                  }}
-                  placeholder={verificationKind === "phone_last4" ? "e.g. 4821" : "e.g. Pretorius"}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  {verifyError || "A quick check that this invitation is yours — no SquashHub login needed."}
-                </p>
-              </div>
-            )}
+            {payNeedsVerify && !hasDoublesChoice && payVerifyField}
             <Button
               className="w-full"
               disabled={payNow.isPending || (payNeedsVerify && !payVerifyReady)}

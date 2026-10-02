@@ -101,6 +101,17 @@ Deno.serve(async (req) => {
       return json({ error: "Missing required fields" }, 200);
     }
     if (!["fee", "topup", "tournament"].includes(purpose)) return json({ error: "Invalid purpose" }, 200);
+    // Own-entry card payment: refuse if the entry is already settled another way (card, waiver, member account).
+    // Partner/both scopes were already checked by step_pair_payment_context above.
+    if (purpose === "tournament" && champ_registration_id && !(pay_scope === "partner" || pay_scope === "both")) {
+      const { data: regRow } = await admin.from("club_champs_registrations")
+        .select("fee_status, fee_settled_via, status").eq("id", champ_registration_id).maybeSingle();
+      const fs = String(regRow?.fee_status || "").toLowerCase();
+      if (regRow?.fee_settled_via === "account" || fs === "on_account") {
+        return json({ error: "This entry fee is already charged to the member account — settle it from My Account.", already_settled: true }, 200);
+      }
+      if (fs === "paid" || fs === "waived") return json({ error: "This entry fee is already paid.", already_settled: true }, 200);
+    }
     const amt = Number(amount);
     if (!(amt > 0)) return json({ error: "Invalid amount" }, 200);
     const amountCents = Math.round(amt * 100);

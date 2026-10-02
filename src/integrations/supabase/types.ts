@@ -17411,6 +17411,10 @@ export type Database = {
         Args: { p_champ_id: string; p_member_id: string }
         Returns: boolean
       }
+      champ_member_fee_settled: {
+        Args: { p_champ_id: string; p_member_id: string }
+        Returns: boolean
+      }
       champ_member_invited: {
         Args: {
           p_champ_id: string
@@ -18449,6 +18453,10 @@ export type Database = {
         Args: { _club_id: string; _role_ids: string[]; _user_id: string }
         Returns: boolean
       }
+      member_is_delegate_of: {
+        Args: { p_grantor: string; p_user: string }
+        Returns: boolean
+      }
       merge_people: {
         Args: { _dup_id: string; _keep_id: string }
         Returns: undefined
@@ -19205,6 +19213,15 @@ export type Database = {
           p_payer_member_id: string
           p_payment_ref: string
           p_primary_registration_id: string
+        }
+        Returns: Json
+      }
+      step_charge_pair_to_account: {
+        Args: {
+          p_registration_id: string
+          p_scope?: string
+          p_token?: string
+          p_verify?: string
         }
         Returns: Json
       }

@@ -2444,3 +2444,9 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-10-02 — Round-1 notice lists all round booking dates + messaging step section headings
 - `notify_champ_round_draw` (migration `round_notice_all_round_dates`, applied): when every round of the current stage was drawn upfront with its own play-by date, the Round 1 notice (in-app/email/WhatsApp; not SMS) now appends "Your rounds and booking dates: Round 1 by DD Mon, … — Please book a court for each round by its date." so players can book all their courts in one go. `round_schedule` added to the notification data. Also back-filled the earlier doubles-partner + `p_stage_key` version of the function, which had been applied live but not committed as a migration file.
 - Step-by-Step messaging step: solid colour-block section headings (semantic primary) for Invitation/Entry notification, Tournament WhatsApp group, Draw notifications and After-match notifications; Draw notifications description and Generate-draw checkbox now mention the all-rounds booking-date list.
+
+### 2026-10-02 — River 2 Clubs final verification
+- Added `src/test/pool-to-final-integrity.test.ts`: two pools (5+4) → QF → SF → Final, singles + doubles; pool membership, every pool result and P/W/L/GW/GL/points snapshot identical after every stage; revisits create nothing.
+- Organiser-scheduled play-offs (`stage='ko'`, no play_by, date+time set) are no longer bookable/reschedulable by players (`isCentrallyScheduled`); admins may still override.
+- "Enter result" limited to the game's players + organisers (was any club member with a confirm). Mark game unchanged.
+- River 2 Clubs: pool data intact; existing QF pairings DO NOT match the current engine's recalculation in any of the 5 subcategories (old QFs used earlier manual whole-pool orders). No QF played; left untouched pending organiser decision.

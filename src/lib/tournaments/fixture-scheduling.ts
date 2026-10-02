@@ -23,12 +23,22 @@ export type FixtureScheduleState = "unschedulable" | "unscheduled" | "scheduled"
 export interface FixtureLike extends SelfScheduleMatchLike {
   id?: string;
   booking_id?: string | null;
+  stage?: string | null;
 }
 
 /** Where a fixture sits on the schedule spectrum. */
 export function fixtureScheduleState(m: FixtureLike): FixtureScheduleState {
   if (m.is_bye) return "unschedulable";
   return isUnscheduled(m) ? "unscheduled" : "scheduled";
+}
+
+/**
+ * A play-off game the organiser has already placed on a date, time (and court):
+ * players just turn up — no booking needed, no "Book by" deadline. Player-arranged
+ * stages always carry their own play-by deadline, so they never match this.
+ */
+export function isCentrallyScheduled(m: FixtureLike): boolean {
+  return m.stage === "ko" && !m.play_by && !!m.scheduled_date && !!m.scheduled_time;
 }
 
 export interface FixtureSchedulePermission {
@@ -41,7 +51,8 @@ export interface FixtureSchedulePermission {
  *
  * An organiser (`canManage`) may always override — including when the
  * tournament is in player-arranged ("self") scheduling mode. Participants may
- * arrange their own match. Decided matches and byes are locked.
+ * arrange their own match unless the organiser has centrally scheduled it.
+ * Decided matches and byes are locked.
  */
 export function canScheduleFixture(
   m: FixtureLike,
@@ -54,6 +65,7 @@ export function canScheduleFixture(
     return { allowed: false, reason: "Waiting for both players to be known" };
   }
   if (opts.canManage) return { allowed: true };
+  if (isCentrallyScheduled(m)) return { allowed: false, reason: "The organiser has scheduled this match — no booking needed" };
   if (!isParticipant(m, memberId)) {
     return { allowed: false, reason: "Only the players in this match or an organiser can schedule it" };
   }

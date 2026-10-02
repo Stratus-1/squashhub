@@ -7,7 +7,7 @@
  * Nothing here writes; persistence is `step_prepare_draw` + the engine's structured_commit.
  */
 import { generateFromSpec, type TournamentSpec } from "@/lib/tournaments/engine-service";
-import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
+import { nextPow2, roundRobin, snakePools } from "@/lib/tournaments/contract";
 import { specDateIssues } from "@/lib/tournaments/date-window";
 
 export type DrawKind = "pools" | "round_robin" | "knockout" | "swiss" | "cross";
@@ -28,7 +28,9 @@ export type DivFormat = {
 };
 export type RegLite = { club_member_id: string; partner_member_id: string | null; status: string; division_choices: number[] | null };
 export type DrawUnit = { member: string; partner: string | null };
-export type DrawDivision = { group: number; label: string; doubles: boolean; units: DrawUnit[]; format: DivFormat; notes: string[]; playoffs: string[]; blockers?: string[] };
+export type DrawDivision = { group: number; label: string; doubles: boolean; units: DrawUnit[]; format: DivFormat; notes: string[]; playoffs: string[]; blockers?: string[];
+  /** Organiser-adjusted pools (unit ids per pool). When set, this IS what Generate saves. */
+  manualPools?: string[][] | null };
 
 const INACTIVE = new Set(["cancelled", "withdrawn", "declined"]);
 export const unitId = (u: DrawUnit) => (u.partner ? `${u.member}+${u.partner}` : u.member);
@@ -137,14 +139,51 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
   return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [] }, notes, playoffs, crossKeys };
 }
 
+/* ── pools preview (source of truth for Generate) ── */
+
+/** Engine-identical default pools: snake by seed order. */
+export function defaultPools(units: DrawUnit[], n: number): string[][] {
+  const r = snakePools(units.map((u, k) => ({ id: unitId(u), rank: k + 1 })), Math.max(1, n));
+  return r.pools.map((p) => p.map((e) => e.id));
+}
+/** Pools shown and saved: manual when the organiser moved anyone, else the default. Null = format has no pools. */
+export function poolsFor(d: DrawDivision): string[][] | null {
+  if (d.format.kind === "pools") return d.manualPools ?? defaultPools(d.units, d.format.pools);
+  if (d.format.kind === "round_robin") return [d.units.map(unitId)];
+  return null;
+}
+/** Move a whole unit (pair stays intact) to another pool; returns new pools. */
+export function moveUnit(pools: string[][], id: string, to: number, index?: number): string[][] {
+  const out = pools.map((p) => p.filter((x) => x !== id));
+  const t = [...(out[to] ?? [])];
+  t.splice(index ?? t.length, 0, id);
+  out[to] = t;
+  return out;
+}
+function poolBlocks(d: DrawDivision): string[] {
+  if (d.format.kind !== "pools" || !d.manualPools) return [];
+  const out: string[] = [];
+  const all = d.manualPools.flat(), ids = new Set(d.units.map(unitId));
+  if (d.manualPools.length !== d.format.pools || all.length !== ids.size || all.some((x) => !ids.has(x))) out.push("your pool changes no longer match the entries or pool count — reset the pools");
+  d.manualPools.forEach((p, i) => { if (p.length < 2) out.push(`Pool ${String.fromCharCode(65 + i)} has ${p.length} ${d.doubles ? "pair" : "player"}${p.length === 1 ? "" : "s"} — a pool needs at least 2`); });
+  return out;
+}
+/** Allowed but worth a look: uneven pools. */
+export function poolWarnings(d: DrawDivision): string[] {
+  const ps = poolsFor(d);
+  if (!ps || ps.length < 2) return [];
+  const sz = ps.map((p) => p.length);
+  return Math.max(...sz) - Math.min(...sz) > 1 ? [`Pools are uneven (${sz.join(" / ")}) — bigger pools play more games. Allowed, but check it is intended.`] : [];
+}
+
 /* ── validation + spec ── */
 
 export function divisionIssues(d: DrawDivision): string[] {
-  const n = d.units.length, f = d.format, out: string[] = [...(d.blockers ?? [])];
+  const n = d.units.length, f = d.format, out: string[] = [...(d.blockers ?? []), ...poolBlocks(d)];
   const u = d.doubles ? "pairs" : "players";
   if (n < (f.kind === "cross" ? 1 : 2)) out.push(`needs at least ${f.kind === "cross" ? 1 : 2} ${u} (has ${n})`);
   if (!f.kind) out.push("choose a format");
-  if (f.kind === "pools" && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
+  if (f.kind === "pools" && !d.manualPools && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
   if (f.kind === "swiss" && (f.swissRounds < 1 || f.swissRounds > n - 1)) out.push(`Swiss rounds must be 1–${Math.max(1, n - 1)}`);
   if (f.kind === "cross" && (f.crossGroups.length < 2 || !f.crossGroups.includes(d.group))) out.push("cross-league needs this group and at least one other group to play against");
   if (!f.schedule.rule) out.push("choose play-by date or fixed date");
@@ -280,7 +319,8 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
       stages: [{
         id: `${version}-main`, order: 0, kind, name: kind === "knockout" ? "Knockout" : kind === "swiss" ? "Swiss rounds" : kind === "pools" ? "Pools" : "Round robin",
         pools: kind === "pools" ? f.pools : undefined,
-        poolSize: kind === "pools" ? Math.ceil(n / f.pools) : undefined,
+        poolSize: kind === "pools" ? Math.max(1, ...(poolsFor(d) ?? [[]]).map((p) => p.length)) : undefined,
+        poolMembers: kind === "pools" || kind === "round_robin" ? poolsFor(d) ?? undefined : undefined,
         swissRounds: kind === "swiss" ? f.swissRounds : undefined,
         drawSize: kind === "knockout" ? nextPow2(n) : undefined,
         discipline: d.doubles ? "doubles" : "singles",

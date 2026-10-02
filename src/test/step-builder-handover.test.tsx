@@ -117,7 +117,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(calls.some((c) => c.table === "fn:send-comms-campaign" && c.arg.campaign_id === "camp1")).toBe(true);
     expect(calls.some((c) => c.table === "tournaments" && c.op === "update" && c.arg.beta_lifecycle?.inform?.method === "sent")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: /Continue to Registrations & payments/ }));
-    await waitFor(() => expect(screen.getByText("Registrations & payments").closest("li")).toHaveAttribute("aria-current", "step"));
+    await waitFor(() => expect(screen.getAllByText("Registrations & payments").map((e) => e.closest("li")?.getAttribute("aria-current")).join(",")).toBe("step"));
     expect(screen.getByText("Registrations & payments").closest("li")).toHaveAttribute("aria-current", "step");
     fireEvent.click(screen.getByRole("button", { name: /Close registrations & finalise entries/ }));
     await waitFor(() => expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step"));

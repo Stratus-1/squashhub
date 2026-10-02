@@ -98,6 +98,8 @@ export type CreateInput = {
   existingId?: string | null;
   /** undefined = not decided (leave as is); null = no group; object = organiser's invite link. */
   waGroup?: { url: string; include: boolean; name: string } | null;
+  /** undefined = leave as is; maps to the Current Builder's tournaments.result_notify_scope / _channels. */
+  resultNotify?: { scope: "all" | "playoffs" | "never"; channels: string[] };
 };
 
 /**
@@ -115,6 +117,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     payment_required: (i.feeCents ?? 0) > 0,
     payment_methods: i.paymentMethods.length ? i.paymentMethods : null,
     ...(i.partnerMode ? { partner_mode: i.partnerMode } : {}),
+    ...(i.resultNotify ? { result_notify_scope: i.resultNotify.scope, result_notify_channels: i.resultNotify.channels.length ? i.resultNotify.channels : ["email"] } : {}),
     // Map categories → divisions so the table default (2 unnamed divisions) never applies.
     ...(i.divisions?.length ? {
       num_groups: i.divisions.length,
@@ -190,9 +193,12 @@ export async function saveLifecycle(tournamentId: string, l: BetaLifecycle) {
 }
 
 const OLD_PAY_PLACEHOLDER = /\[(Pay now link added when the tournament is created[^\]]*)\]/g;
-export const PAY_ROUTE_TEXT = "open your entry in SquashHub with the link in this message";
-/** Swap the pre-creation placeholder for the real route (the tournament entry page with its Pay buttons). */
-export const finaliseMessage = (t: string) => t.replace(OLD_PAY_PLACEHOLDER, PAY_ROUTE_TEXT);
+export const PAY_ROUTE_TEXT = "tap the Pay button on this message, or open the tournament in SquashHub";
+const OLD_PAY_TEXT = /open your entry in SquashHub with the link in this message/g;
+/** Swap older wording for the honest route (the in-app Pay button / the tournament's payment card). */
+export const finaliseMessage = (t: string) => t.replace(OLD_PAY_PLACEHOLDER, PAY_ROUTE_TEXT).replace(OLD_PAY_TEXT, PAY_ROUTE_TEXT);
+/** "Pay R100 now" from the message's own "Amount due: R100 …" line. */
+export const payLabel = (t: string) => { const m = /Amount due:\s*(R[\d.,]+)/.exec(t); return m ? `Pay ${m[1]} now` : "Pay now"; };
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -221,7 +227,7 @@ export async function sendInform(i: {
     const t = finaliseMessage(m.text);
     memberVars[m.memberId] = {
       personal_message: t, personal_message_html: esc(t).replace(/\n/g, "<br>"),
-      ...(i.feeDue && m.owes !== false ? { pay_url: payRoute(i.tournamentId), pay_label: "Pay now" } : {}),
+      ...(i.feeDue && m.owes !== false ? { pay_url: payRoute(i.tournamentId), pay_label: payLabel(t) } : {}),
       ...(i.waUrl ? { wa_url: i.waUrl } : {}),
     };
   }
@@ -266,10 +272,10 @@ export function recipientStatus(memberIds: string[], rows: DeliveryRowAt[]) {
 /* ── Registrations & payments: source of truth is club_champs_registrations.status ── */
 
 export type RegRow = { memberId: string; name: string; partnerName: string | null; status: string; owesCents: number };
-const OUTSTANDING = new Set(["pending_payment", "pending_eft", "invited"]);
+const OUTSTANDING = new Set(["pending_payment", "pending_eft", "invited", "payment_failed"]);
 export const isOutstanding = (status: string, feeDue: boolean) => feeDue && OUTSTANDING.has(status);
 export const regLabel = (status: string, feeDue: boolean) =>
-  status === "paid" ? "Entered · Paid" : status === "waived" ? "Entered · Fee waived" : status === "pending_eft" ? "Entered · EFT proof waiting" : isOutstanding(status, feeDue) ? "Entered · Payment outstanding" : "Entered";
+  !feeDue ? "Entered · Payment not required" : status === "paid" ? "Entered · Paid" : status === "waived" ? "Entered · Fee waived" : status === "pending_eft" ? "Entered · EFT proof waiting" : status === "payment_failed" ? "Entered · Payment failed" : isOutstanding(status, feeDue) ? "Entered · Payment outstanding" : "Entered";
 
 export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number }> {
   const [{ data: t }, { data: regs }] = await Promise.all([
@@ -291,11 +297,17 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
   };
 }
 
-/** Why the step after Registrations can't happen yet (empty = ready). */
-export function finalisePrereqs(rows: RegRow[], feeDue: boolean): string[] {
-  const out: string[] = [];
-  if (!rows.length) out.push("No entries yet");
-  const owing = rows.filter((r) => isOutstanding(r.status, feeDue)).length;
-  if (owing) out.push(`${owing} payment${owing === 1 ? "" : "s"} outstanding`);
-  return out;
+/**
+ * Hard prerequisites for finalising (empty = ready). The existing tournament engine has no
+ * "everyone must have paid" rule before the draw, so unpaid entries are a WARNING (see
+ * paymentWarning), never a block — matching the Current Builder.
+ */
+export function finalisePrereqs(rows: RegRow[], _feeDue: boolean): string[] {
+  return rows.length ? [] : ["No entries yet"];
+}
+export function paymentWarning(rows: RegRow[], feeDue: boolean): string | null {
+  const owing = rows.filter((r) => isOutstanding(r.status, feeDue));
+  if (!owing.length) return null;
+  const cents = owing.reduce((s, r) => s + r.owesCents, 0);
+  return `${owing.length} payment${owing.length === 1 ? "" : "s"} outstanding (R${(cents / 100).toFixed(cents % 100 ? 2 : 0)})`;
 }

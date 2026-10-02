@@ -31,3 +31,4 @@ Multi-tenant squash operations platform (clubs, associations, federation, member
 
 ## Done checklist
 Boundaries preserved; invariants tested; web/PWA/native impact stated; retries safe; migrations + types synced; `ARCHITECTURE.md` updated for boundary changes.
+- Step-by-Step Beta accepted payment methods derive from the host club's Banking settings via `src/lib/smart-builder/payment-options.ts` (map 1:1 to `tournaments.payment_methods`), and its "Book courts now" writes idempotent `bookings` rows (`external_id` `sbs:<planId>:…`, clashes skipped) via `src/lib/smart-builder/stage-bookings.ts`; why: never offer a method the club can't accept, never double-book.

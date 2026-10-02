@@ -2394,3 +2394,5 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ### 2026-10-02 — Step-by-Step "Inform selected players" sent nothing
 - Cause: "Mark as informed & continue" only changed device-local stage; no message path existed.
 - Fix: `StepInformPanel` sends one Communications-engine campaign (audience=selected entrants, per-recipient `audience_filter.member_vars.personal_message`, action `tournament_view` → `/club-champs/:id` with existing Pay card); `send-comms-campaign` now merges per-member vars and never re-sends an already-sent recipient/channel (safe retry). Per-recipient status from `comms_deliveries`; lifecycle persisted in `tournaments.beta_lifecycle`. Manual mark is a separate confirmed action.
+
+- 2026-10-02 Step-by-Step Beta management: lifecycle stages revisitable (no undo), Inform "Send again" (new campaign per resend, ids on beta_lifecycle.inform.resend_campaign_ids), in-app notifications carry per-recipient `data.actions` (Pay now → /club-champs/:id?pay=1, Join WhatsApp group) from member_vars; Finalise gated on registrations status with reasons.

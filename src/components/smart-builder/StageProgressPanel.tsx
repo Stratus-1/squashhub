@@ -72,6 +72,7 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
   const [setup, setSetup] = useState<StageStatus | null>(null);
   const [confirm, setConfirm] = useState<StageStatus | null>(null);
   const [tie, setTie] = useState<{ div: string; stage: string } | null>(null);
+  const current = (div: string) => states.filter((s) => s.divisionKey === div);
   const tieSource = (divKey: string, stageKey: string) => {
     const d = spec.divisions.find((x) => x.divisionId === divKey);
     const st = d?.stages.find((x) => x.id === stageKey);

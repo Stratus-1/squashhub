@@ -599,12 +599,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
       const entrants = notifyOnly || showPick ? pickIds.filter((id) => !!a.picks[id]).map((id) => {
         const k = a.picks[id];
         const partner = adminPairKeys.has(k) ? pairsFor(k).find((p) => p.includes(id))?.find((x) => x !== id) ?? null : null;
-        return { memberId: id, partnerId: partner };
+        const div = units.findIndex((u) => u.key === k);
+        return { memberId: id, partnerId: partner, division: div >= 0 ? div + 1 : null };
       }) : [];
       const tid = await persistStepTournament({
         clubId, name: a.name || "Tournament", existingId: a.createdTournamentId ?? null,
         startDate: isChamps ? a.periodStart || null : dates[0] ?? null, endDate: isChamps ? null : dates[dates.length - 1] ?? null,
         feeCents, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
+        divisions: units.map((u) => ({ label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const })),
       });
       const prev = loadHandover(clubId, tid);
       saveHandover({

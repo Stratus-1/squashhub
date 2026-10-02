@@ -126,7 +126,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     fireEvent.click(screen.getByRole("button", { name: /Invite \/ Inform players/ }));
     expect(await screen.findByText(/Revisiting/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Send again to everyone/ })).toBeInTheDocument();
-    expect(camp.arg.audience_filter.member_vars.m1).toMatchObject({ pay_url: "/club-champs/t-new?pay=1", wa_url: "https://chat.whatsapp.com/AbCdEf123456" });
+    expect(camp.arg.audience_filter.member_vars.m1).toMatchObject({ pay_url: "/club-champs/t-new?pay=1", pay_label: "Pay now" });
     fireEvent.click(screen.getByRole("button", { name: /Back to current stage/ }));
     regStatus = "paid";
     fireEvent.click(screen.getByRole("button", { name: /Refresh payments/ }));

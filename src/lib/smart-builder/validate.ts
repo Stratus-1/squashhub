@@ -238,7 +238,8 @@ export function validateDefinition(input: TournamentDefinition): ValidationResul
           }
           case "knockout":
           case "placement": {
-            const size = stage.groupSize ?? null;
+            // Draw size follows from the qualifiers of the stage before (e.g. 2 pools × top 2 = 4).
+            const size = stage.groupSize ?? supply ?? null;
             if (size != null) {
               const draw = nextPow2(size);
               matches = stage.groups * (size - 1);

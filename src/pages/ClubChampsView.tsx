@@ -3149,10 +3149,11 @@ export default function ClubChampsView() {
             {muMatches.length > 0 && (
               <>
                 <Separator />
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Fixtures &amp; Results</h4>
+                <CollapsibleSection
+                  header={<h4 className="font-medium text-sm">Fixtures &amp; Results ({muMatches.length})</h4>}
+                >
                   <div className="space-y-1.5">{muMatches.map((m: any) => renderMatchRow(m))}</div>
-                </div>
+                </CollapsibleSection>
               </>
             )}
           </CollapsibleCard>
@@ -3253,10 +3254,11 @@ export default function ClubChampsView() {
               {groupMatches.length > 0 && (
                 <>
                   <Separator />
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">Fixtures &amp; Results</h4>
+                  <CollapsibleSection
+                    header={<h4 className="font-medium text-sm">Fixtures &amp; Results ({groupMatches.length})</h4>}
+                  >
                     {fixtureBody}
-                  </div>
+                  </CollapsibleSection>
                 </>
               )}
               {historySection}
@@ -3276,12 +3278,13 @@ export default function ClubChampsView() {
             {!isCrossLeague && groupMatches.length > 0 && (
               <>
                 <Separator />
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Fixtures & Results</h4>
+                <CollapsibleSection
+                  header={<h4 className="font-medium text-sm">Fixtures & Results ({groupMatches.length})</h4>}
+                >
                   <div className="space-y-1.5">
                     {groupMatches.map((m: any) => renderMatchRow(m))}
                   </div>
-                </div>
+                </CollapsibleSection>
               </>
             )}
             {historySection}

@@ -141,7 +141,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <>
               <Q t="On which days will it be played?" h="Add one line for each tournament day." />
               <div className="space-y-2">

@@ -39,7 +39,7 @@ import { TournamentNextActionBar } from "@/components/tournaments/TournamentNext
 import { useChampRounds } from "@/hooks/use-champ-rounds";
 import { parseRoundDeadlines, mergeRoundDeadlines, deadlineForStage, playByNudge } from "@/lib/tournaments/round-deadlines";
 import { parseMilestones as parseMilestonesForDates } from "@/lib/tournaments/round-definitions";
-import { assignFixedSlots, playoffDeadline, playoffKeyForLabel, playoffModeFor, stageSchedulingFromChamp, type PlayoffKey } from "@/lib/tournaments/round-plan";
+import { assignFixedSlots, isPlayoffGame, playoffDeadline, playoffKeyForLabel, playoffModeFor, stageSchedulingFromChamp, type PlayoffKey } from "@/lib/tournaments/round-plan";
 import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSuggestions";
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
@@ -2554,7 +2554,8 @@ export default function ClubChampsView() {
     // A fixed session (date + time) is not a play-by fixture; and a structured play-off
     // owns its schedule — never inherit the pool rounds' deadlines.
     if (m?.scheduled_date && m?.scheduled_time) return null;
-    if (m?.stage_key && (m.stage || "group") !== "group") {
+    if (isPlayoffGame(m)) {
+      if (!m?.stage_key) return playoffDeadline(parseMilestonesForDates((champ as any)?.milestone_play_by) as any, m.stage_label, m.stage);
       const r = (champRounds as any[]).find((x) => x.id === m.round_id);
       return r?.play_by ? String(r.play_by).slice(0, 10) : null;
     }
@@ -3470,7 +3471,9 @@ export default function ClubChampsView() {
           championScope={(champ as any)?.champion_scope || undefined}
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           playByForRound={(round, stage) =>
-            deadlineForStage(
+            isPlayoffGame({ stage, stage_label: stage })
+              ? playoffDeadline(parseMilestonesForDates((champ as any)?.milestone_play_by) as any, stage, stage)
+              : deadlineForStage(
               mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[]),
               round,
               stage,
@@ -3518,7 +3521,9 @@ export default function ClubChampsView() {
           groupLabel={(gn) => getGroupLabel(champ, gn)}
           selfScheduled={String((champ as any)?.scheduling_mode || "") === "self"}
           playByForRound={(round, stage) =>
-            deadlineForStage(
+            isPlayoffGame({ stage, stage_label: stage })
+              ? playoffDeadline(parseMilestonesForDates((champ as any)?.milestone_play_by) as any, stage, stage)
+              : deadlineForStage(
               mergeRoundDeadlines(parseRoundDeadlines((champ as any)?.round_play_by), champRounds as any[]),
               round,
               stage,

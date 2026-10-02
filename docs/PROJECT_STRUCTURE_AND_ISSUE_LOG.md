@@ -2382,3 +2382,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ## 2026-10-02 — Step-by-Step Beta match format visible in guided flow
 - Added an early "How will matches be played?" choice after Singles/Doubles. Standard captures PAR 11/15, best-of-3/5 and win-by-2/sudden-death; Bells captures minutes per match. The tournament choice inherits to groups, with optional category and subcategory overrides after categories are defined.
 - Overview and summary resolve and display actual group scoring when exceptions exist; a uniform choice stays concise. "Both" discipline now reads "Singles and Doubles". Saved answers remain per club on this device; no tournament creation, normal builder, schema, or live data changed.
+
+### 2026-10-02 — Step-by-Step "Book courts now" booked only Semifinal/Final
+- Cause: plan slots were checked for clashes only against existing bookings, never against each other, then sent in ONE batch upsert. The `prevent_overlapping_bookings` trigger refused the batch whenever two plan slots shared a court/time (e.g. two categories' rounds), so later presses booked nothing new; earlier-booked playoffs stayed.
+- Fix (`src/lib/smart-builder/stage-bookings.ts`): `internalOverlaps` reports same-plan overlaps as clashes; stale plan rows are removed first; each slot is upserted on its own so one refusal never blocks other stages. Test: `step-builder-court-bookings.test.ts`, `step-builder-handover.test.tsx`.

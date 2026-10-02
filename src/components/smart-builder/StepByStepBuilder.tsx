@@ -339,7 +339,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const feeFor = (k: string) => (fee.varies ? fee.perUnit[k] ?? "" : fee.amount);
   const feeUnitText = (u: { key: string; disc: Disc | null }) => `R${feeFor(u.key) || "?"} ${u.disc === "doubles" && fee.doublesBasis === "pair" ? "per pair" : "per player"}`;
   const methodOpts = payCfg ? tournamentMethodOptions(payCfg) : [];
-  const chosenMethods = allowedMethods(fee.methods, methodOpts);
+  const availMethods = methodOpts.filter((o) => o.available);
+  /** One possible method = nothing to choose; it is simply the accepted method. */
+  const chosenMethods = availMethods.length === 1 ? [availMethods[0].key] : allowedMethods(fee.methods, methodOpts);
+  const bankingMissing = !!payCfg && !methodOpts.some((o) => o.available && o.key !== "account");
   const methodText = chosenMethods.map((m) => methodOpts.find((o) => o.key === m)?.label.split(" (")[0].split(" —")[0] ?? m).join(", ") || "none chosen";
   /** What a picked entrant owes, worded for the notification (pair-aware). */
   const dueText = (u?: { key: string; disc: Disc | null }) => {
@@ -984,6 +987,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                       })}
                     </div>
                   )}
+                  {bankingMissing && <p className="text-xs text-destructive">Payment setup required: your club has no card, EFT or cash payments switched on in Club Admin → Banking. Only adding the fee to the member's account is possible until that's set up.</p>}
+                  {availMethods.length === 1 && <p className="text-xs">Your club can accept one method here, so it's used automatically: <b>{availMethods[0].label}</b>.</p>}
                   {payCfg && chosenMethods.length === 0 && <p className="text-xs text-destructive">Choose at least one payment method.</p>}
                   <p className="text-xs text-muted-foreground">Players you enter yourself are not marked paid: they show as Entered · Payment outstanding until they pay.</p>
                 </div>
@@ -1287,10 +1292,11 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 ) : null)}
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
-              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}>{msgSummary} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span></SummaryRow>}
+              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span></SummaryRow>}
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
+                <ul className="space-y-0.5"><li>Fee due: <span className="text-muted-foreground">{fee.has ? "Yes" : fee.has === false ? "No" : "Not chosen"}</span></li></ul>
                 {fee.has && <ul className="space-y-0.5"><li>Accepted methods: <span className="text-muted-foreground">{methodText}</span></li>{showPick && <li>Picked entrants: <span className="text-muted-foreground">Entered · Payment outstanding (admin selection never marks paid)</span></li>}</ul>}
                 <span className="text-muted-foreground"> · setup only, no payments taken</span>
               </SummaryRow>

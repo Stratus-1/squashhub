@@ -236,6 +236,20 @@ export function NotificationsDropdown({
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                         {notif.message}
                       </p>
+                      {Array.isArray((notif as any).data?.actions) && (notif as any).data.actions.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {((notif as any).data.actions as Array<{ kind: string; label: string; url: string }>).map((a) => (
+                            <Button key={a.kind + a.url} size="sm" variant={a.kind === "pay" ? "default" : "outline"} className="h-7 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpen(false);
+                                if (a.url.startsWith("/")) navigate(a.url); else window.open(a.url, "_blank", "noopener,noreferrer");
+                              }}>
+                              {a.label}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0 mt-0.5">

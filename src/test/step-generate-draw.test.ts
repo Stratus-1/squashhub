@@ -68,6 +68,22 @@ describe("Step-by-Step generate draw", () => {
     expect(spec.divisions).toHaveLength(1);
     expect(spec.divisions[0].entryGroups).toEqual([1, 2, 3, 4]);
   });
+  it("cross-league chosen pairings: Men A v Men B and Ladies A v Ladies B only — 50 games, nothing inferred", () => {
+    const vs: Record<number, number> = { 1: 2, 2: 1, 3: 4, 4: 3 };
+    const d = divs().map((x) => ({ ...x, format: { ...fmt, kind: "cross" as const, crossVs: [vs[x.group]], crossGroups: [x.group, vs[x.group]].sort() } }));
+    const p = previewDraw("T", d, { start: "2026-10-08", end: null });
+    expect(p.errors).toEqual([]);
+    expect(p.total).toBe(50);
+    const fx = generateFromSpec(withEntrants(finalDrawSpec("T", d, "v1"), d), "t");
+    const grp = (u: string) => Number(u[1]);
+    for (const f of fx) expect(vs[grp(f.a!)]).toBe(grp(f.b!));
+    // one-sided pairing is refused, not inferred
+    const bad = d.map((x) => x.group === 2 ? { ...x, format: { ...x.format, crossVs: [3], crossGroups: [2, 3] } } : x);
+    expect(previewDraw("T", bad, { start: null, end: null }).errors.join()).toMatch(/isn't set to play/);
+    // plan keys map through proposeFormat
+    const pr = proposeFormat({ format: { kind: "cross", crossUnits: ["Mens::A", "Mens::B"], crossMode: "chosen", crossPairs: [["Mens::A", "Mens::B"]] } }, "Mens › A · Doubles");
+    expect(pr.crossPairKeys).toEqual([["Mens::A", "Mens::B"]]);
+  });
   it("cross-league sets must agree; a 2-group set gives 25 games and others stay normal", () => {
     const d = divs();
     d[0] = { ...d[0], format: { ...fmt, kind: "cross", crossGroups: [1, 2] } };

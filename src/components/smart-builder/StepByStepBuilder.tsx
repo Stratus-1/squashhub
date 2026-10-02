@@ -151,6 +151,46 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
           {step === 4 && (
             <>
+              <Q t="Do any categories need subcategories?" h="Optional — e.g. Men's could be split into Group A, Group B, Group C. Ladies can stay as one group." />
+              <div className="space-y-3">
+                {cats.map((cat) => {
+                  const subs = a.subcats[cat];
+                  const has = subs !== undefined;
+                  return (
+                    <div key={cat} className="space-y-2 rounded-lg border border-border p-3">
+                      <div className="text-sm font-semibold">{cat}</div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" aria-pressed={!has} onClick={() => setSubcats(cat, null)}
+                          className={cn("rounded-full border px-3 py-1 text-xs", !has ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+                          No subcategories
+                        </button>
+                        <button type="button" aria-pressed={has} onClick={() => setSubcats(cat, has ? subs : ["A", "B"])}
+                          className={cn("rounded-full border px-3 py-1 text-xs", has ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+                          Add subcategories
+                        </button>
+                      </div>
+                      {has && (
+                        <div className="space-y-2">
+                          {subs.map((s, i) => (
+                            <div key={i} className="flex gap-2">
+                              <Input aria-label={`${cat} subcategory ${i + 1}`} value={s} placeholder={`e.g. Group ${String.fromCharCode(65 + i)}`}
+                                onChange={(e) => setSubcats(cat, subs.map((x, j) => (j === i ? e.target.value : x)))} />
+                              <Button variant="ghost" size="icon" aria-label="Remove subcategory" disabled={subs.length === 1}
+                                onClick={() => setSubcats(cat, subs.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          ))}
+                          <Button variant="outline" size="sm" onClick={() => setSubcats(cat, [...subs, ""])}><Plus className="mr-1 h-4 w-4" />Add another</Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {step === 5 && (
+            <>
               <Q t="On which days will it be played?" h="Add one line for each tournament day." />
               <div className="space-y-2">
                 {a.days.map((d, i) => (

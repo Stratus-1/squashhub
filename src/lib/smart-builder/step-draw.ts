@@ -286,7 +286,7 @@ export function roundShortfall(rounds: number, dates: number): string {
 export function roundDeadlines(s: DivSchedule, rounds: number): { dates: string[]; ranges: Array<{ deadline: string; from: number; to: number; proposed: boolean }>; error: string | null } {
   const ds = s.deadlines.filter(Boolean);
   if (!ds.length || rounds < 1) return { dates: [], ranges: [], error: null };
-  if (ds.length > rounds) return { dates: [], ranges: [], error: `${ds.length} play-by dates but only ${rounds} round${rounds === 1 ? "" : "s"} — remove a date or change the format.` };
+  if (ds.length > rounds) return { dates: [], ranges: [], error: `${ds.length} play-by dates but this structure only has ${rounds} round${rounds === 1 ? "" : "s"} — ${ds.length - rounds} date${ds.length - rounds === 1 ? " is" : "s are"} unused (${ds.slice(rounds).join(", ")}). Remove ${ds.length - rounds === 1 ? "it" : "them"} or change the format.` };
   if (ds.length > 1 && ds.length < rounds && !s.share) return { dates: [], ranges: [], error: roundShortfall(rounds, ds.length) };
   const ranges: Array<{ deadline: string; from: number; to: number; proposed: boolean }> = [];
   let from = 1;
@@ -295,7 +295,7 @@ export function roundDeadlines(s: DivSchedule, rounds: number): { dates: string[
     const given = last ? rounds : s.upto[k];
     const to = last ? rounds : given ?? Math.round((rounds * (k + 1)) / ds.length);
     if (to < from || to > rounds - (ds.length - 1 - k)) return { dates: [], ranges: [], error: `Play-by date ${ds[k]}: rounds must run ${from}–${rounds - (ds.length - 1 - k)}.` };
-    ranges.push({ deadline: ds[k], from, to, proposed: !last && given == null });
+    ranges.push({ deadline: ds[k], from, to, proposed: !last && given == null && ds.length !== rounds });
     from = to + 1;
   }
   const dates: string[] = [];
@@ -435,7 +435,7 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
         groups: (sd as any).entryGroups ?? [sd.groupNumber], label: sd.label, units: sd.entrants.length, games: real.length, byes: mine.length - real.length, rounds,
         pools: f.kind === "pools" ? f.pools : f.kind === "cross" ? (sd.entryGroups?.length ?? 1) : 1,
         schedule: f.schedule.rule === "play_by"
-          ? (rd && rd.ranges.length > 1 ? rd.ranges.map((x) => `rounds ${x.from}–${x.to} play by ${x.deadline}${x.proposed ? " (proposed split)" : ""}`).join("; ") : `Play by ${lastDeadline(f.schedule)}`)
+          ? (rd && rd.ranges.length > 1 ? rd.ranges.map((x) => `${x.from === x.to ? `Round ${x.from}` : `Rounds ${x.from}–${x.to}`} play by ${x.deadline}${x.proposed ? " (proposed split)" : ""}`).join("; ") : `Play by ${lastDeadline(f.schedule)}`)
           : `Fixed: ${f.schedule.dates.join(", ")} (times & courts set later)`,
         perRound: Array.from({ length: rounds }, (_, i) => ({ round: i + 1, games: real.filter((m) => (m.round ?? 1) === i + 1).length, date: dateOf(i + 1) })),
       });

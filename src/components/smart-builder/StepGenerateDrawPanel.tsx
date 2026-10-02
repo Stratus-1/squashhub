@@ -24,6 +24,8 @@ const SEED_LABEL: Record<DrawSeeding, string> = { entry_order: "Entry order", ra
  * Generate draw & fixtures (Step-by-Step Beta). Confirm final format → preview (real engine dry run) →
  * step_prepare_draw (current active entries, pairs intact) → existing structured engine generation.
  */
+const fmtDay = (iso: string) => { const t = new Date(`${iso}T00:00:00`); return isNaN(+t) ? iso : t.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }); };
+
 export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revisiting }: {
   clubId: string; tournamentId: string; revisiting: boolean; onGenerated: (info: { games: number }) => void;
 }) {
@@ -337,7 +339,12 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                   {(f.schedule.deadlines.length ? f.schedule.deadlines : [""]).map((dl, k, arr) => (
                     <div key={k} className="flex flex-wrap items-center gap-2">
                       <Input type="date" aria-label={`Play-by date ${k + 1}`} className="h-7 w-40" value={dl} onChange={(e) => { const ds = [...arr]; ds[k] = e.target.value; applySch({ deadlines: ds, upto: ds.slice(1).map((_, j) => f.schedule.upto[j] ?? null) }); }} />
-                      {k < arr.length - 1 && <label className="flex items-center gap-1">games up to round <Input type="number" min={1} aria-label={`Last round due by date ${k + 1}`} className="h-7 w-16" placeholder="auto" value={f.schedule.upto[k] ?? ""} onChange={(e) => { const up = [...f.schedule.upto]; up[k] = e.target.value ? Number(e.target.value) : null; applySch({ upto: up }); }} /></label>}
+                      {(() => { const need = preview?.roundsByGroup[d.group]; const have = arr.filter(Boolean).length;
+                        if (need == null || have <= 1) return null;
+                        if (have === need) return <span className="font-medium">Round {k + 1} · Play by {fmtDay(dl)}</span>;
+                        if (have > need && k >= need) return <span className="font-medium text-destructive">Unused — this structure has only {need} round{need === 1 ? "" : "s"}</span>;
+                        return null; })()}
+                      {k < arr.length - 1 && f.schedule.share && (preview?.roundsByGroup[d.group] ?? 0) > arr.filter(Boolean).length && <label className="flex items-center gap-1">games up to round <Input type="number" min={1} aria-label={`Last round due by date ${k + 1}`} className="h-7 w-16" placeholder="choose" value={f.schedule.upto[k] ?? ""} onChange={(e) => { const up = [...f.schedule.upto]; up[k] = e.target.value ? Number(e.target.value) : null; applySch({ upto: up }); }} /></label>}
                       {arr.length > 1 && <button type="button" className="text-destructive underline" onClick={() => { const ds = arr.filter((_, j) => j !== k); applySch({ deadlines: ds, upto: ds.slice(1).map(() => null) }); }}>remove</button>}
                     </div>
                   ))}
@@ -350,7 +357,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
                 return (
                   <div className="space-y-1 sm:col-span-3">
                     {need != null && <span className={have > 1 && have < need && !f.schedule.share ? "font-medium text-destructive" : "text-muted-foreground"}>This structure needs {need} round{need === 1 ? "" : "s"}; {have} play-by date{have === 1 ? "" : "s"} set{have === 1 ? " (one date for all games)" : ""}.</span>}
-                    {have > 1 && <label className="flex items-center gap-2"><Checkbox checked={!!f.schedule.share} onCheckedChange={(v) => applySch({ share: !!v })} /><span>Let several rounds share a play-by date (choose "games up to round" for each date)</span></label>}
+                    {have > 1 && need != null && have < need && <label className="flex items-center gap-2"><Checkbox checked={!!f.schedule.share} onCheckedChange={(v) => applySch({ share: !!v })} /><span>Let several rounds share a play-by date (choose "games up to round" for each date)</span></label>}
                   </div>
                 );
               })()}
@@ -410,7 +417,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
             {shared && (
               <div className="rounded bg-muted/40 p-1.5">
                 <div className="font-medium">Shared rounds — {shared.games} games over {shared.rounds} round{shared.rounds === 1 ? "" : "s"}</div>
-                <ul className="grid gap-0.5 sm:grid-cols-2 lg:grid-cols-3">{shared.perRound.map((r) => <li key={r.round}>Round {r.round}: {r.games} games{r.date ? ` · play by ${r.date}` : ""}</li>)}</ul>
+                <ul className="grid gap-0.5 sm:grid-cols-2 lg:grid-cols-3">{shared.perRound.map((r) => <li key={r.round}>Round {r.round} · {r.games} games{r.date ? ` · Play by ${fmtDay(r.date)}` : ""}</li>)}</ul>
               </div>
             )}
             <p className="text-muted-foreground">Settings below apply to {fam.map((o) => o.label).join(" and ")} together.</p>

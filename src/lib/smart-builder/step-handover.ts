@@ -96,7 +96,7 @@ export type CreateInput = {
   /** Admin-entered players (pairs carry a partner). */
   entrants: Array<{ memberId: string; partnerId?: string | null; division?: number | null }>;
   /** Step-by-Step categories/subcategories, in order — become the tournament's divisions (group 1..n). */
-  divisions?: Array<{ label: string; matchType: "singles" | "doubles" }>;
+  divisions?: Array<{ label: string; matchType: "singles" | "doubles"; serving?: "even_odd" | "by_position" | "second_server" | null }>;
   existingId?: string | null;
   /** undefined = not decided (leave as is); null = no group; object = organiser's invite link. */
   waGroup?: { url: string; include: boolean; name: string } | null;
@@ -143,7 +143,8 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
   }
   if (i.divisions?.length) {
     // league_match_types lives only on the base table (not the club_champs view).
-    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])) }).eq("id", tid);
+    const serving = Object.fromEntries(i.divisions.flatMap((d, n) => d.matchType === "doubles" && d.serving ? [[String(n + 1), d.serving]] : []));
+    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])), league_doubles_serving_methods: Object.keys(serving).length ? serving : null }).eq("id", tid);
     if (error) throw error;
   }
   if (i.waGroup !== undefined) await syncWaGroup(tid!, i.clubId, i.waGroup);

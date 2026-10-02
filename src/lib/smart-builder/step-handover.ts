@@ -8,6 +8,8 @@
  * message snapshot) on this device. Nothing is sent and no payment is taken here.
  */
 import { fromExt } from "@/lib/supabase-ext";
+import { sendComms, dispatchCampaign } from "@/lib/comms/send";
+import { supabase } from "@/integrations/supabase/client";
 import { sanitizeDraftPayload } from "@/lib/tournaments/draft-payload";
 
 export const LIFECYCLE = [
@@ -153,8 +155,6 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
 }
 
 /* ── Inform selected players: real sends through the Communications engine ── */
-import { sendComms, dispatchCampaign } from "@/lib/comms/send";
-import { supabase } from "@/integrations/supabase/client";
 
 export type BetaLifecycle = {
   stage: LifecycleKey; completed: LifecycleKey[];

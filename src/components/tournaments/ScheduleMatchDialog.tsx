@@ -145,16 +145,16 @@ export function ScheduleMatchDialog({
   }, [courtOptions, courtId, courts]);
 
   const { data: bookings = [], isFetching, refetch: refetchBookings } = useQuery({
-    queryKey: ["court-bookings-self-schedule", clubId, date],
+    queryKey: ["court-bookings-self-schedule", bookingClubId, date],
     queryFn: async () => {
       const { data } = await fromExt("bookings")
         .select("id, court_id, start_time, end_time, status, user_id, opponent_id, club_member_id, opponent_member_id")
-        .eq("club_id", clubId!)
+        .eq("club_id", bookingClubId!)
         .eq("date", date)
         .eq("status", "active");
       return (data || []) as any[];
     },
-    enabled: !!clubId && !!date && open,
+    enabled: !!bookingClubId && !!date && open,
   });
 
   const slotMinutes = Number(club?.booking_slot_minutes) || 60;

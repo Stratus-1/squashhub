@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -34,16 +34,22 @@ export type StepAnswers = {
   invite: Invite;
   /** Discipline per unit key ("Cat" or "Cat::Sub"). Inherited from playType unless it is "both". */
   disc: Record<string, Disc>;
+  /** Invitation message setup only — nothing is sent from this builder. */
+  msg: MsgCfg;
 };
+type Channel = "in_app" | "email" | "whatsapp" | "sms";
+type MsgCfg = { channels: Channel[]; body: string | null; later: boolean };
+const CHANNEL_LABEL: Record<Channel, string> = { in_app: "In-app", email: "Email", whatsapp: "WhatsApp", sms: "SMS" };
+const DEFAULT_MSG: MsgCfg = { channels: ["in_app", "email"], body: null, later: false };
 type Disc = "singles" | "doubles";
 type Source = "select" | "self" | "both" | null;
 type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose" };
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {} };
-type StepKey = "Type" | "Entries" | "What" | "Categories" | "Subcategories" | "Players" | "Eligibility" | "Pick" | "Invites" | "Dates" | "Courts" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Categories: "Categories", Subcategories: "Subcategories", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Dates: "Dates", Courts: "Courts", Summary: "Summary" };
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG };
+type StepKey = "Type" | "Entries" | "What" | "Categories" | "Subcategories" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Dates" | "Courts" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Categories: "Categories", Subcategories: "Subcategories", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Dates: "Dates", Courts: "Courts", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -88,6 +94,15 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     return () => { cancelled = true; };
   }, [clubId]);
 
+  const [phoneCh, setPhoneCh] = useState<{ whatsapp: boolean; sms: boolean }>({ whatsapp: false, sms: false });
+  useEffect(() => {
+    supabase.from("clubs").select("whatsapp_enabled, sms_enabled").eq("id", clubId).maybeSingle()
+      .then(({ data }) => setPhoneCh({ whatsapp: !!(data as any)?.whatsapp_enabled, sms: !!(data as any)?.sms_enabled }));
+  }, [clubId]);
+  const chAvail = (c: Channel) => c === "in_app" || c === "email" || phoneCh[c];
+  const msg: MsgCfg = { ...DEFAULT_MSG, ...(a.msg ?? {}) };
+  const setMsg = (p: Partial<MsgCfg>) => setA({ ...a, msg: { ...msg, ...p } });
+
   const cats = a.categories.map((c) => c.trim()).filter(Boolean);
   /** Every place a player can end up: a subcategory, or the category itself when it has none. */
   const units = cats.flatMap((c) => {
@@ -115,8 +130,27 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const selfEntry = a.source === "self" || a.source === "both";
   const showPick = a.source === "select" || a.source === "both" || anyManual;
 
+  const defaultMsg = [
+    "Hi {{first_name}},",
+    "You are invited to enter {{tournament_name}} at {{club_name}}.",
+    "You can enter: {{categories}}.",
+    "Enter here: {{entry_link}}",
+    "Entries close: {{closing_date}}",
+    "Tournament days: {{dates}}",
+  ].join("\n\n");
+  const msgBody = msg.body ?? defaultMsg;
+  const previewVars: Record<string, string> = {
+    first_name: "Jane",
+    tournament_name: "your tournament (name added when created)",
+    club_name: clubName || "your club",
+    categories: units.map((u) => u.label).join(", ") || "categories still to be set",
+    entry_link: "[entry link added when the tournament is created]",
+    closing_date: "[set later]",
+    dates: a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
+  };
+  const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
   const steps: StepKey[] = ["Type", "Entries", "What", "Categories", "Subcategories", "Players", "Eligibility",
-    ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const] : []), "Dates", "Courts", "Summary"];
+    ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Dates", "Courts", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
 
@@ -127,7 +161,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
   const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Categories: cats.length > 0, Subcategories: discOk,
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Dates: daysOk, Courts: courtsOk, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Dates: daysOk, Courts: courtsOk, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -383,6 +417,52 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
+          {cur === "Messaging" && (
+            <>
+              <Q t="How should the invitation read?" h="Setup only — nothing is sent from here. Sending and test messages come later." />
+              {(a.invite === "later" || msg.later) ? (
+                <div className="space-y-2 rounded-md border p-3 text-sm">
+                  <p>{a.invite === "later" ? "You chose to decide invitations later, so the message can be set up later too." : "You'll set up the message later."}</p>
+                  <Button variant="outline" size="sm" onClick={() => setMsg({ later: false })}>Set it up now anyway</Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-xs text-muted-foreground">Goes to: <b>{a.invite ? INVITE_LABEL[a.invite] : "the invitation audience"}</b>. Players you already picked are entered and don't need an invitation.</p>
+                  <div>
+                    <Label className="text-sm">Channels</Label>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-4">
+                      {(Object.keys(CHANNEL_LABEL) as Channel[]).map((c) => {
+                        const ok = chAvail(c); const on = ok && msg.channels.includes(c);
+                        return (
+                          <button key={c} type="button" disabled={!ok}
+                            onClick={() => setMsg({ channels: on ? msg.channels.filter((x) => x !== c) : [...msg.channels, c] })}
+                            className={cn("rounded-md border p-2 text-left text-sm", on && "border-primary bg-primary/10", !ok && "cursor-not-allowed opacity-50")}>
+                            <span className="flex items-center gap-1 font-medium">{on && <Check className="h-3.5 w-3.5" />}{!ok && <Lock className="h-3.5 w-3.5" />}{CHANNEL_LABEL[c]}</span>
+                            {!ok && <span className="block text-[11px] text-muted-foreground">Not switched on for this club (Member messaging)</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {!msg.channels.some(chAvail) && <p className="mt-1 text-xs text-destructive">Choose at least one channel.</p>}
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm" htmlFor="sbs-msg">Message</Label>
+                      {msg.body !== null && <Button variant="ghost" size="sm" onClick={() => setMsg({ body: null })}>Reset to suggested wording</Button>}
+                    </div>
+                    <textarea id="sbs-msg" rows={9} className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={msgBody} onChange={(e) => setMsg({ body: e.target.value })} />
+                    <p className="text-[11px] text-muted-foreground">Words in {"{{ }}"} fill in automatically: first_name, tournament_name, club_name, categories, entry_link, closing_date, dates. They update as you add details later.</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm">Preview (example member)</Label>
+                    <div className="mt-1 whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-sm">{preview}</div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setMsg({ later: true })}>Configure later</Button>
+                </div>
+              )}
+            </>
+          )}
+
           {cur === "Dates" && (
             <>
               <Q t="On which days will it be played?" h="Add one line for each tournament day." />
@@ -462,6 +542,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <ul className="space-y-0.5">{pickIds.map((id) => <li key={id}>{memberName(id)} <span className="text-muted-foreground">— {unitLabel(a.picks[id])}</span></li>)}</ul>
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
+              {selfEntry && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label="Messaging" onEdit={() => go("Messaging")}>{(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`} <span className="text-muted-foreground">· setup only, not sent</span></SummaryRow>}
               <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => go("Dates")}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
               <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => go("Courts")}>
                 <ul className="space-y-0.5">{a.days.map((d, i) => (
@@ -524,6 +605,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <TreeNode icon={<UserPlus className="h-4 w-4" />} title={a.source === "select" ? `Picked players${pickIds.length ? ` (${pickIds.length})` : ""}` : a.source === "self" ? "Self-entry" : `Picked + self-entry${pickIds.length ? ` (${pickIds.length} picked)` : ""}`} onClick={() => go("Players")}>
                   {units.map((u) => <TreeLeaf key={u.key}><button type="button" onClick={() => go("Eligibility")} className="rounded px-1 hover:bg-muted">{u.label}</button><span className="block pl-1 text-muted-foreground">{eligText(u.key)}</span></TreeLeaf>)}
                   {selfEntry && <TreeLeaf><button type="button" onClick={() => go("Invites")} className="rounded px-1 hover:bg-muted">Invites: {a.invite ? INVITE_LABEL[a.invite] : "not chosen"} (not sent)</button></TreeLeaf>}
+                  {selfEntry && <TreeLeaf><button type="button" onClick={() => go("Messaging")} className="rounded px-1 hover:bg-muted">Message: {(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`}</button></TreeLeaf>}
                 </TreeNode>
               )}
               {a.days.some((d) => d.date) && (

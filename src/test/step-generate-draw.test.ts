@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildDrawSpec, previewDraw, proposeFormat, unitsFor, withEntrants, type DrawDivision, type RegLite } from "@/lib/smart-builder/step-draw";
+import { buildDrawSpec, finalDrawSpec, orderUnits, previewDraw, proposeFormat, rankingIssue, roundDeadlines, unitsFor, withEntrants, type DivFormat, type DrawDivision, type RegLite } from "@/lib/smart-builder/step-draw";
 import { generateFromSpec } from "@/lib/tournaments/engine-service";
 
 // 4 doubles categories × 5 pairs = 20 pairs / 40 players, all payment outstanding, plus one cancelled stale entry.
@@ -11,7 +11,7 @@ for (let g = 1; g <= 4; g++) for (let p = 1; p <= 5; p++) {
 }
 regs.push({ club_member_id: "stale", partner_member_id: "g1p1a", status: "cancelled", division_choices: [1] });
 
-const fmt = { kind: "round_robin" as const, pools: 1, swissRounds: 0, seeding: "entry_order" as const, schedule: { rule: "play_by" as const, deadline: "2026-11-30", dates: [] } };
+const fmt: DivFormat = { kind: "round_robin", pools: 1, swissRounds: 0, seeding: "entry_order", schedule: { rule: "play_by", deadlines: ["2026-11-30"], upto: [], dates: [] }, crossGroups: [] };
 const divs = (): DrawDivision[] => [1, 2, 3, 4].map((g) => ({ group: g, label: `Cat ${g} · Doubles`, doubles: true, units: unitsFor(regs, g, 4, true).units, format: fmt, notes: [], playoffs: [] }));
 
 describe("Step-by-Step generate draw", () => {
@@ -43,9 +43,62 @@ describe("Step-by-Step generate draw", () => {
   it("regeneration uses fresh stage ids so a rebuilt structure never reuses stale stage rows", () => {
     expect(buildDrawSpec("T", divs(), "v1").divisions[0].stages[0].id).not.toBe(buildDrawSpec("T", divs(), "v2").divisions[0].stages[0].id);
   });
-  it("cross-league and decide-later plans are not guessed", () => {
-    expect(proposeFormat({ format: { kind: "cross" } }, "Mens › A · Doubles").format.kind).toBeNull();
-    expect(proposeFormat({ format: { kind: "pools", pools: "1" }, stages: [{ phase: "main", mode: "play_by", deadline: "2026-11-01" }] }, "Mens › A · Doubles").format)
-      .toMatchObject({ kind: "round_robin", schedule: { rule: "play_by", deadline: "2026-11-01" } });
+  it("reads cross-league, rankings and both play-by rounds from the plan — no silent fallback", () => {
+    const plan = { format: { kind: "cross", crossUnits: ["Mens::A", "Mens::B"] }, seeding: "ranking", stages: [{ phase: "main", mode: "play_by", deadline: "2026-10-19" }, { phase: "main", mode: "play_by", deadline: "2026-10-12" }] };
+    const p = proposeFormat(plan, "Mens › A · Doubles");
+    expect(p.format.kind).toBe("cross");
+    expect(p.crossKeys).toEqual(["Mens::A", "Mens::B"]);
+    expect(p.format.seeding).toBe("ranking");
+    expect(p.format.schedule.deadlines).toEqual(["2026-10-12", "2026-10-19"]);
+    expect(proposeFormat({ format: { kind: "later" } }, "Mens › A · Doubles").format.kind).toBeNull();
+  });
+  it("cross-league: 4 groups × 5 pairs, each group plays every other group, never its own; pairs intact", () => {
+    const d = divs().map((x) => ({ ...x, format: { ...fmt, kind: "cross" as const, crossGroups: [1, 2, 3, 4] } }));
+    const p = previewDraw("T", d, { start: "2026-10-08", end: null });
+    expect(p.errors).toEqual([]);
+    expect(p.total).toBe(150); // 6 group meetings × 25
+    const fx = generateFromSpec(withEntrants(finalDrawSpec("T", d, "v1"), d), "t");
+    const grp = (u: string) => u.split("+")[0].slice(0, 2);
+    for (const f of fx) { expect(f.a!.split("+")).toHaveLength(2); expect(grp(f.a!)).not.toBe(grp(f.b!)); }
+    const perRound = new Map<number, string[]>();
+    for (const f of fx) perRound.set(f.round!, [...(perRound.get(f.round!) ?? []), f.a!, f.b!]);
+    for (const ids of perRound.values()) expect(new Set(ids).size).toBe(ids.length);
+    const spec = finalDrawSpec("T", d, "v1");
+    expect(spec.divisions).toHaveLength(1);
+    expect(spec.divisions[0].entryGroups).toEqual([1, 2, 3, 4]);
+  });
+  it("cross-league sets must agree; a 2-group set gives 25 games and others stay normal", () => {
+    const d = divs();
+    d[0] = { ...d[0], format: { ...fmt, kind: "cross", crossGroups: [1, 2] } };
+    d[1] = { ...d[1], format: { ...fmt, kind: "cross", crossGroups: [1, 2] } };
+    const p = previewDraw("T", d, { start: null, end: null });
+    expect(p.errors).toEqual([]);
+    expect(p.total).toBe(25 + 10 + 10);
+    const spec = buildDrawSpec("T", d, "v1");
+    expect(spec.divisions.map((x) => x.groupNumber)).toEqual([1, 3, 4]);
+    const bad = divs(); bad[0] = { ...bad[0], format: { ...fmt, kind: "cross", crossGroups: [1, 2] } };
+    expect(previewDraw("T", bad, { start: null, end: null }).errors.some((e) => e.includes("different format"))).toBe(true);
+  });
+  it("rankings: seeds by club ranking points; blocks instead of falling back when unresolvable", () => {
+    const u = divs()[0].units;
+    const pts = new Map<string, number | null>([[u[3].member, 50], [u[1].partner!, 30]]);
+    expect(orderUnits(u, "ranking", { seed: 1, points: pts }).slice(0, 2)).toEqual([u[3], u[1]]);
+    expect(rankingIssue(u, "club", pts)).toBeNull();
+    expect(rankingIssue(u, "club", new Map())).toMatch(/ranking points/);
+    expect(rankingIssue(u, "national", pts)).toMatch(/national/);
+    expect(rankingIssue(u, null, pts)).toMatch(/event level/);
+    const d = divs(); d[0] = { ...d[0], format: { ...fmt, seeding: "ranking" }, blockers: [rankingIssue(u, "club", new Map())!] };
+    expect(previewDraw("T", d, { start: null, end: null }).total).toBe(0);
+  });
+  it("two play-by rounds stay separate: rounds split across both dates, never collapsed to the last", () => {
+    const two = { ...fmt.schedule, deadlines: ["2026-10-12", "2026-10-19"], upto: [null] };
+    expect(roundDeadlines(two, 5).dates).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);
+    expect(roundDeadlines({ ...two, upto: [2] }, 5).dates).toEqual(["2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19", "2026-10-19"]);
+    expect(roundDeadlines({ ...two, deadlines: ["a", "b", "c"], upto: [null, null] }, 2).error).toMatch(/only 2 rounds/);
+    const d = divs().map((x) => ({ ...x, format: { ...fmt, schedule: two } }));
+    const spec = finalDrawSpec("T", d, "v1");
+    expect((spec.divisions[0].stages[0].schedule as any).roundDates).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);
+    const p = previewDraw("T", d, { start: "2026-10-08", end: null });
+    expect(p.divisions[0].perRound.map((r) => r.date)).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);
   });
 });

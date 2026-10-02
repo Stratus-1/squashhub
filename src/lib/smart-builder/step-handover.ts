@@ -106,6 +106,8 @@ export type CreateInput = {
   /** Maps to the existing tournament payment_timing: true → on_entry, false → after_acceptance. */
   confirmNeedsPay?: boolean;
   resultNotify?: { scope: "all" | "playoffs" | "never"; channels: string[] };
+  /** Messaging step channels → existing club_champs.invite_methods (round-draw notices). undefined = leave as is. */
+  drawChannels?: string[];
   /** Fees & Payment doubles answer: may one partner pay the other's fee. undefined = leave as is. */
   partnerPay?: boolean | null;
 };
@@ -127,6 +129,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     payment_methods: i.paymentMethods.length ? i.paymentMethods : null,
     ...(i.partnerMode ? { partner_mode: i.partnerMode } : {}),
     ...(i.resultNotify ? { result_notify_scope: i.resultNotify.scope, result_notify_channels: i.resultNotify.channels.length ? i.resultNotify.channels : ["email"] } : {}),
+    ...(i.drawChannels ? { invite_methods: drawMethodsFor(i.drawChannels) } : {}),
     // Map categories → divisions so the table default (2 unnamed divisions) never applies.
     ...(i.divisions?.length ? {
       num_groups: i.divisions.length,
@@ -392,4 +395,15 @@ export function paymentWarning(rows: RegRow[], feeDue: boolean): string | null {
   if (!owing.length) return null;
   const cents = owing.reduce((s, r) => s + r.owesCents, 0);
   return `${owing.length} payment${owing.length === 1 ? "" : "s"} outstanding (R${(cents / 100).toFixed(cents % 100 ? 2 : 0)})`;
+}
+
+/** Map Step-by-Step channels onto the round-draw engine's channel set (app / email / whatsapp; SMS rides WhatsApp's fallback). */
+export function drawMethodsFor(channels: string[]): string[] {
+  const out = new Set<string>();
+  for (const c of channels) {
+    if (c === "in_app" || c === "app") out.add("app");
+    else if (c === "email") out.add("email");
+    else if (c === "whatsapp" || c === "sms") out.add("whatsapp");
+  }
+  return out.size ? Array.from(out) : ["app"];
 }

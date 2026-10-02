@@ -10,6 +10,7 @@ import { readTournamentPlan } from "./step-storage";
 import { buildPlayoffChain } from "./playoff-chain";
 import { generateFromSpec, type PlannedPlayoff, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
+import type { PoolReview } from "@/lib/smart-builder/pool-plan";
 import { distributeIntoPools, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { specDateIssues } from "@/lib/tournaments/date-window";
 
@@ -35,7 +36,13 @@ export type RegLite = { club_member_id: string; partner_member_id: string | null
 export type DrawUnit = { member: string; partner: string | null };
 export type DrawDivision = { group: number; label: string; doubles: boolean; units: DrawUnit[]; format: DivFormat; notes: string[]; playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null>; blockers?: string[];
   /** Organiser-adjusted pools (unit ids per pool). When set, this IS what Generate saves. */
-  manualPools?: string[][] | null };
+  manualPools?: string[][] | null;
+  /** Pool rule review from the actual entrants (Step setup "Pool structure"). */
+  poolReview?: PoolReview | null;
+  /** Organiser accepted/adjusted the pools ("Decide after entries close" needs this before generating). */
+  poolAccepted?: boolean;
+  /** Play-off qualifiers from the pool rule: per pool (null = derived) and best runners-up. */
+  poolQualifiers?: { perPool: number | null; runnersUp: number } | null };
 
 const INACTIVE = new Set(["cancelled", "withdrawn", "declined"]);
 export const unitId = (u: DrawUnit) => (u.partner ? `${u.member}+${u.partner}` : u.member);
@@ -105,7 +112,7 @@ export function readStepPlan(clubId: string, tournamentId: string): Plan | null 
   try { return readTournamentPlan(clubId, tournamentId); } catch { return null; }
 }
 /** Draw-relevant subset of the Step answers saved on the tournament (beta_lifecycle.format_plan). */
-export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope"] as const;
+export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope", "poolPlan"] as const;
 export function drawPlanOf(a: Plan): Plan { const o: Plan = {}; for (const k of DRAW_PLAN_KEYS) if (a[k] !== undefined) o[k] = a[k]; return o; }
 /** "Mens › A 1st League · Doubles" → plan key "Mens::A 1st League". */
 export const unitKeyOf = (label: string) => label.replace(/ · (Singles|Doubles|Singles and Doubles)$/i, "").split(" › ").join("::");
@@ -160,10 +167,10 @@ const playoffAnswer = (plan: Plan | null, label: string) => {
  * Planned play-offs as REAL predefined stages (progression runs them; Final ← Semifinal winners) when the
  * plan is complete; otherwise the "Define later" stages as before, set up when the main stage finishes.
  */
-export function playoffStagesFor(main: any, version: string, p: { playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null> }, opts: { forceConfirm?: boolean } = {}): { stages: any[]; deferredStages: any[] } {
+export function playoffStagesFor(main: any, version: string, p: { playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null>; poolQualifiers?: { perPool: number | null; runnersUp: number } | null }, opts: { forceConfirm?: boolean } = {}): { stages: any[]; deferredStages: any[] } {
   const plans = p.playoffPlans ?? p.playoffs.map(() => null);
   if (p.playoffs.length && plans.every(Boolean)) {
-    const chain = buildPlayoffChain(main, version, p.playoffs.map((name, i) => ({ name, plan: plans[i]! })), opts);
+    const chain = buildPlayoffChain(main, version, p.playoffs.map((name, i) => ({ name, plan: plans[i]! })), { ...opts, qualifiers: p.poolQualifiers ?? null });
     if (!chain.reason) return { stages: [main, ...chain.stages], deferredStages: [] };
   }
   return { stages: [main], deferredStages: deferredFor(version, p.playoffs, p.playoffPlans) };
@@ -246,6 +253,8 @@ export function poolWarnings(d: DrawDivision, mode: PoolAllocationMode = "snake"
 
 export function divisionIssues(d: DrawDivision): string[] {
   const n = d.units.length, f = d.format, out: string[] = [...(d.blockers ?? []), ...poolBlocks(d)];
+  if (d.poolReview?.needsDecision && !d.poolAccepted) out.push(`pools are "Decide after entries close" — review the recommended pools and accept or adjust them`);
+  if (f.kind === "cross" && d.poolReview && d.poolReview.mode !== "none" && (d.poolReview.needsDecision || d.poolReview.recommended.length > 1)) out.push(`pools are set for a group that plays between subcategories — pool-to-pool cross play isn't supported, so choose "No pools" for it in setup (SquashHub won't guess which pools meet)`);
   const u = d.doubles ? "pairs" : "players";
   if (n < (f.kind === "cross" ? 1 : 2)) out.push(`needs at least ${f.kind === "cross" ? 1 : 2} ${u} (has ${n})`);
   if (!f.kind) out.push("choose a format");

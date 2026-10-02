@@ -2429,3 +2429,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Step-by-Step Generate draw: pools & seeds preview before generating (existing pools.ts allocation + move-to-pool, drag or select); organiser's pools saved as explicit poolMembers and used exactly by the engine (refuses if they no longer match entries).
 
 - 2026-10-02: Beta tournament court booking rejected Riverside courts (court_not_selected) because the venue had no explicit courts while the window fell back to all club courts. Fixed with one resolver `tournament_bookable_court_ids` used by both guard and window; regional events block generation until a host club is set.
+
+## 2026-10-02 — Pool standings shown as one combined ladder (River 2 Clubs)
+- Stored fixtures were already pool-bounded (10+6, 15+10 etc., no cross-pool games). Standings read pool count only from `swiss_pools`, which Beta tournaments never set, so pools rendered as one ladder with a Pool column.
+- Fix: pool count also derived from persisted `pool_number`; engine now asserts pool boundaries and per-pool counts; Generate draw blocks unresolved/duplicated/missing pool places. Tests: `src/test/pool-boundaries.test.ts`.

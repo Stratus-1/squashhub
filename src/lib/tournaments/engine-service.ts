@@ -1,4 +1,5 @@
 import { mappingIssues, resolveMapping, seedPools } from "./mapping";
+import { poolFixtureIssues } from "./pool-boundaries";
 /**
  * Authoritative tournament engine service (structured architecture).
  *
@@ -98,12 +99,17 @@ export function generateStage(tid: string, d: SpecDivision, st: PlannedStage): E
       r.unranked.forEach((u, i) => r.pools[i % n].push(u)); // placed deterministically after ranked, never given a rank
       pools = r.pools;
     }
-    return pools.flatMap((p, pi) => {
+    const rows = pools.flatMap((p, pi) => {
       const once = roundRobin(p.map((x) => x.id));
       const perLeg = Math.max(0, ...once.map((m) => m.round));
       const legs = st.legs === 2 ? [...once, ...once.map((m) => ({ round: m.round + perLeg, a: m.b, b: m.a }))] : once;
-      return legs.map((m) => mk({ roundId: `${st.id}:r${m.round}`, round: m.round, poolId: st.kind === "pools" ? poolId(d.divisionId, st.id, pi) : null, a: m.a, b: m.b }));
+      return legs.map((m) => ({ pi, row: mk({ roundId: `${st.id}:r${m.round}`, round: m.round, poolId: st.kind === "pools" ? poolId(d.divisionId, st.id, pi) : null, a: m.a, b: m.b }) }));
     });
+    // Hard boundary: every pool game stays inside its own pool, with exactly n·(n−1)/2 games per leg.
+    const ids = pools.map((p) => p.map((x) => x.id));
+    const bad = poolFixtureIssues(ids, rows.map(({ pi, row }) => ({ a: row.a ?? null, b: row.b ?? null, poolIndex: pi })), st.legs === 2 ? 2 : 1);
+    if (bad.length) throw new IntegrityError("pool_boundary", `${st.name}: ${bad.join("; ")}.`);
+    return rows.map((r) => r.row);
   }
   if (st.kind === "mapped") {
     if (!st.mapping || st.mapping.source !== "seed_pools") throw new IntegrityError("mapping_source", `${st.name}: waits for the finishing positions of an earlier stage.`);

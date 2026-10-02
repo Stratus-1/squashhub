@@ -486,9 +486,15 @@ export default function ClubChampsView() {
     if (perLeague) return ["round_robin", "single_round_robin", "double_round_robin"].includes(perLeague);
     return !isSwissMode && (champ as any)?.round_format !== "knockout";
   };
+  // Pools actually generated (structured/Beta tournaments persist pool_number but no swiss_pools config):
+  // independent pools always get their own table and positions, never one combined ladder.
+  const persistedPoolCount = (gn: number) =>
+    Math.max(1, ...((matches as any[]) || [])
+      .filter((m: any) => m.group_number === gn && (m.stage || "group") === "group" && m.pool_number != null)
+      .map((m: any) => Number(m.pool_number) || 1));
   const poolCountFor = (gn: number) =>
     isSwissForLeague(gn) || isRoundRobinForLeague(gn)
-      ? Math.max(1, Number(swissPoolsCfg[String(gn)]) || 1)
+      ? Math.max(1, Number(swissPoolsCfg[String(gn)]) || 1, persistedPoolCount(gn))
       : 1;
 
   const poolLabel = (p: number) => String.fromCharCode(64 + p); // 1→A, 2→B

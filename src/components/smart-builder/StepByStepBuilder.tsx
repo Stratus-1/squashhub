@@ -751,6 +751,7 @@ function DoublesToggle({ label, description, value, onChange }: { label: string;
       <div className="space-y-1">
         <Label htmlFor={label} className="text-sm">{label}</Label>
         <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs font-medium text-foreground">{value === null ? "Decide later" : value ? "Allowed" : "Not allowed"}</p>
         <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => onChange(null)} aria-pressed={value === null}>Decide later</Button>
       </div>
       <Switch id={label} checked={value === true} onCheckedChange={onChange} aria-label={label} />

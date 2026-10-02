@@ -73,6 +73,8 @@ export interface PlannedStage {
   name: string;
   /** pools / round robin */
   pools?: number;
+  /** Explicit pool membership (entrant ids per pool, in seed order) confirmed by the organiser. Overrides snake seeding. */
+  poolMembers?: string[][];
   poolSize?: number;
   /** swiss */
   swissRounds?: number;

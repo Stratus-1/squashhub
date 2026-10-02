@@ -16,11 +16,12 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
 }) {
   const [h, setH] = useState<Handover | null>(() => loadHandover(clubId, tournamentId));
   const [open, setOpen] = useState(false);
-  const [regs, setRegs] = useState<{ total: number; outstanding: number; paid: number } | null>(null);
+  const [regs, setRegs] = useState<{ total: number; outstanding: number; paid: number; pairs: number; singles: number } | null>(null);
   useEffect(() => {
-    fromExt("club_champs_registrations").select("status").eq("champ_id", tournamentId).then(({ data }: any) => {
-      const rows = (data ?? []) as { status: string }[];
-      setRegs({ total: rows.length, outstanding: rows.filter((r) => r.status === "pending_payment" || r.status === "pending_eft").length, paid: rows.filter((r) => r.status === "paid" || r.status === "waived").length });
+    fromExt("club_champs_registrations").select("status, partner_member_id").eq("champ_id", tournamentId).then(({ data }: any) => {
+      const rows = ((data ?? []) as { status: string; partner_member_id?: string | null }[]).filter((r) => r.status !== "cancelled");
+      const paired = rows.filter((r) => r.partner_member_id).length;
+      setRegs({ total: rows.length, outstanding: rows.filter((r) => r.status === "pending_payment" || r.status === "pending_eft").length, paid: rows.filter((r) => r.status === "paid" || r.status === "waived").length, pairs: Math.floor(paired / 2), singles: rows.length - paired });
     });
   }, [tournamentId]);
   if (!h) return <div className="text-sm">This tournament's Beta management record isn't on this device. <Button variant="link" onClick={onBack}>Back</Button></div>;
@@ -81,7 +82,24 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
                 </div>}
           </>
         )}
-        {h.stage === "registrations" && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" />{h.informedAt ? `Players marked ${h.mode === "inform" ? "informed" : "invited"} ${new Date(h.informedAt).toLocaleString()}. ` : ""}This stage is not built yet.</div>}
+        {h.stage === "registrations" && (
+          <div className="space-y-2">
+            {h.informedAt && <p className="text-xs text-muted-foreground">Players marked {h.mode === "inform" ? "informed" : "invited"} {new Date(h.informedAt).toLocaleString()}.</p>}
+            <p className="text-xs text-muted-foreground">Payments are recorded through the tournament's normal payment screens. Detailed registration tracking here is the next Beta build.</p>
+            <Button onClick={() => update({ stage: "finalise", completed: [...new Set([...h.completed, "registrations" as const])] })}>Close registrations & finalise entries<ChevronRight className="ml-1 h-4 w-4" /></Button>
+          </div>
+        )}
+        {h.stage === "finalise" && (
+          <div className="space-y-2 text-xs">
+            <div className="font-medium">Actual entries vs your estimate</div>
+            <ul className="space-y-0.5">
+              {(h.expected ?? []).map((e) => <li key={e.label}>{e.label}: <span className="text-muted-foreground">expected {e.expected ?? "not estimated"}{e.doubles ? " pairs" : ""}</span></li>)}
+              <li className="font-medium">Entered now: {regs ? `${regs.pairs} pair${regs.pairs === 1 ? "" : "s"}${regs.singles ? ` + ${regs.singles} individual entr${regs.singles === 1 ? "y" : "ies"}` : ""}${h.feeDue ? ` · ${regs.outstanding} payment outstanding` : ""}` : "loading…"}</li>
+            </ul>
+            <Button disabled><Lock className="mr-1 h-4 w-4" />Generate draw & fixtures</Button>
+            <p className="text-muted-foreground">{blockers.length ? "Locked until the decisions above are made." : "Locked: draw and fixture generation isn't built in the Beta yet."}</p>
+          </div>
+        )}
       </CardContent></Card>
 
       <div className="grid gap-3 md:grid-cols-2 text-xs">

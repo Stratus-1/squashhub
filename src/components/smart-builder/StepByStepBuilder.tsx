@@ -80,6 +80,15 @@ export type StepAnswers = {
   /** Planned competition format (provisional) with category/subcategory overrides. */
   format: FormatPlan;
   formatOverrides: Record<string, FormatPlan>;
+  /** Provisional seeding with category/subcategory exceptions. */
+  seeding: SeedMethod | null;
+  seedingOverrides: Record<string, SeedMethod>;
+  /** Club Champs (over a period) only. */
+  name: string;
+  periodStart: string;
+  periodEnd: string;
+  unitEntries: Record<string, string>;
+  stages: ClubStage[];
 };
 type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
@@ -96,9 +105,26 @@ type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; plac
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {} };
-type StepKey = "Type" | "Entries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Format" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Playoffs" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Playoffs: "Playoffs", Summary: "Summary" };
+/** Provisional seeding plan — nothing is generated or locked; revisited at the Final Format Review with actual entrants. */
+type SeedMethod = "ranking" | "ladder" | "manual" | "random" | "none" | "later";
+const SEED_LABEL: Record<SeedMethod, string> = { ranking: "Use rankings", ladder: "Use the club ladder", manual: "Manual seeds", random: "Random placement", none: "No seeding", later: "Decide later" };
+const SEED_DESC: Record<SeedMethod, string> = {
+  ranking: "Club, regional or national ranking — whichever matches who may enter.",
+  ladder: "Seed from your club ladder positions.",
+  manual: "You set the seeds yourself.",
+  random: "Players are placed by random draw.",
+  none: "No seeds; placement without ranking.",
+  later: "Keep going and decide seeding later.",
+};
+/** Club Champs stage scheduling (planning only): play by a deadline, or a scheduled session with its own courts. */
+type StageMode = "play_by" | "scheduled" | "later";
+type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[] };
+const newStage = (name: string, mode: StageMode, unit = ""): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [] });
+const stageOk = (s: ClubStage) => !!s.name.trim() && (s.mode === "later" || (s.mode === "play_by" ? !!s.deadline : !!s.date && !!s.from && !!s.to && s.from < s.to && s.courtIds.length > 0));
+
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {}, seeding: null, seedingOverrides: {}, name: "", periodStart: "", periodEnd: "", unitEntries: {}, stages: [] };
+type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Format" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Schedule" | "Playoffs" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -249,8 +275,20 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     dates: a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
   };
   const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
-  const steps: StepKey[] = ["Type", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
-    ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Playoffs", "Summary"];
+  const isChamps = a.kind === "period";
+  const seedFor = (k: string): SeedMethod | null => a.seedingOverrides?.[k] ?? a.seedingOverrides?.[k.split("::")[0]] ?? a.seeding;
+  const seedExceptions = units.filter((u) => seedFor(u.key) !== a.seeding);
+  const stages = a.stages ?? [];
+  const setStages = (s: ClubStage[]) => setA({ ...a, stages: s });
+  const updStage = (id: string, p: Partial<ClubStage>) => setStages(stages.map((s) => (s.id === id ? { ...s, ...p } : s)));
+  const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
+  const stageWhen = (s: ClubStage) => s.mode === "later" ? "Decide later" : s.mode === "play_by" ? `Play by ${s.deadline ? fmtDay(s.deadline) : "(deadline not set)"}` : `Scheduled ${s.date ? fmtDay(s.date) : "(date not set)"} ${s.from || "?"}–${s.to || "?"} · ${clubCourts.filter((c) => s.courtIds.includes(c.id)).map((c) => c.name).join(", ") || "no courts"}`;
+  const unitEntriesOk = units.length > 0 && units.every((u) => Number(a.unitEntries?.[u.key]) > 0);
+  const steps: StepKey[] = isChamps
+    ? ["Type", "Basics", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "ExpEntries", "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+      ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Schedule", "Summary"]
+    : ["Type", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+      ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Playoffs", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
 
@@ -260,8 +298,9 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
-  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Playoffs: true, Summary: false };
+  const basicsOk = !!a.name?.trim() && !!a.periodStart && !!a.periodEnd && a.periodStart <= a.periodEnd;
+  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Schedule: stages.length > 0 && stages.every(stageOk), Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -270,7 +309,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
   /** Exact field when the organiser picked everyone; otherwise the estimate (provisional). */
   const knownField = a.source === "select" && pickIds.length > 0;
-  const fieldCount = knownField ? pickIds.length : Number(a.entries) || 0;
+  const champsEstimate = units.reduce((n, u) => n + (Number(a.unitEntries?.[u.key]) || 0), 0);
+  const fieldCount = knownField ? pickIds.length : isChamps ? champsEstimate : Number(a.entries) || 0;
   const courtHours = a.days.reduce((t, d) => t + (Number(d.courts) || 0) * d.windows.reduce((h, w) => {
     if (!w.from || !w.to || w.from >= w.to) return h;
     const [fh, fm] = w.from.split(":").map(Number); const [th, tm] = w.to.split(":").map(Number);
@@ -343,7 +383,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               </div>
               {a.kind === "period" && (
                 <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-                  Club Champs guided setup — coming next. For now, use the Current builder for this kind of event.
+                  Club Championships: categories progress on their own, rounds can be "play by a date" or scheduled sessions. Everything stays a plan until the Final Format Review after registrations close.
                 </div>
               )}
             </>

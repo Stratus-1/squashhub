@@ -1290,9 +1290,14 @@ export default function Tournaments() {
               size="sm"
               className="h-7 px-2.5 gap-1 shrink-0 self-end sm:self-auto rounded-full bg-accent text-accent-foreground hover:bg-accent/90 font-semibold shadow-sm"
               title="Capture the score of a match that has already been played"
-              onClick={(e) => { e.stopPropagation(); setResultMatch(m); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const mine = !!memberId && [m.player_a_member_id, m.player_b_member_id, m.partner_a_member_id, m.partner_b_member_id].includes(memberId);
+                if (!mine && !window.confirm("This is not your game. Are you sure you want to enter the result?")) return;
+                setResultMatch(m);
+              }}
             >
-              <ClipboardCheck className="w-3 h-3" /> Enter your result
+              <ClipboardCheck className="w-3 h-3" /> Enter result
             </Button>
           );
         })()}

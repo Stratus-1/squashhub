@@ -276,7 +276,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step < 6 && (
+          {step < 7 && (
             <div className="flex justify-between pt-2">
               <Button variant="ghost" size="sm" disabled={step === 0} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
               <Button size="sm" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
@@ -295,11 +295,23 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => setStep(2)} />}
               {cats.length > 0 && (
                 <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => setStep(3)}>
-                  {cats.map((c, i) => <TreeLeaf key={i}>{c}</TreeLeaf>)}
+                  {cats.map((c, i) => {
+                    const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
+                    return (
+                      <TreeLeaf key={i}>
+                        <button type="button" onClick={() => setStep(4)} className="rounded px-1 hover:bg-muted">{c}</button>
+                        {subs.length > 0 && (
+                          <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border pl-2">
+                            {subs.map((s, j) => <TreeLeaf key={j}>{s}</TreeLeaf>)}
+                          </div>
+                        )}
+                      </TreeLeaf>
+                    );
+                  })}
                 </TreeNode>
               )}
               {a.days.some((d) => d.date) && (
-                <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${a.days.length} day${a.days.length === 1 ? "" : "s"}`} onClick={() => setStep(4)}>
+                <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${a.days.length} day${a.days.length === 1 ? "" : "s"}`} onClick={() => setStep(5)}>
                   {a.days.map((d, i) => (
                     <TreeLeaf key={i}>
                       {fmtDay(d.date)}

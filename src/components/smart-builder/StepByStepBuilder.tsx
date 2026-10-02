@@ -6,6 +6,7 @@ const normaliseGroupInviteUrl = (raw: string) => {
   v = v.replace(/^http:\/\//i, "https://").replace(/^https:\/\/www\./i, "https://");
   return /^https:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{6,}\/?(\?\S*)?$/i.test(v) ? v : null;
 };
+import { inferCategory } from "@/lib/leagues/category";
 import { placeByLeague } from "@/lib/smart-builder/league-placement";
 import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
 import { ConflictPanel } from "./ConflictPanel";
@@ -681,7 +682,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
         feeCents, confirmNeedsPay: fee.has ? fee.confirmNeedsPay !== false : undefined, partnerPay: fee.has && dblUnits.length ? fee.doublesCover : undefined, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
-        divisions: units.map((u) => ({ label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null })),
+        divisions: units.map((u) => ({ leagueIds: eligOf(u.key).mode === "leagues" ? eligOf(u.key).leagueIds : [], gender: inferCategory(u.base), label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const, serving: a.serving === undefined ? undefined : u.disc === "doubles" ? a.serving[u.key] ?? null : null })),
       });
       const prev = loadHandover(clubId, tid);
       saveHandover({

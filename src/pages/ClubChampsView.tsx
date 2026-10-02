@@ -76,6 +76,7 @@ const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'",
 
 import { getRankRowStyle } from "@/lib/standings-rank-style";
 import { rankUnits, gameSetsOf } from "@/lib/tournaments/tie-breaks";
+import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { resolveTieBreaks } from "@/lib/tournaments/structured-persist";
 import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 

@@ -215,6 +215,17 @@ export function hierarchyFromSpec(tid: string, spec: TournamentSpec): HTournamen
 
 const splitUnit = (id: string | null) => (id ? id.split("+") : [null, null]);
 const legacyStage = (k: StageKind) => (k === "knockout" || k === "placement" ? "ko" : "group");
+/**
+ * Persisted stage class for one fixture. Any stage after a division's first stage is a play-off
+ * (its own name, date, courts and messages) and must never be read back as pool-stage games —
+ * otherwise standings re-derive pools from play-off rows and deadlines fall back to pool rounds.
+ */
+export function persistedStage(spec: TournamentSpec, f: { divisionId: string; stageId: string; stageKind: StageKind }): "ko" | "group" {
+  if (legacyStage(f.stageKind) === "ko") return "ko";
+  const stages = spec.divisions.find((d) => d.divisionId === f.divisionId)?.stages ?? [];
+  const first = [...stages].sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))[0];
+  return first && first.id !== f.stageId ? "ko" : "group";
+}
 
 /** Validate then insert rounds + matches for engine fixtures. Nothing is written if validation fails. */
 export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, ids: StructureIds, fixtures: EngineFixture[], existing: FixtureRow[] = []) {
@@ -250,7 +261,8 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     const [r] = await db.insert("club_champs_rounds", [{
       champ_id: tid, group_number: divisionGroup(spec, spec.divisions.find((d) => d.divisionId === f.divisionId)!), round_number: f.round ?? 1,
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk], stage_key: f.stageId,
-      round_type: legacyStage(f.stageKind) === "ko" ? "knockout" : f.stageKind === "swiss" ? "swiss" : "round_robin", label: `Round ${f.round ?? 1}`, status: "active",
+      round_type: persistedStage(spec, f) === "ko" ? "knockout" : f.stageKind === "swiss" ? "swiss" : "round_robin",
+      label: persistedStage(spec, f) === "ko" && legacyStage(f.stageKind) !== "ko" ? (spec.divisions.find((d) => d.divisionId === f.divisionId)?.stages.find((s) => s.id === f.stageId)?.name || `Round ${f.round ?? 1}`) : `Round ${f.round ?? 1}`, status: "active",
       ...(playBy(f) ? { play_by: playBy(f) } : {}),
     }]);
     roundIds[key] = r.id;
@@ -280,7 +292,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     const [a1, a2] = splitUnit(f.a); const [b1, b2] = splitUnit(f.b);
     return {
       champ_id: tid, group_number: divisionGroup(spec, spec.divisions.find((d) => d.divisionId === f.divisionId)!),
-      round_number: f.round ?? 1, stage: legacyStage(f.stageKind), stage_key: f.stageId, status: "scheduled",
+      round_number: f.round ?? 1, stage: persistedStage(spec, f), stage_key: f.stageId, status: "scheduled",
       player_a_member_id: a1, partner_a_member_id: a2, player_b_member_id: b1, partner_b_member_id: b2,
       pool_number: poolIdx == null ? null : poolIdx + 1, bracket_position: f.slot ?? null,
       ...(f.thirdPlace ? { stage_label: "3rd place" } : koLabel ? { stage_label: koLabel } : f.label ? { stage_label: f.label } : {}),

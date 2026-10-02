@@ -33,7 +33,13 @@ const seedChamps = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringif
   seeding: "later", partner: { "Open Doubles": "admin" }, source: "select", elig: {},
   picks: { m1: "Open Doubles", m2: "Open Doubles" }, pairs: { "Open Doubles": [["m1", "m2"]] },
   fee: { has: true, amount: "200", varies: false, perUnit: {}, doublesBasis: "pair", doublesCover: true, methods: ["cash"] },
-  stages: [{ id: "s1", unit: "", name: "Round 1", mode: "play_by", deadline: "2026-11-15", date: "", from: "", to: "", courtIds: [], phase: "main" }],
+  planId: "plan1",
+  stages: [
+    { id: "r1", unit: "", name: "Round 1", mode: "scheduled", deadline: "", date: "2026-11-03", from: "18:00", to: "21:00", courtIds: ["20", "21"], phase: "main" },
+    { id: "r2", unit: "", name: "Round 2", mode: "play_by", deadline: "2026-11-15", date: "", from: "", to: "", courtIds: [], phase: "main" },
+    { id: "sf", unit: "", name: "Semifinal", mode: "scheduled", deadline: "", date: "2026-11-20", from: "18:00", to: "21:00", courtIds: ["20"], phase: "playoff" },
+    { id: "fi", unit: "", name: "Final", mode: "scheduled", deadline: "", date: "2026-11-21", from: "09:00", to: "12:00", courtIds: ["20"], phase: "playoff" },
+  ],
   playoffSync: "later",
 }));
 
@@ -44,13 +50,22 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     seedChamps();
     render(<MemoryRouter><ClubTournamentBeta clubId="c1" clubName="Riverside" /></MemoryRouter>);
     fireEvent.click(screen.getByText("Build your tournament step by step"));
+    // Court bookings plan lists every concretely scheduled stage — main rounds too, not only playoffs; play-by rounds are not booked.
+    fireEvent.click((await screen.findAllByRole("button", { name: /Stages & scheduling/ }))[0]);
+    const panel = await screen.findByTestId("stage-court-bookings");
+    expect(panel.textContent).toMatch(/Round 1 \(All categories\) · 2026-11-03 18:00–21:00 · Court 20/);
+    expect(panel.textContent).toMatch(/Round 1 \(All categories\) · 2026-11-03 18:00–21:00 · Court 21/);
+    expect(panel.textContent).toMatch(/Semifinal/);
+    expect(panel.textContent).toMatch(/Final \(All categories\) · 2026-11-21/);
+    expect(panel.textContent).not.toMatch(/Round 2/);
     fireEvent.click((await screen.findAllByRole("button", { name: /^\d*\s*Summary/ }))[0]);
 
     const top = await screen.findByTestId("handover-top");
     await waitFor(() => expect(top.textContent).toMatch(/Tournament setup complete/));
     expect(top.textContent).toMatch(/Needed at Finalise entries:.*Seeding/);
     expect(top.textContent).toMatch(/Needed at Generate draw & fixtures:.*Playoff dates/);
-    expect(top.textContent).toMatch(/None of these block completing setup/);
+    expect(top.textContent).toMatch(/Must be decided before players are contacted \(0\)/);
+    expect(top.textContent).toMatch(/Can stay "Decide later" for now \(2\)/);
     expect(screen.getByTestId("handover-bottom")).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: /Complete setup & continue/ })[0]);
@@ -79,6 +94,11 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
 
     fireEvent.click(screen.getByRole("button", { name: /Mark as informed & continue/ }));
     expect(screen.getByText("Registrations & payments").closest("li")).toHaveAttribute("aria-current", "step");
+    fireEvent.click(screen.getByRole("button", { name: /Close registrations & finalise entries/ }));
+    expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText(/Decide these first/).parentElement?.textContent).toMatch(/Seeding/);
+    expect(screen.getByText(/expected 8 pairs/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Generate draw & fixtures/ })).toBeDisabled();
 
     // Edit setup returns to Summary and re-saving updates the same tournament (no duplicate).
     fireEvent.click(screen.getByRole("button", { name: /Edit tournament setup/ }));
@@ -86,6 +106,6 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(await screen.findByText("Next action")).toBeInTheDocument();
     expect(calls.filter((c) => c.table === "club_champs" && c.op === "insert")).toHaveLength(1);
     expect(calls.some((c) => c.table === "club_champs" && c.op === "update")).toBe(true);
-    expect(screen.getByText("Registrations & payments").closest("li")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step");
   });
 });

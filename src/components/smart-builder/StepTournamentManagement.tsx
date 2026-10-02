@@ -10,6 +10,7 @@ import {
 } from "@/lib/smart-builder/step-handover";
 import { StepInformPanel } from "./StepInformPanel";
 import { StepGenerateDrawPanel } from "./StepGenerateDrawPanel";
+import { StepRunOverview } from "./StepRunOverview";
 import { fromExt } from "@/lib/supabase-ext";
 import { TournamentRegistrationsDialog } from "@/components/club-admin/TournamentRegistrationsDialog";
 
@@ -186,8 +187,13 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           <StepGenerateDrawPanel clubId={clubId} tournamentId={tournamentId} revisiting={revisiting}
             onGenerated={() => { if (h.stage === "generate") advance("generate", "activate"); }} />
         )}
-        {shown === "activate" && !revisiting && (
-          <p className="text-xs text-muted-foreground">The draw and fixtures are saved. Open them from the "Generate draw & fixtures" stage above (Completed ✓ · View / manage). Activating the tournament is the next Beta build.</p>
+        {!revisiting && (
+          <StepRunOverview clubId={clubId} tournamentId={tournamentId} plan={life?.format_plan as any}
+            onLifecycle={(to) => {
+              if (!life || lifecycleIndex(to) <= cur) return;
+              const done = LIFECYCLE.slice(0, lifecycleIndex(to)).map((l) => l.key) as LifecycleKey[];
+              setLifecycle({ ...life, stage: to, completed: [...new Set([...life.completed, ...done])] as LifecycleKey[] }).catch(() => {});
+            }} />
         )}
       </CardContent></Card>
 

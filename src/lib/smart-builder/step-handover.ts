@@ -18,7 +18,7 @@ export const LIFECYCLE = [
   { key: "registrations", label: "Registrations & payments" },
   { key: "finalise", label: "Finalise entries" },
   { key: "generate", label: "Generate draw & fixtures" },
-  { key: "activate", label: "Activate tournament" },
+  { key: "activate", label: "Draw ready" },
   { key: "running", label: "Tournament running" },
   { key: "complete", label: "Complete" },
 ] as const;
@@ -81,8 +81,10 @@ export function nextAction(h: Handover): { title: string; detail: string; availa
     return { title: "Generate draw & fixtures", detail: blocked.length ? "Decide the items below first — they depend on the real entries, so they're asked for now." : "Everything needed is decided. Continue to confirm the format and generate the draw.", available: blocked.length === 0 };
   }
   if (h.stage === "generate") return { title: "Generate draw & fixtures", detail: "Confirm the final format for the current entries, check the preview, then generate the draw.", available: true };
-  if (h.stage === "activate") return { title: "Activate tournament", detail: "Draw and fixtures are saved. Review them from the Generate draw & fixtures stage. Activation is the next Beta build.", available: false };
-  return { title: LIFECYCLE[lifecycleIndex(h.stage)].label, detail: "Not part of this Beta yet.", available: false };
+  if (h.stage === "activate") return { title: "Draw ready", detail: "The tournament starts running as soon as its games exist — there is no separate activation. Progress below follows the games and results.", available: true };
+  if (h.stage === "running") return { title: "Tournament running", detail: "Each stage starts when the stage before it is complete (not on a date). Anything that needs you is shown below.", available: true };
+  if (h.stage === "complete") return { title: "Tournament complete", detail: "Every stage of every path has been played.", available: true };
+  return { title: LIFECYCLE[lifecycleIndex(h.stage)].label, detail: "", available: false };
 }
 
 export type CreateInput = {

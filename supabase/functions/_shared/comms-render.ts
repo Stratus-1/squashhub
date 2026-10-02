@@ -26,6 +26,7 @@ const ACTIONS: Record<string, { defaultLabel: string; path: (p: any) => string; 
   event_detail: { defaultLabel: "View the event", path: (p) => `/events/${p.event_id ?? ""}` },
   tournaments: { defaultLabel: "View tournaments", path: () => "/tournaments" },
   tournament_entry: { defaultLabel: "Enter the tournament", path: (p) => `/tournaments?tournamentId=${p.tournament_id ?? ""}` },
+  tournament_view: { defaultLabel: "View my tournament entry", path: (p) => `/club-champs/${p.tournament_id ?? ""}` },
   league_games: { defaultLabel: "View my fixtures", path: () => "/league-games" },
   availability: { defaultLabel: "Set my availability", path: () => "/availability" },
   ladder: { defaultLabel: "View the ladder", path: () => "/ladder" },

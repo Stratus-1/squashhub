@@ -102,6 +102,14 @@ export const COMMS_ACTIONS: CommsActionDef[] = [
     path: (p) => `/tournaments?tournamentId=${p.tournament_id ?? ""}`,
   },
   {
+    key: "tournament_view",
+    label: "My tournament entry",
+    group: "Competition",
+    defaultLabel: "View my tournament entry",
+    requiredParams: ["tournament_id"],
+    path: (p) => `/club-champs/${p.tournament_id ?? ""}`,
+  },
+  {
     key: "league_games",
     label: "League fixtures",
     group: "Competition",

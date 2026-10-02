@@ -72,11 +72,24 @@ export function StageProgressPanel({ champId, spec, matches, nameOf }: { champId
   const [setup, setSetup] = useState<StageStatus | null>(null);
   const [confirm, setConfirm] = useState<StageStatus | null>(null);
   const [tie, setTie] = useState<{ div: string; stage: string } | null>(null);
-  const current = (div: string) => states.filter((s) => s.divisionKey === div);
+  const tieSource = (divKey: string, stageKey: string) => {
+    const d = spec.divisions.find((x) => x.divisionId === divKey);
+    const st = d?.stages.find((x) => x.id === stageKey);
+    return st?.kind === "mapped" && st.mapping?.source === "stage_standings" ? st.mapping.sourceStageId : d?.stages.find((x) => x.order === (st?.order ?? 0) - 1)?.id;
+  };
 
   return (
     <div className="rounded-lg border p-3 space-y-2 text-sm" data-testid="stage-progress">
       <div className="font-semibold">Stage progress</div>
+      {states.filter((s) => s.state === "blocked" && /tied/i.test(s.detail)).map((s) => {
+        const src = tieSource(s.divisionKey, s.stageKey);
+        return (
+          <div key={`tie-${s.divisionKey}-${s.stageKey}`} role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-destructive bg-destructive/10 p-2">
+            <span className="font-medium">Action required · {s.divisionLabel}: {s.detail} (decides who plays {s.name})</span>
+            {src && <Button size="sm" variant="destructive" onClick={() => setTie({ div: s.divisionKey, stage: src })}>Resolve tie</Button>}
+          </div>
+        );
+      })}
       {states.filter((s) => s.state === "ready" && !s.automatic).map((s) => (
         <div key={`go-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
           <span className="font-medium">{s.divisionLabel}: {s.detail}</span>

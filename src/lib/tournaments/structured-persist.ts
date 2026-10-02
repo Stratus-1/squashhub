@@ -232,6 +232,11 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     if (bad) throw new IntegrityError("court_not_selected", `Court ${bad.courtId} is not one of the tournament's selected courts.`);
   }
   const roundIds: Record<string, string> = {};
+  // Play-by stages: every round/game carries the stage deadline (no invented court times).
+  const playBy = (f: EngineFixture): string | null => {
+    const sch = spec.divisions.find((d) => d.divisionId === f.divisionId)?.stages.find((s) => s.id === f.stageId)?.schedule as any;
+    return sch?.rule === "play_by" && sch.deadline ? String(sch.deadline).slice(0, 10) : null;
+  };
   const [firstDiv] = spec.divisions;
   for (const f of fixtures) {
     const key = `${f.divisionId}/${f.stageId}/${f.roundId}`;
@@ -241,6 +246,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
       champ_id: tid, group_number: spec.divisions.findIndex((d) => d.divisionId === f.divisionId) + 1, round_number: f.round ?? 1,
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk], stage_key: f.stageId,
       round_type: legacyStage(f.stageKind) === "ko" ? "knockout" : f.stageKind === "swiss" ? "swiss" : "round_robin", label: `Round ${f.round ?? 1}`, status: "active",
+      ...(playBy(f) ? { play_by: playBy(f) } : {}),
     }]);
     roundIds[key] = r.id;
   }
@@ -278,6 +284,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
       round_id: roundIds[`${f.divisionId}/${f.stageId}/${f.roundId}`],
       ...(f.courtId != null ? { court_id: f.courtId } : {}),
       ...(date ? { scheduled_date: date } : {}),
+      ...(playBy(f) ? { play_by: playBy(f) } : {}),
     };
   });
   if (rows.some((r) => !r.division_id || !r.stage_id || !r.round_id)) throw new IntegrityError("identity", "Structural identity unresolved.");

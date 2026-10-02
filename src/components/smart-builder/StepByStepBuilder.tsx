@@ -6,6 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
+import { useAssociationTenant } from "@/hooks/use-association-tenant";
+import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
 
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
@@ -126,10 +129,30 @@ const SEED_DESC: Record<SeedMethod, string> = {
 /** Club Champs stage scheduling (planning only): play by a deadline, or a scheduled session with its own courts. */
 type StageMode = "play_by" | "scheduled" | "later";
 type StagePhase = "main" | "playoff";
-type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[]; phase?: StagePhase };
-const newStage = (name: string, mode: StageMode, unit = "", phase: StagePhase = "main"): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [], phase });
+/** Who plays whom at a playoff stage — separate from the stage name and from scheduling. Planning only. */
+type PlayoffPairing = "crossover" | "same_position" | "seeded" | "winners" | "later";
+const PAIRING_LABEL: Record<PlayoffPairing, string> = {
+  crossover: "Pool crossover (A1 v B2, B1 v A2)",
+  same_position: "Same position (A1 v B1, A2 v B2)",
+  seeded: "Seeded (highest v lowest qualifier)",
+  winners: "Winners of the previous stage",
+  later: "Pairing: decide later",
+};
+type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[]; phase?: StagePhase; pairing?: PlayoffPairing };
+const newStage = (name: string, mode: StageMode, unit = "", phase: StagePhase = "main"): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [], phase, ...(phase === "playoff" ? { pairing: "later" as PlayoffPairing } : {}) });
 /** Playoff stages are fixed standard rounds — organisers pick, never type arbitrary names. */
 const PLAYOFF_STAGE_NAMES = ["Quarterfinal", "Semifinal", "Final"] as const;
+/** Pairing choices that make sense for this stage: "winners" only after an earlier playoff stage; pool pairings only for pool-style formats. */
+function pairingOptions(s: ClubStage, playoffs: ClubStage[], kind: string): PlayoffPairing[] {
+  const idx = PLAYOFF_STAGE_NAMES.indexOf(s.name as typeof PLAYOFF_STAGE_NAMES[number]);
+  const hasEarlier = idx > 0 && playoffs.some((x) => x.id !== s.id && (x.unit === s.unit || !x.unit || !s.unit) && PLAYOFF_STAGE_NAMES.indexOf(x.name as typeof PLAYOFF_STAGE_NAMES[number]) > -1 && PLAYOFF_STAGE_NAMES.indexOf(x.name as typeof PLAYOFF_STAGE_NAMES[number]) < idx);
+  const poolish = kind === "pools" || kind === "cross" || kind === "later";
+  const out: PlayoffPairing[] = [];
+  if (hasEarlier) out.push("winners");
+  if (poolish) out.push("crossover", "same_position");
+  out.push("seeded", "later");
+  return out;
+}
 const stageOk = (s: ClubStage) => !!s.name.trim() && (s.mode === "later" || (s.mode === "play_by" ? !!s.deadline : !!s.date && !!s.from && !!s.to && s.from < s.to && s.courtIds.length > 0));
 /** Per category/subcategory: where main (qualifying) rounds end and the stage playoffs begin. Planning only. */
 type PlayoffStart = "qf" | "sf" | "final" | "custom" | "none" | "later";
@@ -199,6 +222,22 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     supabase.from("clubs").select("whatsapp_enabled, sms_enabled").eq("id", clubId).maybeSingle()
       .then(({ data }) => setPhoneCh({ whatsapp: !!(data as any)?.whatsapp_enabled, sms: !!(data as any)?.sms_enabled }));
   }, [clubId]);
+  // Event owner is derived from the SquashHub federation tree — never typed.
+  const { data: hierarchy, isLoading: hierLoading } = useOrgHierarchyLite();
+  const assocTenant = useAssociationTenant(clubId);
+  const ownerLoading = hierLoading;
+  const derivedOwner: string | null = useMemo(() => {
+    if (!a.scope) return null;
+    if (a.scope === "club") return clubName || hierarchy?.clubNames.get(clubId) || null;
+    if (!hierarchy) return null;
+    const own = assocTenant.isAssociation ? assocTenant.orgId : hierarchy.orgs.find((o) => o.kind === "club" && o.club_id === clubId)?.id ?? null;
+    if (a.scope === "regional") return owningAssociation(own, hierarchy.orgs, hierarchy.rels)?.name ?? null;
+    return federationRoot(own, hierarchy.orgs, hierarchy.rels)?.name ?? null;
+  }, [a.scope, clubId, clubName, hierarchy, assocTenant.isAssociation, assocTenant.orgId]);
+  useEffect(() => {
+    if (a.scope && (a.ownerName ?? "") !== (derivedOwner ?? "")) setA((prev) => ({ ...prev, ownerName: derivedOwner ?? "" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [derivedOwner, a.scope]);
   const chAvail = (c: Channel) => c === "in_app" || c === "email" || phoneCh[c];
   const msg: MsgCfg = { ...DEFAULT_MSG, ...(a.msg ?? {}) };
   const setMsg = (p: Partial<MsgCfg>) => setA({ ...a, msg: { ...msg, ...p } });
@@ -335,6 +374,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
         ) : (
           <Input aria-label="Stage name" className="max-w-[200px]" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })} placeholder="e.g. Round 1" />
         )}
+        {s.phase === "playoff" && (() => {
+          const opts = pairingOptions(s, playoffStages, s.unit ? formatFor(s.unit).kind : format.kind);
+          const cur = s.pairing ?? "later";
+          return <select aria-label="Pairing / format" title="Who plays whom at this stage" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={cur} onChange={(e) => updStage(s.id, { pairing: e.target.value as PlayoffPairing })}>
+            {!opts.includes(cur) && <option value={cur}>{PAIRING_LABEL[cur]}</option>}
+            {opts.map((p) => <option key={p} value={p}>{PAIRING_LABEL[p]}</option>)}
+          </select>;
+        })()}
         <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => setStages(stages.filter((x) => x.id !== s.id))}><Trash2 className="h-4 w-4" /></Button>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -372,8 +419,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
   const periodOk = !!a.periodStart;
-  const basicsOk = !!a.name?.trim() && !!a.scope && (a.scope === "club" || !!a.ownerName?.trim()) && (!isChamps || periodOk);
-  const ownerText = a.scope === "club" ? `Club · ${clubName || "this club"}` : a.scope ? `${SCOPE_LABEL[a.scope]} · ${a.ownerName || "owner not named"}` : "Level not chosen";
+  const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
+  const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
@@ -884,11 +931,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   {(Object.keys(SCOPE_LABEL) as Scope[]).map((s) => <Choice key={s} active={a.scope === s} onClick={() => setA({ ...a, scope: s })} title={SCOPE_LABEL[s]} desc={SCOPE_DESC[s]} />)}
                 </div>
               </div>
-              {a.scope === "club" && <p className="text-sm">Owner: <b>{clubName || "this club"}</b></p>}
-              {(a.scope === "regional" || a.scope === "national") && <div className="max-w-[360px] space-y-1">
-                <Label htmlFor="sbs-owner">{a.scope === "regional" ? "Association / region" : "Federation / national body"}</Label>
-                <Input id="sbs-owner" value={a.ownerName ?? ""} onChange={(e) => setA({ ...a, ownerName: e.target.value })} placeholder={a.scope === "regional" ? "e.g. Mpumalanga Squash" : "e.g. Squash South Africa"} />
-                <p className="text-xs text-muted-foreground">Planning only — linking to the real {a.scope === "regional" ? "association and its clubs" : "federation, associations and clubs"} comes later. Who may enter is set in a later step.</p>
+              {a.scope && <div className="max-w-[460px] space-y-1 rounded-md border border-border bg-muted/40 p-3">
+                <p className="text-sm">Owner: <b>{derivedOwner ?? (ownerLoading ? "Looking up…" : "Not found")}</b> <Lock className="ml-1 inline h-3.5 w-3.5 text-muted-foreground" /></p>
+                <p className="text-xs text-muted-foreground">
+                  {derivedOwner
+                    ? a.scope === "club" ? "Your club. Only this club's members fall under this level."
+                      : a.scope === "regional" ? "The association your club belongs to, taken from the SquashHub federation tree. Clubs and members under it fall under this level."
+                      : "The national federation at the top of the SquashHub federation tree."
+                    : ownerLoading ? "Reading the SquashHub federation tree…"
+                      : a.scope === "regional" ? "Your club isn't linked to an association in the SquashHub federation tree yet. A super admin must link it before a regional event can be owned." : "No national federation is set up in the SquashHub federation tree yet."}
+                </p>
+                <p className="text-xs text-muted-foreground">Set automatically — it can't be typed or changed here.</p>
               </div>}
               {isChamps && <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1"><Label htmlFor="sbs-start">Starts</Label><Input id="sbs-start" type="date" value={a.periodStart ?? ""} onChange={(e) => setA({ ...a, periodStart: e.target.value })} /></div>
@@ -1317,9 +1370,9 @@ function StageTable({ stages, unitName, when }: { stages: ClubStage[]; unitName:
   if (!stages.length) return <p className="text-xs text-muted-foreground">No stages yet.</p>;
   const main = stages.filter((s) => (s.phase ?? "main") === "main");
   const po = stages.filter((s) => s.phase === "playoff");
-  const row = (s: ClubStage) => <tr key={s.id} className="border-t border-border"><td className="py-1 pr-2">{s.phase === "playoff" ? "Playoff" : "Main round"}</td><td className="py-1 pr-2">{unitName(s.unit)}</td><td className="py-1 pr-2">{s.name || "Unnamed"}</td><td className="py-1">{when(s)}</td></tr>;
-  return <table className="w-full text-xs"><thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Phase</th><th className="py-1 pr-2">Category</th><th className="py-1 pr-2">Stage</th><th className="py-1">Method · deadline or date/time · courts</th></tr></thead>
+  const row = (s: ClubStage) => <tr key={s.id} className="border-t border-border"><td className="py-1 pr-2">{s.phase === "playoff" ? "Playoff" : "Main round"}</td><td className="py-1 pr-2">{unitName(s.unit)}</td><td className="py-1 pr-2">{s.name || "Unnamed"}</td><td className="py-1 pr-2">{s.phase === "playoff" ? PAIRING_LABEL[s.pairing ?? "later"] : "—"}</td><td className="py-1">{when(s)}</td></tr>;
+  return <table className="w-full text-xs"><thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Phase</th><th className="py-1 pr-2">Category</th><th className="py-1 pr-2">Stage</th><th className="py-1 pr-2">Pairing</th><th className="py-1">Method · deadline or date/time · courts</th></tr></thead>
     <tbody>{main.map(row)}
-      {po.length > 0 && <tr><td colSpan={4} className="py-1.5"><div className="rounded bg-primary/10 px-2 py-1 text-center font-semibold text-primary">▼ Playoffs begin</div></td></tr>}
+      {po.length > 0 && <tr><td colSpan={5} className="py-1.5"><div className="rounded bg-primary/10 px-2 py-1 text-center font-semibold text-primary">▼ Playoffs begin</div></td></tr>}
       {po.map(row)}</tbody></table>;
 }

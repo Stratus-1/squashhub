@@ -168,6 +168,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
     return { ...u, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
+  const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
   const setDisc = (k: string, d: Disc) => setA({ ...a, disc: { ...a.disc, [k]: d } });
   const setPlayType = (p: Exclude<PlayType, null>) => {
     if (p === "both") { setA({ ...a, playType: p }); return; }
@@ -218,7 +219,6 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const feeFor = (k: string) => (fee.varies ? fee.perUnit[k] ?? "" : fee.amount);
   const feeUnitText = (u: { key: string; disc: Disc | null }) => `R${feeFor(u.key) || "?"} ${u.disc === "doubles" && fee.doublesBasis === "pair" ? "per pair" : "per player"}`;
   const feeSummary = fee.has === null ? "Not chosen" : !fee.has ? "No entry fee" : fee.varies ? "Varies by category" : `R${fee.amount || "?"}`;
-  const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
   const discOk = units.every((u) => u.disc !== null);
   const unitLabel = (k: string) => units.find((u) => u.key === k)?.label ?? "Not placed yet";
   const eligOf = (k: string): Elig => a.elig[k] ?? DEFAULT_ELIG;

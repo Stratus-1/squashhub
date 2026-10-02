@@ -102,7 +102,6 @@ describe("Step-by-Step generate draw", () => {
     const p = previewDraw("T", d, { start: "2026-10-08", end: null });
     expect(p.divisions[0].perRound.map((r) => r.date)).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);
   });
-  });
   it("pool preview reuses the builder allocation and the organiser's move is exactly what is generated", () => {
     const base = divs()[0];
     const d: DrawDivision = { ...base, units: [...base.units, ...divs()[1].units], format: { ...fmt, kind: "pools", pools: 2 } };

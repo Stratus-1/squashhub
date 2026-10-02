@@ -18099,6 +18099,7 @@ export type Database = {
         }[]
       }
       get_tournament_invite: { Args: { p_token: string }; Returns: Json }
+      get_tournament_invite_base: { Args: { p_token: string }; Returns: Json }
       get_tournament_invite_preview: {
         Args: { p_champ_id: string }
         Returns: Json

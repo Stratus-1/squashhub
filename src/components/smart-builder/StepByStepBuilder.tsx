@@ -80,6 +80,15 @@ export type StepAnswers = {
   /** Planned competition format (provisional) with category/subcategory overrides. */
   format: FormatPlan;
   formatOverrides: Record<string, FormatPlan>;
+  /** Provisional seeding with category/subcategory exceptions. */
+  seeding: SeedMethod | null;
+  seedingOverrides: Record<string, SeedMethod>;
+  /** Club Champs (over a period) only. */
+  name: string;
+  periodStart: string;
+  periodEnd: string;
+  unitEntries: Record<string, string>;
+  stages: ClubStage[];
 };
 type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
@@ -96,9 +105,26 @@ type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; plac
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {} };
-type StepKey = "Type" | "Entries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Format" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Playoffs" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Playoffs: "Playoffs", Summary: "Summary" };
+/** Provisional seeding plan — nothing is generated or locked; revisited at the Final Format Review with actual entrants. */
+type SeedMethod = "ranking" | "ladder" | "manual" | "random" | "none" | "later";
+const SEED_LABEL: Record<SeedMethod, string> = { ranking: "Use rankings", ladder: "Use the club ladder", manual: "Manual seeds", random: "Random placement", none: "No seeding", later: "Decide later" };
+const SEED_DESC: Record<SeedMethod, string> = {
+  ranking: "Club, regional or national ranking — whichever matches who may enter.",
+  ladder: "Seed from your club ladder positions.",
+  manual: "You set the seeds yourself.",
+  random: "Players are placed by random draw.",
+  none: "No seeds; placement without ranking.",
+  later: "Keep going and decide seeding later.",
+};
+/** Club Champs stage scheduling (planning only): play by a deadline, or a scheduled session with its own courts. */
+type StageMode = "play_by" | "scheduled" | "later";
+type ClubStage = { id: string; unit: string; name: string; mode: StageMode; deadline: string; date: string; from: string; to: string; courtIds: string[] };
+const newStage = (name: string, mode: StageMode, unit = ""): ClubStage => ({ id: Math.random().toString(36).slice(2), unit, name, mode, deadline: "", date: "", from: "", to: "", courtIds: [] });
+const stageOk = (s: ClubStage) => !!s.name.trim() && (s.mode === "later" || (s.mode === "play_by" ? !!s.deadline : !!s.date && !!s.from && !!s.to && s.from < s.to && s.courtIds.length > 0));
+
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {}, seeding: null, seedingOverrides: {}, name: "", periodStart: "", periodEnd: "", unitEntries: {}, stages: [] };
+type StepKey = "Type" | "Basics" | "Entries" | "ExpEntries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Format" | "Seeding" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Schedule" | "Playoffs" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Basics: "Basics", Entries: "Entries", ExpEntries: "Expected entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Seeding: "Seeding", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Schedule: "Stages & scheduling", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -249,8 +275,20 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     dates: a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
   };
   const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
-  const steps: StepKey[] = ["Type", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
-    ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Playoffs", "Summary"];
+  const isChamps = a.kind === "period";
+  const seedFor = (k: string): SeedMethod | null => a.seedingOverrides?.[k] ?? a.seedingOverrides?.[k.split("::")[0]] ?? a.seeding;
+  const seedExceptions = units.filter((u) => seedFor(u.key) !== a.seeding);
+  const stages = a.stages ?? [];
+  const setStages = (s: ClubStage[]) => setA({ ...a, stages: s });
+  const updStage = (id: string, p: Partial<ClubStage>) => setStages(stages.map((s) => (s.id === id ? { ...s, ...p } : s)));
+  const stageUnit = (k: string) => (k ? unitBase(k) : "All categories");
+  const stageWhen = (s: ClubStage) => s.mode === "later" ? "Decide later" : s.mode === "play_by" ? `Play by ${s.deadline ? fmtDay(s.deadline) : "(deadline not set)"}` : `Scheduled ${s.date ? fmtDay(s.date) : "(date not set)"} ${s.from || "?"}–${s.to || "?"} · ${clubCourts.filter((c) => s.courtIds.includes(c.id)).map((c) => c.name).join(", ") || "no courts"}`;
+  const unitEntriesOk = units.length > 0 && units.every((u) => Number(a.unitEntries?.[u.key]) > 0);
+  const steps: StepKey[] = isChamps
+    ? ["Type", "Basics", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "ExpEntries", "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+      ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Schedule", "Summary"]
+    : ["Type", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+      ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Playoffs", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
 
@@ -260,8 +298,9 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
-  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Playoffs: true, Summary: false };
+  const basicsOk = !!a.name?.trim() && !!a.periodStart && !!a.periodEnd && a.periodStart <= a.periodEnd;
+  const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Schedule: stages.length > 0 && stages.every(stageOk), Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -270,7 +309,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
   /** Exact field when the organiser picked everyone; otherwise the estimate (provisional). */
   const knownField = a.source === "select" && pickIds.length > 0;
-  const fieldCount = knownField ? pickIds.length : Number(a.entries) || 0;
+  const champsEstimate = units.reduce((n, u) => n + (Number(a.unitEntries?.[u.key]) || 0), 0);
+  const fieldCount = knownField ? pickIds.length : isChamps ? champsEstimate : Number(a.entries) || 0;
   const courtHours = a.days.reduce((t, d) => t + (Number(d.courts) || 0) * d.windows.reduce((h, w) => {
     if (!w.from || !w.to || w.from >= w.to) return h;
     const [fh, fm] = w.from.split(":").map(Number); const [th, tm] = w.to.split(":").map(Number);
@@ -343,7 +383,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               </div>
               {a.kind === "period" && (
                 <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-                  Club Champs guided setup — coming next. For now, use the Current builder for this kind of event.
+                  Club Championships: categories progress on their own, rounds can be "play by a date" or scheduled sessions. Everything stays a plan until the Final Format Review after registrations close.
                 </div>
               )}
             </>
@@ -759,6 +799,95 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
+          {cur === "Basics" && (
+            <>
+              <Q t="Club Championships basics" h="Name and the overall period the championships run over." />
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1 sm:col-span-3"><Label htmlFor="sbs-name">Name</Label><Input id="sbs-name" value={a.name ?? ""} onChange={(e) => setA({ ...a, name: e.target.value })} placeholder="e.g. Club Championships 2026" /></div>
+                <div className="space-y-1"><Label htmlFor="sbs-start">Starts</Label><Input id="sbs-start" type="date" value={a.periodStart ?? ""} onChange={(e) => setA({ ...a, periodStart: e.target.value })} /></div>
+                <div className="space-y-1"><Label htmlFor="sbs-end">Ends</Label><Input id="sbs-end" type="date" value={a.periodEnd ?? ""} onChange={(e) => setA({ ...a, periodEnd: e.target.value })} /></div>
+              </div>
+              {a.periodStart && a.periodEnd && a.periodStart > a.periodEnd && <p className="text-xs text-destructive">The end must be on or after the start.</p>}
+              <p className="text-xs text-muted-foreground">Singles/Doubles and who may enter are asked in the next steps.</p>
+            </>
+          )}
+
+          {cur === "ExpEntries" && (
+            <>
+              <Q t="How many entries do you expect in each group?" h="Rough guesses are fine — they stay provisional until registrations close." />
+              <p className="text-xs text-muted-foreground">Categories and subcategories are not pools. A group like Men's A may later be split into one or more pools once real entries are known.</p>
+              <div className="space-y-2">{units.map((u) => (
+                <div key={u.key} className="flex items-center gap-2">
+                  <span className="w-64 truncate text-sm">{u.label}</span>
+                  <Input type="number" min={1} className="max-w-[120px]" aria-label={`Expected entries for ${u.base}`} value={a.unitEntries?.[u.key] ?? ""} onChange={(e) => setA({ ...a, unitEntries: { ...(a.unitEntries ?? {}), [u.key]: e.target.value } })} placeholder="e.g. 8" />
+                  <span className="text-xs text-muted-foreground">{u.disc === "doubles" ? "pairs" : "players"}</span>
+                </div>
+              ))}</div>
+            </>
+          )}
+
+          {cur === "Seeding" && (
+            <>
+              <Q t="How do you plan to seed?" h="Seeding decides who is kept apart early. This is only a plan." />
+              <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">Provisional while entries are open. No seeds are generated or locked now — at the {isChamps ? "Final Format Review" : "Confirm final format checkpoint"} you'll confirm seeding with the actual entrants before pools, draws or fixtures are made.</div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {(Object.keys(SEED_LABEL) as SeedMethod[]).map((m) => <Choice key={m} active={a.seeding === m} onClick={() => setA({ ...a, seeding: m })} title={SEED_LABEL[m]} desc={SEED_DESC[m]} />)}
+              </div>
+              {units.length > 1 && <div className="space-y-2 border-t border-border pt-4">
+                <div className="text-sm font-semibold">Category and subcategory exceptions</div>
+                {units.map((u) => (
+                  <div key={u.key} className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="w-56 truncate">{u.base}</span>
+                    <select aria-label={`Seeding for ${u.base}`} className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={a.seedingOverrides?.[u.key] ?? ""}
+                      onChange={(e) => { const n = { ...(a.seedingOverrides ?? {}) }; if (e.target.value) n[u.key] = e.target.value as SeedMethod; else delete n[u.key]; setA({ ...a, seedingOverrides: n }); }}>
+                      <option value="">Same as tournament{a.seeding ? ` (${SEED_LABEL[a.seeding]})` : ""}</option>
+                      {(Object.keys(SEED_LABEL) as SeedMethod[]).map((m) => <option key={m} value={m}>{SEED_LABEL[m]}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>}
+            </>
+          )}
+
+          {cur === "Schedule" && (
+            <>
+              <Q t="How will each stage be scheduled?" h="Add the stages for each category. Each stage can be played by a deadline or on a scheduled date — mix them as you like." />
+              <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">Play by a date: players arrange and book their own match before the deadline — no courts are blocked. Scheduled: a set date, time window and courts for that category/stage. Categories progress independently, so one league can be in its semifinals while another is still in Round 1. Stage names are a plan; the real rounds come from the format you confirm after registrations close.</div>
+              {stages.length === 0 && <Button variant="outline" size="sm" onClick={() => setStages([newStage("Round 1", "play_by"), newStage("Round 2", "play_by"), newStage("Semifinals", "scheduled"), newStage("Final", "scheduled")])}>Suggest a starting plan (early rounds play-by, semis/final scheduled)</Button>}
+              <div className="space-y-3">{stages.map((s) => (
+                <div key={s.id} className="space-y-2 rounded-lg border border-border p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select aria-label="Stage applies to" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={s.unit} onChange={(e) => updStage(s.id, { unit: e.target.value })}>
+                      <option value="">All categories</option>
+                      {units.map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}
+                    </select>
+                    <Input aria-label="Stage name" className="max-w-[200px]" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })} placeholder="e.g. Round 1" />
+                    <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => setStages(stages.filter((x) => x.id !== s.id))}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(["play_by", "scheduled", "later"] as const).map((m) => <Button key={m} type="button" size="sm" variant={s.mode === m ? "default" : "outline"} aria-pressed={s.mode === m} onClick={() => updStage(s.id, { mode: m })}>{m === "play_by" ? "Play by a date" : m === "scheduled" ? "Play on a scheduled date/time" : "Decide later"}</Button>)}
+                  </div>
+                  {s.mode === "play_by" && <div className="max-w-[220px] space-y-1"><Label>Deadline</Label><Input type="date" aria-label="Play-by deadline" value={s.deadline} onChange={(e) => updStage(s.id, { deadline: e.target.value })} /></div>}
+                  {s.mode === "scheduled" && <div className="space-y-2">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="space-y-1"><Label>Date</Label><Input type="date" aria-label="Scheduled date" value={s.date} onChange={(e) => updStage(s.id, { date: e.target.value })} /></div>
+                      <div className="space-y-1"><Label>From</Label><Input type="time" aria-label="Session from" value={s.from} onChange={(e) => updStage(s.id, { from: e.target.value })} /></div>
+                      <div className="space-y-1"><Label>To</Label><Input type="time" aria-label="Session to" value={s.to} onChange={(e) => updStage(s.id, { to: e.target.value })} /></div>
+                    </div>
+                    <Label>Courts for this stage</Label>
+                    {clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
+                      const on = s.courtIds.includes(c.id);
+                      return <button key={c.id} type="button" aria-pressed={on} onClick={() => updStage(s.id, { courtIds: on ? s.courtIds.filter((x) => x !== c.id) : [...s.courtIds, c.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>{c.name}</button>;
+                    })}</div>}
+                  </div>}
+                  {(a.periodStart && ((s.mode === "play_by" && s.deadline && (s.deadline < a.periodStart || s.deadline > a.periodEnd)) || (s.mode === "scheduled" && s.date && (s.date < a.periodStart || s.date > a.periodEnd)))) && <p className="text-xs text-muted-foreground">Note: this date is outside the championship period.</p>}
+                </div>
+              ))}</div>
+              <Button variant="outline" size="sm" onClick={() => setStages([...stages, newStage(`Stage ${stages.length + 1}`, "play_by")])}><Plus className="mr-1 h-4 w-4" />Add stage</Button>
+              {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages} unitName={stageUnit} when={stageWhen} /></div>}
+            </>
+          )}
+
           {cur === "Playoffs" && (
             <>
               <Q t="Will there be playoffs?" h="Playoffs follow your planned format. Categories inherit the tournament plan unless you choose an exception below. Planning only — no draw or fixtures are made, and this is revisited at Confirm final format." />
@@ -806,7 +935,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           {cur === "Summary" && (
             <>
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
-              <SummaryRow icon={<Users className="h-4 w-4" />} label={knownField ? "Players" : "Expected entries"} onEdit={() => go(knownField ? "Pick" : "Entries")}>{knownField ? `${pickIds.length} picked (exact)` : `About ${a.entries} (estimate)`}</SummaryRow>
+              {isChamps && <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Club Championships" onEdit={() => go("Basics")}>{a.name || "Unnamed"} · {fmtDay(a.periodStart)} – {fmtDay(a.periodEnd)}</SummaryRow>}
+              {isChamps ? <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries (provisional)" onEdit={() => go("ExpEntries")}>
+                <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">about {a.unitEntries?.[u.key] || "?"}</span></li>)}</ul>
+              </SummaryRow> : <SummaryRow icon={<Users className="h-4 w-4" />} label={knownField ? "Players" : "Expected entries"} onEdit={() => go(knownField ? "Pick" : "Entries")}>{knownField ? `${pickIds.length} picked (exact)` : `About ${a.entries} (estimate)`}</SummaryRow>}
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => go("What")}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Match format" onEdit={() => go("Match")}>
                 <div>{scoring ? scoringText(scoring) : "Not chosen"}{units.length > 0 && <span className="text-muted-foreground"> · {validOverrides.length ? "tournament default" : "all groups"}</span>}</div>
@@ -816,14 +948,19 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <div>{formatDetail(format)}{units.length > 0 && <span className="text-muted-foreground"> · {formatExceptions.length ? "tournament default" : "all groups"}</span>}</div>
                 {formatExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{formatDetail(formatFor(u.key))}</span></li>)}</ul>}
               </SummaryRow>
-              <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label="Confirm final format (future checkpoint)" onEdit={() => go("Format")}>
-                <span className="text-muted-foreground">Required after registrations close: SquashHub will review actual entrants per group, courts, dates and match length, may suggest alternatives, and you confirm the final format before pools, draws, Swiss rounds or fixtures are made. Not active in this beta.</span>
+              <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Seeding (provisional)" onEdit={() => go("Seeding")}>
+                <div>{a.seeding ? SEED_LABEL[a.seeding] : "Not chosen"}{units.length > 0 && <span className="text-muted-foreground"> · {seedExceptions.length ? "tournament default" : "all groups"}</span>}</div>
+                {seedExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{seedFor(u.key) ? SEED_LABEL[seedFor(u.key)!] : "Not chosen"}</span></li>)}</ul>}
+                <span className="text-xs text-muted-foreground">No seeds are generated or locked now.</span>
               </SummaryRow>
-              <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Playoffs" onEdit={() => go("Playoffs")}>
+              <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label={isChamps ? "Final Format Review (future checkpoint)" : "Confirm final format (future checkpoint)"} onEdit={() => go("Format")}>
+                <span className="text-muted-foreground">Required after registrations close: SquashHub will review actual entrants per group, courts, dates and match length, may suggest alternatives, and you confirm or change the final format and seeding before pools, draws, Swiss rounds or fixtures are made{isChamps ? " and before stage deadlines or scheduled sessions are attached" : ""}. SquashHub never changes your format automatically. Not active in this beta.</span>
+              </SummaryRow>
+              {!isChamps && <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Playoffs" onEdit={() => go("Playoffs")}>
                 <div>{playoffDetail(playoff, format.kind)}{units.length > 0 && <span className="text-muted-foreground"> · {playoffExceptions.length ? "tournament default" : "all groups"}</span>}</div>
                 {playoffExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</span></li>)}</ul>}
                 {provisional && <span className="text-xs text-muted-foreground">Recommendations provisional until entries are known.</span>}
-              </SummaryRow>
+              </SummaryRow>}
               <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
                 <ul className="space-y-0.5">{cats.map((c, i) => {
                   const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
@@ -847,17 +984,21 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may enter the pair: <span className="text-muted-foreground">{ruleAnswer(a.doublesEntry ?? null)}</span></li><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
                 <span className="text-muted-foreground"> · setup only, no payments taken</span>
               </SummaryRow>
-              <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => go("Dates")}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
-              <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => go("Courts")}>
+              {isChamps && <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Stage plan (provisional)" onEdit={() => go("Schedule")}>
+                <StageTable stages={stages} unitName={stageUnit} when={stageWhen} />
+                <span className="text-xs text-muted-foreground">Deadlines and sessions attach to real fixtures only after the Final Format Review. Each category progresses on its own.</span>
+              </SummaryRow>}
+              {!isChamps && <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => go("Dates")}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>}
+              {!isChamps && <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => go("Courts")}>
                 <ul className="space-y-0.5">{a.days.map((d, i) => (
                   <li key={i}>{fmtDay(d.date)}: {d.venue}, {d.courts} court{Number(d.courts) === 1 ? "" : "s"}{courtNames(d) && ` (${courtNames(d)})`}, {d.windows.map((w) => `${w.from}–${w.to}`).join(" & ")}</li>
                 ))}</ul>
-              </SummaryRow>
+              </SummaryRow>}
               <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm font-medium">
                 SquashHub now knows your {knownField ? "players" : "expected entries"}, categories, who may enter, dates and available court time.
                 {!knownField && <span className="block text-xs font-normal text-muted-foreground">The field is provisional until entries close.</span>}
               </div>
-              {tipReady && (
+              {!isChamps && tipReady && (
                 <div className="rounded-lg border border-accent bg-accent/30 p-3 text-sm">
                   <div className="flex items-center gap-1.5 font-semibold"><Lightbulb className="h-4 w-4 text-primary" />SquashHub Tip <span className="text-xs font-normal text-muted-foreground">(advice only)</span></div>
                   <p className="mt-1">Based on what you've entered so far, a round-robin format may be practical. We'll help you confirm the format in the next steps.</p>
@@ -883,10 +1024,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
       {/* growing tree */}
       <aside aria-label="Your tournament so far" className="rounded-xl border border-border p-4">
         <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your tournament so far</div>
-        <TreeNode icon={<Trophy className="h-4 w-4" />} title={a.kind === "once_off" ? "Once-off / weekend" : a.kind === "period" ? "Club Champs (coming next)" : "Type not chosen"} onClick={() => go("Type")}>
-          {a.kind === "once_off" && (
+        <TreeNode icon={<Trophy className="h-4 w-4" />} title={a.kind === "once_off" ? "Once-off / weekend" : a.kind === "period" ? `Club Championships${a.name ? `: ${a.name}` : ""}` : "Type not chosen"} onClick={() => go("Type")}>
+          {a.kind && (
             <>
-              {entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${a.entries} entries`} onClick={() => go("Entries")} />}
+              {isChamps && basicsOk && <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${fmtDay(a.periodStart)} – ${fmtDay(a.periodEnd)}`} onClick={() => go("Basics")} />}
+              {isChamps && champsEstimate > 0 && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${champsEstimate} expected entries`} onClick={() => go("ExpEntries")}>
+                {units.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">~{a.unitEntries?.[u.key] || "?"}</span></TreeLeaf>)}
+              </TreeNode>}
+              {!isChamps && entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${a.entries} entries`} onClick={() => go("Entries")} />}
               {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => go("What")} />}
               {scoring && <TreeNode icon={<Trophy className="h-4 w-4" />} title={scoringText(scoring)} onClick={() => go("Match")}>
                 {validOverrides.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Overrides")}>{u.base}: {scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</Button></TreeLeaf>)}
@@ -895,9 +1040,15 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 {formatExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Format")}>{u.base}: {formatDetail(formatFor(u.key))}</Button></TreeLeaf>)}
                 <TreeLeaf><span className="text-muted-foreground">Confirm final format after entries close</span></TreeLeaf>
               </TreeNode>}
-              <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Playoffs: ${playoffDetail(playoff, format.kind)}`} onClick={() => go("Playoffs")}>
+              {a.seeding && <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Seeding: ${SEED_LABEL[a.seeding]} (provisional)`} onClick={() => go("Seeding")}>
+                {seedExceptions.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">{seedFor(u.key) ? SEED_LABEL[seedFor(u.key)!] : "not chosen"}</span></TreeLeaf>)}
+              </TreeNode>}
+              {isChamps && stages.length > 0 && <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${stages.length} stage${stages.length === 1 ? "" : "s"} planned`} onClick={() => go("Schedule")}>
+                {stages.map((s) => <TreeLeaf key={s.id}>{stageUnit(s.unit)} · {s.name || "Unnamed"}<span className="block text-muted-foreground">{stageWhen(s)}</span></TreeLeaf>)}
+              </TreeNode>}
+              {!isChamps && <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Playoffs: ${playoffDetail(playoff, format.kind)}`} onClick={() => go("Playoffs")}>
                 {playoffExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Playoffs")}>{u.base}: {playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</Button></TreeLeaf>)}
-              </TreeNode>
+              </TreeNode>}
               {cats.length > 0 && (
                 <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => go("Categories")}>
                   {cats.map((c, i) => {
@@ -1068,4 +1219,9 @@ function DiscPick({ value, onChange }: { value?: Disc; onChange: (d: Disc) => vo
       ))}
     </div>
   );
+}
+function StageTable({ stages, unitName, when }: { stages: ClubStage[]; unitName: (k: string) => string; when: (s: ClubStage) => string }) {
+  if (!stages.length) return <p className="text-xs text-muted-foreground">No stages yet.</p>;
+  return <table className="w-full text-xs"><thead><tr className="text-left text-muted-foreground"><th className="py-1 pr-2">Category</th><th className="py-1 pr-2">Stage</th><th className="py-1">Method · deadline or session</th></tr></thead>
+    <tbody>{stages.map((s) => <tr key={s.id} className="border-t border-border"><td className="py-1 pr-2">{unitName(s.unit)}</td><td className="py-1 pr-2">{s.name || "Unnamed"}</td><td className="py-1">{when(s)}</td></tr>)}</tbody></table>;
 }

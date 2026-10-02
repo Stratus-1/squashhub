@@ -6,6 +6,7 @@ Multi-tenant squash operations platform (clubs, associations, federation, member
 - Scoped rules: `src/lib/AGENTS.md` (competition, bar, identity domain rules), `supabase/AGENTS.md` (Help Center feed).
 - Step-by-Step Beta match scoring is device-local, with tournament default and category/subcategory overrides resolved only for planning; why: guided choices must not alter live competition rules before creation is supported.
 - Step-by-Step Beta planned competition format (pools/knockout/swiss/cross-league/later) is device-local and provisional with category/subcategory overrides; playoffs derive from it and a "Confirm final format" checkpoint is required before any generation; why: format must never be fixed before real entries are known.
+- Step-by-Step Beta seeding plan and the Club Champs branch (basics, per-group expected entries, per-stage play-by/scheduled plan) reuse the same answers object and shared steps, never a separate engine; seeds, stages and fixtures are only attached after the post-registration Final Format Review; why: one source of truth, and categories progress independently.
 - Stack: React 18 + TS + Vite, React Router, React Query, Tailwind/shadcn, Supabase (Postgres/RLS/RPC/Edge Functions), PWA, Capacitor 8, FCM, Vitest, Remotion, Vercel.
 - Commands: `npm run dev|test|lint|build|cap:sync`. Don't open native IDEs unless needed; review `cap:sync` output before committing.
 

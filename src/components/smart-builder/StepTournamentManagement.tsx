@@ -168,7 +168,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
 
       <div className="grid gap-3 md:grid-cols-2 text-xs">
         <div className="rounded border border-border p-3">
-          <div className="mb-1 font-semibold">Registrations & payments</div>
+          <div className="mb-1 font-semibold">Entries &amp; payment status</div>
           {regs ? <div>{rows.length} entered{h.feeDue ? ` · ${paid} paid · ${owing.length} outstanding${owing.length ? ` (${money(owing.reduce((s, r) => s + r.owesCents, 0))} due)` : ""}` : ""}</div> : "Loading…"}
           <div className="text-muted-foreground">Entering a player never marks them as paid.</div>
           {rows.length > 0 && <button type="button" className="mt-1 text-primary underline" onClick={() => setShowRegs((v) => !v)}>{showRegs ? "Hide players" : "Show players"}</button>}

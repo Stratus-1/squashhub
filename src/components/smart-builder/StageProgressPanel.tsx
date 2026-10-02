@@ -95,10 +95,13 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
     return st?.kind === "mapped" && st.mapping?.source === "stage_standings" ? st.mapping.sourceStageId : d?.stages.find((x) => x.order === (st?.order ?? 0) - 1)?.id;
   };
 
-  return (
-    <div className="rounded-lg border p-3 space-y-2 text-sm" data-testid="stage-progress">
+  const tieAlerts = states.filter((s) => s.state === "blocked" && /tied/i.test(s.detail));
+  const goRows = states.filter((s) => s.state === "ready" && !s.automatic);
+  const dueRows = states.filter((s) => s.state === "needs_setup");
+  const body = (
+    <>
       <div className="font-semibold">Stage progress</div>
-      {states.filter((s) => s.state === "blocked" && /tied/i.test(s.detail)).map((s) => {
+      {tieAlerts.map((s) => {
         const src = tieSource(s.divisionKey, s.stageKey);
         return (
           <div key={`tie-${s.divisionKey}-${s.stageKey}`} role="alert" className="flex flex-wrap items-center gap-2 rounded-md border border-destructive bg-destructive/10 p-2">
@@ -107,13 +110,13 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
           </div>
         );
       })}
-      {states.filter((s) => s.state === "ready" && !s.automatic).map((s) => (
+      {goRows.map((s) => (
         <div key={`go-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
           <span className="font-medium">{s.divisionLabel}: {s.detail}</span>
           <Button size="sm" onClick={() => setConfirm(s)}>Generate {s.name}</Button>
         </div>
       ))}
-      {states.filter((s) => s.state === "needs_setup").map((s) => (
+      {dueRows.map((s) => (
         <div key={`due-${s.divisionKey}-${s.stageKey}`} className="flex flex-wrap items-center gap-2 rounded-md border border-primary bg-primary/10 p-2">
           <span className="font-medium">{s.divisionLabel}: {s.detail}</span>
           <Button size="sm" onClick={() => setSetup(s)}><Settings2 className="w-4 h-4 mr-1" />Generate {s.name}</Button>
@@ -146,6 +149,31 @@ export function StageProgressPanel({ champId, spec, matches, nameOf, collapsible
       {confirm && <ConfirmStageDialog champId={champId} spec={spec} status={confirm} nameOf={nameOf} exec={exec} onClose={() => setConfirm(null)} onDone={() => { setConfirm(null); refresh(); }} />}
       {setup && <SetupDialog champId={champId} spec={spec} status={setup} exec={exec} onClose={() => setSetup(null)} onDone={() => { setSetup(null); refresh(); }} />}
       {tie && <TieDialog champId={champId} spec={spec} matches={matches} nameOf={nameOf} div={tie.div} stage={tie.stage} exec={exec} onClose={() => setTie(null)} onDone={() => { setTie(null); refresh(); }} />}
+    </>
+  );
+
+  if (collapsible) {
+    const toGenerate = goRows.length + dueRows.length;
+    return (
+      <CollapsibleCard
+        defaultOpen={false}
+        className="border-primary/40"
+        title={
+          <span className="flex flex-wrap items-center gap-2">
+            What's next
+            {tieAlerts.length > 0 && <Badge variant="destructive">{tieAlerts.length} tied order{tieAlerts.length === 1 ? "" : "s"} to decide</Badge>}
+            {toGenerate > 0 && <Badge variant="outline">{toGenerate} stage{toGenerate === 1 ? "" : "s"} ready to generate</Badge>}
+          </span>
+        }
+      >
+        <div data-testid="stage-progress" className="space-y-2 text-sm">{body}</div>
+      </CollapsibleCard>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border p-3 space-y-2 text-sm" data-testid="stage-progress">
+      {body}
     </div>
   );
 }

@@ -2237,7 +2237,7 @@ export default function ClubChampsView() {
               {myGroupNumbers.map((gn: number) => {
                 return (
                   <Card key={gn}>
-                    <CardHeader><CardTitle className="text-lg">{getGroupLabel(champ, gn)}</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-lg">{getGroupLabel(champ, gn)}</CardTitle>{(() => { const mu = matchupForGroup(matchups, gn); return mu ? <p className="text-xs text-muted-foreground">Matchup: {matchupHeading(mu, (g) => getGroupLabel(champ, g))}</p> : null; })()}</CardHeader>
                     <CardContent>
                       {renderGroupStandings(gn)}
                     </CardContent>
@@ -3358,8 +3358,15 @@ export default function ClubChampsView() {
       );
     })() : null;
 
+    const unitIssues = matchups.length ? validateStandingsUnits(arch?.builder_spec, entries as any[], matchups) : [];
     return (
       <>
+        {unitIssues.length > 0 && (
+          <Card className="border-destructive/50"><CardContent className="py-3 text-sm space-y-1">
+            <p className="font-medium text-destructive">Standings don't match the generated draw — nothing was changed:</p>
+            {[...new Set(unitIssues.map((i) => i.message))].map((m) => <p key={m} className="text-xs">• {m}</p>)}
+          </CardContent></Card>
+        )}
         {summary}
         <TournamentNextActionBar
           champId={champId!}

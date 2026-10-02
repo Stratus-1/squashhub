@@ -8,7 +8,8 @@
  * Methods (configured per competition, see `doubles_serving_method`):
  *  - even_odd:      Forehand is the pair's first server in a game, then partners
  *                   alternate each time the pair regains service; the SIDE comes
- *                   only from the serving pair's score (even → RIGHT, odd → LEFT).
+ *                   only from the COMBINED score of both pairs (total even →
+ *                   RIGHT, odd → LEFT). Side never decides which partner serves.
  *  - by_position:   Forehand is the first server, partners alternate on each
  *                   regain; Forehand serves RIGHT, Backhand serves LEFT.
  *  - second_server: each hand = Forehand (RIGHT) then Backhand (LEFT), then
@@ -23,7 +24,7 @@ export type ServeSide = "R" | "L";
 export type Slot = 0 | 1;
 
 export const DOUBLES_SERVING_METHODS: { value: DoublesServingMethod; label: string; hint: string }[] = [
-  { value: "even_odd", label: "Even / Odd", hint: "Forehand serves first, then partners alternate when the pair wins service back. Side: serving pair's score even → RIGHT, odd → LEFT." },
+  { value: "even_odd", label: "Even / Odd", hint: "Forehand serves first, then partners alternate when the pair wins service back. Side: both pairs' points added together — even total → RIGHT, odd → LEFT." },
   { value: "by_position", label: "By position", hint: "Forehand serves first, then partners alternate when the pair wins service back. Forehand serves RIGHT, Backhand LEFT." },
   { value: "second_server", label: "Second server", hint: "Each pair serves Forehand (RIGHT) then Backhand (LEFT) before service passes to the other pair." },
 ];
@@ -68,13 +69,14 @@ function positionSide(positions: PairPositions, team: Team, slot: Slot): ServeSi
   return isForehand(positions, team, slot) ? "R" : "L";
 }
 
-function parityside(score: number): ServeSide {
-  return score % 2 === 0 ? "R" : "L";
+/** Even/Odd service box: combined score of both pairs — even → RIGHT, odd → LEFT. */
+export function evenOddSide(scores: Scores): ServeSide {
+  return (scores.a + scores.b) % 2 === 0 ? "R" : "L";
 }
 
 /** Correct side for the given server under the method, at the given score. */
 export function sideFor(method: DoublesServingMethod, positions: PairPositions, team: Team, slot: Slot, scores: Scores): ServeSide {
-  if (method === "even_odd") return parityside(scores[team]);
+  if (method === "even_odd") return evenOddSide(scores);
   return positionSide(positions, team, slot);
 }
 

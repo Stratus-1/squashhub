@@ -155,9 +155,10 @@ Deno.serve(async (req) => {
         club_id, club_member_id, user_id: userId,
         amount: amt, purpose, method,
         fee_ids, champ_registration_id,
-        description: description || inviteContext?.description || defaultDesc,
+        description: (sessionMeta ? inviteContext?.description : description) || inviteContext?.description || defaultDesc,
         payer_reference: refPrefix,
         status: "created",
+        ...(sessionMeta ? { metadata: sessionMeta } : {}),
       }).select("id").single();
     if (sessErr || !session) return json({ error: sessErr?.message || "Could not create session" }, 200);
 

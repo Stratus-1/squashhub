@@ -20,6 +20,11 @@ jobs:
       - name: Check out canonical main
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Verify publisher contract before deployment
+        run: |
+          npm ci --ignore-scripts
+          npm test -- --run src/test/help-center-feed-contract.test.ts
+
       - name: Require Supabase deployment access
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

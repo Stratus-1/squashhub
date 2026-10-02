@@ -44,6 +44,7 @@ import { ChampLadderSuggestions } from "@/components/tournaments/ChampLadderSugg
 import { RequestCorrectionDialog } from "@/components/tournaments/RequestCorrectionDialog";
 import { EnterResultDialog } from "@/components/tournaments/EnterResultDialog";
 import { canEnterChampResult } from "@/lib/tournaments/quick-result";
+import { isParticipant } from "@/lib/tournaments/self-schedule";
 import { looksLikePhone } from "@/lib/member-display";
 import { hasKnockoutStage, winnerMemberIds, winnerRows, eliminatedMemberIds } from "@/lib/tournaments/survivors";
 
@@ -2743,10 +2744,13 @@ export default function ClubChampsView() {
               variant="secondary"
               size="sm"
               className="h-6 px-2 text-[10px]"
-              onClick={() => setResultMatch(m)}
+              onClick={() => {
+                if (!isParticipant(m, myMemberId) && !window.confirm("This is not your game. Are you sure you want to enter the result?")) return;
+                setResultMatch(m);
+              }}
               title="Capture the score of a match that has already been played"
             >
-              Enter your result
+              Enter result
             </Button>
           );
         })()}

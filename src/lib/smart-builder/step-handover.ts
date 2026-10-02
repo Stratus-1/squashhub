@@ -208,6 +208,38 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 export type InformChannel = "in_app" | "email" | "whatsapp" | "sms";
 export type DeliveryRow = { club_member_id: string; channel: string; status: string; error_message: string | null };
 
+/** "Pay R100 entry fee" for the email button (the entry already exists — never "Enter"). */
+export const emailPayLabel = (t: string) => { const m = /Amount due:\s*(R[\d.,]+)/.exec(t); return m ? `Pay ${m[1]} entry fee` : "Pay entry fee"; };
+
+/**
+ * Email body: the personal message, the per-player no-login Pay button, and a plain
+ * link to the tournament (its presence stops the generic action button being added).
+ */
+export const EMAIL_INFORM_BODY =
+  '<p>{{personal_message_html}}</p>{{email_pay_html}}' +
+  '<p style="font-size:13px;margin-top:16px"><a href="{{action_url}}">View the tournament in SquashHub</a> (sign-in needed)</p>';
+
+export function emailPayButton(url: string, label: string) {
+  return `<div style="margin:20px 0"><a href="${esc(url)}" style="display:inline-block;background:#1E3A5F;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;font-size:14px">${esc(label)}</a></div>` +
+    '<p style="font-size:12px;color:#64748b;margin:0">No SquashHub login needed — this link is only for your entry.</p>';
+}
+
+/** member id → secure entry link (/i/<token>) on the host club's address, via the existing token routine. */
+export async function entryPayLinks(clubId: string, tournamentId: string): Promise<Record<string, string>> {
+  const [{ data: tokens, error }, { data: club }] = await Promise.all([
+    (supabase as any).rpc("ensure_tournament_invite_tokens", { p_champ_id: tournamentId }),
+    supabase.from("clubs").select("subdomain").eq("id", clubId).maybeSingle(),
+  ]);
+  if (error) throw error;
+  const sub = String((club as any)?.subdomain || "").trim();
+  const base = sub ? `https://${sub}.squashhub.co.za` : "https://squashhub.co.za";
+  const out: Record<string, string> = {};
+  for (const r of (tokens ?? []) as Array<{ club_member_id: string; invite_token: string }>) {
+    if (r.club_member_id && r.invite_token) out[r.club_member_id] = `${base}/i/${r.invite_token}`;
+  }
+  return out;
+}
+
 /** Player-facing route into the existing tournament payment card. */
 export const payRoute = (tournamentId: string) => `/club-champs/${tournamentId}?pay=1`;
 
@@ -225,23 +257,31 @@ export async function sendInform(i: {
     const res = await dispatchCampaign(i.existingCampaignId);
     return { campaignId: i.existingCampaignId, result: res };
   }
+  // Email can't rely on an app session: owing players get their entry's existing
+  // secure link (256-bit token, same one the invitation page and no-login payment use).
+  const emailPayLinks = i.feeDue && i.channels.includes("email")
+    ? await entryPayLinks(i.clubId, i.tournamentId)
+    : {};
   const memberVars: Record<string, Record<string, string>> = {};
   for (const m of i.messages) {
     const t = finaliseMessage(m.text);
+    const owes = i.feeDue && m.owes !== false;
+    const link = owes ? emailPayLinks[m.memberId] : undefined;
     memberVars[m.memberId] = {
       personal_message: t, personal_message_html: esc(t).replace(/\n/g, "<br>"),
-      ...(i.feeDue && m.owes !== false ? { pay_url: payRoute(i.tournamentId), pay_label: payLabel(t) } : {}),
+      email_pay_html: link ? emailPayButton(link, emailPayLabel(t)) : "",
+      ...(owes ? { pay_url: payRoute(i.tournamentId), pay_label: payLabel(t) } : {}),
       ...(i.waUrl ? { wa_url: i.waUrl } : {}),
     };
   }
   const subject = `You have been entered: ${i.name}`;
   const content: Record<string, { subject?: string; body?: string }> = {};
   for (const ch of i.channels) content[ch] = ch === "email"
-    ? { subject, body: "<p>{{personal_message_html}}</p>" }
+    ? { subject, body: EMAIL_INFORM_BODY }
     : { subject, body: "{{personal_message}}" };
   const { campaignId, dispatched } = await sendComms({
     clubId: i.clubId, name: `${i.name} — entry notification${i.resend ? " (sent again)" : ""}`, channels: i.channels, content,
-    action: { key: "tournament_view", label: i.feeDue ? "View my entry & pay" : "View my tournament entry", params: { tournament_id: i.tournamentId } } as any,
+    action: { key: "tournament_view", label: "View my tournament entry", params: { tournament_id: i.tournamentId } } as any,
     audience: { type: "selected", memberIds: i.messages.map((m) => m.memberId) },
     memberVars, meta: { tournament_id: i.tournamentId, purpose: i.resend ? "step_beta_inform_resend" : "step_beta_inform" },
   });

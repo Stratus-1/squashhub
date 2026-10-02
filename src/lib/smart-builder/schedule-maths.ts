@@ -30,6 +30,9 @@ export interface ScheduleIssue {
 const isStep = (s: Stage) => s.kind === "pair_from_positions" || s.kind === "split";
 
 /** Total units entering a stage, from its own size or what the stage before sends on. */
+/** Entrants in a stage — set directly or worked out from the stage before. */
+export function derivedStageSize(st: Stage, def: TournamentDefinition): number | null { return stageTotal(st, def); }
+
 function stageTotal(st: Stage, def?: TournamentDefinition): number | null {
   if (st.groupSize) return st.groupSize * Math.max(1, st.groups ?? 1);
   if (st.input?.entrants) return st.input.entrants;

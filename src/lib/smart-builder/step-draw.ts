@@ -6,6 +6,7 @@
  * TournamentSpec the existing structured engine (engine-service / structured-persist) generates from.
  * Nothing here writes; persistence is `step_prepare_draw` + the engine's structured_commit.
  */
+import { buildPlayoffChain } from "./playoff-chain";
 import { generateFromSpec, type PlannedPlayoff, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
 import { distributeIntoPools, type PoolAllocationMode } from "@/lib/tournaments/pools";
@@ -119,7 +120,7 @@ export function plannedPlayoffStages(plan: Plan | null, key: string): Array<{ na
   const when = (s: any) => `${s.date || s.deadline || "9999"} ${s.from || ""}`;
   return rows.map((s, i) => ({ s, i })).sort((x, y) => when(x.s).localeCompare(when(y.s)) || x.i - y.i).map(({ s }) => ({
     name: String(s.name),
-    plan: { pairing: s.pairing ?? null, mode: s.mode ?? null, date: s.date || null, deadline: s.deadline || null, from: s.from || null, to: s.to || null, courtIds: (s.courtIds ?? []).map(Number).filter((n: number) => Number.isFinite(n)) },
+    plan: { pairing: s.pairing ?? null, mode: s.mode ?? null, date: s.date || null, deadline: s.deadline || null, from: s.from || null, to: s.to || null, courtIds: (s.courtIds ?? []).map(Number).filter((n: number) => Number.isFinite(n)), trigger: s.start === "auto" ? "auto" : s.start === "confirm" ? "confirm" : null },
   }));
 }
 
@@ -145,9 +146,29 @@ export function attachPlannedPlayoffs(spec: TournamentSpec, plan: Plan | null): 
     if (!p.playoffs.length) return d;
     const version = String(d.stages[0]?.id ?? "s").replace(/-main$/, "");
     changed = true;
-    return { ...d, deferredStages: deferredFor(version, p.playoffs, p.playoffPlans) };
+    // Setup never confirmed the play-offs (historical "Decide later"): keep organiser confirmation.
+    const legacy = (playoffAnswer(plan, label)?.choice ?? "later") !== "playoffs";
+    return { ...d, ...playoffStagesFor(d.stages[0], version, p, { forceConfirm: legacy }) };
   });
   return changed ? { ...spec, divisions } : null;
+}
+
+const playoffAnswer = (plan: Plan | null, label: string) => {
+  const key = unitKeyOf(label);
+  return plan?.playoffOverrides?.[key] ?? plan?.playoffOverrides?.[key.split("::")[0]] ?? plan?.playoff ?? null;
+};
+
+/**
+ * Planned play-offs as REAL predefined stages (progression runs them; Final ← Semifinal winners) when the
+ * plan is complete; otherwise the "Define later" stages as before, set up when the main stage finishes.
+ */
+export function playoffStagesFor(main: any, version: string, p: { playoffs: string[]; playoffPlans?: Array<PlannedPlayoff | null> }, opts: { forceConfirm?: boolean } = {}): { stages: any[]; deferredStages: any[] } {
+  const plans = p.playoffPlans ?? p.playoffs.map(() => null);
+  if (p.playoffs.length && plans.every(Boolean)) {
+    const chain = buildPlayoffChain(main, version, p.playoffs.map((name, i) => ({ name, plan: plans[i]! })), opts);
+    if (!chain.reason) return { stages: [main, ...chain.stages], deferredStages: [] };
+  }
+  return { stages: [main], deferredStages: deferredFor(version, p.playoffs, p.playoffPlans) };
 }
 
 export function proposeFormat(plan: Plan | null, label: string): { format: DivFormat; notes: string[]; playoffs: string[]; playoffPlans: Array<PlannedPlayoff | null>; crossKeys: string[]; crossPairKeys: string[][] | null; crossByParent: boolean } {
@@ -380,7 +401,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
         expectedEntrants: sizes.reduce((s, x) => s + x, 0),
         seeding: { source: "entry_order", method: "snake" }, placements: "champion", finalStandings: "last_stage", entrants: [],
         groupNumber: set[0], entryGroups: set, poolLabels: members.map((m) => m.label),
-        stages: [{
+        ...playoffStagesFor({
           id: `${version}-main`, order: 0, kind: "mapped", name: "Cross-league round robin",
           discipline: d.doubles ? "doubles" : "singles",
           // One slot = one fixed competitive unit (a doubles pair is a single entrant, never split).
@@ -390,8 +411,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
             matches, derived: true, positions: members.map((m) => m.units.map(unitId)),
           },
           schedule: stageSchedule(f.schedule, opts.roundCounts?.get(id)),
-        }] as any,
-        deferredStages: deferredFor(version, d.playoffs, d.playoffPlans),
+        } as any, version, d),
       } as any);
       continue;
     }
@@ -401,7 +421,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
       divisionId: id, label: d.label, unit: d.doubles ? "pairs" : "players", expectedEntrants: n, groupNumber: d.group,
       seeding: { source: "entry_order", method: f.seeding === "random" ? "random" : "snake" },
       placements: "champion", finalStandings: "last_stage", entrants: [],
-      stages: [{
+      ...playoffStagesFor({
         id: `${version}-main`, order: 0, kind, name: kind === "knockout" ? "Knockout" : kind === "swiss" ? "Swiss rounds" : kind === "pools" ? "Pools" : "Round robin",
         pools: kind === "pools" ? f.pools : undefined,
         poolSize: kind === "pools" ? Math.max(1, ...(poolsFor(d, mode) ?? [[]]).map((p) => p.length)) : undefined,
@@ -410,8 +430,7 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
         drawSize: kind === "knockout" ? nextPow2(n) : undefined,
         discipline: d.doubles ? "doubles" : "singles",
         schedule: stageSchedule(f.schedule, opts.roundCounts?.get(id)),
-      }],
-      deferredStages: deferredFor(version, d.playoffs, d.playoffPlans),
+      } as any, version, d),
     } as any);
   }
   return { version: 1, architecture: "structured", name, divisions: out };

@@ -45,7 +45,7 @@ export interface StageStatus {
 export type Exec = <T>(fn: (db: Db) => Promise<T>) => Promise<T>;
 
 const sourceOf = (d: SpecDivision, st: PlannedStage): PlannedStage | null => {
-  if (st.kind === "mapped" && st.mapping?.source === "stage_standings") return d.stages.find((s) => s.id === st.mapping!.sourceStageId) ?? null;
+  if (st.kind === "mapped" && (st.mapping?.source === "stage_standings" || st.mapping?.source === "stage_winners")) return d.stages.find((s) => s.id === st.mapping!.sourceStageId) ?? null;
   return d.stages.find((s) => s.order === st.order - 1) ?? null;
 };
 
@@ -98,15 +98,17 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
       }
       const src = sourceOf(d, st);
       if (!src) { out.push({ ...base, state: "blocked", automatic: false, detail: `${st.name}: the stage it takes players from no longer exists.` }); continue; }
+      const auto = st.generation === "automatic";
+      const plannedDate = st.schedule?.date ?? st.schedule?.deadline ?? null;
       if (!done.get(src.id)) {
-        out.push({ ...base, state: "waiting", automatic: true, detail: `Starts automatically when ${src.name} is finished.` });
+        out.push({ ...base, state: "waiting", automatic: auto, plannedDate, detail: auto ? `Starts automatically when ${src.name} is finished.` : `Offered for your confirmation when ${src.name} is finished.` });
         continue;
       }
       // Source finished: dry-run the real engine against a throwaway buffer (nothing is written).
       try {
         const b = bufferedDb(db);
         await startStage(b.db, tid, d, st);
-        out.push({ ...base, state: "ready", automatic: true, detail: `${src.name} is finished — ${st.name} will be created now.` });
+        out.push({ ...base, state: "ready", automatic: auto, plannedDate, afterStageKey: src.id, detail: auto ? `${src.name} is finished — ${st.name} will be created now.` : `${src.name} is finished — confirm to create ${st.name}.` });
       } catch (e: any) {
         out.push({ ...base, state: "blocked", automatic: false, detail: e?.message ?? String(e) });
       }
@@ -137,7 +139,8 @@ export async function autoProgress(db: Db, tid: string, exec: Exec = (fn) => fn(
     const states = await stageLifecycle(db, tid);
     report.blocked = states.filter((s) => s.state === "blocked");
     report.needsSetup = states.filter((s) => s.state === "needs_setup");
-    const ready = states.filter((s) => s.state === "ready");
+    // Only stages set to start automatically; "Wait for organiser confirmation" stages are offered, never started here.
+    const ready = states.filter((s) => s.state === "ready" && s.automatic);
     if (!ready.length) break;
     const [t] = await db.select("tournaments", { id: tid });
     const spec = t.builder_spec as TournamentSpec;
@@ -154,6 +157,29 @@ export async function autoProgress(db: Db, tid: string, exec: Exec = (fn) => fn(
     }
   }
   return report;
+}
+
+/** Exactly the games a ready stage would create (dry run of the same engine call; nothing is written). */
+export async function previewNextStage(db: Db, tid: string, divisionKey: string, stageKey: string): Promise<Array<Record<string, any>>> {
+  const [t] = await db.select("tournaments", { id: tid });
+  const spec = t.builder_spec as TournamentSpec;
+  const d = spec.divisions.find((x) => x.divisionId === divisionKey);
+  const st = d?.stages.find((s) => s.id === stageKey);
+  if (!d || !st) throw new IntegrityError("no_stage", "That stage no longer exists.");
+  const b = bufferedDb(db);
+  await startStage(b.db, tid, d, st);
+  return b.ops.flatMap((o: any) => (o.op === "insert" && o.table === "club_champs_matches" ? o.rows : []));
+}
+
+/** Organiser-confirmed start of a ready stage: same engine call as automatic progression, once. */
+export async function confirmNextStage(db: Db, tid: string, divisionKey: string, stageKey: string, exec: Exec = (fn) => fn(db)) {
+  const states = await stageLifecycle(db, tid);
+  const me = states.find((s) => s.divisionKey === divisionKey && s.stageKey === stageKey);
+  if (!me || me.state !== "ready") throw new IntegrityError("not_ready", me ? `${me.name}: ${me.detail}` : "That stage is not ready.");
+  const [t] = await db.select("tournaments", { id: tid });
+  const d = (t.builder_spec as TournamentSpec).divisions.find((x) => x.divisionId === divisionKey)!;
+  const st = d.stages.find((s) => s.id === stageKey)!;
+  return exec((tx) => startStage(tx, tid, d, st));
 }
 
 /* ───── deferred stage set-up on an EXISTING tournament ───── */

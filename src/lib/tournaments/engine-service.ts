@@ -121,7 +121,8 @@ export function mappedFixtures(tid: string, d: SpecDivision, st: PlannedStage, p
   return resolveMapping(st.mapping!, positions).map((x) => ({
     tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: "mapped" as const,
     roundId: `${st.id}:r${x.round}`, round: x.round, poolId: null, slot: x.order, a: x.aId, b: x.bId,
-    label: `${x.a} v ${x.b}`,
+    // Play-off stages carry their real name (Semifinals / Final) so pages and result messages recognise them.
+    label: st.mapping!.source === "seed_pools" ? `${x.a} v ${x.b}` : st.name,
   }));
 }
 
@@ -458,4 +459,6 @@ export function finalStandings(d: SpecDivision, rows: FixtureRow[]): Array<{ id:
 }
 
 /** What the builder captured for a later play-off stage (planning only — never generated from on its own). */
-export interface PlannedPlayoff { pairing?: string | null; mode?: string | null; date?: string | null; deadline?: string | null; from?: string | null; to?: string | null; courtIds?: number[] }
+export interface PlannedPlayoff { pairing?: string | null; mode?: string | null; date?: string | null; deadline?: string | null; from?: string | null; to?: string | null; courtIds?: number[];
+  /** "Start this stage": auto = when the previous stage is complete; confirm = organiser confirms. Unset = confirm. */
+  trigger?: "auto" | "confirm" | null }

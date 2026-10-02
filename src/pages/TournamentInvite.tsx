@@ -587,7 +587,7 @@ export default function TournamentInvite() {
               )}
             </Button>
             <PartnerFeeOptions token={token} verify={verify.trim() || null} ready={!payNeedsVerify || payVerifyReady}
-              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} />
+              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
             <p className="text-[11px] text-muted-foreground text-center">
               You can pay straight from this invitation — no login needed.
             </p>

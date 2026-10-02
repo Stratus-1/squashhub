@@ -2426,3 +2426,4 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - "Use rankings" seeds by club ranking points (pair = both players' points); regional/national level, unknown level, or no points recorded → blocks with a message (never falls back to entry order).
 - Several play-by deadlines in one stage → per-round `roundDates`; rounds split over the dates (organiser can set the split), saved per round/game `play_by`.
 - Draw reconciles entries before preview and again before commit, refusing if the entries changed.
+- Step-by-Step Generate draw: pools & seeds preview before generating (existing pools.ts allocation + move-to-pool, drag or select); organiser's pools saved as explicit poolMembers and used exactly by the engine (refuses if they no longer match entries).

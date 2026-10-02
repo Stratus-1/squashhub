@@ -217,7 +217,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   /** First player tapped while forming a pair, per doubles unit (UI-only). */
-  const [pairDraft, setPairDraft] = useState<Record<string, string>>({});
+  const [pairDraft, setPairDraft] = useState<Record<string, string[]>>({});
   useEffect(() => {
     // Fetch every page: the backend caps each request at 1000 rows, so a single .limit() silently truncates.
     let cancelled = false;

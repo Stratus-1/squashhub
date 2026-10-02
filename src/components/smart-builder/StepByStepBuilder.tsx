@@ -960,7 +960,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <div>{playoffDetail(playoff, format.kind)}{units.length > 0 && <span className="text-muted-foreground"> · {playoffExceptions.length ? "tournament default" : "all groups"}</span>}</div>
                 {playoffExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</span></li>)}</ul>}
                 {provisional && <span className="text-xs text-muted-foreground">Recommendations provisional until entries are known.</span>}
-              </SummaryRow>
+              </SummaryRow>}
               <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
                 <ul className="space-y-0.5">{cats.map((c, i) => {
                   const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
@@ -993,7 +993,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <ul className="space-y-0.5">{a.days.map((d, i) => (
                   <li key={i}>{fmtDay(d.date)}: {d.venue}, {d.courts} court{Number(d.courts) === 1 ? "" : "s"}{courtNames(d) && ` (${courtNames(d)})`}, {d.windows.map((w) => `${w.from}–${w.to}`).join(" & ")}</li>
                 ))}</ul>
-              </SummaryRow>
+              </SummaryRow>}
               <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm font-medium">
                 SquashHub now knows your {knownField ? "players" : "expected entries"}, categories, who may enter, dates and available court time.
                 {!knownField && <span className="block text-xs font-normal text-muted-foreground">The field is provisional until entries close.</span>}
@@ -1048,7 +1048,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               </TreeNode>}
               {!isChamps && <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Playoffs: ${playoffDetail(playoff, format.kind)}`} onClick={() => go("Playoffs")}>
                 {playoffExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Playoffs")}>{u.base}: {playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</Button></TreeLeaf>)}
-              </TreeNode>
+              </TreeNode>}
               {cats.length > 0 && (
                 <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => go("Categories")}>
                   {cats.map((c, i) => {

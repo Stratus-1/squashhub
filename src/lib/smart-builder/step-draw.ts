@@ -104,7 +104,6 @@ type Plan = Record<string, any>;
 export function readStepPlan(clubId: string, tournamentId: string): Plan | null {
   try { return readTournamentPlan(clubId, tournamentId); } catch { return null; }
 }
-}
 /** Draw-relevant subset of the Step answers saved on the tournament (beta_lifecycle.format_plan). */
 export const DRAW_PLAN_KEYS = ["format", "formatOverrides", "seeding", "seedingOverrides", "stages", "days", "playoff", "playoffOverrides", "scope"] as const;
 export function drawPlanOf(a: Plan): Plan { const o: Plan = {}; for (const k of DRAW_PLAN_KEYS) if (a[k] !== undefined) o[k] = a[k]; return o; }

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, FlaskConical, Gem, Layers, ListChecks, Wand2 } from "lucide-react";
 import { SmartTournamentBuilderCore, type BuilderNav } from "@/pages/admin/SmartTournamentBuilder";
 import { StepByStepBuilder } from "./StepByStepBuilder";
+import { clearDraft, readDraft } from "@/lib/smart-builder/step-storage";
 import { StepTournamentManagement } from "./StepTournamentManagement";
 import { TemplatePicker } from "./StepTemplates";
 import { loadHandovers } from "@/lib/smart-builder/step-handover";
@@ -23,6 +24,15 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
   const legacy = searchParams.get("legacy") === "1";
   const [legacyOpen, setLegacyOpen] = useState(false);
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
+  /** Which setup the builder opens: a NEW tournament (null) or an existing tournament's setup. Never inferred. */
+  const [editTid, setEditTid] = useState<string | null>(null);
+  const [builderKey, setBuilderKey] = useState(0);
+  const openNew = (fresh: boolean) => {
+    if (fresh) clearDraft(clubId);
+    setEditTid(null); setEditAt(null); setManaging(null); setBuilderKey((k) => k + 1); setStepByStepOpen(true);
+  };
+  const draft = readDraft(clubId);
+  const [askDraft, setAskDraft] = useState(false);
   const [editAt, setEditAt] = useState<"Summary" | "Messaging" | null>(null);
   const [managing, setManaging] = useState<string | null>(null);
   const [picker, setPicker] = useState<"mine" | "prebuilt" | null>(null);
@@ -36,8 +46,8 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
     return (
       <div className="dark rounded-xl bg-background p-4 text-foreground">
         <StepTournamentManagement key={managing} clubId={clubId} tournamentId={managing}
-          onBack={() => setManaging(null)}
-          onEditSetup={(at) => { setManaging(null); setEditAt(at ?? "Summary"); setStepByStepOpen(true); }} />
+          onBack={() => { setManaging(null); setEditTid(null); }}
+          onEditSetup={(at) => { setEditTid(managing); setManaging(null); setEditAt(at ?? "Summary"); setBuilderKey((k) => k + 1); setStepByStepOpen(true); }} />
       </div>
     );
   }
@@ -45,8 +55,8 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
   if (stepByStepOpen) {
     return (
       <div className="dark rounded-xl bg-background p-4 text-foreground">
-        <StepByStepBuilder clubId={clubId} clubName={clubName} initialStep={editAt ?? undefined}
-          onCompleted={(tid) => { setStepByStepOpen(false); setEditAt(null); setManaging(tid); }} />
+        <StepByStepBuilder key={`${editTid ?? "new"}-${builderKey}`} clubId={clubId} clubName={clubName} initialStep={editAt ?? undefined} tournamentId={editTid ?? undefined}
+          onCompleted={(tid) => { setStepByStepOpen(false); setEditAt(null); setEditTid(null); setManaging(tid); }} />
       </div>
     );
   }
@@ -69,7 +79,7 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
     return (
       <div className="dark rounded-xl bg-background p-4 text-foreground">
         <TemplatePicker clubId={clubId} mode={picker} onClose={() => setPicker(null)}
-          onStartStep={() => { setPicker(null); setEditAt(null); setStepByStepOpen(true); }}
+          onStartStep={() => { setPicker(null); openNew(false); }}
           onOpenDraft={(id) => { setPicker(null); setDraftId(id); }} />
       </div>
     );
@@ -90,7 +100,7 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
       </p>
       <div className="mt-4 grid max-w-4xl gap-3 md:grid-cols-[1.4fr_1fr]">
       <button
-        onClick={() => setStepByStepOpen(true)}
+        onClick={() => (draft ? setAskDraft(true) : openNew(true))}
         className="block w-full rounded-xl border border-amber-300/40 bg-amber-300/10 p-5 text-left transition-colors hover:bg-amber-300/15"
       >
         <div className="flex items-center gap-2 font-semibold text-white">
@@ -113,6 +123,24 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
         </button>
       </div>
       </div>
+      {askDraft && draft && (
+        <div role="alertdialog" className="mt-3 max-w-xl space-y-2 rounded-lg border border-amber-300/40 p-3 text-sm text-white">
+          <div>You have an unfinished new tournament draft{draft.name ? ` ("${draft.name}")` : ""} on this device. Start a fresh tournament (the draft is discarded) or continue the draft?</div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => { setAskDraft(false); openNew(true); }}>Start a new tournament</Button>
+            <Button size="sm" variant="outline" onClick={() => { setAskDraft(false); openNew(false); }}>Continue draft</Button>
+            <Button size="sm" variant="ghost" onClick={() => setAskDraft(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+      {draft && (
+        <div className="mt-4 max-w-md space-y-1">
+          <div className="text-xs text-white/60">Unfinished draft</div>
+          <button onClick={() => openNew(false)} className="flex w-full items-center justify-between rounded-lg border border-white/15 px-3 py-2 text-left text-sm text-white hover:bg-white/5">
+            Continue draft{draft.name ? `: ${draft.name}` : ""}<ArrowRight className="h-4 w-4 text-amber-200" />
+          </button>
+        </div>
+      )}
       {handovers.length > 0 && (
         <div className="mt-4 max-w-md space-y-1">
           <div className="text-xs text-white/60">Continue managing</div>

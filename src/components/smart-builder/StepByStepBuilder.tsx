@@ -324,7 +324,17 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           <option value="">{s.phase === "playoff" && a.playoffSync === true ? "All categories (common date)" : "All categories"}</option>
           {units.map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}
         </select>
-        <Input aria-label="Stage name" className="max-w-[200px]" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })} placeholder="e.g. Round 1" />
+        {s.phase === "playoff" ? (
+          <select aria-label="Playoff stage" className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })}>
+            {s.name && !(PLAYOFF_STAGE_NAMES as readonly string[]).includes(s.name) && <option value={s.name}>{s.name}</option>}
+            {PLAYOFF_STAGE_NAMES.map((n) => {
+              const taken = playoffStages.some((x) => x.id !== s.id && x.unit === s.unit && x.name === n);
+              return <option key={n} value={n} disabled={taken}>{n}{taken ? " (already planned)" : ""}</option>;
+            })}
+          </select>
+        ) : (
+          <Input aria-label="Stage name" className="max-w-[200px]" value={s.name} onChange={(e) => updStage(s.id, { name: e.target.value })} placeholder="e.g. Round 1" />
+        )}
         <Button variant="ghost" size="icon" aria-label="Remove stage" onClick={() => setStages(stages.filter((x) => x.id !== s.id))}><Trash2 className="h-4 w-4" /></Button>
       </div>
       <div className="flex flex-wrap gap-2">

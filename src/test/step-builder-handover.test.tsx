@@ -90,7 +90,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     // Conditional first action: inform, not invite.
     expect(screen.queryByRole("button", { name: /^Invite players/ })).toBeNull();
     // Concise by default: one example message, recipients behind an expander.
-    expect(await screen.findByText(/2 entered players/)).toBeInTheDocument();
+    expect(await screen.findByText("2 entered players")).toBeInTheDocument();
     expect(screen.getAllByText(/Your doubles partner:/)).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: /View recipients & individual messages/ }));
     expect(screen.getAllByText(/Your doubles partner: Ben Jones/).length).toBeGreaterThan(0);

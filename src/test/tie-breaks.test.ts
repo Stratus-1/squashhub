@@ -8,8 +8,8 @@ const W3 = [[11, 5], [11, 5], [11, 5]] as Array<[number, number]>;
 describe("tie-break engine", () => {
   it("1. tied on wins, separated by game difference → automatic, no manual prompt", () => {
     // a and b both 1 win; a won 3-0, b won 3-2.
-    const games = [g("a", "c", "a", W3), g("b", "c", "b", [[11, 5], [5, 11], [11, 5], [5, 11], [11, 5]]), g("a", "b", "b", [[5, 11], [11, 5], [5, 11], [11, 5], [5, 11]]), g("c", "x", "x", W3.map(([p, q]) => [q, p]) as any)];
-    const r = rankUnits(["a", "b", "c"], games.filter((x) => x.b !== "x"));
+    const games = [g("a", "c", "a", W3), g("b", "c", "b", [[11, 5], [5, 11], [11, 5], [5, 11], [11, 5]])];
+    const r = rankUnits(["a", "b", "c"], games);
     expect(r.ties).toEqual([]);
     expect(r.order.slice(0, 2)).toEqual(["a", "b"]);
   });

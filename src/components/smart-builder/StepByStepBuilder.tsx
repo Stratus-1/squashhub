@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgHierarchyLite } from "@/hooks/use-tournament-eligibility";
 import { useAssociationTenant } from "@/hooks/use-association-tenant";
+import { StageCourtBookings } from "./StageCourtBookings";
 import { owningAssociation, federationRoot } from "@/lib/tournaments/eligibility";
 
 /**
@@ -67,6 +68,7 @@ const playoffDetail = (p: PlayoffPlan, k?: CompKind | null) => {
   return `${playoffText(p)}${k === "pools" || k === "cross" ? ` · ${styleText(p)}` : ""} · ${qualifierText(p)}${p.style !== "placement" ? ` · ${pairingText(p)}` : ""}`;
 };
 export type StepAnswers = {
+  planId?: string;
   kind: Kind;
   entries: string;
   playType: PlayType;
@@ -205,6 +207,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     } catch { return EMPTY; }
   });
   const [step, setStep] = useState(0);
+  /** Stable id for this device-local plan, used to make court reservations idempotent. */
+  useEffect(() => { if (!a.planId) setA((x) => ({ ...x, planId: x.planId ?? (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) })); }, [a.planId]);
   useEffect(() => { localStorage.setItem(key, JSON.stringify(a)); }, [a, key]);
   const [clubCourts, setClubCourts] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
@@ -1126,6 +1130,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <Button variant="outline" size="sm" onClick={() => { const used = playoffStages.filter((x) => !x.unit).map((x) => x.name); const next = PLAYOFF_STAGE_NAMES.find((n) => !used.includes(n)) ?? "Final"; setStages([...stages, newStage(next, "later", "", "playoff")]); }}><Plus className="mr-1 h-4 w-4" />Add playoff stage</Button>
               </div>
               {stages.length > 0 && <div className="space-y-1 border-t border-border pt-3"><div className="text-sm font-semibold">Stage-by-stage plan</div><StageTable stages={stages} unitName={stageUnit} when={stageWhen} /></div>}
+              {a.planId && <StageCourtBookings clubId={clubId} planId={a.planId} label={a.name?.trim() || "Club Championships"} stages={stages.map((x) => ({ ...x, name: `${x.name} (${stageUnit(x.unit)})` }))} courtName={(id) => clubCourts.find((c) => c.id === String(id))?.name ?? `Court ${id}`} />}
             </>
           )}
 

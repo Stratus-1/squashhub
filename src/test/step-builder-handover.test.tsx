@@ -45,6 +45,7 @@ const seedChamps = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringif
     { id: "fi", unit: "", name: "Final", mode: "scheduled", deadline: "", date: "2026-11-21", from: "09:00", to: "12:00", courtIds: ["20"], phase: "playoff" },
   ],
   playoffSync: "later",
+  waGroup: { use: true, url: "chat.whatsapp.com/AbCdEf123456", include: true },
 }));
 
 describe("Step-by-Step handover: Summary → Tournament Management (admin-selected + admin-paired doubles, fee)", () => {
@@ -71,6 +72,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(top.textContent).toMatch(/Must be decided before players are contacted \(0\)/);
     expect(top.textContent).toMatch(/Can stay "Decide later" for now \(2\)/);
     expect(screen.getByTestId("handover-bottom")).toBeInTheDocument();
+    expect(screen.getByText(/WhatsApp group: configured · join link included in messages/)).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: /Complete setup & continue/ })[0]);
 
@@ -107,6 +109,8 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     fireEvent.click(screen.getByRole("button", { name: "Send now" }));
     expect(await screen.findByText(/2 of 2 reached/)).toBeInTheDocument();
     const camp = calls.find((c) => c.table === "comms_campaigns" && c.op === "insert")!;
+    expect(calls.find((c) => c.table === "tournament_whatsapp_groups" && c.op === "upsert")!.arg).toMatchObject({ invite_url: "https://chat.whatsapp.com/AbCdEf123456", status: "active" });
+    expect(camp.arg.audience_filter.member_vars.m1.personal_message).toMatch(/Join the tournament WhatsApp group: https:\/\/chat\.whatsapp\.com\/AbCdEf123456/);
     expect(camp.arg).toMatchObject({ audience_type: "selected", audience_member_ids: ["m1", "m2"], channels: ["in_app"] });
     expect(camp.arg.action).toMatchObject({ key: "tournament_view", params: { tournament_id: "t-new" } });
     expect(camp.arg.audience_filter.member_vars.m1.personal_message).toMatch(/Your doubles partner: Ben Jones/);

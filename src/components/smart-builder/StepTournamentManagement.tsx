@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Check, ChevronRight, Pencil, ArrowLeft, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fromExt } from "@/lib/supabase-ext";
-import { LIFECYCLE, blockersFor, lifecycleIndex, loadHandover, nextAction, saveHandover, type Handover } from "@/lib/smart-builder/step-handover";
+import { LIFECYCLE, blockersFor, lifecycleIndex, loadHandover, loadLifecycle, nextAction, saveHandover, saveLifecycle, type BetaLifecycle, type Handover } from "@/lib/smart-builder/step-handover";
+import { StepInformPanel } from "./StepInformPanel";
 
 /**
  * Tournament Management (Beta) — where the tournament is, what's done, and ONE next action.
@@ -24,8 +25,26 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
       setRegs({ total: rows.length, outstanding: rows.filter((r) => r.status === "pending_payment" || r.status === "pending_eft").length, paid: rows.filter((r) => r.status === "paid" || r.status === "waived").length, pairs: Math.floor(paired / 2), singles: rows.length - paired });
     });
   }, [tournamentId]);
+  const [life, setLife] = useState<BetaLifecycle | null>(null);
+  useEffect(() => {
+    loadLifecycle(tournamentId).then((l) => {
+      const local = loadHandover(clubId, tournamentId);
+      const v: BetaLifecycle = l ?? { stage: local?.stage ?? "invite", completed: local?.completed ?? ["planning"] };
+      setLife(v);
+      if (!l) saveLifecycle(tournamentId, v).catch(() => {});
+      if (local) { const n = { ...local, stage: v.stage, completed: v.completed }; saveHandover(n); setH(n); }
+    });
+  }, [clubId, tournamentId]);
+  const setLifecycle = async (l: BetaLifecycle) => {
+    await saveLifecycle(tournamentId, l);
+    setLife(l);
+    setH((cur) => { if (!cur) return cur; const n = { ...cur, stage: l.stage, completed: l.completed, informedAt: l.inform?.at ?? cur.informedAt }; saveHandover(n); return n; });
+  };
   if (!h) return <div className="text-sm">This tournament's Beta management record isn't on this device. <Button variant="link" onClick={onBack}>Back</Button></div>;
-  const update = (p: Partial<Handover>) => { const n = { ...h, ...p }; saveHandover(n); setH(n); };
+  const update = (p: Partial<Handover>) => {
+    const n = { ...h, ...p }; saveHandover(n); setH(n);
+    if (life && (p.stage || p.completed)) setLifecycle({ ...life, stage: n.stage, completed: n.completed }).catch(() => {});
+  };
   const cur = lifecycleIndex(h.stage);
   const next = nextAction(h);
   const blockers = blockersFor(h, h.stage);
@@ -62,29 +81,25 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
             <Button size="sm" variant="outline" className="mt-2" onClick={onEditSetup}>Decide now in setup</Button>
           </div>
         )}
-        {h.stage === "invite" && (
+        {h.stage === "invite" && h.mode === "inform" && life && next.available && (
+          <StepInformPanel h={h} lifecycle={life} onLifecycle={setLifecycle} />
+        )}
+        {h.stage === "invite" && h.mode !== "inform" && (
           <>
             {!open
               ? <Button disabled={!next.available} onClick={() => setOpen(true)}>{next.title}<ChevronRight className="ml-1 h-4 w-4" /></Button>
               : <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">Channels: {h.channels.join(", ") || "none chosen"} · wording from setup (shared Messaging step)</div>
-                  {h.mode === "inform"
-                    ? <ul className="space-y-2">{h.entrantMessages.map((m) => (
-                        <li key={m.memberId} className="rounded border border-border p-2 text-xs">
-                          <div className="mb-1 flex justify-between font-semibold"><span>{m.name}</span><span className={h.feeDue ? "text-destructive" : "text-primary"}>{m.status}</span></div>
-                          <pre className="whitespace-pre-wrap font-sans">{m.text}</pre>
-                        </li>))}</ul>
-                    : <pre className="whitespace-pre-wrap rounded border border-border p-2 font-sans text-xs">{h.invitePreview}</pre>}
-                  <p className="text-xs text-muted-foreground">Beta: sending isn't connected yet, so nothing is sent. Pay now links are added once payment collection is switched on.</p>
-                  <Button onClick={() => update({ stage: "registrations", completed: [...new Set([...h.completed, "invite" as const])], informedAt: new Date().toISOString() })}>
-                    Mark as {h.mode === "inform" ? "informed" : "invited"} & continue
+                  <pre className="whitespace-pre-wrap rounded border border-border p-2 font-sans text-xs">{h.invitePreview}</pre>
+                  <p className="text-xs text-muted-foreground">Beta: sending invitations from here isn't connected yet — nothing is sent by this page.</p>
+                  <Button variant="outline" onClick={() => { if (confirm("Confirm you invited players yourself, outside this page?")) update({ stage: "registrations", completed: [...new Set([...h.completed, "invite" as const])], informedAt: new Date().toISOString() }); }}>
+                    Mark as invited manually
                   </Button>
                 </div>}
           </>
         )}
         {h.stage === "registrations" && (
           <div className="space-y-2">
-            {h.informedAt && <p className="text-xs text-muted-foreground">Players marked {h.mode === "inform" ? "informed" : "invited"} {new Date(h.informedAt).toLocaleString()}.</p>}
+            {life?.inform && <p className="text-xs text-muted-foreground">Players {life.inform.method === "sent" ? "notified through SquashHub" : "marked informed manually"} {new Date(life.inform.at).toLocaleString()}{life.inform.note ? ` · ${life.inform.note}` : ""}.</p>}
             <p className="text-xs text-muted-foreground">Payments are recorded through the tournament's normal payment screens. Detailed registration tracking here is the next Beta build.</p>
             <Button onClick={() => update({ stage: "finalise", completed: [...new Set([...h.completed, "registrations" as const])] })}>Close registrations & finalise entries<ChevronRight className="ml-1 h-4 w-4" /></Button>
           </div>

@@ -13,6 +13,7 @@ import { atomically, generateStructuredTournament } from "@/lib/tournaments/stru
 import {
   divisionIssues, finalDrawSpec, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
+  crossSets,
 } from "@/lib/smart-builder/step-draw";
 
 type Existing = { games: number; played: number };

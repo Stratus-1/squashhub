@@ -13,7 +13,7 @@ import { StepInformPanel } from "./StepInformPanel";
  * Setup stays reachable secondarily via "Edit tournament setup".
  */
 export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, onBack }: {
-  clubId: string; tournamentId: string; onEditSetup: () => void; onBack: () => void;
+  clubId: string; tournamentId: string; onEditSetup: (at?: "Summary" | "Messaging") => void; onBack: () => void;
 }) {
   const [h, setH] = useState<Handover | null>(() => loadHandover(clubId, tournamentId));
   const [open, setOpen] = useState(false);
@@ -58,7 +58,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           <h2 className="text-lg font-semibold">{h.name}</h2>
           <p className="text-xs text-muted-foreground">Tournament management (Beta) · {h.kind === "period" ? "Club Championships" : "Once-off / weekend"}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={onEditSetup}><Pencil className="mr-1 h-4 w-4" />Edit tournament setup</Button>
+        <Button variant="outline" size="sm" onClick={() => onEditSetup()}><Pencil className="mr-1 h-4 w-4" />Edit tournament setup</Button>
       </div>
 
       <ol aria-label="Tournament lifecycle" className="flex flex-wrap gap-1.5 text-xs">
@@ -78,11 +78,11 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           <div className="rounded border border-destructive/50 bg-destructive/10 p-2 text-xs">
             <div className="font-medium">Decide these first (you chose "Decide later"):</div>
             <ul className="list-disc pl-4">{blockers.map((d) => <li key={d.id}>{d.label} — <span className="text-muted-foreground">{d.why}</span></li>)}</ul>
-            <Button size="sm" variant="outline" className="mt-2" onClick={onEditSetup}>Decide now in setup</Button>
+            <Button size="sm" variant="outline" className="mt-2" onClick={() => onEditSetup()}>Decide now in setup</Button>
           </div>
         )}
         {h.stage === "invite" && h.mode === "inform" && life && next.available && (
-          <StepInformPanel h={h} lifecycle={life} onLifecycle={setLifecycle} />
+          <StepInformPanel h={h} lifecycle={life} onLifecycle={setLifecycle} onAddGroup={() => onEditSetup("Messaging")} />
         )}
         {h.stage === "invite" && h.mode !== "inform" && (
           <>

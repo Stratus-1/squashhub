@@ -50,6 +50,8 @@ export type Handover = {
   stage: LifecycleKey;
   completed: LifecycleKey[];
   informedAt?: string | null;
+  /** Organiser's WhatsApp group (central copy in tournament_whatsapp_groups). */
+  waGroup?: { url: string; include: boolean } | null;
   createdAt: string;
 };
 
@@ -94,6 +96,8 @@ export type CreateInput = {
   /** Step-by-Step categories/subcategories, in order — become the tournament's divisions (group 1..n). */
   divisions?: Array<{ label: string; matchType: "singles" | "doubles" }>;
   existingId?: string | null;
+  /** undefined = not decided (leave as is); null = no group; object = organiser's invite link. */
+  waGroup?: { url: string; include: boolean; name: string } | null;
 };
 
 /**
@@ -132,6 +136,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])) }).eq("id", tid);
     if (error) throw error;
   }
+  if (i.waGroup !== undefined) await syncWaGroup(tid!, i.clubId, i.waGroup);
   if (i.entrants.length) {
     const nDiv = Math.max(1, i.divisions?.length ?? 1);
     const missing = i.entrants.filter((e) => nDiv > 1 && !(e.division && e.division >= 1 && e.division <= nDiv));
@@ -154,10 +159,23 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
   return tid!;
 }
 
+/** Reuse the existing tournament_whatsapp_groups record (one per tournament); "include" lives on beta_lifecycle. */
+async function syncWaGroup(tid: string, clubId: string, g: { url: string; include: boolean; name: string } | null) {
+  if (g) {
+    const { error } = await fromExt("tournament_whatsapp_groups").upsert({ champ_id: tid, club_id: clubId, provider: "manual", invite_url: g.url, group_name: g.name, status: "active", closed_at: null }, { onConflict: "champ_id" });
+    if (error) throw error;
+  } else {
+    await fromExt("tournament_whatsapp_groups").update({ status: "archived", closed_at: new Date().toISOString() }).eq("champ_id", tid).eq("status", "active");
+  }
+  const cur = (await loadLifecycle(tid)) ?? ({ stage: "invite", completed: ["planning"] } as BetaLifecycle);
+  await saveLifecycle(tid, { ...cur, wa_include: !!g?.include });
+}
+
 /* ── Inform selected players: real sends through the Communications engine ── */
 
 export type BetaLifecycle = {
   stage: LifecycleKey; completed: LifecycleKey[];
+  wa_include?: boolean;
   inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string };
 };
 

@@ -232,7 +232,11 @@ Deno.serve(async (req) => {
 
     const payment = plJson.data.payment;
     // Each club uses its own whitelisted subdomain + `/my-account` return.
-    const redirectUrl = await appendRedirectIfReachable(payment.link as string, safeReturnWithSession);
+    // Never add query params to an Express /pay link: Stitch answers 404
+    // ("Page not found") for /pay/<id>?redirect_url=… (re-verified 02 Oct 2026:
+    // plain link 200, with redirect_url 404). The return destination already
+    // travels in the CREATE body above.
+    const redirectUrl = payment.link as string;
 
     await admin.from("stitch_payment_sessions").update({
       stitch_request_id: payment.id, stitch_redirect_url: redirectUrl,

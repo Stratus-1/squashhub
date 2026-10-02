@@ -2513,6 +2513,21 @@ export default function ClubChampsView() {
     qc.invalidateQueries({ queryKey: ["bookings"] });
   }
 
+  // The fixture's applicable round deadline: its own play_by wins, then the
+  // round/stage deadline (live round rows merged over the planned list, with
+  // play-off milestones for knockout stages). Repeated on every fixture card
+  // so the date stays visible on mobile once the round header scrolls away.
+  const fixtureDeadlines = mergeRoundDeadlines(
+    parseRoundDeadlines((champ as any)?.round_play_by),
+    champRounds as any[],
+  );
+  const fixtureMilestones = parseMilestonesForDates((champ as any)?.milestone_play_by);
+  const playByForMatch = (m: any): string | null => {
+    const own = typeof m?.play_by === "string" ? m.play_by.slice(0, 10) : "";
+    if (own) return own;
+    return deadlineForStage(fixtureDeadlines, m.round_number, m.stage_label ?? m.stage, fixtureMilestones);
+  };
+
   function renderMatchRow(m: any) {
 
     const mine = isMyMatch(m);

@@ -24,10 +24,24 @@ export type StepAnswers = {
   /** Optional subcategories per category name; missing/empty = no subcategories. */
   subcats: Record<string, string[]>;
   days: DayAvail[];
+  /** How players get in: organiser picks, self-entry, or both. */
+  source: Source;
+  /** Per category/subcategory ("Cat" or "Cat::Sub") eligibility + placement. */
+  elig: Record<string, Elig>;
+  /** Organiser-selected players → category/subcategory key ("" = not placed yet). */
+  picks: Record<string, string>;
+  invite: Invite;
 };
+type Source = "select" | "self" | "both" | null;
+type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; placement: "auto" | "choose" };
+type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
+const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [] };
-const STEPS = ["Type", "Entries", "What", "Categories", "Subcategories", "Dates", "Courts", "Summary"] as const;
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null };
+type StepKey = "Type" | "Entries" | "What" | "Categories" | "Subcategories" | "Players" | "Eligibility" | "Pick" | "Invites" | "Dates" | "Courts" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Categories: "Categories", Subcategories: "Subcategories", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Dates: "Dates", Courts: "Courts", Summary: "Summary" };
+const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
+const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
 const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles", doubles: "Doubles", both: "Both" };
 

@@ -797,7 +797,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
 
           {cur === "Categories" && (
             <>
-              <Q t="What categories will you have?" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />
+              <Q t="What categories will you have? (subcategories will be next)" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />
               <div className="space-y-2">
                 {a.categories.map((c, i) => (
                   <div key={i} className="flex gap-2">

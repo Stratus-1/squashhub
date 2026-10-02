@@ -27,7 +27,18 @@ export interface SpecDivision extends DivisionContract {
    * them once the stage before them has finished.
    */
   deferredStages?: Array<{ stageKey: string; name: string; plannedDate: string | null }>;
+  /**
+   * Tournament group (club_champs group_number) this division's games are stored under. Absent = division order + 1.
+   * Cross-league divisions combine several groups: `entryGroups` lists every group whose entries play in it,
+   * so each pair keeps its own league identity (standings per league read entries' own group).
+   */
+  groupNumber?: number;
+  entryGroups?: number[];
 }
+/** Stored group_number for a division's games. */
+export const divisionGroup = (spec: TournamentSpec, d: SpecDivision) => d.groupNumber ?? spec.divisions.indexOf(d) + 1;
+/** Groups whose club_champs_entries form this division. */
+export const divisionEntryGroups = (spec: TournamentSpec, d: SpecDivision) => d.entryGroups?.length ? d.entryGroups : [divisionGroup(spec, d)];
 export interface TournamentSpec {
   version: number;
   /**
@@ -86,7 +97,7 @@ export function generateStage(tid: string, d: SpecDivision, st: PlannedStage): E
   }
   if (st.kind === "mapped") {
     if (!st.mapping || st.mapping.source !== "seed_pools") throw new IntegrityError("mapping_source", `${st.name}: waits for the finishing positions of an earlier stage.`);
-    return mappedFixtures(tid, d, st, seedPools(d.entrants, st.mapping.pools, d.seeding.method));
+    return mappedFixtures(tid, d, st, st.mapping.positions ?? seedPools(d.entrants, st.mapping.pools, d.seeding.method));
   }
   if (st.kind === "swiss") return swissFixtures(tid, d, st, 1, d.entrants.map((e, i) => ({ id: e.id, points: 0, seed: i + 1 })), new Set());
   if (st.kind === "knockout") return knockoutFirstRound(tid, d, st, d.entrants.map((e) => e.id));

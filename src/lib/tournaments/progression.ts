@@ -20,7 +20,7 @@ import { mappingIssues } from "./mapping";
 import { transitionIssues } from "./transition";
 import { specDateIssues } from "./date-window";
 import { bufferedDb, confirmStructuredPlayoffs, loadEntrants, startNextStructuredStage, type Db } from "./structured-persist";
-import type { SpecDivision, TournamentSpec } from "./engine-service";
+import { divisionGroup, type SpecDivision, type TournamentSpec } from "./engine-service";
 
 export type StageState = "waiting" | "ready" | "blocked" | "active" | "completed" | "deferred" | "needs_setup";
 
@@ -77,8 +77,8 @@ export async function stageLifecycle(db: Db, tid: string): Promise<StageStatus[]
   const spec = t.builder_spec as TournamentSpec;
   const all = await db.select("club_champs_matches", { champ_id: tid });
   const out: StageStatus[] = [];
-  for (const [di, d] of spec.divisions.entries()) {
-    const mine = all.filter((m) => m.group_number === di + 1);
+  for (const [, d] of spec.divisions.entries()) {
+    const mine = all.filter((m) => m.group_number === divisionGroup(spec, d));
     const ordered = [...d.stages].sort((a, b) => a.order - b.order);
     const done = new Map<string, boolean>();
     for (const st of ordered) {

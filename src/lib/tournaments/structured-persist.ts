@@ -6,7 +6,7 @@
  */
 import { IntegrityError, rankPoolTally, assertNoReentry, contractIssues, isDecided, progressionOf, type FixtureRow, type PlannedStage, type PoolStanding, type StageKind } from "./contract";
 import { assertFixtureIdentity, poolDefaultLabel, type HTournament } from "./hierarchy";
-import { confirmPlayoffs, generateFromSpec, mappedFixtures, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec } from "./engine-service";
+import { confirmPlayoffs, generateFromSpec, mappedFixtures, nextStageFixtures, previewPlayoffs, previewTransition, type EngineFixture, type PlayoffPreview, type SpecDivision, type TournamentSpec, divisionGroup, divisionEntryGroups } from "./engine-service";
 import { effectiveTransition, transitionIssues } from "./transition";
 import { seedPools } from "./mapping";
 import type { TournamentDefinition } from "../smart-builder/definition";
@@ -235,7 +235,10 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
   // Play-by stages: every round/game carries the stage deadline (no invented court times).
   const playBy = (f: EngineFixture): string | null => {
     const sch = spec.divisions.find((d) => d.divisionId === f.divisionId)?.stages.find((s) => s.id === f.stageId)?.schedule as any;
-    return sch?.rule === "play_by" && sch.deadline ? String(sch.deadline).slice(0, 10) : null;
+    if (sch?.rule !== "play_by") return null;
+    // Several play-by rounds in one stage: round N carries its own deadline (roundDates[N-1]); else the stage deadline.
+    const d = (sch.roundDates ?? [])[(f.round ?? 1) - 1] ?? sch.deadline;
+    return d ? String(d).slice(0, 10) : null;
   };
   const [firstDiv] = spec.divisions;
   for (const f of fixtures) {
@@ -243,7 +246,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     if (roundIds[key]) continue;
     const sk = `${f.divisionId}/${f.stageId}`;
     const [r] = await db.insert("club_champs_rounds", [{
-      champ_id: tid, group_number: spec.divisions.findIndex((d) => d.divisionId === f.divisionId) + 1, round_number: f.round ?? 1,
+      champ_id: tid, group_number: divisionGroup(spec, spec.divisions.find((d) => d.divisionId === f.divisionId)!), round_number: f.round ?? 1,
       division_id: ids.division[f.divisionId], stage_id: ids.stage[sk], stage_key: f.stageId,
       round_type: legacyStage(f.stageKind) === "ko" ? "knockout" : f.stageKind === "swiss" ? "swiss" : "round_robin", label: `Round ${f.round ?? 1}`, status: "active",
       ...(playBy(f) ? { play_by: playBy(f) } : {}),
@@ -274,7 +277,7 @@ export async function insertFixtures(db: Db, tid: string, spec: TournamentSpec, 
     const poolIdx = f.poolId ? Number(/pool(\d+)$/.exec(f.poolId)![1]) - 1 : null;
     const [a1, a2] = splitUnit(f.a); const [b1, b2] = splitUnit(f.b);
     return {
-      champ_id: tid, group_number: spec.divisions.findIndex((d) => d.divisionId === f.divisionId) + 1,
+      champ_id: tid, group_number: divisionGroup(spec, spec.divisions.find((d) => d.divisionId === f.divisionId)!),
       round_number: f.round ?? 1, stage: legacyStage(f.stageKind), stage_key: f.stageId, status: "scheduled",
       player_a_member_id: a1, partner_a_member_id: a2, player_b_member_id: b1, partner_b_member_id: b2,
       pool_number: poolIdx == null ? null : poolIdx + 1, bracket_position: f.slot ?? null,
@@ -302,11 +305,11 @@ export async function loadEntrants(db: Db, tid: string, rawSpec: TournamentSpec)
   const rows = await db.select("club_champs_entries", { champ_id: tid });
   return {
     ...spec,
-    divisions: spec.divisions.map((d, i) => ({
+    divisions: spec.divisions.map((d) => ({
       ...d,
-      entrants: rows.filter((r) => r.group_number === i + 1).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+      entrants: rows.filter((r) => divisionEntryGroups(spec, d).includes(r.group_number)).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
         .map((r, k) => ({ id: r.partner_member_id ? `${r.club_member_id}+${r.partner_member_id}` : r.club_member_id, rank: r.order_index != null ? k + 1 : null })),
-      expectedEntrants: d.expectedEntrants ?? rows.filter((r) => r.group_number === i + 1).length,
+      expectedEntrants: d.expectedEntrants ?? rows.filter((r) => divisionEntryGroups(spec, d).includes(r.group_number)).length,
     })),
   };
 }
@@ -374,7 +377,7 @@ export async function previewStructuredPlayoffs(db: Db, tid: string, divisionKey
   if (!d) throw new IntegrityError("no_division", "Unknown division.");
   const stage = d.stages.find((s) => s.id === stageKey)!;
   const src = d.stages.find((s) => s.order === stage.order - 1)!;
-  const gi = spec.divisions.indexOf(d) + 1;
+  const gi = divisionGroup(spec, d);
   const matches = (await db.select("club_champs_matches", { champ_id: tid })).filter((m) => m.group_number === gi);
   const kindOf = (k: string) => d.stages.find((s) => s.id === k)?.kind ?? "round_robin";
   const existing = matches.map((m) => toFixtureRow(divisionKey, m, kindOf(m.stage_key)));
@@ -396,7 +399,7 @@ export async function confirmStructuredPlayoffs(db: Db, tid: string, divisionKey
   const [t] = await db.select("tournaments", { id: tid });
   const spec = await loadEntrants(db, tid, t.builder_spec as TournamentSpec);
   const d = spec.divisions.find((x) => x.divisionId === divisionKey)!;
-  const gi = spec.divisions.indexOf(d) + 1;
+  const gi = divisionGroup(spec, d);
   const matches = (await db.select("club_champs_matches", { champ_id: tid })).filter((m) => m.group_number === gi);
   const existing = matches.map((m) => toFixtureRow(divisionKey, m, d.stages.find((s) => s.id === m.stage_key)?.kind ?? "round_robin"));
   const rows = confirmPlayoffs(tid, d, preview, { ownerConfirmed, existing });
@@ -447,8 +450,8 @@ export async function rebuildStructured(db: Db, tid: string): Promise<RebuildRep
   const ids = await persistStructure(db, tid, spec);
   const all = await db.select("club_champs_matches", { champ_id: tid });
   const report: RebuildReport = { regenerated: [], removedFuture: 0, created: 0, keptPlayed: 0 };
-  for (const [i, d] of spec.divisions.entries()) {
-    const rows = all.filter((m) => m.group_number === i + 1);
+  for (const [, d] of spec.divisions.entries()) {
+    const rows = all.filter((m) => m.group_number === divisionGroup(spec, d));
     const fx = rows.map((m) => toFixtureRow(d.divisionId, m, d.stages.find((s) => s.id === m.stage_key)?.kind ?? "round_robin"));
     const played = fx.filter((f) => isDecided(f) || ["in_progress", "live"].includes(String(f.status ?? "").toLowerCase()));
     report.keptPlayed += played.length;
@@ -490,7 +493,7 @@ export async function startNextStructuredStage(db: Db, tid: string, divisionKey:
   const spec = await loadEntrants(db, tid, t.builder_spec as TournamentSpec);
   const d = spec.divisions.find((x) => x.divisionId === divisionKey);
   if (!d) throw new IntegrityError("no_division", "Unknown division.");
-  const gi = spec.divisions.indexOf(d) + 1;
+  const gi = divisionGroup(spec, d);
   const matches = (await db.select("club_champs_matches", { champ_id: tid })).filter((m) => m.group_number === gi);
   const existing = matches.map((m) => toFixtureRow(divisionKey, m, d.stages.find((s) => s.id === m.stage_key)?.kind ?? "round_robin"));
   const target = d.stages.find((s) => s.id === stageKey);

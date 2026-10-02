@@ -333,7 +333,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, 
   });
   const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
   const poolRule = (k: string): PoolPlan => poolPlanOf(a, k) ?? { mode: "none" };
-  const setPoolRule = (k: string, patch: Partial<PoolPlan>) => setA((prev) => ({ ...prev, poolPlan: { ...(prev.poolPlan ?? {}), [k]: { ...poolPlanOf(prev, k), ...patch } as PoolPlan }, ...(patch.mode === "none" && prev.formatOverrides?.[k]?.kind === "pools" ? { formatOverrides: { ...prev.formatOverrides, [k]: { ...prev.formatOverrides[k], kind: "pools", pools: "1" } } } : {}) }));
+  const setPoolRule = (k: string, patch: Partial<PoolPlan>) => setA((prev) => ({ ...prev, poolPlan: { ...(prev.poolPlan ?? {}), [k]: { ...poolPlanOf(prev, k), ...patch } as PoolPlan } }));
   const poolQualification = (k: string) => poolQualificationOf(a, k);
   const setPoolQualification = (k: string, patch: Partial<PoolQualification>) => setA((prev) => ({ ...prev, playoffPoolQualifiers: { ...(prev.playoffPoolQualifiers ?? {}), [k]: { ...poolQualificationOf(prev, k), ...patch } } }));
   const poolControl = (u: (typeof units)[number]) => {

@@ -205,7 +205,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   };
   const formatDetail = (f: FormatPlan) => {
     if (!f.kind) return "Not chosen";
-    const extra = f.kind === "pools" && f.pools ? ` · about ${f.pools} pool${f.pools === "1" ? "" : "s"}` : f.kind === "knockout" && f.drawRounds ? ` · ${f.drawRounds}` : f.kind === "swiss" && f.swissRounds ? ` · about ${f.swissRounds} rounds` : f.kind === "cross" ? ` · ${f.crossA && f.crossB ? `${unitBase(f.crossA)} v ${unitBase(f.crossB)}` : "groups to cross not chosen"}` : "";
+    const extra = f.kind === "knockout" && f.drawRounds ? ` · ${f.drawRounds}` : f.kind === "swiss" && f.swissRounds ? ` · about ${f.swissRounds} rounds` : f.kind === "cross" ? ` · ${f.crossA && f.crossB ? `${unitBase(f.crossA)} v ${unitBase(f.crossB)}` : "groups to cross not chosen"}` : f.kind === "pools" ? " · pools per category/subcategory decided later" : "";
     return `${COMP_LABEL[f.kind]}${extra} (planned)`;
   };
   const formatExceptions = units.filter((u) => formatDetail(formatFor(u.key)) !== formatDetail(format));
@@ -988,7 +988,7 @@ function FormatFields({ value, onChange, units, compact = false }: { value: Form
         ? <Button key={k} type="button" size="sm" variant={value.kind === k ? "default" : "outline"} aria-pressed={value.kind === k} onClick={() => onChange({ kind: k })}>{COMP_LABEL[k]}</Button>
         : <Choice key={k} active={value.kind === k} onClick={() => onChange({ kind: k })} title={COMP_LABEL[k]} desc={COMP_DESC[k]} />)}
     </div>
-    {value.kind === "pools" && <div className="max-w-[260px] space-y-1"><Label>Roughly how many pools? (optional)</Label><Input type="number" min="1" aria-label="Anticipated pools" value={value.pools} onChange={(e) => onChange({ pools: e.target.value })} placeholder="e.g. 4" /><p className="text-xs text-muted-foreground">Final pool sizes are set after entries close. Later qualification is planned in Playoffs.</p></div>}
+    {value.kind === "pools" && <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">The number of pools will be decided later for each category or subcategory, based on the number of entries. Categories and subcategories are not themselves automatically pools — a category/subcategory such as Men's A Singles may later contain one, two, three or more pools. Pool numbers stay provisional during planning and are finalised once registrations close and actual entry numbers are known.</div>}
     {value.kind === "knockout" && <div className="max-w-[320px]"><Label>Expected draw (optional)</Label><select aria-label="Expected draw" className={sel} value={value.drawRounds} onChange={(e) => onChange({ drawRounds: e.target.value })}><option value="">Decide when entries are known</option><option value="Draw of 4">Draw of 4</option><option value="Draw of 8">Draw of 8</option><option value="Draw of 16">Draw of 16</option><option value="Draw of 32">Draw of 32</option></select><p className="mt-1 text-xs text-muted-foreground">The final draw size depends on actual entries.</p></div>}
     {value.kind === "swiss" && <div className="max-w-[260px] space-y-1"><Label>Roughly how many rounds? (optional)</Label><Input type="number" min="1" aria-label="Anticipated Swiss rounds" value={value.swissRounds} onChange={(e) => onChange({ swissRounds: e.target.value })} placeholder="e.g. 5" /><p className="text-xs text-muted-foreground">Each round pairs players on similar results; nobody is eliminated.</p></div>}
     {value.kind === "cross" && <div className="space-y-2">

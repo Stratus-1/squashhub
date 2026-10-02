@@ -9,6 +9,7 @@ function chain(table: string): any {
   let op = "select";
   const result = () => table === "club_members" ? { data: MEMBERS, error: null }
     : table === "club_champs" && op === "insert" ? { data: { id: "t-new" }, error: null }
+    : table === "club_champs" && op === "select" ? { data: { payment_timing: "after_acceptance" }, error: null }
     : table === "comms_campaigns" && op === "insert" ? { data: { id: "camp1" }, error: null }
     : table === "comms_deliveries" ? { data: [{ club_member_id: "m1", channel: "in_app", status: "sent", error_message: null }, { club_member_id: "m2", channel: "in_app", status: "sent", error_message: null }], error: null }
     : table === "club_champs_registrations" && op === "select" ? { data: [{ club_member_id: "m1", partner_member_id: "m2", status: regStatus }, { club_member_id: "m2", partner_member_id: "m1", status: regStatus }], error: null }
@@ -37,7 +38,7 @@ const seedChamps = () => localStorage.setItem("sh.stepbuilder.c1", JSON.stringif
   categories: ["Open Doubles"], disc: { "Open Doubles": "doubles" }, unitEntries: { "Open Doubles": "8" }, format: { kind: "knockout" },
   seeding: "later", partner: { "Open Doubles": "admin" }, source: "select", elig: {},
   picks: { m1: "Open Doubles", m2: "Open Doubles" }, pairs: { "Open Doubles": [["m1", "m2"]] },
-  fee: { has: true, amount: "200", varies: false, perUnit: {}, doublesBasis: "pair", doublesCover: true, methods: ["cash"] },
+  fee: { has: true, amount: "200", varies: false, perUnit: {}, doublesBasis: "pair", doublesCover: true, methods: ["cash"], confirmNeedsPay: false },
   planId: "plan1",
   stages: [
     { id: "r1", unit: "", name: "Round 1", mode: "scheduled", deadline: "", date: "2026-11-03", from: "18:00", to: "21:00", courtIds: ["20", "21"], phase: "main" },
@@ -82,7 +83,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(screen.getByRole("heading", { name: "Riverside Champs" })).toBeInTheDocument();
     expect(screen.getByText("Invite / Inform players").closest("li")).toHaveAttribute("aria-current", "step");
     const insert = calls.find((c) => c.table === "club_champs" && c.op === "insert")!;
-    expect(insert.arg).toMatchObject({ club_id: "c1", name: "Riverside Champs", status: "planning", entry_fee_cents: 20000, payment_required: true, payment_methods: ["cash"], partner_mode: "admin" });
+    expect(insert.arg).toMatchObject({ club_id: "c1", name: "Riverside Champs", status: "planning", entry_fee_cents: 20000, payment_required: true, payment_methods: ["cash"], partner_mode: "admin", payment_timing: "after_acceptance" });
     const regs = calls.find((c) => c.table === "club_champs_registrations" && c.op === "upsert")!;
     expect(regs.arg).toEqual(expect.arrayContaining([
       expect.objectContaining({ club_member_id: "m1", partner_member_id: "m2", status: "pending_payment", confirmation_source: "admin" }),

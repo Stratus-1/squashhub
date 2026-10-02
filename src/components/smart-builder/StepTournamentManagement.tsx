@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   LIFECYCLE, blockersFor, finalisePrereqs, isOutstanding, lifecycleIndex, loadHandover, loadLifecycle, loadRegistrations,
-  nextAction, paymentWarning, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow,
+  nextAction, loadConfirmNeedsPay, paymentWarning, regLabel, saveHandover, saveLifecycle, type BetaLifecycle, type Handover, type LifecycleKey, type RegRow,
 } from "@/lib/smart-builder/step-handover";
 import { StepInformPanel } from "./StepInformPanel";
 import { fromExt } from "@/lib/supabase-ext";
@@ -63,7 +63,9 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   const rows = regs?.rows ?? [];
   const owing = rows.filter((r) => isOutstanding(r.status, h.feeDue));
   const paid = rows.filter((r) => r.status === "paid" || r.status === "waived").length;
-  const prereqs = finalisePrereqs(rows, h.feeDue);
+  const [needPay, setNeedPay] = useState(false);
+  useEffect(() => { if (h.feeDue) loadConfirmNeedsPay(tournamentId).then(setNeedPay).catch(() => {}); }, [tournamentId, h.feeDue]);
+  const prereqs = finalisePrereqs(rows, h.feeDue, needPay);
   const payWarn = paymentWarning(rows, h.feeDue);
   const pairs = rows.filter((r) => r.partnerName).length;
   // Anything past Invite means real registrations / payments may depend on setup.
@@ -142,7 +144,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
               : payWarn
                 ? <div className="rounded border border-destructive/50 bg-destructive/10 p-2">
                     <div className="font-medium">{payWarn}</div>
-                    <div className="text-muted-foreground">SquashHub's tournament rules don't require every entry to be paid before finalising or the draw, so this doesn't block you — but you'll be asked to confirm. Players pay with the Pay button on their notification or on their tournament page; payments show here after Refresh.</div>
+                    <div className="text-muted-foreground">This tournament confirms entries without payment (\"Must the fee be paid before the entry is confirmed?\" = No), so this doesn't block you. The fees stay genuinely outstanding. Players pay with the Pay button on their notification or on their tournament page; payments show here after Refresh.</div>
                   </div>
                 : <div className="rounded border border-primary/50 bg-primary/10 p-2 font-medium">Every entry is {h.feeDue ? "paid or waived" : "in"} — you can finalise entries.</div>)}
             <div className="flex flex-wrap gap-2">
@@ -164,7 +166,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
             {(() => {
               const why = [...prereqs, ...blockers.map((d) => `"${d.label}" is still "Decide later"`)];
               return <>
-                {payWarn && <p className="text-destructive">{payWarn} — this doesn't block the draw under the existing tournament rules.</p>}
+                {payWarn && <p className="text-destructive">{payWarn} — this doesn't block the draw because entries are confirmed without payment.</p>}
                 {why.length
                   ? <><Button disabled><Lock className="mr-1 h-4 w-4" />Generate draw & fixtures</Button><p className="text-destructive">Blocked because: {why.join(" · ")}. Decide {why.length === 1 ? "it" : "them"} in setup to unlock.</p></>
                   : <><Button onClick={() => { if (!payWarn || confirm(`${payWarn}. Continue anyway?`)) advance("finalise", "generate"); }}>Continue to Generate draw & fixtures<ChevronRight className="ml-1 h-4 w-4" /></Button>
@@ -187,7 +189,7 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
           {showRegs && <ul className="mt-1 divide-y divide-border rounded border border-border">{rows.map((r) => (
             <li key={r.memberId} className="flex flex-wrap justify-between gap-2 px-2 py-1">
               <span>{r.name}{r.partnerName ? <span className="text-muted-foreground"> + {r.partnerName}</span> : null}</span>
-              <span className={isOutstanding(r.status, h.feeDue) ? "text-destructive" : "text-primary"}>{regLabel(r.status, h.feeDue)}{r.owesCents ? ` · ${money(r.owesCents)}` : ""}</span>
+              <span className={isOutstanding(r.status, h.feeDue) ? "text-destructive" : "text-primary"}>{regLabel(r.status, h.feeDue, needPay)}{r.owesCents ? ` · ${money(r.owesCents)}` : ""}</span>
             </li>
           ))}</ul>}
         </div>

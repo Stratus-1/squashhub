@@ -138,7 +138,7 @@ export type StepAnswers = {
 };
 type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
-type FeeCfg = { has: boolean | null; amount: string; varies: boolean; perUnit: Record<string, string>; doublesBasis: "player" | "pair"; doublesCover: boolean | null; methods?: string[] };
+type FeeCfg = { has: boolean | null; amount: string; varies: boolean; perUnit: Record<string, string>; doublesBasis: "player" | "pair"; doublesCover: boolean | null; methods?: string[]; confirmNeedsPay?: boolean | null };
 const DEFAULT_FEE: FeeCfg = { has: null, amount: "", varies: false, perUnit: {}, doublesBasis: "player", doublesCover: null };
 const ruleAnswer = (value: boolean | null) => value === null ? "Decide later" : value ? "Yes" : "No";
 type Channel = "in_app" | "email" | "whatsapp" | "sms";
@@ -527,7 +527,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0 && fee.confirmNeedsPay != null), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -625,7 +625,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
       const tid = await persistStepTournament({
         clubId, name: a.name || "Tournament", existingId: a.createdTournamentId ?? null,
         startDate: isChamps ? a.periodStart || null : dates[0] ?? null, endDate: isChamps ? null : dates[dates.length - 1] ?? null,
-        feeCents, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
+        feeCents, confirmNeedsPay: fee.has ? fee.confirmNeedsPay !== false : undefined, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
         waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         resultNotify: am.on === null ? undefined : am.on && am.channels.length ? { scope: am.scope, channels: am.channels.filter((c) => chAvail(c as Channel)) } : { scope: "never", channels: [] },
         divisions: units.map((u) => ({ label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const })),
@@ -1129,6 +1129,15 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
                 </div>
               )}
               {fee.has && (
+                <div className="mt-4 space-y-2 border-t pt-4">
+                  <Label className="text-sm">Must the entry fee be paid before the player's entry is confirmed?</Label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Choice active={fee.confirmNeedsPay === true} onClick={() => setFee({ confirmNeedsPay: true })} title="Yes" desc="Payment is required to confirm the entry. Unpaid players stay unconfirmed and hold up finalising entries." />
+                    <Choice active={fee.confirmNeedsPay === false} onClick={() => setFee({ confirmNeedsPay: false })} title="No" desc="Confirm the entry even if the fee is still outstanding. The fee is still owed and players can still pay; it just doesn't hold up the tournament." />
+                  </div>
+                </div>
+              )}
+              {fee.has && (
                 <div className="mt-4 space-y-2 border-t pt-4" data-testid="accepted-methods">
                   <div className="text-sm font-semibold">Accepted payment methods</div>
                   <p className="text-xs text-muted-foreground">Only the ways your club already accepts (set in Club Admin → Banking) can be chosen. Players' Pay now only offers what you tick; with one method they go straight to it.</p>
@@ -1455,7 +1464,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
-                <ul className="space-y-0.5"><li>Fee due: <span className="text-muted-foreground">{fee.has ? "Yes" : fee.has === false ? "No" : "Not chosen"}</span></li></ul>
+                <ul className="space-y-0.5"><li>Fee due: <span className="text-muted-foreground">{fee.has ? "Yes" : fee.has === false ? "No" : "Not chosen"}</span></li>{fee.has && <li>Payment required to confirm entry: <span className="text-muted-foreground">{fee.confirmNeedsPay === true ? "Yes — unpaid entries stay unconfirmed" : fee.confirmNeedsPay === false ? "No — entries are confirmed; the fee stays outstanding until paid" : "Not chosen"}</span></li>}</ul>
                 {fee.has && <ul className="space-y-0.5"><li>Accepted methods: <span className="text-muted-foreground">{methodText}</span></li>{showPick && <li>Picked entrants: <span className="text-muted-foreground">Entered · Payment outstanding (admin selection never marks paid)</span></li>}</ul>}
                 <span className="text-muted-foreground"> · setup only, no payments taken</span>
               </SummaryRow>

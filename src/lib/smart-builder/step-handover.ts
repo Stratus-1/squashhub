@@ -99,6 +99,8 @@ export type CreateInput = {
   /** undefined = not decided (leave as is); null = no group; object = organiser's invite link. */
   waGroup?: { url: string; include: boolean; name: string } | null;
   /** undefined = leave as is; maps to the Current Builder's tournaments.result_notify_scope / _channels. */
+  /** Maps to the existing tournament payment_timing: true → on_entry, false → after_acceptance. */
+  confirmNeedsPay?: boolean;
   resultNotify?: { scope: "all" | "playoffs" | "never"; channels: string[] };
 };
 
@@ -115,6 +117,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     end_date: i.endDate || null,
     entry_fee_cents: i.feeCents ?? 0,
     payment_required: (i.feeCents ?? 0) > 0,
+    ...(i.confirmNeedsPay !== undefined ? { payment_timing: i.confirmNeedsPay ? "on_entry" : "after_acceptance" } : {}),
     payment_methods: i.paymentMethods.length ? i.paymentMethods : null,
     ...(i.partnerMode ? { partner_mode: i.partnerMode } : {}),
     ...(i.resultNotify ? { result_notify_scope: i.resultNotify.scope, result_notify_channels: i.resultNotify.channels.length ? i.resultNotify.channels : ["email"] } : {}),
@@ -274,8 +277,8 @@ export function recipientStatus(memberIds: string[], rows: DeliveryRowAt[]) {
 export type RegRow = { memberId: string; name: string; partnerName: string | null; status: string; owesCents: number };
 const OUTSTANDING = new Set(["pending_payment", "pending_eft", "invited", "payment_failed"]);
 export const isOutstanding = (status: string, feeDue: boolean) => feeDue && OUTSTANDING.has(status);
-export const regLabel = (status: string, feeDue: boolean) =>
-  !feeDue ? "Entered · Payment not required" : status === "paid" ? "Entered · Paid" : status === "waived" ? "Entered · Fee waived" : status === "pending_eft" ? "Entered · EFT proof waiting" : status === "payment_failed" ? "Entered · Payment failed" : isOutstanding(status, feeDue) ? "Entered · Payment outstanding" : "Entered";
+export const regLabel = (status: string, feeDue: boolean, confirmNeedsPay = false) =>
+  confirmNeedsPay && feeDue && OUTSTANDING.has(status) ? (status === "pending_eft" ? "Not confirmed · EFT proof waiting" : status === "payment_failed" ? "Not confirmed · Payment failed" : "Not confirmed · Payment outstanding") : !feeDue ? "Entered · Payment not required" : status === "paid" ? "Entered · Paid" : status === "waived" ? "Entered · Fee waived" : status === "pending_eft" ? "Entered · EFT proof waiting" : status === "payment_failed" ? "Entered · Payment failed" : isOutstanding(status, feeDue) ? "Entered · Payment outstanding" : "Entered";
 
 export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number }> {
   const [{ data: t }, { data: regs }] = await Promise.all([
@@ -302,8 +305,15 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
  * "everyone must have paid" rule before the draw, so unpaid entries are a WARNING (see
  * paymentWarning), never a block — matching the Current Builder.
  */
-export function finalisePrereqs(rows: RegRow[], _feeDue: boolean): string[] {
-  return rows.length ? [] : ["No entries yet"];
+export function finalisePrereqs(rows: RegRow[], feeDue: boolean, confirmNeedsPay = false): string[] {
+  if (!rows.length) return ["No entries yet"];
+  const owing = confirmNeedsPay ? rows.filter((r) => isOutstanding(r.status, feeDue)) : [];
+  return owing.length ? [`${owing.length} entr${owing.length === 1 ? "y is" : "ies are"} not confirmed until paid ("Must the fee be paid before the entry is confirmed?" = Yes)`] : [];
+}
+/** Read the tournament's existing payment timing: on_entry = payment confirms the entry. */
+export async function loadConfirmNeedsPay(tournamentId: string): Promise<boolean> {
+  const { data } = await fromExt("club_champs").select("payment_timing").eq("id", tournamentId).maybeSingle();
+  return ((data as any)?.payment_timing ?? "on_entry") !== "after_acceptance";
 }
 export function paymentWarning(rows: RegRow[], feeDue: boolean): string | null {
   const owing = rows.filter((r) => isOutstanding(r.status, feeDue));

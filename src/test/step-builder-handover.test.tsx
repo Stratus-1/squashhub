@@ -56,7 +56,8 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
   it("completes setup, enters the pair as payment outstanding, and opens Inform selected players", async () => {
     seedChamps();
     render(<MemoryRouter><ClubTournamentBeta clubId="c1" clubName="Riverside" /></MemoryRouter>);
-    fireEvent.click(screen.getByText("Build your tournament step by step"));
+    // The seeded plan is an unfinished NEW draft: resume it explicitly (the New tile never resumes silently).
+    fireEvent.click(screen.getByText(/^Continue draft/));
     // Court bookings plan lists every concretely scheduled stage — main rounds too, not only playoffs; play-by rounds are not booked.
     fireEvent.click((await screen.findAllByRole("button", { name: /Stages & scheduling/ }))[0]);
     const panel = await screen.findByTestId("stage-court-bookings");

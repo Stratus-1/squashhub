@@ -6,6 +6,7 @@ const normaliseGroupInviteUrl = (raw: string) => {
   v = v.replace(/^http:\/\//i, "https://").replace(/^https:\/\/www\./i, "https://");
   return /^https:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{6,}\/?(\?\S*)?$/i.test(v) ? v : null;
 };
+import { clearDraft, draftKey, migrateLegacy, tournamentKey } from "@/lib/smart-builder/step-storage";
 import { ConflictPanel } from "./ConflictPanel";
 import { resolveConflict, setupConflicts } from "@/lib/smart-builder/consistency";
 import { SaveAsTemplateButton } from "./StepTemplates";
@@ -217,11 +218,15 @@ const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles"
 const fmtDay = (d: string) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "No date";
 
-export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }: { clubId: string; clubName?: string; onCompleted?: (tournamentId: string) => void; initialStep?: StepKey }) {
-  const key = `sh.stepbuilder.${clubId}`;
+export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep, tournamentId }: { clubId: string; clubName?: string; onCompleted?: (tournamentId: string) => void; initialStep?: StepKey;
+  /** Editing an existing tournament's setup. Absent = a NEW tournament (the club's unfinished draft only, never an existing tournament). */
+  tournamentId?: string }) {
+  const [key, setKey] = useState(() => { migrateLegacy(clubId); return tournamentId ? tournamentKey(tournamentId) : draftKey(clubId); });
   const [a, setA] = useState<StepAnswers>(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(key) || "{}") as Partial<StepAnswers> & { fee?: Partial<FeeCfg> & { doublesPay?: string } };
+      const raw = JSON.parse(localStorage.getItem(tournamentId ? tournamentKey(tournamentId) : draftKey(clubId)) || "{}");
+      // A new setup never carries a tournament identity; an edit only ever loads that exact tournament.
+      const saved = (tournamentId ? (raw.createdTournamentId === tournamentId ? raw : { createdTournamentId: tournamentId }) : (raw.createdTournamentId ? {} : raw)) as Partial<StepAnswers> & { fee?: Partial<FeeCfg> & { doublesPay?: string } };
       const legacy = saved.fee?.doublesPay;
       const doublesEntry = saved.doublesEntry !== undefined ? saved.doublesEntry : legacy === "later" || !legacy ? null : legacy !== "separate";
       const doublesCover = saved.fee?.doublesCover !== undefined ? saved.fee.doublesCover : legacy === "later" || !legacy ? null : legacy === "one_pays";
@@ -678,7 +683,8 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
       });
       // Persist synchronously: the builder unmounts on handover, so the save effect may never run.
       const nextA = { ...a, createdTournamentId: tid };
-      localStorage.setItem(key, JSON.stringify(nextA));
+      localStorage.setItem(tournamentKey(tid), JSON.stringify(nextA));
+      if (!tournamentId) { clearDraft(clubId); setKey(tournamentKey(tid)); }
       setA(nextA);
       onCompleted?.(tid);
     } catch (e: any) {

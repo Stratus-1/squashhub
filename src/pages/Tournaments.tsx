@@ -1871,7 +1871,7 @@ export default function Tournaments() {
                         </CardTitle>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {GENDER_LABELS[champ.gender] || champ.gender} ·{" "}
-                          {champ.match_type === "doubles" ? "Doubles" : "Singles"}
+                          {(() => { const v = Object.values(champ.league_match_types || {}).map((x: any) => String(x).toLowerCase()); const d = champ.match_type === "doubles" || v.includes("doubles"); const sg = champ.match_type !== "doubles" && (v.length === 0 || v.includes("singles")); return d && sg && v.length ? "Singles and Doubles" : d ? "Doubles" : "Singles"; })()}
                         </p>
                       </div>
                       <Button

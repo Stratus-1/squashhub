@@ -74,6 +74,7 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
 import { getRankRowStyle } from "@/lib/standings-rank-style";
+import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
   const { champId } = useParams<{ champId: string }>();
@@ -125,6 +126,8 @@ export default function ClubChampsView() {
     enabled: !!champId,
   });
   const isStructured = arch?.builder_architecture === "structured";
+  // Beta "between subcategories" matchups: several entry groups share one set of games.
+  const matchups = useMemo(() => (isStructured ? structuredMatchups(arch?.builder_spec) : []), [isStructured, arch?.builder_spec]);
 
   const { data: matches = [] } = useQuery({
     queryKey: ["club-champ-matches", champId],
@@ -538,7 +541,14 @@ export default function ClubChampsView() {
     );
     // For cross-league play, a match "belongs" to this league if any of the league's
     // members took part. Otherwise we filter by group_number as before.
+    const mu = matchupForGroup(matchups, groupNum);
     const matchBelongsToGroup = (m: any) => {
+      if (mu) {
+        // Games are stored under the matchup's group; credit only this subcategory's pairs.
+        if (m.group_number !== mu.groupNumber) return false;
+        return [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id]
+          .some((id) => id && groupMemberIds.has(id));
+      }
       if (!isCrossLeague) {
         if (m.group_number !== groupNum) return false;
         if (poolNumber != null && resolvePoolNumber(m, groupNum) !== poolNumber) return false;
@@ -2227,7 +2237,7 @@ export default function ClubChampsView() {
               {myGroupNumbers.map((gn: number) => {
                 return (
                   <Card key={gn}>
-                    <CardHeader><CardTitle className="text-lg">{getGroupLabel(champ, gn)}</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-lg">{getGroupLabel(champ, gn)}</CardTitle>{(() => { const mu = matchupForGroup(matchups, gn); return mu ? <p className="text-xs text-muted-foreground">Matchup: {matchupHeading(mu, (g) => getGroupLabel(champ, g))}</p> : null; })()}</CardHeader>
                     <CardContent>
                       {renderGroupStandings(gn)}
                     </CardContent>
@@ -3117,6 +3127,38 @@ export default function ClubChampsView() {
 
 
     orderedGroups.forEach((gn: number) => {
+      const mu = matchupForGroup(matchups, gn);
+      if (mu) {
+        // One card per matchup (e.g. Men's A vs Men's B): each subcategory's
+        // table, then the shared games once. Rendered at its first group only.
+        if (gn !== mu.entryGroups.find((g) => orderedGroups.includes(g))) return;
+        const heading = matchupHeading(mu, (g) => getGroupLabel(champ, g));
+        const muMatches = sortMatchesChrono(matches.filter((m: any) =>
+          (m.stage || "group") === "group" && m.group_number === mu.groupNumber));
+        standingsCards.push(
+          <CollapsibleCard key={`mu-${mu.groupNumber}`} defaultOpen={false}
+            title={heading} titleClassName="text-lg" contentClassName="space-y-4"
+          >
+            <p className="text-xs text-muted-foreground">Between subcategories — these groups play each other only.</p>
+            {mu.entryGroups.map((g, i) => (
+              <div key={g} className="space-y-1.5">
+                <h4 className="font-medium text-sm">{(mu.labels[i] || "").trim() || getGroupLabel(champ, g)}</h4>
+                {renderGroupStandings(g)}
+              </div>
+            ))}
+            {muMatches.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Fixtures &amp; Results</h4>
+                  <div className="space-y-1.5">{muMatches.map((m: any) => renderMatchRow(m))}</div>
+                </div>
+              </>
+            )}
+          </CollapsibleCard>
+        );
+        return;
+      }
       const groupMemberIds = new Set<string>(
         entries.filter((e: any) => e.group_number === gn)
           .flatMap((e: any) => [e.club_member_id, e.partner_member_id].filter(Boolean) as string[])
@@ -3316,8 +3358,15 @@ export default function ClubChampsView() {
       );
     })() : null;
 
+    const unitIssues = matchups.length ? validateStandingsUnits(arch?.builder_spec, entries as any[], matchups) : [];
     return (
       <>
+        {unitIssues.length > 0 && (
+          <Card className="border-destructive/50"><CardContent className="py-3 text-sm space-y-1">
+            <p className="font-medium text-destructive">Standings don't match the generated draw — nothing was changed:</p>
+            {[...new Set(unitIssues.map((i) => i.message))].map((m) => <p key={m} className="text-xs">• {m}</p>)}
+          </CardContent></Card>
+        )}
         {summary}
         <TournamentNextActionBar
           champId={champId!}

@@ -2378,3 +2378,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 - Replaced the combined doubles entry/payment menu with independent optional controls: a player may enter both partners and a player may choose to pay for both. Off means each player registers or pays for themselves; either choice can be deferred.
 - Existing per-group partner selection and per-player/per-pair/category fees remain separate. Older device-local combined choices are converted on load; no tournament records, billing, schema, or normal builder were changed. These choices are planning-only, not active registration/payment rules.
 - Follow-up: moved both independent choices into Fees & Payment (including free tournaments), with explicit Yes / No / Decide later answers and matching tree/summary wording; the separate partner-selection step remains unchanged.
+
+## 2026-10-02 — Step-by-Step Beta match format visible in guided flow
+- Added an early "How will matches be played?" choice after Singles/Doubles. Standard captures PAR 11/15, best-of-3/5 and win-by-2/sudden-death; Bells captures minutes per match. The tournament choice inherits to groups, with optional category and subcategory overrides after categories are defined.
+- Overview and summary resolve and display actual group scoring when exceptions exist; a uniform choice stays concise. "Both" discipline now reads "Singles and Doubles". Saved answers remain per club on this device; no tournament creation, normal builder, schema, or live data changed.

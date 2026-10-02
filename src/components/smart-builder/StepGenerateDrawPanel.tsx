@@ -8,9 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
+import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, moveUnit, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
 } from "@/lib/smart-builder/step-draw";
 
@@ -41,7 +42,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [busy, setBusy] = useState(false);
   const [showPairs, setShowPairs] = useState<number | null>(null);
   /** Organiser edits per group: seed order and/or pools. These are what Generate saves — never recalculated away. */
-  const [manual, setManual] = useState<Record<number, { order?: string[]; pools?: string[][] }>>({});
+  const [manual, setManual] = useState<Record<number, { order?: string[]; pools?: { ids: string[]; sizes: number[] } }>>({});
+  const [poolMode, setPoolMode] = useState<PoolAllocationMode>("snake");
   const [dragId, setDragId] = useState<string | null>(null);
 
   const load = async () => {
@@ -49,11 +51,12 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     // Reconcile organiser-entered pairs first so the draw only ever sees current active entries.
     await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
     const [{ data: t }, { data: regs }, { data: ms }] = await Promise.all([
-      fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types").eq("id", tournamentId).maybeSingle(),
+      fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types, pool_allocation").eq("id", tournamentId).maybeSingle(),
       fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices").eq("champ_id", tournamentId),
       fromExt("club_champs_matches").select("id, status, winner_member_id").eq("champ_id", tournamentId),
     ]);
     const tt = t as any;
+    setPoolMode(normalisePoolAllocation(tt?.pool_allocation));
     const games = (ms ?? []) as any[];
     setExisting({ games: games.length, played: games.filter((m) => m.winner_member_id || ["completed", "confirmed", "in_progress", "live", "walkover", "forfeit"].includes(String(m.status ?? "").toLowerCase())).length });
     setMeta({ name: tt?.name ?? "Tournament", start: tt?.start_date ?? null, end: tt?.end_date ?? null });
@@ -92,7 +95,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       for (const [g, v] of Object.entries(m)) {
         const ids = new Set((units[Number(g) - 1] ?? []).map(unitId));
         const same = (xs?: string[]) => !xs || (xs.length === ids.size && xs.every((x) => ids.has(x)));
-        if (same(v.order) && same(v.pools?.flat())) kept[Number(g)] = v; else dropped = true;
+        if (same(v.order) && same(v.pools?.ids)) kept[Number(g)] = v; else dropped = true;
       }
       if (dropped) toast.warning("Entries changed, so your manual seed/pool changes for that category were reset.");
       return kept;
@@ -108,9 +111,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     let units = orderUnits(base, d.format.seeding, { seed: seed + i, ladder, points });
     const mo = manual[d.group]?.order;
     if (mo) { const by = new Map(units.map((u) => [unitId(u), u])); units = mo.map((id) => by.get(id)!).filter(Boolean); }
-    return { ...d, blockers: rk ? [rk] : [], units, manualPools: d.format.kind === "pools" ? manual[d.group]?.pools ?? null : null };
+    return { ...d, blockers: rk ? [rk] : [], units, manualPools: d.format.kind === "pools" && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
   }), [divs, baseUnits, ladder, points, scope, seed, manual]);
-  const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }) : null, [meta, seeded]);
+  const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }, "preview", poolMode) : null, [meta, seeded, poolMode]);
   const setSch = (i: number, patch: Partial<DivSchedule>) => setFmt(i, { schedule: { ...divs[i].format.schedule, ...patch } });
   const setFmt = (i: number, patch: Partial<DivFormat>) => {
     const g = divs[i]?.group;
@@ -136,14 +139,17 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setConfirmed(false);
     setManual((m) => ({ ...m, [d.group]: { ...m[d.group], order } }));
   };
+  // Same move-to-pool action as the existing builder (pools.ts moveToPool): sizes follow the move, a pair moves as one.
   const movePool = (d: DrawDivision, id: string, to: number) => {
-    const cur = poolsFor(d); if (!cur) return;
+    const cur = poolsFor(d, poolMode); if (!cur) return;
+    const r = moveToPool(cur.flat(), id, to, d.format.pools, { manual: true, sizes: cur.map((p) => p.length) });
+    if (!r) return;
     setConfirmed(false);
-    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], pools: moveUnit(cur, id, to) } }));
+    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], pools: r } }));
   };
   const resetManual = (g: number) => { setConfirmed(false); setManual((m) => { const n = { ...m }; delete n[g]; return n; }); };
   const poolEditor = (d: DrawDivision) => {
-    const pools = poolsFor(d);
+    const pools = poolsFor(d, poolMode);
     const seedOf = new Map(d.units.map((u, k) => [unitId(u), k]));
     const groups = pools ?? [d.units.map(unitId)];
     const isPools = d.format.kind === "pools";
@@ -181,7 +187,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         </div>
         {isPools && <p className="text-muted-foreground">Drag a {d.doubles ? "pair" : "player"} onto another pool, or use "Move to pool". {d.doubles ? "Pairs always move together." : ""}</p>}
         {d.format.kind === "cross" && <p className="text-muted-foreground">Groups are the categories players entered, so pairs can't be moved between them here — change a category in Finalise Entries. You can change the seed order within this group.</p>}
-        {poolWarnings(d).map((w) => <p key={w} className="text-amber-600 dark:text-amber-400">⚠ {w}</p>)}
+        {poolWarnings(d, poolMode).map((w) => <p key={w} className="text-amber-600 dark:text-amber-400">⚠ {w}</p>)}
         {manual[d.group] && <p>Your changes are used exactly as shown when you generate. <button type="button" className="text-primary underline" onClick={() => resetManual(d.group)}>Reset to the calculated {isPools ? "pools and seeds" : "seeds"}</button></p>}
       </div>
     );
@@ -202,7 +208,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const n = seeded.length;
       const drift = seeded.some((d) => unitsFor((fresh ?? []) as RegLite[], d.group, n, d.doubles).units.length !== d.units.length);
       if (drift) { toast.error("Entries changed since this preview — the preview has been refreshed. Check it and generate again."); await load(); return; }
-      const spec = finalDrawSpec(meta.name, seeded, version);
+      const spec = finalDrawSpec(meta.name, seeded, version, poolMode);
       const entries = seeded.flatMap((d) => d.units.map((u, k) => ({ member: u.member, partner: u.partner, group: d.group, order: k })));
       const { error } = await (supabase as any).rpc("step_prepare_draw", { p_champ_id: tournamentId, p_spec: spec, p_entries: entries, p_rebuild: hasDraw });
       if (error) throw new Error(error.message);

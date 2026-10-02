@@ -38,7 +38,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const [clubCourts, setClubCourts] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
     supabase.from("courts").select("id, name").eq("club_id", clubId).eq("is_external", false).order("name")
-      .then(({ data }) => setClubCourts((data as { id: string; name: string }[]) ?? []));
+      .then(({ data }) => setClubCourts((data ?? []).map((c) => ({ id: String(c.id), name: c.name }))));
   }, [clubId]);
   const courtNames = (d: DayAvail) => clubCourts.filter((c) => d.courtIds?.includes(c.id)).map((c) => c.name).join(", ");
 

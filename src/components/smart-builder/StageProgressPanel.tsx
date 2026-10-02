@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { atomically, loadEntrants, sourcePositions } from "@/lib/tournaments/structured-persist";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
-import { divisionGroup } from "@/lib/tournaments/structured";
+import { divisionGroup } from "@/lib/tournaments/engine-service";
 import { autoProgress, confirmNextStage, previewNextStage, checkDeferredSetup, decidePositionOrder, setupDeferredStage, setupOk, stageLifecycle, type DeferredSetup, type Exec, type SetupCheck, type StageStatus } from "@/lib/tournaments/progression";
 import { parseMapping } from "@/lib/tournaments/mapping";
 import { sourcePoolCount } from "@/lib/tournaments/contract";

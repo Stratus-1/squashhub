@@ -85,6 +85,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     })();
     supabase.from("leagues").select("id, name").eq("club_id", clubId).is("archived_at", null).order("name")
       .then(({ data }) => setLeagues(((data ?? []) as any[]).map((l) => ({ id: String(l.id), name: l.name }))));
+    return () => { cancelled = true; };
   }, [clubId]);
 
   const cats = a.categories.map((c) => c.trim()).filter(Boolean);

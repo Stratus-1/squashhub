@@ -341,6 +341,31 @@ export function CentralRoundSchedule({
                         </div>
                       </>
                     )}
+                    {mode === "self" && courts.length > 0 && (
+                      <div className="sm:col-span-2">
+                        <Label className="text-xs">Players may book (optional)</Label>
+                        <div className="flex flex-wrap gap-1">
+                          {courts.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              aria-pressed={picked.has(c.id)}
+                              onClick={() => {
+                                const next = new Set(picked);
+                                next.has(c.id) ? next.delete(c.id) : next.add(c.id);
+                                patchStage(key, { court_ids: Array.from(next).sort((a, b) => a - b) });
+                              }}
+                              className={`px-2 py-1 text-[11px] rounded border ${picked.has(c.id) ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground"}`}
+                            >
+                              {c.name}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {picked.size ? "Only these courts can be booked for this round." : "None picked: the host club's normal courts (or the tournament's chosen courts) apply."}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

@@ -74,6 +74,7 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const GENDER_LABELS: Record<string, string> = { men: "Men's", ladies: "Ladies'", mixed: "Mixed", open: "Open" };
 
 import { getRankRowStyle } from "@/lib/standings-rank-style";
+import { structuredMatchups, matchupForGroup, matchupHeading, validateStandingsUnits } from "@/lib/tournaments/structured-matchups";
 
 export default function ClubChampsView() {
   const { champId } = useParams<{ champId: string }>();
@@ -125,6 +126,8 @@ export default function ClubChampsView() {
     enabled: !!champId,
   });
   const isStructured = arch?.builder_architecture === "structured";
+  // Beta "between subcategories" matchups: several entry groups share one set of games.
+  const matchups = useMemo(() => (isStructured ? structuredMatchups(arch?.builder_spec) : []), [isStructured, arch?.builder_spec]);
 
   const { data: matches = [] } = useQuery({
     queryKey: ["club-champ-matches", champId],
@@ -538,7 +541,14 @@ export default function ClubChampsView() {
     );
     // For cross-league play, a match "belongs" to this league if any of the league's
     // members took part. Otherwise we filter by group_number as before.
+    const mu = matchupForGroup(matchups, groupNum);
     const matchBelongsToGroup = (m: any) => {
+      if (mu) {
+        // Games are stored under the matchup's group; credit only this subcategory's pairs.
+        if (m.group_number !== mu.groupNumber) return false;
+        return [m.player_a_member_id, m.partner_a_member_id, m.player_b_member_id, m.partner_b_member_id]
+          .some((id) => id && groupMemberIds.has(id));
+      }
       if (!isCrossLeague) {
         if (m.group_number !== groupNum) return false;
         if (poolNumber != null && resolvePoolNumber(m, groupNum) !== poolNumber) return false;

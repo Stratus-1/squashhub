@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { buildDrawSpec, finalDrawSpec, orderUnits, previewDraw, proposeFormat, rankingIssue, roundDeadlines, unitsFor, withEntrants, type DivFormat, type DrawDivision, type RegLite } from "@/lib/smart-builder/step-draw";
+import { defaultPools, poolWarnings, poolsFor, unitId, buildDrawSpec, finalDrawSpec, orderUnits, previewDraw, proposeFormat, rankingIssue, roundDeadlines, unitsFor, withEntrants, type DivFormat, type DrawDivision, type RegLite } from "@/lib/smart-builder/step-draw";
 import { generateFromSpec } from "@/lib/tournaments/engine-service";
+import { distributeIntoPools, moveToPool } from "@/lib/tournaments/pools";
 
 // 4 doubles categories × 5 pairs = 20 pairs / 40 players, all payment outstanding, plus one cancelled stale entry.
 const regs: RegLite[] = [];
@@ -100,5 +101,28 @@ describe("Step-by-Step generate draw", () => {
     expect((spec.divisions[0].stages[0].schedule as any).roundDates).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);
     const p = previewDraw("T", d, { start: "2026-10-08", end: null });
     expect(p.divisions[0].perRound.map((r) => r.date)).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);
+  });
+  it("pool preview reuses the builder allocation and the organiser's move is exactly what is generated", () => {
+    const base = divs()[0];
+    const d: DrawDivision = { ...base, units: [...base.units, ...divs()[1].units], format: { ...fmt, kind: "pools", pools: 2 } };
+    expect(poolsFor(d)).toEqual(distributeIntoPools(d.units.map(unitId), 2, { mode: "snake" }));
+    expect(defaultPools(d.units, 2, "banded")[0]).toEqual(d.units.slice(0, 5).map(unitId));
+    const cur = poolsFor(d)!;
+    const mover = cur[0][1];
+    const r = moveToPool(cur.flat(), mover, 1, 2, { manual: true, sizes: cur.map((p) => p.length) })!;
+    const manualPools = distributeIntoPools(r.ids, 2, { manual: true, sizes: r.sizes });
+    const moved: DrawDivision = { ...d, manualPools };
+    expect(manualPools[1]).toContain(mover);
+    expect(poolWarnings(moved)[0]).toMatch(/uneven \(4 \/ 6\)/);
+    const spec = finalDrawSpec("T", [moved], "v1");
+    expect((spec.divisions[0].stages[0] as any).poolMembers).toEqual(manualPools);
+    const fx = generateFromSpec(withEntrants(spec, [moved]), "t");
+    expect(fx.filter((f) => f.poolId?.endsWith("pool2") && (f.a === mover || f.b === mover)).length).toBe(5);
+    expect(mover.split("+")).toHaveLength(2);
+    const lonely: DrawDivision = { ...d, manualPools: [[cur.flat()[0]], cur.flat().slice(1)] };
+    expect(previewDraw("T", [lonely], { start: null, end: null }).errors.some((e) => e.includes("at least 2"))).toBe(true);
+    const badSpec = withEntrants(spec, [moved]);
+    (badSpec.divisions[0].stages[0] as any).poolMembers = [manualPools[0], manualPools[1].slice(1)];
+    expect(() => generateFromSpec(badSpec, "t")).toThrow(/don't match/);
   });
 });

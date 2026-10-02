@@ -8,6 +8,7 @@
  */
 import { generateFromSpec, type TournamentSpec } from "@/lib/tournaments/engine-service";
 import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
+import { distributeIntoPools, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { specDateIssues } from "@/lib/tournaments/date-window";
 
 export type DrawKind = "pools" | "round_robin" | "knockout" | "swiss" | "cross";
@@ -28,7 +29,9 @@ export type DivFormat = {
 };
 export type RegLite = { club_member_id: string; partner_member_id: string | null; status: string; division_choices: number[] | null };
 export type DrawUnit = { member: string; partner: string | null };
-export type DrawDivision = { group: number; label: string; doubles: boolean; units: DrawUnit[]; format: DivFormat; notes: string[]; playoffs: string[]; blockers?: string[] };
+export type DrawDivision = { group: number; label: string; doubles: boolean; units: DrawUnit[]; format: DivFormat; notes: string[]; playoffs: string[]; blockers?: string[];
+  /** Organiser-adjusted pools (unit ids per pool). When set, this IS what Generate saves. */
+  manualPools?: string[][] | null };
 
 const INACTIVE = new Set(["cancelled", "withdrawn", "declined"]);
 export const unitId = (u: DrawUnit) => (u.partner ? `${u.member}+${u.partner}` : u.member);
@@ -137,14 +140,45 @@ export function proposeFormat(plan: Plan | null, label: string): { format: DivFo
   return { format: { kind, pools: Math.max(1, Number(f.pools) || 1), swissRounds: Math.max(0, Number(f.swissRounds) || 0), seeding, schedule, crossGroups: [] }, notes, playoffs, crossKeys };
 }
 
+/* ── pools preview (source of truth for Generate) ── */
+
+/**
+ * Default pools from the existing tournament-builder allocation (`src/lib/tournaments/pools.ts`): the tournament's
+ * pool_allocation mode (snake = even pools, banded = Pool A strongest) applied to the seed order.
+ */
+export function defaultPools(units: DrawUnit[], n: number, mode: PoolAllocationMode = "snake"): string[][] {
+  return distributeIntoPools(units.map(unitId), Math.max(1, n), { mode });
+}
+/** Pools shown and saved: the organiser's arrangement when they moved anyone, else the default. Null = format has no pools. */
+export function poolsFor(d: DrawDivision, mode: PoolAllocationMode = "snake"): string[][] | null {
+  if (d.format.kind === "pools") return d.manualPools ?? defaultPools(d.units, d.format.pools, mode);
+  if (d.format.kind === "round_robin") return [d.units.map(unitId)];
+  return null;
+}
+function poolBlocks(d: DrawDivision): string[] {
+  if (d.format.kind !== "pools" || !d.manualPools) return [];
+  const out: string[] = [];
+  const all = d.manualPools.flat(), ids = new Set(d.units.map(unitId));
+  if (d.manualPools.length !== d.format.pools || all.length !== ids.size || all.some((x) => !ids.has(x))) out.push("your pool changes no longer match the entries or pool count — reset the pools");
+  d.manualPools.forEach((p, i) => { if (p.length < 2) out.push(`Pool ${String.fromCharCode(65 + i)} has ${p.length} ${d.doubles ? "pair" : "player"}${p.length === 1 ? "" : "s"} — a pool needs at least 2`); });
+  return out;
+}
+/** Allowed but worth a look: uneven pools. */
+export function poolWarnings(d: DrawDivision, mode: PoolAllocationMode = "snake"): string[] {
+  const ps = poolsFor(d, mode);
+  if (!ps || ps.length < 2) return [];
+  const sz = ps.map((p) => p.length);
+  return Math.max(...sz) - Math.min(...sz) > 1 ? [`Pools are uneven (${sz.join(" / ")}) — bigger pools play more games. Allowed, but check it is intended.`] : [];
+}
+
 /* ── validation + spec ── */
 
 export function divisionIssues(d: DrawDivision): string[] {
-  const n = d.units.length, f = d.format, out: string[] = [...(d.blockers ?? [])];
+  const n = d.units.length, f = d.format, out: string[] = [...(d.blockers ?? []), ...poolBlocks(d)];
   const u = d.doubles ? "pairs" : "players";
   if (n < (f.kind === "cross" ? 1 : 2)) out.push(`needs at least ${f.kind === "cross" ? 1 : 2} ${u} (has ${n})`);
   if (!f.kind) out.push("choose a format");
-  if (f.kind === "pools" && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
+  if (f.kind === "pools" && !d.manualPools && (f.pools < 2 || Math.floor(n / f.pools) < 2)) out.push(`${f.pools} pools need at least ${f.pools * 2} ${u}`);
   if (f.kind === "swiss" && (f.swissRounds < 1 || f.swissRounds > n - 1)) out.push(`Swiss rounds must be 1–${Math.max(1, n - 1)}`);
   if (f.kind === "cross" && (f.crossGroups.length < 2 || !f.crossGroups.includes(d.group))) out.push("cross-league needs this group and at least one other group to play against");
   if (!f.schedule.rule) out.push("choose play-by date or fixed date");
@@ -224,7 +258,7 @@ export function roundDeadlines(s: DivSchedule, rounds: number): { dates: string[
   return { dates, ranges, error: null };
 }
 
-type SpecOpts = { roundCounts?: Map<string, number> };
+type SpecOpts = { roundCounts?: Map<string, number>; poolMode?: PoolAllocationMode };
 const lastDeadline = (s: DivSchedule) => s.deadlines.filter(Boolean).slice(-1)[0] ?? null;
 
 function stageSchedule(s: DivSchedule, rounds: number | undefined) {
@@ -236,6 +270,7 @@ function stageSchedule(s: DivSchedule, rounds: number | undefined) {
 }
 
 export function buildDrawSpec(name: string, divs: DrawDivision[], version: string, opts: SpecOpts = {}): TournamentSpec {
+  const mode = opts.poolMode ?? "snake";
   const { sets } = crossSets(divs);
   const byGroup = new Map(divs.map((d) => [d.group, d]));
   const done = new Set<number>();
@@ -280,7 +315,8 @@ export function buildDrawSpec(name: string, divs: DrawDivision[], version: strin
       stages: [{
         id: `${version}-main`, order: 0, kind, name: kind === "knockout" ? "Knockout" : kind === "swiss" ? "Swiss rounds" : kind === "pools" ? "Pools" : "Round robin",
         pools: kind === "pools" ? f.pools : undefined,
-        poolSize: kind === "pools" ? Math.ceil(n / f.pools) : undefined,
+        poolSize: kind === "pools" ? Math.max(1, ...(poolsFor(d, mode) ?? [[]]).map((p) => p.length)) : undefined,
+        poolMembers: kind === "pools" || kind === "round_robin" ? poolsFor(d, mode) ?? undefined : undefined,
         swissRounds: kind === "swiss" ? f.swissRounds : undefined,
         drawSize: kind === "knockout" ? nextPow2(n) : undefined,
         discipline: d.doubles ? "doubles" : "singles",
@@ -304,11 +340,11 @@ export function withEntrants(spec: TournamentSpec, divs: DrawDivision[]): Tourna
 }
 
 /** Final spec: a dry run counts each division's rounds so several play-by dates land on the right rounds. */
-export function finalDrawSpec(name: string, divs: DrawDivision[], version: string): TournamentSpec {
-  const first = buildDrawSpec(name, divs, version);
+export function finalDrawSpec(name: string, divs: DrawDivision[], version: string, poolMode: PoolAllocationMode = "snake"): TournamentSpec {
+  const first = buildDrawSpec(name, divs, version, { poolMode });
   const fx = generateFromSpec(withEntrants(first, divs), "preview");
   const roundCounts = new Map(first.divisions.map((sd) => [sd.divisionId, Math.max(0, ...fx.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1))]));
-  return buildDrawSpec(name, divs, version, { roundCounts });
+  return buildDrawSpec(name, divs, version, { roundCounts, poolMode });
 }
 
 export type DrawPreview = {
@@ -317,13 +353,13 @@ export type DrawPreview = {
 };
 
 /** Dry run through the real engine generator — exactly what Generate will save. */
-export function previewDraw(name: string, divs: DrawDivision[], window: { start: string | null; end: string | null }, version = "preview"): DrawPreview {
+export function previewDraw(name: string, divs: DrawDivision[], window: { start: string | null; end: string | null }, version = "preview", poolMode: PoolAllocationMode = "snake"): DrawPreview {
   const errors = divs.flatMap((d) => divisionIssues(d).map((m) => `${d.label}: ${m}`));
   errors.push(...crossSets(divs).errors);
   const out: DrawPreview = { divisions: [], total: 0, errors };
   if (errors.length) return out;
   try {
-    const first = buildDrawSpec(name, divs, version);
+    const first = buildDrawSpec(name, divs, version, { poolMode });
     const fx0 = generateFromSpec(withEntrants(first, divs), "preview");
     for (const sd of first.divisions) {
       const rounds = Math.max(0, ...fx0.filter((f) => f.divisionId === sd.divisionId).map((f) => f.round ?? 1));
@@ -331,7 +367,7 @@ export function previewDraw(name: string, divs: DrawDivision[], window: { start:
       if (d.format.schedule.rule === "play_by") { const e = roundDeadlines(d.format.schedule, rounds).error; if (e) errors.push(`${sd.label}: ${e}`); }
     }
     if (errors.length) return out;
-    const spec = withEntrants(finalDrawSpec(name, divs, version), divs);
+    const spec = withEntrants(finalDrawSpec(name, divs, version, poolMode), divs);
     errors.push(...specDateIssues(spec, window).filter((x) => x.level === "error").map((x) => x.message));
     if (errors.length) return out;
     const fx = generateFromSpec(spec, "preview");

@@ -86,8 +86,18 @@ export function generateStage(tid: string, d: SpecDivision, st: PlannedStage): E
     ({ tournamentId: tid, divisionId: d.divisionId, stageId: st.id, stageKind: st.kind, ...f });
   if (st.kind === "pools" || st.kind === "round_robin") {
     const n = st.kind === "pools" ? st.pools ?? 1 : 1;
-    const { pools, unranked } = snakePools(d.entrants, n);
-    unranked.forEach((u, i) => pools[i % n].push(u)); // placed deterministically after ranked, never given a rank
+    let pools: Array<Array<{ id: string }>>;
+    if (st.poolMembers?.length) {
+      // Organiser-confirmed pools: used exactly as previewed; every entrant must appear exactly once.
+      const all = st.poolMembers.flat(), ids = new Set(d.entrants.map((e) => e.id));
+      if (st.poolMembers.length !== n || all.length !== ids.size || new Set(all).size !== all.length || all.some((x) => !ids.has(x)))
+        throw new IntegrityError("pool_members", `${st.name}: the confirmed pools don't match the current entries — refresh the preview.`);
+      pools = st.poolMembers.map((p) => p.map((id) => ({ id })));
+    } else {
+      const r = snakePools(d.entrants, n);
+      r.unranked.forEach((u, i) => r.pools[i % n].push(u)); // placed deterministically after ranked, never given a rank
+      pools = r.pools;
+    }
     return pools.flatMap((p, pi) => {
       const once = roundRobin(p.map((x) => x.id));
       const perLeg = Math.max(0, ...once.map((m) => m.round));

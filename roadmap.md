@@ -6,3 +6,4 @@
 - [x] Add match scoring after discipline, with inherited category/subcategory overrides and resolved overview/summary
 - [ ] Club Champs guided branch (later)
 - [ ] Capacity / format suggestion step (later)
+- [x] Beta pool preview: reuse existing builder pool allocation (no competing logic)

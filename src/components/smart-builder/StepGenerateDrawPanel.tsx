@@ -8,9 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { fromExt } from "@/lib/supabase-ext";
 import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
+import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
 } from "@/lib/smart-builder/step-draw";
 
@@ -40,17 +41,22 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const [rebuildOk, setRebuildOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPairs, setShowPairs] = useState<number | null>(null);
+  /** Organiser edits per group: seed order and/or pools. These are what Generate saves — never recalculated away. */
+  const [manual, setManual] = useState<Record<number, { order?: string[]; pools?: { ids: string[]; sizes: number[] } }>>({});
+  const [poolMode, setPoolMode] = useState<PoolAllocationMode>("snake");
+  const [dragId, setDragId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     // Reconcile organiser-entered pairs first so the draw only ever sees current active entries.
     await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
     const [{ data: t }, { data: regs }, { data: ms }] = await Promise.all([
-      fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types").eq("id", tournamentId).maybeSingle(),
+      fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types, pool_allocation").eq("id", tournamentId).maybeSingle(),
       fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices").eq("champ_id", tournamentId),
       fromExt("club_champs_matches").select("id, status, winner_member_id").eq("champ_id", tournamentId),
     ]);
     const tt = t as any;
+    setPoolMode(normalisePoolAllocation(tt?.pool_allocation));
     const games = (ms ?? []) as any[];
     setExisting({ games: games.length, played: games.filter((m) => m.winner_member_id || ["completed", "confirmed", "in_progress", "live", "walkover", "forfeit"].includes(String(m.status ?? "").toLowerCase())).length });
     setMeta({ name: tt?.name ?? "Tournament", start: tt?.start_date ?? null, end: tt?.end_date ?? null });
@@ -82,6 +88,18 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setScope(plan?.scope ?? null);
     setNames(new Map(((mem ?? []) as any[]).map((m) => [m.id, m.name ?? "Unknown"])));
     setLadder(new Map(((mem ?? []) as any[]).map((m) => [m.id, m.ladder_position ?? null])));
+    // Keep organiser edits only while the entries are unchanged; otherwise say so and start from the fresh entries.
+    setManual((m) => {
+      const kept: typeof m = {};
+      let dropped = false;
+      for (const [g, v] of Object.entries(m)) {
+        const ids = new Set((units[Number(g) - 1] ?? []).map(unitId));
+        const same = (xs?: string[]) => !xs || (xs.length === ids.size && xs.every((x) => ids.has(x)));
+        if (same(v.order) && same(v.pools?.ids)) kept[Number(g)] = v; else dropped = true;
+      }
+      if (dropped) toast.warning("Entries changed, so your manual seed/pool changes for that category were reset.");
+      return kept;
+    });
     setBaseUnits(units); setDivs(list); setPairErrors(errs); setLoading(false);
   };
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tournamentId]);
@@ -90,12 +108,90 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
   const seeded = useMemo(() => divs.map((d, i) => {
     const base = baseUnits[i] ?? [];
     const rk = d.format.seeding === "ranking" ? rankingIssue(base, scope, points) : null;
-    return { ...d, blockers: rk ? [rk] : [], units: orderUnits(base, d.format.seeding, { seed: seed + i, ladder, points }) };
-  }), [divs, baseUnits, ladder, points, scope, seed]);
-  const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }) : null, [meta, seeded]);
+    let units = orderUnits(base, d.format.seeding, { seed: seed + i, ladder, points });
+    const mo = manual[d.group]?.order;
+    if (mo) { const by = new Map(units.map((u) => [unitId(u), u])); units = mo.map((id) => by.get(id)!).filter(Boolean); }
+    return { ...d, blockers: rk ? [rk] : [], units, manualPools: d.format.kind === "pools" && manual[d.group]?.pools ? distributeIntoPools(manual[d.group]!.pools!.ids, d.format.pools, { manual: true, sizes: manual[d.group]!.pools!.sizes }) : null };
+  }), [divs, baseUnits, ladder, points, scope, seed, manual]);
+  const preview = useMemo(() => meta ? previewDraw(meta.name, seeded, { start: meta.start, end: meta.end }, "preview", poolMode) : null, [meta, seeded, poolMode]);
   const setSch = (i: number, patch: Partial<DivSchedule>) => setFmt(i, { schedule: { ...divs[i].format.schedule, ...patch } });
-  const setFmt = (i: number, patch: Partial<DivFormat>) => { setConfirmed(false); setDivs((ds) => ds.map((d, k) => k === i ? { ...d, format: { ...d.format, ...patch } } : d)); };
+  const setFmt = (i: number, patch: Partial<DivFormat>) => {
+    const g = divs[i]?.group;
+    if (g != null && manual[g] && ("kind" in patch || "pools" in patch || "seeding" in patch)) {
+      setManual((m) => { const n = { ...m }; delete n[g]; return n; });
+      toast.info(`${divs[i].label}: format/seeding changed, so your manual seed and pool changes were reset.`);
+    } setConfirmed(false); setDivs((ds) => ds.map((d, k) => k === i ? { ...d, format: { ...d.format, ...patch } } : d)); };
   const nm = (id: string | null) => (id ? names.get(id) ?? "Unknown" : "");
+  const unitName = (id: string) => id.split("+").map(nm).join(" & ");
+  /** The seeding data actually used for this unit, shown next to its seed. */
+  const seedData = (d: DrawDivision, id: string, idx: number): string => {
+    const ps = id.split("+");
+    if (manual[d.group]?.order) return `manual order (#${idx + 1})`;
+    if (d.format.seeding === "ranking") { const v = ps.map((x) => points.get(x) ?? 0); return `ranking pts ${v.join(" + ")} = ${v.reduce((a, b) => a + b, 0)}`; }
+    if (d.format.seeding === "ladder") { const v = ps.map((x) => ladder.get(x)); return `ladder ${v.map((x) => (x == null ? "—" : `#${x}`)).join(" / ")}`; }
+    if (d.format.seeding === "random") return "random draw";
+    return `entry #${(baseUnits[d.group - 1] ?? []).findIndex((u) => unitId(u) === id) + 1}`;
+  };
+  const moveSeed = (d: DrawDivision, id: string, dir: -1 | 1) => {
+    const order = d.units.map(unitId); const k = order.indexOf(id), j = k + dir;
+    if (j < 0 || j >= order.length) return;
+    [order[k], order[j]] = [order[j], order[k]];
+    setConfirmed(false);
+    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], order } }));
+  };
+  // Same move-to-pool action as the existing builder (pools.ts moveToPool): sizes follow the move, a pair moves as one.
+  const movePool = (d: DrawDivision, id: string, to: number) => {
+    const cur = poolsFor(d, poolMode); if (!cur) return;
+    const r = moveToPool(cur.flat(), id, to, d.format.pools, { manual: true, sizes: cur.map((p) => p.length) });
+    if (!r) return;
+    setConfirmed(false);
+    setManual((m) => ({ ...m, [d.group]: { ...m[d.group], pools: r } }));
+  };
+  const resetManual = (g: number) => { setConfirmed(false); setManual((m) => { const n = { ...m }; delete n[g]; return n; }); };
+  const poolEditor = (d: DrawDivision) => {
+    const pools = poolsFor(d, poolMode);
+    const seedOf = new Map(d.units.map((u, k) => [unitId(u), k]));
+    const groups = pools ?? [d.units.map(unitId)];
+    const isPools = d.format.kind === "pools";
+    const title = (pi: number) => isPools ? `Pool ${String.fromCharCode(65 + pi)}` : d.format.kind === "cross" ? `${d.label} (plays the other selected groups)` : d.format.kind === "round_robin" ? "Round robin (one group)" : "Seed order";
+    return (
+      <div className="space-y-2" aria-label={`Pools and seeds for ${d.label}`}>
+        <div className={isPools ? "grid gap-2 sm:grid-cols-2" : ""}>
+          {groups.map((pool, pi) => (
+            <div key={pi} className={`rounded border p-1.5 ${dragId && isPools ? "border-dashed border-primary" : "border-border"}`}
+              onDragOver={(e) => { if (isPools) e.preventDefault(); }}
+              onDrop={(e) => { e.preventDefault(); if (isPools && dragId) movePool(d, dragId, pi); setDragId(null); }}>
+              <div className="mb-1 font-medium">{title(pi)} · {pool.length} {d.doubles ? "pairs" : "players"}</div>
+              <ol className="space-y-0.5">
+                {pool.map((id) => {
+                  const k = seedOf.get(id) ?? 0;
+                  return (
+                    <li key={id} draggable={isPools} onDragStart={() => setDragId(id)} onDragEnd={() => setDragId(null)}
+                      className="flex flex-wrap items-center gap-1 rounded bg-muted/40 px-1 py-0.5">
+                      <span className="w-12 font-semibold">Seed {k + 1}</span>
+                      <span className="flex-1 min-w-[10rem]">{unitName(id)}</span>
+                      <span className="text-muted-foreground">{seedData(d, id, k)}</span>
+                      <button type="button" className="px-1 underline disabled:opacity-40" disabled={k === 0} aria-label={`Move ${unitName(id)} up one seed`} onClick={() => moveSeed(d, id, -1)}>↑</button>
+                      <button type="button" className="px-1 underline disabled:opacity-40" disabled={k === d.units.length - 1} aria-label={`Move ${unitName(id)} down one seed`} onClick={() => moveSeed(d, id, 1)}>↓</button>
+                      {isPools && (
+                        <select aria-label={`Move ${unitName(id)} to pool`} className="rounded border border-input bg-background p-0.5" value={pi} onChange={(e) => movePool(d, id, Number(e.target.value))}>
+                          {groups.map((_, j) => <option key={j} value={j}>Pool {String.fromCharCode(65 + j)}</option>)}
+                        </select>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ))}
+        </div>
+        {isPools && <p className="text-muted-foreground">Drag a {d.doubles ? "pair" : "player"} onto another pool, or use "Move to pool". {d.doubles ? "Pairs always move together." : ""}</p>}
+        {d.format.kind === "cross" && <p className="text-muted-foreground">Groups are the categories players entered, so pairs can't be moved between them here — change a category in Finalise Entries. You can change the seed order within this group.</p>}
+        {poolWarnings(d, poolMode).map((w) => <p key={w} className="text-amber-600 dark:text-amber-400">⚠ {w}</p>)}
+        {manual[d.group] && <p>Your changes are used exactly as shown when you generate. <button type="button" className="text-primary underline" onClick={() => resetManual(d.group)}>Reset to the calculated {isPools ? "pools and seeds" : "seeds"}</button></p>}
+      </div>
+    );
+  };
 
   const errors = [...pairErrors, ...(preview?.errors ?? [])];
   const hasDraw = existing.games > 0;
@@ -112,7 +208,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const n = seeded.length;
       const drift = seeded.some((d) => unitsFor((fresh ?? []) as RegLite[], d.group, n, d.doubles).units.length !== d.units.length);
       if (drift) { toast.error("Entries changed since this preview — the preview has been refreshed. Check it and generate again."); await load(); return; }
-      const spec = finalDrawSpec(meta.name, seeded, version);
+      const spec = finalDrawSpec(meta.name, seeded, version, poolMode);
       const entries = seeded.flatMap((d) => d.units.map((u, k) => ({ member: u.member, partner: u.partner, group: d.group, order: k })));
       const { error } = await (supabase as any).rpc("step_prepare_draw", { p_champ_id: tournamentId, p_spec: spec, p_entries: entries, p_rebuild: hasDraw });
       if (error) throw new Error(error.message);
@@ -155,9 +251,9 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
           <div key={d.group} className="rounded border border-border p-2 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold">{d.label}</span>
-              <button type="button" className="text-primary underline" onClick={() => setShowPairs(showPairs === i ? null : i)}>{d.units.length} {d.doubles ? "pairs" : "players"} · {showPairs === i ? "hide" : "show seeds"}</button>
+              <button type="button" className="text-primary underline" onClick={() => setShowPairs(showPairs === i ? null : i)} aria-expanded={showPairs !== i}>{d.units.length} {d.doubles ? "pairs" : "players"} · {showPairs === i ? "show pools & seeds" : "hide pools & seeds"}</button>
             </div>
-            {showPairs === i && <ol className="list-decimal pl-5">{d.units.map((u) => <li key={u.member}>{nm(u.member)}{u.partner ? ` & ${nm(u.partner)}` : ""}</li>)}</ol>}
+            {showPairs !== i && d.units.length > 0 && poolEditor(d)}
             <div className="grid gap-2 sm:grid-cols-3">
               <label className="space-y-0.5"><span className="text-muted-foreground">Format</span>
                 <select className="w-full rounded border border-input bg-background p-1" value={f.kind ?? ""} onChange={(e) => setFmt(i, { kind: (e.target.value || null) as DrawKind | null })}>

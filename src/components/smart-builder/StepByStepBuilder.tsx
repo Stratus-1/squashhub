@@ -124,7 +124,7 @@ type FeeCfg = { has: boolean | null; amount: string; varies: boolean; perUnit: R
 const DEFAULT_FEE: FeeCfg = { has: null, amount: "", varies: false, perUnit: {}, doublesBasis: "player", doublesCover: null };
 const ruleAnswer = (value: boolean | null) => value === null ? "Decide later" : value ? "Yes" : "No";
 type Channel = "in_app" | "email" | "whatsapp" | "sms";
-type MsgCfg = { channels: Channel[]; body: string | null; later: boolean };
+type MsgCfg = { channels: Channel[]; body: string | null; later: boolean; notifyBody?: string | null };
 const CHANNEL_LABEL: Record<Channel, string> = { in_app: "In-app", email: "Email", whatsapp: "WhatsApp", sms: "SMS" };
 const DEFAULT_MSG: MsgCfg = { channels: ["in_app", "email"], body: null, later: false };
 type Disc = "singles" | "doubles";
@@ -343,7 +343,16 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   /** Competitive entries: a pair counts once in admin-paired doubles groups. */
   const entryCount = pickIds.filter((id) => !adminPairKeys.has(a.picks[id])).length + adminPairUnits.reduce((n, u) => n + pairsFor(u.key).length + unpairedIn(u.key).length, 0);
 
-  const defaultMsg = [
+  /** Admin picks everyone (no self-entry): players are notified, not invited. */
+  const notifyOnly = !selfEntry && showPick;
+  const defaultMsg = notifyOnly ? [
+    "Hi {{first_name}},",
+    "You have been entered into {{tournament_name}} at {{club_name}}.",
+    "Category: {{category}}",
+    ...(pairMode ? ["Your doubles partner: {{partner_name}}"] : []),
+    a.kind === "period" ? "Championship dates: {{dates}}" : "Tournament days: {{dates}}",
+    "We'll be in touch with fixtures and updates.",
+  ].join("\n\n") : [
     "Hi {{first_name}},",
     "You are invited to enter {{tournament_name}} at {{club_name}}.",
     "You can enter: {{categories}}.",
@@ -351,17 +360,24 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     "Entries close: {{closing_date}}",
     a.kind === "period" ? "Championship dates: {{dates}}" : "Tournament days: {{dates}}",
   ].join("\n\n");
-  const msgBody = msg.body ?? defaultMsg;
+  /** Notification wording is stored apart from invitation wording so switching modes never mixes them. */
+  const storedBody = notifyOnly ? (msg.notifyBody ?? null) : msg.body;
+  const msgBody = storedBody ?? defaultMsg;
+  const msgLater = msg.later || (!notifyOnly && a.invite === "later");
+  const firstPair = adminPairUnits.map((u) => ({ u, p: pairsFor(u.key)[0] })).find((x) => x.p);
   const previewVars: Record<string, string> = {
-    first_name: "Jane",
+    first_name: firstPair ? (memberName(firstPair.p![0]).split(" ")[0] || "Jane") : "Jane",
     tournament_name: a.name?.trim() || "your tournament (name added when created)",
     club_name: clubName || "your club",
     categories: units.map((u) => u.label).join(", ") || "categories still to be set",
+    category: firstPair ? firstPair.u.label : units[0]?.label || "[their category]",
+    partner_name: firstPair ? memberName(firstPair.p![1]) : "[assigned partner]",
     entry_link: "[entry link added when the tournament is created]",
     closing_date: "[set later]",
     dates: a.kind === "period" ? (a.periodStart ? `from ${fmtDay(a.periodStart)}, running until the last planned stage` : "[start date set in Basics]") : a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
   };
   const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
+  const msgSummary = msgLater ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${storedBody === null ? "suggested wording" : "custom wording"}`;
   const isChamps = a.kind === "period";
   const seedFor = (k: string): SeedMethod | null => a.seedingOverrides?.[k] ?? a.seedingOverrides?.[k.split("::")[0]] ?? a.seeding;
   const seedExceptions = units.filter((u) => seedFor(u.key) !== a.seeding);
@@ -434,11 +450,13 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     </div>
   );
   const unitEntriesOk = units.length > 0 && units.every((u) => Number(a.unitEntries?.[u.key]) > 0);
+  /** Invitations only when players self-enter; admin-entered players still get an entry notification. */
+  const commsSteps: StepKey[] = selfEntry ? ["Invites", "Messaging"] : notifyOnly ? ["Messaging"] : [];
   const steps: StepKey[] = isChamps
     ? ["Type", "Basics", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "ExpEntries", "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
-      ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Schedule", "Summary"]
+      ...(showPick ? ["Pick" as const] : []), ...commsSteps, "Fees", "Schedule", "Summary"]
     : ["Type", "Basics", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", "Seeding", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
-      ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Playoffs", "Summary"];
+      ...(showPick ? ["Pick" as const] : []), ...commsSteps, "Fees", "Dates", "Courts", "Playoffs", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
 
@@ -452,7 +470,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msgLater || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -519,7 +537,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   i > reached && "opacity-50",
                 )}
               >
-                {i < reached && i !== step ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>} {s === "Pick" && pairMode ? "Select & pair players" : STEP_LABEL[s]}
+                {i < reached && i !== step ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>} {s === "Pick" && pairMode ? "Select & pair players" : s === "Messaging" && notifyOnly ? "Entry notification" : STEP_LABEL[s]}
               </button>
             </li>
           ))}
@@ -808,15 +826,19 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
           {cur === "Messaging" && (
             <>
-              <Q t="How should the invitation read?" h="Setup only — nothing is sent from here. Sending and test messages come later." />
-              {(a.invite === "later" || msg.later) ? (
+              {notifyOnly
+                ? <Q t="How should players hear they've been entered?" h="This is a notification, not an invitation — you entered these players, so nobody has to accept. Setup only — nothing is sent from here; you send it once entries and pairs are final, and can use tournament messaging later." />
+                : <Q t="How should the invitation read?" h="Setup only — nothing is sent from here. Sending and test messages come later." />}
+              {msgLater ? (
                 <div className="space-y-2 rounded-md border p-3 text-sm">
-                  <p>{a.invite === "later" ? "You chose to decide invitations later, so the message can be set up later too." : "You'll set up the message later."}</p>
+                  <p>{!notifyOnly && a.invite === "later" ? "You chose to decide invitations later, so the message can be set up later too." : "You'll set up the message later."}</p>
                   <Button variant="outline" size="sm" onClick={() => setMsg({ later: false })}>Set it up now anyway</Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-xs text-muted-foreground">Goes to: <b>{a.invite ? INVITE_LABEL[a.invite] : "the invitation audience"}</b>. Players you already picked are entered and don't need an invitation.</p>
+                  {notifyOnly
+                    ? <p className="text-xs text-muted-foreground">Goes to: <b>the players you picked{pickIds.length ? ` (${pickIds.length})` : ""}</b>{pairMode ? ". Doubles players are told who their assigned partner is." : "."}</p>
+                    : <p className="text-xs text-muted-foreground">Goes to: <b>{a.invite ? INVITE_LABEL[a.invite] : "the invitation audience"}</b>. Players you already picked are entered and don't need an invitation.</p>}
                   <div>
                     <Label className="text-sm">Channels</Label>
                     <div className="mt-2 grid gap-2 sm:grid-cols-4">
@@ -837,10 +859,10 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-sm" htmlFor="sbs-msg">Message</Label>
-                      {msg.body !== null && <Button variant="ghost" size="sm" onClick={() => setMsg({ body: null })}>Reset to suggested wording</Button>}
+                      {storedBody !== null && <Button variant="ghost" size="sm" onClick={() => setMsg(notifyOnly ? { notifyBody: null } : { body: null })}>Reset to suggested wording</Button>}
                     </div>
-                    <textarea id="sbs-msg" rows={9} className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={msgBody} onChange={(e) => setMsg({ body: e.target.value })} />
-                    <p className="text-[11px] text-muted-foreground">Words in {"{{ }}"} fill in automatically: first_name, tournament_name, club_name, categories, entry_link, closing_date, dates. They update as you add details later.</p>
+                    <textarea id="sbs-msg" rows={9} className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={msgBody} onChange={(e) => setMsg(notifyOnly ? { notifyBody: e.target.value } : { body: e.target.value })} />
+                    <p className="text-[11px] text-muted-foreground">Words in {"{{ }}"} fill in automatically: {notifyOnly ? `first_name, tournament_name, club_name, category${pairMode ? ", partner_name" : ""}, dates` : "first_name, tournament_name, club_name, categories, entry_link, closing_date, dates"}. They update as you add details later.</p>
                   </div>
                   <div>
                     <Label className="text-sm">Preview (example member)</Label>
@@ -1212,7 +1234,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 ) : null)}
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
-              {selfEntry && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label="Messaging" onEdit={() => go("Messaging")}>{(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`} <span className="text-muted-foreground">· setup only, not sent</span></SummaryRow>}
+              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}>{msgSummary} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span></SummaryRow>}
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
@@ -1310,7 +1332,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <TreeNode icon={<UserPlus className="h-4 w-4" />} title={a.source === "select" ? `Picked players${pickIds.length ? ` (${pickIds.length})` : ""}` : a.source === "self" ? "Self-entry" : `Picked + self-entry${pickIds.length ? ` (${pickIds.length} picked)` : ""}`} onClick={() => go("Players")}>
                   {units.map((u) => <TreeLeaf key={u.key}><button type="button" onClick={() => go("Eligibility")} className="rounded px-1 hover:bg-muted">{u.label}</button><span className="block pl-1 text-muted-foreground">{eligText(u.key)}</span></TreeLeaf>)}
                   {selfEntry && <TreeLeaf><button type="button" onClick={() => go("Invites")} className="rounded px-1 hover:bg-muted">Invites: {a.invite ? INVITE_LABEL[a.invite] : "not chosen"} (not sent)</button></TreeLeaf>}
-                  {selfEntry && <TreeLeaf><button type="button" onClick={() => go("Messaging")} className="rounded px-1 hover:bg-muted">Message: {(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`}</button></TreeLeaf>}
+                  {(selfEntry || notifyOnly) && <TreeLeaf><button type="button" onClick={() => go("Messaging")} className="rounded px-1 hover:bg-muted">{notifyOnly ? "Entry notification" : "Message"}: {msgSummary}</button></TreeLeaf>}
                 </TreeNode>
               )}
               {dblUnits.length > 0 && dblUnits.some((u) => partnerOf(u.key)) && (

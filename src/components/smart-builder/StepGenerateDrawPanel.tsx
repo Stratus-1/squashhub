@@ -399,7 +399,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         const shared = block ? preview?.divisions.find((p) => p.groups.includes(d.group)) : null;
         if (block) return (
           <div key={d.group} className="rounded border border-primary/40 p-2 space-y-2" aria-label={`${unitParentOf(d.label)} between subcategories`}>
-            <div className="font-semibold">{unitParentOf(d.label).toUpperCase()} — Between subcategories</div>
+            <div className="font-semibold">{fam.map((o) => o.label).join(" vs ")}</div>
+            <div className="text-xs text-muted-foreground">{unitParentOf(d.label)} — Between subcategories</div>
             <div className="flex flex-col gap-2 md:flex-row md:items-stretch">
               {fam.map((o, k) => (
                 <div key={o.group} className="contents">

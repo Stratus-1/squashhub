@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin, UserPlus, ShieldCheck, Mail, Lightbulb, MessageSquare, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,8 +46,7 @@ type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
 type FeeCfg = { has: boolean | null; amount: string; varies: boolean; perUnit: Record<string, string>; doublesBasis: "player" | "pair"; doublesCover: boolean | null };
 const DEFAULT_FEE: FeeCfg = { has: null, amount: "", varies: false, perUnit: {}, doublesBasis: "player", doublesCover: null };
-const entryRule = (value: boolean | null) => value === null ? "Decide later" : value ? "A player may enter both partners" : "Each player registers themselves";
-const paymentRule = (value: boolean | null) => value === null ? "Decide later" : value ? "A player may choose to pay for both partners" : "Each player pays their own fee";
+const ruleAnswer = (value: boolean | null) => value === null ? "Decide later" : value ? "Yes" : "No";
 type Channel = "in_app" | "email" | "whatsapp" | "sms";
 type MsgCfg = { channels: Channel[]; body: string | null; later: boolean };
 const CHANNEL_LABEL: Record<Channel, string> = { in_app: "In-app", email: "Email", whatsapp: "WhatsApp", sms: "SMS" };
@@ -505,9 +503,6 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   </div>
                 ))}
               </div>
-              <div className="mt-4 border-t pt-4">
-                <DoublesToggle label="A player may enter both partners" description="When players choose partners, one player can enter the pair. Otherwise, each player registers themselves." value={a.doublesEntry ?? null} onChange={(value) => setA({ ...a, doublesEntry: value })} />
-              </div>
             </>
           )}
 
@@ -543,7 +538,12 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                       </div>
                     ))}</div>
                   )}
-                  {dblUnits.length > 0 && <DoublesToggle label="A player may pay for both partners" description="If allowed, a player can choose to pay for both. Otherwise, each player pays their own fee. This does not change who registers the pair." value={fee.doublesCover} onChange={(value) => setFee({ doublesCover: value })} />}
+                </div>
+              )}
+              {dblUnits.length > 0 && (
+                <div className="mt-4 space-y-4 border-t pt-4">
+                  <DoublesOption label="A player may enter both partners" description="Yes: one player may register the pair if players choose partners. No: each partner registers themselves." value={a.doublesEntry ?? null} onChange={(value) => setA({ ...a, doublesEntry: value })} />
+                  <DoublesOption label="A player may pay for both partners" description="Yes: a player may choose to pay for both; they do not have to. No: each partner pays their own fee." value={fee.doublesCover} onChange={(value) => setFee({ doublesCover: value })} />
                 </div>
               )}
             </>
@@ -621,7 +621,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 })}</ul>
               </SummaryRow>
               {dblUnits.length > 0 && <SummaryRow icon={<Users className="h-4 w-4" />} label="Doubles partners" onEdit={() => go("Partners")}>
-                <ul className="space-y-0.5">{dblUnits.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{partnerOf(u.key) ? PARTNER_LABEL[partnerOf(u.key)!] : "Not chosen"}</span></li>)}<li>Entering: <span className="text-muted-foreground">{entryRule(a.doublesEntry ?? null)}</span></li></ul>
+                <ul className="space-y-0.5">{dblUnits.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{partnerOf(u.key) ? PARTNER_LABEL[partnerOf(u.key)!] : "Not chosen"}</span></li>)}</ul>
               </SummaryRow>}
               <SummaryRow icon={<UserPlus className="h-4 w-4" />} label="How players join" onEdit={() => go("Players")}>{a.source ? SOURCE_LABEL[a.source] : "Not chosen"}</SummaryRow>
               <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label="Who may enter" onEdit={() => go("Eligibility")}>
@@ -633,8 +633,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
               {selfEntry && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label="Messaging" onEdit={() => go("Messaging")}>{(a.invite === "later" || msg.later) ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${msg.body === null ? "suggested wording" : "custom wording"}`} <span className="text-muted-foreground">· setup only, not sent</span></SummaryRow>}
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
-                {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}
-                  {dblUnits.length > 0 && <li>Doubles payment: <span className="text-muted-foreground">{paymentRule(fee.doublesCover)}</span></li>}</ul> : feeSummary}
+                {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
+                {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may enter the pair: <span className="text-muted-foreground">{ruleAnswer(a.doublesEntry ?? null)}</span></li><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}
                 <span className="text-muted-foreground"> · setup only, no payments taken</span>
               </SummaryRow>
               <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => go("Dates")}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
@@ -705,13 +705,12 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {dblUnits.length > 0 && dblUnits.some((u) => partnerOf(u.key)) && (
                 <TreeNode icon={<Users className="h-4 w-4" />} title="Doubles partners" onClick={() => go("Partners")}>
                   {dblUnits.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">{partnerOf(u.key) ? PARTNER_LABEL[partnerOf(u.key)!] : "not chosen"}</span></TreeLeaf>)}
-                  <TreeLeaf>Entering: <span className="text-muted-foreground">{entryRule(a.doublesEntry ?? null)}</span></TreeLeaf>
                 </TreeNode>
               )}
-              {fee.has !== null && (
+              {(fee.has !== null || dblUnits.length > 0) && (
                 <TreeNode icon={<Wallet className="h-4 w-4" />} title={`Fees: ${feeSummary}`} onClick={() => go("Fees")}>
                   {fee.has && units.map((u) => <TreeLeaf key={u.key}>{u.base}: <span className="text-muted-foreground">{feeUnitText(u)}</span></TreeLeaf>)}
-                  {fee.has && dblUnits.length > 0 && <TreeLeaf>Doubles payment: <span className="text-muted-foreground">{paymentRule(fee.doublesCover)}</span></TreeLeaf>}
+                  {dblUnits.length > 0 && <><TreeLeaf>One player may enter the pair: <span className="text-muted-foreground">{ruleAnswer(a.doublesEntry ?? null)}</span></TreeLeaf><TreeLeaf>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></TreeLeaf></>}
                 </TreeNode>
               )}
               {a.days.some((d) => d.date) && (
@@ -745,16 +744,18 @@ function Choice({ active, onClick, title, desc }: { active: boolean; onClick: ()
     </button>
   );
 }
-function DoublesToggle({ label, description, value, onChange }: { label: string; description: string; value: boolean | null; onChange: (value: boolean | null) => void }) {
+function DoublesOption({ label, description, value, onChange }: { label: string; description: string; value: boolean | null; onChange: (value: boolean | null) => void }) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="space-y-1">
-        <Label htmlFor={label} className="text-sm">{label}</Label>
-        <p className="text-xs text-muted-foreground">{description}</p>
-        <p className="text-xs font-medium text-foreground">{value === null ? "Decide later" : value ? "Allowed" : "Not allowed"}</p>
-        <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => onChange(null)} aria-pressed={value === null}>Decide later</Button>
+    <div>
+      <p className="text-sm font-medium">{label}</p>
+      <p className="text-xs text-muted-foreground">{description}</p>
+      <div role="group" aria-label={label} className="mt-2 flex flex-wrap gap-2">
+        {([true, false, null] as const).map((option) => (
+          <Button key={String(option)} type="button" size="sm" variant={value === option ? "default" : "outline"} aria-pressed={value === option} onClick={() => onChange(option)}>
+            {option === null ? "Decide later" : option ? "Yes" : "No"}
+          </Button>
+        ))}
       </div>
-      <Switch id={label} checked={value === true} onCheckedChange={onChange} aria-label={label} />
     </div>
   );
 }

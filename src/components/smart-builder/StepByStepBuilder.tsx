@@ -45,7 +45,7 @@ type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
 /** Planned competition format — provisional; revisited at "Confirm final format" once entries close. */
 type CompKind = "pools" | "knockout" | "swiss" | "cross" | "later";
-type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string; crossUnits?: string[] };
+type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string; crossUnits?: string[]; crossMode?: "all" | "chosen"; crossPairs?: [string, string][] };
 const DEFAULT_FORMAT: FormatPlan = { kind: null, pools: "", drawRounds: "", swissRounds: "", crossA: "", crossB: "", crossUnits: [] };
 /** Cross-league participants: the multi-select list, falling back to legacy two-group picks. */
 const crossList = (f: FormatPlan): string[] => f.crossUnits?.length ? f.crossUnits : [f.crossA, f.crossB].filter(Boolean);
@@ -341,7 +341,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
   };
   const formatDetail = (f: FormatPlan) => {
     if (!f.kind) return "Not chosen";
-    const extra = f.kind === "knockout" ? " · bracket from expected entries" : f.kind === "swiss" && f.swissRounds ? ` · about ${f.swissRounds} rounds` : f.kind === "cross" ? ` · ${crossList(f).length >= 2 ? `across ${crossList(f).map(unitBase).join(", ")}` : "participating groups not chosen"}` : f.kind === "pools" ? " · pools per category/subcategory decided later" : "";
+    const extra = f.kind === "knockout" ? " · bracket from expected entries" : f.kind === "swiss" && f.swissRounds ? ` · about ${f.swissRounds} rounds` : f.kind === "cross" ? ` · ${f.crossMode === "chosen" ? (f.crossPairs?.length ? `only ${f.crossPairs.map(([x, y]) => `${unitBase(x)} v ${unitBase(y)}`).join(", ")}` : "pairings not chosen") : crossList(f).length >= 2 ? `across ${crossList(f).map(unitBase).join(", ")} (all play each other)` : "participating groups not chosen"}` : f.kind === "pools" ? " · pools per category/subcategory decided later" : "";
     return `${COMP_LABEL[f.kind]}${extra} (planned)`;
   };
   const formatExceptions = units.filter((u) => formatDetail(formatFor(u.key)) !== formatDetail(format));
@@ -1653,8 +1653,20 @@ function FormatFields({ value, onChange, units, compact = false, entries = {}, s
     {value.kind === "cross" && <div className="space-y-2">
       <p className="text-xs text-muted-foreground">Select every existing category/subcategory/league that takes part. Players play opponents from the OTHER selected groups — not within their own group — and each group keeps its identity for later fixtures.</p>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Cross-league participating groups">
-        {units.map((u) => { const on = crossList(value).includes(u.key); return <Button key={u.key} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on} onClick={() => { const cur = crossList(value); onChange({ crossUnits: on ? cur.filter((k) => k !== u.key) : [...cur, u.key], crossA: "", crossB: "" }); }}>{u.base}</Button>; })}
+        {units.map((u) => { const on = crossList(value).includes(u.key); return <Button key={u.key} type="button" size="sm" variant={on ? "default" : "outline"} aria-pressed={on} onClick={() => { const cur = crossList(value); onChange({ crossUnits: on ? cur.filter((k) => k !== u.key) : [...cur, u.key], crossA: "", crossB: "", crossPairs: on ? (value.crossPairs ?? []).filter((p) => !p.includes(u.key)) : value.crossPairs }); }}>{u.base}</Button>; })}
       </div>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Cross-league matchups">
+        <Button type="button" size="sm" variant={value.crossMode !== "chosen" ? "default" : "outline"} aria-pressed={value.crossMode !== "chosen"} onClick={() => onChange({ crossMode: "all" })}>All selected groups play each other</Button>
+        <Button type="button" size="sm" variant={value.crossMode === "chosen" ? "default" : "outline"} aria-pressed={value.crossMode === "chosen"} onClick={() => onChange({ crossMode: "chosen", crossPairs: value.crossPairs ?? [] })}>Choose which groups play each other</Button>
+      </div>
+      {value.crossMode === "chosen" && crossList(value).length >= 2 && (() => {
+        const sel = crossList(value); const nameOf = (k: string) => units.find((u) => u.key === k)?.base ?? k;
+        const has = (a: string, b: string) => (value.crossPairs ?? []).some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+        const toggle = (a: string, b: string) => onChange({ crossPairs: has(a, b) ? (value.crossPairs ?? []).filter(([x, y]) => !((x === a && y === b) || (x === b && y === a))) : [...(value.crossPairs ?? []), [a, b]] });
+        return <div className="overflow-x-auto"><table className="text-xs" aria-label="Cross-league matchup matrix"><thead><tr><th />{sel.map((k) => <th key={k} className="px-2 font-medium">{nameOf(k)}</th>)}</tr></thead>
+          <tbody>{sel.map((a, i) => <tr key={a}><th className="pr-2 text-left font-medium">{nameOf(a)}</th>{sel.map((b, j) => <td key={b} className="px-2 text-center">{i === j ? <span className="text-muted-foreground">—</span> : <input type="checkbox" aria-label={`${nameOf(a)} plays ${nameOf(b)}`} checked={has(a, b)} onChange={() => toggle(a, b)} />}</td>)}</tr>)}</tbody></table>
+          <p className="mt-1 text-xs text-muted-foreground">{value.crossPairs?.length ? `Only these meet: ${value.crossPairs.map(([x, y]) => `${nameOf(x)} v ${nameOf(y)}`).join(" · ")}. No other cross-group games, never within a group.` : "Tick each pair of groups that should play each other."}</p></div>;
+      })()}
       <p className="text-xs text-muted-foreground">{crossList(value).length >= 2 ? `${crossList(value).length} groups selected: ${crossList(value).map((k) => units.find((u) => u.key === k)?.base ?? k).join(", ")}` : "Select at least two groups (or decide later)."}</p>
     </div>}
   </div>;

@@ -12,6 +12,7 @@ import { Bell, Calendar, CheckCircle, Swords, Trophy, ChevronRight, Check, Exter
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { getNotificationNavigation } from "@/lib/notification-navigation";
+import { notificationActions, messageWithoutActionLinks } from "@/lib/notification-actions";
 import { TournamentInviteActions, isTournamentInviteNotification } from "@/components/TournamentInviteActions";
 import { EventInviteActions, isEventInviteNotification } from "@/components/EventInviteActions";
 
@@ -320,13 +321,34 @@ export function NotificationActionModal() {
                 </div>
                 <p className="text-sm font-semibold mt-1.5">{current.title}</p>
                 <p className="text-sm text-muted-foreground mt-1 leading-relaxed whitespace-pre-line break-words">
-                  {current.message}
+                  {messageWithoutActionLinks(current.message, notificationActions(current))}
                 </p>
               </div>
             </div>
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2 pt-1">
+              {notificationActions(current).map((a) => (
+                <Button
+                  key={a.kind + a.url}
+                  className="w-full"
+                  variant={a.kind === "pay" ? "default" : "outline"}
+                  onClick={() => {
+                    if (a.url.startsWith("/")) {
+                      // Paying happens on the entry page; the notification stays readable in the bell.
+                      markRead.mutate(current.id);
+                      setOpen(false);
+                      setDismissed(true);
+                      navigate(a.url);
+                    } else {
+                      window.open(a.url, "_blank", "noopener,noreferrer");
+                    }
+                  }}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  {a.label}
+                </Button>
+              ))}
               {isTournamentInviteNotification(current) && (
                 <TournamentInviteActions notification={current} compact onResolved={advanceOrClose} />
               )}

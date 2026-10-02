@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, ChevronLeft, ChevronRight, Lock, Pencil, Plus, Trash2, Trophy, CalendarDays, Users, Tags, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Step by Step (Version 1): guided capture of organiser constraints only.
@@ -13,7 +14,7 @@ import { cn } from "@/lib/utils";
  */
 type Kind = "once_off" | "period" | null;
 type TimeWindow = { from: string; to: string };
-type DayAvail = { date: string; venue: string; courts: string; windows: TimeWindow[] };
+type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
 export type StepAnswers = {
   kind: Kind;
   entries: string;
@@ -34,6 +35,12 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   });
   const [step, setStep] = useState(0);
   useEffect(() => { localStorage.setItem(key, JSON.stringify(a)); }, [a, key]);
+  const [clubCourts, setClubCourts] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    supabase.from("courts").select("id, name").eq("club_id", clubId).eq("is_external", false).order("name")
+      .then(({ data }) => setClubCourts((data as { id: string; name: string }[]) ?? []));
+  }, [clubId]);
+  const courtNames = (d: DayAvail) => clubCourts.filter((c) => d.courtIds?.includes(c.id)).map((c) => c.name).join(", ");
 
   const cats = a.categories.map((c) => c.trim()).filter(Boolean);
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
@@ -145,6 +152,23 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                       <div className="space-y-1"><Label>Venue / club</Label><Input value={d.venue} onChange={(e) => updDay(i, { venue: e.target.value })} placeholder="e.g. Riverside Squash Club" /></div>
                       <div className="space-y-1"><Label>Courts</Label><Input type="number" min={1} value={d.courts} onChange={(e) => updDay(i, { courts: e.target.value })} placeholder="e.g. 4" /></div>
                     </div>
+                    {clubCourts.length > 0 && (
+                      <div className="space-y-1">
+                        <Label>Which of your club's courts? (optional)</Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {clubCourts.map((c) => {
+                            const on = d.courtIds?.includes(c.id);
+                            return (
+                              <button key={c.id} type="button" aria-pressed={!!on}
+                                onClick={() => { const ids = on ? (d.courtIds ?? []).filter((x) => x !== c.id) : [...(d.courtIds ?? []), c.id]; updDay(i, { courtIds: ids, courts: ids.length ? String(ids.length) : d.courts }); }}
+                                className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+                                {c.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <Label>Times courts are free</Label>
                     {d.windows.map((w, k) => (
                       <div key={k} className="flex items-center gap-2">
@@ -169,9 +193,12 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => setStep(3)}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
               <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => setStep(4)}>
                 <ul className="space-y-0.5">{a.days.map((d, i) => (
-                  <li key={i}>{fmtDay(d.date)}: {d.venue}, {d.courts} court{Number(d.courts) === 1 ? "" : "s"}, {d.windows.map((w) => `${w.from}–${w.to}`).join(" & ")}</li>
+                  <li key={i}>{fmtDay(d.date)}: {d.venue}, {d.courts} court{Number(d.courts) === 1 ? "" : "s"}{courtNames(d) && ` (${courtNames(d)})`}, {d.windows.map((w) => `${w.from}–${w.to}`).join(" & ")}</li>
                 ))}</ul>
               </SummaryRow>
+              <div className="rounded-lg border border-primary/40 bg-primary/10 p-3 text-sm font-medium">
+                SquashHub now knows your expected entries, categories, dates and available court time.
+              </div>
               <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border p-3 opacity-70">
                 <div><div className="text-sm font-semibold">Next: Help me choose the format</div><div className="text-xs text-muted-foreground">Coming soon — not available in this version.</div></div>
                 <Button size="sm" disabled><Lock className="mr-1 h-4 w-4" />Coming soon</Button>

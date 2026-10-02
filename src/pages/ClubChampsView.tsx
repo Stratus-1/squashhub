@@ -2625,6 +2625,35 @@ export default function ClubChampsView() {
 
 
         {(() => {
+          // Round deadline repeated on every fixture card: the round header
+          // scrolls away on mobile, so the date must travel with the fixture.
+          // "Book by …" when this viewer can book the court, otherwise the
+          // read-only "Play by …". Completed fixtures show their result instead.
+          if (completed) return null;
+          const nudge = playByNudge(playByForMatch(m), format(new Date(), "yyyy-MM-dd"));
+          if (!nudge) return null;
+          const canBook = canScheduleFixture(m, myMemberId, { canManage }).allowed;
+          const date = playByForMatch(m)!.slice(0, 10);
+          const nice = format(new Date(`${date}T00:00:00`), "d MMM");
+          return (
+            <span
+              title={nudge.label}
+              className={cn(
+                "inline-flex items-center gap-1 shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+                nudge.tone === "late"
+                  ? "border-destructive/50 bg-destructive/10 text-destructive"
+                  : nudge.tone === "soon"
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "border-primary/40 bg-primary/10 text-primary",
+              )}
+            >
+              <CalendarClock className="h-3 w-3" />
+              {canBook ? `Book by ${nice}` : `Play by ${nice}`}
+            </span>
+          );
+        })()}
+
+        {(() => {
 
           // Court/date/time for THIS fixture — generated next rounds, semis and
           // finals included. Organisers can always override; players may

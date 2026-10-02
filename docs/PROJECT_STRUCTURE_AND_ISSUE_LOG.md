@@ -2390,3 +2390,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ### 2026-10-02 — Step-by-Step "Complete setup" hit invitation division error
 - Cause: `persistStepTournament` never set divisions, so `tournaments.num_groups` took its default (2 unnamed divisions); admin-entered registrations carry `confirmed_at`, so trigger `enforce_confirmed_tournament_division_choice` required `division_choices` and raised the participant message.
 - Fix: Step-by-Step categories map to `num_groups`/`group_labels` (+ `league_match_types` on base table); each admin entrant gets `division_choices=[its category]`; unplaced picks give a builder-specific error. Trigger unchanged (empty choices still rejected).
+
+### 2026-10-02 — Step-by-Step "Inform selected players" sent nothing
+- Cause: "Mark as informed & continue" only changed device-local stage; no message path existed.
+- Fix: `StepInformPanel` sends one Communications-engine campaign (audience=selected entrants, per-recipient `audience_filter.member_vars.personal_message`, action `tournament_view` → `/club-champs/:id` with existing Pay card); `send-comms-campaign` now merges per-member vars and never re-sends an already-sent recipient/channel (safe retry). Per-recipient status from `comms_deliveries`; lifecycle persisted in `tournaments.beta_lifecycle`. Manual mark is a separate confirmed action.

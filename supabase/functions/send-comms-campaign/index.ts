@@ -228,10 +228,23 @@ Deno.serve(async (req) => {
 
     let sent = 0, failed = 0, skipped = 0;
 
+    // Re-dispatch (retry) never re-sends to a recipient/channel already delivered.
+    const { data: prior } = await admin.from("comms_deliveries")
+      .select("club_member_id,channel").eq("campaign_id", campaignId).eq("status", "sent");
+    const alreadySent = new Set((prior ?? []).map((d: any) => `${d.club_member_id}:${d.channel}`));
+    // Optional per-recipient merge values (e.g. tournament partner / amount due), selected audiences only.
+    const memberVars: Record<string, Record<string, unknown>> =
+      campaign.audience_type === "selected" && campaign.audience_filter && typeof campaign.audience_filter.member_vars === "object"
+        ? campaign.audience_filter.member_vars : {};
+
     for (const m of recipients) {
       const vars = await mergeVarsFor(m, club, campaign.audience_league_id);
+      for (const [k, v] of Object.entries(memberVars[m.id] ?? {})) {
+        if (/^[a-z_]{1,40}$/.test(k) && (typeof v === "string" || typeof v === "number")) vars[k] = String(v).slice(0, 4000);
+      }
 
       for (const ch of channels) {
+        if (alreadySent.has(`${m.id}:${ch}`)) { sent++; continue; }
         const rendered = renderChannel(ch, content[ch] ?? {}, vars, action);
         const base = {
           campaign_id: campaignId, club_id: campaign.club_id, club_member_id: m.id,

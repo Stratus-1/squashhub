@@ -1,0 +1,2 @@
+ALTER TABLE public.tournaments ADD COLUMN IF NOT EXISTS beta_lifecycle jsonb;
+COMMENT ON COLUMN public.tournaments.beta_lifecycle IS 'Step-by-Step Beta management lifecycle: {stage, completed[], inform:{method, campaign_id, at, by}}. Null for tournaments not managed by the Beta.';

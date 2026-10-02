@@ -26,6 +26,10 @@ export type SendCommsOptions = {
     | { type: "skills"; filter: Record<string, unknown> };
   /** ISO timestamp — when set the campaign is scheduled instead of sent now. */
   scheduledFor?: string | null;
+  /** Per-recipient merge values (selected audience only), e.g. { [memberId]: { personal_message } }. */
+  memberVars?: Record<string, Record<string, string>>;
+  /** Extra metadata stored with the audience (e.g. { tournament_id, purpose }). */
+  meta?: Record<string, string>;
   /** Save without sending. */
   draft?: boolean;
 };
@@ -55,7 +59,8 @@ export async function upsertCampaign(opts: SendCommsOptions, campaignId?: string
     audience_type: opts.audience.type,
     audience_member_ids: opts.audience.type === "selected" ? opts.audience.memberIds : [],
     audience_league_id: opts.audience.type === "league" ? opts.audience.leagueId : null,
-    audience_filter: opts.audience.type === "skills" ? (opts.audience.filter as any) : {},
+    audience_filter: opts.audience.type === "skills" ? (opts.audience.filter as any)
+      : opts.audience.type === "selected" && (opts.memberVars || opts.meta) ? ({ ...(opts.meta ?? {}), member_vars: opts.memberVars ?? {} } as any) : {},
     content: opts.content as any,
     action: (opts.action ?? { key: "none" }) as any,
     status: opts.draft ? "draft" : opts.scheduledFor ? "scheduled" : "draft",

@@ -8,6 +8,8 @@ function chain(table: string): any {
   let op = "select";
   const result = () => table === "club_members" ? { data: MEMBERS, error: null }
     : table === "club_champs" && op === "insert" ? { data: { id: "t-new" }, error: null }
+    : table === "comms_campaigns" && op === "insert" ? { data: { id: "camp1" }, error: null }
+    : table === "comms_deliveries" ? { data: [{ club_member_id: "m1", channel: "in_app", status: "sent", error_message: null }, { club_member_id: "m2", channel: "in_app", status: "sent", error_message: null }], error: null }
     : table === "club_champs_registrations" && op === "select" ? { data: [{ status: "pending_payment" }, { status: "pending_payment" }], error: null }
     : { data: [], error: null };
   const p: any = new Proxy(() => {}, {
@@ -19,7 +21,9 @@ function chain(table: string): any {
   });
   return p;
 }
-vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (t: string) => chain(t), rpc: () => chain("rpc") } }));
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: (t: string) => chain(t), rpc: () => chain("rpc"),
+  auth: { getUser: async () => ({ data: { user: { id: "u1" } } }) },
+  functions: { invoke: async (name: string, o: any) => { calls.push({ table: `fn:${name}`, op: "invoke", arg: o.body }); return { data: { ok: true, status: "sent", sent: 2, failed: 0, skipped: 0 }, error: null }; } } } }));
 vi.mock("@/hooks/use-tournament-eligibility", () => ({ useOrgHierarchyLite: () => ({ data: null, isLoading: false }) }));
 vi.mock("@/hooks/use-association-tenant", () => ({ useAssociationTenant: () => ({ isAssociation: false, orgId: null }) }));
 vi.mock("@/pages/admin/SmartTournamentBuilder", () => ({ SmartTournamentBuilderCore: () => null }));
@@ -85,16 +89,30 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
 
     // Conditional first action: inform, not invite.
     expect(screen.queryByRole("button", { name: /^Invite players/ })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Inform selected players/ }));
-    expect(screen.getByText(/Your doubles partner: Ben Jones/)).toBeInTheDocument();
+    // Concise by default: one example message, recipients behind an expander.
+    expect(await screen.findByText("2 entered players")).toBeInTheDocument();
+    expect(screen.getAllByText(/Your doubles partner:/)).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: /View recipients & individual messages/ }));
+    expect(screen.getAllByText(/Your doubles partner: Ben Jones/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Your doubles partner: Anna Smith/)).toBeInTheDocument();
-    expect(screen.getAllByText("Entered · Payment outstanding")).toHaveLength(2);
-    expect(screen.getAllByText(/Amount due: R200 for your pair/).length).toBe(2);
+    expect(screen.getAllByText(/Amount due: R200 for your pair/).length).toBe(3);
+    expect(screen.queryByText(/Pay now link added when/)).toBeNull();
     expect(screen.queryByText(/You are invited/)).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /Mark as informed & continue/ }));
+    expect(screen.queryByRole("button", { name: /Continue to Registrations/ })).toBeNull(); // not before sending
+    fireEvent.click(screen.getByRole("button", { name: /Send to 2 players/ }));
+    expect(await screen.findByText(/2 of 2 reached/)).toBeInTheDocument();
+    const camp = calls.find((c) => c.table === "comms_campaigns" && c.op === "insert")!;
+    expect(camp.arg).toMatchObject({ audience_type: "selected", audience_member_ids: ["m1", "m2"], channels: ["in_app", "email"] });
+    expect(camp.arg.action).toMatchObject({ key: "tournament_view", params: { tournament_id: "t-new" } });
+    expect(camp.arg.audience_filter.member_vars.m1.personal_message).toMatch(/Your doubles partner: Ben Jones/);
+    expect(calls.some((c) => c.table === "fn:send-comms-campaign" && c.arg.campaign_id === "camp1")).toBe(true);
+    expect(calls.some((c) => c.table === "tournaments" && c.op === "update" && c.arg.beta_lifecycle?.inform?.method === "sent")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /Continue to Registrations & payments/ }));
+    await waitFor(() => expect(screen.getByText("Registrations & payments").closest("li")).toHaveAttribute("aria-current", "step"));
     expect(screen.getByText("Registrations & payments").closest("li")).toHaveAttribute("aria-current", "step");
     fireEvent.click(screen.getByRole("button", { name: /Close registrations & finalise entries/ }));
+    await waitFor(() => expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step"));
     expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step");
     expect(screen.getByText(/Decide these first/).parentElement?.textContent).toMatch(/Seeding/);
     expect(screen.getByText(/expected 8 pairs/)).toBeInTheDocument();

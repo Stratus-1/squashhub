@@ -8,6 +8,8 @@
  * message snapshot) on this device. Nothing is sent and no payment is taken here.
  */
 import { fromExt } from "@/lib/supabase-ext";
+import { sendComms, dispatchCampaign } from "@/lib/comms/send";
+import { supabase } from "@/integrations/supabase/client";
 import { sanitizeDraftPayload } from "@/lib/tournaments/draft-payload";
 
 export const LIFECYCLE = [
@@ -150,4 +152,74 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     }
   }
   return tid!;
+}
+
+/* ── Inform selected players: real sends through the Communications engine ── */
+
+export type BetaLifecycle = {
+  stage: LifecycleKey; completed: LifecycleKey[];
+  inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string };
+};
+
+/** Lifecycle is persisted on the tournament (tournaments.beta_lifecycle), not just this device. */
+export async function loadLifecycle(tournamentId: string): Promise<BetaLifecycle | null> {
+  const { data } = await fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
+  return ((data as any)?.beta_lifecycle as BetaLifecycle) ?? null;
+}
+export async function saveLifecycle(tournamentId: string, l: BetaLifecycle) {
+  const { error } = await fromExt("tournaments").update({ beta_lifecycle: l }).eq("id", tournamentId);
+  if (error) throw error;
+}
+
+const OLD_PAY_PLACEHOLDER = /\[(Pay now link added when the tournament is created[^\]]*)\]/g;
+export const PAY_ROUTE_TEXT = "open your entry in SquashHub with the link in this message";
+/** Swap the pre-creation placeholder for the real route (the tournament entry page with its Pay buttons). */
+export const finaliseMessage = (t: string) => t.replace(OLD_PAY_PLACEHOLDER, PAY_ROUTE_TEXT);
+
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+export type InformChannel = "in_app" | "email" | "whatsapp" | "sms";
+export type DeliveryRow = { club_member_id: string; channel: string; status: string; error_message: string | null };
+
+/** Create one campaign (audience = the entered players) with each player's personal message, and dispatch it. */
+export async function sendInform(i: {
+  clubId: string; tournamentId: string; name: string; channels: InformChannel[]; feeDue: boolean;
+  messages: Array<{ memberId: string; text: string }>; existingCampaignId?: string | null;
+}) {
+  if (i.existingCampaignId) {
+    const res = await dispatchCampaign(i.existingCampaignId);
+    return { campaignId: i.existingCampaignId, result: res };
+  }
+  const memberVars: Record<string, Record<string, string>> = {};
+  for (const m of i.messages) {
+    const t = finaliseMessage(m.text);
+    memberVars[m.memberId] = { personal_message: t, personal_message_html: esc(t).replace(/\n/g, "<br>") };
+  }
+  const subject = `You have been entered: ${i.name}`;
+  const content: Record<string, { subject?: string; body?: string }> = {};
+  for (const ch of i.channels) content[ch] = ch === "email"
+    ? { subject, body: "<p>{{personal_message_html}}</p>" }
+    : { subject, body: "{{personal_message}}" };
+  const { campaignId, dispatched } = await sendComms({
+    clubId: i.clubId, name: `${i.name} — entry notification`, channels: i.channels, content,
+    action: { key: "tournament_view", label: i.feeDue ? "View my entry & pay" : "View my tournament entry", params: { tournament_id: i.tournamentId } } as any,
+    audience: { type: "selected", memberIds: i.messages.map((m) => m.memberId) },
+    memberVars, meta: { tournament_id: i.tournamentId, purpose: "step_beta_inform" },
+  });
+  return { campaignId, result: dispatched };
+}
+
+export async function loadDeliveries(campaignId: string): Promise<DeliveryRow[]> {
+  const { data } = await supabase.from("comms_deliveries").select("club_member_id,channel,status,error_message").eq("campaign_id", campaignId);
+  return (data ?? []) as DeliveryRow[];
+}
+
+/** Per recipient: reached if any channel delivered. */
+export function recipientStatus(memberIds: string[], rows: DeliveryRow[]) {
+  return memberIds.map((id) => {
+    const mine = rows.filter((r) => r.club_member_id === id);
+    const reached = mine.filter((r) => r.status === "sent").map((r) => r.channel);
+    const problems = mine.filter((r) => r.status !== "sent").map((r) => `${r.channel}: ${r.error_message || r.status}`);
+    return { memberId: id, reached, problems, state: reached.length ? "sent" as const : mine.length ? "failed" as const : "pending" as const };
+  });
 }

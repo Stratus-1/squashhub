@@ -15764,6 +15764,7 @@ export type Database = {
       tournaments: {
         Row: {
           avoid_back_to_back: boolean
+          beta_lifecycle: Json | null
           builder_architecture: string
           builder_spec: Json | null
           builder_spec_version: number
@@ -15875,6 +15876,7 @@ export type Database = {
         }
         Insert: {
           avoid_back_to_back?: boolean
+          beta_lifecycle?: Json | null
           builder_architecture?: string
           builder_spec?: Json | null
           builder_spec_version?: number
@@ -15986,6 +15988,7 @@ export type Database = {
         }
         Update: {
           avoid_back_to_back?: boolean
+          beta_lifecycle?: Json | null
           builder_architecture?: string
           builder_spec?: Json | null
           builder_spec_version?: number

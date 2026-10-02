@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
-  finaliseMessage, informCampaignIds, loadDeliveries, recipientStatus, sendInform,
+  finaliseMessage, informCampaignIds, loadDeliveries, recipientPreset, recipientStatus, sendInform,
   type BetaLifecycle, type DeliveryRowAt, type Handover, type InformChannel,
 } from "@/lib/smart-builder/step-handover";
 
@@ -61,7 +61,13 @@ export function StepInformPanel({ h, lifecycle, onLifecycle, onAddGroup }: {
   const status = recipientStatus(ids, rows);
   const reached = status.filter((s) => s.state === "sent").length;
   const notReached = status.filter((s) => s.state !== "sent");
-  const first = h.entrantMessages.find((m) => m.memberId === previewId) ?? h.entrantMessages[0];
+  // Recipient selection: null = not touched yet → defaults to "not informed" once sent, else everyone.
+  const [selRaw, setSel] = useState<string[] | null>(null);
+  const sentAlreadyEarly = !!campaignId || allIds.length > 0;
+  const sel = (selRaw ?? recipientPreset(sentAlreadyEarly ? "not_informed" : "all", status)).filter((id) => ids.includes(id));
+  const toggle = (id: string) => setSel(sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]);
+  const first = h.entrantMessages.find((m) => m.memberId === previewId)
+    ?? h.entrantMessages.find((m) => sel.includes(m.memberId)) ?? h.entrantMessages[0];
 
   const send = async () => {
     setBusy(true); setErr(null);
@@ -83,14 +89,14 @@ export function StepInformPanel({ h, lifecycle, onLifecycle, onAddGroup }: {
     setBusy(true); setErr(null);
     try {
       const msgs = h.entrantMessages.filter((m) => memberIds.includes(m.memberId)).map((m) => ({ ...m, owes: m.status !== "Entered" }));
-      const { campaignId: cid } = await sendInform({ clubId: h.clubId, tournamentId: h.tournamentId, name: h.name, channels, feeDue: h.feeDue, messages: msgs, waUrl, resend: true });
+      const { campaignId: cid } = await sendInform({ clubId: h.clubId, tournamentId: h.tournamentId, name: h.name, channels, feeDue: h.feeDue, messages: msgs, waUrl, resend: !!campaignId });
       const l: BetaLifecycle = campaignId
         ? { ...lifecycle, inform: { ...lifecycle.inform!, resend_campaign_ids: [...(lifecycle.inform?.resend_campaign_ids ?? []), cid] } }
         : { ...lifecycle, inform: { method: "sent", campaign_id: cid, at: new Date().toISOString() } };
       await onLifecycle(l);
       setRows(await loadDeliveries(informCampaignIds(l)));
     } catch (e: any) { setErr(e?.message || "Sending failed — nothing was recorded as sent."); }
-    finally { setBusy(false); setResendIds(null); }
+    finally { setBusy(false); setResendIds(null); setSel(null); }
   };
   const [resendIds, setResendIds] = useState<string[] | null>(null);
   const proceed = (manual: boolean) => onLifecycle({
@@ -123,19 +129,27 @@ export function StepInformPanel({ h, lifecycle, onLifecycle, onAddGroup }: {
         <div className="mt-1 text-[11px] text-muted-foreground">{group ? (lifecycle?.wa_include ?? h.waGroup?.include ? "Includes \"Join the tournament WhatsApp group\". " : "WhatsApp group set up, but its link isn't included in messages. ") : group === null ? <>No WhatsApp group configured · {onAddGroup ? <button type="button" className="text-primary underline" onClick={onAddGroup}>Add one</button> : null}. </> : null}In-app, the message gets tap-able buttons: {h.feeDue ? "\"Pay now\" (players who owe; opens their entry's payment card), " : ""}{waUrl ? "\"Join WhatsApp group\", " : ""}and "{h.feeDue ? "View my entry & pay" : "View my tournament entry"}". Both stay on the player's tournament page after the notification is read.</div>
       </div>}
 
-      <button type="button" className="flex items-center gap-1 text-xs font-medium text-primary" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
-        {showAll ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}View recipients
-      </button>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <button type="button" className="flex items-center gap-1 font-medium text-primary" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
+          {showAll ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}Choose recipients
+        </button>
+        <span className="font-semibold" data-testid="selected-count">{sel.length} of {ids.length} selected</span>
+        <span className="text-muted-foreground">Select:</span>
+        <button type="button" className="text-primary underline" onClick={() => { setSel(recipientPreset("all", status)); setShowAll(true); }}>All</button>
+        <button type="button" className="text-primary underline" onClick={() => { setSel(recipientPreset("not_informed", status)); setShowAll(true); }}>Not informed yet ({notReached.length})</button>
+        <button type="button" className="text-primary underline" onClick={() => { setSel([]); setShowAll(true); }}>None</button>
+      </div>
       {showAll && <ul className="divide-y divide-border rounded border border-border text-xs">{h.entrantMessages.map((m) => {
         const st = status.find((x) => x.memberId === m.memberId)!;
         return <li key={m.memberId} className={cn("flex flex-wrap items-center justify-between gap-2 px-2 py-1.5", first?.memberId === m.memberId && "bg-muted/40")}>
-          <span className="font-medium">{m.name}{h.feeDue ? <span className="ml-1 font-normal text-muted-foreground">· {m.status}</span> : null}</span>
+          <label className="flex items-center gap-2"><input type="checkbox" aria-label={`Select ${m.name}`} checked={sel.includes(m.memberId)} onChange={() => toggle(m.memberId)} />
+          <span className="font-medium">{m.name}{h.feeDue ? <span className="ml-1 font-normal text-muted-foreground">· {m.status}</span> : null}</span></label>
           <span className="flex items-center gap-2">
             <span className={st.state === "sent" ? "text-primary" : st.state === "failed" || sentAlready ? "text-destructive" : "text-muted-foreground"} title={st.problems.join(" · ")}>
               {st.state === "sent" ? `Sent${st.sends > 1 ? ` ${st.sends}×` : ""} · ${st.reached.map((c) => CH_LABEL[c as InformChannel] ?? c).join(", ")}${st.last ? ` · ${new Date(st.last).toLocaleDateString()}` : ""}` : sentAlready ? `Not reached${st.problems[0] ? ` — ${st.problems[0]}` : ""}` : "Not sent yet"}
             </span>
             <button type="button" className="text-primary underline" onClick={() => setPreviewId(m.memberId)}>Preview</button>
-            {sentAlready && <button type="button" disabled={busy || !channels.length} className="text-primary underline disabled:opacity-50" onClick={() => setResendIds([m.memberId])}>Send again</button>}
+            <button type="button" disabled={busy || !channels.length} className="text-primary underline disabled:opacity-50" onClick={() => setResendIds([m.memberId])}>{sentAlready ? "Send again" : "Send to this player only"}</button>
           </span>
         </li>;
       })}</ul>}
@@ -147,9 +161,9 @@ export function StepInformPanel({ h, lifecycle, onLifecycle, onAddGroup }: {
       </div>}
 
       <div className="flex flex-wrap gap-2">
-        {!sentAlready && <Button disabled={busy || !channels.length || !ids.length} onClick={() => setConfirmOpen(true)}><Send className="mr-1 h-4 w-4" />{busy ? "Sending…" : "Inform selected players"}</Button>}
+        {!sentAlready && sel.length === ids.length && <Button disabled={busy || !channels.length || !ids.length} onClick={() => setConfirmOpen(true)}><Send className="mr-1 h-4 w-4" />{busy ? "Sending…" : `Send to all ${ids.length}`}</Button>}
+        {(sentAlready || sel.length !== ids.length) && <Button disabled={busy || !channels.length || !sel.length} onClick={() => setResendIds(sel)}><Send className="mr-1 h-4 w-4" />{busy ? "Sending…" : `${sentAlready ? "Send again to" : "Send to"} ${sel.length} selected`}</Button>}
         {sentAlready && notReached.length > 0 && <Button variant="outline" disabled={busy} onClick={send}><RotateCcw className="mr-1 h-4 w-4" />{busy ? "Retrying…" : "Retry not reached"}</Button>}
-        {sentAlready && <Button variant="outline" disabled={busy || !channels.length} onClick={() => setResendIds(ids)}><Send className="mr-1 h-4 w-4" />Send again to everyone</Button>}
         {sentAlready && notReached.length === 0 && !done && <Button onClick={() => proceed(false)}>Continue to Registrations & payments<ChevronRight className="ml-1 h-4 w-4" /></Button>}
         {!done && <Button variant="ghost" size="sm" onClick={() => { if (confirm("Record that you told these players yourself, outside SquashHub? SquashHub sends NOTHING for this — it only records it.")) proceed(true); }}>
           {sentAlready && notReached.length ? "Record: I told the rest outside SquashHub (sends nothing)" : "Record: I told them outside SquashHub (sends nothing)"}
@@ -159,12 +173,12 @@ export function StepInformPanel({ h, lifecycle, onLifecycle, onAddGroup }: {
       <AlertDialog open={!!resendIds} onOpenChange={(o) => !o && setResendIds(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Send again to {resendIds?.length === 1 ? h.entrantMessages.find((m) => m.memberId === resendIds[0])?.name : `${resendIds?.length ?? 0} players`}?</AlertDialogTitle>
-            <AlertDialogDescription>Sends their personal message again now by {channels.map((c) => CH_LABEL[c]).join(", ")}. Earlier sends stay in the log. It can't be unsent.</AlertDialogDescription>
+            <AlertDialogTitle>{sentAlready ? "Send again" : "Send"} to {resendIds?.length === 1 ? h.entrantMessages.find((m) => m.memberId === resendIds[0])?.name : `${resendIds?.length ?? 0} players`}?</AlertDialogTitle>
+            <AlertDialogDescription>Sends their personal message again now by {channels.map((c) => CH_LABEL[c]).join(", ")}. Only {resendIds?.length === 1 ? "this player" : "these players"} — nobody else is messaged and everyone else's sent status stays as it is. Earlier sends stay in the log. It can't be unsent.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => resendIds && sendAgain(resendIds)}>Send again</AlertDialogAction>
+            <AlertDialogAction onClick={() => resendIds && sendAgain(resendIds)}>Send now</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -350,7 +350,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
         <Label>{s.phase === "playoff" && a.playoffSync === true && !s.unit ? "Courts reserved centrally for this date" : "Courts for this stage"}</Label>
         {clubCourts.length === 0 ? <p className="text-xs text-muted-foreground">No club courts found.</p> : <div className="flex flex-wrap gap-1.5">{clubCourts.map((c) => {
           const on = s.courtIds.includes(c.id);
-          return <button key={c.id} type="button" aria-pressed={on} onClick={() => updStage(s.id, { courtIds: on ? s.courtIds.filter((x) => x !== c.id) : [...s.courtIds, c.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>{c.name}</button>;
+          return <button key={c.id} type="button" aria-pressed={on} onClick={() => updStage(s.id, { courtIds: on ? s.courtIds.filter((x) => x !== c.id) : [...s.courtIds, c.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>{c.name}</button>;
         })}</div>}
       </div>}
       {(a.periodStart && ((s.mode === "play_by" && s.deadline && s.deadline < a.periodStart) || (s.mode === "scheduled" && s.date && s.date < a.periodStart))) && <p className="text-xs text-muted-foreground">Note: this date is before the championship start.</p>}
@@ -524,11 +524,11 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                       <div className="text-sm font-semibold">{cat}</div>
                       <div className="flex flex-wrap gap-2">
                         <button type="button" aria-pressed={!has} onClick={() => setSubcats(cat, null)}
-                          className={cn("rounded-full border px-3 py-1 text-xs", !has ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+                          className={cn("rounded-full border px-3 py-1 text-xs", !has ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
                           No subcategories
                         </button>
                         <button type="button" aria-pressed={has} onClick={() => setSubcats(cat, has ? subs : ["A", "B"])}
-                          className={cn("rounded-full border px-3 py-1 text-xs", has ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+                          className={cn("rounded-full border px-3 py-1 text-xs", has ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
                           Add subcategories
                         </button>
                       </div>
@@ -598,7 +598,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                       <div className="text-sm font-semibold">{u.label}</div>
                       <div className="flex flex-wrap gap-2">
                         {(["everyone", "leagues", "manual"] as const).map((m) => (
-                          <button key={m} type="button" aria-pressed={e.mode === m} onClick={() => setElig(u.key, { mode: m })} className={cn("rounded-full border px-2.5 py-1 text-xs", e.mode === m ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+                          <button key={m} type="button" aria-pressed={e.mode === m} onClick={() => setElig(u.key, { mode: m })} className={cn("rounded-full border px-2.5 py-1 text-xs", e.mode === m ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
                             {m === "everyone" ? "Everyone" : m === "leagues" ? "Specific league(s)" : "Players I pick"}
                           </button>
                         ))}
@@ -607,14 +607,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                         ? <p className="text-xs text-muted-foreground">Your club has no leagues set up yet. Choose another option.</p>
                         : <div className="flex flex-wrap gap-1.5">{leagues.map((l) => {
                             const on = e.leagueIds.includes(l.id);
-                            return <button key={l.id} type="button" aria-pressed={on} onClick={() => setElig(u.key, { leagueIds: on ? e.leagueIds.filter((x) => x !== l.id) : [...e.leagueIds, l.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>{l.name}</button>;
+                            return <button key={l.id} type="button" aria-pressed={on} onClick={() => setElig(u.key, { leagueIds: on ? e.leagueIds.filter((x) => x !== l.id) : [...e.leagueIds, l.id] })} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>{l.name}</button>;
                           })}</div>)}
                       {e.mode !== "manual" && selfEntry && (
                         <div className="space-y-1">
                           <div className="text-xs text-muted-foreground">Players who may enter:</div>
                           <div className="flex flex-wrap gap-2">
-                            <button type="button" aria-pressed={e.placement === "auto"} onClick={() => setElig(u.key, { placement: "auto" })} className={cn("rounded-full border px-2.5 py-1 text-xs", e.placement === "auto" ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>Are put in here automatically</button>
-                            <button type="button" aria-pressed={e.placement === "choose"} onClick={() => setElig(u.key, { placement: "choose" })} className={cn("rounded-full border px-2.5 py-1 text-xs", e.placement === "choose" ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>Choose this when they enter</button>
+                            <button type="button" aria-pressed={e.placement === "auto"} onClick={() => setElig(u.key, { placement: "auto" })} className={cn("rounded-full border px-2.5 py-1 text-xs", e.placement === "auto" ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>Are put in here automatically</button>
+                            <button type="button" aria-pressed={e.placement === "choose"} onClick={() => setElig(u.key, { placement: "choose" })} className={cn("rounded-full border px-2.5 py-1 text-xs", e.placement === "choose" ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>Choose this when they enter</button>
                           </div>
                         </div>
                       )}
@@ -1306,7 +1306,7 @@ function DiscPick({ value, onChange }: { value?: Disc; onChange: (d: Disc) => vo
     <div className="flex gap-1.5" role="group" aria-label="Singles or Doubles">
       {(["singles", "doubles"] as const).map((d) => (
         <button key={d} type="button" aria-pressed={value === d} onClick={() => onChange(d)}
-          className={cn("rounded-full border px-2.5 py-1 text-xs", value === d ? "border-primary bg-primary/10" : "border-border text-muted-foreground")}>
+          className={cn("rounded-full border px-2.5 py-1 text-xs", value === d ? "border-primary bg-primary font-semibold text-primary-foreground shadow-sm" : "border-border text-muted-foreground")}>
           {d === "singles" ? "Singles" : "Doubles"}
         </button>
       ))}

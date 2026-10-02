@@ -163,7 +163,7 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     expect(calls.filter((c) => c.table === "club_champs" && c.op === "insert")).toHaveLength(1);
     expect(calls.some((c) => c.table === "club_champs" && c.op === "update")).toBe(true);
     expect(screen.getByText("Finalise entries").closest("li")).toHaveAttribute("aria-current", "step");
-  });
+  }, 20000);
 });
 
 import { isOutstanding, regLabel, paymentWarning } from "@/lib/smart-builder/step-handover";

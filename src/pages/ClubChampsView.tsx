@@ -2551,6 +2551,13 @@ export default function ClubChampsView() {
   function playByForMatch(m: any): string | null {
     const own = typeof m?.play_by === "string" ? m.play_by.slice(0, 10) : "";
     if (own) return own;
+    // A fixed session (date + time) is not a play-by fixture; and a structured play-off
+    // owns its schedule — never inherit the pool rounds' deadlines.
+    if (m?.scheduled_date && m?.scheduled_time) return null;
+    if (m?.stage_key && (m.stage || "group") !== "group") {
+      const r = (champRounds as any[]).find((x) => x.id === m.round_id);
+      return r?.play_by ? String(r.play_by).slice(0, 10) : null;
+    }
     const fixtureDeadlines = mergeRoundDeadlines(
       parseRoundDeadlines((champ as any)?.round_play_by),
       champRounds as any[],

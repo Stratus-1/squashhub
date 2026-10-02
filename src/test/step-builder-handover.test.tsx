@@ -120,13 +120,14 @@ describe("Step-by-Step handover: Summary → Tournament Management (admin-select
     fireEvent.click(screen.getByRole("button", { name: /Continue to Registrations & payments/ }));
     await waitFor(() => expect(screen.getAllByText("Registrations & payments").map((e) => e.closest("li")?.getAttribute("aria-current")).join(",")).toBe("step"));
     // Blocked with an explanation, not hidden; nobody is marked paid automatically.
-    expect(await screen.findByText(/Finalise entries is blocked: 2 payments outstanding/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Close registrations & finalise entries/ })).toBeDisabled();
+    expect(await screen.findByText(/2 payments outstanding/)).toBeInTheDocument();
+    expect(screen.getByText(/doesn't block you/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Close registrations & finalise entries/ })).not.toBeDisabled();
     // Invite / Inform stays revisitable with Send again; revisiting doesn't move the stage back.
     fireEvent.click(screen.getByRole("button", { name: /Invite \/ Inform players/ }));
     expect(await screen.findByText(/Revisiting/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Send again to everyone/ })).toBeInTheDocument();
-    expect(camp.arg.audience_filter.member_vars.m1).toMatchObject({ pay_url: "/club-champs/t-new?pay=1", pay_label: "Pay now" });
+    expect(camp.arg.audience_filter.member_vars.m1).toMatchObject({ pay_url: "/club-champs/t-new?pay=1", pay_label: expect.stringMatching(/^Pay (R[\d.,]+ )?now$/) });
     fireEvent.click(screen.getByRole("button", { name: /Back to current stage/ }));
     regStatus = "paid";
     fireEvent.click(screen.getByRole("button", { name: /Refresh payments/ }));

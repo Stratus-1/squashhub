@@ -246,7 +246,8 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     return n + (2 ** p.rounds - 1) * (s.mode === "time_capped_points" ? Number(s.timeCapMinutes) : s.bestOf === 3 ? 35 : 55);
   }, 0);
   const capacityEstimateValid = units.filter((u) => playoffFor(u.key).choice === "playoffs").every((u) => scoringOk(scoringFor(u.key) ?? scoring));
-  const provisional = !knownField || units.some((u) => !Object.values(a.picks).includes(u.key)) || selfEntry;
+  const provisional = !knownField || pickIds.some((id) => !units.some((u) => u.key === a.picks[id])) || selfEntry;
+  const groupCount = (key: string) => Object.values(a.picks).filter((k) => k === key).length;
 
   const discText = (k: string) => { const d = units.find((u) => u.key === k)?.disc; return d ? PLAY_LABEL[d] : "?"; };
   const eligText = (k: string) => {
@@ -687,6 +688,49 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
+          {cur === "Playoffs" && (
+            <>
+              <Q t="Will there be playoffs?" h="Choose a plan for the tournament. Categories inherit it unless you choose an exception below. This is planning only — no draw or fixtures are made." />
+              <PlayoffFields value={playoff} onChange={setPlayoff} />
+              {units.length > 1 && <div className="space-y-3 border-t border-border pt-4">
+                <div className="text-sm font-semibold">Category and subcategory exceptions</div>
+                <p className="text-xs text-muted-foreground">Leave a group on the tournament plan, or give it its own playoff structure.</p>
+                {cats.map((cat) => {
+                  const subs = units.filter((u) => u.key.startsWith(`${cat}::`));
+                  const catUnits = units.filter((u) => u.key === cat || u.key.startsWith(`${cat}::`));
+                  return <div key={cat} className="space-y-2 rounded-lg border border-border p-3">
+                    <div className="text-sm font-semibold">{cat}</div>
+                    {subs.length > 0 && <div className="flex flex-wrap items-center gap-2 text-xs"><span>Category default:</span>
+                      <Button type="button" size="sm" variant={!a.playoffOverrides?.[cat] ? "default" : "outline"} onClick={() => setPlayoffOverride(cat, null)}>Inherit tournament</Button>
+                      <Button type="button" size="sm" variant={a.playoffOverrides?.[cat] ? "default" : "outline"} onClick={() => setPlayoffOverride(cat, {})}>Change category</Button>
+                    </div>}
+                    {subs.length > 0 && a.playoffOverrides?.[cat] && <PlayoffFields value={a.playoffOverrides[cat]} onChange={(patch) => setPlayoffOverride(cat, patch)} />}
+                    {catUnits.map((u) => <div key={u.key} className="space-y-2 border-t border-border pt-2">
+                      <div className="text-xs font-medium">{subs.length ? u.base.split(" › ").slice(1).join(" › ") : u.base} · {playoffDetail(playoffFor(u.key))}</div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" variant={!a.playoffOverrides?.[u.key] ? "default" : "outline"} onClick={() => setPlayoffOverride(u.key, null)}>Inherit {subs.length ? "category" : "tournament"}</Button>
+                        <Button type="button" size="sm" variant={a.playoffOverrides?.[u.key] ? "default" : "outline"} onClick={() => setPlayoffOverride(u.key, {})}>Change this {subs.length ? "subcategory" : "category"}</Button>
+                      </div>
+                      {a.playoffOverrides?.[u.key] && <PlayoffFields value={a.playoffOverrides[u.key]} onChange={(patch) => setPlayoffOverride(u.key, patch)} />}
+                    </div>)}
+                  </div>;
+                })}
+              </div>}
+              <div className="rounded-lg border border-accent bg-accent/30 p-3 text-sm">
+                <div className="flex items-center gap-1.5 font-semibold"><Lightbulb className="h-4 w-4 text-primary" />SquashHub Tip <span className="text-xs font-normal text-muted-foreground">(advice only{provisional ? " · provisional" : ""})</span></div>
+                <p className="mt-1">{knownField ? `${pickIds.length} selected players${provisional ? " (some are not placed yet)" : ""}` : `${fieldCount || "No"} estimated entries${pickIds.length ? `, including ${pickIds.length} picked so far` : ""}`} across {units.length} group{units.length === 1 ? "" : "s"}.</p>
+                {units.filter((u) => playoffFor(u.key).choice === "playoffs").map((u) => {
+                  const p = playoffFor(u.key); const exact = knownField && !provisional;
+                  const count = exact ? groupCount(u.key) : units.length === 1 ? fieldCount : null;
+                  const needed = 2 ** p.rounds;
+                  return <p key={u.key} className="mt-1 text-xs">{u.base}: {exact ? `${groupCount(u.key)} selected ${u.disc === "doubles" ? "players (pair count not yet confirmed)" : "players"}` : count ? `about ${count} entries (provisional)` : `group entries not yet known (overall estimate: ${fieldCount})`}; {playoffText(p)} needs {needed} qualifying {u.disc === "doubles" ? "pairs" : "players"}{count !== null && u.disc !== "doubles" && count < needed ? " — fewer currently indicated, so a smaller bracket may suit better" : ""}.</p>;
+                })}
+                {plannedPlayoffMatches > 0 && <p className="mt-2">Those stages would add at least {plannedPlayoffMatches} match{plannedPlayoffMatches === 1 ? "" : "es"}. {capacityEstimateValid && courtsOk && daysOk ? `At an illustrative ${units.some((u) => (scoringFor(u.key) ?? scoring)?.mode === "standard" && playoffFor(u.key).choice === "playoffs") ? "35 min (best of 3) / 55 min (best of 5) for standard matches, or the chosen Bells cap" : "chosen Bells cap"}, the playoff matches alone use about ${Math.round(playoffMinutes / 60 * 10) / 10} of ${Math.round(courtHours * 10) / 10} available court-hours across ${a.days.length} day${a.days.length === 1 ? "" : "s"}. ${playoffMinutes <= courtHours * 60 ? "They appear to fit by total court time, subject to the full schedule." : "They exceed the available court time on this rough estimate."}` : "Complete the match duration and court times for a rough fit check."}</p>}
+                <p className="mt-2 text-xs text-muted-foreground">Pool games, rest, changeovers, actual match lengths, fixed court slots and simultaneous groups are not included. Dates, courts or entry counts may change; review this advice again when actual entries are known. Your choice is never blocked by this tip.</p>
+              </div>
+            </>
+          )}
+
           {cur === "Summary" && (
             <>
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
@@ -695,6 +739,11 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Match format" onEdit={() => go("Match")}>
                 <div>{scoring ? scoringText(scoring) : "Not chosen"}{units.length > 0 && <span className="text-muted-foreground"> · {validOverrides.length ? "tournament default" : "all groups"}</span>}</div>
                 {validOverrides.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</span></li>)}</ul>}
+              </SummaryRow>
+              <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Playoffs" onEdit={() => go("Playoffs")}>
+                <div>{playoffDetail(playoff)}{units.length > 0 && <span className="text-muted-foreground"> · {playoffExceptions.length ? "tournament default" : "all groups"}</span>}</div>
+                {playoffExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{playoffDetail(playoffFor(u.key))}</span></li>)}</ul>}
+                {provisional && <span className="text-xs text-muted-foreground">Recommendations provisional until entries are known.</span>}
               </SummaryRow>
               <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
                 <ul className="space-y-0.5">{cats.map((c, i) => {
@@ -763,6 +812,9 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {scoring && <TreeNode icon={<Trophy className="h-4 w-4" />} title={scoringText(scoring)} onClick={() => go("Match")}>
                 {validOverrides.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Overrides")}>{u.base}: {scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</Button></TreeLeaf>)}
               </TreeNode>}
+              <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Playoffs: ${playoffDetail(playoff)}`} onClick={() => go("Playoffs")}>
+                {playoffExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Playoffs")}>{u.base}: {playoffDetail(playoffFor(u.key))}</Button></TreeLeaf>)}
+              </TreeNode>
               {cats.length > 0 && (
                 <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => go("Categories")}>
                   {cats.map((c, i) => {
@@ -821,6 +873,19 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
 function Q({ t, h }: { t: string; h: string }) {
   return <div><h3 className="text-base font-semibold">{t}</h3><p className="text-sm text-muted-foreground">{h}</p></div>;
+}
+function PlayoffFields({ value, onChange }: { value: PlayoffPlan; onChange: (patch: Partial<PlayoffPlan>) => void }) {
+  return <div className="space-y-3">
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Playoff choice">
+      {(["none", "playoffs", "later"] as const).map((choice) => <Button key={choice} type="button" size="sm" variant={value.choice === choice ? "default" : "outline"} aria-pressed={value.choice === choice} onClick={() => onChange({ choice })}>{choice === "none" ? "No playoffs" : choice === "later" ? "Decide later" : "Playoffs"}</Button>)}
+    </div>
+    {value.choice === "playoffs" && <div className="space-y-3 rounded-lg border border-border p-3">
+      <div><Label>Stages</Label><div className="mt-2 flex flex-wrap gap-2">{([1, 2, 3] as const).map((rounds) => <Button key={rounds} type="button" size="sm" variant={value.rounds === rounds ? "default" : "outline"} aria-pressed={value.rounds === rounds} onClick={() => onChange({ rounds })}>{playoffText({ ...value, rounds })}</Button>)}</div></div>
+      <div><Label>Who qualifies?</Label><select aria-label="Who qualifies for playoffs" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.qualification} onChange={(e) => onChange({ qualification: e.target.value as PlayoffPlan["qualification"] })}><option value="later">Decide qualification later</option><option value="top_pools">Top players/pairs from pools</option><option value="seeded">Highest-ranked entrants</option></select></div>
+      <div><Label>How are qualifiers paired?</Label><select aria-label="How playoff qualifiers are paired" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.pairing} onChange={(e) => onChange({ pairing: e.target.value as PlayoffPlan["pairing"] })}><option value="later">Decide pairing later</option><option value="cross_pools">Cross-pool (A1 v B2, B1 v A2)</option><option value="seeded">Seeded (highest v lowest)</option></select></div>
+      <p className="text-xs text-muted-foreground">Pool and qualifier details are ideas for later setup, not a draw. Cross-pool pairings need suitable pools and enough qualifiers; no bracket is generated here.</p>
+    </div>}
+  </div>;
 }
 function ScoringFields({ value, onChange, showMode = false }: { value: MatchScoring; onChange: (patch: Partial<MatchScoring>) => void; showMode?: boolean }) {
   return <div className="space-y-3">

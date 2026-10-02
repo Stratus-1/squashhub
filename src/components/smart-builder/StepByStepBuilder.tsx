@@ -62,16 +62,60 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   }, [clubId]);
   const courtNames = (d: DayAvail) => clubCourts.filter((c) => d.courtIds?.includes(c.id)).map((c) => c.name).join(", ");
 
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [leagues, setLeagues] = useState<{ id: string; name: string }[]>([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  useEffect(() => {
+    supabase.from("club_members").select("id, name").eq("club_id", clubId).eq("status", "active").neq("role", "visitor").order("name").limit(2000)
+      .then(({ data }) => setMembers(((data ?? []) as any[]).map((m) => ({ id: String(m.id), name: m.name || "Member" }))));
+    supabase.from("leagues").select("id, name").eq("club_id", clubId).is("archived_at", null).order("name")
+      .then(({ data }) => setLeagues(((data ?? []) as any[]).map((l) => ({ id: String(l.id), name: l.name }))));
+  }, [clubId]);
+
   const cats = a.categories.map((c) => c.trim()).filter(Boolean);
+  /** Every place a player can end up: a subcategory, or the category itself when it has none. */
+  const units = cats.flatMap((c) => {
+    const subs = (a.subcats[c] ?? []).map((x) => x.trim()).filter(Boolean);
+    return subs.length ? subs.map((x) => ({ key: `${c}::${x}`, label: `${c} › ${x}` })) : [{ key: c, label: c }];
+  });
+  const unitLabel = (k: string) => units.find((u) => u.key === k)?.label ?? "Not placed yet";
+  const eligOf = (k: string): Elig => a.elig[k] ?? DEFAULT_ELIG;
+  const setElig = (k: string, p: Partial<Elig>) => setA({ ...a, elig: { ...a.elig, [k]: { ...eligOf(k), ...p } } });
+  const leagueName = (id: string) => leagues.find((l) => l.id === id)?.name ?? "League";
+  const memberName = (id: string) => members.find((m) => m.id === id)?.name ?? "Member";
+  const pickIds = Object.keys(a.picks);
+  const anyManual = units.some((u) => eligOf(u.key).mode === "manual");
+  const selfEntry = a.source === "self" || a.source === "both";
+  const showPick = a.source === "select" || a.source === "both" || anyManual;
+
+  const steps: StepKey[] = ["Type", "Entries", "What", "Categories", "Subcategories", "Players", "Eligibility",
+    ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const] : []), "Dates", "Courts", "Summary"];
+  const cur = steps[Math.min(step, steps.length - 1)];
+  const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
+
   const entriesOk = Number(a.entries) > 0 && Number.isFinite(Number(a.entries));
   const playOk = a.playType !== null;
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
-  const canNext = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, true, daysOk, courtsOk, false][step];
+  const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
+  const pickOk = a.source === "select" ? pickIds.length > 0 : true;
+  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Categories: cats.length > 0, Subcategories: true,
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Dates: daysOk, Courts: courtsOk, Summary: false };
+  const canNext = okFor[cur];
   const reached = useMemo(() => {
-    const ok = [a.kind === "once_off", entriesOk, playOk, cats.length > 0, true, daysOk, courtsOk];
-    let i = 0; while (i < ok.length && ok[i]) i++; return i;
-  }, [a.kind, entriesOk, playOk, cats.length, daysOk, courtsOk]);
+    let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(okFor), steps.join()]);
+
+  /** Exact field when the organiser picked everyone; otherwise the estimate (provisional). */
+  const knownField = a.source === "select" && pickIds.length > 0;
+  const fieldCount = knownField ? pickIds.length : Number(a.entries) || 0;
+  const courtHours = a.days.reduce((t, d) => t + (Number(d.courts) || 0) * d.windows.reduce((h, w) => {
+    if (!w.from || !w.to || w.from >= w.to) return h;
+    const [fh, fm] = w.from.split(":").map(Number); const [th, tm] = w.to.split(":").map(Number);
+    return h + (th * 60 + tm - fh * 60 - fm) / 60;
+  }, 0), 0);
+  const tipReady = fieldCount > 0 && cats.length > 0 && daysOk && courtsOk;
 
   const setSubcats = (cat: string, names: string[] | null) => {
     const next = { ...a.subcats };
@@ -93,7 +137,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
       <div className="space-y-4">
         {/* progress */}
         <ol className="flex flex-wrap gap-1.5">
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <li key={s}>
               <button
                 type="button"
@@ -105,14 +149,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   i > reached && "opacity-50",
                 )}
               >
-                {i < reached && i !== step ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>} {s}
+                {i < reached && i !== step ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>} {STEP_LABEL[s]}
               </button>
             </li>
           ))}
         </ol>
 
         <Card><CardContent className="space-y-4 p-5">
-          {step === 0 && (
+          {cur === "Type" && (
             <>
               <Q t="What type of tournament is this?" h="Pick the one that sounds most like your event." />
               <div className="grid gap-3 sm:grid-cols-2">
@@ -127,7 +171,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 1 && (
+          {cur === "Entries" && (
             <>
               <Q t="How many entries do you expect?" h="A rough guess is fine — you can change it later." />
               <div className="max-w-[200px] space-y-1">
@@ -137,7 +181,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 2 && (
+          {cur === "What" && (
             <>
               <Q t="What will be played?" h="Just the basic fact for now — we won't ask how it fits together yet." />
               <div className="grid gap-3 sm:grid-cols-3">
@@ -148,7 +192,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 3 && (
+          {cur === "Categories" && (
             <>
               <Q t="What categories will you have?" h="Give each category any name you like, for example Men's, Ladies, Open or Men's A." />
               <div className="space-y-2">
@@ -163,7 +207,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 4 && (
+          {cur === "Subcategories" && (
             <>
               <Q t="Do any categories need subcategories?" h="Optional — e.g. Men's could be split into Group A, Group B, Group C. Ladies can stay as one group." />
               <div className="space-y-3">
@@ -203,7 +247,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 5 && (
+          {cur === "Dates" && (
             <>
               <Q t="On which days will it be played?" h="Add one line for each tournament day." />
               <div className="space-y-2">
@@ -219,7 +263,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 6 && (
+          {cur === "Courts" && (
             <>
               <Q t="Where and when are courts available?" h="Each day can be different — e.g. Friday evening only, Saturday all day." />
               <div className="space-y-3">
@@ -263,19 +307,19 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 7 && (
+          {cur === "Summary" && (
             <>
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
-              <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries" onEdit={() => setStep(1)}>About {a.entries}</SummaryRow>
-              <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => setStep(2)}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
-              <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => setStep(3)}>
+              <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries" onEdit={() => go("Entries")}>About {a.entries}</SummaryRow>
+              <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => go("What")}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
+              <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
                 <ul className="space-y-0.5">{cats.map((c, i) => {
                   const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
                   return <li key={i}>{c}{subs.length > 0 && <span className="text-muted-foreground"> — {subs.join(", ")}</span>}</li>;
                 })}</ul>
               </SummaryRow>
-              <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => setStep(5)}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
-              <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => setStep(6)}>
+              <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => go("Dates")}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
+              <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => go("Courts")}>
                 <ul className="space-y-0.5">{a.days.map((d, i) => (
                   <li key={i}>{fmtDay(d.date)}: {d.venue}, {d.courts} court{Number(d.courts) === 1 ? "" : "s"}{courtNames(d) && ` (${courtNames(d)})`}, {d.windows.map((w) => `${w.from}–${w.to}`).join(" & ")}</li>
                 ))}</ul>
@@ -290,7 +334,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step < 7 && (
+          {cur !== "Summary" && (
             <div className="flex justify-between pt-2">
               <Button variant="ghost" size="sm" disabled={step === 0} onClick={() => setStep(step - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Back</Button>
               <Button size="sm" disabled={!canNext} onClick={() => setStep(step + 1)}>Next<ChevronRight className="ml-1 h-4 w-4" /></Button>
@@ -302,18 +346,18 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
       {/* growing tree */}
       <aside aria-label="Your tournament so far" className="rounded-xl border border-border p-4">
         <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your tournament so far</div>
-        <TreeNode icon={<Trophy className="h-4 w-4" />} title={a.kind === "once_off" ? "Once-off / weekend" : a.kind === "period" ? "Club Champs (coming next)" : "Type not chosen"} onClick={() => setStep(0)}>
+        <TreeNode icon={<Trophy className="h-4 w-4" />} title={a.kind === "once_off" ? "Once-off / weekend" : a.kind === "period" ? "Club Champs (coming next)" : "Type not chosen"} onClick={() => go("Type")}>
           {a.kind === "once_off" && (
             <>
-              {entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${a.entries} entries`} onClick={() => setStep(1)} />}
-              {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => setStep(2)} />}
+              {entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${a.entries} entries`} onClick={() => go("Entries")} />}
+              {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => go("What")} />}
               {cats.length > 0 && (
-                <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => setStep(3)}>
+                <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => go("Categories")}>
                   {cats.map((c, i) => {
                     const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
                     return (
                       <TreeLeaf key={i}>
-                        <button type="button" onClick={() => setStep(4)} className="rounded px-1 hover:bg-muted">{c}</button>
+                        <button type="button" onClick={() => go("Subcategories")} className="rounded px-1 hover:bg-muted">{c}</button>
                         {subs.length > 0 && (
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border pl-2">
                             {subs.map((s, j) => <TreeLeaf key={j}>{s}</TreeLeaf>)}
@@ -325,7 +369,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 </TreeNode>
               )}
               {a.days.some((d) => d.date) && (
-                <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${a.days.length} day${a.days.length === 1 ? "" : "s"}`} onClick={() => setStep(5)}>
+                <TreeNode icon={<CalendarDays className="h-4 w-4" />} title={`${a.days.length} day${a.days.length === 1 ? "" : "s"}`} onClick={() => go("Dates")}>
                   {a.days.map((d, i) => (
                     <TreeLeaf key={i}>
                       {fmtDay(d.date)}
@@ -338,7 +382,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           )}
         </TreeNode>
         {(a.kind || a.entries) && (
-          <Button variant="ghost" size="sm" className="mt-3 text-xs" onClick={() => { setA(EMPTY); setStep(0); }}>Start over</Button>
+          <Button variant="ghost" size="sm" className="mt-3 text-xs" onClick={() => { setA(EMPTY); go("Type"); }}>Start over</Button>
         )}
       </aside>
     </div>

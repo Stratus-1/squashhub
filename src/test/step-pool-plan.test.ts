@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { recommendPools, reviewPools, balancedSizes } from "@/lib/smart-builder/pool-plan";
+import { recommendPools, reviewPools, balancedSizes, poolPlanOf, poolQualificationOf } from "@/lib/smart-builder/pool-plan";
+import { drawPlanOf, buildDrawSpec, previewDraw } from "@/lib/smart-builder/step-draw";
 import { buildPlayoffChain } from "@/lib/smart-builder/playoff-chain";
 
 describe("recommendPools", () => {
@@ -31,6 +32,24 @@ describe("reviewPools", () => {
     const r = reviewPools({ mode: "none" }, "Men's A", 16, "player");
     expect(r.recommended).toEqual([]);
     expect(r.warnings[0]).toMatch(/120 games/);
+  });
+});
+
+describe("lowest-group pool setup and saved-plan compatibility", () => {
+  it("keeps category-only rules and subcategory overrides distinct", () => {
+    const plan = { poolPlan: { Men: { mode: "auto", target: "5", perPool: "2" }, "Men::A": { mode: "none" }, Ladies: { mode: "later" } } };
+    expect(poolPlanOf(plan, "Men")?.mode).toBe("auto");
+    expect(poolPlanOf(plan, "Men::A")?.mode).toBe("none");
+    expect(poolPlanOf(plan, "Men::B")?.target).toBe("5");
+    expect(poolPlanOf(plan, "Ladies")?.mode).toBe("later");
+  });
+  it("reads legacy pool qualifiers until a new Playoffs answer overrides them", () => {
+    const legacy = { poolPlan: { Men: { mode: "auto", target: "5", perPool: "2", runnersUp: "0" } } };
+    expect(poolQualificationOf(legacy, "Men::A")).toEqual({ perPool: "2", runnersUp: "0" });
+    const changed = { ...legacy, playoffPoolQualifiers: { "Men::A": { perPool: "1", runnersUp: "0" } } };
+    expect(poolQualificationOf(changed, "Men::A").perPool).toBe("1");
+    expect(drawPlanOf(changed).playoffPoolQualifiers).toEqual(changed.playoffPoolQualifiers);
+    expect(poolQualificationOf(changed, "Men::B").perPool).toBe("2");
   });
 });
 

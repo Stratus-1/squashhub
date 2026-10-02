@@ -125,7 +125,7 @@ describe("Step-by-Step generate draw", () => {
     const two = { ...strict, share: true };
     expect(roundDeadlines(two, 5).dates).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);
     expect(roundDeadlines({ ...two, upto: [2] }, 5).dates).toEqual(["2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19", "2026-10-19"]);
-    expect(roundDeadlines({ ...two, deadlines: ["a", "b", "c"], upto: [null, null] }, 2).error).toMatch(/only 2 rounds/);
+    expect(roundDeadlines({ ...two, deadlines: ["a", "b", "c"], upto: [null, null] }, 2).error).toMatch(/only has 2 rounds — 1 date is unused/);
     const d = divs().map((x) => ({ ...x, format: { ...fmt, schedule: two } }));
     const spec = finalDrawSpec("T", d, "v1");
     expect((spec.divisions[0].stages[0].schedule as any).roundDates).toEqual(["2026-10-12", "2026-10-12", "2026-10-12", "2026-10-19", "2026-10-19"]);

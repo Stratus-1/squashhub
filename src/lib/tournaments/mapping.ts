@@ -25,6 +25,8 @@ export interface StageMapping {
   matches: MappedMatch[];
   /** true = generated from rotation + in-tie pairing; false = edited by the admin. */
   derived: boolean;
+  /** Explicit pool membership (entrant ids per pool, seed order) — e.g. cross-league: pool = league. Overrides entry seeding. */
+  positions?: string[][];
 }
 
 export const poolLetter = (i: number) => String.fromCharCode(65 + i);

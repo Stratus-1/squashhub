@@ -205,7 +205,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <>
               <Q t="Where and when are courts available?" h="Each day can be different — e.g. Friday evening only, Saturday all day." />
               <div className="space-y-3">
@@ -249,14 +249,19 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
-          {step === 6 && (
+          {step === 7 && (
             <>
               <Q t="Here's what we know so far" h="Check it over. Tap Edit on any part to change it." />
               <SummaryRow icon={<Users className="h-4 w-4" />} label="Expected entries" onEdit={() => setStep(1)}>About {a.entries}</SummaryRow>
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => setStep(2)}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
-              <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => setStep(3)}>{cats.join(", ")}</SummaryRow>
-              <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => setStep(4)}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
-              <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => setStep(5)}>
+              <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => setStep(3)}>
+                <ul className="space-y-0.5">{cats.map((c, i) => {
+                  const subs = (a.subcats[c] ?? []).map((s) => s.trim()).filter(Boolean);
+                  return <li key={i}>{c}{subs.length > 0 && <span className="text-muted-foreground"> — {subs.join(", ")}</span>}</li>;
+                })}</ul>
+              </SummaryRow>
+              <SummaryRow icon={<CalendarDays className="h-4 w-4" />} label="Tournament dates" onEdit={() => setStep(5)}>{a.days.map((d) => fmtDay(d.date)).join(", ")}</SummaryRow>
+              <SummaryRow icon={<MapPin className="h-4 w-4" />} label="Venue & courts" onEdit={() => setStep(6)}>
                 <ul className="space-y-0.5">{a.days.map((d, i) => (
                   <li key={i}>{fmtDay(d.date)}: {d.venue}, {d.courts} court{Number(d.courts) === 1 ? "" : "s"}{courtNames(d) && ` (${courtNames(d)})`}, {d.windows.map((w) => `${w.from}–${w.to}`).join(" & ")}</li>
                 ))}</ul>

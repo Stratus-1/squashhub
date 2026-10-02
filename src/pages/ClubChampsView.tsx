@@ -2518,16 +2518,18 @@ export default function ClubChampsView() {
   // round/stage deadline (live round rows merged over the planned list, with
   // play-off milestones for knockout stages). Repeated on every fixture card
   // so the date stays visible on mobile once the round header scrolls away.
-  const fixtureDeadlines = mergeRoundDeadlines(
-    parseRoundDeadlines((champ as any)?.round_play_by),
-    champRounds as any[],
-  );
-  const fixtureMilestones = parseMilestonesForDates((champ as any)?.milestone_play_by);
-  const playByForMatch = (m: any): string | null => {
+  // Function declaration (hoisted): the component's main return sits above
+  // this point, so `const` values here would never be initialised.
+  function playByForMatch(m: any): string | null {
     const own = typeof m?.play_by === "string" ? m.play_by.slice(0, 10) : "";
     if (own) return own;
+    const fixtureDeadlines = mergeRoundDeadlines(
+      parseRoundDeadlines((champ as any)?.round_play_by),
+      champRounds as any[],
+    );
+    const fixtureMilestones = parseMilestonesForDates((champ as any)?.milestone_play_by);
     return deadlineForStage(fixtureDeadlines, m.round_number, m.stage_label ?? m.stage, fixtureMilestones);
-  };
+  }
 
   function renderMatchRow(m: any) {
 

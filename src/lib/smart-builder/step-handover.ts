@@ -88,7 +88,9 @@ export type CreateInput = {
   paymentMethods: string[];
   partnerMode: "admin" | "players" | null;
   /** Admin-entered players (pairs carry a partner). */
-  entrants: Array<{ memberId: string; partnerId?: string | null }>;
+  entrants: Array<{ memberId: string; partnerId?: string | null; division?: number | null }>;
+  /** Step-by-Step categories/subcategories, in order — become the tournament's divisions (group 1..n). */
+  divisions?: Array<{ label: string; matchType: "singles" | "doubles" }>;
   existingId?: string | null;
 };
 
@@ -107,6 +109,11 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     payment_required: (i.feeCents ?? 0) > 0,
     payment_methods: i.paymentMethods.length ? i.paymentMethods : null,
     ...(i.partnerMode ? { partner_mode: i.partnerMode } : {}),
+    // Map categories → divisions so the table default (2 unnamed divisions) never applies.
+    ...(i.divisions?.length ? {
+      num_groups: i.divisions.length,
+      group_labels: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.label])),
+    } : { num_groups: 1 }),
     description: "Set up with the Step-by-Step Beta builder.",
   });
   let tid = i.existingId ?? null;
@@ -118,13 +125,23 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     if (error) throw error;
     tid = data.id as string;
   }
+  if (i.divisions?.length) {
+    // league_match_types lives only on the base table (not the club_champs view).
+    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])) }).eq("id", tid);
+    if (error) throw error;
+  }
   if (i.entrants.length) {
+    const nDiv = Math.max(1, i.divisions?.length ?? 1);
+    const missing = i.entrants.filter((e) => nDiv > 1 && !(e.division && e.division >= 1 && e.division <= nDiv));
+    if (missing.length) throw new Error(`${missing.length} picked player${missing.length === 1 ? " is" : "s are"} not placed in a category yet — go back to "Select & pair players" and place them.`);
     const now = new Date().toISOString();
     const fee = (i.feeCents ?? 0) > 0;
     const rows = i.entrants.map((e) => ({
       champ_id: tid, club_member_id: e.memberId, partner_member_id: e.partnerId ?? null, partner_confirmed: !!e.partnerId,
       status: fee ? "pending_payment" : "invited", invited_by_admin: true, confirmed_at: now, confirmation_source: "admin",
       registration_source: "admin",
+      // Admin entry is already confirmed, so it must carry the player's division (category).
+      division_choices: nDiv > 1 ? [e.division as number] : [1],
     }));
     const { error } = await fromExt("club_champs_registrations").upsert(rows, { onConflict: "champ_id,club_member_id", ignoreDuplicates: true });
     if (error) {

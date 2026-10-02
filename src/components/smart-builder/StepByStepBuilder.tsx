@@ -22,13 +22,31 @@ const scoringText = (s: MatchScoring) => s.mode === "time_capped_points"
   : `Standard play · PAR ${s.pointsPerGame} · best of ${s.bestOf} · ${s.winCondition === "sudden_death" ? "sudden death" : "win by 2"}`;
 type TimeWindow = { from: string; to: string };
 type DayAvail = { date: string; venue: string; courts: string; courtIds?: string[]; windows: TimeWindow[] };
+/** Planned competition format — provisional; revisited at "Confirm final format" once entries close. */
+type CompKind = "pools" | "knockout" | "swiss" | "cross" | "later";
+type FormatPlan = { kind: CompKind | null; pools: string; drawRounds: string; swissRounds: string; crossA: string; crossB: string };
+const DEFAULT_FORMAT: FormatPlan = { kind: null, pools: "", drawRounds: "", swissRounds: "", crossA: "", crossB: "" };
+const COMP_LABEL: Record<CompKind, string> = { pools: "Round Robin / Pools", knockout: "Knockout", swiss: "Swiss Pairing", cross: "Cross-League Round Robin", later: "Decide later" };
+const COMP_DESC: Record<CompKind, string> = {
+  pools: "Players are placed in a group/pool and play everyone else in that pool. If there are several pools, qualifiers may progress to later stages.",
+  knockout: "Players/pairs are placed in a draw; a loss normally eliminates them from the main draw and winners continue to the next round.",
+  swiss: "Everyone keeps playing for a set number of rounds; each new round pairs players with similar results instead of eliminating them after one loss.",
+  cross: "Everyone in one selected league/group plays everyone in another selected league/group — not a normal round robin within their own group.",
+  later: "Keep setting up without fixing a competition structure yet.",
+};
 type PlayoffChoice = "none" | "playoffs" | "later";
-type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "later" | "top_pools" | "seeded"; pairing: "later" | "cross_pools" | "seeded" };
-const DEFAULT_PLAYOFF: PlayoffPlan = { choice: "later", rounds: 2, qualification: "later", pairing: "later" };
+type PlayoffPlan = { choice: PlayoffChoice; rounds: 1 | 2 | 3; qualification: "later" | "top_pools" | "seeded"; pairing: "later" | "cross_pools" | "seeded"; style?: "later" | "championship" | "placement" };
+const DEFAULT_PLAYOFF: PlayoffPlan = { choice: "later", rounds: 2, qualification: "later", pairing: "later", style: "later" };
 const playoffText = (p: PlayoffPlan) => p.choice === "none" ? "No playoffs" : p.choice === "later" ? "Decide later" : p.rounds === 1 ? "Final only" : p.rounds === 2 ? "Semifinals + Final" : "Quarterfinals + Semifinals + Final";
-const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";
+const qualifierText = (p: PlayoffPlan) => p.qualification === "top_pools" ? "Top players/pairs from pools/standings" : p.qualification === "seeded" ? "Highest-ranked entrants" : "Qualification to be decided";
 const pairingText = (p: PlayoffPlan) => p.pairing === "cross_pools" ? "Cross-pool (A1 v B2, B1 v A2)" : p.pairing === "seeded" ? "Seeded (highest v lowest)" : "Pairing to be decided";
-const playoffDetail = (p: PlayoffPlan) => p.choice === "playoffs" ? `${playoffText(p)} · ${qualifierText(p)} · ${pairingText(p)}` : playoffText(p);
+const styleText = (p: PlayoffPlan) => p.style === "placement" ? "Placement play (A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th…)" : p.style === "championship" ? "Championship playoffs" : "Playoff type to be decided";
+const playoffDetail = (p: PlayoffPlan, k?: CompKind | null) => {
+  if (k === "knockout") return "Knockout rounds (no separate playoffs)";
+  if (p.choice !== "playoffs") return k === "swiss" && p.choice === "none" ? "Finish on Swiss standings" : k === "cross" && p.choice === "none" ? "Finish on standings" : playoffText(p);
+  if (p.style === "placement" && (k === "pools" || k === "cross")) return styleText(p);
+  return `${playoffText(p)}${k === "pools" || k === "cross" ? ` · ${styleText(p)}` : ""} · ${qualifierText(p)}${p.style !== "placement" ? ` · ${pairingText(p)}` : ""}`;
+};
 export type StepAnswers = {
   kind: Kind;
   entries: string;
@@ -59,6 +77,9 @@ export type StepAnswers = {
   /** Default and category/subcategory exceptions; guidance only, not a generated bracket. */
   playoff: PlayoffPlan;
   playoffOverrides: Record<string, PlayoffPlan>;
+  /** Planned competition format (provisional) with category/subcategory overrides. */
+  format: FormatPlan;
+  formatOverrides: Record<string, FormatPlan>;
 };
 type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };
@@ -75,9 +96,9 @@ type Elig = { mode: "everyone" | "leagues" | "manual"; leagueIds: string[]; plac
 type Invite = "all_eligible" | "leagues" | "selected" | "later" | null;
 const DEFAULT_ELIG: Elig = { mode: "everyone", leagueIds: [], placement: "choose" };
 
-const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {} };
-type StepKey = "Type" | "Entries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Playoffs" | "Summary";
-const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Playoffs: "Playoffs", Summary: "Summary" };
+const EMPTY: StepAnswers = { kind: null, entries: "", playType: null, scoring: null, scoringOverrides: {}, categories: [""], subcats: {}, days: [], source: null, elig: {}, picks: {}, invite: null, disc: {}, msg: DEFAULT_MSG, partner: {}, doublesEntry: null, fee: DEFAULT_FEE, playoff: DEFAULT_PLAYOFF, playoffOverrides: {}, format: DEFAULT_FORMAT, formatOverrides: {} };
+type StepKey = "Type" | "Entries" | "What" | "Match" | "Categories" | "Subcategories" | "Overrides" | "Format" | "Partners" | "Players" | "Eligibility" | "Pick" | "Invites" | "Messaging" | "Fees" | "Dates" | "Courts" | "Playoffs" | "Summary";
+const STEP_LABEL: Record<StepKey, string> = { Type: "Type", Entries: "Entries", What: "What", Match: "Match format", Categories: "Categories", Subcategories: "Subcategories", Overrides: "Format overrides", Format: "Planned format", Partners: "Doubles partners", Players: "How players join", Eligibility: "Who may enter", Pick: "Pick players", Invites: "Invitations", Messaging: "Messaging", Fees: "Fees & Payment", Dates: "Dates", Courts: "Courts", Playoffs: "Playoffs", Summary: "Summary" };
 const SOURCE_LABEL: Record<Exclude<Source, null>, string> = { select: "I will select the players", self: "Players enter themselves", both: "Both — some picked, others enter" };
 const INVITE_LABEL: Record<Exclude<Invite, null>, string> = { all_eligible: "All eligible members", leagues: "Players in the chosen leagues", selected: "Selected eligible members", later: "Decide / send later" };
 
@@ -95,7 +116,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
       const doublesEntry = saved.doublesEntry !== undefined ? saved.doublesEntry : legacy === "later" || !legacy ? null : legacy !== "separate";
       const doublesCover = saved.fee?.doublesCover !== undefined ? saved.fee.doublesCover : legacy === "later" || !legacy ? null : legacy === "one_pays";
       const { doublesPay: _oldRule, ...savedFee } = saved.fee ?? {};
-      return { ...EMPTY, ...saved, scoringOverrides: saved.scoringOverrides ?? {}, playoff: { ...DEFAULT_PLAYOFF, ...saved.playoff }, playoffOverrides: saved.playoffOverrides ?? {}, doublesEntry, fee: { ...DEFAULT_FEE, ...savedFee, doublesCover } };
+      return { ...EMPTY, ...saved, scoringOverrides: saved.scoringOverrides ?? {}, playoff: { ...DEFAULT_PLAYOFF, ...saved.playoff }, playoffOverrides: saved.playoffOverrides ?? {}, format: { ...DEFAULT_FORMAT, ...saved.format }, formatOverrides: saved.formatOverrides ?? {}, doublesEntry, fee: { ...DEFAULT_FEE, ...savedFee, doublesCover } };
     } catch { return EMPTY; }
   });
   const [step, setStep] = useState(0);
@@ -147,6 +168,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     const d: Disc | null = a.playType === "singles" || a.playType === "doubles" ? a.playType : (a.disc[u.key] ?? null);
     return { ...u, disc: d, label: `${u.base} · ${d ? PLAY_LABEL[d] : "Singles or Doubles?"}` };
   });
+  const unitBase = (k: string) => units.find((u) => u.key === k)?.base ?? k;
   const setDisc = (k: string, d: Disc) => setA({ ...a, disc: { ...a.disc, [k]: d } });
   const setPlayType = (p: Exclude<PlayType, null>) => {
     if (p === "both") { setA({ ...a, playType: p }); return; }
@@ -173,7 +195,24 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     if (patch === null) delete next[key]; else next[key] = { ...playoffFor(key), ...patch };
     setA({ ...a, playoffOverrides: next });
   };
-  const playoffExceptions = units.filter((u) => playoffDetail(playoffFor(u.key)) !== playoffDetail(playoff));
+  const format: FormatPlan = { ...DEFAULT_FORMAT, ...a.format };
+  const formatFor = (key: string): FormatPlan => a.formatOverrides?.[key] ?? a.formatOverrides?.[key.split("::")[0]] ?? format;
+  const setFormat = (patch: Partial<FormatPlan>) => setA({ ...a, format: { ...format, ...patch } });
+  const setFormatOverride = (key: string, patch: Partial<FormatPlan> | null) => {
+    const next = { ...(a.formatOverrides ?? {}) };
+    if (patch === null) delete next[key]; else next[key] = { ...formatFor(key), ...patch };
+    setA({ ...a, formatOverrides: next });
+  };
+  const formatDetail = (f: FormatPlan) => {
+    if (!f.kind) return "Not chosen";
+    const extra = f.kind === "pools" && f.pools ? ` · about ${f.pools} pool${f.pools === "1" ? "" : "s"}` : f.kind === "knockout" && f.drawRounds ? ` · ${f.drawRounds}` : f.kind === "swiss" && f.swissRounds ? ` · about ${f.swissRounds} rounds` : f.kind === "cross" ? ` · ${f.crossA && f.crossB ? `${unitBase(f.crossA)} v ${unitBase(f.crossB)}` : "groups to cross not chosen"}` : "";
+    return `${COMP_LABEL[f.kind]}${extra} (planned)`;
+  };
+  const formatExceptions = units.filter((u) => formatDetail(formatFor(u.key)) !== formatDetail(format));
+  const formatOk = (f: FormatPlan) => f.kind !== null;
+  /** Playoffs only apply where the planned format is not already a knockout. */
+  const playoffActive = (key: string) => playoffFor(key).choice === "playoffs" && formatFor(key).kind !== "knockout";
+  const playoffExceptions = units.filter((u) => playoffDetail(playoffFor(u.key), formatFor(u.key).kind) !== playoffDetail(playoff, format.kind));
   const partnerOf = (k: string): Partner | null => a.partner?.[k] ?? null;
   const fee: FeeCfg = { ...DEFAULT_FEE, ...(a.fee ?? {}) };
   const setFee = (p: Partial<FeeCfg>) => setA({ ...a, fee: { ...fee, ...p } });
@@ -210,7 +249,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
     dates: a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
   };
   const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
-  const steps: StepKey[] = ["Type", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
+  const steps: StepKey[] = ["Type", "Entries", "What", "Match", "Categories", "Subcategories", ...(units.length > 1 ? ["Overrides" as const] : []), "Format", ...(dblUnits.length ? ["Partners" as const] : []), "Players", "Eligibility",
     ...(showPick ? ["Pick" as const] : []), ...(selfEntry ? ["Invites" as const, "Messaging" as const] : []), "Fees", "Dates", "Courts", "Playoffs", "Summary"];
   const cur = steps[Math.min(step, steps.length - 1)];
   const go = (k: StepKey) => { const i = steps.indexOf(k); if (i >= 0) setStep(i); };
@@ -221,7 +260,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
-  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
@@ -239,13 +278,13 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   }, 0), 0);
   const tipReady = fieldCount > 0 && cats.length > 0 && daysOk && courtsOk;
   // Court-hour check is deliberately optimistic: pool matches, breaks, turnaround and parallel divisions are not planned here.
-  const plannedPlayoffMatches = units.reduce((n, u) => n + (playoffFor(u.key).choice === "playoffs" ? 2 ** playoffFor(u.key).rounds - 1 : 0), 0);
+  const plannedPlayoffMatches = units.reduce((n, u) => n + (playoffActive(u.key) ? 2 ** playoffFor(u.key).rounds - 1 : 0), 0);
   const playoffMinutes = units.reduce((n, u) => {
     const p = playoffFor(u.key); const s = scoringFor(u.key) ?? scoring;
-    if (p.choice !== "playoffs" || !s) return n;
+    if (!playoffActive(u.key) || !s) return n;
     return n + (2 ** p.rounds - 1) * (s.mode === "time_capped_points" ? Number(s.timeCapMinutes) : s.bestOf === 3 ? 35 : 55);
   }, 0);
-  const capacityEstimateValid = units.filter((u) => playoffFor(u.key).choice === "playoffs").every((u) => scoringOk(scoringFor(u.key) ?? scoring));
+  const capacityEstimateValid = units.filter((u) => playoffActive(u.key)).every((u) => scoringOk(scoringFor(u.key) ?? scoring));
   const provisional = !knownField || pickIds.some((id) => !units.some((u) => u.key === a.picks[id])) || selfEntry;
   const groupCount = (key: string) => Object.values(a.picks).filter((k) => k === key).length;
 
@@ -688,10 +727,42 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
             </>
           )}
 
+          {cur === "Format" && (
+            <>
+              <Q t="What format are you planning?" h="How players will compete — separate from how each match is scored." />
+              <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">This is your planned format. Once registrations close and final player numbers are known, SquashHub will revisit the format with you before pools, draws or fixtures are generated.</div>
+              <FormatFields value={format} onChange={setFormat} units={units} />
+              {units.length > 1 && <div className="space-y-3 border-t border-border pt-4">
+                <div className="text-sm font-semibold">Category and subcategory exceptions</div>
+                <p className="text-xs text-muted-foreground">Leave a group on the tournament format, or plan a different one.</p>
+                {cats.map((cat) => {
+                  const subs = units.filter((u) => u.key.startsWith(`${cat}::`));
+                  const catUnits = units.filter((u) => u.key === cat || u.key.startsWith(`${cat}::`));
+                  return <div key={cat} className="space-y-2 rounded-lg border border-border p-3">
+                    <div className="text-sm font-semibold">{cat}</div>
+                    {subs.length > 0 && <div className="flex flex-wrap items-center gap-2 text-xs"><span>Category default:</span>
+                      <Button type="button" size="sm" variant={!a.formatOverrides?.[cat] ? "default" : "outline"} onClick={() => setFormatOverride(cat, null)}>Inherit tournament</Button>
+                      <Button type="button" size="sm" variant={a.formatOverrides?.[cat] ? "default" : "outline"} onClick={() => setFormatOverride(cat, {})}>Change category</Button>
+                    </div>}
+                    {subs.length > 0 && a.formatOverrides?.[cat] && <FormatFields value={a.formatOverrides[cat]} onChange={(patch) => setFormatOverride(cat, patch)} units={units} compact />}
+                    {catUnits.map((u) => <div key={u.key} className="space-y-2 border-t border-border pt-2">
+                      <div className="text-xs font-medium">{subs.length ? u.base.split(" › ").slice(1).join(" › ") : u.base} · {formatDetail(formatFor(u.key))}</div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" variant={!a.formatOverrides?.[u.key] ? "default" : "outline"} onClick={() => setFormatOverride(u.key, null)}>Inherit {subs.length ? "category" : "tournament"}</Button>
+                        <Button type="button" size="sm" variant={a.formatOverrides?.[u.key] ? "default" : "outline"} onClick={() => setFormatOverride(u.key, {})}>Change this {subs.length ? "subcategory" : "category"}</Button>
+                      </div>
+                      {a.formatOverrides?.[u.key] && <FormatFields value={a.formatOverrides[u.key]} onChange={(patch) => setFormatOverride(u.key, patch)} units={units} compact />}
+                    </div>)}
+                  </div>;
+                })}
+              </div>}
+            </>
+          )}
+
           {cur === "Playoffs" && (
             <>
-              <Q t="Will there be playoffs?" h="Choose a plan for the tournament. Categories inherit it unless you choose an exception below. This is planning only — no draw or fixtures are made." />
-              <PlayoffFields value={playoff} onChange={setPlayoff} />
+              <Q t="Will there be playoffs?" h="Playoffs follow your planned format. Categories inherit the tournament plan unless you choose an exception below. Planning only — no draw or fixtures are made, and this is revisited at Confirm final format." />
+              <PlayoffFields value={playoff} onChange={setPlayoff} format={format.kind} />
               {units.length > 1 && <div className="space-y-3 border-t border-border pt-4">
                 <div className="text-sm font-semibold">Category and subcategory exceptions</div>
                 <p className="text-xs text-muted-foreground">Leave a group on the tournament plan, or give it its own playoff structure.</p>
@@ -704,14 +775,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                       <Button type="button" size="sm" variant={!a.playoffOverrides?.[cat] ? "default" : "outline"} onClick={() => setPlayoffOverride(cat, null)}>Inherit tournament</Button>
                       <Button type="button" size="sm" variant={a.playoffOverrides?.[cat] ? "default" : "outline"} onClick={() => setPlayoffOverride(cat, {})}>Change category</Button>
                     </div>}
-                    {subs.length > 0 && a.playoffOverrides?.[cat] && <PlayoffFields value={a.playoffOverrides[cat]} onChange={(patch) => setPlayoffOverride(cat, patch)} />}
+                    {subs.length > 0 && a.playoffOverrides?.[cat] && <PlayoffFields value={a.playoffOverrides[cat]} onChange={(patch) => setPlayoffOverride(cat, patch)} format={formatFor(cat).kind} />}
                     {catUnits.map((u) => <div key={u.key} className="space-y-2 border-t border-border pt-2">
-                      <div className="text-xs font-medium">{subs.length ? u.base.split(" › ").slice(1).join(" › ") : u.base} · {playoffDetail(playoffFor(u.key))}</div>
+                      <div className="text-xs font-medium">{subs.length ? u.base.split(" › ").slice(1).join(" › ") : u.base} · {playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</div>
                       <div className="flex flex-wrap gap-2">
                         <Button type="button" size="sm" variant={!a.playoffOverrides?.[u.key] ? "default" : "outline"} onClick={() => setPlayoffOverride(u.key, null)}>Inherit {subs.length ? "category" : "tournament"}</Button>
                         <Button type="button" size="sm" variant={a.playoffOverrides?.[u.key] ? "default" : "outline"} onClick={() => setPlayoffOverride(u.key, {})}>Change this {subs.length ? "subcategory" : "category"}</Button>
                       </div>
-                      {a.playoffOverrides?.[u.key] && <PlayoffFields value={a.playoffOverrides[u.key]} onChange={(patch) => setPlayoffOverride(u.key, patch)} />}
+                      {a.playoffOverrides?.[u.key] && <PlayoffFields value={a.playoffOverrides[u.key]} onChange={(patch) => setPlayoffOverride(u.key, patch)} format={formatFor(u.key).kind} />}
                     </div>)}
                   </div>;
                 })}
@@ -719,14 +790,14 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <div className="rounded-lg border border-accent bg-accent/30 p-3 text-sm">
                 <div className="flex items-center gap-1.5 font-semibold"><Lightbulb className="h-4 w-4 text-primary" />SquashHub Tip <span className="text-xs font-normal text-muted-foreground">(advice only{provisional ? " · provisional" : ""})</span></div>
                 <p className="mt-1">{knownField ? `${pickIds.length} selected players${provisional ? " (some are not placed yet)" : ""}` : `${fieldCount || "No"} estimated entries${pickIds.length ? `, including ${pickIds.length} picked so far` : ""}`} across {units.length} group{units.length === 1 ? "" : "s"}.</p>
-                {units.filter((u) => playoffFor(u.key).choice === "playoffs").map((u) => {
+                {units.filter((u) => playoffActive(u.key)).map((u) => {
                   const p = playoffFor(u.key); const picked = groupCount(u.key);
                   const count = knownField && !provisional ? picked : units.length === 1 ? fieldCount : null;
                   const needed = 2 ** p.rounds;
                   const suggested = count !== null && u.disc !== "doubles" ? count >= 8 ? "Quarterfinals + Semifinals + Final" : count >= 4 ? "Semifinals + Final" : count >= 2 ? "Final only" : "No playoff bracket yet" : null;
                   return <p key={u.key} className="mt-1 text-xs">{u.base}: {knownField && !provisional ? `${picked} selected ${u.disc === "doubles" ? "players (pair count not yet confirmed)" : "players"}` : `${picked} selected players${count ? `; about ${count} estimated entries` : `; group total unknown (overall estimate: ${fieldCount})`} (provisional)`}; {playoffText(p)} needs {needed} qualifying {u.disc === "doubles" ? "pairs" : "players"}{count !== null && u.disc !== "doubles" && count < needed ? " — fewer currently indicated, so a smaller bracket may suit better" : ""}.{suggested && ` A simple ${knownField && !provisional ? "field-size suggestion" : "provisional suggestion"} is ${suggested}.`}</p>;
                 })}
-                {plannedPlayoffMatches > 0 && <p className="mt-2">Those stages would add at least {plannedPlayoffMatches} match{plannedPlayoffMatches === 1 ? "" : "es"}. {capacityEstimateValid && courtsOk && daysOk ? `At an illustrative ${units.some((u) => (scoringFor(u.key) ?? scoring)?.mode === "standard" && playoffFor(u.key).choice === "playoffs") ? "35 min (best of 3) / 55 min (best of 5) for standard matches, or the chosen Bells cap" : "chosen Bells cap"}, the playoff matches alone use about ${Math.round(playoffMinutes / 60 * 10) / 10} of ${Math.round(courtHours * 10) / 10} available court-hours across ${a.days.length} day${a.days.length === 1 ? "" : "s"}. ${playoffMinutes <= courtHours * 60 ? "They appear to fit by total court time, subject to the full schedule." : "They exceed the available court time on this rough estimate."}` : "Complete the match duration and court times for a rough fit check."}</p>}
+                {plannedPlayoffMatches > 0 && <p className="mt-2">Those stages would add at least {plannedPlayoffMatches} match{plannedPlayoffMatches === 1 ? "" : "es"}. {capacityEstimateValid && courtsOk && daysOk ? `At an illustrative ${units.some((u) => (scoringFor(u.key) ?? scoring)?.mode === "standard" && playoffActive(u.key)) ? "35 min (best of 3) / 55 min (best of 5) for standard matches, or the chosen Bells cap" : "chosen Bells cap"}, the playoff matches alone use about ${Math.round(playoffMinutes / 60 * 10) / 10} of ${Math.round(courtHours * 10) / 10} available court-hours across ${a.days.length} day${a.days.length === 1 ? "" : "s"}. ${playoffMinutes <= courtHours * 60 ? "They appear to fit by total court time, subject to the full schedule." : "They exceed the available court time on this rough estimate."}` : "Complete the match duration and court times for a rough fit check."}</p>}
                 <p className="mt-2 text-xs text-muted-foreground">Pool games, rest, changeovers, actual match lengths, fixed court slots and simultaneous groups are not included. Dates, courts or entry counts may change; review this advice again when actual entries are known. Your choice is never blocked by this tip.</p>
               </div>
             </>
@@ -741,9 +812,16 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                 <div>{scoring ? scoringText(scoring) : "Not chosen"}{units.length > 0 && <span className="text-muted-foreground"> · {validOverrides.length ? "tournament default" : "all groups"}</span>}</div>
                 {validOverrides.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</span></li>)}</ul>}
               </SummaryRow>
+              <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Planned competition format" onEdit={() => go("Format")}>
+                <div>{formatDetail(format)}{units.length > 0 && <span className="text-muted-foreground"> · {formatExceptions.length ? "tournament default" : "all groups"}</span>}</div>
+                {formatExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{formatDetail(formatFor(u.key))}</span></li>)}</ul>}
+              </SummaryRow>
+              <SummaryRow icon={<ShieldCheck className="h-4 w-4" />} label="Confirm final format (future checkpoint)" onEdit={() => go("Format")}>
+                <span className="text-muted-foreground">Required after registrations close: SquashHub will review actual entrants per group, courts, dates and match length, may suggest alternatives, and you confirm the final format before pools, draws, Swiss rounds or fixtures are made. Not active in this beta.</span>
+              </SummaryRow>
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Playoffs" onEdit={() => go("Playoffs")}>
-                <div>{playoffDetail(playoff)}{units.length > 0 && <span className="text-muted-foreground"> · {playoffExceptions.length ? "tournament default" : "all groups"}</span>}</div>
-                {playoffExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{playoffDetail(playoffFor(u.key))}</span></li>)}</ul>}
+                <div>{playoffDetail(playoff, format.kind)}{units.length > 0 && <span className="text-muted-foreground"> · {playoffExceptions.length ? "tournament default" : "all groups"}</span>}</div>
+                {playoffExceptions.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</span></li>)}</ul>}
                 {provisional && <span className="text-xs text-muted-foreground">Recommendations provisional until entries are known.</span>}
               </SummaryRow>
               <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
@@ -813,8 +891,12 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {scoring && <TreeNode icon={<Trophy className="h-4 w-4" />} title={scoringText(scoring)} onClick={() => go("Match")}>
                 {validOverrides.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Overrides")}>{u.base}: {scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</Button></TreeLeaf>)}
               </TreeNode>}
-              <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Playoffs: ${playoffDetail(playoff)}`} onClick={() => go("Playoffs")}>
-                {playoffExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Playoffs")}>{u.base}: {playoffDetail(playoffFor(u.key))}</Button></TreeLeaf>)}
+              {(format.kind || formatExceptions.length > 0) && <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Format: ${formatDetail(format)}`} onClick={() => go("Format")}>
+                {formatExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Format")}>{u.base}: {formatDetail(formatFor(u.key))}</Button></TreeLeaf>)}
+                <TreeLeaf><span className="text-muted-foreground">Confirm final format after entries close</span></TreeLeaf>
+              </TreeNode>}
+              <TreeNode icon={<Trophy className="h-4 w-4" />} title={`Playoffs: ${playoffDetail(playoff, format.kind)}`} onClick={() => go("Playoffs")}>
+                {playoffExceptions.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Playoffs")}>{u.base}: {playoffDetail(playoffFor(u.key), formatFor(u.key).kind)}</Button></TreeLeaf>)}
               </TreeNode>
               {cats.length > 0 && (
                 <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => go("Categories")}>
@@ -875,16 +957,46 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 function Q({ t, h }: { t: string; h: string }) {
   return <div><h3 className="text-base font-semibold">{t}</h3><p className="text-sm text-muted-foreground">{h}</p></div>;
 }
-function PlayoffFields({ value, onChange }: { value: PlayoffPlan; onChange: (patch: Partial<PlayoffPlan>) => void }) {
+function PlayoffFields({ value, onChange, format }: { value: PlayoffPlan; onChange: (patch: Partial<PlayoffPlan>) => void; format: CompKind | null }) {
+  if (format === "knockout") return <p className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">A knockout already has its own rounds (e.g. quarterfinals, semifinals, final), so no separate playoffs are planned here.</p>;
+  const sel = "mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
+  const noneLabel = format === "swiss" ? "Finish on Swiss standings" : format === "cross" ? "Finish on standings" : "No playoffs";
+  const yesLabel = format === "swiss" ? "Top players into a knockout" : "Playoffs";
+  const poolish = format === "pools" || format === "cross";
   return <div className="space-y-3">
+    {(!format || format === "later") && <p className="text-xs text-muted-foreground">Your competition format isn't decided yet, so any playoff plan stays provisional.</p>}
     <div className="flex flex-wrap gap-2" role="group" aria-label="Playoff choice">
-      {(["none", "playoffs", "later"] as const).map((choice) => <Button key={choice} type="button" size="sm" variant={value.choice === choice ? "default" : "outline"} aria-pressed={value.choice === choice} onClick={() => onChange({ choice })}>{choice === "none" ? "No playoffs" : choice === "later" ? "Decide later" : "Playoffs"}</Button>)}
+      {(["none", "playoffs", "later"] as const).map((choice) => <Button key={choice} type="button" size="sm" variant={value.choice === choice ? "default" : "outline"} aria-pressed={value.choice === choice} onClick={() => onChange({ choice })}>{choice === "none" ? noneLabel : choice === "later" ? "Decide later" : yesLabel}</Button>)}
     </div>
     {value.choice === "playoffs" && <div className="space-y-3 rounded-lg border border-border p-3">
-      <div><Label>Stages</Label><div className="mt-2 flex flex-wrap gap-2">{([1, 2, 3] as const).map((rounds) => <Button key={rounds} type="button" size="sm" variant={value.rounds === rounds ? "default" : "outline"} aria-pressed={value.rounds === rounds} onClick={() => onChange({ rounds })}>{playoffText({ ...value, rounds })}</Button>)}</div></div>
-      <div><Label>Who qualifies?</Label><select aria-label="Who qualifies for playoffs" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.qualification} onChange={(e) => onChange({ qualification: e.target.value as PlayoffPlan["qualification"] })}><option value="later">Decide qualification later</option><option value="top_pools">Top players/pairs from pools</option><option value="seeded">Highest-ranked entrants</option></select></div>
-      <div><Label>How are qualifiers paired?</Label><select aria-label="How playoff qualifiers are paired" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.pairing} onChange={(e) => onChange({ pairing: e.target.value as PlayoffPlan["pairing"] })}><option value="later">Decide pairing later</option><option value="cross_pools">Cross-pool (A1 v B2, B1 v A2)</option><option value="seeded">Seeded (highest v lowest)</option></select></div>
-      <p className="text-xs text-muted-foreground">Pool and qualifier details are ideas for later setup, not a draw. Cross-pool pairings need suitable pools and enough qualifiers; no bracket is generated here.</p>
+      {poolish && <div><Label>Type of playoffs</Label><select aria-label="Type of playoffs" className={sel} value={value.style ?? "later"} onChange={(e) => onChange({ style: e.target.value as PlayoffPlan["style"] })}><option value="later">Decide later</option><option value="championship">Championship playoffs (find one winner)</option><option value="placement">Placement play (rank every position)</option></select></div>}
+      {!(poolish && value.style === "placement") && <div><Label>Stages</Label><div className="mt-2 flex flex-wrap gap-2">{([1, 2, 3] as const).map((rounds) => <Button key={rounds} type="button" size="sm" variant={value.rounds === rounds ? "default" : "outline"} aria-pressed={value.rounds === rounds} onClick={() => onChange({ rounds })}>{playoffText({ ...value, rounds })}</Button>)}</div></div>}
+      {poolish && value.style === "placement" && <p className="text-xs text-muted-foreground">e.g. A1 v B1 for 1st/2nd, A2 v B2 for 3rd/4th. Exact placement games are set once the final format is confirmed.</p>}
+      {!(poolish && value.style === "placement") && <>
+        <div><Label>Who qualifies?</Label><select aria-label="Who qualifies for playoffs" className={sel} value={value.qualification} onChange={(e) => onChange({ qualification: e.target.value as PlayoffPlan["qualification"] })}><option value="later">Decide qualification later</option><option value="top_pools">{format === "swiss" ? "Top players/pairs on standings" : "Top players/pairs from pools"}</option><option value="seeded">Highest-ranked entrants</option></select></div>
+        <div><Label>How are qualifiers paired?</Label><select aria-label="How playoff qualifiers are paired" className={sel} value={value.pairing} onChange={(e) => onChange({ pairing: e.target.value as PlayoffPlan["pairing"] })}><option value="later">Decide pairing later</option>{poolish && <option value="cross_pools">Crossover (A1 v B2, B1 v A2)</option>}<option value="seeded">Seeded (highest v lowest)</option></select></div>
+      </>}
+      <p className="text-xs text-muted-foreground">Ideas for later setup, not a draw. Revisited at Confirm final format; no bracket is generated here.</p>
+    </div>}
+  </div>;
+}
+function FormatFields({ value, onChange, units, compact = false }: { value: FormatPlan; onChange: (patch: Partial<FormatPlan>) => void; units: { key: string; base: string }[]; compact?: boolean }) {
+  const sel = "mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
+  return <div className="space-y-3">
+    <div className={cn("grid gap-2", compact ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
+      {(Object.keys(COMP_LABEL) as CompKind[]).map((k) => compact
+        ? <Button key={k} type="button" size="sm" variant={value.kind === k ? "default" : "outline"} aria-pressed={value.kind === k} onClick={() => onChange({ kind: k })}>{COMP_LABEL[k]}</Button>
+        : <Choice key={k} active={value.kind === k} onClick={() => onChange({ kind: k })} title={COMP_LABEL[k]} desc={COMP_DESC[k]} />)}
+    </div>
+    {value.kind === "pools" && <div className="max-w-[260px] space-y-1"><Label>Roughly how many pools? (optional)</Label><Input type="number" min="1" aria-label="Anticipated pools" value={value.pools} onChange={(e) => onChange({ pools: e.target.value })} placeholder="e.g. 4" /><p className="text-xs text-muted-foreground">Final pool sizes are set after entries close. Later qualification is planned in Playoffs.</p></div>}
+    {value.kind === "knockout" && <div className="max-w-[320px]"><Label>Expected draw (optional)</Label><select aria-label="Expected draw" className={sel} value={value.drawRounds} onChange={(e) => onChange({ drawRounds: e.target.value })}><option value="">Decide when entries are known</option><option value="Draw of 4">Draw of 4</option><option value="Draw of 8">Draw of 8</option><option value="Draw of 16">Draw of 16</option><option value="Draw of 32">Draw of 32</option></select><p className="mt-1 text-xs text-muted-foreground">The final draw size depends on actual entries.</p></div>}
+    {value.kind === "swiss" && <div className="max-w-[260px] space-y-1"><Label>Roughly how many rounds? (optional)</Label><Input type="number" min="1" aria-label="Anticipated Swiss rounds" value={value.swissRounds} onChange={(e) => onChange({ swissRounds: e.target.value })} placeholder="e.g. 5" /><p className="text-xs text-muted-foreground">Each round pairs players on similar results; nobody is eliminated.</p></div>}
+    {value.kind === "cross" && <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">Everyone in the first group plays everyone in the second — not within their own group.</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div><Label>Group A</Label><select aria-label="First group to cross" className={sel} value={value.crossA} onChange={(e) => onChange({ crossA: e.target.value })}><option value="">Choose later</option>{units.map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}</select></div>
+        <div><Label>Group B</Label><select aria-label="Second group to cross" className={sel} value={value.crossB} onChange={(e) => onChange({ crossB: e.target.value })}><option value="">Choose later</option>{units.filter((u) => u.key !== value.crossA).map((u) => <option key={u.key} value={u.key}>{u.base}</option>)}</select></div>
+      </div>
     </div>}
   </div>;
 }

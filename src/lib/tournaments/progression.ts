@@ -19,8 +19,9 @@ import { IntegrityError, contractIssues, isDecided, progressionOf, sourcePoolCou
 import { mappingIssues } from "./mapping";
 import { transitionIssues } from "./transition";
 import { specDateIssues } from "./date-window";
-import { bufferedDb, confirmStructuredPlayoffs, loadEntrants, startNextStructuredStage, type Db } from "./structured-persist";
-import { divisionGroup, type SpecDivision, type TournamentSpec } from "./engine-service";
+import { bufferedDb, confirmStructuredPlayoffs, loadEntrants, rankSourcePools, resolveTieBreaks, startNextStructuredStage, type Db, type SourcePool } from "./structured-persist";
+import type { TieBreakCriterion } from "./tie-breaks";
+import { divisionGroup, previewTransition, type SpecDivision, type TournamentSpec } from "./engine-service";
 
 export type StageState = "waiting" | "ready" | "blocked" | "active" | "completed" | "deferred" | "needs_setup";
 
@@ -283,4 +284,40 @@ export async function decidePositionOrder(db: Db, tid: string, divisionKey: stri
     const positionOrders = { ...(spec.positionOrders ?? {}), [key]: { ...(spec.positionOrders?.[key] ?? {}), [poolIndex]: order } };
     await tx.update("tournaments", { id: tid }, { builder_spec: { ...spec, positionOrders } });
   });
+}
+
+/** Save the tournament's tie-break order on the live spec (affects only stages not yet created). */
+export async function saveTieBreakRules(db: Db, tid: string, tieBreaks: TieBreakCriterion[], exec: Exec = (fn) => fn(db)) {
+  return exec(async (tx) => {
+    const [t] = await tx.select("tournaments", { id: tid });
+    if (t?.builder_architecture !== "structured" || !t.builder_spec) return;
+    const spec = t.builder_spec as TournamentSpec;
+    if (JSON.stringify(spec.tieBreaks ?? null) === JSON.stringify(tieBreaks)) return;
+    await tx.update("tournaments", { id: tid }, { builder_spec: { ...spec, tieBreaks } });
+  });
+}
+
+export interface StageTies { sourceStageKey: string; sourceName: string; nextName: string; criteria: TieBreakCriterion[]; pools: SourcePool[] }
+
+/**
+ * The ties that genuinely block `stageKey`: only groups still level after every automatic tie-break AND
+ * touching a position that stage reads. Used by the manual "Decide tied order" fallback.
+ */
+export async function stageTies(db: Db, tid: string, divisionKey: string, stageKey: string): Promise<StageTies | null> {
+  const [t] = await db.select("tournaments", { id: tid });
+  const spec = await loadEntrants(db, tid, t.builder_spec as TournamentSpec);
+  const d = spec.divisions.find((x) => x.divisionId === divisionKey);
+  const st = d?.stages.find((s) => s.id === stageKey);
+  if (!d || !st) return null;
+  const src = sourceOf(d, st);
+  if (!src) return null;
+  let used: Set<string> | undefined;
+  if (st.kind === "mapped" && st.mapping && st.mapping.source === "stage_standings") used = new Set(st.mapping.units.flatMap((u) => u.slots.map((s) => `${s.pool}:${s.position}`)));
+  else {
+    try { const cut = Math.max(0, ...previewTransition(d, stageKey).transition.positions); if (cut > 0) used = new Set(Array.from({ length: 64 }, (_, pi) => Array.from({ length: cut }, (_, k) => `${pi}:${k + 1}`)).flat()); } catch { /* every position matters */ }
+  }
+  const matches = (await db.select("club_champs_matches", { champ_id: tid })).filter((m) => m.group_number === divisionGroup(spec, d));
+  const criteria = resolveTieBreaks(spec, d);
+  const pools = rankSourcePools(d, src, matches, spec.positionOrders?.[`${divisionKey}/${src.id}`], used, criteria).filter((p) => p.material.length);
+  return { sourceStageKey: src.id, sourceName: src.name, nextName: st.name, criteria, pools };
 }

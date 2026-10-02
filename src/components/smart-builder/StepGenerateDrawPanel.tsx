@@ -11,7 +11,7 @@ import { commitStructured, supabaseDb } from "@/lib/tournaments/structured-db";
 import { distributeIntoPools, moveToPool, normalisePoolAllocation, type PoolAllocationMode } from "@/lib/tournaments/pools";
 import { atomically, generateStructuredTournament } from "@/lib/tournaments/structured-persist";
 import {
-  divisionIssues, finalDrawSpec, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
+  divisionIssues, finalDrawSpec, unitParentOf, poolsFor, poolWarnings, unitId, orderUnits, previewDraw, proposeFormat, rankingIssue, readStepPlan, unitKeyOf, unitsFor,
   type DivFormat, type DivSchedule, type DrawDivision, type DrawKind, type DrawSeeding, type RegLite,
   crossSets,
 } from "@/lib/smart-builder/step-draw";
@@ -52,7 +52,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     // Reconcile organiser-entered pairs first so the draw only ever sees current active entries.
     await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
     const [{ data: t }, { data: regs }, { data: ms }] = await Promise.all([
-      fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types, pool_allocation").eq("id", tournamentId).maybeSingle(),
+      fromExt("tournaments").select("name, start_date, end_date, num_groups, group_labels, league_match_types, pool_allocation, beta_lifecycle").eq("id", tournamentId).maybeSingle(),
       fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, division_choices").eq("champ_id", tournamentId),
       fromExt("club_champs_matches").select("id, status, winner_member_id").eq("champ_id", tournamentId),
     ]);
@@ -62,7 +62,8 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
     setExisting({ games: games.length, played: games.filter((m) => m.winner_member_id || ["completed", "confirmed", "in_progress", "live", "walkover", "forfeit"].includes(String(m.status ?? "").toLowerCase())).length });
     setMeta({ name: tt?.name ?? "Tournament", start: tt?.start_date ?? null, end: tt?.end_date ?? null });
     const n = Math.max(1, Number(tt?.num_groups ?? 1));
-    const plan = readStepPlan(clubId, tournamentId);
+    // This device's answers when present, else the setup saved on the tournament (works on any device).
+    const plan = readStepPlan(clubId, tournamentId) ?? ((tt as any)?.beta_lifecycle?.format_plan ?? null);
     const errs: string[] = [];
     const list: DrawDivision[] = [];
     const units: DrawDivision["units"][] = [];
@@ -80,7 +81,13 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
         const gs = p.crossKeys.map(groupOfKey);
         if (gs.some((x) => x == null)) notes.push("Some cross-league groups in your plan no longer match a category here — check the groups below.");
         p.format.crossGroups = [...new Set(gs.filter((x): x is number => x != null))].sort((a, b) => a - b);
-        if (p.crossPairKeys) {
+        if (p.crossByParent) {
+          // "Between subcategories": only subcategories under the SAME parent category meet — never across parents.
+          const me = g, parent = unitParentOf(label);
+          const vs = labels.map((l, k) => k + 1).filter((k) => k !== me && unitParentOf(labels[k - 1]) === parent);
+          if (!vs.length) notes.push(`"Between subcategories" is set, but ${parent} has no other subcategory here.`);
+          p.format.crossVs = vs; p.format.crossGroups = vs.length ? [me, ...vs] : [];
+        } else if (p.crossPairKeys) {
           // "Choose which groups play each other": only the organiser's pairings, nothing inferred.
           const me = g;
           const vs = p.crossPairKeys.map(([x, y]) => [groupOfKey(x), groupOfKey(y)]).filter(([x, y]) => x === me || y === me).map(([x, y]) => (x === me ? y : x));
@@ -147,6 +154,27 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const cur = d.format.crossVs ?? d.format.crossGroups.filter((g) => g !== d.group);
       const vs = (on ? [...new Set([...cur, peer])] : cur.filter((g) => g !== peer)).sort((a, b) => a - b);
       return { ...d, format: { ...d.format, kind: d.format.kind ?? "cross", crossVs: vs, crossGroups: vs.length ? [d.group, ...vs].sort((a, b) => a - b) : [] } };
+    }));
+  };
+  /** Other subcategories under the same parent category as this division. */
+  const siblings = (d: DrawDivision) => divs.filter((o) => o.group !== d.group && unitParentOf(o.label) === unitParentOf(d.label)).map((o) => o.group);
+  const rrScope = (d: DrawDivision): "within" | "between" | "custom" | null => {
+    if (d.format.kind === "round_robin") return "within";
+    if (d.format.kind !== "cross") return null;
+    const sib = siblings(d), vs = d.format.crossVs;
+    return vs && sib.length && vs.length === sib.length && vs.every((g) => sib.includes(g)) ? "between" : "custom";
+  };
+  /** Within = own round robin; Between = siblings of the same parent (set on every sibling); Custom = explicit pairings. */
+  const setRrScope = (i: number, scope: "within" | "between" | "custom") => {
+    const d = divs[i];
+    if (scope === "within") { setFmt(i, { kind: "round_robin", crossVs: null, crossGroups: [] }); return; }
+    if (scope === "custom") { setFmt(i, { kind: "cross", crossVs: d.format.crossVs ?? [], crossGroups: d.format.crossVs?.length ? d.format.crossGroups : [] }); return; }
+    const fam = [d.group, ...siblings(d)];
+    setConfirmed(false);
+    setDivs((ds) => ds.map((x) => {
+      if (!fam.includes(x.group)) return x;
+      const vs = fam.filter((g) => g !== x.group);
+      return { ...x, format: { ...x.format, kind: "cross", crossVs: vs, crossGroups: vs.length ? [...fam].sort((a, b) => a - b) : [] } };
     }));
   };
   const crossPairs = useMemo(() => {
@@ -317,7 +345,18 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
               )}
               {f.schedule.rule === "fixed" && <label className="space-y-0.5"><span className="text-muted-foreground">Round dates (comma-separated)</span><Input className="h-7" placeholder="2026-10-10, 2026-10-17" value={f.schedule.dates.join(", ")} onChange={(e) => setFmt(i, { schedule: { ...f.schedule, dates: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) } })} /></label>}
             </div>
-            {f.kind === "cross" && (
+            {(f.kind === "cross" || f.kind === "round_robin") && (
+              <div className="space-y-1" role="radiogroup" aria-label={`${d.label} round robin matchups`}>
+                <span className="text-muted-foreground">Round robin — who plays whom ({unitParentOf(d.label)}):</span>
+                <div className="flex flex-wrap gap-1">
+                  <Button type="button" size="sm" variant={f.kind === "round_robin" ? "default" : "outline"} aria-pressed={f.kind === "round_robin"} onClick={() => setRrScope(i, "within")}>Within subcategories</Button>
+                  <Button type="button" size="sm" variant={rrScope(d) === "between" ? "default" : "outline"} aria-pressed={rrScope(d) === "between"} onClick={() => setRrScope(i, "between")}>Between subcategories</Button>
+                  <Button type="button" size="sm" variant={rrScope(d) === "custom" ? "default" : "outline"} aria-pressed={rrScope(d) === "custom"} onClick={() => setRrScope(i, "custom")}>Custom matchups</Button>
+                </div>
+                <span className="text-muted-foreground">{f.kind === "round_robin" ? `${d.label} plays only within itself.` : rrScope(d) === "between" ? `${d.label} plays only the other subcategories of ${unitParentOf(d.label)}: ${siblings(d).map((g) => seeded.find((o) => o.group === g)?.label).join(", ") || "none"}.` : ""}</span>
+              </div>
+            )}
+            {f.kind === "cross" && rrScope(d) !== "between" && (
               <div className="space-y-1">
                 <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Cross-league matchups">
                   <Button type="button" size="sm" variant={!f.crossVs ? "default" : "outline"} aria-pressed={!f.crossVs} onClick={() => setCrossMode(i, "all")}>All selected groups play each other</Button>

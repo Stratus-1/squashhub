@@ -193,6 +193,8 @@ export type BetaLifecycle = {
   wa_include?: boolean;
   /** Fees & Payment "A player may pay for both partners" — read server-side by step_pair_payment_context. */
   partner_pay?: boolean | null;
+  /** Draw-relevant setup answers (format incl. within/between/custom matchups, seeding, stages, play-offs) so Generate draw works on any device. */
+  format_plan?: Record<string, unknown> | null;
   inform?: { method: "sent" | "manual"; campaign_id?: string | null; at: string; by?: string | null; note?: string; resend_campaign_ids?: string[] };
 };
 
@@ -202,7 +204,10 @@ export async function loadLifecycle(tournamentId: string): Promise<BetaLifecycle
   return ((data as any)?.beta_lifecycle as BetaLifecycle) ?? null;
 }
 export async function saveLifecycle(tournamentId: string, l: BetaLifecycle) {
-  const { error } = await fromExt("tournaments").update({ beta_lifecycle: l }).eq("id", tournamentId);
+  // Never drop the saved setup (format_plan) when a caller holds an older lifecycle copy without it.
+  let next = l;
+  if (l.format_plan === undefined) { const cur = await loadLifecycle(tournamentId).catch(() => null); if (cur?.format_plan) next = { ...l, format_plan: cur.format_plan }; }
+  const { error } = await fromExt("tournaments").update({ beta_lifecycle: next }).eq("id", tournamentId);
   if (error) throw error;
 }
 

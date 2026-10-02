@@ -75,3 +75,31 @@ describe("Step-by-Step: Club Champs invitations reuse the shared step", () => {
     expect(inv).toBeTruthy();
   });
 });
+
+describe("Step-by-Step: Club Champs admin-selected + admin-paired keeps an entry notification", () => {
+  beforeEach(() => localStorage.clear());
+  it("shows Select & pair players then Entry notification (no Invitations), with usable pairing", async () => {
+    localStorage.setItem("sh.stepbuilder.c1", JSON.stringify({
+      kind: "period", name: "Champs pair", scope: "club", periodStart: "2026-11-01", playType: "doubles", scoring: SCORING,
+      categories: ["Open Doubles"], disc: { "Open Doubles": "doubles" }, unitEntries: { "Open Doubles": "8" }, format: { kind: "knockout" },
+      seeding: "random", partner: { "Open Doubles": "admin" }, source: "select", picks: {}, elig: {},
+    }));
+    render(<StepByStepBuilder clubId="c1" clubName="Riverside" />);
+    const pick = await screen.findByRole("button", { name: /Select & pair players/i });
+    const labels = screen.getAllByRole("button").map((b) => b.textContent ?? "");
+    expect(labels.some((t) => /Invitations/.test(t))).toBe(false);
+    const iPick = labels.findIndex((t) => /Select & pair players/.test(t)), iNote = labels.findIndex((t) => /Entry notification/.test(t)), iFees = labels.findIndex((t) => /Fees & Payment/.test(t));
+    expect(iNote).toBeGreaterThan(iPick); expect(iFees).toBeGreaterThan(iNote);
+    fireEvent.click(pick);
+    await screen.findByText("Anna");
+    for (const n of ["Anna", "Ben"]) fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${n}`) }));
+    const box = screen.getByTestId("pairing-Open Doubles");
+    fireEvent.click(within(box).getByRole("button", { name: /Anna/, pressed: false }));
+    fireEvent.click(within(box).getByRole("button", { name: /Ben/, pressed: false }));
+    fireEvent.click(within(box).getByRole("button", { name: /Create pair: Anna \+ Ben/ }));
+    expect(within(box).getByText(/Pair 1:/)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Entry notification/ })[0]);
+    expect(await screen.findByText(/How should players hear they've been entered/)).toBeInTheDocument();
+    expect(screen.getByText(/Your doubles partner: Ben/)).toBeInTheDocument();
+  });
+});

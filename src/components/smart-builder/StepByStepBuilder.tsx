@@ -146,15 +146,15 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   };
   const dblUnits = units.filter((u) => u.disc === "doubles");
   const scoring = a.scoring ? { ...DEFAULT_SCORING, ...a.scoring } : null;
-  const scoringFor = (key: string) => a.scoringOverrides?.[key] ?? scoring;
+  const scoringFor = (key: string) => a.scoringOverrides?.[key] ?? a.scoringOverrides?.[key.split("::")[0]] ?? scoring;
   const scoringOk = (s: MatchScoring | null) => !!s && (s.mode === "standard" || (Number.isFinite(Number(s.timeCapMinutes)) && Number(s.timeCapMinutes) > 0));
   const setScoring = (patch: Partial<MatchScoring>) => setA({ ...a, scoring: { ...(scoring ?? DEFAULT_SCORING), ...patch } });
   const setScoringOverride = (key: string, patch: Partial<MatchScoring> | null) => {
     const next = { ...(a.scoringOverrides ?? {}) };
-    if (patch === null) delete next[key]; else next[key] = { ...(next[key] ?? scoring ?? DEFAULT_SCORING), ...patch };
+    if (patch === null) delete next[key]; else next[key] = { ...(next[key] ?? scoringFor(key) ?? DEFAULT_SCORING), ...patch };
     setA({ ...a, scoringOverrides: next });
   };
-  const validOverrides = units.filter((u) => a.scoringOverrides?.[u.key]);
+  const validOverrides = units.filter((u) => scoring && scoringFor(u.key) && scoringText(scoringFor(u.key) ?? scoring) !== scoringText(scoring));
   const partnerOf = (k: string): Partner | null => a.partner?.[k] ?? null;
   const fee: FeeCfg = { ...DEFAULT_FEE, ...(a.fee ?? {}) };
   const setFee = (p: Partial<FeeCfg>) => setA({ ...a, fee: { ...fee, ...p } });
@@ -202,7 +202,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
   const pickOk = a.source === "select" ? pickIds.length > 0 : true;
-  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: validOverrides.every((u) => scoringOk(scoringFor(u.key))), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
+  const okFor: Record<StepKey, boolean> = { Type: a.kind === "once_off", Entries: entriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
     Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msg.later || a.invite === "later" || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "")), Dates: daysOk, Courts: courtsOk, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
@@ -377,16 +377,16 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <Q t="Does any group need a different match format?" h="The tournament match format already applies to every group. Only change the groups that need an exception." />
               <p className="text-sm">For all groups: <span className="font-medium">{scoring ? scoringText(scoring) : "Not chosen"}</span></p>
               <div className="space-y-3">
-                {units.map((u) => {
-                  const override = a.scoringOverrides?.[u.key];
-                  return <div key={u.key} className="space-y-3 border-t pt-3">
+                {cats.flatMap((cat) => [cat, ...((a.subcats[cat] ?? []).map((s) => s.trim()).filter(Boolean).map((s) => `${cat}::${s}`))]).map((key) => {
+                  const override = a.scoringOverrides?.[key];
+                  return <div key={key} className="space-y-3 border-t pt-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-sm font-medium">{u.base}</div>
-                      <Button type="button" size="sm" variant="outline" onClick={() => setScoringOverride(u.key, override ? null : {})}>
+                      <div className="text-sm font-medium">{key.replace("::", " › ")}</div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setScoringOverride(key, override ? null : {})}>
                         {override ? "Use tournament format" : "Change this group's format"}
                       </Button>
                     </div>
-                    {override ? <ScoringFields value={override} onChange={(patch) => setScoringOverride(u.key, patch)} showMode /> : <p className="text-xs text-muted-foreground">Uses {scoring ? scoringText(scoring) : "tournament format"}</p>}
+                    {override ? <ScoringFields value={override} onChange={(patch) => setScoringOverride(key, patch)} showMode /> : <p className="text-xs text-muted-foreground">Uses {scoringFor(key) ? scoringText(scoringFor(key) as MatchScoring) : "tournament format"}</p>}
                   </div>;
                 })}
               </div>
@@ -666,7 +666,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="What will be played" onEdit={() => go("What")}>{a.playType ? PLAY_LABEL[a.playType] : "Not chosen"}</SummaryRow>
               <SummaryRow icon={<Trophy className="h-4 w-4" />} label="Match format" onEdit={() => go("Match")}>
                 <div>{scoring ? scoringText(scoring) : "Not chosen"}{units.length > 0 && <span className="text-muted-foreground"> · {validOverrides.length ? "tournament default" : "all groups"}</span>}</div>
-                {validOverrides.length > 0 && <ul className="space-y-0.5">{validOverrides.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</span></li>)}</ul>}
+                {validOverrides.length > 0 && <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.base}: <span className="text-muted-foreground">{scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</span></li>)}</ul>}
               </SummaryRow>
               <SummaryRow icon={<Tags className="h-4 w-4" />} label="Categories" onEdit={() => go("Categories")}>
                 <ul className="space-y-0.5">{cats.map((c, i) => {
@@ -733,7 +733,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
               {entriesOk && <TreeNode icon={<Users className="h-4 w-4" />} title={`~${a.entries} entries`} onClick={() => go("Entries")} />}
               {playOk && <TreeNode icon={<Trophy className="h-4 w-4" />} title={PLAY_LABEL[a.playType!]} onClick={() => go("What")} />}
               {scoring && <TreeNode icon={<Trophy className="h-4 w-4" />} title={scoringText(scoring)} onClick={() => go("Match")}>
-                {validOverrides.length > 0 && validOverrides.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Overrides")}>{u.base}: {scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</Button></TreeLeaf>)}
+                {validOverrides.length > 0 && units.map((u) => <TreeLeaf key={u.key}><Button type="button" variant="link" size="sm" className="h-auto p-0 text-left text-xs" onClick={() => go("Overrides")}>{u.base}: {scoringText(scoringFor(u.key) ?? DEFAULT_SCORING)}</Button></TreeLeaf>)}
               </TreeNode>}
               {cats.length > 0 && (
                 <TreeNode icon={<Tags className="h-4 w-4" />} title="Categories" onClick={() => go("Categories")}>
@@ -793,6 +793,18 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
 
 function Q({ t, h }: { t: string; h: string }) {
   return <div><h3 className="text-base font-semibold">{t}</h3><p className="text-sm text-muted-foreground">{h}</p></div>;
+}
+function ScoringFields({ value, onChange, showMode = false }: { value: MatchScoring; onChange: (patch: Partial<MatchScoring>) => void; showMode?: boolean }) {
+  return <div className="space-y-3">
+    {showMode && <div className="flex flex-wrap gap-2" role="group" aria-label="Match play format">
+      {(["standard", "time_capped_points"] as const).map((mode) => <Button key={mode} type="button" size="sm" variant={value.mode === mode ? "default" : "outline"} aria-pressed={value.mode === mode} onClick={() => onChange({ mode })}>{mode === "standard" ? "Standard play" : "Time-capped / Bells format"}</Button>)}
+    </div>}
+    {value.mode === "standard" ? <div className="grid gap-3 sm:grid-cols-3">
+      <div><Label htmlFor={showMode ? undefined : "tournament-points"}>Points per game</Label><select aria-label="Points per game" id={showMode ? undefined : "tournament-points"} className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.pointsPerGame} onChange={(e) => onChange({ pointsPerGame: Number(e.target.value) as 11 | 15 })}><option value="11">PAR 11</option><option value="15">PAR 15</option></select></div>
+      <div><Label>Games per match</Label><select aria-label="Games per match" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.bestOf} onChange={(e) => onChange({ bestOf: Number(e.target.value) as 3 | 5 })}><option value="3">Best of 3</option><option value="5">Best of 5</option></select></div>
+      <div><Label>At game point</Label><select aria-label="At game point" className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={value.winCondition} onChange={(e) => onChange({ winCondition: e.target.value as MatchScoring["winCondition"] })}><option value="win_by_2">Win by 2</option><option value="sudden_death">Sudden death</option></select></div>
+    </div> : <div className="max-w-[240px] space-y-1"><Label>Minutes per match</Label><Input type="number" min="1" step="1" aria-label="Minutes per match" value={value.timeCapMinutes} onChange={(e) => onChange({ timeCapMinutes: e.target.value })} placeholder="e.g. 15" /></div>}
+  </div>;
 }
 function Choice({ active, onClick, title, desc }: { active: boolean; onClick: () => void; title: string; desc: string }) {
   return (

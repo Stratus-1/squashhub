@@ -1,3 +1,4 @@
+import { normaliseTieBreaks } from "@/lib/tournaments/tie-breaks";
 import { notifyRoundDraw, roundNotifySummary } from "@/lib/tournaments/round-notify";
 import { poolPlanOf, poolQualificationOf, reviewPools, sizesText, balancedSizes } from "@/lib/smart-builder/pool-plan";
 import { useEffect, useMemo, useState } from "react";
@@ -293,6 +294,11 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const drift = seeded.some((d) => unitsFor((fresh ?? []) as RegLite[], d.group, n, d.doubles).units.length !== d.units.length);
       if (drift) { toast.error("Entries changed since this preview — the preview has been refreshed. Check it and generate again."); await load(); return; }
       const spec = finalDrawSpec(meta.name, seeded, version, poolMode);
+      { // Tie-break rules from the setup (device answers, else the plan saved on the tournament).
+        const { data: lt } = await fromExt("tournaments").select("beta_lifecycle").eq("id", tournamentId).maybeSingle();
+        const plan: any = readStepPlan(clubId, tournamentId) ?? (lt as any)?.beta_lifecycle?.format_plan ?? null;
+        spec.tieBreaks = normaliseTieBreaks(plan?.tieBreaks);
+      }
       const entries = seeded.flatMap((d) => d.units.map((u, k) => ({ member: u.member, partner: u.partner, group: d.group, order: k })));
       const { error } = await (supabase as any).rpc("step_prepare_draw", { p_champ_id: tournamentId, p_spec: spec, p_entries: entries, p_rebuild: hasDraw });
       if (error) throw new Error(error.message);

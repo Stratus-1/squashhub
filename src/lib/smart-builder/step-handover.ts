@@ -113,7 +113,6 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     ...(i.divisions?.length ? {
       num_groups: i.divisions.length,
       group_labels: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.label])),
-      league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])),
     } : { num_groups: 1 }),
     description: "Set up with the Step-by-Step Beta builder.",
   });
@@ -125,6 +124,11 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     const { data, error } = await fromExt("club_champs").insert({ ...row, status: "planning" }).select("id").single();
     if (error) throw error;
     tid = data.id as string;
+  }
+  if (i.divisions?.length) {
+    // league_match_types lives only on the base table (not the club_champs view).
+    const { error } = await fromExt("tournaments").update({ league_match_types: Object.fromEntries(i.divisions.map((d, n) => [String(n + 1), d.matchType])) }).eq("id", tid);
+    if (error) throw error;
   }
   if (i.entrants.length) {
     const nDiv = Math.max(1, i.divisions?.length ?? 1);

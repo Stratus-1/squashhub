@@ -2019,6 +2019,11 @@ export default function ClubChampsView() {
         })()}
 
 
+        {/* Entered players: the tournament WhatsApp group stays one tap away (hidden when none). */}
+        {myMemberId && registrations.some((r: any) => (r.club_member_id === myMemberId || r.partner_member_id === myMemberId) && !["cancelled", "withdrawn", "declined"].includes(String(r.status))) && (
+          <JoinWhatsAppGroupButton champId={champId} />
+        )}
+
         {/* Draw already published, but my own entry fee is still outstanding. */}
         {groupNumbers.length > 0 && myMemberId && (() => {
           const myReg: any = registrations.find(

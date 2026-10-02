@@ -19509,6 +19509,10 @@ export type Database = {
           registered_count: number
         }[]
       }
+      tournament_league_division_for: {
+        Args: { p_champ_id: string; p_member_id: string }
+        Returns: number
+      }
       tournament_member_lookup: {
         Args: { p_champ_id: string; p_last4: string; p_member_number: string }
         Returns: Json

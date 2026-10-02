@@ -22,7 +22,7 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
   const legacy = searchParams.get("legacy") === "1";
   const [legacyOpen, setLegacyOpen] = useState(false);
   const [stepByStepOpen, setStepByStepOpen] = useState(false);
-  const [editAtSummary, setEditAtSummary] = useState(false);
+  const [editAt, setEditAt] = useState<"Summary" | "Messaging" | null>(null);
   const [managing, setManaging] = useState<string | null>(null);
   const handovers = loadHandovers(clubId);
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
       <div className="dark rounded-xl bg-background p-4 text-foreground">
         <StepTournamentManagement key={managing} clubId={clubId} tournamentId={managing}
           onBack={() => setManaging(null)}
-          onEditSetup={() => { setManaging(null); setEditAtSummary(true); setStepByStepOpen(true); }} />
+          onEditSetup={(at) => { setManaging(null); setEditAt(at ?? "Summary"); setStepByStepOpen(true); }} />
       </div>
     );
   }
@@ -42,8 +42,8 @@ export function ClubTournamentBeta({ clubId, clubName }: { clubId: string; clubN
   if (stepByStepOpen) {
     return (
       <div className="dark rounded-xl bg-background p-4 text-foreground">
-        <StepByStepBuilder clubId={clubId} clubName={clubName} initialStep={editAtSummary ? "Summary" : undefined}
-          onCompleted={(tid) => { setStepByStepOpen(false); setEditAtSummary(false); setManaging(tid); }} />
+        <StepByStepBuilder clubId={clubId} clubName={clubName} initialStep={editAt ?? undefined}
+          onCompleted={(tid) => { setStepByStepOpen(false); setEditAt(null); setManaging(tid); }} />
       </div>
     );
   }

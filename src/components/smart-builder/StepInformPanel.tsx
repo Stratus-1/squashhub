@@ -17,8 +17,8 @@ const ALL: InformChannel[] = ["in_app", "email", "whatsapp", "sms"];
  * Communications engine (comms_campaigns → send-comms-campaign → notifications / email / WhatsApp,
  * logged per recipient in comms_deliveries). Progression only after delivery, or an explicit manual mark.
  */
-export function StepInformPanel({ h, lifecycle, onLifecycle }: {
-  h: Handover; lifecycle: BetaLifecycle; onLifecycle: (l: BetaLifecycle) => Promise<void>;
+export function StepInformPanel({ h, lifecycle, onLifecycle, onAddGroup }: {
+  h: Handover; lifecycle: BetaLifecycle; onLifecycle: (l: BetaLifecycle) => Promise<void>; onAddGroup?: () => void;
 }) {
   const saved = (h.channels.filter((c) => (ALL as string[]).includes(c)) as InformChannel[]);
   const [picked, setChannels] = useState<InformChannel[]>(saved.length ? saved : ["in_app"]);
@@ -26,6 +26,7 @@ export function StepInformPanel({ h, lifecycle, onLifecycle }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<DeliveryRow[]>([]);
+  const [group, setGroup] = useState<string | null | undefined>(undefined);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   // What each channel can actually reach (club setup + recipients' contact details).
@@ -37,7 +38,9 @@ export function StepInformPanel({ h, lifecycle, onLifecycle }: {
       supabase.from("clubs").select("whatsapp_enabled, sms_enabled").eq("id", h.clubId).maybeSingle(),
       supabase.from("club_secrets").select("smtp_host, sender_email").eq("club_id", h.clubId).maybeSingle(),
       supabase.from("club_members").select("id, user_id, email, phone").in("id", ids),
-    ]).then(([c, sec, mem]) => {
+      (supabase as any).from("tournament_whatsapp_groups").select("invite_url, status").eq("champ_id", h.tournamentId).maybeSingle(),
+    ]).then(([c, sec, mem, wg]: any[]) => {
+      const g = wg?.data; setGroup(g?.status === "active" && g?.invite_url ? g.invite_url : null);
       const ms = (mem.data ?? []) as any[];
       setAvail({
         club: { in_app: true, email: !!((sec.data as any)?.smtp_host && (sec.data as any)?.sender_email), whatsapp: !!(c.data as any)?.whatsapp_enabled, sms: !!(c.data as any)?.sms_enabled },
@@ -97,7 +100,7 @@ export function StepInformPanel({ h, lifecycle, onLifecycle }: {
       {first && <div>
         <div className="mb-1 text-xs text-muted-foreground">Preview — exactly what {first.name} will receive{h.entrantMessages.length > 1 ? " (pick another name under View recipients)" : ""}</div>
         <pre className="whitespace-pre-wrap rounded border border-border bg-muted/30 p-2 font-sans text-xs">{finaliseMessage(first.text)}</pre>
-        <div className="mt-1 text-[11px] text-muted-foreground">Includes a "{h.feeDue ? "View my entry & pay" : "View my tournament entry"}" link to the player's tournament page{h.feeDue ? ", where the existing Pay buttons for your accepted methods are" : ""}.</div>
+        <div className="mt-1 text-[11px] text-muted-foreground">{group ? (lifecycle?.wa_include ?? h.waGroup?.include ? "Includes \"Join the tournament WhatsApp group\". " : "WhatsApp group set up, but its link isn't included in messages. ") : group === null ? <>No WhatsApp group configured · {onAddGroup ? <button type="button" className="text-primary underline" onClick={onAddGroup}>Add one</button> : null}. </> : null}Includes a "{h.feeDue ? "View my entry & pay" : "View my tournament entry"}" link to the player's tournament page{h.feeDue ? ", where the existing Pay buttons for your accepted methods are" : ""}.</div>
       </div>}
 
       <button type="button" className="flex items-center gap-1 text-xs font-medium text-primary" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>

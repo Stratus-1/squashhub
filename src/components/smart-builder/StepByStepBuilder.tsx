@@ -1,3 +1,4 @@
+import { normaliseGroupInviteUrl } from "@/lib/tournaments/whatsapp-group";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,8 @@ export type StepAnswers = {
   planId?: string;
   /** Set once "Complete setup & continue" created the tournament; later saves update it. */
   createdTournamentId?: string;
+  /** Organiser-supplied WhatsApp group invite link (content in messages, not a delivery channel). */
+  waGroup?: { use: boolean | null; url: string; include: boolean };
   kind: Kind;
   entries: string;
   playType: PlayType;
@@ -198,7 +201,7 @@ const PLAY_LABEL: Record<Exclude<PlayType, null>, string> = { singles: "Singles"
 const fmtDay = (d: string) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "No date";
 
-export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }: { clubId: string; clubName?: string; onCompleted?: (tournamentId: string) => void; initialStep?: "Summary" }) {
+export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }: { clubId: string; clubName?: string; onCompleted?: (tournamentId: string) => void; initialStep?: StepKey }) {
   const key = `sh.stepbuilder.${clubId}`;
   const [a, setA] = useState<StepAnswers>(() => {
     try {
@@ -413,7 +416,13 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
     closing_date: "[set later]",
     dates: a.kind === "period" ? (a.periodStart ? `from ${fmtDay(a.periodStart)}, running until the last planned stage` : "[start date set in Basics]") : a.days.filter((d) => d.date).map((d) => fmtDay(d.date)).join(", ") || "[set in the Dates step]",
   };
-  const preview = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
+  const wa = a.waGroup ?? { use: null, url: "", include: true };
+  const waUrl = wa.use ? normaliseGroupInviteUrl(wa.url) : null;
+  const waOk = wa.use !== true || !!waUrl;
+  const waLine = waUrl && wa.include ? `\n\nJoin the tournament WhatsApp group: ${waUrl}` : "";
+  const setWa = (p: Partial<typeof wa>) => setA((prev) => ({ ...prev, waGroup: { ...wa, ...(prev.waGroup ?? {}), ...p } }));
+  const previewBase = msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => previewVars[k] ?? m);
+  const preview = previewBase + waLine;
   const msgSummary = msgLater ? "Configure later" : `${msg.channels.filter(chAvail).map((c) => CHANNEL_LABEL[c]).join(", ") || "No channel"} · ${storedBody === null ? "suggested wording" : "custom wording"}`;
   const isChamps = a.kind === "period";
   const seedFor = (k: string): SeedMethod | null => a.seedingOverrides?.[k] ?? a.seedingOverrides?.[k.split("::")[0]] ?? a.seeding;
@@ -507,7 +516,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
   const okFor: Record<StepKey, boolean> = { Type: a.kind !== null, Basics: basicsOk, Entries: entriesOk, ExpEntries: unitEntriesOk, What: playOk, Match: scoringOk(scoring), Categories: cats.length > 0, Subcategories: discOk, Overrides: units.every((u) => scoringOk(scoringFor(u.key))), Format: units.length ? units.every((u) => formatOk(formatFor(u.key))) : formatOk(format), Seeding: units.every((u) => seedFor(u.key) !== null), Partners: dblUnits.every((u) => partnerOf(u.key) !== null),
-    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: msgLater || (msg.channels.some(chAvail) && !!msgBody.trim()), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
+    Players: a.source !== null, Eligibility: eligOk, Pick: pickOk, Invites: a.invite !== null, Messaging: waOk && (msgLater || (msg.channels.some(chAvail) && !!msgBody.trim())), Fees: fee.has === false || (fee.has === true && units.every((u) => Number(feeFor(u.key)) >= 0 && feeFor(u.key) !== "") && chosenMethods.length > 0), Dates: daysOk, Courts: courtsOk, Split: true, Schedule: stages.length > 0 && stages.every(stageOk) && a.playoffSync !== null && a.playoffSync !== undefined, Playoffs: true, Summary: false };
   const canNext = okFor[cur];
   const reached = useMemo(() => {
     let i = 0; while (i < steps.length - 1 && okFor[steps[i]]) i++; return i;
@@ -579,7 +588,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
     if (msgLater) out.push({ id: "message", label: notifyOnly ? "Participation notification wording/channels" : "Invitation wording/channels", neededAt: "invite", why: "Needed before players are contacted." });
     return out;
   })();
-  const renderMsg = (vars: Record<string, string>) => msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => vars[k] ?? previewVars[k] ?? m);
+  const renderMsg = (vars: Record<string, string>) => msgBody.replace(/{{\s*([a-z_]+)\s*}}/g, (m, k) => vars[k] ?? previewVars[k] ?? m) + waLine;
   const entrantMessages: EntrantMessage[] = pickIds.filter((id) => !!a.picks[id]).map((id) => {
     const k = a.picks[id]; const u = units.find((x) => x.key === k);
     const partner = adminPairKeys.has(k) ? pairsFor(k).find((p) => p.includes(id))?.find((x) => x !== id) : undefined;
@@ -606,13 +615,14 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
         clubId, name: a.name || "Tournament", existingId: a.createdTournamentId ?? null,
         startDate: isChamps ? a.periodStart || null : dates[0] ?? null, endDate: isChamps ? null : dates[dates.length - 1] ?? null,
         feeCents, paymentMethods: fee.has ? chosenMethods : [], partnerMode: pms.length && pms.every((p) => p === pms[0]) ? pms[0] : null, entrants,
+        waGroup: wa.use === null ? undefined : waUrl ? { url: waUrl, include: wa.include, name: a.name || "Tournament" } : null,
         divisions: units.map((u) => ({ label: u.label, matchType: u.disc === "doubles" ? "doubles" as const : "singles" as const })),
       });
       const prev = loadHandover(clubId, tid);
       saveHandover({
         tournamentId: tid, clubId, name: a.name || "Tournament", kind: isChamps ? "period" : "once_off",
         mode: notifyOnly ? "inform" : "invite", feeDue: !!fee.has, channels: msg.channels.filter(chAvail), messageTemplate: msgBody,
-        entrantMessages, invitePreview: preview, deferred,
+        entrantMessages, invitePreview: preview, deferred, waGroup: waUrl ? { url: waUrl, include: wa.include } : null,
         expected: units.map((u) => ({ label: u.label, expected: isChamps ? Number(a.unitEntries?.[u.key]) || null : null, doubles: u.disc === "doubles" })),
         stage: prev?.stage ?? "invite", completed: prev?.completed ?? ["planning"], informedAt: prev?.informedAt ?? null,
         createdAt: prev?.createdAt ?? new Date().toISOString(),
@@ -1006,6 +1016,20 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
                     <Label className="text-sm">Preview (example member)</Label>
                     <div className="mt-1 whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-sm">{preview}</div>
                   </div>
+                  <div className="space-y-2 rounded-md border p-3">
+                    <Label className="text-sm">Tournament WhatsApp group</Label>
+                    <p className="text-[11px] text-muted-foreground">Optional. Create the group on your phone and paste its invite link — SquashHub doesn't create groups. This is a link inside your messages, not a way of sending them.</p>
+                    <div className="flex flex-wrap gap-1">{([[false, "No WhatsApp group"], [true, "Use a WhatsApp group"]] as const).map(([v, l]) => (
+                      <button key={l} type="button" aria-pressed={wa.use === v} onClick={() => setWa({ use: v })}
+                        className={cn("rounded-full border px-3 py-1 text-xs", wa.use === v ? "border-primary bg-primary font-semibold text-primary-foreground" : "border-border")}>{l}</button>))}</div>
+                    {wa.use && <div className="space-y-1">
+                      <Label htmlFor="sbs-wa" className="text-xs">WhatsApp group invite link</Label>
+                      <Input id="sbs-wa" placeholder="https://chat.whatsapp.com/…" value={wa.url} onChange={(e) => setWa({ url: e.target.value })} />
+                      {wa.url.trim() && !waUrl && <p className="text-xs text-destructive">That doesn't look like a WhatsApp group invite link. In WhatsApp open the group, tap "Invite via link", copy it and paste it here — it starts with https://chat.whatsapp.com/</p>}
+                      {!wa.url.trim() && <p className="text-xs text-destructive">Paste the group's invite link, or choose "No WhatsApp group".</p>}
+                      <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={wa.include} onChange={(e) => setWa({ include: e.target.checked })} />Include the WhatsApp group link in player {notifyOnly ? "participation notifications" : "invitations"}</label>
+                    </div>}
+                  </div>
                   <Button variant="ghost" size="sm" onClick={() => setMsg({ later: true })}>Configure later</Button>
                 </div>
               )}
@@ -1397,7 +1421,7 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
                 ) : null)}
               </SummaryRow>}
               {selfEntry && <SummaryRow icon={<Mail className="h-4 w-4" />} label="Invitations" onEdit={() => go("Invites")}>{a.invite ? INVITE_LABEL[a.invite] : "Not chosen"} <span className="text-muted-foreground">· not sent</span></SummaryRow>}
-              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span></SummaryRow>}
+              {(selfEntry || notifyOnly) && <SummaryRow icon={<MessageSquare className="h-4 w-4" />} label={notifyOnly ? "Entry notification" : "Messaging"} onEdit={() => go("Messaging")}><b>{notifyOnly ? "Participation notification" : "Invitation"}</b> · {msgSummary}{notifyOnly && fee.has ? " · includes amount due and Pay now" : ""} <span className="text-muted-foreground">· setup only, not sent{notifyOnly ? " · no invitation needed, players are entered by you" : ""}</span><div className="text-xs">WhatsApp group: {waUrl ? `configured · ${wa.include ? "join link included in messages" : "link not included in messages"}` : wa.use === false ? "none" : "not set"}</div></SummaryRow>}
               <SummaryRow icon={<Wallet className="h-4 w-4" />} label="Fees & Payment" onEdit={() => go("Fees")}>
                 {fee.has ? <ul className="space-y-0.5">{units.map((u) => <li key={u.key}>{u.label}: <span className="text-muted-foreground">{feeUnitText(u)}</span></li>)}</ul> : feeSummary}
                 {dblUnits.length > 0 && <ul className="space-y-0.5"><li>One player may pay for both: <span className="text-muted-foreground">{ruleAnswer(fee.doublesCover)}</span></li></ul>}

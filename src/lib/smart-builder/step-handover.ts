@@ -98,6 +98,8 @@ export type CreateInput = {
   existingId?: string | null;
   /** undefined = not decided (leave as is); null = no group; object = organiser's invite link. */
   waGroup?: { url: string; include: boolean; name: string } | null;
+  /** undefined = leave as is; maps to the Current Builder's tournaments.result_notify_scope / _channels. */
+  resultNotify?: { scope: "all" | "playoffs" | "never"; channels: string[] };
 };
 
 /**
@@ -115,6 +117,7 @@ export async function persistStepTournament(i: CreateInput): Promise<string> {
     payment_required: (i.feeCents ?? 0) > 0,
     payment_methods: i.paymentMethods.length ? i.paymentMethods : null,
     ...(i.partnerMode ? { partner_mode: i.partnerMode } : {}),
+    ...(i.resultNotify ? { result_notify_scope: i.resultNotify.scope, result_notify_channels: i.resultNotify.channels.length ? i.resultNotify.channels : ["email"] } : {}),
     // Map categories → divisions so the table default (2 unnamed divisions) never applies.
     ...(i.divisions?.length ? {
       num_groups: i.divisions.length,

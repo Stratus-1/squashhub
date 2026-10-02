@@ -5,6 +5,7 @@ Multi-tenant squash operations platform (clubs, associations, federation, member
 - Repo `Stratus-1/squashhub` (`main`). Docs: `ARCHITECTURE.md`, `README.md`, `MOBILE.md`, `docs/PROJECT_STRUCTURE_AND_ISSUE_LOG.md`, `docs/ANDROID_API_REFERENCE.md`.
 - Scoped rules: `src/lib/AGENTS.md` (competition, bar, identity domain rules), `supabase/AGENTS.md` (Help Center feed).
 - Step-by-Step Beta match scoring is device-local, with tournament default and category/subcategory overrides resolved only for planning; why: guided choices must not alter live competition rules before creation is supported.
+- Step-by-Step Beta planned competition format (pools/knockout/swiss/cross-league/later) is device-local and provisional with category/subcategory overrides; playoffs derive from it and a "Confirm final format" checkpoint is required before any generation; why: format must never be fixed before real entries are known.
 - Stack: React 18 + TS + Vite, React Router, React Query, Tailwind/shadcn, Supabase (Postgres/RLS/RPC/Edge Functions), PWA, Capacitor 8, FCM, Vitest, Remotion, Vercel.
 - Commands: `npm run dev|test|lint|build|cap:sync`. Don't open native IDEs unless needed; review `cap:sync` output before committing.
 

@@ -2405,3 +2405,7 @@ Added per-club costing switch, average cost per stock unit, cost snapshots on ev
 ### 2026-10-02 — Step-by-Step: replacement counted 41; "Add to my account" still outstanding
 - Replacement: `persistStepTournament` upserted picked players with ignoreDuplicates and never withdrew unpicked ones (nor updated partners), so the outgoing player stayed active. Now `step_sync_admin_entrants` syncs the set server-side.
 - Account: `charge_tournament_entry_to_account` only ensured the fee row (already raised at admin entry) and recorded nothing, so status stayed pending_payment. Now records `fee_settled_via='account'`; derive trigger gives `fee_status='on_account'`; Management counts it as charged to member account, not outstanding.
+
+### 2026-10-02 — Step-by-Step management: stale 41st entrant + "Player + Partner" rows
+- Names: `loadRegistrations` selected non-existent `club_members.first_name/last_name`; the query failed and every row fell back to "Player"/"Partner". Now reads `club_members.name`.
+- Stale entrant: a replacement saved before `step_sync_admin_entrants` left the incoming player claiming a partner whose own row still pointed at the outgoing player. New `step_reconcile_admin_entrants(champ)` (run on every management load) resolves duplicate partner claims: newest claimant wins, older unpaid claimant is withdrawn via `step_sync_admin_entrants` (fee reversed + audited). Conflicts involving paid entries are left for the organiser. Singles-only stale rows cannot be detected without the picked list (re-complete selection to sync).

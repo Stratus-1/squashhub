@@ -32,7 +32,12 @@ export function StepTournamentManagement({ clubId, tournamentId, onEditSetup, on
   const [_unpaidOk, _setUnpaidOk] = useState(false);
   const [editWarn, setEditWarn] = useState<null | "Summary" | "Messaging" | "default">(null);
   const reloadRegs = () => loadRegistrations(tournamentId).then(setRegs).catch(() => setRegs({ rows: [], feeCents: 0 }));
-  useEffect(() => { reloadRegs(); }, [tournamentId]);
+  useEffect(() => {
+    reloadRegs();
+    const onFocus = () => { if (document.visibilityState === "visible") reloadRegs(); };
+    document.addEventListener("visibilitychange", onFocus);
+    return () => document.removeEventListener("visibilitychange", onFocus);
+  }, [tournamentId]);
   const [life, setLife] = useState<BetaLifecycle | null>(null);
   useEffect(() => {
     loadLifecycle(tournamentId).then((l) => {

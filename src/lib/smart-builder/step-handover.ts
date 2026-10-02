@@ -332,6 +332,8 @@ export const regLabel = (status: string, feeDue: boolean, confirmNeedsPay = fals
   status === ON_ACCOUNT && feeDue ? "Entered · Charged to member account" : confirmNeedsPay && feeDue && OUTSTANDING.has(status) ? (status === "pending_eft" ? "Not confirmed · EFT proof waiting" : status === "payment_failed" ? "Not confirmed · Payment failed" : "Not confirmed · Payment outstanding") : !feeDue ? "Entered · Payment not required" : status === "paid" ? "Entered · Paid" : status === "waived" ? "Entered · Fee waived" : status === "pending_eft" ? "Entered · EFT proof waiting" : status === "payment_failed" ? "Entered · Payment failed" : isOutstanding(status, feeDue) ? "Entered · Payment outstanding" : "Entered";
 
 export async function loadRegistrations(tournamentId: string): Promise<{ rows: RegRow[]; feeCents: number }> {
+  // Always recompute from current entries; first repair entries left inconsistent by an older replacement.
+  await (supabase as any).rpc("step_reconcile_admin_entrants", { p_champ_id: tournamentId }).then(() => undefined, () => undefined);
   const [{ data: t }, { data: regs }] = await Promise.all([
     fromExt("club_champs").select("entry_fee_cents").eq("id", tournamentId).maybeSingle(),
     fromExt("club_champs_registrations").select("club_member_id, partner_member_id, status, fee_status").eq("champ_id", tournamentId),
@@ -339,13 +341,13 @@ export async function loadRegistrations(tournamentId: string): Promise<{ rows: R
   const feeCents = Number((t as any)?.entry_fee_cents ?? 0);
   const live = ((regs ?? []) as any[]).filter((r) => !["cancelled", "withdrawn", "declined"].includes(String(r.status)));
   const ids = [...new Set(live.flatMap((r) => [r.club_member_id, r.partner_member_id]).filter(Boolean))];
-  const { data: ms } = ids.length ? await supabase.from("club_members").select("id, first_name, last_name").in("id", ids) : { data: [] as any[] };
-  const nm = new Map(((ms ?? []) as any[]).map((m) => [m.id, `${m.first_name ?? ""} ${m.last_name ?? ""}`.trim() || "Player"]));
+  const { data: ms } = ids.length ? await supabase.from("club_members").select("id, name").in("id", ids) : { data: [] as any[] };
+  const nm = new Map(((ms ?? []) as any[]).map((m) => [m.id, String(m.name ?? "").trim() || "Unnamed member"]));
   return {
     feeCents,
     rows: live.map((r) => ({
-      memberId: r.club_member_id, name: nm.get(r.club_member_id) ?? "Player",
-      partnerName: r.partner_member_id ? nm.get(r.partner_member_id) ?? "Partner" : null,
+      memberId: r.club_member_id, name: nm.get(r.club_member_id) ?? "Unknown member",
+      partnerName: r.partner_member_id ? nm.get(r.partner_member_id) ?? "Unknown member" : null,
       status: effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeStatus: r.fee_status ?? null,
       owesCents: isOutstanding(effStatus({ status: String(r.status), feeStatus: r.fee_status }), feeCents > 0) ? feeCents : 0,
     })),

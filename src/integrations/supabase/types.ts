@@ -19199,6 +19199,10 @@ export type Database = {
         Args: { p_mandate_id: string; p_months: number }
         Returns: Json
       }
+      step_reconcile_admin_entrants: {
+        Args: { p_champ_id: string }
+        Returns: Json
+      }
       step_sync_admin_entrants: {
         Args: { p_champ_id: string; p_entrants: Json; p_fee_due: boolean }
         Returns: Json

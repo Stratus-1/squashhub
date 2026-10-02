@@ -858,7 +858,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
           {cur === "Messaging" && (
             <>
               {notifyOnly
-                ? <Q t="How should players hear they've been entered?" h="This is a notification, not an invitation — you entered these players, so nobody has to accept. Setup only — nothing is sent from here; you send it once entries and pairs are final, and can use tournament messaging later." />
+                ? <Q t="Inform selected players of their participation" h="This is a notification, not an invitation — you entered these players, so nobody has to accept. Setup only — nothing is sent from here; you send it once entries and pairs are final, and can use tournament messaging later." />
                 : <Q t="How should the invitation read?" h="Setup only — nothing is sent from here. Sending and test messages come later." />}
               {msgLater ? (
                 <div className="space-y-2 rounded-md border p-3 text-sm">

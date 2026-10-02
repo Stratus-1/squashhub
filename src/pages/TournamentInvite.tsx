@@ -560,12 +560,16 @@ export default function TournamentInvite() {
             <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
           </Button>
         ) : user ? (
-          <Button
-            className="w-full"
-            onClick={() => data?.champ_id && navigate(afterAcceptPath(data.champ_id, "pending_payment"))}
-          >
-            <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
-          </Button>
+          <div className="space-y-2">
+            <Button
+              className="w-full"
+              onClick={() => data?.champ_id && navigate(afterAcceptPath(data.champ_id, "pending_payment"))}
+            >
+              <CreditCard className="w-4 h-4 mr-2" /> Pay {money(feeCents)} entry fee
+            </Button>
+            <PartnerFeeOptions token={token} verify={verify.trim() || null} ready
+              busy={payNow.isPending} onPay={(scope) => payNow.mutate(scope)} onCharged={() => refetch?.()} />
+          </div>
         ) : (
           <div className="space-y-2">
             {payNeedsVerify && !hasDoublesChoice && payVerifyField}

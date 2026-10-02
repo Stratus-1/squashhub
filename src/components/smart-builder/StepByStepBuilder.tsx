@@ -92,6 +92,8 @@ export type StepAnswers = {
   partner: Record<string, Partner>;
   /** Whether one player may register their partner (where players choose partners). */
   doublesEntry: boolean | null;
+  /** Admin-formed pairs per doubles unit key (only where the admin selects players and assigns partners). */
+  pairs?: Record<string, [string, string][]>;
   fee: FeeCfg;
   /** Default and category/subcategory exceptions; guidance only, not a generated bracket. */
   playoff: PlayoffPlan;
@@ -328,6 +330,16 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const anyManual = units.some((u) => eligOf(u.key).mode === "manual");
   const selfEntry = a.source === "self" || a.source === "both";
   const showPick = a.source === "select" || a.source === "both" || anyManual;
+  /** Admin selects AND assigns partners: pairing happens on the Pick step itself. */
+  const adminPairUnits = showPick ? dblUnits.filter((u) => partnerOf(u.key) === "admin") : [];
+  const adminPairKeys = new Set(adminPairUnits.map((u) => u.key));
+  const pairMode = adminPairUnits.length > 0;
+  /** Only pairs whose both players are still picked into that group count. */
+  const pairsFor = (k: string): [string, string][] => (a.pairs?.[k] ?? []).filter(([x, y]) => a.picks[x] === k && a.picks[y] === k);
+  const unpairedIn = (k: string) => { const used = new Set(pairsFor(k).flat()); return pickIds.filter((id) => a.picks[id] === k && !used.has(id)); };
+  const setPairs = (k: string, p: [string, string][]) => setA({ ...a, pairs: { ...(a.pairs ?? {}), [k]: p } });
+  /** Competitive entries: a pair counts once in admin-paired doubles groups. */
+  const entryCount = pickIds.filter((id) => !adminPairKeys.has(a.picks[id])).length + adminPairUnits.reduce((n, u) => n + pairsFor(u.key).length + unpairedIn(u.key).length, 0);
 
   const defaultMsg = [
     "Hi {{first_name}},",
@@ -433,7 +445,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   const daysOk = a.days.length > 0 && a.days.every((d) => d.date);
   const courtsOk = a.days.every((d) => d.venue.trim() && Number(d.courts) > 0 && d.windows.length > 0 && d.windows.every((w) => w.from && w.to && w.from < w.to));
   const eligOk = units.every((u) => { const e = eligOf(u.key); return e.mode !== "leagues" || e.leagueIds.length > 0; });
-  const pickOk = a.source === "select" ? pickIds.length > 0 : true;
+  const pickOk = (a.source === "select" ? pickIds.length > 0 : true) && adminPairUnits.every((u) => unpairedIn(u.key).length === 0);
   const periodOk = !!a.periodStart;
   const basicsOk = !!a.name?.trim() && !!a.scope && !!derivedOwner && (!isChamps || periodOk);
   const ownerText = a.scope ? `${SCOPE_LABEL[a.scope]} · ${derivedOwner ?? (ownerLoading ? "looking up…" : "owner not found")}` : "Level not chosen";
@@ -448,7 +460,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
   /** Exact field when the organiser picked everyone; otherwise the estimate (provisional). */
   const knownField = a.source === "select" && pickIds.length > 0;
   const champsEstimate = units.reduce((n, u) => n + (Number(a.unitEntries?.[u.key]) || 0), 0);
-  const fieldCount = knownField ? pickIds.length : isChamps ? champsEstimate : Number(a.entries) || 0;
+  const fieldCount = knownField ? entryCount : isChamps ? champsEstimate : Number(a.entries) || 0;
   const courtHours = a.days.reduce((t, d) => t + (Number(d.courts) || 0) * d.windows.reduce((h, w) => {
     if (!w.from || !w.to || w.from >= w.to) return h;
     const [fh, fm] = w.from.split(":").map(Number); const [th, tm] = w.to.split(":").map(Number);
@@ -505,7 +517,7 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   i > reached && "opacity-50",
                 )}
               >
-                {i < reached && i !== step ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>} {STEP_LABEL[s]}
+                {i < reached && i !== step ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>} {s === "Pick" && pairMode ? "Select & pair players" : STEP_LABEL[s]}
               </button>
             </li>
           ))}
@@ -722,6 +734,32 @@ export function StepByStepBuilder({ clubId, clubName }: { clubId: string; clubNa
                   ))}
                 </div>
               )}
+              {adminPairUnits.map((u) => {
+                const unpaired = unpairedIn(u.key); const prs = pairsFor(u.key); const first = pairDraft[u.key] ?? "";
+                if (!prs.length && !unpaired.length) return null;
+                return (
+                  <div key={u.key} className="space-y-2 rounded-lg border border-border p-3">
+                    <Label>Pairs — {u.label}</Label>
+                    {prs.length > 0 && <ul className="space-y-1">{prs.map(([x, y]) => (
+                      <li key={x + y} className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs">
+                        <span className="flex-1">{memberName(x)} &amp; {memberName(y)}</span>
+                        <Button variant="ghost" size="icon" aria-label="Split pair" onClick={() => setPairs(u.key, prs.filter((p) => p[0] !== x))}><Trash2 className="h-4 w-4" /></Button>
+                      </li>))}</ul>}
+                    {unpaired.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-xs text-muted-foreground">{first ? `Now tap ${memberName(first)}'s partner:` : "Not paired yet — tap two players to pair them:"}</div>
+                        <div className="flex flex-wrap gap-1.5">{unpaired.map((id) => (
+                          <button key={id} type="button" onClick={() => {
+                            if (!first) return setPairDraft({ ...pairDraft, [u.key]: id });
+                            if (first === id) return setPairDraft({ ...pairDraft, [u.key]: "" });
+                            setPairDraft({ ...pairDraft, [u.key]: "" }); setPairs(u.key, [...prs, [first, id]]);
+                          }} className={cn("rounded-full border px-2.5 py-1 text-xs", first === id ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted")}>{memberName(id)}</button>))}</div>
+                        <div className="text-xs text-destructive">{unpaired.length} player{unpaired.length === 1 ? " is" : "s are"} not paired yet. Every player in this group needs a partner before you can continue.</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </>
           )}
 

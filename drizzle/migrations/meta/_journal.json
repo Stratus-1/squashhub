@@ -64,6 +64,13 @@
       "when": 1790967543386,
       "tag": "0008_resolved_tournament_courts",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790967745146,
+      "tag": "0009_self_schedule_uses_resolved_courts",
+      "breakpoints": true
     }
   ]
 }

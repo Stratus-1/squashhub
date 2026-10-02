@@ -12,6 +12,7 @@ import { generateFromSpec, type PlannedPlayoff, type TournamentSpec } from "@/li
 import { nextPow2, roundRobin } from "@/lib/tournaments/contract";
 import type { PoolReview } from "@/lib/smart-builder/pool-plan";
 import { distributeIntoPools, type PoolAllocationMode } from "@/lib/tournaments/pools";
+import { poolAssignmentIssues } from "@/lib/tournaments/pool-boundaries";
 import { specDateIssues } from "@/lib/tournaments/date-window";
 
 export type DrawKind = "pools" | "round_robin" | "knockout" | "swiss" | "cross";

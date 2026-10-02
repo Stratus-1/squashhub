@@ -301,7 +301,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       const rows = await atomically(supabaseDb, tournamentId, commitStructured, (db) => generateStructuredTournament(db, tournamentId));
       const games = Array.isArray(rows) ? rows.filter((r: any) => r.player_a_member_id && r.player_b_member_id).length : preview?.total ?? 0;
       toast.success(`Draw saved — ${games} games created`);
-      if (notifyDraw && !hasDraw) {
+      if (notifyDraw) {
         // Reuse the existing round-draw notice (opponent, phone, play-by date) via the tournament's channels.
         try { const r = await notifyRoundDraw({ champId: tournamentId, roundNumber: 1 }); toast.success(roundNotifySummary(r)); }
         catch (e: any) { toast.error(`Draw saved, but players weren't notified: ${e.message ?? e}`); }
@@ -507,7 +507,7 @@ export function StepGenerateDrawPanel({ clubId, tournamentId, onGenerated, revis
       {!(hasDraw && existing.played > 0) && (
         <>
           <label className="flex items-start gap-2"><Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} /><span>I confirm this is the final format for these entries.</span></label>
-          {!hasDraw && <label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
+          {<label className="flex items-start gap-2"><Checkbox checked={notifyDraw} onCheckedChange={(v) => setNotifyDraw(!!v)} /><span>{hasDraw ? "New draw — " : ""}Tell players their Round 1 opponent (name and phone number, and in doubles their partner too), the play-by date, and — when every round was drawn upfront — all rounds and their booking dates, so they can book all their courts at once (uses the tournament's message channels).</span></label>}
           <Button disabled={!canGenerate} onClick={generate}>{busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{hasDraw ? "Rebuild draw & fixtures" : "Generate draw & fixtures"}</Button>
         </>
       )}

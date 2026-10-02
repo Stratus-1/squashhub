@@ -614,7 +614,10 @@ export function StepByStepBuilder({ clubId, clubName, onCompleted, initialStep }
         stage: prev?.stage ?? "invite", completed: prev?.completed ?? ["planning"], informedAt: prev?.informedAt ?? null,
         createdAt: prev?.createdAt ?? new Date().toISOString(),
       });
-      setA((x) => ({ ...x, createdTournamentId: tid }));
+      // Persist synchronously: the builder unmounts on handover, so the save effect may never run.
+      const nextA = { ...a, createdTournamentId: tid };
+      localStorage.setItem(key, JSON.stringify(nextA));
+      setA(nextA);
       onCompleted?.(tid);
     } catch (e: any) {
       setCompleteErr(e?.message || "Something went wrong — nothing was changed.");

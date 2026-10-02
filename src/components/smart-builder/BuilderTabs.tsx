@@ -33,6 +33,8 @@ import { AUDIENCE_OPTIONS, type EventScope } from "@/lib/smart-builder/scope";
 import { sanitizeDraftPayload, sanitizeExtrasPayload } from "@/lib/tournaments/draft-payload";
 import type { BuilderScope } from "@/pages/admin/SmartTournamentBuilder";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { useClubContext } from "@/contexts/ClubContext";
 import { transitionPlan } from "@/lib/smart-builder/deferred";
 import { applyPlan, applyStructure } from "@/lib/smart-builder/division-structure";
 
@@ -78,7 +80,23 @@ function ChannelPicker({ value, onChange, disabled = [] }: { value: CommsChannel
 }
 
 /* ─────────────────────────── Players ─────────────────────────── */
+/** The host club's active leagues, for choosing which leagues play in each division. */
+function useClubLeagueOptions() {
+  const { club } = useClubContext();
+  const clubId = (club as any)?.id as string | undefined;
+  return useQuery({
+    queryKey: ["builder-club-leagues", clubId],
+    enabled: !!clubId,
+    queryFn: async () => {
+      const { data, error } = await fromExt("leagues").select("id, name, level, season_year, is_reserve").eq("club_id", clubId!).is("archived_at", null).order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+  });
+}
+
 export function PlayersTab({ def, validation, edit }: { def: TournamentDefinition; validation: ValidationResult; edit: Edit }) {
+  const { data: leagueOptions = [] } = useClubLeagueOptions();
   const p = def.players ?? {};
   const set = (patch: Partial<typeof p>) => edit((d) => { d.players = { ...d.players, ...patch }; });
   const rows = allStages(def);
@@ -141,6 +159,44 @@ export function PlayersTab({ def, validation, edit }: { def: TournamentDefinitio
                   </Field>
                   <div className="text-[11px] text-white/60 pt-4">{d.eligibility.replace(/_/g, " ")}, {d.entry === "pairs" ? "enter as pairs" : d.entry === "teams" ? "enter as teams" : "enter individually"}</div>
                 </div>
+                <Field label="Leagues playing in this division" tag="Optional">
+                  {!leagueOptions.length ? <p className="text-[11px] text-white/45">No active leagues found for this club.</p> : (
+                    <div className="flex flex-wrap gap-1">
+                      {leagueOptions.map((l) => {
+                        const on = (d.leagueSourceIds ?? []).includes(l.id);
+                        const elsewhere = def.divisions.find((o) => o.id !== d.id && (o.leagueSourceIds ?? []).includes(l.id));
+                        return (
+                          <button key={l.id} type="button" title={elsewhere ? `Also in ${elsewhere.name}` : undefined}
+                            className={cn("rounded border px-2 py-0.5 text-[11px]", on ? "border-amber-300 bg-amber-300/15 text-amber-200" : "border-white/15 text-white/60", elsewhere && !on && "opacity-50")}
+                            onClick={() => setDiv((x) => {
+                              const ids = new Set(x.leagueSourceIds ?? []);
+                              if (ids.has(l.id)) ids.delete(l.id); else ids.add(l.id);
+                              x.leagueSourceIds = [...ids];
+                              if (ids.size && !x.leagueUse) x.leagueUse = "division_allocation";
+                            })}>{l.name}{elsewhere && !on ? ` · ${elsewhere.name}` : ""}</button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Field>
+                {(() => {
+                  // Pools belong to this division's own first pool stage — copies never share it.
+                  const first = d.sections.flatMap((sec) => sec.stages).find((st) => st.kind === "round_robin");
+                  if (!first) return null;
+                  return (
+                    <Field label="Pools in this division" tag="Optional">
+                      <Input className={cn(f, "w-20")} inputMode="numeric" value={first.groups ?? 1}
+                        onChange={(e) => setDiv((x) => {
+                          const st = x.sections.flatMap((sec) => sec.stages).find((y) => y.id === first.id);
+                          if (!st) return;
+                          const n = Math.max(1, Math.min(16, Number(e.target.value) || 1));
+                          st.groups = n; if (n === 1) st.groupSize = null;
+                          if (x.poolLabels) x.poolLabels = x.poolLabels.slice(0, n);
+                        })} />
+                      <p className="mt-0.5 text-[10px] text-white/45">Each division has its own pools. Copied a division? You can always reduce its pools here later.</p>
+                    </Field>
+                  );
+                })()}
                 {poolCount > 0 && (
                   <Field label="Pool names" tag="Optional">
                     <div className="flex flex-wrap gap-1">

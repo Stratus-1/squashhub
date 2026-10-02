@@ -19235,6 +19235,15 @@ export type Database = {
         }
         Returns: Json
       }
+      step_prepare_draw: {
+        Args: {
+          p_champ_id: string
+          p_entries: Json
+          p_rebuild?: boolean
+          p_spec: Json
+        }
+        Returns: Json
+      }
       step_reconcile_admin_entrants: {
         Args: { p_champ_id: string }
         Returns: Json

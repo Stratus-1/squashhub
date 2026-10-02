@@ -78,8 +78,10 @@ export function nextAction(h: Handover): { title: string; detail: string; availa
   if (h.stage === "registrations") return { title: "Close registrations & finalise entries", detail: "When entries and payments are in, move on to check the final field.", available: true };
   if (h.stage === "finalise") {
     const blocked = blockersFor(h, "finalise");
-    return { title: "Generate draw & fixtures", detail: blocked.length ? "Decide the items below first — they depend on the real entries, so they're asked for now." : "Everything needed is decided. Draw and fixture generation is the next Beta build.", available: false };
+    return { title: "Generate draw & fixtures", detail: blocked.length ? "Decide the items below first — they depend on the real entries, so they're asked for now." : "Everything needed is decided. Continue to confirm the format and generate the draw.", available: blocked.length === 0 };
   }
+  if (h.stage === "generate") return { title: "Generate draw & fixtures", detail: "Confirm the final format for the current entries, check the preview, then generate the draw.", available: true };
+  if (h.stage === "activate") return { title: "Activate tournament", detail: "Draw and fixtures are saved. Review them from the Generate draw & fixtures stage. Activation is the next Beta build.", available: false };
   return { title: LIFECYCLE[lifecycleIndex(h.stage)].label, detail: "Not part of this Beta yet.", available: false };
 }
 

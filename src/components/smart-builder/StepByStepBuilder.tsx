@@ -77,6 +77,9 @@ export type StepAnswers = {
   /** Default and category/subcategory exceptions; guidance only, not a generated bracket. */
   playoff: PlayoffPlan;
   playoffOverrides: Record<string, PlayoffPlan>;
+  /** Planned competition format (provisional) with category/subcategory overrides. */
+  format: FormatPlan;
+  formatOverrides: Record<string, FormatPlan>;
 };
 type Partner = "players" | "admin" | "later";
 const PARTNER_LABEL: Record<Partner, string> = { players: "Players choose their own partner", admin: "Administrator assigns partners", later: "Decide later" };

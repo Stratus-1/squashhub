@@ -282,7 +282,10 @@ export default function TournamentInvite() {
     const chosen = chosenDivisions.length > 0 ? chosenDivisions : (data?.selected_divisions || []).map(Number);
     return doublesDivisions(divisions, chosen);
   }, [divisions, chosenDivisions, data]);
-  const hasDoublesChoice = enteredDivisions.length > 0;
+  // Organiser already entered (and paired) this player: show the existing
+  // entry and payment only — never the partner picker or enter actions.
+  const adminEntered = !!(data as any)?.admin_entered;
+  const hasDoublesChoice = enteredDivisions.length > 0 && !adminEntered;
 
   const partnerSection =
     !isTest && data?.champ_id && hasDoublesChoice ? (
@@ -462,9 +465,19 @@ export default function TournamentInvite() {
 
   const header = (
     <div className="space-y-1">
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{data?.club_name} invites you</p>
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        {adminEntered ? `${data?.club_name} has entered you` : `${data?.club_name} invites you`}
+      </p>
       <h1 className="text-lg font-bold leading-tight">{data?.tournament_name}</h1>
-      {data?.invitee_name && <p className="text-xs text-muted-foreground">Invitation for {data.invitee_name}</p>}
+      {data?.invitee_name && (
+        <p className="text-xs text-muted-foreground">{adminEntered ? "Entry for" : "Invitation for"} {data.invitee_name}</p>
+      )}
+      {adminEntered && (data as any)?.entry_category && (
+        <p className="text-xs">Category: <span className="font-medium">{(data as any).entry_category}</span></p>
+      )}
+      {adminEntered && (data as any)?.partner_name && (
+        <p className="text-xs">Your doubles partner: <span className="font-medium">{(data as any).partner_name}</span></p>
+      )}
     </div>
   );
 
@@ -506,7 +519,7 @@ export default function TournamentInvite() {
       <>
         {header}
         {detailList}
-        <Badge variant="secondary">Accepted — entry fee outstanding</Badge>
+        <Badge variant="secondary">{adminEntered ? "Entered · Payment outstanding" : "Accepted — entry fee outstanding"}</Badge>
         {partnerSection}
         {!hasDoublesChoice && (isTest ? (
           <Button className="w-full" disabled>
